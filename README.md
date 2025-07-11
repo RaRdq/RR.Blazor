@@ -148,6 +148,31 @@ Using @RR.Blazor/RRBlazor.md as reference:
 - **RPagination** - Page navigation
 - **RDropdown** - Dropdown menus
 
+## Unified Icon System
+
+All RR.Blazor components use a consistent Icon system for maximum flexibility and maintainability:
+
+### Usage Pattern
+```html
+<!-- Unified Icon + IconPosition pattern -->
+<RButton Icon="save" IconPosition="IconPosition.Start" Text="Save" />
+<RCard Icon="dashboard" Title="Analytics Dashboard" />
+<RSection Icon="settings" Title="Configuration" />
+<RListItem Icon="person" IconPosition="IconPosition.End" Title="User Profile" />
+```
+
+### IconPosition Values
+- `IconPosition.Start` - Icon at the beginning (default)
+- `IconPosition.End` - Icon at the end  
+- `IconPosition.Top` - Icon above content
+- `IconPosition.Bottom` - Icon below content
+
+### Benefits
+- ✅ **Consistent API** across all components
+- ✅ **Flexible positioning** with IconPosition enum
+- ✅ **Clean code** without legacy properties
+- ✅ **Type-safe** with C# enums
+
 ### Layout
 - **RAppShell** - Complete application shell
 - **RList** - List container with items
@@ -182,7 +207,7 @@ RR.Blazor includes over 400 utility classes inspired by modern CSS frameworks:
 ```razor
 <RCard Title="Financial Summary" 
        Elevation="4" 
-       CssClass="glass-light">
+       Class="glass-light">
     <div class="pa-6">
         <div class="d-flex justify-between align-center mb-4">
             <span class="text-h4 font-bold">$1,247,580</span>

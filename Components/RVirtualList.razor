@@ -1,0 +1,318 @@
+@* RVirtualList - High-performance virtualized list component *@
+@typeparam T
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+<div class="@GetContainerClasses()" @ref="containerRef" style="@ContainerStyle">
+    @if (isLoading && Items.Count == 0)
+    {
+        <div class="d-flex flex-column justify-center align-center pa-8">
+            @if (LoadingTemplate != null)
+            {
+                @LoadingTemplate
+            }
+            else
+            {
+                <div class="d-flex flex-column gap-3 w-full">
+                    @for (int i = 0; i < SkeletonCount; i++)
+                    {
+                        <RSkeleton Height="@SkeletonHeight" />
+                    }
+                </div>
+            }
+        </div>
+    }
+    else if (Items.Count == 0)
+    {
+        <div class="d-flex justify-center align-center pa-8">
+            @if (EmptyTemplate != null)
+            {
+                @EmptyTemplate
+            }
+            else
+            {
+                <REmptyState Title="No items" Description="No items to display" />
+            }
+        </div>
+    }
+    else
+    {
+        <div style="height: @(startIndex * ItemHeight)px;"></div>
+        
+        @for (int i = startIndex; i < endIndex; i++)
+        {
+            if (i < Items.Count)
+            {
+                <div data-index="@i" style="@GetItemStyle(i)" class="@GetItemClasses()">
+                    @ItemTemplate(Items[i])
+                </div>
+            }
+        }
+        
+        <div style="height: @((Items.Count - endIndex) * ItemHeight)px;"></div>
+        
+        @if (HasMoreItems && !isLoadingMore)
+        {
+            <div @ref="loadMoreRef" class="text-center pa-4">
+                @if (LoadMoreTemplate != null)
+                {
+                    @LoadMoreTemplate
+                }
+                else
+                {
+                    <RButton Text="Load More" 
+                            Variant="ButtonVariant.Outline"
+                            Icon="expand_more"
+                            Loading="@isLoadingMore"
+                            OnClick="LoadMoreAsync" />
+                }
+            </div>
+        }
+        else if (isLoadingMore)
+        {
+            <div class="text-center pa-4">
+                @if (LoadingMoreTemplate != null)
+                {
+                    @LoadingMoreTemplate
+                }
+                else
+                {
+                    <RSkeleton Height="@SkeletonHeight" Count="3" />
+                }
+            </div>
+        }
+    }
+</div>
+
+@code {
+    /// <summary>Items to display in the virtual list</summary>
+    [Parameter] public List<T> Items { get; set; } = new();
+    
+    /// <summary>Template for rendering each item</summary>
+    [Parameter] public RenderFragment<T> ItemTemplate { get; set; }
+    
+    /// <summary>Template for loading state</summary>
+    [Parameter] public RenderFragment LoadingTemplate { get; set; }
+    
+    /// <summary>Template for empty state</summary>
+    [Parameter] public RenderFragment EmptyTemplate { get; set; }
+    
+    /// <summary>Template for load more button</summary>
+    [Parameter] public RenderFragment LoadMoreTemplate { get; set; }
+    
+    /// <summary>Template for loading more items</summary>
+    [Parameter] public RenderFragment LoadingMoreTemplate { get; set; }
+    
+    /// <summary>Height of each item in pixels</summary>
+    [Parameter] public int ItemHeight { get; set; } = 120;
+    
+    /// <summary>Height of the container in pixels</summary>
+    [Parameter] public int ContainerHeight { get; set; } = 400;
+    
+    /// <summary>Whether there are more items to load</summary>
+    [Parameter] public bool HasMoreItems { get; set; } = true;
+    
+    /// <summary>Whether currently loading initial items</summary>
+    [Parameter] public bool IsLoading { get; set; } = false;
+    
+    /// <summary>Number of skeleton items to show when loading</summary>
+    [Parameter] public int SkeletonCount { get; set; } = 3;
+    
+    /// <summary>Height of skeleton items</summary>
+    [Parameter] public string SkeletonHeight { get; set; } = "120px";
+    
+    /// <summary>Callback when more items need to be loaded</summary>
+    [Parameter] public EventCallback OnLoadMore { get; set; }
+    
+    /// <summary>Additional CSS classes</summary>
+    [Parameter] public string Class { get; set; }
+    
+    /// <summary>Buffer size for items outside visible area</summary>
+    [Parameter] public int BufferSize { get; set; } = 5;
+    
+    /// <summary>Auto-load more when scrolling near bottom</summary>
+    [Parameter] public bool AutoLoadMore { get; set; } = true;
+    
+    /// <summary>Distance from bottom to trigger auto-load (in pixels)</summary>
+    [Parameter] public int AutoLoadDistance { get; set; } = 100;
+    
+    /// <summary>Size variant for spacing</summary>
+    [Parameter] public string Size { get; set; } = "default"; // compact, default, spacious
+    
+    /// <summary>Additional HTML attributes</summary>
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object> AdditionalAttributes { get; set; }
+    
+    private ElementReference containerRef;
+    private ElementReference loadMoreRef;
+    private IJSObjectReference jsModule;
+    private bool isLoadingMore = false;
+    private bool isLoading => IsLoading;
+    private int startIndex = 0;
+    private int endIndex = 0;
+    private int visibleCount = 0;
+    
+    private string ContainerStyle => $"height: {ContainerHeight}px; overflow-y: auto;";
+    
+    private string GetContainerClasses()
+    {
+        var classes = new List<string> { "position-relative" };
+        
+        if (Size == "compact")
+            classes.Add("gap-1");
+        else if (Size == "spacious") 
+            classes.Add("gap-4");
+        else
+            classes.Add("gap-2");
+            
+        if (!string.IsNullOrEmpty(Class))
+            classes.Add(Class);
+            
+        return string.Join(" ", classes);
+    }
+    
+    private string GetItemClasses()
+    {
+        var classes = new List<string> { "position-relative", "w-full" };
+        
+        if (Size == "compact")
+            classes.Add("mb-1");
+        else if (Size == "spacious")
+            classes.Add("mb-4");
+        else
+            classes.Add("mb-2");
+            
+        return string.Join(" ", classes);
+    }
+    
+    private string GetItemStyle(int index)
+    {
+        return $"min-height: {ItemHeight}px;";
+    }
+    
+    protected override async Task OnInitializedAsync()
+    {
+        CalculateVisibleItems();
+    }
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await InitializeJavaScript();
+        }
+    }
+    
+    private async Task InitializeJavaScript()
+    {
+        try
+        {
+            jsModule = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/RR.Blazor/js/virtual-list.js");
+            
+            await jsModule.InvokeVoidAsync("initialize", 
+                containerRef, 
+                DotNetObjectReference.Create(this),
+                AutoLoadMore,
+                AutoLoadDistance);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to initialize virtual list JS: {ex.Message}");
+        }
+    }
+    
+    private void CalculateVisibleItems()
+    {
+        if (Items.Count == 0)
+        {
+            startIndex = 0;
+            endIndex = 0;
+            return;
+        }
+        
+        visibleCount = Math.Max(1, (ContainerHeight / ItemHeight) + BufferSize * 2);
+        endIndex = Math.Min(Items.Count, visibleCount);
+        startIndex = 0;
+    }
+    
+    [JSInvokable]
+    public async Task OnScroll(double scrollTop)
+    {
+        var newStartIndex = Math.Max(0, (int)(scrollTop / ItemHeight) - BufferSize);
+        var newEndIndex = Math.Min(Items.Count, newStartIndex + visibleCount);
+        
+        if (newStartIndex != startIndex || newEndIndex != endIndex)
+        {
+            startIndex = newStartIndex;
+            endIndex = newEndIndex;
+            StateHasChanged();
+        }
+    }
+    
+    [JSInvokable]
+    public async Task OnLoadMoreVisible()
+    {
+        if (HasMoreItems && !isLoadingMore && AutoLoadMore)
+        {
+            await LoadMoreAsync();
+        }
+    }
+    
+    private async Task LoadMoreAsync()
+    {
+        if (isLoadingMore || !HasMoreItems) return;
+        
+        isLoadingMore = true;
+        StateHasChanged();
+        
+        try
+        {
+            await OnLoadMore.InvokeAsync();
+        }
+        finally
+        {
+            isLoadingMore = false;
+            StateHasChanged();
+        }
+    }
+    
+    /// <summary>Refresh the virtual list after items change</summary>
+    public void Refresh()
+    {
+        CalculateVisibleItems();
+        StateHasChanged();
+    }
+    
+    /// <summary>Scroll to a specific item by index</summary>
+    public async Task ScrollToItem(int index)
+    {
+        if (jsModule != null)
+        {
+            await jsModule.InvokeVoidAsync("scrollToItem", containerRef, index, ItemHeight);
+        }
+    }
+    
+    /// <summary>Scroll to the top of the list</summary>
+    public async Task ScrollToTop()
+    {
+        if (jsModule != null)
+        {
+            await jsModule.InvokeVoidAsync("scrollToTop", containerRef);
+        }
+    }
+    
+    public async ValueTask DisposeAsync()
+    {
+        if (jsModule != null)
+        {
+            try
+            {
+                await jsModule.InvokeVoidAsync("dispose", containerRef);
+                await jsModule.DisposeAsync();
+            }
+            catch (Exception)
+            {
+                // Ignore disposal errors
+            }
+        }
+    }
+}

@@ -1471,8 +1471,7 @@ Examples:
 <RButton Text="Click Me" 
          Variant="ButtonVariant.Primary"
          Size="ButtonSize.Medium"
-         StartIcon="add"
-         EndIcon="arrow_forward"
+         Icon="add" IconPosition="IconPosition.Start"
          Loading="@isLoading"
          Disabled="@isDisabled"
          FullWidth="false"
@@ -1488,7 +1487,7 @@ Examples:
        Elevation="4"
        IsClickable="true"
        Variant="CardVariant.Elevated"
-       CssClass="custom-class">
+       Class="custom-class">
     <HeaderActions>
         <RButton Text="Edit" Size="ButtonSize.Small" />
     </HeaderActions>
@@ -1500,7 +1499,7 @@ Examples:
     </FooterContent>
 </RCard>
 ```
-- **Properties**: Title, Subtitle, Elevation, IsClickable, Variant, CssClass, HeaderActions, ChildContent, FooterContent, OnClick
+- **Properties**: Title, Subtitle, Elevation, IsClickable, Variant, Class, HeaderActions, ChildContent, FooterContent, OnClick
 
 #### RModal
 ```razor
@@ -1531,14 +1530,14 @@ Examples:
           IsCollapsible="true"
           DefaultExpanded="true">
     <HeaderActions>
-        <RButton Text="Add User" StartIcon="add" />
+        <RButton Text="Add User" Icon="add" IconPosition="IconPosition.Start" />
     </HeaderActions>
     <ChildContent>
         <!-- Section content -->
     </ChildContent>
 </RSection>
 ```
-- **Properties**: Title, Subtitle, Elevation, IsCollapsible, DefaultExpanded, CssClass, HeaderActions, ChildContent
+- **Properties**: Title, Subtitle, Elevation, IsCollapsible, DefaultExpanded, Class, HeaderActions, ChildContent
 
 #### RTabs
 ```razor
@@ -1569,10 +1568,9 @@ Examples:
             Placeholder="Enter your email"
             HelperText="We'll never share your email"
             Error="@emailError"
-            StartIcon="email"
-            EndIcon="@(isValid ? "check" : null)" />
+            Icon="email" IconPosition="IconPosition.Start" />
 ```
-- **Properties**: Label, Type, Value, Required, Placeholder, HelperText, Error, StartIcon, EndIcon, Disabled, ReadOnly, OnValueChanged, ValidationRules
+- **Properties**: Label, Type, Value, Required, Placeholder, HelperText, Error, Icon, IconPosition, Disabled, ReadOnly, OnValueChanged, ValidationRules
 
 #### RDatePicker
 ```razor
@@ -1619,7 +1617,7 @@ Examples:
             Loading="@isLoading"
             EmptyMessage="No users found">
     <HeaderContent>
-        <RButton Text="Export" StartIcon="download" />
+        <RButton Text="Export" Icon="download" IconPosition="IconPosition.Start" />
     </HeaderContent>
     <Columns>
         <RDataTableColumn TItem="User" Property="u => u.Name" Title="Name" Sortable="true" />
@@ -1641,7 +1639,7 @@ Examples:
 <RBadge Text="New"
         Variant="BadgeVariant.Success"
         Size="BadgeSize.Medium"
-        StartIcon="star"
+        Icon="star" IconPosition="IconPosition.Start"
         Pill="true"
         Clickable="true"
         OnClick="@HandleBadgeClick" />
@@ -1695,7 +1693,7 @@ Examples:
            Count="3"
            Animation="wave" />
 ```
-- **Properties**: Variant, Width, Height, Count, Animation, CssClass
+- **Properties**: Variant, Width, Height, Count, Animation, Class
 
 #### RSpinner
 ```razor
@@ -1716,7 +1714,7 @@ Examples:
        Hoverable="true"
        Dense="false">
     <ItemTemplate Context="item">
-        <RListItem StartIcon="@item.Icon"
+        <RListItem Icon="@item.Icon" IconPosition="IconPosition.Start"
                    Title="@item.Title"
                    Subtitle="@item.Description"
                    Clickable="true"
@@ -1791,7 +1789,7 @@ Examples:
 ```razor
 <RDropdown Text="Options"
            Variant="DropdownVariant.Primary"
-           StartIcon="settings">
+           Icon="settings" IconPosition="IconPosition.Start">
     <RDropdownItem Text="Edit" Icon="edit" OnClick="@HandleEdit" />
     <RDropdownItem Text="Duplicate" Icon="content_copy" />
     <RDropdownDivider />
@@ -2000,7 +1998,7 @@ Examples:
          ShowAddButton="true"
          OnAddItem="@HandleAddTask">
     <ItemTemplate Context="task">
-        <RCard Title="@task.Title" CssClass="mb-2">
+        <RCard Title="@task.Title" Class="mb-2">
             <p>@task.Description</p>
             <RBadge Text="@task.Priority" />
         </RCard>
