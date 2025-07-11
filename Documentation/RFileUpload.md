@@ -90,7 +90,7 @@ RFileUpload is a comprehensive, zero-configuration file upload component designe
 | `ComponentId` | string | auto-generated | Unique identifier for the component |
 | `DisplayMode` | RFileUploadDisplayMode | DropZone | Visual display mode |
 | `IsDisabled` | bool | false | Whether component is disabled |
-| `CssClass` | string? | null | Additional CSS classes |
+| `Class` | string? | null | Additional CSS classes |
 
 ### File Configuration
 | Parameter | Type | Default | Description |
@@ -236,7 +236,7 @@ The component uses existing SCSS classes from `_uploads.scss`:
 ### Custom Styling
 ```html
 <!-- Add custom classes -->
-<RFileUpload CssClass="my-custom-upload border-dashed" />
+<RFileUpload Class="my-custom-upload border-dashed" />
 ```
 
 ## Validation

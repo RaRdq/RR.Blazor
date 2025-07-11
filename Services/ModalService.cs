@@ -38,7 +38,7 @@ public class ModalService() : IModalService, IDisposable
                 ShowCloseButton = instance.Options.ShowCloseButton,
                 ShowHeader = instance.Options.ShowHeader,
                 ShowFooter = instance.Options.ShowFooter,
-                CssClass = instance.Options.CssClass,
+                Class = instance.Options.Class,
                 ComponentType = instance.Options.ComponentType,
                 Parameters = instance.Options.Parameters,
                 Buttons = instance.Options.Buttons,
@@ -80,7 +80,7 @@ public class ModalService() : IModalService, IDisposable
             ShowCloseButton = options.ShowCloseButton,
             ShowHeader = options.ShowHeader,
             ShowFooter = options.ShowFooter,
-            CssClass = options.CssClass,
+            Class = options.Class,
             ComponentType = options.ComponentType,
             Parameters = options.Parameters,
             Buttons = options.Buttons,
@@ -564,9 +564,9 @@ public class ModalBuilder<T>(ModalService modalService) : IModalBuilder<T>
         return this;
     }
 
-    public IModalBuilder<T> WithCssClass(string cssClass)
+    public IModalBuilder<T> WithClass(string Class)
     {
-        _options.CssClass = cssClass;
+        _options.Class = Class;
         return this;
     }
 

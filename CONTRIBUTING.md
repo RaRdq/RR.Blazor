@@ -212,7 +212,7 @@ private async Task HandleChange(T value)
 private string GetClasses() => new CssBuilder("component")
     .AddClass($"component--{Variant.ToString().ToLower()}")
     .AddClass("component--disabled", Disabled)
-    .AddClass(CssClass)
+    .AddClass(Class)
     .Build();
 ```
 

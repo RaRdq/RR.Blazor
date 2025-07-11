@@ -35,7 +35,7 @@ public class AppNavItem : NavMenuItem
     public string[] SearchKeywords { get; set; }
     
     /// <summary>Custom CSS class for this specific item</summary>
-    public string CustomCssClass { get; set; }
+    public string CustomClass { get; set; }
     
     /// <summary>Whether to show loading indicator when navigating</summary>
     public bool ShowLoadingIndicator { get; set; } = true;

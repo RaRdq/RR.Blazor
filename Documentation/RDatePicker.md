@@ -59,7 +59,7 @@ Lightweight version using native HTML date/datetime inputs for basic scenarios.
 | `Format` | `string?` | `"dd/MM/yyyy"` | Date format string |
 | `Size` | `FieldSize` | `Medium` | Input field size |
 | `StartIcon` | `string?` | `null` | Material icon at start of input |
-| `CssClass` | `string?` | `null` | Additional CSS classes |
+| `Class` | `string?` | `null` | Additional CSS classes |
 
 ### Feature Parameters
 
@@ -164,7 +164,7 @@ RDatePicker integrates seamlessly with the RR.Blazor theme system:
 ```html
 <!-- Custom CSS classes -->
 <RDatePicker @bind-Value="date" 
-             CssClass="my-custom-datepicker" />
+             Class="my-custom-datepicker" />
 
 <!-- Size variants -->
 <RDatePicker @bind-Value="date" Size="FieldSize.Large" />

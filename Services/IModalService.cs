@@ -62,7 +62,7 @@ public interface IModalBuilder<T>
     IModalBuilder<T> WithCloseButton(bool show = true);
     IModalBuilder<T> WithBackdropClose(bool allow = true);
     IModalBuilder<T> WithEscapeClose(bool allow = true);
-    IModalBuilder<T> WithCssClass(string cssClass);
+    IModalBuilder<T> WithClass(string Class);
     IModalBuilder<T> WithAutoClose(TimeSpan delay);
     Task<ModalResult<T>> ShowAsync();
 }

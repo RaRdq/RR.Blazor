@@ -15,7 +15,7 @@ public class ModalOptions<T>
     public bool ShowCloseButton { get; set; } = true;
     public bool ShowHeader { get; set; } = true;
     public bool ShowFooter { get; set; } = true;
-    public string CssClass { get; set; } = "";
+    public string Class { get; set; } = "";
     public Type ComponentType { get; set; }
     public Dictionary<string, object> Parameters { get; set; } = new();
     public List<ModalButton> Buttons { get; set; } = new();
@@ -35,7 +35,7 @@ public class ModalButton
     public ButtonVariant Variant { get; set; } = ButtonVariant.Primary;
     public bool IsDisabled { get; set; }
     public bool IsLoading { get; set; }
-    public string CssClass { get; set; } = "";
+    public string Class { get; set; } = "";
     public Func<object, Task<bool>> OnClick { get; set; }
     public Enums.ModalResult Result { get; set; } = Enums.ModalResult.Custom;
 
