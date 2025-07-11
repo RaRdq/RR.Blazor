@@ -134,7 +134,7 @@
                     @if (ShowSearch && SearchService != null)
                     {
                         <div class="search-container position-relative mr-3">
-                            <RFormField Type="FieldType.Search"
+                            <RFormField FieldType="FieldType.Search"
                                        Placeholder="Search..."
                                        @bind-Value="searchQuery"
                                        @bind-Value:after="HandleSearchChange"
@@ -413,7 +413,7 @@
     
     // === COMPUTED PROPERTIES ===
     
-    private bool IsMobile => jsModule?.InvokeAsync<bool>("isMobile").Result ?? false;
+    private bool IsMobile { get; set; } = false;
     
     protected override async Task OnInitializedAsync()
     {
@@ -462,6 +462,10 @@
             {
                 jsModule = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/RR.Blazor/js/app-shell.js");
                 await jsModule.InvokeVoidAsync("initialize", Theme);
+                
+                // Update IsMobile flag
+                IsMobile = await jsModule.InvokeAsync<bool>("isMobile");
+                StateHasChanged();
             }
             catch (Exception ex)
             {
