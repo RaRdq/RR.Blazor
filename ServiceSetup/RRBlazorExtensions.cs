@@ -1,7 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
+#if RRCORE_ENABLED
 using RR.Core.ServiceSetup;
+#endif
 using RR.Blazor.Services;
 using RR.Blazor.Models;
 using Blazored.LocalStorage;
@@ -11,8 +13,9 @@ namespace RR.Blazor.ServiceSetup
 {
     public static class RRBlazorExtensions
     {
+#if RRCORE_ENABLED
         /// <summary>
-        /// Adds RR.Blazor component library to the service collection
+        /// Adds RR.Blazor component library with RR.Core integration
         /// Must be called after AddRRCore() for proper dependency chain
         /// Provides full functionality out-of-the-box following DI principles
         /// </summary>
@@ -29,6 +32,31 @@ namespace RR.Blazor.ServiceSetup
             if (blazorConfig != null)
             {
                 var configuration = new RRBlazorConfiguration(services.ServiceCollection);
+                blazorConfig.Invoke(configuration);
+                configuration.Build();
+            }
+
+            return services;
+        }
+#endif
+
+        /// <summary>
+        /// Adds RR.Blazor component library standalone (without RR.Core dependency)
+        /// Provides full functionality out-of-the-box following DI principles
+        /// </summary>
+        /// <param name="services">Service collection</param>
+        /// <param name="blazorConfig">Optional configuration action to override defaults</param>
+        /// <returns>Service collection for chaining</returns>
+        public static IServiceCollection AddRRBlazor(this IServiceCollection services, Action<RRBlazorConfiguration> blazorConfig = null)
+        {
+            // Register default services with full functionality enabled
+            RegisterDefaultServices(services);
+            RegisterDefaultConfiguration(services);
+
+            // Allow custom configuration overrides
+            if (blazorConfig != null)
+            {
+                var configuration = new RRBlazorConfiguration(services);
                 blazorConfig.Invoke(configuration);
                 configuration.Build();
             }

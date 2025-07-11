@@ -21,22 +21,45 @@ RR.Blazor is an ultra-generic, lightweight, and project-agnostic design system w
 - 🌈 **High Contrast Mode**: Built-in support for accessibility preferences
 - 🎭 **Motion Preferences**: Respects prefers-reduced-motion
 
-## Quick Start
+## Installation
 
-### 1. Installation
-
+### From GitHub (Recommended)
 ```bash
-dotnet add package RR.Blazor
+# Clone as submodule
+git submodule add https://github.com/RaRdq/RR.Blazor.git
+
+# Reference in your project
+<ProjectReference Include="RR.Blazor/RR.Blazor.csproj" />
 ```
 
-### 2. Register Services
+### NuGet Package (Coming Soon)
+```powershell
+# Package Manager Console
+Install-Package RR.Blazor
+
+# .NET CLI
+dotnet add package RR.Blazor
+
+# PackageReference
+<PackageReference Include="RR.Blazor" Version="1.0.0" />
+```
+
+## Quick Start
+
+### 1. Register Services
 
 ```csharp
 // Program.cs
 builder.Services.AddRRBlazor();
+
+// OR with customization
+builder.Services.AddRRBlazor(blazor => blazor
+    .WithTheme(theme => theme.Mode = ThemeMode.System)
+    .WithAnimations(true)
+);
 ```
 
-### 3. Add Theme Provider
+### 2. Add Theme Provider
 
 ```razor
 <!-- App.razor -->
@@ -47,14 +70,14 @@ builder.Services.AddRRBlazor();
 </ThemeProvider>
 ```
 
-### 4. Import Styles
+### 3. Import Styles
 
 ```html
 <!-- index.html or App.razor -->
 <link href="_content/RR.Blazor/css/rr-blazor.min.css" rel="stylesheet" />
 ```
 
-### 5. Use Components
+### 4. Use Components
 
 ```razor
 @using RR.Blazor.Components
@@ -64,6 +87,38 @@ builder.Services.AddRRBlazor();
              Variant="ButtonVariant.Primary"
              OnClick="@HandleClick" />
 </RCard>
+```
+
+## AI Integration (Claude, GPT-4, etc.)
+
+### Quick Start with Claude Desktop
+```bash
+# 1. Add RR.Blazor context to Claude
+Provide @RR.Blazor/RRBlazor.md
+
+# 2. Initialize in new project
+"Initialize my Blazor project with RR.Blazor design system"
+
+# 3. Update existing project
+"Update all my .razor files to use RR.Blazor components"
+```
+
+### Custom AI Commands
+Add these to your AI assistant's context:
+```markdown
+/rr-blazor-init - Initialize RR.Blazor in current project
+/rr-blazor-upgrade - Upgrade components to latest patterns
+/rr-blazor-theme - Configure theme and styling
+/rr-blazor-component - Generate new component following patterns
+```
+
+### Example AI Prompt
+```markdown
+Using @RR.Blazor/RRBlazor.md as reference:
+1. Replace all custom cards with RCard
+2. Replace all buttons with RButton
+3. Update forms to use RFormField
+4. Ensure theme-aware styling throughout
 ```
 
 ## Component Library
@@ -150,6 +205,33 @@ RR.Blazor includes over 400 utility classes inspired by modern CSS frameworks:
 </RDataTable>
 ```
 
+## RR.Core Integration (Optional)
+
+RR.Blazor can optionally integrate with RR.Core for enhanced functionality:
+
+```xml
+<!-- Enable RR.Core in Directory.Build.props -->
+<PropertyGroup>
+  <RRCoreEnabled>true</RRCoreEnabled>
+</PropertyGroup>
+```
+
+Then use the enhanced service registration:
+```csharp
+// With RR.Core
+builder.Services
+    .AddRRCore()
+    .AddRRBlazor(blazor => blazor
+        .WithTheme(theme => theme.Mode = ThemeMode.Dark)
+    );
+```
+
+## Documentation
+
+- [Complete Component Reference & Guide](RRBlazor.md) - The single source of truth
+- [Contributing Guide](CONTRIBUTING.md) - AI-optimized development guide
+- [Live Examples](https://github.com/RaRdq/RR.Blazor/wiki) - Coming soon
+
 ## Browser Support
 
 - Chrome 90+
@@ -157,13 +239,9 @@ RR.Blazor includes over 400 utility classes inspired by modern CSS frameworks:
 - Safari 14+
 - Edge 90+
 
-## Documentation
-
-For complete documentation, component examples, and API reference, visit the [RR.Blazor Documentation](https://github.com/rardqq/RR.Blazor/wiki).
-
 ## Contributing
 
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+We welcome contributions! Please see our [AI-Optimized Contributing Guide](CONTRIBUTING.md) for details.
 
 ## License
 
