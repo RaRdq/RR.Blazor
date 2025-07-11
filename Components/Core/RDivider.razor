@@ -1,0 +1,122 @@
+@* RDivider - Generic divider component *@
+
+@if (Variant == DividerVariant.Vertical)
+{
+    <span class="@GetDividerClasses()" @attributes="AdditionalAttributes">
+        @if (!string.IsNullOrEmpty(Text) || ChildContent != null)
+        {
+            <span class="divider__content">
+                @if (!string.IsNullOrEmpty(Text))
+                {
+                    @Text
+                }
+                @ChildContent
+            </span>
+        }
+    </span>
+}
+else
+{
+    <div class="@GetDividerClasses()" @attributes="AdditionalAttributes">
+        @if (!string.IsNullOrEmpty(Text) || ChildContent != null)
+        {
+            <span class="divider__content">
+                @if (!string.IsNullOrEmpty(Text))
+                {
+                    @Text
+                }
+                @ChildContent
+            </span>
+        }
+    </div>
+}
+
+@code {
+    /// <summary>Divider text (optional)</summary>
+    [Parameter] public string Text { get; set; }
+    
+    /// <summary>Divider variant</summary>
+    [Parameter] public DividerVariant Variant { get; set; } = DividerVariant.Horizontal;
+    
+    /// <summary>Divider style</summary>
+    [Parameter] public DividerStyle Style { get; set; } = DividerStyle.Solid;
+    
+    /// <summary>Text alignment for dividers with text</summary>
+    [Parameter] public DividerTextAlign TextAlign { get; set; } = DividerTextAlign.Center;
+    
+    /// <summary>Additional CSS classes</summary>
+    [Parameter] public string Class { get; set; }
+    
+    /// <summary>Child content</summary>
+    [Parameter] public RenderFragment ChildContent { get; set; }
+    
+    /// <summary>Additional HTML attributes</summary>
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object> AdditionalAttributes { get; set; }
+    
+    /// <summary>Parent list variant (cascaded)</summary>
+    [CascadingParameter(Name = "ParentListVariant")] private ListVariant? ParentListVariant { get; set; }
+    
+    private string GetDividerClasses()
+    {
+        var classes = new List<string>();
+        
+        // If inside a menu list, use menu-specific divider
+        if (ParentListVariant == ListVariant.Menu)
+        {
+            classes.Add("menu-list__divider");
+        }
+        else
+        {
+            // Generic divider classes
+            classes.Add("divider");
+            
+            // Variant
+            if (Variant == DividerVariant.Vertical)
+            {
+                classes.Add("divider--vertical");
+            }
+            
+            // Style
+            if (Style != DividerStyle.Solid)
+            {
+                classes.Add($"divider--{Style.ToString().ToLower()}");
+            }
+            
+            // Text alignment
+            if (!string.IsNullOrEmpty(Text) || ChildContent != null)
+            {
+                classes.Add($"divider--text-{TextAlign.ToString().ToLower()}");
+            }
+        }
+        
+        // Custom CSS classes
+        if (!string.IsNullOrEmpty(Class))
+        {
+            classes.Add(Class);
+        }
+        
+        return string.Join(" ", classes);
+    }
+}
+
+@* Usage Examples:
+
+<!-- Simple horizontal divider -->
+<RDivider />
+
+<!-- Divider with text -->
+<RDivider Text="OR" />
+
+<!-- Vertical divider -->
+<RDivider Variant="DividerVariant.Vertical" />
+
+<!-- Dashed divider -->
+<RDivider Style="DividerStyle.Dashed" />
+
+<!-- In a menu list (automatically styled) -->
+<RList Variant="ListVariant.Menu">
+    <RListItem Title="Item 1" />
+    <RDivider />
+    <RListItem Title="Item 2" />
+</RList>
+*@

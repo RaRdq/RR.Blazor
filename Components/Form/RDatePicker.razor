@@ -1,0 +1,1062 @@
+@* RDatePicker - Comprehensive Date/Time Selection Component *@
+@using System.Globalization
+@using Microsoft.JSInterop
+@inject IJSRuntime JSRuntime
+@implements IAsyncDisposable
+
+<div class="rdatepicker @GetWrapperClasses()" @ref="elementRef">
+    @* Input Field *@
+    <div class="rdatepicker__trigger" @onclick="ToggleCalendar" @onkeydown="HandleKeyDown">
+        <input type="text" 
+               id="@InputId"
+               class="@GetInputClasses()" 
+               value="@GetDisplayValue()"
+               placeholder="@GetPlaceholder()"
+               readonly="true"
+               disabled="@(IsDisabled || Disabled)"
+               @onfocus="HandleFocus"
+               @onblur="HandleBlur" />
+        
+        @if (!string.IsNullOrEmpty(StartIcon))
+        {
+            <div class="rdatepicker__icon rdatepicker__icon--start">
+                <i class="material-symbols-rounded @GetIconSizeClass()">@StartIcon</i>
+            </div>
+        }
+        
+        <div class="rdatepicker__icon rdatepicker__icon--end">
+            <i class="material-symbols-rounded @GetIconSizeClass()">@(ShowTime ? "schedule" : "calendar_month")</i>
+        </div>
+        
+        @if (ShowClearButton && HasValue())
+        {
+            <button type="button" 
+                    class="rdatepicker__clear"
+                    @onclick="ClearValue" 
+                    @onclick:stopPropagation="true">
+                <i class="material-symbols-rounded text-sm">close</i>
+            </button>
+        }
+    </div>
+    
+    @* Calendar Popup *@
+    @if (isOpen)
+    {
+        <div class="rdatepicker__backdrop" @onclick="CloseCalendar"></div>
+        <div class="rdatepicker__popup @GetPopupPositionClass()">
+            @* Calendar Header *@
+            <div class="rdatepicker__header">
+                <button type="button" class="rdatepicker__nav-btn" @onclick="PreviousMonth">
+                    <i class="material-symbols-rounded">chevron_left</i>
+                </button>
+                
+                <div class="rdatepicker__header-info">
+                    <button type="button" class="rdatepicker__month-year" @onclick="ToggleYearPicker">
+                        @currentViewDate.ToString("MMMM yyyy", CultureInfo.CurrentCulture)
+                    </button>
+                </div>
+                
+                <button type="button" class="rdatepicker__nav-btn" @onclick="NextMonth">
+                    <i class="material-symbols-rounded">chevron_right</i>
+                </button>
+            </div>
+            
+            @if (showYearPicker)
+            {
+                @* Year Picker *@
+                <div class="rdatepicker__year-picker">
+                    @for (var year = currentViewDate.Year - 10; year <= currentViewDate.Year + 10; year++)
+                    {
+                        var yearValue = year;
+                        <button type="button" 
+                                class="rdatepicker__year-option @(year == currentViewDate.Year ? "rdatepicker__year-option--current" : "")"
+                                @onclick="() => SelectYear(yearValue)">
+                            @year
+                        </button>
+                    }
+                </div>
+            }
+            else
+            {
+                @* Calendar Grid *@
+                <div class="rdatepicker__calendar">
+                    @* Day Headers *@
+                    <div class="rdatepicker__day-headers">
+                        @foreach (var dayName in GetDayNames())
+                        {
+                            <div class="rdatepicker__day-header">@dayName</div>
+                        }
+                    </div>
+                    
+                    @* Calendar Days *@
+                    <div class="rdatepicker__days">
+                        @foreach (var day in GetCalendarDays())
+                        {
+                            <button type="button" 
+                                    class="rdatepicker__day @GetDayClasses(day)"
+                                    disabled="@IsDateDisabled(day.Date)"
+                                    @onclick="() => SelectDate(day.Date)"
+                                    @onmouseenter="() => HandleDayHover(day.Date)">
+                                @day.Date.Day
+                            </button>
+                        }
+                    </div>
+                </div>
+                
+                @* Time Picker *@
+                @if (ShowTime)
+                {
+                    <div class="rdatepicker__time-picker">
+                        <div class="rdatepicker__time-section">
+                            <label class="rdatepicker__time-label">Hour</label>
+                            <select class="rdatepicker__time-select" 
+                                    value="@selectedHour" 
+                                    @onchange="HandleHourChange">
+                                @for (int h = 0; h < (Use24HourFormat ? 24 : 12); h++)
+                                {
+                                    var hour = Use24HourFormat ? h : (h == 0 ? 12 : h);
+                                    <option value="@h">@hour.ToString("00")</option>
+                                }
+                            </select>
+                        </div>
+                        
+                        <div class="rdatepicker__time-section">
+                            <label class="rdatepicker__time-label">Minute</label>
+                            <select class="rdatepicker__time-select" 
+                                    value="@selectedMinute" 
+                                    @onchange="HandleMinuteChange">
+                                @for (int m = 0; m < 60; m += MinuteInterval)
+                                {
+                                    <option value="@m">@m.ToString("00")</option>
+                                }
+                            </select>
+                        </div>
+                        
+                        @if (!Use24HourFormat)
+                        {
+                            <div class="rdatepicker__time-section">
+                                <label class="rdatepicker__time-label">Period</label>
+                                <select class="rdatepicker__time-select" 
+                                        value="@selectedPeriod" 
+                                        @onchange="HandlePeriodChange">
+                                    <option value="AM">AM</option>
+                                    <option value="PM">PM</option>
+                                </select>
+                            </div>
+                        }
+                    </div>
+                }
+                
+                @* Footer Actions *@
+                <div class="rdatepicker__footer">
+                    @if (ShowTodayButton)
+                    {
+                        <button type="button" class="rdatepicker__action-btn rdatepicker__action-btn--secondary" @onclick="SelectToday">
+                            Today
+                        </button>
+                    }
+                    
+                    @if (Range && !string.IsNullOrEmpty(GetDisplayValue()))
+                    {
+                        <button type="button" class="rdatepicker__action-btn rdatepicker__action-btn--secondary" @onclick="ClearValue">
+                            Clear
+                        </button>
+                    }
+                    
+                    <button type="button" class="rdatepicker__action-btn rdatepicker__action-btn--primary" @onclick="ApplySelection">
+                        @(Range ? "Apply" : "Select")
+                    </button>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private ElementReference elementRef;
+    private bool isOpen;
+    private bool showYearPicker;
+    private DateTime currentViewDate = DateTime.Today;
+    private DateTime? hoverDate;
+    private int selectedHour;
+    private int selectedMinute;
+    private string selectedPeriod = "AM";
+    private DateTime? tempStartDate;
+    private DateTime? tempEndDate;
+    private bool isSelectingEndDate;
+
+    // Core Parameters
+    [Parameter] public string InputId { get; set; } = Guid.NewGuid().ToString("N")[..8];
+    [Parameter] public DateTime? Value { get; set; }
+    [Parameter] public EventCallback<DateTime?> ValueChanged { get; set; }
+    [Parameter] public DateTime? EndValue { get; set; }
+    [Parameter] public EventCallback<DateTime?> EndValueChanged { get; set; }
+    
+    // Display Parameters
+    [Parameter] public string Label { get; set; }
+    [Parameter] public string Placeholder { get; set; }
+    [Parameter] public string Format { get; set; }
+    [Parameter] public FieldSize Size { get; set; } = FieldSize.Medium;
+    [Parameter] public string StartIcon { get; set; }
+    [Parameter] public string Class { get; set; }
+    
+    // Feature Parameters
+    [Parameter] public bool Range { get; set; }
+    [Parameter] public bool ShowTime { get; set; }
+    [Parameter] public bool Use24HourFormat { get; set; } = true;
+    [Parameter] public int MinuteInterval { get; set; } = 1;
+    [Parameter] public bool ShowClearButton { get; set; } = true;
+    [Parameter] public bool ShowTodayButton { get; set; } = true;
+    [Parameter] public bool ShowWeekNumbers { get; set; }
+    
+    // Validation Parameters
+    [Parameter] public DateTime? MinDate { get; set; }
+    [Parameter] public DateTime? MaxDate { get; set; }
+    [Parameter] public Func<DateTime, bool> DisabledDates { get; set; }
+    [Parameter] public DayOfWeek[] DisabledDaysOfWeek { get; set; }
+    [Parameter] public bool Required { get; set; }
+    [Parameter] public string HelperText { get; set; }
+    
+    // State Parameters
+    [Parameter] public bool IsDisabled { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public bool IsReadOnly { get; set; }
+    [Parameter] public bool HasError { get; set; }
+    [Parameter] public string ErrorMessage { get; set; }
+    
+    // Event Parameters
+    [Parameter] public EventCallback<DateTime?> OnDateSelected { get; set; }
+    [Parameter] public EventCallback OnCalendarOpen { get; set; }
+    [Parameter] public EventCallback OnCalendarClose { get; set; }
+
+    protected override void OnInitialized()
+    {
+        if (ShowTime && Value.HasValue)
+        {
+            var time = Value.Value;
+            selectedHour = Use24HourFormat ? time.Hour : (time.Hour % 12);
+            selectedMinute = time.Minute;
+            selectedPeriod = time.Hour >= 12 ? "PM" : "AM";
+        }
+        
+        if (Value.HasValue)
+        {
+            currentViewDate = new DateTime(Value.Value.Year, Value.Value.Month, 1);
+        }
+    }
+
+    private async Task ToggleCalendar()
+    {
+        if (IsDisabled || Disabled || IsReadOnly) return;
+        
+        if (isOpen)
+        {
+            await CloseCalendar();
+        }
+        else
+        {
+            await OpenCalendar();
+        }
+    }
+
+    private async Task OpenCalendar()
+    {
+        isOpen = true;
+        
+        if (Range)
+        {
+            tempStartDate = Value;
+            tempEndDate = EndValue;
+            isSelectingEndDate = false;
+        }
+        
+        await OnCalendarOpen.InvokeAsync();
+        StateHasChanged();
+    }
+
+    private async Task CloseCalendar()
+    {
+        isOpen = false;
+        showYearPicker = false;
+        await OnCalendarClose.InvokeAsync();
+        StateHasChanged();
+    }
+
+    private async Task SelectDate(DateTime date)
+    {
+        if (IsDateDisabled(date)) return;
+
+        if (ShowTime)
+        {
+            date = new DateTime(date.Year, date.Month, date.Day, 
+                               Use24HourFormat ? selectedHour : ConvertTo24Hour(selectedHour, selectedPeriod), 
+                               selectedMinute, 0);
+        }
+
+        if (Range)
+        {
+            if (!isSelectingEndDate)
+            {
+                tempStartDate = date;
+                tempEndDate = null;
+                isSelectingEndDate = true;
+            }
+            else
+            {
+                if (date < tempStartDate)
+                {
+                    tempEndDate = tempStartDate;
+                    tempStartDate = date;
+                }
+                else
+                {
+                    tempEndDate = date;
+                }
+                isSelectingEndDate = false;
+            }
+        }
+        else
+        {
+            Value = date;
+            await ValueChanged.InvokeAsync(Value);
+            await OnDateSelected.InvokeAsync(Value);
+            await CloseCalendar();
+        }
+        
+        StateHasChanged();
+    }
+
+    private async Task ApplySelection()
+    {
+        if (Range && tempStartDate.HasValue)
+        {
+            Value = tempStartDate;
+            EndValue = tempEndDate;
+            await ValueChanged.InvokeAsync(Value);
+            await EndValueChanged.InvokeAsync(EndValue);
+            await OnDateSelected.InvokeAsync(Value);
+        }
+        
+        await CloseCalendar();
+    }
+
+    private async Task ClearValue()
+    {
+        Value = null;
+        EndValue = null;
+        tempStartDate = null;
+        tempEndDate = null;
+        await ValueChanged.InvokeAsync(Value);
+        await EndValueChanged.InvokeAsync(EndValue);
+        StateHasChanged();
+    }
+
+    private async Task SelectToday()
+    {
+        await SelectDate(DateTime.Today);
+    }
+
+    private void PreviousMonth()
+    {
+        currentViewDate = currentViewDate.AddMonths(-1);
+        StateHasChanged();
+    }
+
+    private void NextMonth()
+    {
+        currentViewDate = currentViewDate.AddMonths(1);
+        StateHasChanged();
+    }
+
+    private void ToggleYearPicker()
+    {
+        showYearPicker = !showYearPicker;
+        StateHasChanged();
+    }
+
+    private void SelectYear(int year)
+    {
+        currentViewDate = new DateTime(year, currentViewDate.Month, 1);
+        showYearPicker = false;
+        StateHasChanged();
+    }
+
+    private void HandleDayHover(DateTime date)
+    {
+        if (Range && isSelectingEndDate && tempStartDate.HasValue)
+        {
+            hoverDate = date;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleHourChange(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var hour))
+        {
+            selectedHour = hour;
+            await UpdateTimeIfNeeded();
+        }
+    }
+
+    private async Task HandleMinuteChange(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var minute))
+        {
+            selectedMinute = minute;
+            await UpdateTimeIfNeeded();
+        }
+    }
+
+    private async Task HandlePeriodChange(ChangeEventArgs e)
+    {
+        selectedPeriod = e.Value?.ToString() ?? "AM";
+        await UpdateTimeIfNeeded();
+    }
+
+    private async Task UpdateTimeIfNeeded()
+    {
+        if (Value.HasValue && ShowTime && !Range)
+        {
+            var date = Value.Value.Date;
+            var time = new DateTime(date.Year, date.Month, date.Day,
+                                   Use24HourFormat ? selectedHour : ConvertTo24Hour(selectedHour, selectedPeriod),
+                                   selectedMinute, 0);
+            Value = time;
+            await ValueChanged.InvokeAsync(Value);
+        }
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        switch (e.Key)
+        {
+            case "Enter" or " ":
+                await ToggleCalendar();
+                break;
+            case "Escape":
+                if (isOpen) await CloseCalendar();
+                break;
+        }
+    }
+
+    private async Task HandleFocus(FocusEventArgs e)
+    {
+        // Handle focus events if needed
+    }
+
+    private async Task HandleBlur(FocusEventArgs e)
+    {
+        // Handle blur events if needed
+    }
+
+    private bool HasValue() => Value.HasValue || EndValue.HasValue;
+
+    private string GetDisplayValue()
+    {
+        if (!HasValue()) return "";
+
+        var format = Format ?? GetDefaultFormat();
+        
+        if (Range)
+        {
+            var start = Value?.ToString(format) ?? "";
+            var end = EndValue?.ToString(format) ?? "";
+            return string.IsNullOrEmpty(end) ? start : $"{start} - {end}";
+        }
+        
+        return Value?.ToString(format) ?? "";
+    }
+
+    private string GetPlaceholder()
+    {
+        if (!string.IsNullOrEmpty(Placeholder)) return Placeholder;
+        
+        var format = Format ?? GetDefaultFormat();
+        return Range ? $"Select date range... ({format})" : $"Select date... ({format})";
+    }
+
+    private string GetDefaultFormat()
+    {
+        if (ShowTime)
+            return Use24HourFormat ? "dd/MM/yyyy HH:mm" : "dd/MM/yyyy hh:mm tt";
+        return "dd/MM/yyyy";
+    }
+
+    private bool IsDateDisabled(DateTime date)
+    {
+        if (MinDate.HasValue && date < MinDate.Value.Date) return true;
+        if (MaxDate.HasValue && date > MaxDate.Value.Date) return true;
+        if (DisabledDaysOfWeek?.Contains(date.DayOfWeek) == true) return true;
+        if (DisabledDates?.Invoke(date) == true) return true;
+        return false;
+    }
+
+    private int ConvertTo24Hour(int hour, string period)
+    {
+        if (hour == 12) return period == "AM" ? 0 : 12;
+        return period == "PM" ? hour + 12 : hour;
+    }
+
+    private string[] GetDayNames()
+    {
+        var dayNames = CultureInfo.CurrentCulture.DateTimeFormat.AbbreviatedDayNames;
+        var firstDayOfWeek = CultureInfo.CurrentCulture.DateTimeFormat.FirstDayOfWeek;
+        var startIndex = (int)firstDayOfWeek;
+        
+        return Enumerable.Range(0, 7)
+            .Select(i => dayNames[(startIndex + i) % 7])
+            .ToArray();
+    }
+
+    private IEnumerable<CalendarDay> GetCalendarDays()
+    {
+        var firstDayOfMonth = new DateTime(currentViewDate.Year, currentViewDate.Month, 1);
+        var lastDayOfMonth = firstDayOfMonth.AddMonths(1).AddDays(-1);
+        var firstDayOfWeek = CultureInfo.CurrentCulture.DateTimeFormat.FirstDayOfWeek;
+        
+        var startDate = firstDayOfMonth;
+        while (startDate.DayOfWeek != firstDayOfWeek)
+            startDate = startDate.AddDays(-1);
+
+        var endDate = lastDayOfMonth;
+        while (endDate.DayOfWeek != (DayOfWeek)(((int)firstDayOfWeek + 6) % 7))
+            endDate = endDate.AddDays(1);
+
+        var days = new List<CalendarDay>();
+        for (var date = startDate; date <= endDate; date = date.AddDays(1))
+        {
+            days.Add(new CalendarDay
+            {
+                Date = date,
+                IsCurrentMonth = date.Month == currentViewDate.Month,
+                IsToday = date.Date == DateTime.Today,
+                IsWeekend = date.DayOfWeek == DayOfWeek.Saturday || date.DayOfWeek == DayOfWeek.Sunday
+            });
+        }
+
+        return days;
+    }
+
+    private string GetWrapperClasses()
+    {
+        var classes = new List<string> { "rdatepicker" };
+        
+        if (!string.IsNullOrEmpty(Class))
+            classes.Add(Class);
+            
+        if (HasError)
+            classes.Add("rdatepicker--error");
+            
+        if (isOpen)
+            classes.Add("rdatepicker--open");
+            
+        return string.Join(" ", classes);
+    }
+
+    private string GetInputClasses()
+    {
+        var classes = new List<string>
+        {
+            "rdatepicker__input",
+            "w-full",
+            "border",
+            "rounded-md",
+            "bg-elevated",
+            "text-primary",
+            "transition",
+            "focus:border-primary",
+            "focus:shadow-primary",
+            "cursor-pointer"
+        };
+
+        classes.Add(Size switch
+        {
+            FieldSize.Small => "px-3 py-1-5 text-sm h-8",
+            FieldSize.Medium => "px-3 py-2 text-base h-10",
+            FieldSize.Large => "px-4 py-3 text-lg h-12",
+            _ => "px-3 py-2 text-base h-10"
+        });
+
+        if (!string.IsNullOrEmpty(StartIcon))
+        {
+            classes.Add(Size switch
+            {
+                FieldSize.Small => "pl-8",
+                FieldSize.Medium => "pl-10",
+                FieldSize.Large => "pl-12",
+                _ => "pl-10"
+            });
+        }
+
+        classes.Add(Size switch
+        {
+            FieldSize.Small => "pr-16",
+            FieldSize.Medium => "pr-20",
+            FieldSize.Large => "pr-24",
+            _ => "pr-20"
+        });
+
+        if (HasError)
+        {
+            classes.AddRange(new[] { "border-error", "focus:border-error", "focus:shadow-error" });
+        }
+        else
+        {
+            classes.Add("border-medium");
+        }
+
+        if (IsDisabled || Disabled)
+        {
+            classes.AddRange(new[] { "bg-disabled", "text-muted", "cursor-not-allowed" });
+        }
+        else
+        {
+            classes.Add("hover:border-strong");
+        }
+
+        return string.Join(" ", classes);
+    }
+
+    private string GetPopupPositionClass()
+    {
+        return "rdatepicker__popup--bottom"; // TODO: Add dynamic positioning
+    }
+
+    private string GetIconSizeClass()
+    {
+        return Size switch
+        {
+            FieldSize.Small => "text-sm",
+            FieldSize.Medium => "text-base",
+            FieldSize.Large => "text-lg",
+            _ => "text-base"
+        };
+    }
+
+    private string GetDayClasses(CalendarDay day)
+    {
+        var classes = new List<string> { "rdatepicker__day" };
+
+        if (!day.IsCurrentMonth)
+            classes.Add("rdatepicker__day--other-month");
+
+        if (day.IsToday)
+            classes.Add("rdatepicker__day--today");
+
+        if (day.IsWeekend)
+            classes.Add("rdatepicker__day--weekend");
+
+        if (IsDateDisabled(day.Date))
+            classes.Add("rdatepicker__day--disabled");
+
+        // Range selection styling
+        if (Range)
+        {
+            var start = tempStartDate ?? Value;
+            var end = tempEndDate ?? EndValue ?? hoverDate;
+
+            if (start.HasValue && day.Date.Date == start.Value.Date)
+                classes.Add("rdatepicker__day--range-start");
+
+            if (end.HasValue && day.Date.Date == end.Value.Date && start.HasValue && end.Value.Date != start.Value.Date)
+                classes.Add("rdatepicker__day--range-end");
+
+            if (start.HasValue && end.HasValue && day.Date.Date > start.Value.Date && day.Date.Date < end.Value.Date)
+                classes.Add("rdatepicker__day--range-middle");
+        }
+        else
+        {
+            if (Value.HasValue && day.Date.Date == Value.Value.Date)
+                classes.Add("rdatepicker__day--selected");
+        }
+
+        return string.Join(" ", classes);
+    }
+
+    private record CalendarDay
+    {
+        public DateTime Date { get; init; }
+        public bool IsCurrentMonth { get; init; }
+        public bool IsToday { get; init; }
+        public bool IsWeekend { get; init; }
+    }
+
+    private IJSObjectReference jsModule;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                jsModule = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./_content/RR.Blazor/js/rdatepicker.js");
+                await jsModule.InvokeVoidAsync("RDatePicker.init", InputId, new { });
+            }
+            catch (Exception ex)
+            {
+                // Graceful fallback - datepicker will work without JS enhancements
+                Console.WriteLine($"RDatePicker JS initialization failed: {ex.Message}");
+            }
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            if (jsModule != null)
+            {
+                await jsModule.InvokeVoidAsync("RDatePicker.destroy", InputId);
+                await jsModule.DisposeAsync();
+            }
+        }
+        catch (Exception)
+        {
+            // Ignore disposal errors
+        }
+    }
+}
+
+<style>
+.rdatepicker {
+    position: relative;
+    display: inline-block;
+    width: 100%;
+}
+
+.rdatepicker__trigger {
+    position: relative;
+    cursor: pointer;
+}
+
+.rdatepicker__input {
+    padding-right: 2.5rem !important;
+}
+
+.rdatepicker__icon {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--color-text-tertiary);
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.rdatepicker__icon--start {
+    left: 0.75rem;
+}
+
+.rdatepicker__icon--end {
+    right: 2.5rem;
+}
+
+.rdatepicker__clear {
+    position: absolute;
+    top: 50%;
+    right: 0.5rem;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--color-text-tertiary);
+    cursor: pointer;
+    padding: 0.25rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.rdatepicker__clear:hover {
+    background: var(--color-background-elevated);
+    color: var(--color-text-primary);
+}
+
+.rdatepicker__backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 999;
+    background: transparent;
+}
+
+.rdatepicker__popup {
+    position: absolute;
+    z-index: 1000;
+    background: var(--color-background-elevated);
+    border: 1px solid var(--color-border-light);
+    border-radius: 0.5rem;
+    box-shadow: var(--shadow-lg);
+    min-width: 320px;
+    max-width: 400px;
+}
+
+.rdatepicker__popup--bottom {
+    top: calc(100% + 0.5rem);
+    left: 0;
+}
+
+.rdatepicker__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem;
+    border-bottom: 1px solid var(--color-border-light);
+}
+
+.rdatepicker__nav-btn {
+    background: none;
+    border: none;
+    padding: 0.5rem;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    color: var(--color-text-secondary);
+    transition: all 0.2s ease;
+}
+
+.rdatepicker__nav-btn:hover {
+    background: var(--color-background-secondary);
+    color: var(--color-text-primary);
+}
+
+.rdatepicker__month-year {
+    background: none;
+    border: none;
+    font-weight: 600;
+    font-size: 1rem;
+    color: var(--color-text-primary);
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 0.25rem;
+    transition: all 0.2s ease;
+}
+
+.rdatepicker__month-year:hover {
+    background: var(--color-background-secondary);
+}
+
+.rdatepicker__year-picker {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.5rem;
+    padding: 1rem;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.rdatepicker__year-option {
+    background: none;
+    border: none;
+    padding: 0.75rem;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    color: var(--color-text-secondary);
+    transition: all 0.2s ease;
+    font-size: 0.875rem;
+}
+
+.rdatepicker__year-option:hover {
+    background: var(--color-background-secondary);
+    color: var(--color-text-primary);
+}
+
+.rdatepicker__year-option--current {
+    background: var(--color-interactive-primary);
+    color: white;
+}
+
+.rdatepicker__calendar {
+    padding: 1rem;
+}
+
+.rdatepicker__day-headers {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 0.25rem;
+    margin-bottom: 0.5rem;
+}
+
+.rdatepicker__day-header {
+    text-align: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-text-tertiary);
+    padding: 0.5rem;
+    text-transform: uppercase;
+}
+
+.rdatepicker__days {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 0.125rem;
+}
+
+.rdatepicker__day {
+    background: none;
+    border: none;
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.875rem;
+    cursor: pointer;
+    border-radius: 0.25rem;
+    color: var(--color-text-primary);
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.rdatepicker__day:hover:not(:disabled) {
+    background: var(--color-background-secondary);
+}
+
+.rdatepicker__day--other-month {
+    color: var(--color-text-tertiary);
+}
+
+.rdatepicker__day--today {
+    font-weight: 600;
+    color: var(--color-interactive-primary);
+}
+
+.rdatepicker__day--weekend {
+    color: var(--color-text-secondary);
+}
+
+.rdatepicker__day--disabled {
+    color: var(--color-text-disabled);
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.rdatepicker__day--selected {
+    background: var(--color-interactive-primary);
+    color: white;
+}
+
+.rdatepicker__day--range-start,
+.rdatepicker__day--range-end {
+    background: var(--color-interactive-primary);
+    color: white;
+}
+
+.rdatepicker__day--range-middle {
+    background: var(--color-interactive-primary);
+    color: white;
+    opacity: 0.7;
+}
+
+.rdatepicker__time-picker {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem;
+    border-top: 1px solid var(--color-border-light);
+}
+
+.rdatepicker__time-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    flex: 1;
+}
+
+.rdatepicker__time-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    text-transform: uppercase;
+}
+
+.rdatepicker__time-select {
+    padding: 0.5rem;
+    border: 1px solid var(--color-border-medium);
+    border-radius: 0.25rem;
+    background: var(--color-background-elevated);
+    color: var(--color-text-primary);
+    font-size: 0.875rem;
+}
+
+.rdatepicker__footer {
+    display: flex;
+    gap: 0.5rem;
+    padding: 1rem;
+    border-top: 1px solid var(--color-border-light);
+    justify-content: flex-end;
+}
+
+.rdatepicker__action-btn {
+    padding: 0.5rem 1rem;
+    border-radius: 0.25rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+}
+
+.rdatepicker__action-btn--primary {
+    background: var(--color-interactive-primary);
+    color: white;
+}
+
+.rdatepicker__action-btn--primary:hover {
+    background: var(--color-interactive-primary-hover);
+}
+
+.rdatepicker__action-btn--secondary {
+    background: none;
+    color: var(--color-text-secondary);
+    border-color: var(--color-border-medium);
+}
+
+.rdatepicker__action-btn--secondary:hover {
+    background: var(--color-background-secondary);
+    color: var(--color-text-primary);
+}
+
+.rdatepicker--error .rdatepicker__input {
+    border-color: var(--color-error);
+}
+
+.rdatepicker--error .rdatepicker__input:focus {
+    border-color: var(--color-error);
+    box-shadow: 0 0 0 3px hsla(0, 84%, 60%, 0.1);
+}
+</style>
+
+@* 
+Usage Examples:
+
+<!-- Basic date picker -->
+<RDatePicker @bind-Value="selectedDate" />
+
+<!-- Date range picker -->
+<RDatePicker @bind-Value="startDate" 
+             @bind-EndValue="endDate"
+             Range="true" 
+             Placeholder="Select date range..." />
+
+<!-- Date and time picker -->
+<RDatePicker @bind-Value="appointmentDateTime"
+             ShowTime="true"
+             Use24HourFormat="false"
+             MinuteInterval="15" />
+
+<!-- Advanced configuration -->
+<RDatePicker @bind-Value="meetingDate"
+             Label="Meeting Date"
+             ShowTime="true"
+             MinDate="@DateTime.Today"
+             MaxDate="@DateTime.Today.AddMonths(3)"
+             DisabledDaysOfWeek="@(new[] { DayOfWeek.Saturday, DayOfWeek.Sunday })"
+             Format="dd/MM/yyyy HH:mm"
+             Size="FieldSize.Large"
+             Icon="event"
+             HasError="@hasDateError"
+             ErrorMessage="Please select a valid meeting date" />
+*@

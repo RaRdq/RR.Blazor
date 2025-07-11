@@ -56,11 +56,11 @@ builder.Services.AddRRBlazor(options =>
 ### 2. Add Theme Provider
 ```html
 <!-- App.razor -->
-<ThemeProvider>
+<RThemeProvider>
     <Router AppAssembly="@typeof(App).Assembly">
         <!-- Your app content -->
     </Router>
-</ThemeProvider>
+</RThemeProvider>
 ```
 
 ### 3. Import Styles

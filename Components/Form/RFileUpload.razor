@@ -1,0 +1,637 @@
+@* RFileUpload - Universal File Upload Component *@
+@implements IAsyncDisposable
+@inject IJSRuntime JSRuntime
+
+<div id="@ComponentId" class="@GetContainerClasses()" data-rr-component="file-upload">
+    @* Main Upload Area *@
+    @if (DisplayMode == RFileUploadDisplayMode.DropZone)
+    {
+        <div class="@GetUploadZoneClasses()" @onclick="@(() => TriggerFileSelect())">
+            <InputFile id="@InputId"
+                       class="file-upload-area__input"
+                       accept="@GetAcceptString()"
+                       multiple="@Multiple"
+                       disabled="@IsDisabled"
+                       OnChange="HandleFileChange" />
+
+            <label for="@InputId" class="file-upload-area__label">
+                <i class="material-symbols-rounded">@GetUploadIcon()</i>
+                <h5 class="file-upload-area__text">@GetUploadText()</h5>
+                <p class="file-upload-area__hint">@GetUploadHint()</p>
+                @if (ShowBrowseButton)
+                {
+                    <RButton Text="@BrowseButtonText" 
+                             Variant="ButtonVariant.Secondary" 
+                             Size="ButtonSize.Small"
+                             class="mt-2" />
+                }
+            </label>
+        </div>
+    }
+    else if (DisplayMode == RFileUploadDisplayMode.Button)
+    {
+        <div class="d-flex flex-column gap-2">
+            <InputFile id="@InputId"
+                       class="file-upload__input"
+                       accept="@GetAcceptString()"
+                       multiple="@Multiple"
+                       disabled="@IsDisabled"
+                       OnChange="HandleFileChange" />
+
+            <label for="@InputId" class="@GetButtonClasses()">
+                @if (!string.IsNullOrEmpty(StartIcon))
+                {
+                    <i class="material-symbols-rounded">@StartIcon</i>
+                }
+                @ButtonText
+            </label>
+            
+            @if (!string.IsNullOrEmpty(HelpText))
+            {
+                <p class="file-upload__hint">@HelpText</p>
+            }
+        </div>
+    }
+    else if (DisplayMode == RFileUploadDisplayMode.Minimal)
+    {
+        <InputFile id="@InputId"
+                   class="@GetMinimalClasses()"
+                   accept="@GetAcceptString()"
+                   multiple="@Multiple"
+                   disabled="@IsDisabled"
+                   OnChange="HandleFileChange" />
+    }
+    else if (DisplayMode == RFileUploadDisplayMode.Inline)
+    {
+        <div class="d-flex align-center gap-3">
+            <InputFile id="@InputId"
+                       class="file-upload__input"
+                       accept="@GetAcceptString()"
+                       multiple="@Multiple"
+                       disabled="@IsDisabled"
+                       OnChange="HandleFileChange" />
+
+            <label for="@InputId" class="@GetInlineButtonClasses()">
+                <i class="material-symbols-rounded">attach_file</i>
+                Attach Files
+            </label>
+            
+            @if (SelectedFiles.Any())
+            {
+                <span class="text-sm text-secondary">
+                    @SelectedFiles.Count file@(SelectedFiles.Count != 1 ? "s" : "") selected
+                </span>
+            }
+        </div>
+    }
+
+    @* Error Display *@
+    <div class="file-upload-errors" style="display: none;"></div>
+
+    @* File Preview/List *@
+    @if (ShowPreview && SelectedFiles.Any())
+    {
+        <div class="file-attachments">
+            @foreach (var file in SelectedFiles)
+            {
+                <div class="file-preview" data-file-id="@file.Id">
+                    <div class="file-preview__info">
+                        @if (file.IsImage && !string.IsNullOrEmpty(file.ThumbnailUrl))
+                        {
+                            <div class="w-10 h-10 rounded overflow-hidden">
+                                <img src="@file.ThumbnailUrl" alt="@file.Name" class="w-full h-full object-cover" />
+                            </div>
+                        }
+                        else
+                        {
+                            <i class="material-symbols-rounded">@GetFileIcon(file.Extension)</i>
+                        }
+                        
+                        <div class="file-preview__details">
+                            <p class="file-preview__name">@file.Name</p>
+                            <p class="file-preview__size">@FormatFileSize(file.Size)</p>
+                            
+                            @if (file.Status == RFileUploadStatus.Failed && !string.IsNullOrEmpty(file.ErrorMessage))
+                            {
+                                <p class="text-xs text-error">@file.ErrorMessage</p>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="d-flex align-center gap-2">
+                        @if (ShowProgress && file.Status == RFileUploadStatus.Uploading)
+                        {
+                            <div class="upload-progress w-24">
+                                <div class="upload-progress__bar">
+                                    <div class="upload-progress__bar__fill" style="width: @(file.UploadProgress)%"></div>
+                                </div>
+                                <p class="upload-progress__text text-xs">@(Math.Round(file.UploadProgress))%</p>
+                            </div>
+                        }
+                        else if (file.Status == RFileUploadStatus.Completed)
+                        {
+                            <i class="material-symbols-rounded text-success">check_circle</i>
+                        }
+                        else if (file.Status == RFileUploadStatus.Failed)
+                        {
+                            <i class="material-symbols-rounded text-error">error</i>
+                        }
+
+                        @if (AllowRemove && file.Status != RFileUploadStatus.Uploading)
+                        {
+                            <button type="button" 
+                                    class="btn btn-ghost btn-sm"
+                                    @onclick="@(() => RemoveFile(file.Id))">
+                                <i class="material-symbols-rounded">close</i>
+                            </button>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+
+    @* Overall Progress *@
+    @if (ShowProgress && IsUploading)
+    {
+        <div class="upload-progress mt-4">
+            <h6 class="upload-progress__title">Uploading Files...</h6>
+            <div class="upload-progress__bar">
+                <div class="upload-progress__bar__fill" style="width: @(OverallProgress)%"></div>
+            </div>
+            <p class="upload-progress__text">
+                @CompletedUploads of @TotalUploads files uploaded (@(Math.Round(OverallProgress))%)
+            </p>
+        </div>
+    }
+</div>
+
+@code {
+    // Core Parameters
+    /// <summary>Component identifier</summary>
+    [Parameter] public string ComponentId { get; set; } = $"file-upload-{Guid.NewGuid().ToString("N")[..8]}";
+    
+    /// <summary>Input element identifier</summary>
+    [Parameter] public string InputId { get; set; } = $"file-input-{Guid.NewGuid().ToString("N")[..8]}";
+    
+    /// <summary>Display mode for the upload component</summary>
+    [Parameter] public RFileUploadDisplayMode DisplayMode { get; set; } = RFileUploadDisplayMode.DropZone;
+    
+    /// <summary>Whether component is disabled</summary>
+    [Parameter] public bool IsDisabled { get; set; }
+    
+    /// <summary>Additional CSS classes</summary>
+    [Parameter] public string Class { get; set; }
+
+    // File Configuration
+    /// <summary>Allowed file types (extensions like .pdf, .jpg or MIME types)</summary>
+    [Parameter] public string[] AllowedTypes { get; set; }
+    
+    /// <summary>Maximum file size in bytes</summary>
+    [Parameter] public long MaxSize { get; set; } = 10 * 1024 * 1024; // 10MB
+    
+    /// <summary>Maximum number of files</summary>
+    [Parameter] public int MaxFiles { get; set; } = 10;
+    
+    /// <summary>Allow multiple file selection</summary>
+    [Parameter] public bool Multiple { get; set; } = true;
+    
+    /// <summary>Allow duplicate files</summary>
+    [Parameter] public bool AllowDuplicates { get; set; } = true;
+
+    // UI Configuration
+    /// <summary>Show file preview/list</summary>
+    [Parameter] public bool ShowPreview { get; set; } = true;
+    
+    /// <summary>Show upload progress</summary>
+    [Parameter] public bool ShowProgress { get; set; } = true;
+    
+    /// <summary>Enable drag and drop</summary>
+    [Parameter] public bool DragDrop { get; set; } = true;
+    
+    /// <summary>Generate thumbnails for images</summary>
+    [Parameter] public bool GenerateThumbnails { get; set; } = true;
+    
+    /// <summary>Allow file removal</summary>
+    [Parameter] public bool AllowRemove { get; set; } = true;
+    
+    /// <summary>Show browse button in drop zone</summary>
+    [Parameter] public bool ShowBrowseButton { get; set; } = true;
+
+    // Text Configuration
+    /// <summary>Upload area title text</summary>
+    [Parameter] public string UploadText { get; set; }
+    
+    /// <summary>Upload area hint text</summary>
+    [Parameter] public string HintText { get; set; }
+    
+    /// <summary>Help text below component</summary>
+    [Parameter] public string HelpText { get; set; }
+    
+    /// <summary>Button text for button mode</summary>
+    [Parameter] public string ButtonText { get; set; } = "Choose Files";
+    
+    /// <summary>Browse button text in drop zone</summary>
+    [Parameter] public string BrowseButtonText { get; set; } = "Browse Files";
+    
+    /// <summary>Icon for upload area</summary>
+    [Parameter] public string UploadIcon { get; set; } = "cloud_upload";
+    
+    /// <summary>Start icon for button mode</summary>
+    [Parameter] public string StartIcon { get; set; }
+
+    // Data Binding
+    /// <summary>Selected files collection</summary>
+    [Parameter] public List<RFileInfo> Files { get; set; } = new();
+    
+    /// <summary>Callback when files change</summary>
+    [Parameter] public EventCallback<List<RFileInfo>> FilesChanged { get; set; }
+
+    // Event Callbacks
+    /// <summary>Called when files are selected</summary>
+    [Parameter] public EventCallback<RFileUploadResult> OnFilesSelected { get; set; }
+    
+    /// <summary>Called when upload completes</summary>
+    [Parameter] public EventCallback<RFileUploadResult> OnUploadComplete { get; set; }
+    
+    /// <summary>Called when upload progress changes</summary>
+    [Parameter] public EventCallback<(string FileId, double Progress)> OnProgressChanged { get; set; }
+    
+    /// <summary>Called when file is removed</summary>
+    [Parameter] public EventCallback<string> OnFileRemoved { get; set; }
+    
+    /// <summary>Called for file validation (return null if valid, error message if invalid)</summary>
+    [Parameter] public Func<IBrowserFile, Task<string>> CustomValidator { get; set; }
+
+    // Private State
+    private List<RFileInfo> SelectedFiles => Files;
+    private bool IsUploading => SelectedFiles.Any(f => f.Status == RFileUploadStatus.Uploading);
+    private double OverallProgress => SelectedFiles.Count == 0 ? 0 : SelectedFiles.Average(f => f.UploadProgress);
+    private int CompletedUploads => SelectedFiles.Count(f => f.Status == RFileUploadStatus.Completed);
+    private int TotalUploads => SelectedFiles.Count;
+    
+    private IJSObjectReference jsModule;
+    private DotNetObjectReference<RFileUpload> dotNetRef;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                dotNetRef = DotNetObjectReference.Create(this);
+                
+                // Use standard module for basic functionality
+                jsModule = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./_content/RR.Blazor/js/file-upload.js");
+                
+                var settings = new
+                {
+                    allowedTypes = AllowedTypes ?? Array.Empty<string>(),
+                    maxSize = MaxSize,
+                    maxFiles = MaxFiles,
+                    enableDragDrop = DragDrop,
+                    showProgress = ShowProgress,
+                    showPreview = ShowPreview,
+                    generateThumbnails = GenerateThumbnails
+                };
+                
+                await jsModule.InvokeVoidAsync("RRFileUpload.initialize", ComponentId, settings);
+                
+                // Subscribe to JS events
+                await JSRuntime.InvokeVoidAsync("addEventListener", ComponentId, "rr-files-selected", dotNetRef, "OnFilesSelectedFromJS");
+                await JSRuntime.InvokeVoidAsync("addEventListener", ComponentId, "rr-file-removed", dotNetRef, "OnFileRemovedFromJS");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"RFileUpload initialization error: {ex.Message}");
+            }
+        }
+    }
+
+    private async Task HandleFileChange(InputFileChangeEventArgs e)
+    {
+        var result = new RFileUploadResult { Success = true };
+        var newFiles = new List<RFileInfo>();
+
+        foreach (var file in e.GetMultipleFiles(MaxFiles))
+        {
+            var fileInfo = await CreateFileInfo(file);
+            
+            // Validate file
+            var validationError = await ValidateFile(file);
+            if (!string.IsNullOrEmpty(validationError))
+            {
+                fileInfo.Status = RFileUploadStatus.Failed;
+                fileInfo.ErrorMessage = validationError;
+                result.Errors.Add($"{file.Name}: {validationError}");
+                result.Success = false;
+            }
+            
+            newFiles.Add(fileInfo);
+        }
+
+        // Update files collection
+        if (!AllowDuplicates)
+        {
+            var existingNames = SelectedFiles.Select(f => f.Name).ToHashSet();
+            newFiles = newFiles.Where(f => !existingNames.Contains(f.Name)).ToList();
+        }
+
+        SelectedFiles.AddRange(newFiles);
+        result.Files = newFiles;
+
+        // Trigger events
+        await FilesChanged.InvokeAsync(SelectedFiles);
+        await OnFilesSelected.InvokeAsync(result);
+        
+        StateHasChanged();
+    }
+
+    private async Task<RFileInfo> CreateFileInfo(IBrowserFile file)
+    {
+        var fileInfo = new RFileInfo
+        {
+            Name = file.Name,
+            Extension = Path.GetExtension(file.Name).ToLowerInvariant(),
+            Size = file.Size,
+            ContentType = file.ContentType,
+            LastModified = file.LastModified.DateTime,
+            IsImage = file.ContentType.StartsWith("image/"),
+            BrowserFile = file,
+            Status = RFileUploadStatus.Pending
+        };
+
+        // Generate thumbnail for images if enabled
+        if (fileInfo.IsImage && GenerateThumbnails && jsModule != null)
+        {
+            try
+            {
+                // This would be implemented in JS and called back
+                // For now, we'll skip thumbnail generation in C# side
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Thumbnail generation failed: {ex.Message}");
+            }
+        }
+
+        return fileInfo;
+    }
+
+    private async Task<string> ValidateFile(IBrowserFile file)
+    {
+        // Size validation
+        if (file.Size > MaxSize)
+        {
+            return $"File size ({FormatFileSize(file.Size)}) exceeds maximum allowed ({FormatFileSize(MaxSize)})";
+        }
+
+        // Type validation
+        if (AllowedTypes?.Length > 0)
+        {
+            var extension = Path.GetExtension(file.Name).ToLowerInvariant();
+            var isAllowed = AllowedTypes.Any(type => 
+                type.ToLowerInvariant() == extension || 
+                type.ToLowerInvariant() == file.ContentType.ToLowerInvariant()
+            );
+            
+            if (!isAllowed)
+            {
+                return $"File type not allowed. Allowed types: {string.Join(", ", AllowedTypes)}";
+            }
+        }
+
+        // Custom validation
+        if (CustomValidator != null)
+        {
+            return await CustomValidator(file);
+        }
+
+        return null;
+    }
+
+    private async Task RemoveFile(string fileId)
+    {
+        var file = SelectedFiles.FirstOrDefault(f => f.Id == fileId);
+        if (file != null)
+        {
+            SelectedFiles.Remove(file);
+            await FilesChanged.InvokeAsync(SelectedFiles);
+            await OnFileRemoved.InvokeAsync(fileId);
+            StateHasChanged();
+        }
+    }
+
+    private async Task TriggerFileSelect()
+    {
+        if (jsModule != null)
+        {
+            await jsModule.InvokeVoidAsync("document.getElementById", InputId, "click");
+        }
+    }
+
+    // JavaScript Callbacks
+    [JSInvokable]
+    public async Task OnFilesSelectedFromJS(object eventData)
+    {
+        // Handle files selected via drag/drop or JS
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public async Task OnFileRemovedFromJS(string fileId)
+    {
+        await RemoveFile(fileId);
+    }
+
+    // UI Helper Methods
+    private string GetContainerClasses()
+    {
+        var classes = new List<string> { "r-file-upload" };
+        
+        if (!string.IsNullOrEmpty(Class))
+        {
+            classes.Add(Class);
+        }
+        
+        return string.Join(" ", classes);
+    }
+
+    private string GetUploadZoneClasses()
+    {
+        var classes = new List<string> { "file-upload-area" };
+        
+        if (IsDisabled)
+        {
+            classes.Add("opacity-50");
+            classes.Add("cursor-not-allowed");
+        }
+        
+        return string.Join(" ", classes);
+    }
+
+    private string GetButtonClasses()
+    {
+        var classes = new List<string> 
+        { 
+            "file-upload__label",
+            "btn",
+            "btn-secondary"
+        };
+        
+        if (IsDisabled)
+        {
+            classes.Add("btn-disabled");
+        }
+        
+        return string.Join(" ", classes);
+    }
+
+    private string GetMinimalClasses()
+    {
+        return "form-field__file";
+    }
+
+    private string GetInlineButtonClasses()
+    {
+        return "btn btn-ghost btn-sm d-flex align-center gap-1";
+    }
+
+    private string GetAcceptString()
+    {
+        return AllowedTypes?.Length > 0 ? string.Join(",", AllowedTypes) : "";
+    }
+
+    private string GetUploadText()
+    {
+        if (!string.IsNullOrEmpty(UploadText))
+            return UploadText;
+            
+        return Multiple ? "Drop files here or click to browse" : "Drop file here or click to browse";
+    }
+
+    private string GetUploadHint()
+    {
+        if (!string.IsNullOrEmpty(HintText))
+            return HintText;
+
+        var hints = new List<string>();
+        
+        if (AllowedTypes?.Length > 0)
+        {
+            hints.Add($"Accepted: {string.Join(", ", AllowedTypes)}");
+        }
+        
+        hints.Add($"Max size: {FormatFileSize(MaxSize)}");
+        
+        if (Multiple && MaxFiles > 1)
+        {
+            hints.Add($"Max files: {MaxFiles}");
+        }
+
+        return string.Join(" • ", hints);
+    }
+
+    private string GetUploadIcon()
+    {
+        return UploadIcon;
+    }
+
+    private static string GetFileIcon(string extension)
+    {
+        return extension.ToLowerInvariant() switch
+        {
+            ".pdf" => "picture_as_pdf",
+            ".doc" or ".docx" => "description",
+            ".xls" or ".xlsx" or ".csv" => "grid_on",
+            ".ppt" or ".pptx" => "slideshow",
+            ".jpg" or ".jpeg" or ".png" or ".gif" or ".bmp" or ".svg" or ".webp" => "image",
+            ".mp3" or ".wav" or ".flac" or ".aac" => "audio_file",
+            ".mp4" or ".avi" or ".mov" or ".wmv" => "video_file",
+            ".zip" or ".rar" or ".7z" or ".tar" => "folder_zip",
+            ".html" or ".css" or ".js" or ".json" or ".xml" or ".cs" or ".py" or ".sql" => "code",
+            _ => "draft"
+        };
+    }
+
+    private static string FormatFileSize(long bytes)
+    {
+        if (bytes == 0) return "0 Bytes";
+        
+        var sizes = new[] { "Bytes", "KB", "MB", "GB", "TB" };
+        var order = 0;
+        var size = (double)bytes;
+        
+        while (size >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            size /= 1024;
+        }
+        
+        return $"{size:0.##} {sizes[order]}";
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            if (jsModule != null)
+            {
+                await jsModule.InvokeVoidAsync("RRFileUpload.cleanup", ComponentId);
+                await jsModule.DisposeAsync();
+            }
+            
+            dotNetRef?.Dispose();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"RFileUpload disposal error: {ex.Message}");
+        }
+    }
+}
+
+@* 
+Usage Examples:
+
+<!-- Zero Config (works immediately) -->
+<RFileUpload />
+
+<!-- Basic Configuration -->
+<RFileUpload AllowedTypes="@(new[] {".pdf", ".jpg", ".png"})"
+             MaxSize="5 * 1024 * 1024"
+             Multiple="true"
+             @bind-Files="uploadedFiles" />
+
+<!-- Button Mode -->
+<RFileUpload DisplayMode="RFileUploadDisplayMode.Button"
+             ButtonText="Upload Documents"
+             StartIcon="upload"
+             AllowedTypes="@(new[] {".pdf", ".docx"})" />
+
+<!-- Inline Mode -->
+<RFileUpload DisplayMode="RFileUploadDisplayMode.Inline"
+             Multiple="false"
+             ShowPreview="false" />
+
+<!-- Advanced with Events -->
+<RFileUpload @bind-Files="files"
+             OnFilesSelected="HandleFilesSelected"
+             OnUploadComplete="HandleUploadComplete"
+             OnProgressChanged="HandleProgressChanged"
+             CustomValidator="ValidateFile" />
+
+@code {
+    private List<RFileInfo> files = new();
+
+    private async Task HandleFilesSelected(RFileUploadResult result)
+    {
+        // Handle file selection
+    }
+
+    private async Task<string> ValidateFile(IBrowserFile file)
+    {
+        // Custom validation logic
+        return null; // Valid
+    }
+}
+*@

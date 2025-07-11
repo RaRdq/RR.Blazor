@@ -1,0 +1,689 @@
+@* RFormField - Universal form field component with utility-first CSS approach *@
+@using RR.Blazor.Enums
+
+<div class="form-field @GetFieldGroupClasses()">
+    @* Label *@
+    @if (!string.IsNullOrEmpty(Label))
+    {
+        <label class="form-field__label @(IsRequired && ShowRequiredIndicator ? "form-field__label--required" : "")" for="@InputId">
+            @Label
+        </label>
+    }
+    
+    @* Input Field *@
+    <div class="form-field__wrapper @GetInputWrapperClasses()">
+        @if (!string.IsNullOrEmpty(Icon) && IconPosition == IconPosition.Start)
+        {
+            <div class="form-field__icon-container form-field__icon-container--start">
+                <i class="material-symbols-rounded @GetIconSizeClass()">@Icon</i>
+            </div>
+        }
+        
+        @if (FieldType == FieldType.Text || FieldType == FieldType.Email || FieldType == FieldType.Password || 
+             FieldType == FieldType.Number || FieldType == FieldType.Tel || FieldType == FieldType.Url || 
+             FieldType == FieldType.Search || FieldType == FieldType.Date || FieldType == FieldType.Time || 
+             FieldType == FieldType.DateTime)
+        {
+            <input id="@InputId" 
+                   type="@GetHtmlInputType()" 
+                   class="form-field__input @GetInputClasses()" 
+                   value="@Value" 
+                   placeholder="@Placeholder"
+                   disabled="@IsDisabled"
+                   readonly="@IsReadOnly"
+                   required="@IsRequired"
+                   maxlength="@(MaxLength > 0 ? MaxLength : null)"
+                   min="@MinValue"
+                   max="@MaxValue"
+                   step="@Step"
+                   autocomplete="@AutoComplete"
+                   @onchange="HandleValueChange"
+                   @oninput="HandleInput"
+                   @onfocus="HandleFocus"
+                   @onblur="HandleBlur"
+                   @onkeydown="HandleKeyDown"
+                   @onkeyup="HandleKeyUp" />
+        }
+        else if (FieldType == FieldType.Textarea)
+        {
+            <textarea id="@InputId" 
+                      class="form-field__textarea @GetTextareaClasses()"
+                      placeholder="@Placeholder"
+                      disabled="@IsDisabled"
+                      readonly="@IsReadOnly"
+                      required="@IsRequired"
+                      maxlength="@(MaxLength > 0 ? MaxLength : null)"
+                      rows="@Rows"
+                      @onchange="HandleValueChange"
+                      @oninput="HandleInput"
+                      @onfocus="HandleFocus"
+                      @onblur="HandleBlur"
+                      @onkeydown="HandleKeyDown"
+                      @onkeyup="HandleKeyUp">@Value</textarea>
+        }
+        else if (FieldType == FieldType.Select)
+        {
+            <select id="@InputId" 
+                    class="form-field__select @GetSelectClasses()"
+                    disabled="@IsDisabled"
+                    required="@IsRequired"
+                    @onchange="HandleValueChange"
+                    @onfocus="HandleFocus"
+                    @onblur="HandleBlur">
+                @if (!string.IsNullOrEmpty(SelectPlaceholder))
+                {
+                    <option value="">@SelectPlaceholder</option>
+                }
+                @SelectOptions
+            </select>
+        }
+        else if (FieldType == FieldType.Checkbox)
+        {
+            <div class="d-flex align-center gap-2">
+                <input id="@InputId" 
+                       type="checkbox" 
+                       class="form-field__checkbox @GetCheckboxClasses()"
+                       checked="@IsChecked"
+                       disabled="@IsDisabled"
+                       required="@IsRequired"
+                       @onchange="HandleCheckboxChange" />
+                @if (!string.IsNullOrEmpty(CheckboxText))
+                {
+                    <label class="@GetCheckboxLabelClasses()" for="@InputId">
+                        @CheckboxText
+                    </label>
+                }
+            </div>
+        }
+        else if (FieldType == FieldType.Radio)
+        {
+            <div class="d-flex flex-column gap-2">
+                @RadioOptions
+            </div>
+        }
+        else if (FieldType == FieldType.Range)
+        {
+            <div class="w-full">
+                <input id="@InputId" 
+                       type="range" 
+                       class="form-field__range @GetRangeClasses()"
+                       value="@Value" 
+                       min="@MinValue"
+                       max="@MaxValue"
+                       step="@Step"
+                       disabled="@IsDisabled"
+                       @onchange="HandleValueChange"
+                       @oninput="HandleInput" />
+                @if (ShowRangeValue)
+                {
+                    <div class="text-sm text-secondary mt-1 text-center">
+                        @Value @RangeValueSuffix
+                    </div>
+                }
+            </div>
+        }
+        else if (FieldType == FieldType.File)
+        {
+            <InputFile id="@InputId" 
+                       class="@($"form-field__file {GetFileInputClasses()}")"
+                       disabled="@IsDisabled"
+                       accept="@AcceptTypes"
+                       multiple="@AllowMultiple"
+                       OnChange="HandleFileChange" />
+        }
+        else if (FieldType == FieldType.Custom)
+        {
+            @ChildContent
+        }
+        
+        @if (!string.IsNullOrEmpty(Icon) && IconPosition == IconPosition.End && FieldType != FieldType.Select)
+        {
+            <div class="form-field__icon-container form-field__icon-container--end @(OnIconClick.HasDelegate ? "clickable" : "")" 
+                 @onclick="HandleIconClick">
+                <i class="material-symbols-rounded @GetIconSizeClass()">@Icon</i>
+            </div>
+        }
+        
+        @* Loading spinner *@
+        @if (IsLoading)
+        {
+            <div class="form-field__icon-container form-field__icon-container--end">
+                <i class="material-symbols-rounded @GetIconSizeClass() animate-spin">progress_activity</i>
+            </div>
+        }
+    </div>
+    
+    @* Error Message *@
+    @if (HasError && !string.IsNullOrEmpty(ErrorMessage))
+    {
+        <div class="form-field__error">
+            <i class="material-symbols-rounded">error</i>
+            @ErrorMessage
+        </div>
+    }
+    
+    @* Help Text and Character Count *@
+    @if (!string.IsNullOrEmpty(HelpText) || (ShowCharacterCount && MaxLength > 0))
+    {
+        <div class="form-field__help">
+            @if (!string.IsNullOrEmpty(HelpText))
+            {
+                <span>@HelpText</span>
+            }
+            @if (ShowCharacterCount && MaxLength > 0)
+            {
+                <span class="form-field__character-count @GetCharacterCountClasses()">
+                    @(Value?.Length ?? 0) / @MaxLength
+                </span>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>Input field identifier</summary>
+    [Parameter] public string InputId { get; set; } = Guid.NewGuid().ToString("N")[..8];
+    
+    /// <summary>Field type</summary>
+    [Parameter] public FieldType FieldType { get; set; } = FieldType.Text;
+    
+    /// <summary>Field size variant</summary>
+    [Parameter] public FieldSize Size { get; set; } = FieldSize.Medium;
+    
+    /// <summary>Field label text</summary>
+    [Parameter] public string Label { get; set; }
+    
+    /// <summary>Input field value</summary>
+    [Parameter] public string Value { get; set; }
+    
+    /// <summary>Callback when value changes</summary>
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+    
+    /// <summary>Placeholder text</summary>
+    [Parameter] public string Placeholder { get; set; }
+    
+    /// <summary>Help text below the input</summary>
+    [Parameter] public string HelpText { get; set; }
+    
+    /// <summary>Error message to display</summary>
+    [Parameter] public string ErrorMessage { get; set; }
+    
+    /// <summary>Whether field is required</summary>
+    [Parameter] public bool IsRequired { get; set; }
+    
+    /// <summary>Whether to show required indicator (*)</summary>
+    [Parameter] public bool ShowRequiredIndicator { get; set; } = true;
+    
+    /// <summary>Whether field is disabled</summary>
+    [Parameter] public bool IsDisabled { get; set; }
+    
+    /// <summary>Whether field is readonly</summary>
+    [Parameter] public bool IsReadOnly { get; set; }
+    
+    /// <summary>Whether field has validation error</summary>
+    [Parameter] public bool HasError { get; set; }
+    
+    /// <summary>Whether field is in loading state</summary>
+    [Parameter] public bool IsLoading { get; set; }
+    
+    /// <summary>Additional CSS classes for the field group</summary>
+    [Parameter] public string Class { get; set; }
+    
+    /// <summary>Additional CSS classes for the input element</summary>
+    [Parameter] public string InputClass { get; set; }
+    
+    /// <summary>Icon name</summary>
+    [Parameter] public string Icon { get; set; }
+    
+    /// <summary>Icon position</summary>
+    [Parameter] public IconPosition IconPosition { get; set; } = IconPosition.Start;
+    
+    /// <summary>Whether input spans full width</summary>
+    [Parameter] public bool FullWidth { get; set; } = true;
+    
+    // Textarea specific
+    /// <summary>Number of textarea rows</summary>
+    [Parameter] public int Rows { get; set; } = 3;
+    
+    /// <summary>Whether textarea auto-resizes</summary>
+    [Parameter] public bool AutoResize { get; set; }
+    
+    // Select specific
+    /// <summary>Select placeholder option</summary>
+    [Parameter] public string SelectPlaceholder { get; set; }
+    
+    /// <summary>Select options content</summary>
+    [Parameter] public RenderFragment SelectOptions { get; set; }
+    
+    // Checkbox specific
+    /// <summary>Checkbox checked state</summary>
+    [Parameter] public bool IsChecked { get; set; }
+    
+    /// <summary>Checkbox text/label</summary>
+    [Parameter] public string CheckboxText { get; set; }
+    
+    /// <summary>Callback when checkbox changes</summary>
+    [Parameter] public EventCallback<bool> CheckedChanged { get; set; }
+    
+    // Radio specific
+    /// <summary>Radio options content</summary>
+    [Parameter] public RenderFragment RadioOptions { get; set; }
+    
+    // Number/Range specific
+    /// <summary>Minimum value for number/range inputs</summary>
+    [Parameter] public string MinValue { get; set; }
+    
+    /// <summary>Maximum value for number/range inputs</summary>
+    [Parameter] public string MaxValue { get; set; }
+    
+    /// <summary>Step value for number/range inputs</summary>
+    [Parameter] public string Step { get; set; }
+    
+    /// <summary>Show current value for range input</summary>
+    [Parameter] public bool ShowRangeValue { get; set; } = true;
+    
+    /// <summary>Suffix for range value display</summary>
+    [Parameter] public string RangeValueSuffix { get; set; }
+    
+    // File specific
+    /// <summary>Accepted file types</summary>
+    [Parameter] public string AcceptTypes { get; set; }
+    
+    /// <summary>Allow multiple file selection</summary>
+    [Parameter] public bool AllowMultiple { get; set; }
+    
+    /// <summary>File change callback</summary>
+    [Parameter] public EventCallback<InputFileChangeEventArgs> FileChanged { get; set; }
+    
+    // Character count
+    /// <summary>Whether to show character count</summary>
+    [Parameter] public bool ShowCharacterCount { get; set; }
+    
+    /// <summary>Maximum character length</summary>
+    [Parameter] public int MaxLength { get; set; }
+    
+    // HTML attributes
+    /// <summary>Autocomplete attribute</summary>
+    [Parameter] public string AutoComplete { get; set; }
+    
+    // Custom content
+    /// <summary>Custom input content for FieldType.Custom</summary>
+    [Parameter] public RenderFragment ChildContent { get; set; }
+    
+    // Event callbacks
+    /// <summary>Called on input event (real-time)</summary>
+    [Parameter] public EventCallback<string> OnInput { get; set; }
+    
+    /// <summary>Called on focus</summary>
+    [Parameter] public EventCallback<FocusEventArgs> OnFocus { get; set; }
+    
+    /// <summary>Called on blur</summary>
+    [Parameter] public EventCallback<FocusEventArgs> OnBlur { get; set; }
+    
+    /// <summary>Called on key down</summary>
+    [Parameter] public EventCallback<KeyboardEventArgs> OnKeyDown { get; set; }
+    
+    /// <summary>Called on key up</summary>
+    [Parameter] public EventCallback<KeyboardEventArgs> OnKeyUp { get; set; }
+    
+    /// <summary>Called when icon is clicked</summary>
+    [Parameter] public EventCallback OnIconClick { get; set; }
+    
+    private string GetFieldGroupClasses()
+    {
+        var classes = new List<string> { "d-flex", "flex-column", "gap-1" };
+        
+        if (!FullWidth)
+        {
+            classes.Add("d-inline-flex");
+        }
+        
+        if (HasError)
+        {
+            classes.Add("form-field--error");
+        }
+        
+        if (!string.IsNullOrEmpty(Class))
+        {
+            classes.Add(Class);
+        }
+        
+        return string.Join(" ", classes);
+    }
+    
+    private string GetLabelClasses()
+    {
+        var classes = new List<string>
+        {
+            "text-sm",
+            "font-medium",
+            "text-primary"
+        };
+        
+        if (IsDisabled)
+        {
+            classes.Add("text-muted");
+        }
+        
+        return string.Join(" ", classes);
+    }
+    
+    private string GetInputWrapperClasses()
+    {
+        var classes = new List<string>();
+        
+        if (FullWidth)
+        {
+            classes.Add("w-full");
+        }
+        
+        return string.Join(" ", classes);
+    }
+    
+    private string GetInputClasses()
+    {
+        var classes = new List<string> { "form-field__input" };
+        
+        // Icon modifiers
+        if (!string.IsNullOrEmpty(Icon) && IconPosition == IconPosition.Start)
+        {
+            classes.Add("form-field__input--with-start-icon");
+        }
+        
+        if ((!string.IsNullOrEmpty(Icon) && IconPosition == IconPosition.End) || IsLoading)
+        {
+            classes.Add("form-field__input--with-end-icon");
+        }
+        
+        // Size modifiers
+        classes.Add(Size switch
+        {
+            FieldSize.Small => "form-field__input--sm",
+            FieldSize.Large => "form-field__input--lg",
+            _ => ""
+        });
+        
+        if (!string.IsNullOrEmpty(InputClass))
+        {
+            classes.Add(InputClass);
+        }
+        
+        return string.Join(" ", classes);
+    }
+    
+    private string GetTextareaClasses()
+    {
+        var classes = GetInputClasses().Split(' ').ToList();
+        
+        // Remove height for textarea
+        classes.RemoveAll(c => c.StartsWith("h-"));
+        
+        if (AutoResize)
+        {
+            classes.Add("resize-none");
+        }
+        else
+        {
+            classes.Add("resize-vertical");
+        }
+        
+        return string.Join(" ", classes);
+    }
+    
+    private string GetSelectClasses()
+    {
+        var classes = GetInputClasses().Split(' ').ToList();
+        classes.Add("cursor-pointer");
+        return string.Join(" ", classes);
+    }
+    
+    private string GetCheckboxClasses()
+    {
+        var classes = new List<string>
+        {
+            "rounded",
+            "border-2",
+            "border-medium",
+            "text-primary",
+            "focus:border-primary",
+            "focus:shadow-primary"
+        };
+        
+        classes.Add(Size switch
+        {
+            FieldSize.Small => "w-4 h-4",
+            FieldSize.Medium => "w-5 h-5",
+            FieldSize.Large => "w-6 h-6",
+            _ => "w-5 h-5"
+        });
+        
+        if (HasError)
+        {
+            classes.AddRange(new[] { "border-error", "focus:border-error" });
+        }
+        
+        if (IsDisabled)
+        {
+            classes.AddRange(new[] { "opacity-50", "cursor-not-allowed" });
+        }
+        else
+        {
+            classes.Add("cursor-pointer");
+        }
+        
+        return string.Join(" ", classes);
+    }
+    
+    private string GetCheckboxLabelClasses()
+    {
+        var classes = new List<string>
+        {
+            "text-primary",
+            "cursor-pointer"
+        };
+        
+        classes.Add(Size switch
+        {
+            FieldSize.Small => "text-sm",
+            FieldSize.Medium => "text-base",
+            FieldSize.Large => "text-lg",
+            _ => "text-base"
+        });
+        
+        if (IsDisabled)
+        {
+            classes.AddRange(new[] { "text-muted", "cursor-not-allowed" });
+        }
+        
+        return string.Join(" ", classes);
+    }
+    
+    private string GetRangeClasses()
+    {
+        var classes = new List<string>
+        {
+            "w-full",
+            "h-2",
+            "bg-secondary",
+            "rounded-lg",
+            "appearance-none",
+            "cursor-pointer"
+        };
+        
+        if (IsDisabled)
+        {
+            classes.AddRange(new[] { "opacity-50", "cursor-not-allowed" });
+        }
+        
+        return string.Join(" ", classes);
+    }
+    
+    private string GetFileInputClasses()
+    {
+        var classes = new List<string>
+        {
+            "w-full",
+            "text-sm",
+            "text-secondary",
+            "file:mr-4",
+            "file:py-2",
+            "file:px-4",
+            "file:rounded-md",
+            "file:border-0",
+            "file:text-sm",
+            "file:font-medium",
+            "file:bg-primary",
+            "file:text-white",
+            "hover:file:bg-primary-hover"
+        };
+        
+        if (IsDisabled)
+        {
+            classes.AddRange(new[] { "opacity-50", "cursor-not-allowed" });
+        }
+        
+        return string.Join(" ", classes);
+    }
+    
+    private string GetIconSizeClass()
+    {
+        return Size switch
+        {
+            FieldSize.Small => "text-sm",
+            FieldSize.Medium => "text-base",
+            FieldSize.Large => "text-lg",
+            _ => "text-base"
+        };
+    }
+    
+    private string GetErrorClasses()
+    {
+        return "d-flex align-center text-xs text-error mt-1";
+    }
+    
+    private string GetHelpClasses()
+    {
+        var classes = new List<string> { "d-flex", "justify-between", "align-center", "text-xs", "mt-1" };
+        
+        if (!string.IsNullOrEmpty(HelpText) && ShowCharacterCount)
+        {
+            classes.Add("gap-2");
+        }
+        
+        return string.Join(" ", classes);
+    }
+    
+    private string GetCharacterCountClasses()
+    {
+        if (MaxLength > 0)
+        {
+            var length = Value?.Length ?? 0;
+            var percentage = (double)length / MaxLength;
+            
+            return percentage switch
+            {
+                >= 1.0 => "form-field__character-count--error",
+                >= 0.8 => "form-field__character-count--warning",
+                _ => ""
+            };
+        }
+        
+        return "";
+    }
+    
+    private string GetHtmlInputType() => FieldType switch
+    {
+        FieldType.Email => "email",
+        FieldType.Password => "password",
+        FieldType.Number => "number",
+        FieldType.Tel => "tel",
+        FieldType.Url => "url",
+        FieldType.Search => "search",
+        FieldType.Date => "date",
+        FieldType.Time => "time",
+        FieldType.DateTime => "datetime-local",
+        _ => "text"
+    };
+    
+    private async Task HandleValueChange(ChangeEventArgs e)
+    {
+        var newValue = e.Value?.ToString() ?? "";
+        Value = newValue;
+        await ValueChanged.InvokeAsync(newValue);
+    }
+    
+    private async Task HandleInput(ChangeEventArgs e)
+    {
+        var newValue = e.Value?.ToString() ?? "";
+        Value = newValue;
+        await OnInput.InvokeAsync(newValue);
+        await ValueChanged.InvokeAsync(newValue);
+    }
+    
+    private async Task HandleCheckboxChange(ChangeEventArgs e)
+    {
+        var isChecked = e.Value is bool b && b;
+        IsChecked = isChecked;
+        await CheckedChanged.InvokeAsync(isChecked);
+    }
+    
+    private async Task HandleFileChange(InputFileChangeEventArgs e)
+    {
+        await FileChanged.InvokeAsync(e);
+    }
+    
+    private async Task HandleFocus(FocusEventArgs e)
+    {
+        await OnFocus.InvokeAsync(e);
+    }
+    
+    private async Task HandleBlur(FocusEventArgs e)
+    {
+        await OnBlur.InvokeAsync(e);
+    }
+    
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        await OnKeyDown.InvokeAsync(e);
+    }
+    
+    private async Task HandleKeyUp(KeyboardEventArgs e)
+    {
+        await OnKeyUp.InvokeAsync(e);
+    }
+    
+    private async Task HandleIconClick()
+    {
+        if (OnIconClick.HasDelegate)
+        {
+            await OnIconClick.InvokeAsync();
+        }
+    }
+}
+
+@* 
+Usage Examples:
+
+<!-- Basic text input -->
+<RFormField Label="Full Name" 
+            Placeholder="Enter your full name"
+            @bind-Value="fullName" />
+
+<!-- Email with validation -->
+<RFormField Label="Email Address" 
+            FieldType="FieldType.Email"
+            Placeholder="Enter your email"
+            IsRequired="true"
+            HasError="emailError"
+            ErrorMessage="Please enter a valid email"
+            @bind-Value="email" />
+
+<!-- Password with strength indicator -->
+<RFormField Label="Password" 
+            FieldType="FieldType.Password"
+            Icon="lock"
+            HelpText="Must be at least 8 characters"
+            ShowCharacterCount="true"
+            MaxLength="50"
+            @bind-Value="password" />
+*@

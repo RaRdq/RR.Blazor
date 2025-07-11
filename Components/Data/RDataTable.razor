@@ -1,0 +1,457 @@
+@using RR.Blazor.Enums
+@* RDataTable - Generic data table component with sorting, filtering, and pagination *@
+@typeparam TItem
+
+<CascadingValue Value="this">
+    <div class="bg-elevated rounded-lg overflow-hidden shadow-sm @Class">
+        @if (ShowHeader)
+        {
+            <div class="d-flex justify-between align-center pa-4 border-b">
+                <div class="d-flex flex-column gap-1">
+                    @if (!string.IsNullOrEmpty(Title))
+                    {
+                        <h3 class="text-lg font-semibold text-primary ma-0 @(!string.IsNullOrEmpty(Icon) ? "d-flex align-center gap-2" : "")">
+                            @if (!string.IsNullOrEmpty(Icon))
+                            {
+                                <i class="material-symbols-rounded text-xl">@Icon</i>
+                            }
+                            @Title
+                        </h3>
+                    }
+                    @if (!string.IsNullOrEmpty(Subtitle))
+                    {
+                        <p class="text-sm text-secondary ma-0">@Subtitle</p>
+                    }
+                </div>
+                @if (HeaderActions != null)
+                {
+                    <div class="d-flex gap-2">
+                        @HeaderActions
+                    </div>
+                }
+            </div>
+        }
+
+        @if (ShowFilters && Filters != null)
+        {
+            <div class="pa-4 border-b bg-surface-elevated">
+                @Filters
+            </div>
+        }
+
+        <div class="overflow-x-auto" style="@(!string.IsNullOrEmpty(Height) ? $"height: {Height};" : "")">
+            <table class="@GetTableClass()">
+                @if (ShowTableHeader)
+                {
+                    <thead class="bg-surface-elevated">
+                        <tr class="border-b">
+                            @if (MultiSelection || SingleSelection)
+                            {
+                                <th class="pa-3 w-12">
+                                    @if (MultiSelection)
+                                    {
+                                        <input type="checkbox" 
+                                               checked="@(Items?.Count > 0 && Items.All(i => SelectedItems.Contains(i)))"
+                                               @onchange="@((e) => ToggleAllSelection((bool)e.Value!))" />
+                                    }
+                                </th>
+                            }
+                            @if (ColumnsContent != null)
+                            {
+                                @ColumnsContent
+                            }
+                            else if (GetEffectiveColumns().Any())
+                            {
+                                @foreach (var column in GetEffectiveColumns().Where(c => !c.Hidden))
+                                {
+                                    <th class="pa-3 text-left font-semibold text-primary text-sm @(column.Sortable ? "cursor-pointer hover:bg-secondary transition-colors" : "") @column.HeaderClass"
+                                        style="@GetColumnStyle(column)"
+                                        @onclick="() => column.Sortable ? OnSort.InvokeAsync(column.Key) : Task.CompletedTask">
+                                        @if (column.HeaderTemplate != null)
+                                        {
+                                            @column.HeaderTemplate
+                                        }
+                                        else
+                                        {
+                                            <div class="d-flex align-center gap-2">
+                                                @column.Header
+                                                @if (column.Sortable && SortColumn == column.Key)
+                                                {
+                                                    <i class="material-symbols-rounded text-base text-secondary">
+                                                        @(SortDescending ? "arrow_drop_down" : "arrow_drop_up")
+                                                    </i>
+                                                }
+                                            </div>
+                                        }
+                                    </th>
+                                }
+                            }
+                            else if (TableHeader != null)
+                            {
+                                @TableHeader
+                            }
+                        </tr>
+                    </thead>
+                }
+                <tbody>
+                    @if (Items?.Any() == true)
+                    {
+                        @foreach (var item in Items)
+                        {
+                            @if (RowTemplate != null)
+                            {
+                                @RowTemplate(item)
+                            }
+                            else
+                            {
+                                <tr class="@GetRowClass(item)" @onclick="() => HandleRowClick(item)">
+                                    @if (MultiSelection || SingleSelection)
+                                    {
+                                        <td class="pa-3">
+                                            @if (MultiSelection)
+                                            {
+                                                <input type="checkbox" 
+                                                       checked="@SelectedItems.Contains(item)"
+                                                       @onchange="@((e) => ToggleItemSelection(item, (bool)e.Value!))" />
+                                            }
+                                            else if (SingleSelection)
+                                            {
+                                                <input type="radio" 
+                                                       name="table-selection"
+                                                       checked="@(SelectedItem?.Equals(item) == true)"
+                                                       @onchange="@((e) => { if ((bool)e.Value!) SelectedItem = item; })" />
+                                            }
+                                        </td>
+                                    }
+                                    @foreach (var column in GetEffectiveColumns().Where(c => !c.Hidden))
+                                    {
+                                        <td class="pa-3 text-primary text-sm align-middle @column.CellClass" style="@GetColumnStyle(column)">
+                                            @if (column.CellTemplate != null)
+                                            {
+                                                @column.CellTemplate(item)
+                                            }
+                                            else
+                                            {
+                                                @GetFormattedCellValue(item, column)
+                                            }
+                                        </td>
+                                    }
+                                </tr>
+                            }
+                        }
+                    }
+                    else if (!IsLoading)
+                    {
+                        <tr>
+                            <td colspan="@GetColSpan()" class="pa-8 text-center">
+                                @if (EmptyStateContent != null)
+                                {
+                                    @EmptyStateContent
+                                }
+                                else
+                                {
+                                    <div class="d-flex flex-column align-center gap-3">
+                                        <i class="material-symbols-rounded text-4xl text-muted">inbox</i>
+                                        <p class="text-secondary ma-0">@(EmptyMessage ?? "No data available")</p>
+                                    </div>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (IsLoading)
+        {
+            <div class="d-flex align-center justify-center pa-8">
+                <div class="d-flex align-center gap-3">
+                    <div class="spinner"></div>
+                    <span class="text-secondary">@(LoadingMessage ?? "Loading...")</span>
+                </div>
+            </div>
+        }
+
+        @if (ShowPagination && TotalItems > 0)
+        {
+            <div class="d-flex justify-between align-center pa-4 border-t">
+                <div class="text-sm text-secondary">
+                    Showing @((CurrentPage - 1) * PageSize + 1) to @Math.Min(CurrentPage * PageSize, TotalItems) of @TotalItems entries
+                </div>
+                <div class="d-flex align-center gap-3">
+                    <RButton Variant="ButtonVariant.Ghost" 
+                            Size="ButtonSize.Small" 
+                            Icon="chevron_left" IconPosition="IconPosition.Start" 
+                            OnClick="() => OnPageChange.InvokeAsync(CurrentPage - 1)" 
+                            Disabled="@(CurrentPage <= 1)" />
+                    <span class="text-sm font-medium px-3">Page @CurrentPage of @TotalPages</span>
+                    <RButton Variant="ButtonVariant.Ghost" 
+                            Size="ButtonSize.Small" 
+                            Icon="chevron_right" IconPosition="IconPosition.Start" 
+                            OnClick="() => OnPageChange.InvokeAsync(CurrentPage + 1)" 
+                            Disabled="@(CurrentPage >= TotalPages)" />
+                </div>
+            </div>
+        }
+
+        @if (FooterContent != null)
+        {
+            <div class="pa-4 border-t bg-surface-elevated">
+                @FooterContent
+            </div>
+        }
+    </div>
+</CascadingValue>
+
+@code {
+    // Core Configuration
+    [Parameter] public string Class { get; set; }
+    [Parameter] public List<TItem> Items { get; set; }
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public int Elevation { get; set; } = 2;
+
+    // Header Configuration  
+    [Parameter] public bool ShowHeader { get; set; } = true;
+    [Parameter] public string Title { get; set; }
+    [Parameter] public string Subtitle { get; set; }
+    [Parameter] public string Icon { get; set; }
+    [Parameter] public RenderFragment HeaderActions { get; set; }
+
+    // Filters
+    [Parameter] public bool ShowFilters { get; set; }
+    [Parameter] public RenderFragment Filters { get; set; }
+
+    // Table Configuration
+    [Parameter] public bool ShowTableHeader { get; set; } = true;
+    [Parameter] public List<RDataTableColumn<TItem>> Columns { get; set; }
+    [Parameter] public RenderFragment TableHeader { get; set; }
+    [Parameter] public RenderFragment<TItem> RowTemplate { get; set; }
+    [Parameter] public bool Striped { get; set; }
+    [Parameter] public bool Hoverable { get; set; } = true;
+    [Parameter] public bool Dense { get; set; }
+    [Parameter] public string RowClass { get; set; } = "";
+    
+    // Child Content Support
+    [Parameter] public RenderFragment ColumnsContent { get; set; }
+    [Parameter] public RenderFragment FooterContent { get; set; }
+    [Parameter] public RenderFragment ChildContent { get; set; }
+
+    // Row Interaction
+    [Parameter] public bool IsRowClickable { get; set; }
+    [Parameter] public EventCallback<TItem> OnRowClick { get; set; }
+    [Parameter] public Func<TItem, string> RowClassFunc { get; set; }
+
+    // Selection
+    [Parameter] public bool MultiSelection { get; set; }
+    [Parameter] public bool SingleSelection { get; set; }
+    [Parameter] public List<TItem> SelectedItems { get; set; } = new();
+    [Parameter] public EventCallback<List<TItem>> SelectedItemsChanged { get; set; }
+    [Parameter] public TItem SelectedItem { get; set; }
+    [Parameter] public EventCallback<TItem> SelectedItemChanged { get; set; }
+
+    // Sorting
+    [Parameter] public string SortColumn { get; set; }
+    [Parameter] public bool SortDescending { get; set; }
+    [Parameter] public EventCallback<string> OnSort { get; set; }
+    [Parameter] public bool AllowUnsorted { get; set; } = true;
+
+    // Pagination
+    [Parameter] public bool ShowPagination { get; set; } = true;
+    [Parameter] public int CurrentPage { get; set; } = 1;
+    [Parameter] public int PageSize { get; set; } = 10;
+    [Parameter] public int TotalItems { get; set; }
+    [Parameter] public EventCallback<int> OnPageChange { get; set; }
+    [Parameter] public List<int> PageSizeOptions { get; set; } = new() { 5, 10, 25, 50, 100 };
+
+    // Empty State
+    [Parameter] public string EmptyMessage { get; set; }
+    [Parameter] public RenderFragment EmptyStateContent { get; set; }
+    [Parameter] public string LoadingMessage { get; set; }
+
+    // Advanced Features
+    [Parameter] public bool FixedHeader { get; set; }
+    [Parameter] public string Height { get; set; }
+    [Parameter] public bool Virtualize { get; set; }
+    [Parameter] public float ItemSize { get; set; } = 50f;
+
+    private int TotalPages => (int)Math.Ceiling(TotalItems / (double)PageSize);
+    
+    private List<RDataTableColumn<TItem>> _childColumns = new();
+    
+    protected override void OnInitialized()
+    {
+        _childColumns.Clear();
+        
+        // Auto-calculate TotalItems if not provided and Items exist
+        if (TotalItems == 0 && Items?.Count > 0)
+        {
+            TotalItems = Items.Count;
+        }
+    }
+    
+    public void AddColumn(RDataTableColumn<TItem> column)
+    {
+        _childColumns.Add(column);
+        InvokeAsync(StateHasChanged);
+    }
+    
+    private List<RDataTableColumn<TItem>> GetEffectiveColumns()
+    {
+        return Columns ?? _childColumns;
+    }
+
+    private object GetCellValue(TItem item, string propertyName)
+    {
+        if (item == null) return null;
+        
+        try
+        {
+            var property = typeof(TItem).GetProperty(propertyName);
+            return property?.GetValue(item);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private string GetRowClass(TItem item)
+    {
+        var baseClass = "border-b transition-colors";
+        if (Hoverable) baseClass += " hover:bg-secondary";
+        if (Striped) baseClass += " odd:bg-surface-elevated";
+        if (Dense) baseClass += " py-1";
+        if (IsRowClickable) baseClass += " cursor-pointer hover:bg-secondary";
+        
+        var customClass = RowClassFunc?.Invoke(item) ?? RowClass;
+        
+        return string.IsNullOrEmpty(customClass) ? baseClass : $"{baseClass} {customClass}";
+    }
+
+    private async Task HandleRowClick(TItem item)
+    {
+        if (SingleSelection)
+        {
+            SelectedItem = item;
+            await SelectedItemChanged.InvokeAsync(item);
+        }
+        else if (MultiSelection)
+        {
+            if (SelectedItems.Contains(item))
+            {
+                SelectedItems.Remove(item);
+            }
+            else
+            {
+                SelectedItems.Add(item);
+            }
+            await SelectedItemsChanged.InvokeAsync(SelectedItems);
+        }
+        
+        await OnRowClick.InvokeAsync(item);
+    }
+
+    private string GetTableClass()
+    {
+        var baseClass = "table w-full";
+        if (Dense) baseClass += " table-dense";
+        if (FixedHeader) baseClass += " table-fixed-header";
+        
+        return baseClass;
+    }
+
+    private string GetColumnStyle(RDataTableColumn<TItem> column)
+    {
+        var styles = new List<string>();
+        
+        if (!string.IsNullOrEmpty(column.Width)) styles.Add($"width: {column.Width}");
+        if (!string.IsNullOrEmpty(column.MinWidth)) styles.Add($"min-width: {column.MinWidth}");
+        if (!string.IsNullOrEmpty(column.MaxWidth)) styles.Add($"max-width: {column.MaxWidth}");
+        
+        return string.Join("; ", styles);
+    }
+
+    private object GetFormattedCellValue(TItem item, RDataTableColumn<TItem> column)
+    {
+        var value = column.ValueFunc?.Invoke(item) ?? GetCellValue(item, column.Key);
+        
+        if (value == null) return null;
+        
+        if (!string.IsNullOrEmpty(column.Format))
+        {
+            try
+            {
+                if (value is IFormattable formattable)
+                {
+                    return formattable.ToString(column.Format, null);
+                }
+            }
+            catch
+            {
+                // Fall back to original value if formatting fails
+            }
+        }
+        
+        return value;
+    }
+
+    private int GetColSpan()
+    {
+        var count = GetEffectiveColumns().Count(c => !c.Hidden);
+        if (MultiSelection || SingleSelection) count++;
+        return Math.Max(1, count);
+    }
+
+    private async Task ToggleAllSelection(bool selected)
+    {
+        if (Items == null) return;
+        
+        if (selected)
+        {
+            SelectedItems.Clear();
+            SelectedItems.AddRange(Items);
+        }
+        else
+        {
+            SelectedItems.Clear();
+        }
+        
+        await SelectedItemsChanged.InvokeAsync(SelectedItems);
+    }
+
+    private async Task ToggleItemSelection(TItem item, bool selected)
+    {
+        if (selected)
+        {
+            if (!SelectedItems.Contains(item))
+            {
+                SelectedItems.Add(item);
+            }
+        }
+        else
+        {
+            SelectedItems.Remove(item);
+        }
+        
+        await SelectedItemsChanged.InvokeAsync(SelectedItems);
+    }
+
+    public class RDataTableColumn<T>
+    {
+        public string Key { get; set; } = "";
+        public string Header { get; set; } = "";
+        public bool Sortable { get; set; }
+        public RenderFragment<T> CellTemplate { get; set; }
+        public RenderFragment HeaderTemplate { get; set; }
+        public string Width { get; set; }
+        public string MinWidth { get; set; }
+        public string MaxWidth { get; set; }
+        public bool Resizable { get; set; }
+        public bool Hideable { get; set; } = true;
+        public bool Hidden { get; set; }
+        public string CellClass { get; set; } = "";
+        public string HeaderClass { get; set; } = "";
+        public Func<T, object> ValueFunc { get; set; }
+        public string Format { get; set; }
+    }
+}

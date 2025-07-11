@@ -1,0 +1,74 @@
+@using RR.Blazor.Services
+@using RR.Blazor.Models
+@inject IThemeService ThemeService
+
+<button class="d-inline-flex align-center justify-center clickable border-light bg-elevated text-secondary hover:bg-primary hover:text-inverse rounded-lg transition-fast"
+        style="width: 40px; height: 40px; padding: 0;" 
+        @onclick="ToggleTheme" 
+        title="@GetTooltip()"
+        aria-label="@GetTooltip()">
+    <i class="material-symbols-rounded">@GetThemeIcon()</i>
+</button>
+
+@code {
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public string Style { get; set; } = "";
+    
+    private ThemeMode currentMode = ThemeMode.Light;
+
+    protected override async Task OnInitializedAsync()
+    {
+        currentMode = await ThemeService.GetThemeModeAsync();
+        ThemeService.ThemeChanged += OnThemeChanged;
+    }
+
+    private void OnThemeChanged(ThemeConfiguration theme)
+    {
+        InvokeAsync(() =>
+        {
+            currentMode = theme.Mode;
+            StateHasChanged();
+        });
+    }
+
+    private async Task ToggleTheme()
+    {
+        currentMode = currentMode switch
+        {
+            ThemeMode.Light => ThemeMode.Dark,
+            ThemeMode.Dark => ThemeMode.System,
+            ThemeMode.System => ThemeMode.Light,
+            _ => ThemeMode.Light
+        };
+        
+        await ThemeService.SetThemeModeAsync(currentMode);
+    }
+
+    private string GetThemeIcon()
+    {
+        return currentMode switch
+        {
+            ThemeMode.Light => "light_mode",
+            ThemeMode.Dark => "dark_mode", 
+            ThemeMode.System => "contrast",
+            _ => "light_mode"
+        };
+    }
+
+    private string GetTooltip()
+    {
+        return currentMode switch
+        {
+            ThemeMode.Light => "Switch to dark theme",
+            ThemeMode.Dark => "Switch to system theme",
+            ThemeMode.System => "Switch to light theme", 
+            _ => "Switch theme"
+        };
+    }
+
+    public void Dispose()
+    {
+        ThemeService.ThemeChanged -= OnThemeChanged;
+    }
+}
+

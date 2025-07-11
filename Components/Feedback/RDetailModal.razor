@@ -1,0 +1,196 @@
+@typeparam T
+@* RDetailModal - Object detail display modal *@
+
+<div class="detail-modal">
+    @if (Data != null)
+    {
+        @if (DetailTemplate != null)
+        {
+            @DetailTemplate(Data)
+        }
+        else
+        {
+            <div class="detail-modal__content">
+                @if (ShowPropertyGrid)
+                {
+                    <div class="detail-modal__properties">
+                        @foreach (var property in GetDisplayProperties())
+                        {
+                            <div class="detail-modal__property">
+                                <div class="detail-modal__property-label">@GetPropertyLabel(property.Name)</div>
+                                <div class="detail-modal__property-value">
+                                    @if (property.PropertyType == typeof(bool) || property.PropertyType == typeof(bool?))
+                                    {
+                                        <RBadge Text="@(GetBoolDisplayText(property.GetValue(Data)))"
+                                               Variant="@(GetBoolValue(property.GetValue(Data)) ? BadgeVariant.Success : BadgeVariant.Secondary)" />
+                                    }
+                                    else if (property.PropertyType.IsEnum)
+                                    {
+                                        <RBadge Text="@GetPropertyDisplayValue(property)"
+                                               Variant="BadgeVariant.Primary" />
+                                    }
+                                    else if (property.PropertyType == typeof(DateTime) || property.PropertyType == typeof(DateTime?))
+                                    {
+                                        <span class="text--secondary">@GetDateDisplayValue(property)</span>
+                                    }
+                                    else
+                                    {
+                                        <span>@GetPropertyDisplayValue(property)</span>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    @ChildContent
+                }
+            </div>
+        }
+        
+        @if (ShowMetadata)
+        {
+            <div class="detail-modal__metadata">
+                <div class="detail-modal__metadata-title">Metadata</div>
+                <div class="detail-modal__metadata-content">
+                    <div class="detail-modal__metadata-item">
+                        <span class="detail-modal__metadata-label">Type:</span>
+                        <span class="detail-modal__metadata-value">@typeof(T).Name</span>
+                    </div>
+                    <div class="detail-modal__metadata-item">
+                        <span class="detail-modal__metadata-label">Assembly:</span>
+                        <span class="detail-modal__metadata-value">@typeof(T).Assembly.GetName().Name</span>
+                    </div>
+                    @if (Data is IHasTimestamps timestamped)
+                    {
+                        <div class="detail-modal__metadata-item">
+                            <span class="detail-modal__metadata-label">Created:</span>
+                            <span class="detail-modal__metadata-value">@timestamped.CreatedOn.ToString("g")</span>
+                        </div>
+                        <div class="detail-modal__metadata-item">
+                            <span class="detail-modal__metadata-label">Modified:</span>
+                            <span class="detail-modal__metadata-value">@timestamped.UpdatedOn?.ToString("g")</span>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    }
+    else
+    {
+        <div class="detail-modal__empty">
+            <REmptyState Title="No data available"
+                       Description="The requested data could not be loaded"
+                       Icon="error_outline" />
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public T Data { get; set; }
+    [Parameter] public RenderFragment<T> DetailTemplate { get; set; }
+    [Parameter] public bool ShowPropertyGrid { get; set; } = true;
+    [Parameter] public bool ShowMetadata { get; set; } = false;
+    [Parameter] public List<string> ExcludedProperties { get; set; } = new();
+    [Parameter] public List<string> IncludedProperties { get; set; } = new();
+    [Parameter] public Dictionary<string, string> PropertyLabels { get; set; } = new();
+    [Parameter] public RenderFragment ChildContent { get; set; }
+
+    private IEnumerable<System.Reflection.PropertyInfo> GetDisplayProperties()
+    {
+        var properties = typeof(T).GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)
+            .Where(p => p.CanRead);
+
+        if (IncludedProperties.Any())
+        {
+            properties = properties.Where(p => IncludedProperties.Contains(p.Name));
+        }
+
+        if (ExcludedProperties.Any())
+        {
+            properties = properties.Where(p => !ExcludedProperties.Contains(p.Name));
+        }
+
+        return properties.Where(p => IsDisplayableProperty(p));
+    }
+
+    private bool IsDisplayableProperty(System.Reflection.PropertyInfo property)
+    {
+        var type = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;
+        
+        return type.IsPrimitive 
+            || type == typeof(string) 
+            || type == typeof(DateTime) 
+            || type == typeof(decimal)
+            || type.IsEnum
+            || type == typeof(Guid);
+    }
+
+    private string GetPropertyLabel(string propertyName)
+    {
+        if (PropertyLabels.ContainsKey(propertyName))
+            return PropertyLabels[propertyName];
+
+        return System.Text.RegularExpressions.Regex.Replace(propertyName, "([a-z])([A-Z])", "$1 $2");
+    }
+
+    private string GetPropertyDisplayValue(System.Reflection.PropertyInfo property)
+    {
+        var value = property.GetValue(Data);
+        
+        if (value == null)
+            return "—";
+
+        if (property.PropertyType == typeof(decimal) || property.PropertyType == typeof(decimal?))
+        {
+            return ((decimal)value).ToString("C");
+        }
+
+        if (property.PropertyType == typeof(DateTime) || property.PropertyType == typeof(DateTime?))
+        {
+            return ((DateTime)value).ToString("g");
+        }
+
+        return value.ToString();
+    }
+
+    private string GetDateDisplayValue(System.Reflection.PropertyInfo property)
+    {
+        var value = property.GetValue(Data);
+        
+        if (value == null)
+            return "—";
+
+        var date = (DateTime)value;
+        var now = DateTime.Now;
+        var timespan = now - date;
+
+        if (timespan.TotalDays < 1)
+            return $"{date:t} (today)";
+        if (timespan.TotalDays < 2)
+            return $"{date:t} (yesterday)";
+        if (timespan.TotalDays < 7)
+            return $"{date:ddd, t} ({(int)timespan.TotalDays} days ago)";
+
+        return date.ToString("g");
+    }
+
+    private bool GetBoolValue(object value)
+    {
+        if (value == null) return false;
+        return (bool)value;
+    }
+
+    private string GetBoolDisplayText(object value)
+    {
+        if (value == null) return "No";
+        return (bool)value ? "Yes" : "No";
+    }
+
+    public interface IHasTimestamps
+    {
+        DateTime CreatedOn { get; }
+        DateTime? UpdatedOn { get; }
+    }
+}
