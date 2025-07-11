@@ -1,0 +1,166 @@
+@typeparam T
+@* RSelectModal - Item selection modal component *@
+
+<div class="select-modal">
+    @if (!string.IsNullOrEmpty(SearchPlaceholder))
+    {
+        <div class="select-modal__search">
+            <RFormField Type="FieldType.Search"
+                       Placeholder="@SearchPlaceholder"
+                       Value="@_searchTerm"
+                       OnValueChanged="@OnSearchChanged" />
+        </div>
+    }
+    
+    <div class="select-modal__content">
+        @if (FilteredItems.Any())
+        {
+            <div class="select-modal__list">
+                @foreach (var item in FilteredItems)
+                {
+                    <div class="select-modal__item @(IsSelected(item) ? "selected" : "")"
+                         @onclick="() => ToggleSelection(item)">
+                        
+                        @if (AllowMultiple)
+                        {
+                            <div class="select-modal__checkbox">
+                                <input type="checkbox" checked="@IsSelected(item)" />
+                                <i class="material-symbols-rounded">@(IsSelected(item) ? "check_box" : "check_box_outline_blank")</i>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="select-modal__radio">
+                                <input type="radio" checked="@IsSelected(item)" />
+                                <i class="material-symbols-rounded">@(IsSelected(item) ? "radio_button_checked" : "radio_button_unchecked")</i>
+                            </div>
+                        }
+                        
+                        <div class="select-modal__item-content">
+                            @if (ItemTemplate != null)
+                            {
+                                @ItemTemplate(item)
+                            }
+                            else
+                            {
+                                <span class="select-modal__item-text">@GetDisplayText(item)</span>
+                                @if (!string.IsNullOrEmpty(GetSubText(item)))
+                                {
+                                    <span class="select-modal__item-subtext">@GetSubText(item)</span>
+                                }
+                            }
+                        </div>
+                        
+                        @if (ShowItemActions && ItemActions != null)
+                        {
+                            <div class="select-modal__item-actions">
+                                @ItemActions(item)
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="select-modal__empty">
+                <REmptyState Title="No items found"
+                           Description="@(string.IsNullOrEmpty(_searchTerm) ? "No items available" : "No items match your search")"
+                           Icon="search_off" />
+            </div>
+        }
+    </div>
+    
+    @if (AllowMultiple && SelectedItems.Any())
+    {
+        <div class="select-modal__summary">
+            <span class="select-modal__count">@SelectedItems.Count() item@(SelectedItems.Count() == 1 ? "" : "s") selected</span>
+            
+            @if (ShowSelectedItems)
+            {
+                <div class="select-modal__selected-list">
+                    @foreach (var item in SelectedItems.Take(3))
+                    {
+                        <RBadge Text="@GetDisplayText(item)"
+                               Variant="BadgeVariant.Primary"
+                               OnRemove="@(() => ToggleSelection(item))" />
+                    }
+                    
+                    @if (SelectedItems.Count() > 3)
+                    {
+                        <span class="text-sm text--secondary">+@(SelectedItems.Count() - 3) more</span>
+                    }
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public IEnumerable<T> Items { get; set; } = new List<T>();
+    [Parameter] public bool AllowMultiple { get; set; }
+    [Parameter] public Func<T, string> DisplaySelector { get; set; } = item => item?.ToString() ?? "";
+    [Parameter] public Func<T, string> SubTextSelector { get; set; }
+    [Parameter] public RenderFragment<T> ItemTemplate { get; set; }
+    [Parameter] public RenderFragment<T> ItemActions { get; set; }
+    [Parameter] public bool ShowItemActions { get; set; }
+    [Parameter] public bool ShowSelectedItems { get; set; } = true;
+    [Parameter] public string SearchPlaceholder { get; set; } = "Search items...";
+    [Parameter] public Func<T, string, bool> SearchFilter { get; set; }
+    [Parameter] public EventCallback<T> OnItemSelected { get; set; }
+    [Parameter] public EventCallback<IEnumerable<T>> OnSelectionChanged { get; set; }
+    [Parameter] public EventCallback<T> OnDataChanged { get; set; }
+
+    private readonly HashSet<T> _selectedItems = new();
+    private string _searchTerm = "";
+
+    public IEnumerable<T> SelectedItems => _selectedItems;
+    
+    public IEnumerable<T> FilteredItems
+    {
+        get
+        {
+            if (string.IsNullOrEmpty(_searchTerm))
+                return Items;
+
+            if (SearchFilter != null)
+                return Items.Where(item => SearchFilter(item, _searchTerm));
+
+            return Items.Where(item => GetDisplayText(item).Contains(_searchTerm, StringComparison.OrdinalIgnoreCase));
+        }
+    }
+
+    private async Task OnSearchChanged(object value)
+    {
+        _searchTerm = value?.ToString() ?? "";
+        StateHasChanged();
+    }
+
+    private async Task ToggleSelection(T item)
+    {
+        if (AllowMultiple)
+        {
+            if (_selectedItems.Contains(item))
+                _selectedItems.Remove(item);
+            else
+                _selectedItems.Add(item);
+
+            await OnSelectionChanged.InvokeAsync(SelectedItems);
+        }
+        else
+        {
+            _selectedItems.Clear();
+            _selectedItems.Add(item);
+            await OnItemSelected.InvokeAsync(item);
+            await OnDataChanged.InvokeAsync(item);
+        }
+
+        StateHasChanged();
+    }
+
+    private bool IsSelected(T item) => _selectedItems.Contains(item);
+
+    private string GetDisplayText(T item) => DisplaySelector?.Invoke(item) ?? item?.ToString() ?? "";
+
+    private string GetSubText(T item) => SubTextSelector?.Invoke(item) ?? "";
+}

@@ -1,0 +1,376 @@
+@* RTabs - Tab container component with smooth animations and utility-first CSS *@
+@implements IDisposable
+@inject IJSRuntime JSRuntime
+
+<div class="tabs @CssClass">
+    <!-- Tab Navigation -->
+    <nav class="tabs__nav tabs__nav--@Variant.ToString().ToLower()" role="tablist">
+        <!-- Animated Indicator -->
+        @if (Variant != TabsVariant.Card)
+        {
+            <div class="tabs__indicator" style="@GetIndicatorStyle()"></div>
+        }
+        
+        <!-- Tab Headers -->
+        @foreach (var tab in tabs)
+        {
+            <button type="button"
+                    class="tab @GetTabClasses(tab)"
+                    role="tab"
+                    aria-selected="@(tab.Id == ActiveTabId)"
+                    aria-controls="panel-@tab.Id"
+                    tabindex="@(tab.Id == ActiveTabId ? 0 : -1)"
+                    disabled="@tab.IsDisabled"
+                    @onclick="() => SelectTab(tab.Id)"
+                    @onkeydown="@(e => HandleKeyDown(e, tab.Id))">
+                
+                @if (!string.IsNullOrEmpty(tab.StartIcon))
+                {
+                    <i class="material-symbols-rounded tab__icon tab__icon--start @GetTabIconSize()">@tab.StartIcon</i>
+                }
+                
+                @if (!string.IsNullOrEmpty(tab.Text))
+                {
+                    <span>@tab.Text</span>
+                }
+                
+                @if (tab.BadgeCount > 0)
+                {
+                    <span class="tab__badge @GetBadgeVariant(tab.BadgeVariant)">
+                        @(tab.BadgeCount > 99 ? "99+" : tab.BadgeCount.ToString())
+                    </span>
+                }
+                
+                @if (!string.IsNullOrEmpty(tab.EndIcon))
+                {
+                    <i class="material-symbols-rounded tab__icon tab__icon--end @GetTabIconSize()">@tab.EndIcon</i>
+                }
+                
+                @if (tab.IsClosable)
+                {
+                    <button type="button" 
+                            class="tab__close ml-2 p-1 rounded hover:bg-overlay-dark-10"
+                            @onclick="() => CloseTab(tab.Id)"
+                            @onclick:stopPropagation="true">
+                        <i class="material-symbols-rounded text-xs">close</i>
+                    </button>
+                }
+            </button>
+        }
+        
+        <!-- Add Tab Button -->
+        @if (ShowAddButton)
+        {
+            <button type="button" 
+                    class="tab tab--add-button"
+                    @onclick="HandleAddTab">
+                <i class="material-symbols-rounded text-sm">add</i>
+            </button>
+        }
+    </nav>
+    
+    <!-- Tab Content -->
+    <div class="tabs__content @(NoPadding ? "tabs__content--no-padding" : "")">
+        @foreach (var tab in tabs)
+        {
+            <div id="panel-@tab.Id"
+                 class="tabs__panel @(tab.Id == ActiveTabId ? "tabs__panel--active" : "") @(FadeOnly ? "tabs__panel--fade-only" : "")"
+                 role="tabpanel"
+                 aria-labelledby="tab-@tab.Id"
+                 tabindex="0">
+                @tab.Content
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    /// <summary>Tab variant style</summary>
+    [Parameter] public TabsVariant Variant { get; set; } = TabsVariant.Default;
+    
+    /// <summary>Size of tabs</summary>
+    [Parameter] public ButtonSize Size { get; set; } = ButtonSize.Medium;
+    
+    /// <summary>Active tab ID</summary>
+    [Parameter] public string ActiveTabId { get; set; }
+    
+    /// <summary>Callback when active tab changes</summary>
+    [Parameter] public EventCallback<string> ActiveTabIdChanged { get; set; }
+    
+    /// <summary>Whether to show add tab button</summary>
+    [Parameter] public bool ShowAddButton { get; set; }
+    
+    /// <summary>Whether tab content has no padding</summary>
+    [Parameter] public bool NoPadding { get; set; }
+    
+    /// <summary>Use fade only animation (no slide)</summary>
+    [Parameter] public bool FadeOnly { get; set; }
+    
+    /// <summary>Additional CSS classes</summary>
+    [Parameter] public string CssClass { get; set; }
+    
+    /// <summary>Child content containing RTabItem components</summary>
+    [Parameter] public RenderFragment ChildContent { get; set; }
+    
+    /// <summary>Called when tab selection changes</summary>
+    [Parameter] public EventCallback<TabChangedEventArgs> OnTabChanged { get; set; }
+    
+    /// <summary>Called when add tab button is clicked</summary>
+    [Parameter] public EventCallback OnAddTab { get; set; }
+    
+    /// <summary>Called when tab close button is clicked</summary>
+    [Parameter] public EventCallback<TabClosedEventArgs> OnTabClosed { get; set; }
+    
+    private readonly List<RTabItemInfo> tabs = new();
+    private ElementReference? activeTabElement;
+    private double indicatorLeft = 0;
+    private double indicatorWidth = 0;
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await UpdateIndicatorPosition();
+        }
+    }
+    
+    public void AddTab(RTabItemInfo tab)
+    {
+        tabs.Add(tab);
+        
+        // Set first tab as active if none selected
+        if (string.IsNullOrEmpty(ActiveTabId) && tabs.Count == 1)
+        {
+            ActiveTabId = tab.Id;
+        }
+        
+        StateHasChanged();
+    }
+    
+    public void RemoveTab(string tabId)
+    {
+        var tab = tabs.FirstOrDefault(t => t.Id == tabId);
+        if (tab != null)
+        {
+            tabs.Remove(tab);
+            
+            // Select another tab if removing active tab
+            if (ActiveTabId == tabId && tabs.Any())
+            {
+                var index = tabs.FindIndex(t => t.Id == tabId);
+                if (index > 0)
+                {
+                    ActiveTabId = tabs[index - 1].Id;
+                }
+                else if (tabs.Any())
+                {
+                    ActiveTabId = tabs[0].Id;
+                }
+            }
+            
+            StateHasChanged();
+        }
+    }
+    
+    private async Task SelectTab(string tabId)
+    {
+        if (tabId == ActiveTabId) return;
+        
+        var oldTabId = ActiveTabId;
+        ActiveTabId = tabId;
+        
+        await ActiveTabIdChanged.InvokeAsync(ActiveTabId);
+        await OnTabChanged.InvokeAsync(new TabChangedEventArgs
+        {
+            OldTabId = oldTabId,
+            NewTabId = ActiveTabId
+        });
+        
+        await UpdateIndicatorPosition();
+        StateHasChanged();
+    }
+    
+    private async Task CloseTab(string tabId)
+    {
+        await OnTabClosed.InvokeAsync(new TabClosedEventArgs { TabId = tabId });
+        RemoveTab(tabId);
+    }
+    
+    private async Task HandleAddTab()
+    {
+        await OnAddTab.InvokeAsync();
+    }
+    
+    private async Task HandleKeyDown(KeyboardEventArgs e, string tabId)
+    {
+        switch (e.Key)
+        {
+            case "ArrowLeft":
+                await NavigateTab(-1);
+                break;
+            case "ArrowRight":
+                await NavigateTab(1);
+                break;
+            case "Home":
+                if (tabs.Any())
+                {
+                    await SelectTab(tabs.First().Id);
+                }
+                break;
+            case "End":
+                if (tabs.Any())
+                {
+                    await SelectTab(tabs.Last().Id);
+                }
+                break;
+            case "Delete":
+                if (tabs.FirstOrDefault(t => t.Id == tabId)?.IsClosable == true)
+                {
+                    await CloseTab(tabId);
+                }
+                break;
+        }
+    }
+    
+    private async Task NavigateTab(int direction)
+    {
+        var currentIndex = tabs.FindIndex(t => t.Id == ActiveTabId);
+        if (currentIndex >= 0)
+        {
+            var newIndex = currentIndex + direction;
+            if (newIndex >= 0 && newIndex < tabs.Count)
+            {
+                await SelectTab(tabs[newIndex].Id);
+            }
+        }
+    }
+    
+    private async Task UpdateIndicatorPosition()
+    {
+        if (string.IsNullOrEmpty(ActiveTabId) || Variant == TabsVariant.Card)
+            return;
+            
+        try
+        {
+            var activeTab = tabs.FirstOrDefault(t => t.Id == ActiveTabId);
+            if (activeTab != null)
+            {
+                var result = await JSRuntime.InvokeAsync<TabIndicatorPosition>("RRBlazor.getTabIndicatorPosition", $"tab-{ActiveTabId}");
+                indicatorLeft = result.Left;
+                indicatorWidth = result.Width;
+                StateHasChanged();
+            }
+        }
+        catch
+        {
+            // Fallback if JS fails
+        }
+    }
+    
+    private string GetTabClasses(RTabItemInfo tab)
+    {
+        var classes = new List<string>();
+        
+        // Size classes
+        classes.Add(Size switch
+        {
+            ButtonSize.Small => "tab--small",
+            ButtonSize.Large => "tab--large",
+            _ => ""
+        });
+        
+        // State classes
+        if (tab.Id == ActiveTabId)
+        {
+            classes.Add("tab--active");
+        }
+        
+        if (tab.IsDisabled)
+        {
+            classes.Add("tab--disabled");
+        }
+        
+        return string.Join(" ", classes.Where(c => !string.IsNullOrEmpty(c)));
+    }
+    
+    private string GetTabIconSize() => Size switch
+    {
+        ButtonSize.Small => "text-sm",
+        ButtonSize.Large => "text-lg",
+        _ => "text-base"
+    };
+    
+    private string GetBadgeVariant(string variant) => variant switch
+    {
+        "danger" => "tab__badge--danger",
+        "warning" => "tab__badge--warning",
+        "success" => "tab__badge--success",
+        _ => ""
+    };
+    
+    private string GetIndicatorStyle()
+    {
+        return $"left: {indicatorLeft}px; width: {indicatorWidth}px;";
+    }
+    
+    public void Dispose()
+    {
+        // Cleanup if needed
+    }
+    
+    public class RTabItemInfo
+    {
+        public string Id { get; set; } = Guid.NewGuid().ToString();
+        public string Text { get; set; }
+        public string StartIcon { get; set; }
+        public string EndIcon { get; set; }
+        public bool IsDisabled { get; set; }
+        public bool IsClosable { get; set; }
+        public int BadgeCount { get; set; }
+        public string BadgeVariant { get; set; }
+        public RenderFragment Content { get; set; }
+    }
+    
+    public class TabChangedEventArgs
+    {
+        public string OldTabId { get; set; }
+        public string NewTabId { get; set; }
+    }
+    
+    public class TabClosedEventArgs
+    {
+        public string TabId { get; set; } = "";
+    }
+    
+    private class TabIndicatorPosition
+    {
+        public double Left { get; set; }
+        public double Width { get; set; }
+    }
+}
+
+@* 
+Usage Examples:
+
+<RTabs @bind-ActiveTabId="activeTab" OnTabChanged="HandleTabChanged">
+    <RTabItem Id="tab1" Text="Dashboard" StartIcon="dashboard">
+        <div>Dashboard content here...</div>
+    </RTabItem>
+    <RTabItem Id="tab2" Text="Settings" StartIcon="settings" BadgeCount="3">
+        <div>Settings content here...</div>
+    </RTabItem>
+    <RTabItem Id="tab3" Text="Profile" StartIcon="person" IsClosable="true">
+        <div>Profile content here...</div>
+    </RTabItem>
+</RTabs>
+
+<!-- Pills variant -->
+<RTabs Variant="TabsVariant.Pills" Size="ButtonSize.Small">
+    <!-- Tab items -->
+</RTabs>
+
+<!-- Card variant -->
+<RTabs Variant="TabsVariant.Card" ShowAddButton="true" OnAddTab="HandleAddTab">
+    <!-- Tab items -->
+</RTabs>
+*@

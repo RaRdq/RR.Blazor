@@ -1,0 +1,88 @@
+@* RTabItem - Individual tab item for RTabs component *@
+@implements IDisposable
+
+@code {
+    [CascadingParameter] public RTabs Parent { get; set; }
+    
+    /// <summary>Unique identifier for this tab</summary>
+    [Parameter] public string Id { get; set; } = Guid.NewGuid().ToString();
+    
+    /// <summary>Tab text/title</summary>
+    [Parameter] public string Text { get; set; }
+    
+    /// <summary>Icon at start of tab</summary>
+    [Parameter] public string StartIcon { get; set; }
+    
+    /// <summary>Icon at end of tab</summary>
+    [Parameter] public string EndIcon { get; set; }
+    
+    /// <summary>Whether tab is disabled</summary>
+    [Parameter] public bool IsDisabled { get; set; }
+    
+    /// <summary>Whether tab can be closed</summary>
+    [Parameter] public bool IsClosable { get; set; }
+    
+    /// <summary>Badge count to display</summary>
+    [Parameter] public int BadgeCount { get; set; }
+    
+    /// <summary>Badge variant (danger, warning, success)</summary>
+    [Parameter] public string BadgeVariant { get; set; }
+    
+    /// <summary>Tab content</summary>
+    [Parameter] public RenderFragment ChildContent { get; set; }
+    
+    protected override void OnInitialized()
+    {
+        if (Parent == null)
+        {
+            throw new InvalidOperationException("RTabItem must be used within RTabs component");
+        }
+        
+        Parent.AddTab(new RTabs.RTabItemInfo
+        {
+            Id = Id,
+            Text = Text,
+            StartIcon = StartIcon,
+            EndIcon = EndIcon,
+            IsDisabled = IsDisabled,
+            IsClosable = IsClosable,
+            BadgeCount = BadgeCount,
+            BadgeVariant = BadgeVariant,
+            Content = ChildContent
+        });
+    }
+    
+    public void Dispose()
+    {
+        Parent?.RemoveTab(Id);
+    }
+}
+
+@* 
+Usage Examples:
+
+<!-- Basic tab -->
+<RTabItem Id="home" Text="Home" StartIcon="home">
+    <div>Home content here...</div>
+</RTabItem>
+
+<!-- Tab with badge -->
+<RTabItem Id="notifications" Text="Notifications" StartIcon="notifications" BadgeCount="5" BadgeVariant="danger">
+    <div>Notifications content here...</div>
+</RTabItem>
+
+<!-- Closable tab -->
+<RTabItem Id="document" Text="Document" StartIcon="description" IsClosable="true">
+    <div>Document content here...</div>
+</RTabItem>
+
+<!-- Disabled tab -->
+<RTabItem Id="disabled" Text="Disabled" StartIcon="block" IsDisabled="true">
+    <div>This tab is disabled</div>
+</RTabItem>
+
+<!-- Tab with both icons -->
+<RTabItem Id="settings" Text="Settings" StartIcon="settings" EndIcon="arrow_forward">
+    <div>Settings content here...</div>
+</RTabItem>
+*@

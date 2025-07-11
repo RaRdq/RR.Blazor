@@ -1,0 +1,146 @@
+@* RInfoItem - Reusable component for displaying label-value pairs with optional icons *@
+
+<div class="info-item @GetInfoItemClasses()">
+    <div class="info-item__label @GetLabelClasses()">
+        @if (!string.IsNullOrEmpty(Icon))
+        {
+            <i class="material-symbols-rounded @GetIconClasses()">@Icon</i>
+        }
+        <span>@Label</span>
+        @if (IsRequired)
+        {
+            <span class="text-error ml-1">*</span>
+        }
+    </div>
+    <div class="info-item__value @GetValueClasses()">
+        @if (!string.IsNullOrEmpty(Value))
+        {
+            @Value
+        }
+        @ChildContent
+    </div>
+</div>
+
+@code {
+    /// <summary>Label text for the info item</summary>
+    [Parameter] public string Label { get; set; } = "";
+    
+    /// <summary>Value text for the info item</summary>
+    [Parameter] public string Value { get; set; }
+    
+    /// <summary>Material icon name</summary>
+    [Parameter] public string Icon { get; set; }
+    
+    /// <summary>Whether this field is required</summary>
+    [Parameter] public bool IsRequired { get; set; }
+    
+    /// <summary>Size variant</summary>
+    [Parameter] public InfoItemSize Size { get; set; } = InfoItemSize.Medium;
+    
+    /// <summary>Layout variant</summary>
+    [Parameter] public InfoItemLayout Layout { get; set; } = InfoItemLayout.Vertical;
+    
+    /// <summary>Whether to emphasize the value</summary>
+    [Parameter] public bool EmphasizeValue { get; set; }
+    
+    /// <summary>Additional CSS classes</summary>
+    [Parameter] public string CssClass { get; set; }
+    
+    /// <summary>Custom content for the value area</summary>
+    [Parameter] public RenderFragment ChildContent { get; set; }
+    
+    private string GetInfoItemClasses()
+    {
+        var classes = new List<string> { "d-flex", "gap-2" };
+        
+        classes.Add(Layout switch
+        {
+            InfoItemLayout.Horizontal => "align-center justify-between",
+            InfoItemLayout.Vertical => "flex-column",
+            InfoItemLayout.Inline => "align-center gap-3",
+            _ => "flex-column"
+        });
+        
+        if (!string.IsNullOrEmpty(CssClass))
+        {
+            classes.Add(CssClass);
+        }
+        
+        return string.Join(" ", classes);
+    }
+    
+    private string GetLabelClasses()
+    {
+        var classes = new List<string> { "d-flex", "align-center", "gap-1" };
+        
+        classes.Add(Size switch
+        {
+            InfoItemSize.Small => "text-xs",
+            InfoItemSize.Medium => "text-sm",
+            InfoItemSize.Large => "text-base",
+            _ => "text-sm"
+        });
+        
+        classes.Add("text-secondary font-medium");
+        
+        return string.Join(" ", classes);
+    }
+    
+    private string GetValueClasses()
+    {
+        var classes = new List<string>();
+        
+        classes.Add(Size switch
+        {
+            InfoItemSize.Small => "text-sm",
+            InfoItemSize.Medium => "text-base",
+            InfoItemSize.Large => "text-lg",
+            _ => "text-base"
+        });
+        
+        if (EmphasizeValue)
+        {
+            classes.AddRange(new[] { "font-semibold", "text-primary" });
+        }
+        else
+        {
+            classes.Add("text-primary");
+        }
+        
+        return string.Join(" ", classes);
+    }
+    
+    private string GetIconClasses()
+    {
+        return Size switch
+        {
+            InfoItemSize.Small => "text-sm text-primary",
+            InfoItemSize.Medium => "text-base text-primary",
+            InfoItemSize.Large => "text-lg text-primary",
+            _ => "text-base text-primary"
+        };
+    }
+}
+
+@* 
+Usage Examples:
+
+<!-- Basic info item -->
+<RInfoItem Label="Employee ID" Value="EMP-12345" Icon="badge" />
+
+<!-- Horizontal layout -->
+<RInfoItem Label="Salary" 
+           Value="$75,000" 
+           Icon="payments" 
+           Layout="InfoItemLayout.Horizontal" 
+           EmphasizeValue="true" />
+
+<!-- Custom content -->
+<RInfoItem Label="Status" Icon="info">
+    <span class="px-2 py-1 bg-success-subtle text-success rounded-full text-xs">Active</span>
+</RInfoItem>
+
+<!-- Different sizes -->
+<RInfoItem Label="Category" Value="Technology" Size="InfoItemSize.Small" />
+<RInfoItem Label="Role" Value="Team Lead" Size="InfoItemSize.Large" />
+*@

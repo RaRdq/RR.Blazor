@@ -1,0 +1,259 @@
+@typeparam TValue
+@using Microsoft.AspNetCore.Components
+@implements IDisposable
+
+<div class="dropdown @GetDropdownClass()" @ref="dropdownRef">
+    <!-- Trigger -->
+    <button class="dropdown__trigger @GetTriggerClass()"
+            @onclick="ToggleDropdown"
+            @onkeydown="OnKeyDown"
+            aria-haspopup="true"
+            aria-expanded="@IsOpen"
+            aria-label="@(AriaLabel ?? "Open dropdown")"
+            disabled="@Disabled">
+        @TriggerContent
+    </button>
+
+    <!-- Backdrop -->
+    @if (IsOpen)
+    {
+        <div class="dropdown-backdrop" @onclick="CloseDropdown"></div>
+    }
+
+    <!-- Content -->
+    @if (IsOpen)
+    {
+        <div class="dropdown__viewport">
+            <div class="dropdown__content" @onclick:stopPropagation="true">
+                @if (!string.IsNullOrEmpty(Header))
+                {
+                    <div class="dropdown__header">@Header</div>
+                }
+                
+                @if (IsLoading)
+                {
+                    <div class="dropdown__loading">
+                        <i class="material-symbols-rounded">hourglass_empty</i>
+                        <span>@LoadingText</span>
+                    </div>
+                }
+                else if (Items != null && Items.Any())
+                {
+                    @foreach (var item in Items)
+                    {
+                        <button class="dropdown__item @GetItemClass(item)"
+                                @onclick="() => OnItemSelected(item)"
+                                disabled="@IsItemDisabled(item)">
+                            @if (!string.IsNullOrEmpty(GetItemIcon(item)))
+                            {
+                                <i class="material-symbols-rounded">@GetItemIcon(item)</i>
+                            }
+                            <span>@GetItemLabel(item)</span>
+                            @if (IsItemActive(item))
+                            {
+                                <i class="material-symbols-rounded">check</i>
+                            }
+                        </button>
+                        
+                        @if (ShouldShowSeparatorAfter(item))
+                        {
+                            <div class="dropdown__separator"></div>
+                        }
+                    }
+                }
+                else if (EmptyContent != null)
+                {
+                    @EmptyContent
+                }
+                else
+                {
+                    <div class="dropdown__item dropdown__item--disabled">
+                        <span>@EmptyText</span>
+                    </div>
+                }
+                
+                @if (!string.IsNullOrEmpty(Footer))
+                {
+                    <div class="dropdown__footer">@Footer</div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private ElementReference dropdownRef;
+    private bool isOpen = false;
+
+    [Parameter] public RenderFragment TriggerContent { get; set; }
+    [Parameter] public IEnumerable<TValue> Items { get; set; }
+    [Parameter] public TValue SelectedValue { get; set; }
+    [Parameter] public EventCallback<TValue> SelectedValueChanged { get; set; }
+    [Parameter] public Func<TValue, string> ItemLabelSelector { get; set; }
+    [Parameter] public Func<TValue, string> ItemIconSelector { get; set; }
+    [Parameter] public Func<TValue, bool> ItemDisabledSelector { get; set; }
+    [Parameter] public Func<TValue, bool> SeparatorAfterSelector { get; set; }
+    [Parameter] public DropdownPosition Position { get; set; } = DropdownPosition.Bottom;
+    [Parameter] public string Header { get; set; }
+    [Parameter] public string Footer { get; set; }
+    [Parameter] public RenderFragment EmptyContent { get; set; }
+    [Parameter] public string EmptyText { get; set; } = "No items available";
+    [Parameter] public string LoadingText { get; set; } = "Loading...";
+    [Parameter] public bool IsLoading { get; set; } = false;
+    [Parameter] public bool Disabled { get; set; } = false;
+    [Parameter] public bool CloseOnSelect { get; set; } = true;
+    [Parameter] public string AriaLabel { get; set; }
+    [Parameter] public string AdditionalCssClass { get; set; }
+    [Parameter] public EventCallback OnOpened { get; set; }
+    [Parameter] public EventCallback OnClosed { get; set; }
+
+    private bool IsOpen => isOpen && !Disabled;
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+    }
+
+    private string GetDropdownClass()
+    {
+        var classes = new List<string>();
+        
+        classes.Add($"dropdown--{Position.ToString().ToLower()}");
+        
+        if (!string.IsNullOrEmpty(AdditionalCssClass))
+        {
+            classes.Add(AdditionalCssClass);
+        }
+        
+        return string.Join(" ", classes);
+    }
+
+    private string GetTriggerClass()
+    {
+        var classes = new List<string>();
+        
+        if (IsOpen)
+        {
+            classes.Add("dropdown__trigger--open");
+        }
+        
+        return string.Join(" ", classes);
+    }
+
+    private string GetItemClass(TValue item)
+    {
+        var classes = new List<string>();
+        
+        if (IsItemActive(item))
+        {
+            classes.Add("dropdown__item--active");
+        }
+        
+        if (IsItemDisabled(item))
+        {
+            classes.Add("dropdown__item--disabled");
+        }
+        
+        return string.Join(" ", classes);
+    }
+
+    private bool IsItemActive(TValue item)
+    {
+        return EqualityComparer<TValue>.Default.Equals(item, SelectedValue);
+    }
+
+    private bool IsItemDisabled(TValue item)
+    {
+        return ItemDisabledSelector?.Invoke(item) ?? false;
+    }
+
+    private bool ShouldShowSeparatorAfter(TValue item)
+    {
+        return SeparatorAfterSelector?.Invoke(item) ?? false;
+    }
+
+    private string GetItemLabel(TValue item)
+    {
+        return ItemLabelSelector?.Invoke(item) ?? item?.ToString() ?? "";
+    }
+
+    private string GetItemIcon(TValue item)
+    {
+        return ItemIconSelector?.Invoke(item) ?? "";
+    }
+
+    private async Task ToggleDropdown()
+    {
+        if (Disabled) return;
+        
+        if (isOpen)
+        {
+            await CloseDropdown();
+        }
+        else
+        {
+            await OpenDropdown();
+        }
+    }
+
+    private async Task OpenDropdown()
+    {
+        isOpen = true;
+        await OnOpened.InvokeAsync();
+        StateHasChanged();
+    }
+
+    private async Task CloseDropdown()
+    {
+        isOpen = false;
+        await OnClosed.InvokeAsync();
+        StateHasChanged();
+    }
+
+    private async Task OnItemSelected(TValue item)
+    {
+        if (IsItemDisabled(item)) return;
+        
+        SelectedValue = item;
+        await SelectedValueChanged.InvokeAsync(item);
+        
+        if (CloseOnSelect)
+        {
+            await CloseDropdown();
+        }
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        switch (e.Key)
+        {
+            case "Escape":
+                if (IsOpen)
+                {
+                    await CloseDropdown();
+                }
+                break;
+            case "Enter":
+            case " ":
+                if (!IsOpen)
+                {
+                    await OpenDropdown();
+                }
+                break;
+        }
+    }
+
+    public void Dispose()
+    {
+        // Cleanup if needed
+    }
+}
+
+@code {
+    public enum DropdownPosition
+    {
+        Top,
+        Bottom,
+        Auto
+    }
+}

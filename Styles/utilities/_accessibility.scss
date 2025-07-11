@@ -1,0 +1,242 @@
+@use '../abstracts' as *;
+
+// Accessibility Utilities
+// WCAG 2.1 AA compliant utilities for screen readers and accessible interfaces
+
+// Screen Reader Only
+// Visually hide content but keep it available for screen readers
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+// Focusable Screen Reader Only
+// Same as sr-only but becomes visible when focused (for skip links)
+.sr-only-focusable {
+  &:focus,
+  &:active {
+    position: static;
+    width: auto;
+    height: auto;
+    margin: 0;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+  }
+}
+
+// Skip to Content Link
+.skip-link {
+  @extend .sr-only-focusable;
+  position: absolute;
+  top: var(--space-2);
+  left: var(--space-2);
+  z-index: var(--z-tooltip);
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-background-elevated);
+  color: var(--color-interactive-primary);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  text-decoration: none;
+  font-weight: var(--font-semibold);
+  
+  &:focus {
+    outline: var(--border-2) solid var(--color-interactive-primary);
+    outline-offset: 2px;
+  }
+}
+
+// Focus Ring Utilities
+.focus-ring {
+  &:focus {
+    outline: var(--border-2) solid var(--color-interactive-primary);
+    outline-offset: 2px;
+  }
+  
+  &--inset:focus {
+    outline-offset: -2px;
+  }
+  
+  &--thick:focus {
+    outline-width: 3px;
+  }
+  
+  &--white:focus {
+    outline-color: var(--color-neutral-white);
+  }
+}
+
+// High Contrast Mode Support
+@media (prefers-contrast: high) {
+  .high-contrast-border {
+    border: var(--border-2) solid currentColor !important;
+  }
+  
+  .high-contrast-outline {
+    outline: var(--border-2) solid currentColor !important;
+  }
+  
+  .high-contrast-text {
+    color: CanvasText !important;
+  }
+  
+  .high-contrast-bg {
+    background-color: Canvas !important;
+    color: CanvasText !important;
+  }
+}
+
+// Reduced Motion Support
+@media (prefers-reduced-motion: reduce) {
+  .motion-safe {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+// Motion-Only Classes (only animate when motion is allowed)
+@media (prefers-reduced-motion: no-preference) {
+  .motion-safe-transition {
+    transition: var(--transition-all);
+  }
+  
+  .motion-safe-animate {
+    animation-duration: var(--duration-300);
+  }
+}
+
+// ARIA Live Regions
+.aria-live-polite {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+.aria-live-assertive {
+  @extend .aria-live-polite;
+}
+
+// Keyboard Navigation Indicators
+.keyboard-only {
+  &:focus {
+    outline: var(--border-2) dashed var(--color-interactive-primary);
+    outline-offset: 4px;
+  }
+}
+
+// Touch Target Sizing (WCAG 2.1 AA - 44x44px minimum)
+.touch-target {
+  position: relative;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+    pointer-events: none;
+  }
+  
+  &--lg::before {
+    width: max(100%, 48px);
+    height: max(100%, 48px);
+  }
+}
+
+// Color Contrast Utilities
+.contrast-high {
+  color: var(--color-text-primary);
+  background-color: var(--color-background-elevated);
+}
+
+.contrast-low {
+  opacity: 0.9;
+}
+
+// Text Readability
+.readable {
+  line-height: var(--leading-relaxed);
+  letter-spacing: 0.015em;
+  font-size: max(var(--text-base), 16px); // Ensure minimum 16px
+}
+
+// Focus Trap Container
+.focus-trap {
+  position: relative;
+  
+  &:focus-within {
+    box-shadow: 0 0 0 var(--space-1) var(--overlay-primary-10);
+  }
+}
+
+// Announcement Utility
+[role="status"],
+[role="alert"] {
+  &:empty {
+    display: none;
+  }
+}
+
+// Icon-Only Button Support
+.icon-button-label {
+  @extend .sr-only;
+}
+
+// High Contrast Theme Variables
+[data-high-contrast="true"] {
+  --color-text-primary: #000000;
+  --color-text-secondary: #1a1a1a;
+  --color-text-tertiary: #333333;
+  --color-background-primary: #ffffff;
+  --color-background-secondary: #f0f0f0;
+  --color-background-elevated: #ffffff;
+  --color-border-light: #000000;
+  --color-border-medium: #000000;
+  --color-border-strong: #000000;
+  --color-interactive-primary: #0066cc;
+  --color-interactive-hover: #0052a3;
+  --color-error: #d50000;
+  --color-success: #00701a;
+  --color-warning: #f57c00;
+  
+  // Increase contrast for all borders
+  * {
+    border-color: currentColor !important;
+  }
+  
+  // Stronger shadows
+  --shadow-sm: 0 0 0 1px #000000;
+  --shadow-md: 0 0 0 2px #000000;
+  --shadow-lg: 0 0 0 3px #000000;
+}
+
+// Dark High Contrast
+@media (prefers-color-scheme: dark) {
+  [data-high-contrast="true"] {
+    --color-text-primary: #ffffff;
+    --color-text-secondary: #e0e0e0;
+    --color-text-tertiary: #cccccc;
+    --color-background-primary: #000000;
+    --color-background-secondary: #1a1a1a;
+    --color-background-elevated: #000000;
+    --color-border-light: #ffffff;
+    --color-border-medium: #ffffff;
+    --color-border-strong: #ffffff;
+    --color-interactive-primary: #66b3ff;
+    --color-interactive-hover: #80c0ff;
+    --color-error: #ff6666;
+    --color-success: #66ff66;
+    --color-warning: #ffb366;
+  }
+}

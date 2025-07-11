@@ -1,0 +1,44 @@
+@using Microsoft.JSInterop
+@using RR.Blazor.Services
+@using RR.Blazor.Models
+@inject IJSRuntime JSRuntime
+@inject IThemeService ThemeService
+
+<button class="glass-light rounded-lg pa-2 cursor-pointer d-flex align-center justify-center border-subtle hoverable" 
+        @onclick="ToggleTheme" 
+        title="Toggle theme"
+        style="border: 1px solid var(--color-border-subtle); min-width: 40px; min-height: 40px;">
+    <span class="material-symbols-rounded text-primary" style="font-size: 20px;">
+        @GetThemeIcon()
+    </span>
+</button>
+
+@code {
+    private ThemeMode currentMode = ThemeMode.Light;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Get current theme mode from service
+        currentMode = await ThemeService.GetThemeModeAsync();
+    }
+
+    private async Task ToggleTheme()
+    {
+        // Toggle between light and dark modes
+        currentMode = currentMode == ThemeMode.Light ? ThemeMode.Dark : 
+                      currentMode == ThemeMode.Dark ? ThemeMode.System : ThemeMode.Light;
+        await ThemeService.SetThemeModeAsync(currentMode);
+        StateHasChanged();
+    }
+
+    private string GetThemeIcon()
+    {
+        return currentMode switch
+        {
+            ThemeMode.Light => "dark_mode",
+            ThemeMode.Dark => "light_mode",
+            ThemeMode.System => "contrast",
+            _ => "dark_mode"
+        };
+    }
+}

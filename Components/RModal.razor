@@ -1,0 +1,195 @@
+@* RModal - Generic modal component with comprehensive configuration *@
+
+@if (IsVisible)
+{
+<div class="modal @CssClass" @onclick="HandleBackdropClick">
+    <div class="modal__backdrop"></div>
+    <div class="modal__content @GetSizeClass()" @onclick:stopPropagation="true">
+        @if (ShowHeader)
+        {
+            <div class="modal__header">
+                <div class="modal__header-content">
+                    @if (!string.IsNullOrEmpty(Icon))
+                    {
+                        <i class="material-symbols-rounded text-primary text-xl">@Icon</i>
+                    }
+                    <h3 class="modal__title">@Title</h3>
+                    @if (!string.IsNullOrEmpty(Subtitle))
+                    {
+                        <p class="modal__subtitle">@Subtitle</p>
+                    }
+                </div>
+                <div class="modal__header-actions">
+                    @HeaderActions
+                    @if (ShowCloseButton)
+                    {
+                        <button type="button" class="modal__close" @onclick="HandleClose" disabled="@IsProcessing">
+                            <i class="material-symbols-rounded">close</i>
+                        </button>
+                    }
+                </div>
+            </div>
+        }
+        
+        <div class="modal__body">
+            @if (IsProcessing && ShowProcessingOverlay)
+            {
+                <div class="modal__overlay modal__overlay--processing">
+                    <div class="modal__processing">
+                        <div class="spinner"></div>
+                        <p class="modal__processing-text">@ProcessingMessage</p>
+                    </div>
+                </div>
+            }
+            @ChildContent
+        </div>
+        
+        @if (ShowFooter)
+        {
+            <div class="modal__footer">
+                @if (FooterContent != null)
+                {
+                    @FooterContent
+                }
+                else
+                {
+                    <div class="modal__footer-buttons">
+                        @if (ShowCancelButton)
+                        {
+                            <RButton Variant="ButtonVariant.Ghost" 
+                                    Size="@ButtonSize" 
+                                    StartIcon="@CancelIcon" 
+                                    CssClass="@CancelButtonClass" 
+                                    OnClick="HandleCancel" 
+                                    IsDisabled="@IsProcessing">
+                                @CancelText
+                            </RButton>
+                        }
+                        @if (ShowPrimaryButton)
+                        {
+                            <RButton Variant="ButtonVariant.Primary" 
+                                    Size="@ButtonSize" 
+                                    StartIcon="@(IsProcessing && ShowPrimaryButtonSpinner ? null : PrimaryIcon)" 
+                                    CssClass="@PrimaryButtonClass" 
+                                    OnClick="HandlePrimaryAction" 
+                                    IsDisabled="@(IsProcessing || PrimaryButtonDisabled)"
+                                    IsLoading="@(IsProcessing && ShowPrimaryButtonSpinner)">
+                                @(IsProcessing && !string.IsNullOrEmpty(ProcessingButtonText) ? ProcessingButtonText : PrimaryText)
+                            </RButton>
+                        }
+                    </div>
+                    @if (ShowUnsavedIndicator && HasUnsavedChanges)
+                    {
+                        <div class="modal__unsaved-indicator">
+                            <i class="material-symbols-rounded">info</i>
+                            <span>You have unsaved changes</span>
+                        </div>
+                    }
+                }
+            </div>
+        }
+    </div>
+</div>
+}
+
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public EventCallback<bool> IsVisibleChanged { get; set; }
+    [Parameter] public string Size { get; set; } = "medium";
+    [Parameter] public string Variant { get; set; } = "default";
+    [Parameter] public string CssClass { get; set; }
+    
+    // Header Configuration
+    [Parameter] public bool ShowHeader { get; set; } = true;
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public string Subtitle { get; set; }
+    [Parameter] public string Icon { get; set; }
+    [Parameter] public RenderFragment HeaderActions { get; set; }
+    [Parameter] public bool ShowCloseButton { get; set; } = true;
+    
+    // Footer Configuration
+    [Parameter] public bool ShowFooter { get; set; } = true;
+    [Parameter] public RenderFragment FooterContent { get; set; }
+    [Parameter] public bool ShowCancelButton { get; set; } = true;
+    [Parameter] public string CancelText { get; set; } = "Cancel";
+    [Parameter] public string CancelIcon { get; set; }
+    [Parameter] public string CancelButtonClass { get; set; }
+    [Parameter] public bool ShowPrimaryButton { get; set; } = true;
+    [Parameter] public string PrimaryText { get; set; } = "Save";
+    [Parameter] public string PrimaryIcon { get; set; }
+    [Parameter] public string PrimaryButtonClass { get; set; }
+    [Parameter] public bool PrimaryButtonDisabled { get; set; }
+    [Parameter] public ButtonSize ButtonSize { get; set; } = ButtonSize.Medium;
+    
+    // Processing State
+    [Parameter] public bool IsProcessing { get; set; }
+    [Parameter] public string ProcessingMessage { get; set; } = "Processing...";
+    [Parameter] public string ProcessingButtonText { get; set; }
+    [Parameter] public bool ShowProcessingOverlay { get; set; } = true;
+    [Parameter] public bool ShowPrimaryButtonSpinner { get; set; } = true;
+    
+    // Unsaved Changes
+    [Parameter] public bool ShowUnsavedIndicator { get; set; }
+    [Parameter] public bool HasUnsavedChanges { get; set; }
+    
+    // Behavior Configuration
+    [Parameter] public bool CloseOnBackdrop { get; set; } = true;
+    [Parameter] public bool CloseOnEscape { get; set; } = true;
+    
+    // Event Callbacks
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+    [Parameter] public EventCallback OnPrimaryAction { get; set; }
+    [Parameter] public RenderFragment ChildContent { get; set; }
+    
+    private async Task HandleBackdropClick()
+    {
+        if (CloseOnBackdrop && !IsProcessing && !Variant.Contains("protected"))
+        {
+            await HandleClose();
+        }
+    }
+    
+    private async Task HandleClose()
+    {
+        if (!IsProcessing)
+        {
+            IsVisible = false;
+            await IsVisibleChanged.InvokeAsync(false);
+            await OnClose.InvokeAsync();
+        }
+    }
+    
+    private async Task HandleCancel()
+    {
+        if (!IsProcessing)
+        {
+            if (OnCancel.HasDelegate)
+            {
+                await OnCancel.InvokeAsync();
+            }
+            else
+            {
+                await HandleClose();
+            }
+        }
+    }
+    
+    private async Task HandlePrimaryAction()
+    {
+        if (!IsProcessing && !PrimaryButtonDisabled)
+        {
+            await OnPrimaryAction.InvokeAsync();
+        }
+    }
+    
+    private string GetSizeClass() => Size switch
+    {
+        "small" => "modal__content--small",
+        "large" => "modal__content--large",
+        "xlarge" => "modal__content--xlarge",
+        "wide" => "modal__content--wide",
+        "full" => "modal__content--full",
+        _ => "" // default size
+    };
+}

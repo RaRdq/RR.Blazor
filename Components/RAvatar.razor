@@ -1,0 +1,270 @@
+@* RAvatar - Reusable avatar component with status indicators and theme support *@
+
+<div class="avatar @GetAvatarClasses()" @onclick="HandleClick" role="@(IsClickable ? "button" : null)">
+    @if (!string.IsNullOrEmpty(ImageSrc))
+    {
+        <img src="@ImageSrc" 
+             alt="@Alt" 
+             class="avatar__image @GetImageClasses()" 
+             loading="lazy" />
+    }
+    else if (!string.IsNullOrEmpty(Icon))
+    {
+        <i class="material-symbols-rounded @GetIconClasses()">@Icon</i>
+    }
+    else if (!string.IsNullOrEmpty(Text))
+    {
+        <span class="avatar__text @GetTextClasses()">@Text</span>
+    }
+    else
+    {
+        <i class="material-symbols-rounded @GetIconClasses()">person</i>
+    }
+    
+    @* Status indicator *@
+    @if (ShowStatus)
+    {
+        <div class="avatar__status @GetStatusClasses()"></div>
+    }
+    
+    @* Badge/Count indicator *@
+    @if (ShowBadge && BadgeCount > 0)
+    {
+        <div class="avatar__badge @GetBadgeClasses()">
+            @(BadgeCount > 99 ? "99+" : BadgeCount.ToString())
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>Avatar size variant</summary>
+    [Parameter] public AvatarSize Size { get; set; } = AvatarSize.Medium;
+    
+    /// <summary>Avatar variant style</summary>
+    [Parameter] public AvatarVariant Variant { get; set; } = AvatarVariant.Default;
+    
+    /// <summary>Image source URL</summary>
+    [Parameter] public string ImageSrc { get; set; }
+    
+    /// <summary>Image alt text</summary>
+    [Parameter] public string Alt { get; set; }
+    
+    /// <summary>Text content (typically initials)</summary>
+    [Parameter] public string Text { get; set; }
+    
+    /// <summary>Material icon name</summary>
+    [Parameter] public string Icon { get; set; }
+    
+    /// <summary>Whether to show status indicator</summary>
+    [Parameter] public bool ShowStatus { get; set; }
+    
+    /// <summary>Status state</summary>
+    [Parameter] public AvatarStatus Status { get; set; } = AvatarStatus.None;
+    
+    /// <summary>Whether to show badge</summary>
+    [Parameter] public bool ShowBadge { get; set; }
+    
+    /// <summary>Badge count</summary>
+    [Parameter] public int BadgeCount { get; set; }
+    
+    /// <summary>Whether avatar is clickable</summary>
+    [Parameter] public bool IsClickable { get; set; }
+    
+    /// <summary>Additional CSS classes</summary>
+    [Parameter] public string CssClass { get; set; }
+    
+    /// <summary>Click event handler</summary>
+    [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
+    
+    private string GetAvatarClasses()
+    {
+        var classes = new List<string>
+        {
+            "position-relative",
+            "d-flex",
+            "align-center",
+            "justify-center",
+            "overflow-hidden",
+            "flex-shrink-0"
+        };
+        
+        // Size classes
+        classes.Add(Size switch
+        {
+            AvatarSize.ExtraSmall => "w-6 h-6 text-xs",
+            AvatarSize.Small => "w-8 h-8 text-sm",
+            AvatarSize.Medium => "w-12 h-12 text-base",
+            AvatarSize.Large => "w-16 h-16 text-lg",
+            AvatarSize.ExtraLarge => "w-20 h-20 text-xl",
+            _ => "w-12 h-12 text-base"
+        });
+        
+        // Shape - always circular for avatars
+        classes.Add("rounded-full");
+        
+        // Variant styles
+        switch (Variant)
+        {
+            case AvatarVariant.Default:
+                classes.AddRange(new[] { "bg-secondary", "text-primary", "border-2", "border-medium" });
+                break;
+                
+            case AvatarVariant.Primary:
+                classes.AddRange(new[] { "bg-primary", "text-white", "border-2", "border-primary" });
+                break;
+                
+            case AvatarVariant.Success:
+                classes.AddRange(new[] { "bg-success", "text-white", "border-2", "border-success" });
+                break;
+                
+            case AvatarVariant.Warning:
+                classes.AddRange(new[] { "bg-warning", "text-white", "border-2", "border-warning" });
+                break;
+                
+            case AvatarVariant.Error:
+                classes.AddRange(new[] { "bg-error", "text-white", "border-2", "border-error" });
+                break;
+                
+            case AvatarVariant.Gradient:
+                classes.AddRange(new[] { "bg-gradient-primary", "text-white", "border-2", "border-primary" });
+                break;
+        }
+        
+        // Interactive states
+        if (IsClickable)
+        {
+            classes.AddRange(new[] { "cursor-pointer", "hover:opacity-80", "transition" });
+        }
+        
+        if (!string.IsNullOrEmpty(CssClass))
+        {
+            classes.Add(CssClass);
+        }
+        
+        return string.Join(" ", classes);
+    }
+    
+    private string GetImageClasses()
+    {
+        return "w-full h-full object-cover";
+    }
+    
+    private string GetIconClasses()
+    {
+        return Size switch
+        {
+            AvatarSize.ExtraSmall => "text-xs",
+            AvatarSize.Small => "text-sm",
+            AvatarSize.Medium => "text-lg",
+            AvatarSize.Large => "text-2xl",
+            AvatarSize.ExtraLarge => "text-3xl",
+            _ => "text-lg"
+        };
+    }
+    
+    private string GetTextClasses()
+    {
+        return "font-bold uppercase";
+    }
+    
+    private string GetStatusClasses()
+    {
+        var classes = new List<string>
+        {
+            "position-absolute",
+            "rounded-full",
+            "border-2",
+            "border-white"
+        };
+        
+        // Size based on avatar size
+        classes.Add(Size switch
+        {
+            AvatarSize.ExtraSmall => "w-2 h-2 -bottom-0 -right-0",
+            AvatarSize.Small => "w-3 h-3 -bottom-0 -right-0",
+            AvatarSize.Medium => "w-4 h-4 -bottom-1 -right-1",
+            AvatarSize.Large => "w-5 h-5 -bottom-1 -right-1",
+            AvatarSize.ExtraLarge => "w-6 h-6 -bottom-2 -right-2",
+            _ => "w-4 h-4 -bottom-1 -right-1"
+        });
+        
+        // Status color
+        classes.Add(Status switch
+        {
+            AvatarStatus.Online => "bg-success",
+            AvatarStatus.Away => "bg-warning",
+            AvatarStatus.Busy => "bg-error",
+            AvatarStatus.Offline => "bg-secondary",
+            _ => "bg-secondary"
+        });
+        
+        return string.Join(" ", classes);
+    }
+    
+    private string GetBadgeClasses()
+    {
+        var classes = new List<string>
+        {
+            "position-absolute",
+            "bg-error",
+            "text-white",
+            "text-xs",
+            "font-bold",
+            "rounded-full",
+            "d-flex",
+            "align-center",
+            "justify-center",
+            "min-w-4",
+            "h-4",
+            "px-1"
+        };
+        
+        // Position based on avatar size
+        classes.Add(Size switch
+        {
+            AvatarSize.ExtraSmall => "-top-1 -right-1",
+            AvatarSize.Small => "-top-1 -right-1",
+            AvatarSize.Medium => "-top-2 -right-2",
+            AvatarSize.Large => "-top-2 -right-2",
+            AvatarSize.ExtraLarge => "-top-3 -right-3",
+            _ => "-top-2 -right-2"
+        });
+        
+        return string.Join(" ", classes);
+    }
+    
+    private async Task HandleClick(MouseEventArgs e)
+    {
+        if (IsClickable)
+        {
+            await OnClick.InvokeAsync(e);
+        }
+    }
+}
+
+@* 
+Usage Examples:
+
+<!-- Avatar with initials -->
+<RAvatar Text="JD" Size="AvatarSize.Large" Variant="AvatarVariant.Primary" />
+
+<!-- Avatar with image -->
+<RAvatar ImageSrc="/images/avatar.jpg" Alt="John Doe" ShowStatus="true" Status="AvatarStatus.Online" />
+
+<!-- Avatar with icon -->
+<RAvatar Icon="person" Variant="AvatarVariant.Gradient" Size="AvatarSize.Medium" />
+
+<!-- Clickable avatar with badge -->
+<RAvatar Text="AD" 
+         IsClickable="true" 
+         ShowBadge="true" 
+         BadgeCount="5" 
+         OnClick="HandleAvatarClick" />
+
+<!-- Different sizes -->
+<RAvatar Text="XS" Size="AvatarSize.ExtraSmall" />
+<RAvatar Text="SM" Size="AvatarSize.Small" />
+<RAvatar Text="MD" Size="AvatarSize.Medium" />
+<RAvatar Text="LG" Size="AvatarSize.Large" />
+<RAvatar Text="XL" Size="AvatarSize.ExtraLarge" />
+*@

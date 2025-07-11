@@ -1,0 +1,679 @@
+@* RAppShell - Ultimate one-component app setup for AI-optimized development *@
+
+@using RR.Blazor.Models
+@using RR.Blazor.Services
+@using RR.Blazor.Enums
+@using Microsoft.AspNetCore.Components.Routing
+
+@inherits LayoutComponentBase
+@inject IJSRuntime JS
+@inject IThemeService ThemeService
+@inject IToastService ToastService
+@inject IAppSearchService SearchService
+@inject IAppConfigurationService ConfigService
+@implements IAsyncDisposable
+
+<div class="app-shell min-h-screen d-flex bg-primary" data-theme="@GetEffectiveTheme()">
+    <!-- Sidebar -->
+    @if (ShowSidebar)
+    {
+        <aside class="sidebar @(sidebarCollapsed ? "sidebar--collapsed" : "") @(sidebarOpen || !IsMobile ? "" : "sidebar--closed")">
+            <!-- Logo Area -->
+            <div class="sidebar__header">
+                @if (LogoContent != null)
+                {
+                    @LogoContent
+                }
+                else if (!string.IsNullOrEmpty(Logo))
+                {
+                    <img src="@Logo" alt="@(Title)" class="sidebar__logo" />
+                }
+                else
+                {
+                    <span class="sidebar__brand">@Title</span>
+                }
+            </div>
+            
+            <!-- Navigation -->
+            <nav class="sidebar__nav">
+                @if (Navigation != null)
+                {
+                    <CascadingValue Value="sidebarCollapsed" Name="SidebarCollapsed">
+                        @Navigation
+                    </CascadingValue>
+                }
+                else if (NavigationItems?.Any() == true)
+                {
+                    <RNavMenu Items="@GetVisibleNavItems()" />
+                }
+            </nav>
+            
+            <!-- Sidebar Footer -->
+            @if (SidebarFooter != null)
+            {
+                <div class="sidebar__footer">
+                    @SidebarFooter
+                </div>
+            }
+            else if (CurrentUser != null && ShowUserMenu)
+            {
+                <div class="sidebar__footer">
+                    <div class="user-menu-compact d-flex align-center gap-3 pa-3">
+                        <RAvatar Text="@CurrentUser.GetInitials()" 
+                                 ImageSrc="@CurrentUser.Avatar"
+                                 Size="AvatarSize.Small"
+                                 ShowStatus="true"
+                                 Status="@(CurrentUser.IsOnline ? AvatarStatus.Online : AvatarStatus.Offline)" />
+                        @if (!sidebarCollapsed)
+                        {
+                            <div class="flex-grow-1 min-w-0">
+                                <div class="text-sm font-medium text-truncate">@CurrentUser.GetDisplayName()</div>
+                                <div class="text-xs text-secondary text-truncate">@CurrentUser.Role</div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </aside>
+    }
+
+    <!-- Main Content -->
+    <div class="main-content @(ShowSidebar ? (sidebarCollapsed ? "main-content--collapsed" : "main-content--expanded") : "")" style="@(IsMobile && ShowSidebar ? "margin-left: 0;" : "")">
+        <!-- Header -->
+        @if (ShowHeader)
+        {
+            <header class="header">
+                <div class="header__left">
+                    @if (ShowSidebar && ShowSidebarToggle)
+                    {
+                        <RButton StartIcon="@(IsMobile ? "menu" : (sidebarCollapsed ? "menu_open" : "menu"))"
+                                 Variant="ButtonVariant.Ghost"
+                                 Size="ButtonSize.Small"
+                                 OnClick="ToggleSidebar"
+                                 AriaLabel="Toggle sidebar" />
+                    }
+                    
+                    @if (HeaderLeft != null)
+                    {
+                        @HeaderLeft
+                    }
+                    else
+                    {
+                        <div class="header__title-group">
+                            <h1 class="header__title">@PageTitle</h1>
+                            @if (!string.IsNullOrEmpty(PageSubtitle))
+                            {
+                                <p class="header__subtitle">@PageSubtitle</p>
+                            }
+                        </div>
+                    }
+                    
+                    @if (ShowBreadcrumbs && Breadcrumbs?.Any() == true)
+                    {
+                        <nav class="breadcrumbs ml-4" aria-label="Breadcrumb">
+                            @foreach (var (item, index) in Breadcrumbs.Select((item, index) => (item, index)))
+                            {
+                                @if (index > 0)
+                                {
+                                    <i class="material-symbols-rounded text-sm text-secondary mx-1">chevron_right</i>
+                                }
+                                @if (index == Breadcrumbs.Count - 1)
+                                {
+                                    <span class="text-sm text-secondary">@item.Text</span>
+                                }
+                                else
+                                {
+                                    <a href="@item.Href" class="text-sm text-primary hover:text-primary-dark">@item.Text</a>
+                                }
+                            }
+                        </nav>
+                    }
+                </div>
+                
+                <div class="header__right">
+                    @if (ShowSearch && SearchService != null)
+                    {
+                        <div class="search-container position-relative mr-3">
+                            <RFormField Type="FieldType.Search"
+                                       Placeholder="Search..."
+                                       @bind-Value="searchQuery"
+                                       @bind-Value:after="HandleSearchChange"
+                                       class="w-64" />
+                            @if (showSearchResults && searchResults.Any())
+                            {
+                                <div class="search-results position-absolute top-100 left-0 right-0 bg-elevated elevation-8 rounded-md mt-1 py-2 z-50">
+                                    @foreach (var result in searchResults.Take(8))
+                                    {
+                                        <button class="search-result-item w-full text-left px-3 py-2 hover:bg-secondary d-flex align-center gap-3"
+                                                @onclick="() => HandleSearchResultClick(result)">
+                                            @if (!string.IsNullOrEmpty(result.Icon))
+                                            {
+                                                <i class="material-symbols-rounded text-sm">@result.Icon</i>
+                                            }
+                                            <div class="flex-grow-1 min-w-0">
+                                                <div class="text-sm font-medium text-truncate">@result.Title</div>
+                                                @if (!string.IsNullOrEmpty(result.Description))
+                                                {
+                                                    <div class="text-xs text-secondary text-truncate">@result.Description</div>
+                                                }
+                                            </div>
+                                            <span class="text-xs text-tertiary">@result.Category</span>
+                                        </button>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+                    
+                    @if (ShowNotifications)
+                    {
+                        <RButton StartIcon="notifications"
+                                 Variant="ButtonVariant.Ghost"
+                                 Size="ButtonSize.Small"
+                                 ShowBadge="@(NotificationCount > 0)"
+                                 BadgeCount="@NotificationCount"
+                                 OnClick="HandleNotificationsClick"
+                                 class="mr-2" />
+                    }
+                    
+                    @if (QuickActions != null)
+                    {
+                        @QuickActions
+                    }
+                    
+                    @if (HeaderRight != null)
+                    {
+                        @HeaderRight
+                    }
+                    
+                    @if (ShowThemeToggle)
+                    {
+                        <RButton StartIcon="@GetThemeIcon()"
+                                 Variant="ButtonVariant.Ghost"
+                                 Size="ButtonSize.Small"
+                                 OnClick="ToggleTheme"
+                                 Title="Toggle theme"
+                                 class="mr-2" />
+                    }
+                    
+                    @if (CurrentUser != null && ShowUserMenu && UserMenu != null)
+                    {
+                        <div class="user-menu-dropdown position-relative" @onclick="ToggleUserMenu">
+                            <RButton Variant="ButtonVariant.Ghost" Size="ButtonSize.Small">
+                                <div class="d-flex align-center gap-2">
+                                    <RAvatar Text="@CurrentUser.GetInitials()" 
+                                             ImageSrc="@CurrentUser.Avatar"
+                                             Size="AvatarSize.Small"
+                                             ShowStatus="true"
+                                             Status="@(CurrentUser.IsOnline ? AvatarStatus.Online : AvatarStatus.Offline)" />
+                                    <span class="text-sm font-medium d-none d-md-inline">@CurrentUser.GetDisplayName()</span>
+                                    <i class="material-symbols-rounded text-sm">expand_more</i>
+                                </div>
+                            </RButton>
+                            @if (showUserMenu)
+                            {
+                                <div class="user-menu-content position-absolute top-100 right-0 bg-elevated elevation-8 rounded-md mt-1 py-2 z-50" style="min-width: 250px;">
+                                    @UserMenu
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </header>
+        }
+        
+        <!-- Main Content Area -->
+        <main class="main">
+            @if (ChildContent != null)
+            {
+                @ChildContent
+            }
+            else
+            {
+                @Body
+            }
+        </main>
+        
+        <!-- Status Bar -->
+        @if (ShowStatusBar && StatusBar != null)
+        {
+            <footer class="status-bar">
+                @StatusBar
+            </footer>
+        }
+    </div>
+
+    <!-- Mobile Sidebar Backdrop -->
+    @if (ShowSidebar && sidebarOpen && IsMobile)
+    {
+        <div class="sidebar-backdrop" @onclick="CloseSidebar"></div>
+    }
+    
+    <!-- Quick Actions Floating -->
+    @if (ShowQuickActions && QuickActionsFloating != null)
+    {
+        <div class="quick-actions-floating">
+            @QuickActionsFloating
+        </div>
+    }
+
+    <!-- Toast Container -->
+    @if (ShowToasts)
+    {
+        <RToastContainer />
+    }
+    
+    <!-- Modal Container -->
+    <ModalContainer />
+</div>
+
+<!-- Error UI -->
+<div id="blazor-error-ui" class="blazor-error">
+    <div class="blazor-error__content">
+        <i class="material-symbols-rounded blazor-error__icon">error</i>
+        <h3 class="blazor-error__title">System Error</h3>
+        <p class="blazor-error__message">An unexpected error occurred. Please refresh to continue.</p>
+        <div class="blazor-error__actions">
+            <a href="." class="button button--primary">Reload</a>
+            <button class="button button--secondary" onclick="document.getElementById('blazor-error-ui').style.display='none'">
+                Dismiss
+            </button>
+        </div>
+    </div>
+</div>
+
+@code {
+    private IJSObjectReference jsModule;
+    private bool disposed = false;
+    private bool sidebarCollapsed = false;
+    private bool sidebarOpen = true;
+    private string searchQuery = string.Empty;
+    private List<AppSearchResult> searchResults = new();
+    private bool showSearchResults = false;
+    private bool showUserMenu = false;
+    private Timer searchDebounceTimer;
+    
+    // === CORE PARAMETERS ===
+    
+    /// <summary>App title (required)</summary>
+    [Parameter] public string Title { get; set; } = "RR.Blazor App";
+    
+    /// <summary>Logo image source</summary>
+    [Parameter] public string Logo { get; set; }
+    
+    /// <summary>Current user for user menu and permissions</summary>
+    [Parameter] public AppUser CurrentUser { get; set; }
+    
+    /// <summary>Theme mode (light/dark/system)</summary>
+    [Parameter] public string Theme { get; set; } = "system";
+    
+    // === LAYOUT CONTROL ===
+    
+    /// <summary>Show/hide sidebar</summary>
+    [Parameter] public bool ShowSidebar { get; set; } = true;
+    
+    /// <summary>Show/hide header</summary>
+    [Parameter] public bool ShowHeader { get; set; } = true;
+    
+    /// <summary>Show/hide toast container</summary>
+    [Parameter] public bool ShowToasts { get; set; } = true;
+    
+    /// <summary>Show/hide search functionality</summary>
+    [Parameter] public bool ShowSearch { get; set; } = true;
+    
+    /// <summary>Show/hide notifications button</summary>
+    [Parameter] public bool ShowNotifications { get; set; } = true;
+    
+    /// <summary>Show/hide theme toggle</summary>
+    [Parameter] public bool ShowThemeToggle { get; set; } = true;
+    
+    /// <summary>Show/hide user menu</summary>
+    [Parameter] public bool ShowUserMenu { get; set; } = true;
+    
+    /// <summary>Show/hide sidebar toggle button</summary>
+    [Parameter] public bool ShowSidebarToggle { get; set; } = true;
+    
+    /// <summary>Show/hide breadcrumbs</summary>
+    [Parameter] public bool ShowBreadcrumbs { get; set; } = false;
+    
+    /// <summary>Show/hide status bar</summary>
+    [Parameter] public bool ShowStatusBar { get; set; } = false;
+    
+    /// <summary>Show/hide quick actions</summary>
+    [Parameter] public bool ShowQuickActions { get; set; } = false;
+    
+    // === CONTENT PARAMETERS ===
+    
+    /// <summary>Page title for header</summary>
+    [Parameter] public string PageTitle { get; set; } = "Dashboard";
+    
+    /// <summary>Page subtitle for header</summary>
+    [Parameter] public string PageSubtitle { get; set; }
+    
+    /// <summary>Navigation items (smart default)</summary>
+    [Parameter] public List<AppNavItem> NavigationItems { get; set; }
+    
+    /// <summary>Breadcrumb items</summary>
+    [Parameter] public List<AppNavItem> Breadcrumbs { get; set; }
+    
+    /// <summary>Notification count for badge</summary>
+    [Parameter] public int NotificationCount { get; set; }
+    
+    /// <summary>User permissions for nav filtering</summary>
+    [Parameter] public string[] UserPermissions { get; set; }
+    
+    // === RENDER FRAGMENTS ===
+    
+    /// <summary>Custom logo content</summary>
+    [Parameter] public RenderFragment LogoContent { get; set; }
+    
+    /// <summary>Custom navigation content</summary>
+    [Parameter] public RenderFragment Navigation { get; set; }
+    
+    /// <summary>Sidebar footer content</summary>
+    [Parameter] public RenderFragment SidebarFooter { get; set; }
+    
+    /// <summary>Left side header content</summary>
+    [Parameter] public RenderFragment HeaderLeft { get; set; }
+    
+    /// <summary>Right side header content</summary>
+    [Parameter] public RenderFragment HeaderRight { get; set; }
+    
+    /// <summary>User menu dropdown content</summary>
+    [Parameter] public RenderFragment UserMenu { get; set; }
+    
+    /// <summary>Quick actions in header</summary>
+    [Parameter] public RenderFragment QuickActions { get; set; }
+    
+    /// <summary>Floating quick actions</summary>
+    [Parameter] public RenderFragment QuickActionsFloating { get; set; }
+    
+    /// <summary>Status bar content</summary>
+    [Parameter] public RenderFragment StatusBar { get; set; }
+    
+    /// <summary>Main content</summary>
+    [Parameter] public RenderFragment ChildContent { get; set; }
+    
+    // === EVENT CALLBACKS ===
+    
+    /// <summary>Theme changed callback</summary>
+    [Parameter] public EventCallback<string> ThemeChanged { get; set; }
+    
+    /// <summary>Sidebar state changed callback</summary>
+    [Parameter] public EventCallback<bool> SidebarCollapsedChanged { get; set; }
+    
+    /// <summary>Search query changed callback</summary>
+    [Parameter] public EventCallback<string> SearchChanged { get; set; }
+    
+    /// <summary>Notification button clicked callback</summary>
+    [Parameter] public EventCallback NotificationsClicked { get; set; }
+    
+    /// <summary>User menu clicked callback</summary>
+    [Parameter] public EventCallback<AppUser> UserMenuClicked { get; set; }
+    
+    // === COMPUTED PROPERTIES ===
+    
+    private bool IsMobile => jsModule?.InvokeAsync<bool>("isMobile").Result ?? false;
+    
+    protected override async Task OnInitializedAsync()
+    {
+        // Load configuration
+        await ConfigService.LoadAsync();
+        
+        // Apply configuration defaults
+        if (ConfigService.Current != null)
+        {
+            var config = ConfigService.Current;
+            if (string.IsNullOrEmpty(PageTitle) && !string.IsNullOrEmpty(config.Title))
+                PageTitle = config.Title;
+                
+            ShowSearch = config.ShowSearch;
+            ShowNotifications = config.ShowNotifications;
+            ShowUserMenu = config.ShowUserMenu;
+            ShowBreadcrumbs = config.ShowBreadcrumbs;
+            ShowStatusBar = config.ShowStatusBar;
+            ShowQuickActions = config.ShowQuickActions;
+        }
+        
+        // Set up navigation search provider
+        if (NavigationItems?.Any() == true && ShowSearch)
+        {
+            var navProvider = new NavigationSearchProvider(NavigationItems);
+            SearchService.RegisterSearchProvider(navProvider);
+        }
+        
+        // Set up default navigation if none provided
+        if (NavigationItems == null)
+        {
+            NavigationItems = new List<AppNavItem>
+            {
+                AppNavItems.Dashboard(),
+                AppNavItems.Settings(),
+                AppNavItems.Profile()
+            };
+        }
+    }
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !disposed)
+        {
+            try
+            {
+                jsModule = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/RR.Blazor/js/app-shell.js");
+                await jsModule.InvokeVoidAsync("initialize", Theme);
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"Failed to initialize app shell JS: {ex.Message}");
+            }
+        }
+    }
+    
+    private List<NavMenuItem> GetVisibleNavItems()
+    {
+        if (NavigationItems == null) return new List<NavMenuItem>();
+        
+        return NavigationItems
+            .Where(item => item.CanAccess(CurrentUser, UserPermissions))
+            .Cast<NavMenuItem>()
+            .ToList();
+    }
+    
+    private void ToggleSidebar()
+    {
+        if (IsMobile)
+        {
+            sidebarOpen = !sidebarOpen;
+        }
+        else
+        {
+            sidebarCollapsed = !sidebarCollapsed;
+            SidebarCollapsedChanged.InvokeAsync(sidebarCollapsed);
+        }
+    }
+    
+    private void CloseSidebar()
+    {
+        sidebarOpen = false;
+    }
+    
+    private async Task ToggleTheme()
+    {
+        Theme = Theme switch
+        {
+            "system" => "light",
+            "light" => "dark",
+            "dark" => "system",
+            _ => "system"
+        };
+        
+        await ThemeService.SetThemeModeAsync(Enum.Parse<ThemeMode>(Theme, true));
+        await ThemeChanged.InvokeAsync(Theme);
+    }
+    
+    private string GetThemeIcon() => Theme switch
+    {
+        "light" => "light_mode",
+        "dark" => "dark_mode",
+        _ => "contrast"
+    };
+    
+    private string GetEffectiveTheme()
+    {
+        if (Theme == "system")
+        {
+            return ThemeService.IsSystemDark ? "dark" : "light";
+        }
+        return Theme;
+    }
+    
+    private async Task HandleSearchChange()
+    {
+        searchDebounceTimer?.Dispose();
+        
+        if (string.IsNullOrWhiteSpace(searchQuery))
+        {
+            showSearchResults = false;
+            searchResults.Clear();
+            StateHasChanged();
+            return;
+        }
+        
+        searchDebounceTimer = new Timer(async _ =>
+        {
+            await InvokeAsync(async () =>
+            {
+                searchResults = await SearchService.SearchAsync(searchQuery);
+                showSearchResults = searchResults.Any();
+                StateHasChanged();
+            });
+        }, null, 300, Timeout.Infinite);
+        
+        await SearchChanged.InvokeAsync(searchQuery);
+    }
+    
+    private async Task HandleSearchResultClick(AppSearchResult result)
+    {
+        showSearchResults = false;
+        searchQuery = string.Empty;
+        
+        await SearchService.AddToRecentAsync(result);
+        
+        if (result.OnClick != null)
+        {
+            await result.OnClick();
+        }
+        else if (!string.IsNullOrEmpty(result.Url))
+        {
+            await JS.InvokeVoidAsync("window.location.href", result.Url);
+        }
+        
+        StateHasChanged();
+    }
+    
+    private async Task HandleNotificationsClick()
+    {
+        await NotificationsClicked.InvokeAsync();
+    }
+    
+    private void ToggleUserMenu()
+    {
+        showUserMenu = !showUserMenu;
+    }
+    
+    public async ValueTask DisposeAsync()
+    {
+        if (!disposed)
+        {
+            disposed = true;
+            
+            searchDebounceTimer?.Dispose();
+            
+            if (jsModule != null)
+            {
+                try
+                {
+                    await jsModule.DisposeAsync();
+                }
+                catch { }
+            }
+        }
+    }
+}
+
+@* 
+=== USAGE EXAMPLES ===
+
+<!-- ZERO CONFIG (3 lines!) -->
+<RAppShell Title="MyApp">
+    @Body
+</RAppShell>
+
+<!-- FULL FEATURED ENTERPRISE APP -->
+<RAppShell Title="PayrollAI" 
+           Logo="/logo.svg"
+           CurrentUser="@currentUser"
+           NavigationItems="@navItems"
+           UserPermissions="@userPermissions"
+           Theme="system"
+           ShowSearch="true"
+           ShowNotifications="true"
+           NotificationCount="@notificationCount"
+           PageTitle="@pageTitle"
+           PageSubtitle="@pageSubtitle"
+           Breadcrumbs="@breadcrumbs"
+           OnThemeChanged="HandleThemeChanged"
+           OnSearchChanged="HandleSearchChanged"
+           OnNotificationsClicked="HandleNotificationsClicked">
+    
+    <UserMenu>
+        <div class="user-menu-header pa-4 border-bottom">
+            <div class="d-flex align-center gap-3">
+                <RAvatar Text="@currentUser.GetInitials()" Size="AvatarSize.Medium" />
+                <div>
+                    <div class="font-bold">@currentUser.GetDisplayName()</div>
+                    <div class="text-sm text-secondary">@currentUser.Email</div>
+                </div>
+            </div>
+        </div>
+        <div class="user-menu-body">
+            <RButton Text="Profile" StartIcon="person" Variant="ButtonVariant.Ghost" FullWidth="true" class="justify-start pa-3" />
+            <RButton Text="Settings" StartIcon="settings" Variant="ButtonVariant.Ghost" FullWidth="true" class="justify-start pa-3" />
+            <RButton Text="Help" StartIcon="help" Variant="ButtonVariant.Ghost" FullWidth="true" class="justify-start pa-3" />
+            <div class="border-top mt-2 pt-2">
+                <RButton Text="Logout" StartIcon="logout" Variant="ButtonVariant.Ghost" FullWidth="true" class="justify-start pa-3" />
+            </div>
+        </div>
+    </UserMenu>
+    
+    <QuickActions>
+        <RButton Text="New Employee" StartIcon="add" Variant="ButtonVariant.Primary" Size="ButtonSize.Small" />
+        <RButton Text="Export" StartIcon="download" Variant="ButtonVariant.Secondary" Size="ButtonSize.Small" />
+    </QuickActions>
+    
+    <StatusBar>
+        <div class="d-flex justify-between align-center w-full pa-2 text-sm">
+            <span>Connected • Last sync: @DateTime.Now.ToString("HH:mm")</span>
+            <div class="d-flex gap-4">
+                <span>Users online: @onlineUserCount</span>
+                <RBadge Text="@systemStatus" Variant="@(systemStatus == "Healthy" ? BadgeVariant.Success : BadgeVariant.Warning)" />
+            </div>
+        </div>
+    </StatusBar>
+    
+    <ChildContent>
+        @Body
+    </ChildContent>
+</RAppShell>
+
+<!-- MINIMAL DASHBOARD -->
+<RAppShell Title="Dashboard" 
+           CurrentUser="@user"
+           ShowSearch="false"
+           ShowNotifications="false">
+    <div class="pa-6">
+        <h1>Welcome to your dashboard!</h1>
+    </div>
+</RAppShell>
+*@

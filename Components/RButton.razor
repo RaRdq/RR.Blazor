@@ -1,0 +1,462 @@
+@* RButton - Reusable button component with utility-first CSS approach *@
+
+<button type="@ButtonType.ToString().ToLower()" 
+        class="button @GetButtonClasses()" 
+        disabled="@(Disabled || Loading)"
+        @onclick="HandleClick"
+        @onclick:stopPropagation="StopPropagation"
+        @onclick:preventDefault="PreventDefault"
+        @onmousedown="HandleMouseDown"
+        @onmouseup="HandleMouseUp"
+        @onfocus="HandleFocus"
+        @onblur="HandleBlur"
+        aria-label="@AriaLabel"
+        title="@Title"
+        tabindex="@TabIndex">
+    
+    @if (Loading)
+    {
+        <span class="button__spinner d-inline-flex align-center mr-2">
+            <i class="material-symbols-rounded text-sm">progress_activity</i>
+        </span>
+    }
+    else if (!string.IsNullOrEmpty(StartIcon))
+    {
+        <i class="material-symbols-rounded mr-2 @GetIconSizeClass()">@StartIcon</i>
+    }
+    
+    @if (!string.IsNullOrEmpty(Text))
+    {
+        <span class="@GetTextClass()">@Text</span>
+    }
+    
+    @ChildContent
+    
+    @if (!string.IsNullOrEmpty(EndIcon) && !Loading)
+    {
+        <i class="material-symbols-rounded ml-2 @GetIconSizeClass()">@EndIcon</i>
+    }
+    
+    @if (ShowBadge && BadgeCount > 0)
+    {
+        <span class="button__badge bg-error text-white text-xs rounded-full px-1 py-0 min-w-4 h-4 d-flex align-center justify-center">
+            @(BadgeCount > 99 ? "99+" : BadgeCount.ToString())
+        </span>
+    }
+</button>
+
+@code {
+    /// <summary>Button variant style</summary>
+    [Parameter] public ButtonVariant Variant { get; set; } = ButtonVariant.Primary;
+    
+    /// <summary>Button size</summary>
+    [Parameter] public ButtonSize Size { get; set; } = ButtonSize.Medium;
+    
+    /// <summary>Button type attribute</summary>
+    [Parameter] public ButtonType ButtonType { get; set; } = ButtonType.Button;
+    
+    /// <summary>Button text content</summary>
+    [Parameter] public string Text { get; set; }
+    
+    /// <summary>Icon at start of button</summary>
+    [Parameter] public string StartIcon { get; set; }
+    
+    /// <summary>Icon at end of button</summary>
+    [Parameter] public string EndIcon { get; set; }
+    
+    /// <summary>Whether button is disabled</summary>
+    [Parameter] public bool Disabled { get; set; }
+    
+    /// <summary>Whether button is in loading state</summary>
+    [Parameter] public bool Loading { get; set; }
+    
+    /// <summary>Whether button spans full width</summary>
+    [Parameter] public bool FullWidth { get; set; }
+    
+    /// <summary>Additional CSS classes</summary>
+    [Parameter] public string CssClass { get; set; }
+    
+    /// <summary>Click event handler</summary>
+    [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
+    
+    /// <summary>Mouse down event handler</summary>
+    [Parameter] public EventCallback<MouseEventArgs> OnMouseDown { get; set; }
+    
+    /// <summary>Mouse up event handler</summary>
+    [Parameter] public EventCallback<MouseEventArgs> OnMouseUp { get; set; }
+    
+    /// <summary>Focus event handler</summary>
+    [Parameter] public EventCallback<FocusEventArgs> OnFocus { get; set; }
+    
+    /// <summary>Blur event handler</summary>
+    [Parameter] public EventCallback<FocusEventArgs> OnBlur { get; set; }
+    
+    /// <summary>Child content for custom button content</summary>
+    [Parameter] public RenderFragment ChildContent { get; set; }
+    
+    /// <summary>Accessibility label</summary>
+    [Parameter] public string AriaLabel { get; set; }
+    
+    /// <summary>Title attribute</summary>
+    [Parameter] public string Title { get; set; }
+    
+    /// <summary>Tab index</summary>
+    [Parameter] public int TabIndex { get; set; }
+    
+    /// <summary>Stop click propagation</summary>
+    [Parameter] public bool StopPropagation { get; set; }
+    
+    /// <summary>Prevent default click behavior</summary>
+    [Parameter] public bool PreventDefault { get; set; }
+    
+    /// <summary>Show notification badge</summary>
+    [Parameter] public bool ShowBadge { get; set; }
+    
+    /// <summary>Badge count number</summary>
+    [Parameter] public int BadgeCount { get; set; }
+    
+    /// <summary>Whether button should have rounded corners</summary>
+    [Parameter] public bool Rounded { get; set; } = true;
+    
+    /// <summary>Whether button should have shadow</summary>
+    [Parameter] public bool HasShadow { get; set; } = true;
+    
+    /// <summary>Elevation level (0-24)</summary>
+    [Parameter] public int Elevation { get; set; } = -1;
+    
+    private string GetButtonClasses()
+    {
+        var classes = new List<string>
+        {
+            "d-inline-flex",
+            "align-center",
+            "justify-center",
+            "gap-2",
+            "border",
+            "font-medium",
+            "cursor-pointer",
+            "transition",
+            "position-relative",
+            "text-nowrap"
+        };
+        
+        // Size classes
+        classes.Add(Size switch
+        {
+            ButtonSize.ExtraSmall => "px-2 py-1 text-xs h-6",
+            ButtonSize.Small => "px-3 py-1-5 text-sm h-8",
+            ButtonSize.Medium => "px-4 py-2 text-base h-10",
+            ButtonSize.Large => "px-6 py-3 text-lg h-12",
+            ButtonSize.ExtraLarge => "px-8 py-4 text-xl h-16",
+            _ => "px-4 py-2 text-base h-10"
+        });
+        
+        // Border radius
+        if (Rounded)
+        {
+            classes.Add(Size switch
+            {
+                ButtonSize.ExtraSmall => "rounded-sm",
+                ButtonSize.Small => "rounded",
+                ButtonSize.Medium => "rounded-md",
+                ButtonSize.Large => "rounded-lg",
+                ButtonSize.ExtraLarge => "rounded-xl",
+                _ => "rounded-md"
+            });
+        }
+        
+        // Variant-specific styles using utility classes
+        switch (Variant)
+        {
+            case ButtonVariant.Primary:
+                classes.AddRange(new[]
+                {
+                    "bg-primary",
+                    "text-white",
+                    "border-primary"
+                });
+                if (!Disabled && !Loading)
+                {
+                    classes.AddRange(new[]
+                    {
+                        "hover:bg-primary-hover",
+                        "active:bg-primary-dark",
+                        "focus:shadow-primary"
+                    });
+                }
+                break;
+                
+            case ButtonVariant.Secondary:
+                classes.AddRange(new[]
+                {
+                    "bg-elevated",
+                    "text-primary",
+                    "border-medium"
+                });
+                if (!Disabled && !Loading)
+                {
+                    classes.AddRange(new[]
+                    {
+                        "hover:bg-secondary",
+                        "hover:border-strong",
+                        "active:bg-pressed"
+                    });
+                }
+                break;
+                
+            case ButtonVariant.Ghost:
+                classes.AddRange(new[]
+                {
+                    "bg-transparent",
+                    "text-secondary",
+                    "border-transparent"
+                });
+                if (!Disabled && !Loading)
+                {
+                    classes.AddRange(new[]
+                    {
+                        "hover:bg-secondary",
+                        "hover:text-primary",
+                        "active:bg-pressed"
+                    });
+                }
+                break;
+                
+            case ButtonVariant.Danger:
+                classes.AddRange(new[]
+                {
+                    "bg-error",
+                    "text-white",
+                    "border-error"
+                });
+                if (!Disabled && !Loading)
+                {
+                    classes.AddRange(new[]
+                    {
+                        "hover:bg-error-dark",
+                        "active:bg-error-dark",
+                        "focus:shadow-error"
+                    });
+                }
+                break;
+                
+            case ButtonVariant.Outline:
+                classes.AddRange(new[]
+                {
+                    "bg-transparent",
+                    "text-primary",
+                    "border-primary"
+                });
+                if (!Disabled && !Loading)
+                {
+                    classes.AddRange(new[]
+                    {
+                        "hover:bg-primary",
+                        "hover:text-white",
+                        "active:bg-primary-dark"
+                    });
+                }
+                break;
+                
+            case ButtonVariant.Glass:
+                classes.AddRange(new[]
+                {
+                    "backdrop-blur-sm",
+                    "text-primary",
+                    "border-white",
+                    "bg-overlay-white-10"
+                });
+                if (!Disabled && !Loading)
+                {
+                    classes.AddRange(new[]
+                    {
+                        "hover:bg-overlay-white-20",
+                        "active:bg-overlay-white-30"
+                    });
+                }
+                break;
+                
+            case ButtonVariant.Success:
+                classes.AddRange(new[]
+                {
+                    "bg-success",
+                    "text-white",
+                    "border-success"
+                });
+                if (!Disabled && !Loading)
+                {
+                    classes.AddRange(new[]
+                    {
+                        "hover:bg-success-dark",
+                        "focus:shadow-success"
+                    });
+                }
+                break;
+                
+            case ButtonVariant.Warning:
+                classes.AddRange(new[]
+                {
+                    "bg-warning",
+                    "text-white",
+                    "border-warning"
+                });
+                if (!Disabled && !Loading)
+                {
+                    classes.AddRange(new[]
+                    {
+                        "hover:bg-warning-dark",
+                        "focus:shadow-warning"
+                    });
+                }
+                break;
+        }
+        
+        // Shadow/Elevation
+        if (Elevation >= 0)
+        {
+            // Elevation-based shadow (overrides HasShadow)
+            classes.Add($"elevation-{Math.Min(24, Math.Max(0, Elevation))}");
+            if (!Disabled && !Loading)
+            {
+                var hoverElevation = Math.Min(24, Elevation + 2);
+                classes.Add($"hover:elevation-{hoverElevation}");
+            }
+        }
+        else if (HasShadow && !Disabled)
+        {
+            // Default shadow behavior
+            classes.Add("shadow-sm");
+            if (!Loading)
+            {
+                classes.Add("hover:shadow-md");
+            }
+        }
+        
+        // Disabled state
+        if (Disabled)
+        {
+            classes.AddRange(new[]
+            {
+                "opacity-50",
+                "cursor-not-allowed"
+            });
+        }
+        
+        // Loading state
+        if (Loading)
+        {
+            classes.Add("cursor-default");
+        }
+        
+        // Full width
+        if (FullWidth)
+        {
+            classes.Add("w-full");
+        }
+        
+        // Custom CSS classes
+        if (!string.IsNullOrEmpty(CssClass))
+        {
+            classes.Add(CssClass);
+        }
+        
+        return string.Join(" ", classes);
+    }
+    
+    private string GetIconSizeClass() => Size switch
+    {
+        ButtonSize.ExtraSmall => "text-xs",
+        ButtonSize.Small => "text-sm",
+        ButtonSize.Medium => "text-base",
+        ButtonSize.Large => "text-lg",
+        ButtonSize.ExtraLarge => "text-xl",
+        _ => "text-base"
+    };
+    
+    private string GetTextClass() => Size switch
+    {
+        ButtonSize.ExtraSmall => "text-xs",
+        ButtonSize.Small => "text-sm",
+        ButtonSize.Medium => "text-base",
+        ButtonSize.Large => "text-lg",
+        ButtonSize.ExtraLarge => "text-xl",
+        _ => "text-base"
+    };
+    
+    private async Task HandleClick(MouseEventArgs e)
+    {
+        if (!Disabled && !Loading)
+        {
+            await OnClick.InvokeAsync(e);
+        }
+    }
+    
+    private async Task HandleMouseDown(MouseEventArgs e)
+    {
+        if (!Disabled && !Loading)
+        {
+            await OnMouseDown.InvokeAsync(e);
+        }
+    }
+    
+    private async Task HandleMouseUp(MouseEventArgs e)
+    {
+        if (!Disabled && !Loading)
+        {
+            await OnMouseUp.InvokeAsync(e);
+        }
+    }
+    
+    private async Task HandleFocus(FocusEventArgs e)
+    {
+        if (!Disabled)
+        {
+            await OnFocus.InvokeAsync(e);
+        }
+    }
+    
+    private async Task HandleBlur(FocusEventArgs e)
+    {
+        if (!Disabled)
+        {
+            await OnBlur.InvokeAsync(e);
+        }
+    }
+}
+
+@* 
+Usage Examples:
+
+<!-- Basic primary button -->
+<RButton Text="Save Changes" OnClick="HandleSave" />
+
+<!-- Secondary button with icon -->
+<RButton Variant="ButtonVariant.Secondary" 
+         Text="Cancel" 
+         StartIcon="close" 
+         OnClick="HandleCancel" />
+
+<!-- Loading state -->
+<RButton Text="Processing..." 
+         Loading="true" 
+         Variant="ButtonVariant.Primary" />
+
+<!-- Ghost button with custom content -->
+<RButton Variant="ButtonVariant.Ghost" OnClick="HandleCustomAction">
+    <span class="font-bold">Custom Content</span>
+    <small class="text-muted ml-2">with description</small>
+</RButton>
+
+<!-- Danger button -->
+<RButton Text="Delete" 
+         Variant="ButtonVariant.Danger" 
+         StartIcon="delete"
+         OnClick="HandleDelete" />
+
+<!-- Different sizes -->
+<RButton Text="Extra Small" Size="ButtonSize.ExtraSmall" />
+<RButton Text="Small" Size="ButtonSize.Small" />
+<RButton Text="Medium" Size="ButtonSize.Medium" />
+<RButton Text="Large" Size="ButtonSize.Large" />
+<RButton Text="Extra Large" Size="ButtonSize.ExtraLarge" />
+*@

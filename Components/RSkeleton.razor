@@ -1,0 +1,176 @@
+@namespace RR.Blazor.Components
+@using RR.Blazor.Enums
+
+@if (Count > 1)
+{
+    @for (int i = 0; i < Count; i++)
+    {
+        <div class="@GetWrapperClasses()">
+            @RenderSkeleton()
+        </div>
+    }
+}
+else
+{
+    @RenderSkeleton()
+}
+
+@code {
+    [Parameter] public SkeletonType Type { get; set; } = SkeletonType.Text;
+    [Parameter] public string Width { get; set; } = "100%";
+    [Parameter] public string Height { get; set; } = "auto";
+    [Parameter] public int Count { get; set; } = 1;
+    [Parameter] public bool Animated { get; set; } = true;
+    [Parameter] public string CssClass { get; set; } = string.Empty;
+    [Parameter] public RenderFragment ChildContent { get; set; }
+
+    private RenderFragment RenderSkeleton() => Type switch
+    {
+        SkeletonType.Text => RenderTextSkeleton(),
+        SkeletonType.Title => RenderTitleSkeleton(),
+        SkeletonType.Avatar => RenderAvatarSkeleton(),
+        SkeletonType.Card => RenderCardSkeleton(),
+        SkeletonType.Table => RenderTableSkeleton(),
+        SkeletonType.Custom => ChildContent ?? RenderTextSkeleton(),
+        _ => RenderTextSkeleton()
+    };
+
+    private RenderFragment RenderTextSkeleton() => @<div class="@GetSkeletonClasses()" style="@GetStyle()"></div>;
+
+    private RenderFragment RenderTitleSkeleton() => @<div class="@GetSkeletonClasses() skeleton--title" style="@GetStyle()"></div>;
+
+    private RenderFragment RenderAvatarSkeleton() => 
+        @<div class="d-flex align-center gap-3">
+            <div class="@GetSkeletonClasses() skeleton--avatar"></div>
+            <div class="flex-grow-1">
+                <div class="@GetSkeletonClasses() skeleton--text mb-2" style="width: 60%;"></div>
+                <div class="@GetSkeletonClasses() skeleton--text" style="width: 40%;"></div>
+            </div>
+        </div>;
+
+    private RenderFragment RenderCardSkeleton() => 
+        @<div class="skeleton--card">
+            <div class="@GetSkeletonClasses() skeleton--title mb-4"></div>
+            <div class="@GetSkeletonClasses() skeleton--text mb-2"></div>
+            <div class="@GetSkeletonClasses() skeleton--text mb-2" style="width: 90%;"></div>
+            <div class="@GetSkeletonClasses() skeleton--text" style="width: 60%;"></div>
+        </div>;
+
+    private RenderFragment RenderTableSkeleton() =>
+        @<div class="skeleton--table">
+            <div class="skeleton--table-header mb-3">
+                <div class="@GetSkeletonClasses() skeleton--text"></div>
+            </div>
+            @for (int i = 0; i < 5; i++)
+            {
+                <div class="skeleton--table-row mb-2">
+                    <div class="@GetSkeletonClasses() skeleton--text"></div>
+                </div>
+            }
+        </div>;
+
+    private string GetSkeletonClasses()
+    {
+        var classes = new List<string> { "skeleton" };
+        
+        if (Animated)
+        {
+            classes.Add("skeleton--animated");
+        }
+        
+        if (!string.IsNullOrEmpty(CssClass))
+        {
+            classes.Add(CssClass);
+        }
+        
+        return string.Join(" ", classes);
+    }
+
+    private string GetWrapperClasses()
+    {
+        return Type switch
+        {
+            SkeletonType.Card => "mb-4",
+            SkeletonType.Table => "mb-6",
+            _ => "mb-2"
+        };
+    }
+
+    private string GetStyle()
+    {
+        var styles = new List<string>();
+        
+        if (Width != "100%")
+        {
+            styles.Add($"width: {Width}");
+        }
+        
+        if (Height != "auto")
+        {
+            styles.Add($"height: {Height}");
+        }
+        
+        return string.Join("; ", styles);
+    }
+}
+
+<style>
+    .skeleton {
+        background: linear-gradient(90deg, var(--color-skeleton-base) 0%, var(--color-skeleton-shine) 50%, var(--color-skeleton-base) 100%);
+        background-size: 200% 100%;
+        border-radius: var(--radius-sm);
+        display: inline-block;
+        width: 100%;
+    }
+    
+    .skeleton--animated {
+        animation: skeleton-shimmer 1.5s ease-in-out infinite;
+    }
+    
+    .skeleton--text {
+        height: 1rem;
+    }
+    
+    .skeleton--title {
+        height: 1.5rem;
+        width: 50%;
+    }
+    
+    .skeleton--avatar {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+    
+    .skeleton--card {
+        padding: 1.5rem;
+        background: var(--color-background-elevated);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-sm);
+    }
+    
+    .skeleton--table {
+        background: var(--color-background-elevated);
+        border-radius: var(--radius-lg);
+        padding: 1rem;
+    }
+    
+    .skeleton--table-header {
+        padding: 0.5rem;
+        border-bottom: 1px solid var(--color-border);
+    }
+    
+    .skeleton--table-row {
+        padding: 0.5rem;
+    }
+    
+    @@keyframes skeleton-shimmer {
+        0% {
+            background-position: -200% 0;
+        }
+        100% {
+            background-position: 200% 0;
+        }
+    }
+</style>

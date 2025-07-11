@@ -1,0 +1,512 @@
+@* RCard - Enhanced generic card component with utility-first approach *@
+
+<div class="card @GetCardClasses()" 
+     @onclick="HandleClick"
+     @onclick:stopPropagation="StopPropagation"
+     @onmouseenter="HandleMouseEnter"
+     @onmouseleave="HandleMouseLeave"
+     role="@(IsClickable ? "button" : null)"
+     tabindex="@(IsClickable ? 0 : null)"
+     aria-label="@AriaLabel">
+    
+    @* Header *@
+    @if (HasHeader)
+    {
+        <div class="@GetHeaderClasses()">
+            @if (!string.IsNullOrEmpty(Title) || HeaderContent != null)
+            {
+                <div class="@GetTitleSectionClasses()">
+                    @if (!string.IsNullOrEmpty(StartIcon))
+                    {
+                        <i class="material-symbols-rounded mr-3 @GetIconSizeClass()">@StartIcon</i>
+                    }
+                    
+                    <div class="flex-grow-1">
+                        @if (!string.IsNullOrEmpty(Title))
+                        {
+                            <h3 class="@GetTitleClasses()">@Title</h3>
+                        }
+                        
+                        @if (!string.IsNullOrEmpty(Subtitle))
+                        {
+                            <p class="@GetSubtitleClasses()">@Subtitle</p>
+                        }
+                        
+                        @HeaderContent
+                    </div>
+                </div>
+            }
+            
+            @if (HeaderActions != null)
+            {
+                <div class="@GetHeaderActionsClasses()">
+                    @HeaderActions
+                </div>
+            }
+        </div>
+    }
+    
+    @* Media/Image *@
+    @if (!string.IsNullOrEmpty(ImageSrc) || MediaContent != null)
+    {
+        <div class="@GetMediaClasses()">
+            @if (!string.IsNullOrEmpty(ImageSrc))
+            {
+                <img src="@ImageSrc" 
+                     alt="@ImageAlt" 
+                     class="@GetImageClasses()" 
+                     loading="lazy" />
+            }
+            @MediaContent
+        </div>
+    }
+    
+    @* Content *@
+    @if (ChildContent != null || !string.IsNullOrEmpty(Content))
+    {
+        <div class="@GetContentClasses()">
+            @if (!string.IsNullOrEmpty(Content))
+            {
+                <p class="@GetContentTextClasses()">@Content</p>
+            }
+            @ChildContent
+        </div>
+    }
+    
+    @* Footer *@
+    @if (FooterContent != null || FooterActions != null)
+    {
+        <div class="@GetFooterClasses()">
+            @if (FooterContent != null)
+            {
+                <div class="flex-grow-1">
+                    @FooterContent
+                </div>
+            }
+            
+            @if (FooterActions != null)
+            {
+                <div class="@GetFooterActionsClasses()">
+                    @FooterActions
+                </div>
+            }
+        </div>
+    }
+    
+    @* Loading Overlay *@
+    @if (IsLoading)
+    {
+        <div class="@GetLoadingOverlayClasses()">
+            <div class="d-flex align-center justify-center">
+                <i class="material-symbols-rounded text-primary animate-spin">progress_activity</i>
+                @if (!string.IsNullOrEmpty(LoadingText))
+                {
+                    <span class="ml-2 text-primary">@LoadingText</span>
+                }
+            </div>
+        </div>
+    }
+    
+    @* Ribbon/Badge *@
+    @if (!string.IsNullOrEmpty(RibbonText))
+    {
+        <div class="@GetRibbonClasses()">
+            @RibbonText
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>Card variant style</summary>
+    [Parameter] public CardVariant Variant { get; set; } = CardVariant.Default;
+    
+    /// <summary>Card title</summary>
+    [Parameter] public string Title { get; set; }
+    
+    /// <summary>Card subtitle</summary>
+    [Parameter] public string Subtitle { get; set; }
+    
+    /// <summary>Card content text</summary>
+    [Parameter] public string Content { get; set; }
+    
+    /// <summary>Start icon for header</summary>
+    [Parameter] public string StartIcon { get; set; }
+    
+    /// <summary>Image source URL</summary>
+    [Parameter] public string ImageSrc { get; set; }
+    
+    /// <summary>Image alt text</summary>
+    [Parameter] public string ImageAlt { get; set; }
+    
+    /// <summary>Whether card is clickable</summary>
+    [Parameter] public bool IsClickable { get; set; }
+    
+    /// <summary>Whether card is loading</summary>
+    [Parameter] public bool IsLoading { get; set; }
+    
+    /// <summary>Loading text to display</summary>
+    [Parameter] public string LoadingText { get; set; }
+    
+    /// <summary>Whether card is selected/active</summary>
+    [Parameter] public bool IsSelected { get; set; }
+    
+    /// <summary>Whether card is disabled</summary>
+    [Parameter] public bool IsDisabled { get; set; }
+    
+    /// <summary>Ribbon/badge text</summary>
+    [Parameter] public string RibbonText { get; set; }
+    
+    /// <summary>Ribbon variant</summary>
+    [Parameter] public string RibbonVariant { get; set; } = "primary";
+    
+    /// <summary>Whether to remove padding from content</summary>
+    [Parameter] public bool NoPadding { get; set; }
+    
+    /// <summary>Whether image should be full bleed</summary>
+    [Parameter] public bool FullBleedImage { get; set; }
+    
+    /// <summary>Additional CSS classes</summary>
+    [Parameter] public string CssClass { get; set; }
+    
+    /// <summary>Main content</summary>
+    [Parameter] public RenderFragment ChildContent { get; set; }
+    
+    /// <summary>Header content area</summary>
+    [Parameter] public RenderFragment HeaderContent { get; set; }
+    
+    /// <summary>Header actions area</summary>
+    [Parameter] public RenderFragment HeaderActions { get; set; }
+    
+    /// <summary>Media content area</summary>
+    [Parameter] public RenderFragment MediaContent { get; set; }
+    
+    /// <summary>Footer content area</summary>
+    [Parameter] public RenderFragment FooterContent { get; set; }
+    
+    /// <summary>Footer actions area</summary>
+    [Parameter] public RenderFragment FooterActions { get; set; }
+    
+    /// <summary>Click event handler</summary>
+    [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
+    
+    /// <summary>Mouse enter event handler</summary>
+    [Parameter] public EventCallback<MouseEventArgs> OnMouseEnter { get; set; }
+    
+    /// <summary>Mouse leave event handler</summary>
+    [Parameter] public EventCallback<MouseEventArgs> OnMouseLeave { get; set; }
+    
+    /// <summary>Stop click propagation</summary>
+    [Parameter] public bool StopPropagation { get; set; }
+    
+    /// <summary>Accessibility label</summary>
+    [Parameter] public string AriaLabel { get; set; }
+    
+    /// <summary>Elevation level (0-24)</summary>
+    [Parameter] public int Elevation { get; set; } = -1;
+    
+    private bool HasHeader => !string.IsNullOrEmpty(Title) || HeaderContent != null || HeaderActions != null;
+    
+    private string GetCardClasses()
+    {
+        var classes = new List<string>
+        {
+            "position-relative",
+            "bg-elevated",
+            "border",
+            "rounded-lg",
+            "overflow-hidden",
+            "transition"
+        };
+        
+        // Elevation-based shadow (overrides variant shadows if specified)
+        if (Elevation >= 0)
+        {
+            classes.Add($"elevation-{Math.Min(24, Math.Max(0, Elevation))}");
+        }
+        else
+        {
+            // Default variant styles when elevation not specified
+            switch (Variant)
+            {
+                case CardVariant.Default:
+                    classes.AddRange(new[] { "border-medium", "shadow-sm" });
+                    break;
+                    
+                case CardVariant.Outlined:
+                    classes.AddRange(new[] { "border-medium", "shadow-none" });
+                    break;
+                    
+                case CardVariant.Elevated:
+                    classes.AddRange(new[] { "border-light", "shadow-lg" });
+                    break;
+                    
+                case CardVariant.Glass:
+                    classes.AddRange(new[] { "border-light", "backdrop-blur-sm", "bg-overlay-white-80" });
+                    break;
+                    
+                case CardVariant.Flat:
+                    classes.AddRange(new[] { "border-none", "shadow-none" });
+                    break;
+            }
+        }
+        
+        // Interactive states
+        if (IsClickable && !IsDisabled)
+        {
+            if (Elevation >= 0)
+            {
+                // Elevation-based hover effect
+                var hoverElevation = Math.Min(24, Elevation + 2);
+                classes.AddRange(new[] { "cursor-pointer", $"hover:elevation-{hoverElevation}", "hover:-translate-y-1" });
+            }
+            else
+            {
+                classes.AddRange(new[] { "cursor-pointer", "hover:shadow-md", "hover:-translate-y-1" });
+            }
+        }
+        
+        if (IsSelected)
+        {
+            classes.AddRange(new[] { "border-primary", "shadow-primary" });
+        }
+        
+        if (IsDisabled)
+        {
+            classes.AddRange(new[] { "opacity-50", "cursor-not-allowed" });
+        }
+        
+        if (IsLoading)
+        {
+            classes.Add("card--loading");
+        }
+        
+        if (!string.IsNullOrEmpty(CssClass))
+        {
+            classes.Add(CssClass);
+        }
+        
+        return string.Join(" ", classes);
+    }
+    
+    private string GetHeaderClasses()
+    {
+        var classes = new List<string>
+        {
+            "d-flex",
+            "align-center",
+            "justify-between",
+            "p-4",
+            "border-b",
+            "border-light"
+        };
+        
+        return string.Join(" ", classes);
+    }
+    
+    private string GetTitleSectionClasses()
+    {
+        return "d-flex align-center flex-grow-1";
+    }
+    
+    private string GetTitleClasses()
+    {
+        return "text-lg font-semibold text-primary mb-0";
+    }
+    
+    private string GetSubtitleClasses()
+    {
+        return "text-sm text-secondary mt-1 mb-0";
+    }
+    
+    private string GetHeaderActionsClasses()
+    {
+        return "d-flex align-center gap-2 ml-4";
+    }
+    
+    private string GetMediaClasses()
+    {
+        var classes = new List<string>();
+        
+        if (FullBleedImage)
+        {
+            classes.Add("mx-0");
+        }
+        else
+        {
+            classes.Add("mx-4 mt-4");
+        }
+        
+        return string.Join(" ", classes);
+    }
+    
+    private string GetImageClasses()
+    {
+        var classes = new List<string> { "w-full", "h-auto" };
+        
+        if (!FullBleedImage)
+        {
+            classes.Add("rounded-md");
+        }
+        
+        return string.Join(" ", classes);
+    }
+    
+    private string GetContentClasses()
+    {
+        var classes = new List<string>();
+        
+        if (NoPadding)
+        {
+            classes.Add("p-0");
+        }
+        else
+        {
+            classes.Add("p-4");
+        }
+        
+        if (HasHeader && !FullBleedImage)
+        {
+            classes.Add("pt-0");
+        }
+        
+        return string.Join(" ", classes);
+    }
+    
+    private string GetContentTextClasses()
+    {
+        return "text-base text-primary mb-0";
+    }
+    
+    private string GetFooterClasses()
+    {
+        return "d-flex align-center justify-between p-4 pt-0 border-t border-light mt-4";
+    }
+    
+    private string GetFooterActionsClasses()
+    {
+        return "d-flex align-center gap-2";
+    }
+    
+    private string GetLoadingOverlayClasses()
+    {
+        return "position-absolute inset-0 bg-overlay-white-90 d-flex align-center justify-center z-10";
+    }
+    
+    private string GetRibbonClasses()
+    {
+        var classes = new List<string>
+        {
+            "position-absolute",
+            "top-3",
+            "right-3",
+            "px-2",
+            "py-1",
+            "text-xs",
+            "font-medium",
+            "rounded-full",
+            "z-10"
+        };
+        
+        classes.Add(RibbonVariant switch
+        {
+            "success" => "bg-success text-white",
+            "warning" => "bg-warning text-white",
+            "error" => "bg-error text-white",
+            "info" => "bg-info text-white",
+            _ => "bg-primary text-white"
+        });
+        
+        return string.Join(" ", classes);
+    }
+    
+    private string GetIconSizeClass()
+    {
+        return "text-lg";
+    }
+    
+    private async Task HandleClick(MouseEventArgs e)
+    {
+        if (IsClickable && !IsDisabled && !IsLoading)
+        {
+            await OnClick.InvokeAsync(e);
+        }
+    }
+    
+    private async Task HandleMouseEnter(MouseEventArgs e)
+    {
+        await OnMouseEnter.InvokeAsync(e);
+    }
+    
+    private async Task HandleMouseLeave(MouseEventArgs e)
+    {
+        await OnMouseLeave.InvokeAsync(e);
+    }
+}
+
+@* 
+Usage Examples:
+
+<!-- Basic card -->
+<RCard Title="Basic Card" Content="This is a basic card with title and content." />
+
+<!-- Card with image -->
+<RCard Title="Card with Image" 
+       Subtitle="Beautiful imagery"
+       ImageSrc="/images/sample.jpg"
+       ImageAlt="Sample image"
+       Content="Card content goes here..." />
+
+<!-- Clickable card -->
+<RCard Title="Clickable Card" 
+       Content="Click me!"
+       IsClickable="true"
+       OnClick="HandleCardClick" />
+
+<!-- Card with header actions -->
+<RCard Title="Card with Actions" Subtitle="Management card">
+    <HeaderActions>
+        <RButton Variant="ButtonVariant.Ghost" StartIcon="edit" Size="ButtonSize.Small" />
+        <RButton Variant="ButtonVariant.Ghost" StartIcon="delete" Size="ButtonSize.Small" />
+    </HeaderActions>
+    <div>Card content with action buttons in header</div>
+</RCard>
+
+<!-- Card with footer -->
+<RCard Title="Card with Footer" Content="Main content area">
+    <FooterActions>
+        <RButton Text="Cancel" Variant="ButtonVariant.Secondary" Size="ButtonSize.Small" />
+        <RButton Text="Save" Variant="ButtonVariant.Primary" Size="ButtonSize.Small" />
+    </FooterActions>
+</RCard>
+
+<!-- Different variants -->
+<RCard Variant="CardVariant.Outlined" Title="Outlined Card" />
+<RCard Variant="CardVariant.Elevated" Title="Elevated Card" />
+<RCard Variant="CardVariant.Glass" Title="Glass Card" />
+<RCard Variant="CardVariant.Flat" Title="Flat Card" />
+
+<!-- Elevation levels -->
+<RCard Title="No Shadow" Elevation="0" />
+<RCard Title="Light Shadow" Elevation="1" />
+<RCard Title="Medium Shadow" Elevation="4" />
+<RCard Title="Heavy Shadow" Elevation="8" />
+<RCard Title="Luxury Shadow" Elevation="16" />
+<RCard Title="Maximum Shadow" Elevation="24" />
+
+<!-- Loading card -->
+<RCard Title="Loading Card" 
+       IsLoading="true" 
+       LoadingText="Processing..."
+       Content="This content is hidden while loading" />
+
+<!-- Card with ribbon -->
+<RCard Title="Featured Card" 
+       Content="This card has a ribbon"
+       RibbonText="NEW"
+       RibbonVariant="success" />
+
+<!-- Selected/Active card -->
+<RCard Title="Selected Card" 
+       Content="This card is selected"
+       IsSelected="true" />
+*@

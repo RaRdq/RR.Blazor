@@ -1,0 +1,300 @@
+@inherits LayoutComponentBase
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+<div class="min-h-screen d-flex bg-primary" data-theme="@Theme">
+    <!-- Sidebar -->
+    @if (ShowSidebar)
+    {
+        <aside class="sidebar @(SidebarCollapsed ? "sidebar--collapsed" : "") @(SidebarOpen || !IsMobile ? "" : "sidebar--closed")">
+            <!-- Logo Area -->
+            <div class="sidebar__header">
+                @if (LogoContent != null)
+                {
+                    @LogoContent
+                }
+                else if (!string.IsNullOrEmpty(LogoSrc))
+                {
+                    <img src="@LogoSrc" alt="@LogoAlt" class="sidebar__logo" />
+                }
+                else
+                {
+                    <span class="sidebar__brand">@BrandName</span>
+                }
+            </div>
+            
+            <!-- Navigation -->
+            <nav class="sidebar__nav">
+                @if (NavigationContent != null)
+                {
+                    <CascadingValue Value="SidebarCollapsed" Name="SidebarCollapsed">
+                        @NavigationContent
+                    </CascadingValue>
+                }
+            </nav>
+            
+            <!-- Footer -->
+            @if (SidebarFooterContent != null)
+            {
+                <div class="sidebar__footer">
+                    @SidebarFooterContent
+                </div>
+            }
+        </aside>
+    }
+
+    <!-- Main Content -->
+    <div class="main-content @(ShowSidebar ? (SidebarCollapsed ? "main-content--collapsed" : "main-content--expanded") : "")" style="@(IsMobile && ShowSidebar ? "margin-left: 0;" : "")">
+        <!-- Header -->
+        @if (ShowHeader)
+        {
+            <header class="header">
+                <div class="header__left">
+                    @if (ShowSidebar && ShowSidebarToggle)
+                    {
+                        <button class="header__toggle" type="button" @onclick="ToggleSidebar" aria-label="Toggle sidebar">
+                            <i class="material-symbols-rounded">@(IsMobile ? "menu" : (SidebarCollapsed ? "menu_open" : "menu"))</i>
+                        </button>
+                    }
+                    
+                    @if (HeaderLeftContent != null)
+                    {
+                        @HeaderLeftContent
+                    }
+                    else
+                    {
+                        <div class="header__title-group">
+                            <h1 class="header__title">@PageTitle</h1>
+                            @if (!string.IsNullOrEmpty(PageSubtitle))
+                            {
+                                <p class="header__subtitle">@PageSubtitle</p>
+                            }
+                        </div>
+                    }
+                </div>
+                
+                <div class="header__right">
+                    @if (HeaderRightContent != null)
+                    {
+                        @HeaderRightContent
+                    }
+                    
+                    @if (ShowThemeToggle)
+                    {
+                        <button class="header__action" type="button" @onclick="ToggleTheme" title="Toggle theme">
+                            <i class="material-symbols-rounded">@GetThemeIcon()</i>
+                        </button>
+                    }
+                </div>
+            </header>
+        }
+        
+        <!-- Main Content Area -->
+        <main class="main">
+            @Body
+        </main>
+    </div>
+
+    <!-- Mobile Sidebar Backdrop -->
+    @if (ShowSidebar && SidebarOpen && IsMobile)
+    {
+        <div class="sidebar-backdrop" @onclick="CloseSidebar"></div>
+    }
+
+    <!-- Toast Container -->
+    @if (ShowToasts)
+    {
+        <RToastContainer />
+    }
+</div>
+
+<!-- Error UI -->
+<div id="blazor-error-ui" class="blazor-error">
+    <div class="blazor-error__content">
+        <i class="material-symbols-rounded blazor-error__icon">error</i>
+        <h3 class="blazor-error__title">System Error</h3>
+        <p class="blazor-error__message">An unexpected error occurred. Please refresh to continue.</p>
+        <div class="blazor-error__actions">
+            <a href="." class="button button--primary">Reload</a>
+            <button class="button button--secondary" onclick="document.getElementById('blazor-error-ui').style.display='none'">
+                Dismiss
+            </button>
+        </div>
+    </div>
+</div>
+
+@code {
+    private IJSObjectReference jsModule;
+    private bool disposed = false;
+    
+    /// <summary>Show/hide sidebar</summary>
+    [Parameter] public bool ShowSidebar { get; set; } = true;
+    
+    /// <summary>Show/hide header</summary>
+    [Parameter] public bool ShowHeader { get; set; } = true;
+    
+    /// <summary>Show/hide toast container</summary>
+    [Parameter] public bool ShowToasts { get; set; } = true;
+    
+    /// <summary>Show/hide theme toggle button</summary>
+    [Parameter] public bool ShowThemeToggle { get; set; } = true;
+    
+    /// <summary>Show/hide sidebar toggle button</summary>
+    [Parameter] public bool ShowSidebarToggle { get; set; } = true;
+    
+    /// <summary>Initial sidebar collapsed state</summary>
+    [Parameter] public bool InitialSidebarCollapsed { get; set; } = false;
+    
+    /// <summary>Current theme (light/dark/system)</summary>
+    [Parameter] public string Theme { get; set; } = "system";
+    
+    /// <summary>Theme changed callback</summary>
+    [Parameter] public EventCallback<string> ThemeChanged { get; set; }
+    
+    /// <summary>Page title for header</summary>
+    [Parameter] public string PageTitle { get; set; } = "Application";
+    
+    /// <summary>Page subtitle for header</summary>
+    [Parameter] public string PageSubtitle { get; set; }
+    
+    /// <summary>Brand name for sidebar</summary>
+    [Parameter] public string BrandName { get; set; } = "RR.Blazor";
+    
+    /// <summary>Logo image source</summary>
+    [Parameter] public string LogoSrc { get; set; }
+    
+    /// <summary>Logo image alt text</summary>
+    [Parameter] public string LogoAlt { get; set; } = "Logo";
+    
+    /// <summary>Custom logo content</summary>
+    [Parameter] public RenderFragment LogoContent { get; set; }
+    
+    /// <summary>Navigation content for sidebar</summary>
+    [Parameter] public RenderFragment NavigationContent { get; set; }
+    
+    /// <summary>Footer content for sidebar</summary>
+    [Parameter] public RenderFragment SidebarFooterContent { get; set; }
+    
+    /// <summary>Left side header content</summary>
+    [Parameter] public RenderFragment HeaderLeftContent { get; set; }
+    
+    /// <summary>Right side header content</summary>
+    [Parameter] public RenderFragment HeaderRightContent { get; set; }
+    
+    /// <summary>Mobile breakpoint check</summary>
+    [Parameter] public Func<bool> MobileCheck { get; set; }
+    
+    private bool SidebarCollapsed { get; set; }
+    private bool SidebarOpen { get; set; } = true;
+    private bool IsMobile => MobileCheck?.Invoke() ?? false;
+    
+    protected override void OnInitialized()
+    {
+        SidebarCollapsed = InitialSidebarCollapsed;
+    }
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !disposed)
+        {
+            try
+            {
+                jsModule = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/RR.Blazor/js/layout.js");
+                await jsModule.InvokeVoidAsync("initializeLayout", Theme);
+            }
+            catch (Exception ex)
+            {
+                // Log error but don't crash
+                Console.Error.WriteLine($"Failed to initialize layout JS: {ex.Message}");
+            }
+        }
+    }
+    
+    private void ToggleSidebar()
+    {
+        if (IsMobile)
+        {
+            SidebarOpen = !SidebarOpen;
+        }
+        else
+        {
+            SidebarCollapsed = !SidebarCollapsed;
+        }
+    }
+    
+    private void CloseSidebar()
+    {
+        SidebarOpen = false;
+    }
+    
+    private async Task ToggleTheme()
+    {
+        Theme = Theme switch
+        {
+            "system" => "light",
+            "light" => "dark",
+            "dark" => "system",
+            _ => "system"
+        };
+        
+        if (jsModule != null)
+        {
+            await jsModule.InvokeVoidAsync("setTheme", Theme);
+        }
+        
+        await ThemeChanged.InvokeAsync(Theme);
+    }
+    
+    private string GetThemeIcon() => Theme switch
+    {
+        "light" => "light_mode",
+        "dark" => "dark_mode",
+        _ => "contrast"
+    };
+    
+    public async ValueTask DisposeAsync()
+    {
+        if (!disposed)
+        {
+            disposed = true;
+            
+            if (jsModule != null)
+            {
+                try
+                {
+                    await jsModule.DisposeAsync();
+                }
+                catch { }
+            }
+        }
+    }
+}
+
+@* 
+Usage Example:
+
+// In App.razor:
+<RMainLayout ShowSidebar="true" ShowHeader="true" Theme="system">
+    <NavigationContent>
+        <RNavMenu Items="@navItems" />
+    </NavigationContent>
+    <SidebarFooterContent>
+        <RUserMenu User="@currentUser" />
+    </SidebarFooterContent>
+    <HeaderRightContent>
+        <button class="header__action">
+            <i class="material-symbols-rounded">notifications</i>
+        </button>
+    </HeaderRightContent>
+    <ChildContent>
+        <Router AppAssembly="@typeof(App).Assembly">
+            <Found Context="routeData">
+                <RouteView RouteData="@routeData" DefaultLayout="@typeof(RMainLayout)" />
+            </Found>
+            <NotFound>
+                <REmptyState Title="Page Not Found" Description="The page you're looking for doesn't exist." />
+            </NotFound>
+        </Router>
+    </ChildContent>
+</RMainLayout>
+*@
