@@ -242,12 +242,6 @@ namespace RR.Blazor.ServiceSetup
             public string InfoColor { get; set; } // null = use CSS variable
             public bool AnimationsEnabled { get; set; } = true;
 
-            [Obsolete("Use Mode property instead")]
-            public bool DarkMode
-            {
-                get => Mode == ThemeMode.Dark;
-                set => Mode = value ? ThemeMode.Dark : ThemeMode.Light;
-            }
         }
 
         public class RRBlazorAnimationOptions

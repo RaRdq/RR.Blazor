@@ -2,6 +2,7 @@ namespace RR.Blazor.Enums
 {
     public enum BadgeVariant
     {
+        Default,
         Primary,
         Secondary,
         Success,

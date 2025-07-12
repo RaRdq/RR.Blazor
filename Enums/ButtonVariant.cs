@@ -6,6 +6,7 @@ namespace RR.Blazor.Enums
         Secondary,
         Ghost,
         Danger,
+        Info,
         Outline,
         Glass,
         Success,

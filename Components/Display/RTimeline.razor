@@ -1,0 +1,310 @@
+@* RTimeline - Universal timeline component for business processes and activity feeds *@
+@using RR.Blazor.Enums
+@using RR.Blazor.Models
+
+<div class="timeline @GetTimelineClasses()">
+    @if (Items?.Any() == true)
+    {
+        @foreach (var (item, index) in Items.Select((item, index) => (item, index)))
+        {
+            <div class="timeline-item @GetItemClasses(item, index)">
+                <div class="timeline-item__marker @GetMarkerClasses(item)">
+                    @if (!string.IsNullOrEmpty(item.Icon))
+                    {
+                        <i class="material-symbols-rounded text-xs">@item.Icon</i>
+                    }
+                    else if (!string.IsNullOrEmpty(item.Avatar))
+                    {
+                        <img src="@item.Avatar" alt="@item.Title" class="w-6 h-6 rounded-full" />
+                    }
+                </div>
+                
+                <div class="timeline-item__content">
+                    <div class="timeline-item__header">
+                        @if (!string.IsNullOrEmpty(item.Title))
+                        {
+                            <h4 class="timeline-item__title">@item.Title</h4>
+                        }
+                        
+                        @if (item.Timestamp.HasValue)
+                        {
+                            <time class="timeline-item__time" datetime="@item.Timestamp.Value.ToString("yyyy-MM-ddTHH:mm:ss")">
+                                @GetFormattedTime(item.Timestamp.Value)
+                            </time>
+                        }
+                    </div>
+                    
+                    @if (!string.IsNullOrEmpty(item.Description))
+                    {
+                        <div class="timeline-item__description">@item.Description</div>
+                    }
+                    
+                    @if (!string.IsNullOrEmpty(item.Subtitle))
+                    {
+                        <div class="timeline-item__subtitle">@item.Subtitle</div>
+                    }
+                    
+                    @if (item.Tags?.Any() == true)
+                    {
+                        <div class="timeline-item__tags">
+                            @foreach (var tag in item.Tags)
+                            {
+                                <span class="timeline-item__tag">@tag</span>
+                            }
+                        </div>
+                    }
+                    
+                    @if (item.Actions?.Any() == true)
+                    {
+                        <div class="timeline-item__actions">
+                            @foreach (var action in item.Actions)
+                            {
+                                <RButton Text="@action.Text"
+                                        Icon="@action.Icon"
+                                        IconPosition="IconPosition.Start"
+                                        Variant="@action.Variant"
+                                        Size="ButtonSize.Small"
+                                        OnClick="@(async () => await action.OnClick.InvokeAsync())" />
+                            }
+                        </div>
+                    }
+                    
+                    @if (item.CustomContent != null)
+                    {
+                        <div class="timeline-item__custom">
+                            @item.CustomContent
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    }
+    else if (!IsLoading)
+    {
+        <REmptyState Title="No Timeline Items"
+                     Description="There are no items to display in this timeline."
+                     Icon="timeline" />
+    }
+    
+    @if (IsLoading)
+    {
+        <div class="timeline__loading">
+            @for (int i = 0; i < LoadingItemCount; i++)
+            {
+                <div class="timeline-item timeline-item--skeleton">
+                    <div class="timeline-item__marker timeline-item__marker--skeleton"></div>
+                    <div class="timeline-item__content">
+                        <div class="skeleton-text skeleton-text--title"></div>
+                        <div class="skeleton-text skeleton-text--line"></div>
+                        <div class="skeleton-text skeleton-text--line" style="width: 75%;"></div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>Timeline items to display</summary>
+    [Parameter] public List<TimelineItem> Items { get; set; } = new();
+    
+    /// <summary>Timeline variant</summary>
+    [Parameter] public string Variant { get; set; } = "default";
+    
+    /// <summary>Whether timeline is loading</summary>
+    [Parameter] public bool IsLoading { get; set; }
+    
+    /// <summary>Number of skeleton items to show when loading</summary>
+    [Parameter] public int LoadingItemCount { get; set; } = 3;
+    
+    /// <summary>Date format for timestamps</summary>
+    [Parameter] public string DateFormat { get; set; } = "MMM dd, yyyy HH:mm";
+    
+    /// <summary>Whether to show relative times (e.g., "2 hours ago")</summary>
+    [Parameter] public bool ShowRelativeTime { get; set; } = true;
+    
+    /// <summary>Additional CSS classes</summary>
+    [Parameter] public string Class { get; set; }
+    
+    /// <summary>Whether timeline is compact</summary>
+    [Parameter] public bool IsCompact { get; set; }
+    
+    /// <summary>Timeline orientation</summary>
+    [Parameter] public string Orientation { get; set; } = "vertical"; // vertical, horizontal
+
+    private string GetTimelineClasses()
+    {
+        var classes = new List<string>();
+        
+        classes.Add($"timeline--{Variant}");
+        classes.Add($"timeline--{Orientation}");
+        
+        if (IsCompact)
+        {
+            classes.Add("timeline--compact");
+        }
+        
+        if (!string.IsNullOrEmpty(Class))
+        {
+            classes.Add(Class);
+        }
+        
+        return string.Join(" ", classes);
+    }
+
+    private string GetItemClasses(TimelineItem item, int index)
+    {
+        var classes = new List<string>();
+        
+        if (!string.IsNullOrEmpty(item.Status))
+        {
+            classes.Add($"timeline-item--{item.Status}");
+        }
+        
+        if (item.IsHighlighted)
+        {
+            classes.Add("timeline-item--highlighted");
+        }
+        
+        if (index == 0)
+        {
+            classes.Add("timeline-item--first");
+        }
+        
+        if (index == Items.Count - 1)
+        {
+            classes.Add("timeline-item--last");
+        }
+        
+        return string.Join(" ", classes);
+    }
+
+    private string GetMarkerClasses(TimelineItem item)
+    {
+        var classes = new List<string>();
+        
+        if (!string.IsNullOrEmpty(item.Status))
+        {
+            classes.Add($"timeline-item__marker--{item.Status}");
+        }
+        
+        if (!string.IsNullOrEmpty(item.Avatar))
+        {
+            classes.Add("timeline-item__marker--avatar");
+        }
+        
+        return string.Join(" ", classes);
+    }
+
+    private string GetFormattedTime(DateTime timestamp)
+    {
+        if (ShowRelativeTime)
+        {
+            var timeSpan = DateTime.Now - timestamp;
+            
+            return timeSpan switch
+            {
+                var ts when ts.TotalMinutes < 1 => "Just now",
+                var ts when ts.TotalMinutes < 60 => $"{(int)ts.TotalMinutes}m ago",
+                var ts when ts.TotalHours < 24 => $"{(int)ts.TotalHours}h ago",
+                var ts when ts.TotalDays < 7 => $"{(int)ts.TotalDays}d ago",
+                _ => timestamp.ToString(DateFormat)
+            };
+        }
+        
+        return timestamp.ToString(DateFormat);
+    }
+}
+
+@*
+Usage Examples:
+
+<!-- Basic process timeline -->
+<RTimeline Items="@processSteps" 
+           Variant="process" />
+
+<!-- Activity feed timeline -->
+<RTimeline Items="@activityItems" 
+           ShowRelativeTime="true"
+           DateFormat="MMM dd, HH:mm" />
+
+<!-- Compact timeline -->
+<RTimeline Items="@statusUpdates" 
+           IsCompact="true"
+           Variant="minimal" />
+
+<!-- Loading timeline -->
+<RTimeline IsLoading="true" 
+           LoadingItemCount="5" />
+
+@code {
+    private List<TimelineItem> processSteps = new()
+    {
+        new TimelineItem
+        {
+            Title = "Order Received",
+            Description = "Customer placed order #12345",
+            Icon = "shopping_cart",
+            Status = "success",
+            Timestamp = DateTime.Now.AddHours(-2),
+            Tags = new List<string> { "Order", "Customer" }
+        },
+        new TimelineItem
+        {
+            Title = "Payment Processed",
+            Description = "Payment of $156.99 processed successfully",
+            Icon = "payment",
+            Status = "success",
+            Timestamp = DateTime.Now.AddHours(-1.5),
+            Actions = new List<TimelineAction>
+            {
+                new() { Text = "View Receipt", Icon = "receipt", OnClick = EventCallback.Factory.Create(this, ViewReceipt) }
+            }
+        },
+        new TimelineItem
+        {
+            Title = "Order Shipped",
+            Description = "Package shipped via FedEx",
+            Subtitle = "Tracking: 1234567890",
+            Icon = "local_shipping",
+            Status = "info",
+            Timestamp = DateTime.Now.AddMinutes(-30),
+            IsHighlighted = true
+        },
+        new TimelineItem
+        {
+            Title = "Delivery Pending",
+            Description = "Expected delivery tomorrow",
+            Icon = "schedule",
+            Status = "pending",
+            Timestamp = DateTime.Now.AddDays(1)
+        }
+    };
+
+    private List<TimelineItem> activityItems = new()
+    {
+        new TimelineItem
+        {
+            Title = "John Smith commented",
+            Description = "Great work on the quarterly report!",
+            Avatar = "/avatars/john.jpg",
+            Timestamp = DateTime.Now.AddMinutes(-15),
+            Actions = new List<TimelineAction>
+            {
+                new() { Text = "Reply", Icon = "reply" },
+                new() { Text = "Like", Icon = "favorite_border" }
+            }
+        },
+        new TimelineItem
+        {
+            Title = "Document uploaded",
+            Description = "Q4_Financial_Report.pdf",
+            Icon = "upload_file",
+            Status = "info",
+            Timestamp = DateTime.Now.AddHours(-1)
+        }
+    };
+
+    private void ViewReceipt() => { /* Handle view receipt */ }
+}
+*@

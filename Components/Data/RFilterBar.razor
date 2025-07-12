@@ -1,0 +1,340 @@
+@* RFilterBar - Universal filter and search component for business applications *@
+@using RR.Blazor.Enums
+@using RR.Blazor.Models
+
+<RCard Variant="CardVariant.Flat" Class="pa-4">
+    <div class="d-flex flex-wrap gap-4 align-center">
+        @* Search Field *@
+        @if (ShowSearch)
+        {
+            <div class="flex-1 min-w-64">
+                <RFormField FieldType="FieldType.Search"
+                           Value="@SearchValue"
+                           ValueChanged="OnSearchValueChanged"
+                           Placeholder="@SearchPlaceholder"
+                           Icon="search"
+                           Size="FieldSize.Small" />
+            </div>
+        }
+    
+        @* Dynamic Filters *@
+        @if (Filters != null && Filters.Any())
+        {
+            @foreach (var filter in Filters)
+            {
+                <RFormField FieldType="@GetFilterFieldType(filter)"
+                           Label="@filter.Label"
+                           Value="@filter.Value"
+                           ValueChanged="@(EventCallback.Factory.Create<string>(this, value => HandleFilterChanged(filter.Key, value)))"
+                           Options="@filter.Options"
+                           Size="FieldSize.Small"
+                           Class="min-w-32" />
+            }
+        }
+
+        @* Date Range Filter *@
+        @if (ShowDateRange)
+        {
+            <div class="d-flex gap-2 align-center">
+                <RFormField FieldType="FieldType.Date"
+                           Label="From"
+                           Value="@DateFrom?.ToString("yyyy-MM-dd")"
+                           ValueChanged="@(value => HandleDateFromChanged(value))"
+                           Size="FieldSize.Small"
+                           Class="w-40" />
+                <span class="text-secondary">to</span>
+                <RFormField FieldType="FieldType.Date"
+                           Label="To"
+                           Value="@DateTo?.ToString("yyyy-MM-dd")"
+                           ValueChanged="@(value => HandleDateToChanged(value))"
+                           Size="FieldSize.Small"
+                           Class="w-40" />
+            </div>
+        }
+
+        @* Quick Filter Buttons *@
+        @if (QuickFilters != null && QuickFilters.Any())
+        {
+            <div class="d-flex gap-2">
+                @foreach (var quickFilter in QuickFilters)
+                {
+                    <RButton Text="@quickFilter.Label"
+                             Icon="@quickFilter.Icon"
+                             IconPosition="IconPosition.Start"
+                             Variant="@(ActiveQuickFilters.Contains(quickFilter.Key) ? ButtonVariant.Primary : ButtonVariant.Ghost)"
+                             Size="ButtonSize.Small"
+                             OnClick="@(async () => await ToggleQuickFilter(quickFilter.Key))" />
+                }
+            </div>
+        }
+
+        @* Status Filter *@
+        @if (ShowStatus && StatusOptions?.Any() == true)
+        {
+            <RFormField FieldType="FieldType.Select"
+                       Label="Status"
+                       Value="@StatusFilter"
+                       ValueChanged="OnStatusFilterChanged"
+                       Options="@StatusOptions"
+                       Size="FieldSize.Small"
+                       Class="min-w-32" />
+        }
+
+        @* Custom Filter Content *@
+        @if (CustomFilters != null)
+        {
+            @CustomFilters
+        }
+
+        @* Clear Filters Button *@
+        @if (ShowClearButton && HasActiveFilters())
+        {
+            <RButton Text="Clear All"
+                     Icon="clear"
+                     IconPosition="IconPosition.Start"
+                     Variant="ButtonVariant.Ghost"
+                     Size="ButtonSize.Small"
+                     OnClick="ClearAllFilters" />
+        }
+
+        @* Filter Count Badge *@
+        @if (ShowFilterCount && HasActiveFilters())
+        {
+            <div class="d-flex align-center gap-2">
+                <RBadge Text="@($"{GetActiveFilterCount()} active")"
+                       Variant="BadgeVariant.Info"
+                       Size="BadgeSize.Small" />
+            </div>
+        }
+    </div>
+</RCard>
+
+@code {
+    /// <summary>Whether to show search input</summary>
+    [Parameter] public bool ShowSearch { get; set; } = true;
+    
+    /// <summary>Search input value</summary>
+    [Parameter] public string SearchValue { get; set; } = "";
+    
+    /// <summary>Search value changed callback</summary>
+    [Parameter] public EventCallback<string> SearchValueChanged { get; set; }
+    
+    /// <summary>Search input placeholder text</summary>
+    [Parameter] public string SearchPlaceholder { get; set; } = "Search...";
+    
+    /// <summary>Dynamic filter definitions</summary>
+    [Parameter] public List<FilterDefinition> Filters { get; set; } = new();
+    
+    /// <summary>Filter changed callback</summary>
+    [Parameter] public EventCallback<FilterChangedEventArgs> FilterChanged { get; set; }
+    
+    /// <summary>Whether to show date range filter</summary>
+    [Parameter] public bool ShowDateRange { get; set; }
+    
+    /// <summary>Date from value</summary>
+    [Parameter] public DateTime? DateFrom { get; set; }
+    
+    /// <summary>Date to value</summary>
+    [Parameter] public DateTime? DateTo { get; set; }
+    
+    /// <summary>Date range changed callback</summary>
+    [Parameter] public EventCallback<DateRangeChangedEventArgs> DateRangeChanged { get; set; }
+    
+    /// <summary>Quick filter button definitions</summary>
+    [Parameter] public List<QuickFilterDefinition> QuickFilters { get; set; } = new();
+    
+    /// <summary>Active quick filter keys</summary>
+    [Parameter] public HashSet<string> ActiveQuickFilters { get; set; } = new();
+    
+    /// <summary>Quick filter toggled callback</summary>
+    [Parameter] public EventCallback<QuickFilterToggledEventArgs> QuickFilterToggled { get; set; }
+    
+    /// <summary>Whether to show status filter</summary>
+    [Parameter] public bool ShowStatus { get; set; }
+    
+    /// <summary>Status filter value</summary>
+    [Parameter] public string StatusFilter { get; set; } = "";
+    
+    /// <summary>Status filter options</summary>
+    [Parameter] public Dictionary<string, string> StatusOptions { get; set; } = new();
+    
+    /// <summary>Status filter changed callback</summary>
+    [Parameter] public EventCallback<string> StatusFilterChanged { get; set; }
+    
+    /// <summary>Custom filter content</summary>
+    [Parameter] public RenderFragment CustomFilters { get; set; }
+    
+    /// <summary>Whether to show clear all button</summary>
+    [Parameter] public bool ShowClearButton { get; set; } = true;
+    
+    /// <summary>Whether to show active filter count</summary>
+    [Parameter] public bool ShowFilterCount { get; set; } = true;
+    
+    /// <summary>All filters cleared callback</summary>
+    [Parameter] public EventCallback FiltersCleared { get; set; }
+
+    private async Task OnSearchValueChanged(string value)
+    {
+        SearchValue = value;
+        await SearchValueChanged.InvokeAsync(value);
+    }
+
+    private async Task HandleFilterChanged(string key, string value)
+    {
+        var args = new FilterChangedEventArgs { Key = key, Value = value };
+        await FilterChanged.InvokeAsync(args);
+    }
+
+    private async Task HandleDateFromChanged(string value)
+    {
+        if (DateTime.TryParse(value, out var date))
+        {
+            DateFrom = date;
+            await DateRangeChanged.InvokeAsync(new DateRangeChangedEventArgs
+            {
+                DateFrom = DateFrom,
+                DateTo = DateTo
+            });
+        }
+    }
+
+    private async Task HandleDateToChanged(string value)
+    {
+        if (DateTime.TryParse(value, out var date))
+        {
+            DateTo = date;
+            await DateRangeChanged.InvokeAsync(new DateRangeChangedEventArgs
+            {
+                DateFrom = DateFrom,
+                DateTo = DateTo
+            });
+        }
+    }
+
+    private async Task ToggleQuickFilter(string key)
+    {
+        if (ActiveQuickFilters.Contains(key))
+        {
+            ActiveQuickFilters.Remove(key);
+        }
+        else
+        {
+            ActiveQuickFilters.Add(key);
+        }
+        
+        await QuickFilterToggled.InvokeAsync(new QuickFilterToggledEventArgs
+        {
+            Key = key,
+            IsActive = ActiveQuickFilters.Contains(key),
+            ActiveFilters = ActiveQuickFilters.ToList()
+        });
+    }
+
+    private async Task OnStatusFilterChanged(string value)
+    {
+        StatusFilter = value;
+        await StatusFilterChanged.InvokeAsync(value);
+    }
+
+    private async Task ClearAllFilters()
+    {
+        SearchValue = "";
+        DateFrom = null;
+        DateTo = null;
+        StatusFilter = "";
+        ActiveQuickFilters.Clear();
+        
+        // Clear individual filters
+        if (Filters?.Any() == true)
+        {
+            foreach (var filter in Filters)
+            {
+                filter.Value = "";
+            }
+        }
+        
+        await FiltersCleared.InvokeAsync();
+    }
+
+    private bool HasActiveFilters()
+    {
+        return !string.IsNullOrEmpty(SearchValue) ||
+               DateFrom.HasValue ||
+               DateTo.HasValue ||
+               !string.IsNullOrEmpty(StatusFilter) ||
+               ActiveQuickFilters.Any() ||
+               (Filters?.Any(f => !string.IsNullOrEmpty(f.Value)) == true);
+    }
+
+    private int GetActiveFilterCount()
+    {
+        var count = 0;
+        if (!string.IsNullOrEmpty(SearchValue)) count++;
+        if (DateFrom.HasValue || DateTo.HasValue) count++;
+        if (!string.IsNullOrEmpty(StatusFilter)) count++;
+        count += ActiveQuickFilters.Count;
+        count += Filters?.Count(f => !string.IsNullOrEmpty(f.Value)) ?? 0;
+        return count;
+    }
+
+    private FieldType GetFilterFieldType(FilterDefinition filter)
+    {
+        return filter.Type switch
+        {
+            "select" => FieldType.Select,
+            "number" => FieldType.Number,
+            "date" => FieldType.Date,
+            "text" => FieldType.Text,
+            _ => FieldType.Select
+        };
+    }
+}
+
+@*
+Usage Examples:
+
+<!-- Basic search and filter bar -->
+<RFilterBar SearchValue="@searchTerm"
+           SearchValueChanged="@(value => searchTerm = value)"
+           Filters="@filterDefinitions"
+           FilterChanged="HandleFilterChanged" />
+
+<!-- Full business application filter bar -->
+<RFilterBar SearchValue="@searchTerm"
+           SearchValueChanged="@(value => searchTerm = value)"
+           ShowDateRange="true"
+           DateFrom="@startDate"
+           DateTo="@endDate"
+           DateRangeChanged="HandleDateRangeChanged"
+           ShowStatus="true"
+           StatusFilter="@statusFilter"
+           StatusOptions="@statusOptions"
+           StatusFilterChanged="@(value => statusFilter = value)"
+           QuickFilters="@quickFilterOptions"
+           ActiveQuickFilters="@activeQuickFilters"
+           QuickFilterToggled="HandleQuickFilterToggled"
+           ShowFilterCount="true"
+           ShowClearButton="true"
+           FiltersCleared="HandleFiltersCleared">
+    <CustomFilters>
+        <RFormField FieldType="FieldType.Select"
+                   Label="Department"
+                   Value="@departmentFilter"
+                   Options="@departmentOptions"
+                   Size="FieldSize.Small" />
+    </CustomFilters>
+</RFilterBar>
+
+<!-- E-commerce product filter -->
+<RFilterBar SearchPlaceholder="Search products..."
+           QuickFilters="@productQuickFilters"
+           Filters="@productFilters"
+           ShowStatus="false" />
+
+<!-- Employee management filter -->
+<RFilterBar SearchPlaceholder="Search employees..."
+           ShowDateRange="true"
+           QuickFilters="@employeeQuickFilters"
+           StatusOptions="@employeeStatusOptions"
+           ShowStatus="true" />
+*@

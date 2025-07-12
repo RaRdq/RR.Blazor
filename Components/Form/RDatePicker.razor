@@ -1,6 +1,7 @@
 @* RDatePicker - Comprehensive Date/Time Selection Component *@
 @using System.Globalization
 @using Microsoft.JSInterop
+@using RR.Blazor.Enums
 @inject IJSRuntime JSRuntime
 @implements IAsyncDisposable
 
@@ -17,10 +18,10 @@
                @onfocus="HandleFocus"
                @onblur="HandleBlur" />
         
-        @if (!string.IsNullOrEmpty(StartIcon))
+        @if (!string.IsNullOrEmpty(GetEffectiveIcon()) && IconPosition == IconPosition.Start)
         {
             <div class="rdatepicker__icon rdatepicker__icon--start">
-                <i class="material-symbols-rounded @GetIconSizeClass()">@StartIcon</i>
+                <i class="material-symbols-rounded @GetIconSizeClass()">@GetEffectiveIcon()</i>
             </div>
         }
         
@@ -197,6 +198,13 @@
     [Parameter] public string Placeholder { get; set; }
     [Parameter] public string Format { get; set; }
     [Parameter] public FieldSize Size { get; set; } = FieldSize.Medium;
+    /// <summary>Icon for the component</summary>
+    [Parameter] public string Icon { get; set; }
+    
+    /// <summary>Position of the icon</summary>
+    [Parameter] public IconPosition IconPosition { get; set; } = IconPosition.Start;
+    
+    /// <summary>Start icon (deprecated - use Icon + IconPosition)</summary>
     [Parameter] public string StartIcon { get; set; }
     [Parameter] public string Class { get; set; }
     
@@ -578,7 +586,7 @@
             _ => "px-3 py-2 text-base h-10"
         });
 
-        if (!string.IsNullOrEmpty(StartIcon))
+        if (!string.IsNullOrEmpty(GetEffectiveIcon()) && IconPosition == IconPosition.Start)
         {
             classes.Add(Size switch
             {
@@ -672,6 +680,20 @@
         }
 
         return string.Join(" ", classes);
+    }
+
+    /// <summary>Gets the effective icon, supporting both new and legacy patterns</summary>
+    private string GetEffectiveIcon()
+    {
+        // New unified pattern takes precedence
+        if (!string.IsNullOrEmpty(Icon))
+            return Icon;
+            
+        // Legacy fallback for backward compatibility
+        if (!string.IsNullOrEmpty(StartIcon))
+            return StartIcon;
+            
+        return null;
     }
 
     private record CalendarDay
@@ -1057,6 +1079,7 @@ Usage Examples:
              Format="dd/MM/yyyy HH:mm"
              Size="FieldSize.Large"
              Icon="event"
+             IconPosition="IconPosition.Start"
              HasError="@hasDateError"
              ErrorMessage="Please select a valid meeting date" />
 *@

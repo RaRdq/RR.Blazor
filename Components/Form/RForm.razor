@@ -1,0 +1,402 @@
+@using System.ComponentModel.DataAnnotations
+@using System.Reflection
+@using Microsoft.AspNetCore.Components.Forms
+@using RR.Blazor.Enums
+@using RR.Blazor.Models
+@typeparam TModel where TModel : class
+@inherits ComponentBase
+@implements IDisposable
+
+<div class="r-form @GetFormLayoutClass() @Class" 
+     role="form" 
+     aria-label="@AriaLabel"
+     data-form-state="@State.ToString().ToLowerInvariant()">
+     
+    @if (ShowFormHeader && (!string.IsNullOrEmpty(Title) || !string.IsNullOrEmpty(Description)))
+    {
+        <div class="r-form__header mb-6">
+            @if (!string.IsNullOrEmpty(Title))
+            {
+                <h2 class="r-form__title text-h4 font-semibold mb-2">
+                    @if (!string.IsNullOrEmpty(Icon))
+                    {
+                        <i class="material-symbols-rounded mr-3">@Icon</i>
+                    }
+                    @Title
+                </h2>
+            }
+            @if (!string.IsNullOrEmpty(Description))
+            {
+                <p class="r-form__description text-body-1 text--secondary">@Description</p>
+            }
+        </div>
+    }
+
+    <EditForm Model="@Model" OnValidSubmit="@HandleValidSubmit" OnInvalidSubmit="@HandleInvalidSubmit">
+        @if (ValidationMode == ValidationMode.DataAnnotations || ValidationMode == ValidationMode.Hybrid)
+        {
+            <DataAnnotationsValidator />
+        }
+        
+        @if (Options.ShowValidationSummary && (validationResult?.FormErrors.Any() == true || !string.IsNullOrEmpty(validationResult?.GeneralError)))
+        {
+            <div class="r-form__validation-summary pa-4 mb-4 bg-error-light border-light rounded" role="alert" aria-live="polite">
+                @if (!string.IsNullOrEmpty(validationResult?.GeneralError))
+                {
+                    <div class="d-flex align-center gap-2 mb-2">
+                        <i class="material-symbols-rounded text-error">error</i>
+                        <span class="text-body-2 text-error font-medium">@validationResult.GeneralError</span>
+                    </div>
+                }
+                @if (validationResult?.FormErrors.Any() == true)
+                {
+                    <ul class="ma-0 pa-0 list-style-none">
+                        @foreach (var error in validationResult.FormErrors)
+                        {
+                            <li class="text-body-2 text-error mb-1">• @error</li>
+                        }
+                    </ul>
+                }
+            </div>
+        }
+
+        <div class="r-form__content">
+            @if (FormFields != null)
+            {
+                <div class="r-form__fields">
+                    @FormFields
+                </div>
+            }
+            else
+            {
+                @ChildContent
+            }
+        </div>
+
+        @if (FormActions != null)
+        {
+            <div class="r-form__actions d-flex gap-3 justify-end mt-6 pt-4 border-t border-light">
+                @FormActions
+            </div>
+        }
+        else if (ShowDefaultActions)
+        {
+            <div class="r-form__actions d-flex gap-3 justify-end mt-6 pt-4 border-t border-light">
+                @if (ShowCancelButton)
+                {
+                    <RButton Text="@CancelText" 
+                             Variant="ButtonVariant.Secondary" 
+                             Disabled="@(State == FormState.Submitting || State == FormState.Disabled)"
+                             OnClick="@HandleCancel" />
+                }
+                <RButton Text="@SubmitText" 
+                         Variant="ButtonVariant.Primary" 
+                         Type="ButtonType.Submit"
+                         Loading="@(State == FormState.Submitting)"
+                         Disabled="@(State == FormState.Submitting || State == FormState.Disabled || (RequireValidation && !IsFormValid))"
+                         Elevation="@(Layout == FormLayout.Executive ? 4 : 2)" />
+            </div>
+        }
+    </EditForm>
+
+    @if (State == FormState.Success && !string.IsNullOrEmpty(Options.SuccessMessage))
+    {
+        <div class="r-form__success pa-4 mt-4 bg-success-light border-light rounded" role="alert" aria-live="polite">
+            <div class="d-flex align-center gap-2">
+                <i class="material-symbols-rounded text-success">check_circle</i>
+                <span class="text-body-2 text-success font-medium">@Options.SuccessMessage</span>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public TModel Model { get; set; } = default!;
+    [Parameter] public EventCallback<TModel> ModelChanged { get; set; }
+    
+    // Form Configuration
+    [Parameter] public ValidationMode ValidationMode { get; set; } = ValidationMode.DataAnnotations;
+    [Parameter] public FormLayout Layout { get; set; } = FormLayout.Default;
+    [Parameter] public FormOptions Options { get; set; } = new();
+    
+    // Content Areas
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? FormFields { get; set; }
+    [Parameter] public RenderFragment? FormActions { get; set; }
+    
+    // Header
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public string? Description { get; set; }
+    [Parameter] public string? Icon { get; set; }
+    [Parameter] public bool ShowFormHeader { get; set; } = true;
+    
+    // Actions
+    [Parameter] public bool ShowDefaultActions { get; set; } = true;
+    [Parameter] public bool ShowCancelButton { get; set; } = false;
+    [Parameter] public string SubmitText { get; set; } = "Submit";
+    [Parameter] public string CancelText { get; set; } = "Cancel";
+    [Parameter] public bool RequireValidation { get; set; } = true;
+    
+    // Events
+    [Parameter] public EventCallback<FormSubmissionEventArgs<TModel>> OnValidSubmit { get; set; }
+    [Parameter] public EventCallback<FormSubmissionEventArgs<TModel>> OnInvalidSubmit { get; set; }
+    [Parameter] public EventCallback<FormStateChangedEventArgs> OnStateChanged { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+    
+    // Validation
+    [Parameter] public FormValidationDelegate<TModel>? CustomValidator { get; set; }
+    
+    // Styling
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public string? AriaLabel { get; set; }
+    
+    // State
+    public FormState State { get; private set; } = FormState.Ready;
+    public bool IsFormValid => validationResult?.IsValid ?? true;
+    
+    private FormValidationResult validationResult = new();
+    private Timer? successMessageTimer;
+    private Timer? validationDebounceTimer;
+    
+    protected override void OnInitialized()
+    {
+        if (Model == null)
+        {
+            throw new ArgumentNullException(nameof(Model), "Model is required for RForm component");
+        }
+        
+        AriaLabel ??= Title ?? "Form";
+        
+        // Initialize validation if auto-validation is enabled
+        if (Options.ValidateOnChange || Options.ValidateOnBlur)
+        {
+            _ = Task.Run(async () => await ValidateModelAsync());
+        }
+    }
+    
+    private async Task HandleValidSubmit()
+    {
+        await SetStateAsync(FormState.Validating);
+        
+        // Perform validation
+        var validation = await ValidateModelAsync();
+        
+        if (!validation.IsValid)
+        {
+            await SetStateAsync(FormState.Error);
+            await HandleInvalidSubmit();
+            return;
+        }
+        
+        await SetStateAsync(FormState.Submitting);
+        
+        try
+        {
+            var args = new FormSubmissionEventArgs<TModel>(Model, validation);
+            
+            if (OnValidSubmit.HasDelegate)
+            {
+                await OnValidSubmit.InvokeAsync(args);
+                
+                if (args.Cancel)
+                {
+                    await SetStateAsync(FormState.Ready);
+                    return;
+                }
+            }
+            
+            await SetStateAsync(FormState.Success);
+            
+            // Show success message with timer
+            if (!string.IsNullOrEmpty(Options.SuccessMessage))
+            {
+                successMessageTimer?.Dispose();
+                successMessageTimer = new Timer(async _ =>
+                {
+                    await InvokeAsync(async () =>
+                    {
+                        await SetStateAsync(FormState.Ready);
+                        StateHasChanged();
+                    });
+                }, null, Options.SuccessMessageDuration, Timeout.Infinite);
+            }
+            else
+            {
+                // Reset to ready state immediately if no success message
+                await Task.Delay(100);
+                await SetStateAsync(FormState.Ready);
+            }
+            
+            // Reset form if configured
+            if (Options.ResetAfterSubmit)
+            {
+                await ResetFormAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            validationResult.GeneralError = "An error occurred while submitting the form. Please try again.";
+            await SetStateAsync(FormState.Error);
+            Console.Error.WriteLine($"Form submission error: {ex.Message}");
+        }
+    }
+    
+    private async Task HandleInvalidSubmit()
+    {
+        await SetStateAsync(FormState.Error);
+        
+        var args = new FormSubmissionEventArgs<TModel>(Model, validationResult);
+        
+        if (OnInvalidSubmit.HasDelegate)
+        {
+            await OnInvalidSubmit.InvokeAsync(args);
+        }
+        
+        // Focus first invalid field if configured
+        if (Options.FocusFirstInvalidField)
+        {
+            await FocusFirstInvalidFieldAsync();
+        }
+    }
+    
+    private async Task HandleCancel()
+    {
+        await SetStateAsync(FormState.Ready);
+        
+        if (OnCancel.HasDelegate)
+        {
+            await OnCancel.InvokeAsync();
+        }
+    }
+    
+    private async Task<FormValidationResult> ValidateModelAsync()
+    {
+        var result = new FormValidationResult();
+        
+        // DataAnnotations validation
+        if (ValidationMode == ValidationMode.DataAnnotations || ValidationMode == ValidationMode.Hybrid)
+        {
+            var context = new ValidationContext(Model);
+            var validationResults = new List<ValidationResult>();
+            
+            if (!Validator.TryValidateObject(Model, context, validationResults, true))
+            {
+                foreach (var validationResult in validationResults)
+                {
+                    if (validationResult.MemberNames?.Any() == true)
+                    {
+                        foreach (var memberName in validationResult.MemberNames)
+                        {
+                            result.AddFieldError(memberName, validationResult.ErrorMessage ?? "Validation error");
+                        }
+                    }
+                    else
+                    {
+                        result.AddFormError(validationResult.ErrorMessage ?? "Validation error");
+                    }
+                }
+            }
+        }
+        
+        // Custom validation
+        if (ValidationMode == ValidationMode.Custom || ValidationMode == ValidationMode.Hybrid)
+        {
+            if (CustomValidator != null)
+            {
+                var customResult = await CustomValidator(Model);
+                
+                // Merge custom validation results
+                foreach (var fieldError in customResult.FieldErrors)
+                {
+                    foreach (var error in fieldError.Value)
+                    {
+                        result.AddFieldError(fieldError.Key, error);
+                    }
+                }
+                
+                foreach (var formError in customResult.FormErrors)
+                {
+                    result.AddFormError(formError);
+                }
+                
+                if (!string.IsNullOrEmpty(customResult.GeneralError))
+                {
+                    result.GeneralError = customResult.GeneralError;
+                    result.IsValid = false;
+                }
+            }
+        }
+        
+        validationResult = result;
+        StateHasChanged();
+        
+        return result;
+    }
+    
+    private async Task SetStateAsync(FormState newState)
+    {
+        var previousState = State;
+        State = newState;
+        
+        if (OnStateChanged.HasDelegate)
+        {
+            var args = new FormStateChangedEventArgs(previousState, newState);
+            await OnStateChanged.InvokeAsync(args);
+        }
+        
+        StateHasChanged();
+    }
+    
+    private async Task ResetFormAsync()
+    {
+        validationResult.Clear();
+        await SetStateAsync(FormState.Ready);
+        
+        // Reset model to default values
+        var modelType = typeof(TModel);
+        var newInstance = Activator.CreateInstance<TModel>();
+        
+        foreach (var property in modelType.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+        {
+            if (property.CanWrite)
+            {
+                var defaultValue = property.GetValue(newInstance);
+                property.SetValue(Model, defaultValue);
+            }
+        }
+        
+        if (ModelChanged.HasDelegate)
+        {
+            await ModelChanged.InvokeAsync(Model);
+        }
+    }
+    
+    private async Task FocusFirstInvalidFieldAsync()
+    {
+        if (validationResult.FieldErrors.Any())
+        {
+            var firstInvalidField = validationResult.FieldErrors.Keys.First();
+            // In a real implementation, you'd focus the actual form field
+            // This would require JavaScript interop to find and focus the field
+            await Task.CompletedTask;
+        }
+    }
+    
+    private string GetFormLayoutClass()
+    {
+        return Layout switch
+        {
+            FormLayout.Compact => "r-form--compact",
+            FormLayout.Wide => "r-form--wide",
+            FormLayout.Executive => "r-form--executive",
+            FormLayout.Modal => "r-form--modal",
+            _ => "r-form--default"
+        };
+    }
+    
+    public void Dispose()
+    {
+        successMessageTimer?.Dispose();
+        validationDebounceTimer?.Dispose();
+    }
+}

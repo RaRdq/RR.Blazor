@@ -1,0 +1,133 @@
+@using RR.Blazor.Enums
+@using RR.Blazor.Models
+@inherits ComponentBase
+
+<div class="r-form-section @GetSectionElevationClass() @CssClass" 
+     role="group" 
+     aria-labelledby="@($"section-{sectionId}")"
+     data-section-elevation="@Elevation.ToString().ToLowerInvariant()">
+     
+    @if (ShowHeader && (!string.IsNullOrEmpty(Title) || !string.IsNullOrEmpty(Description)))
+    {
+        <div class="r-form-section__header @(IsCollapsible ? "clickable" : "")" 
+             @onclick="@(IsCollapsible ? ToggleExpanded : null)">
+            <div class="d-flex align-center justify-between">
+                <div class="d-flex align-center gap-3">
+                    @if (!string.IsNullOrEmpty(Icon))
+                    {
+                        <div class="r-form-section__icon">
+                            <i class="material-symbols-rounded text--primary">@Icon</i>
+                        </div>
+                    }
+                    <div>
+                        @if (!string.IsNullOrEmpty(Title))
+                        {
+                            <h3 id="section-@sectionId" class="r-form-section__title text-h6 font-semibold ma-0">
+                                @Title
+                            </h3>
+                        }
+                        @if (!string.IsNullOrEmpty(Description))
+                        {
+                            <p class="r-form-section__description text-body-2 text--secondary ma-0 mt-1">
+                                @Description
+                            </p>
+                        }
+                    </div>
+                </div>
+                
+                @if (IsCollapsible)
+                {
+                    <div class="r-form-section__toggle">
+                        <i class="material-symbols-rounded text--secondary transition-transform @(IsExpanded ? "rotate-180" : "")">
+                            expand_more
+                        </i>
+                    </div>
+                }
+                
+                @if (HeaderActions != null)
+                {
+                    <div class="r-form-section__actions">
+                        @HeaderActions
+                    </div>
+                }
+            </div>
+        </div>
+    }
+    
+    @if (IsExpanded)
+    {
+        <div class="r-form-section__content @(ShowHeader ? "mt-4" : "")" 
+             aria-expanded="@IsExpanded.ToString().ToLowerInvariant()">
+            @if (FieldColumns > 1)
+            {
+                <div class="form-grid-@FieldColumns">
+                    @ChildContent
+                </div>
+            }
+            else
+            {
+                @ChildContent
+            }
+        </div>
+    }
+</div>
+
+@code {
+    // Configuration
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public string? Description { get; set; }
+    [Parameter] public string? Icon { get; set; }
+    [Parameter] public SectionElevation Elevation { get; set; } = SectionElevation.None;
+    
+    // Layout
+    [Parameter] public int FieldColumns { get; set; } = 1;
+    [Parameter] public bool ShowHeader { get; set; } = true;
+    
+    // Collapsible behavior
+    [Parameter] public bool IsCollapsible { get; set; } = false;
+    [Parameter] public bool IsExpanded { get; set; } = true;
+    [Parameter] public EventCallback<bool> IsExpandedChanged { get; set; }
+    
+    // Content
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? HeaderActions { get; set; }
+    
+    // Styling
+    [Parameter] public string? CssClass { get; set; }
+    
+    private readonly string sectionId = Guid.NewGuid().ToString("N")[..8];
+    
+    protected override void OnParametersSet()
+    {
+        // Validate field columns
+        if (FieldColumns < 1 || FieldColumns > 4)
+        {
+            FieldColumns = 1;
+        }
+    }
+    
+    private async Task ToggleExpanded()
+    {
+        if (!IsCollapsible) return;
+        
+        IsExpanded = !IsExpanded;
+        
+        if (IsExpandedChanged.HasDelegate)
+        {
+            await IsExpandedChanged.InvokeAsync(IsExpanded);
+        }
+        
+        StateHasChanged();
+    }
+    
+    private string GetSectionElevationClass()
+    {
+        return Elevation switch
+        {
+            SectionElevation.Subtle => "r-form-section--subtle",
+            SectionElevation.Medium => "r-form-section--medium",
+            SectionElevation.High => "r-form-section--high",
+            _ => "r-form-section--none"
+        };
+    }
+}

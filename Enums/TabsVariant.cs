@@ -6,6 +6,7 @@ namespace RR.Blazor.Enums
         Pills,
         Underline,
         Segment,
-        Card
+        Card,
+        Elevated
     }
 }

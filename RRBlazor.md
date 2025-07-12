@@ -7,6 +7,11 @@
 ## Overview
 Ultra-generic, lightweight and project-agnostic design system with enterprise-grade components and utilities for professional Blazor applications. Built primary for AI coding agents working over Blazor.
 
+**Note:** This documentation reflects the actual implementation as of the latest update (July 2025). Recent changes include:
+- Navigation SCSS files have been consolidated (_nav-menu.scss merged into _navigation.scss)
+- State files have been restructured (utilities vs components separation)
+- Full elevation system (0-24) and base animation classes have been added
+
 ### Key Features
 - 🎨 **100% Theme-aware**: Dynamic light/dark/high-contrast modes with CSS variables
 - ♿ **Accessibility First**: WCAG 2.1 AA compliant with screen reader support
@@ -336,7 +341,7 @@ builder.Services.AddRRBlazor(options =>
 - `.nav__text` - Nav text
 - `.nav__badge` - Nav badge
 - `.nav__divider` - Section divider
-- `.nav-menu` - Menu component
+- `.nav-menu` - Menu component (merged into _navigation.scss)
 - `.nav-menu--collapsed` - Collapsed state
 
 #### Notification Cards
@@ -784,6 +789,18 @@ builder.Services.AddRRBlazor(options =>
 - `.shadow-inner` - Inner shadow
 - `.shadow-outline` - Outline shadow
 
+##### Elevation (MudBlazor-style 0-24)
+- `.elevation-0` - No elevation
+- `.elevation-1` to `.elevation-24` - Increasing elevation levels
+- `.elevation-lift` - Auto-lift on hover (adds 6 levels)
+- `.elevation-lift-sm` - Small lift on hover (adds 3 levels)
+- `.elevation-lift-lg` - Large lift on hover (adds 8 levels)
+- `.elevation-interactive` - Interactive elevation with smooth transitions
+- `.card-elevation-resting` - Standard card elevation (level 2)
+- `.card-elevation-raised` - Raised card elevation (level 8)
+- `.button-elevation-standard` - Standard button elevation (level 2)
+- `.modal-elevation` - Modal dialog elevation (level 24)
+
 ##### Colored Shadows
 - `.shadow-primary` - Primary colored shadow
 - `.shadow-secondary` - Secondary colored shadow
@@ -1079,10 +1096,10 @@ builder.Services.AddRRBlazor(options =>
 
 ##### Animation
 - `.animate-none` - No animation
-- `.animate-spin` - Spin animation
-- `.animate-ping` - Ping animation
-- `.animate-pulse` - Pulse animation
-- `.animate-bounce` - Bounce animation
+- `.animate-spin` - Spin animation (continuous)
+- `.animate-ping` - Ping animation (continuous)
+- `.animate-pulse` - Pulse animation (continuous)
+- `.animate-bounce` - Bounce animation (continuous)
 - `.animate-fade-in` - Fade in
 - `.animate-fade-out` - Fade out
 - `.animate-scale-in` - Scale in
@@ -1092,6 +1109,12 @@ builder.Services.AddRRBlazor(options =>
 - `.animate-slide-in-top` - Slide from top
 - `.animate-slide-in-bottom` - Slide from bottom
 - `.animate-shake` - Shake animation
+
+##### Animation Hover Variants
+- `.hover:animate-spin` - Spin animation on hover
+- `.hover:animate-ping` - Ping animation on hover
+- `.hover:animate-pulse` - Pulse animation on hover
+- `.hover:animate-bounce` - Bounce animation on hover
 
 #### Icons
 ##### Icon Sizes
@@ -1211,6 +1234,12 @@ Examples:
 - `.focus:ring-2` - Ring on focus
 - `.active:scale-95` - Scale on active
 - `.group-hover:text-white` - White text when parent hovered
+
+### File Structure Notes
+
+**Merged Files:**
+- `_nav-menu.scss` has been merged into `_navigation.scss` for better organization
+- State-related files have been restructured for improved maintainability
 
 ### Animation Keyframes
 
@@ -1542,7 +1571,7 @@ Examples:
 #### RTabs
 ```razor
 <RTabs @bind-ActiveTab="activeTab"
-       Variant="TabsVariant.Standard">
+       Variant="TabsVariant.Default">
     <RTab Title="Overview" Icon="dashboard">
         <!-- Tab 1 content -->
     </RTab>

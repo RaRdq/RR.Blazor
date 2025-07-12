@@ -1,4 +1,5 @@
 @* RFileUpload - Universal File Upload Component *@
+@using RR.Blazor.Enums
 @implements IAsyncDisposable
 @inject IJSRuntime JSRuntime
 
@@ -39,9 +40,9 @@
                        OnChange="HandleFileChange" />
 
             <label for="@InputId" class="@GetButtonClasses()">
-                @if (!string.IsNullOrEmpty(StartIcon))
+                @if (!string.IsNullOrEmpty(GetEffectiveIcon()))
                 {
-                    <i class="material-symbols-rounded">@StartIcon</i>
+                    <i class="material-symbols-rounded">@GetEffectiveIcon()</i>
                 }
                 @ButtonText
             </label>
@@ -237,7 +238,13 @@
     /// <summary>Icon for upload area</summary>
     [Parameter] public string UploadIcon { get; set; } = "cloud_upload";
     
-    /// <summary>Start icon for button mode</summary>
+    /// <summary>Icon for the component</summary>
+    [Parameter] public string Icon { get; set; }
+    
+    /// <summary>Position of the icon</summary>
+    [Parameter] public IconPosition IconPosition { get; set; } = IconPosition.Start;
+    
+    /// <summary>Start icon for button mode (deprecated - use Icon + IconPosition)</summary>
     [Parameter] public string StartIcon { get; set; }
 
     // Data Binding
@@ -554,6 +561,20 @@
         };
     }
 
+    /// <summary>Gets the effective icon, supporting both new and legacy patterns</summary>
+    private string GetEffectiveIcon()
+    {
+        // New unified pattern takes precedence
+        if (!string.IsNullOrEmpty(Icon))
+            return Icon;
+            
+        // Legacy fallback for backward compatibility
+        if (!string.IsNullOrEmpty(StartIcon))
+            return StartIcon;
+            
+        return null;
+    }
+
     private static string FormatFileSize(long bytes)
     {
         if (bytes == 0) return "0 Bytes";
@@ -605,7 +626,8 @@ Usage Examples:
 <!-- Button Mode -->
 <RFileUpload DisplayMode="RFileUploadDisplayMode.Button"
              ButtonText="Upload Documents"
-             StartIcon="upload"
+             Icon="upload"
+             IconPosition="IconPosition.Start"
              AllowedTypes="@(new[] {".pdf", ".docx"})" />
 
 <!-- Inline Mode -->

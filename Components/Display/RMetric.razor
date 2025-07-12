@@ -1,0 +1,319 @@
+@* RMetric - Universal metric display component for business dashboards *@
+@using RR.Blazor.Enums
+@using RR.Blazor.Models
+
+<div class="metric @GetMetricClasses()">
+    @if (!string.IsNullOrEmpty(Icon))
+    {
+        <div class="metric__icon mb-2">
+            <i class="material-symbols-rounded @GetIconSizeClass() @GetIconColorClass()">@Icon</i>
+        </div>
+    }
+    
+    <div class="metric__content">
+        <div class="metric__value @GetValueColorClass()">
+            @if (!string.IsNullOrEmpty(Prefix))
+            {
+                <span class="metric__prefix">@Prefix</span>
+            }
+            @FormattedValue
+            @if (!string.IsNullOrEmpty(Suffix))
+            {
+                <span class="metric__suffix">@Suffix</span>
+            }
+        </div>
+        
+        @if (!string.IsNullOrEmpty(Label))
+        {
+            <div class="metric__label">@Label</div>
+        }
+        
+        @if (ShowChange && Change.HasValue)
+        {
+            <div class="metric__change metric__change--@GetChangeVariant()">
+                <i class="material-symbols-rounded text-xs">@GetChangeIcon()</i>
+                @GetFormattedChange()
+                @if (!string.IsNullOrEmpty(ChangeSuffix))
+                {
+                    <span class="ml-1">@ChangeSuffix</span>
+                }
+            </div>
+        }
+        
+        @if (!string.IsNullOrEmpty(Subtitle))
+        {
+            <div class="metric__subtitle text-xs text-secondary mt-1">@Subtitle</div>
+        }
+    </div>
+    
+    @if (ChildContent != null)
+    {
+        <div class="metric__extra mt-2">
+            @ChildContent
+        </div>
+    }
+    
+    @if (IsLoading)
+    {
+        <div class="metric__loading position-absolute inset-0 bg-overlay-white-90 d-flex align-center justify-center">
+            <i class="material-symbols-rounded text-primary animate-spin">progress_activity</i>
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>Metric value to display</summary>
+    [Parameter] public object Value { get; set; }
+    
+    /// <summary>Metric label/title</summary>
+    [Parameter] public string Label { get; set; }
+    
+    /// <summary>Subtitle or description</summary>
+    [Parameter] public string Subtitle { get; set; }
+    
+    /// <summary>Icon to display</summary>
+    [Parameter] public string Icon { get; set; }
+    
+    /// <summary>Value prefix (e.g., "$", "+")</summary>
+    [Parameter] public string Prefix { get; set; }
+    
+    /// <summary>Value suffix (e.g., "%", "units")</summary>
+    [Parameter] public string Suffix { get; set; }
+    
+    /// <summary>Metric variant for styling</summary>
+    [Parameter] public string Variant { get; set; } = "default";
+    
+    /// <summary>Metric size</summary>
+    [Parameter] public string Size { get; set; } = "medium";
+    
+    /// <summary>Format string for value display</summary>
+    [Parameter] public string Format { get; set; }
+    
+    /// <summary>Whether metric is loading</summary>
+    [Parameter] public bool IsLoading { get; set; }
+    
+    /// <summary>Whether to show change indicator</summary>
+    [Parameter] public bool ShowChange { get; set; }
+    
+    /// <summary>Change value (positive/negative)</summary>
+    [Parameter] public decimal? Change { get; set; }
+    
+    /// <summary>Change suffix (e.g., "%", "pts")</summary>
+    [Parameter] public string ChangeSuffix { get; set; } = "%";
+    
+    /// <summary>Whether change is currency</summary>
+    [Parameter] public bool ChangeIsCurrency { get; set; }
+    
+    /// <summary>Custom content area</summary>
+    [Parameter] public RenderFragment ChildContent { get; set; }
+    
+    /// <summary>Additional CSS classes</summary>
+    [Parameter] public string Class { get; set; }
+    
+    /// <summary>Click handler for interactive metrics</summary>
+    [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
+    
+    /// <summary>Whether metric is clickable</summary>
+    [Parameter] public bool IsClickable { get; set; }
+
+    private string FormattedValue
+    {
+        get
+        {
+            if (Value == null) return "—";
+            
+            if (!string.IsNullOrEmpty(Format))
+            {
+                if (Value is IFormattable formattable)
+                {
+                    return formattable.ToString(Format, null);
+                }
+            }
+            
+            return Value switch
+            {
+                decimal d => d.ToString("N0"),
+                double d => d.ToString("N0"),
+                float f => f.ToString("N0"),
+                int i => i.ToString("N0"),
+                long l => l.ToString("N0"),
+                _ => Value.ToString()
+            };
+        }
+    }
+
+    private string GetMetricClasses()
+    {
+        var classes = new List<string> { "position-relative" };
+        
+        classes.Add(Size switch
+        {
+            "small" => "metric--small",
+            "large" => "metric--large",
+            _ => "metric--medium"
+        });
+        
+        if (IsClickable)
+        {
+            classes.AddRange(new[] { "cursor-pointer", "transition", "hover:bg-secondary" });
+        }
+        
+        if (!string.IsNullOrEmpty(Class))
+        {
+            classes.Add(Class);
+        }
+        
+        return string.Join(" ", classes);
+    }
+
+    private string GetValueColorClass()
+    {
+        return Variant switch
+        {
+            "success" => "text-success",
+            "warning" => "text-warning",
+            "error" => "text-error",
+            "info" => "text-info",
+            "primary" => "text-primary",
+            _ => "text-primary"
+        };
+    }
+
+    private string GetIconColorClass()
+    {
+        return Variant switch
+        {
+            "success" => "text-success",
+            "warning" => "text-warning",
+            "error" => "text-error",
+            "info" => "text-info",
+            "primary" => "text-primary",
+            _ => "text-secondary"
+        };
+    }
+
+    private string GetIconSizeClass()
+    {
+        return Size switch
+        {
+            "small" => "text-lg",
+            "large" => "text-3xl",
+            _ => "text-2xl"
+        };
+    }
+
+    private string GetChangeVariant()
+    {
+        if (!Change.HasValue) return "neutral";
+        
+        return Change.Value switch
+        {
+            > 0 => "positive",
+            < 0 => "negative",
+            _ => "neutral"
+        };
+    }
+
+    private string GetChangeIcon()
+    {
+        if (!Change.HasValue) return "remove";
+        
+        return Change.Value switch
+        {
+            > 0 => "trending_up",
+            < 0 => "trending_down",
+            _ => "trending_flat"
+        };
+    }
+
+    private string GetFormattedChange()
+    {
+        if (!Change.HasValue) return "0";
+        
+        var absChange = Math.Abs(Change.Value);
+        
+        if (ChangeIsCurrency)
+        {
+            return absChange.ToString("C0");
+        }
+        
+        return absChange.ToString("N1");
+    }
+
+    private async Task HandleClick(MouseEventArgs e)
+    {
+        if (IsClickable && !IsLoading)
+        {
+            await OnClick.InvokeAsync(e);
+        }
+    }
+}
+
+@*
+Usage Examples:
+
+<!-- Basic metric -->
+<RMetric Value="1247" Label="Total Orders" Icon="shopping_cart" />
+
+<!-- Currency metric with change -->
+<RMetric Value="156780" 
+         Label="Monthly Revenue" 
+         Prefix="$" 
+         Icon="attach_money"
+         ShowChange="true"
+         Change="12.5"
+         Variant="success" />
+
+<!-- Percentage metric -->
+<RMetric Value="87.3" 
+         Label="Success Rate" 
+         Suffix="%" 
+         Icon="trending_up"
+         Variant="success"
+         Size="large" />
+
+<!-- Custom formatted metric -->
+<RMetric Value="@(DateTime.Now)" 
+         Label="Last Updated" 
+         Format="MMM dd, HH:mm"
+         Icon="schedule"
+         Size="small" />
+
+<!-- Interactive metric -->
+<RMetric Value="23" 
+         Label="Pending Reviews" 
+         Icon="pending"
+         Variant="warning"
+         IsClickable="true"
+         OnClick="@HandlePendingClick" />
+
+<!-- Metric with custom content -->
+<RMetric Value="94.2" 
+         Label="Server Uptime" 
+         Suffix="%" 
+         Icon="cloud_done"
+         Variant="success">
+    <div class="mt-2">
+        <div class="text-xs text-success">
+            <i class="material-symbols-rounded text-xs">check_circle</i>
+            All systems operational
+        </div>
+    </div>
+</RMetric>
+
+<!-- Loading metric -->
+<RMetric Value="0" 
+         Label="Processing..." 
+         Icon="analytics"
+         IsLoading="true" />
+
+<!-- Financial metric with negative change -->
+<RMetric Value="45230" 
+         Label="Quarterly Profit" 
+         Prefix="$"
+         ShowChange="true"
+         Change="-5.2"
+         ChangeSuffix="%"
+         Icon="account_balance"
+         Variant="primary" />
+*@

@@ -1,16 +1,17 @@
 @use '../abstracts' as *;
 
-// Navigation Component - Streamlined navigation styles
-// This ensures NavMenu.razor works with the global design system and RoleSwitcher
+// Navigation Component - Comprehensive navigation system
+// Unified navigation styles for PayrollAI with consistent BEM naming
 
-// Main navigation container - flexible layout to prevent scrollbars
-.nav-sidebar {
+// Main navigation container
+.nav {
   display: flex;
   flex-direction: column;
   width: 100%;
   flex: 1;
   min-height: 0; // Allow flexbox to shrink below content size
   overflow-y: auto;
+  gap: var(--space-1);
   
   // Premium scrollbar styling
   &::-webkit-scrollbar {
@@ -29,107 +30,330 @@
       background: hsla(0, 0%, 100%, 0.3);
     }
   }
+}
+
+// Navigation divider
+.nav__divider {
+  height: var(--border-1);
+  background: var(--color-border-light);
+  margin: var(--space-2) 0;
+}
+
+// Navigation item base
+.nav__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  font-weight: var(--font-medium);
+  font-size: var(--text-sm);
+  transition: all var(--duration-fast) var(--ease-out);
+  cursor: pointer;
+  position: relative;
   
-  // Navigation items - use existing .nav__item styles but ensure structure works
-  .nav__item {
-    // Inherits from existing .nav__item styles in _sidebar.scss
+  &:hover {
+    background: var(--color-background-secondary);
+    color: var(--color-text-primary);
+  }
+  
+  // Active state
+  &--active {
+    background: var(--color-interactive-primary);
+    color: var(--color-text-inverse);
+    
+    &:hover {
+      background: var(--color-interactive-hover);
+      color: var(--color-text-inverse);
+    }
+    
+    .nav__icon {
+      color: var(--color-text-inverse);
+    }
+    
+    &::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: var(--border-3);
+      height: var(--space-5);
+      background: var(--color-text-inverse);
+      border-radius: 0 2px 2px 0;
+    }
+  }
+  
+  // Highlighted state (for special items)
+  &--highlighted {
+    color: var(--color-interactive-primary);
+    font-weight: var(--font-semibold);
+    
+    .nav__icon {
+      color: var(--color-interactive-primary);
+    }
+    
+    &::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: var(--border-2);
+      height: 60%;
+      background: var(--color-interactive-primary);
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    }
+  }
+  
+  // Admin section styling - enhanced for executive look
+  &--admin {
+    color: var(--color-interactive-primary);
+    font-weight: var(--font-semibold);
     position: relative;
     
-    &--active {
+    &::before {
+      content: '';
+      position: absolute;
+      left: var(--space-3);
+      right: var(--space-3);
+      top: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--color-border-light), transparent);
+      margin-top: -var(--space-1);
+    }
+    
+    .nav__icon {
+      color: var(--color-interactive-primary);
+    }
+    
+    &:hover:not(.nav__item--active) {
+      background: rgba(var(--color-primary-rgb), 0.08);
+      color: var(--color-interactive-hover);
+      box-shadow: inset 0 1px 0 rgba(var(--color-primary-rgb), 0.1);
+      
+      .nav__icon {
+        color: var(--color-interactive-hover);
+      }
+    }
+    
+    &.nav__item--active {
+      background: var(--color-interactive-primary);
+      color: var(--button-primary-text);
+      box-shadow: var(--shadow-md);
+      
+      .nav__icon {
+        color: var(--button-primary-text);
+      }
+      
       &::after {
-        content: '';
-        position: absolute;
-        left: 0;
-        top: 50%;
-        transform: translateY(-50%);
-        width: var(--border-3);
-        height: var(--space-5);
-        background: var(--color-interactive-primary);
-        border-radius: 0 2px 2px 0;
+        background: var(--button-primary-text);
       }
     }
   }
   
-  .nav__icon {
-    // Inherits from existing .nav__icon styles
+  // Child item (nested)
+  &--child {
+    padding-left: var(--space-8);
+    font-size: var(--text-xs);
+  }
+}
+
+// Navigation item elements
+.nav__icon {
+  font-size: var(--text-xl);
+  color: inherit;
+  flex-shrink: 0;
+}
+
+.nav__text {
+  flex: 1;
+  transition: var(--transition-opacity);
+  white-space: nowrap;
+  @extend %text-truncate;
+}
+
+// Navigation badge system
+.nav__badge {
+  padding: var(--space-px) var(--space-2);
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  line-height: 1.5;
+  
+  &--info {
+    background: var(--color-info-light);
+    color: var(--color-info-dark);
+  }
+  
+  &--success {
+    background: var(--color-success-light);
+    color: var(--color-success-dark);
+  }
+  
+  &--warning {
+    background: var(--color-warning-light);
+    color: var(--color-warning-dark);
+  }
+  
+  &--error {
+    background: var(--color-error-light);
+    color: var(--color-error-dark);
+  }
+}
+
+// Navigation group (collapsible sections)
+.nav__group {
+  &-toggle {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    width: 100%;
+    padding: var(--space-3);
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-lg);
+    color: var(--color-text-secondary);
+    font-weight: var(--font-medium);
+    font-size: var(--text-sm);
+    text-align: left;
+    cursor: pointer;
+    transition: all var(--duration-fast) var(--ease-out);
+    
+    &:hover {
+      background: var(--color-background-secondary);
+      color: var(--color-text-primary);
+    }
+  }
+  
+  &-icon {
+    font-size: var(--text-xl);
+    color: inherit;
     flex-shrink: 0;
   }
   
-  .nav__text {
-    // Inherits from existing .nav__text styles
-    transition: var(--transition-opacity);
-    white-space: nowrap;
+  &-text {
+    flex: 1;
+    @extend %text-truncate;
   }
   
-  // Collapsed state handling
-  .sidebar--collapsed & {
-    .nav__item {
-      justify-content: center;
-      padding: var(--space-3) var(--space-2);
-      margin: var(--space-1) var(--space-2);
-      
-      .nav__text {
-        display: none;
-      }
-      
-      .nav__icon {
-        margin: 0;
-      }
+  &-chevron {
+    font-size: var(--text-xl);
+    color: var(--color-text-tertiary);
+    transition: transform var(--duration-fast) var(--ease-out);
+  }
+  
+  &-items {
+    overflow: hidden;
+    max-height: 0;
+    transition: max-height var(--duration-slow) var(--ease-out);
+  }
+  
+  &--expanded {
+    .nav__group-chevron {
+      transform: rotate(180deg);
     }
-  }
-  
-  // Mobile responsive behavior
-  @include responsive-max(md) {
-    .nav__item {
-      padding: var(--space-4);
-      margin: var(--space-1) var(--space-2);
-      min-height: 44px; // iOS touch target minimum
+    
+    .nav__group-items {
+      max-height: 500px; // Adjust based on max expected height
     }
   }
 }
 
-// Admin section styling - enhanced for executive look
-.nav__item--admin {
-  color: var(--color-interactive-primary);
-  font-weight: $font-semibold;
-  position: relative;
-  
-  &::before {
-    content: '';
-    position: absolute;
-    left: var(--space-3);
-    right: var(--space-3);
-    top: 0;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, var(--color-border-light), transparent);
-    margin-top: -var(--space-1);
-  }
-  
-  .nav__icon {
-    color: var(--color-interactive-primary);
-  }
-  
-  &:hover:not(.nav__item--active) {
-    background: rgba(var(--color-primary-rgb), 0.08);
-    color: var(--color-interactive-hover);
-    box-shadow: inset 0 1px 0 rgba(var(--color-primary-rgb), 0.1);
+// Collapsed sidebar state
+.sidebar--collapsed {
+  .nav__item,
+  .nav__group-toggle {
+    justify-content: center;
+    padding: var(--space-3) var(--space-2);
+    margin: var(--space-1) var(--space-2);
     
-    .nav__icon {
-      color: var(--color-interactive-hover);
+    .nav__text,
+    .nav__badge,
+    .nav__group-text {
+      display: none;
+    }
+    
+    .nav__icon,
+    .nav__group-icon {
+      margin: 0;
     }
   }
   
-  &.nav__item--active {
-    background: var(--color-interactive-primary);
-    color: var(--button-primary-text);
-    box-shadow: var(--shadow-md);
+  .nav__item--child {
+    padding-left: var(--space-2);
+  }
+  
+  // Tooltip on hover for collapsed items
+  .nav__item,
+  .nav__group-toggle {
+    position: relative;
     
-    .nav__icon {
-      color: var(--button-primary-text);
-    }
-    
-    &::after {
-      background: var(--button-primary-text);
+    &:hover::after {
+      content: attr(title);
+      position: absolute;
+      left: 100%;
+      top: 50%;
+      transform: translateY(-50%);
+      margin-left: var(--space-2);
+      padding: var(--space-2) var(--space-3);
+      background: var(--color-text-primary);
+      color: var(--color-text-inverse);
+      border-radius: var(--radius-md);
+      font-size: var(--text-xs);
+      white-space: nowrap;
+      pointer-events: none;
+      z-index: var(--z-tooltip);
     }
   }
+}
+
+// Mobile responsive behavior
+@include responsive-max(md) {
+  .nav__item,
+  .nav__group-toggle {
+    padding: var(--space-4);
+    margin: var(--space-1) var(--space-2);
+    min-height: 44px; // iOS touch target minimum
+  }
+}
+
+// Dark theme adjustments
+[data-theme="dark"] {
+  .nav__divider {
+    background: var(--color-border-light);
+  }
+  
+  .nav__item {
+    &--active {
+      background: var(--color-interactive-primary);
+      
+      &:hover {
+        background: var(--color-interactive-hover);
+      }
+    }
+  }
+}
+
+// Legacy class mappings for backward compatibility
+.nav-sidebar {
+  @extend .nav;
+}
+
+.nav-menu {
+  @extend .nav;
+}
+
+.nav-item {
+  @extend .nav__item;
+}
+
+.nav-divider {
+  @extend .nav__divider;
+}
+
+.nav-group {
+  @extend .nav__group;
 }

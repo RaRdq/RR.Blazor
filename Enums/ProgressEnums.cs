@@ -6,6 +6,7 @@ namespace RR.Blazor.Enums
         Success,
         Warning,
         Danger,
+        Error,
         Info
     }
 
