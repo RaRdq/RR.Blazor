@@ -1,9 +1,11 @@
 @* RFormField - Universal form field component with utility-first CSS approach *@
 @using RR.Blazor.Enums
+@implements IAsyncDisposable
 
-<div class="form-field @GetFieldGroupClasses()">
+<div class="form-field @GetFieldGroupClasses() @GetFieldDensityClass()" 
+     data-field-density="@Density.ToString().ToLowerInvariant()">
     @* Label *@
-    @if (!string.IsNullOrEmpty(Label))
+    @if (!string.IsNullOrEmpty(Label) && Variant != FieldVariant.FloatingLabel)
     {
         <label class="form-field__label @(IsRequired && ShowRequiredIndicator ? "form-field__label--required" : "")" for="@InputId">
             @Label
@@ -11,7 +13,7 @@
     }
     
     @* Input Field *@
-    <div class="form-field__wrapper @GetInputWrapperClasses()">
+    <div @ref="wrapperElement" id="wrapper-@InputId" class="form-field__wrapper @GetInputWrapperClasses()">
         @if (!string.IsNullOrEmpty(Icon) && IconPosition == IconPosition.Start)
         {
             <div class="form-field__icon-container form-field__icon-container--start">
@@ -24,11 +26,12 @@
              FieldType == FieldType.Search || FieldType == FieldType.Date || FieldType == FieldType.Time || 
              FieldType == FieldType.DateTime)
         {
-            <input id="@InputId" 
+            <input @ref="inputElement" 
+                   id="@InputId" 
                    type="@GetHtmlInputType()" 
                    class="form-field__input @GetInputClasses()" 
                    value="@Value" 
-                   placeholder="@Placeholder"
+                   placeholder="@GetPlaceholderText()"
                    disabled="@IsDisabled"
                    readonly="@IsReadOnly"
                    required="@IsRequired"
@@ -46,9 +49,10 @@
         }
         else if (FieldType == FieldType.Textarea)
         {
-            <textarea id="@InputId" 
+            <textarea @ref="inputElement"
+                      id="@InputId" 
                       class="form-field__textarea @GetTextareaClasses()"
-                      placeholder="@Placeholder"
+                      placeholder="@GetPlaceholderText()"
                       disabled="@IsDisabled"
                       readonly="@IsReadOnly"
                       required="@IsRequired"
@@ -63,7 +67,8 @@
         }
         else if (FieldType == FieldType.Select)
         {
-            <select id="@InputId" 
+            <select @ref="inputElement"
+                    id="@InputId" 
                     class="form-field__select @GetSelectClasses()"
                     disabled="@IsDisabled"
                     required="@IsRequired"
@@ -136,6 +141,14 @@
             @ChildContent
         }
         
+        @* Floating Label *@
+        @if (!string.IsNullOrEmpty(Label) && Variant == FieldVariant.FloatingLabel)
+        {
+            <label class="form-field__label @GetFloatingLabelClasses()" for="@InputId">
+                @Label
+            </label>
+        }
+        
         @if (!string.IsNullOrEmpty(Icon) && IconPosition == IconPosition.End && FieldType != FieldType.Select)
         {
             <div class="form-field__icon-container form-field__icon-container--end @(OnIconClick.HasDelegate ? "clickable" : "")" 
@@ -192,6 +205,9 @@
     
     /// <summary>Field style variant (Default, Clean, Outlined, Filled)</summary>
     [Parameter] public FieldVariant Variant { get; set; } = FieldVariant.Default;
+    
+    /// <summary>Field density for spacing control</summary>
+    [Parameter] public FormDensity Density { get; set; } = FormDensity.Comfortable;
     
     /// <summary>Field label text</summary>
     [Parameter] public string Label { get; set; }
@@ -332,6 +348,104 @@
     /// <summary>Called when icon is clicked</summary>
     [Parameter] public EventCallback OnIconClick { get; set; }
     
+    // Floating label state management
+    private ElementReference wrapperElement;
+    private ElementReference inputElement;
+    private bool hasValue;
+    private bool isFocused;
+    
+    [Inject] private IJSRuntime JSRuntime { get; set; }
+    
+    protected override void OnParametersSet()
+    {
+        // Update hasValue when parameters change
+        hasValue = !string.IsNullOrEmpty(Value);
+    }
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && Variant == FieldVariant.FloatingLabel)
+        {
+            await InitializeFloatingLabel();
+        }
+        else if (Variant == FieldVariant.FloatingLabel)
+        {
+            await UpdateFloatingLabelState();
+        }
+    }
+    
+    private async Task InitializeFloatingLabel()
+    {
+        if (Variant != FieldVariant.FloatingLabel) return;
+        
+        try
+        {
+            // Initialize JavaScript floating label functionality using element references
+            // Check if the function exists before calling
+            var hasFunction = await JSRuntime.InvokeAsync<bool>("eval", "typeof initializeFloatingLabel === 'function'");
+            if (hasFunction)
+            {
+                await JSRuntime.InvokeVoidAsync("initializeFloatingLabel", inputElement, wrapperElement);
+            }
+        }
+        catch
+        {
+            // Ignore errors in initialization
+        }
+    }
+    
+    private async Task UpdateFloatingLabelState()
+    {
+        if (Variant != FieldVariant.FloatingLabel) return;
+        
+        var newHasValue = !string.IsNullOrEmpty(Value);
+        
+        // Only update if state actually changed
+        if (newHasValue == hasValue) return;
+        
+        hasValue = newHasValue;
+        
+        try
+        {
+            // Update the wrapper classes via JavaScript for immediate response
+            var classes = new List<string>();
+            if (hasValue) classes.Add("form-field__wrapper--has-value");
+            if (isFocused) classes.Add("form-field__wrapper--floating");
+            
+            // Check if the function exists before calling
+            var hasFunction = await JSRuntime.InvokeAsync<bool>("eval", "typeof updateFloatingLabelClasses === 'function'");
+            if (hasFunction)
+            {
+                await JSRuntime.InvokeVoidAsync("updateFloatingLabelClasses", wrapperElement, string.Join(" ", classes));
+            }
+            else
+            {
+                // Fallback to Blazor state management
+                StateHasChanged();
+            }
+        }
+        catch
+        {
+            // Fallback to Blazor state management
+            StateHasChanged();
+        }
+    }
+    
+    public async ValueTask DisposeAsync()
+    {
+        if (Variant == FieldVariant.FloatingLabel)
+        {
+            try
+            {
+                await JSRuntime.InvokeVoidAsync("RRBlazor.cleanupComponent", $"wrapper-{InputId}");
+            }
+            catch
+            {
+                // Ignore disposal errors
+            }
+        }
+    }
+    
     private string GetFieldGroupClasses()
     {
         var classes = new List<string> { "d-flex", "flex-column", "gap-1" };
@@ -352,6 +466,16 @@
         }
         
         return string.Join(" ", classes);
+    }
+    
+    private string GetFieldDensityClass()
+    {
+        return Density switch
+        {
+            FormDensity.Dense => "form-field--dense",
+            FormDensity.UltraDense => "form-field--ultra-dense",
+            _ => "form-field--comfortable"
+        };
     }
     
     private string GetLabelClasses()
@@ -380,7 +504,64 @@
             classes.Add("w-full");
         }
         
+        if (Variant == FieldVariant.FloatingLabel)
+        {
+            classes.Add("form-field__wrapper--floating-label");
+            
+            if (!string.IsNullOrEmpty(Value) || hasValue)
+            {
+                classes.Add("form-field__wrapper--has-value");
+            }
+            
+            if (isFocused)
+            {
+                classes.Add("form-field__wrapper--floating");
+            }
+            
+            if (HasError)
+            {
+                classes.Add("form-field__wrapper--error");
+            }
+            
+            if (IsDisabled)
+            {
+                classes.Add("form-field__wrapper--disabled");
+            }
+        }
+        
         return string.Join(" ", classes);
+    }
+    
+    private string GetFloatingLabelClasses()
+    {
+        var classes = new List<string>();
+        
+        if (IsRequired && ShowRequiredIndicator)
+        {
+            classes.Add("form-field__label--required");
+        }
+        
+        // Icon adjustment
+        if (!string.IsNullOrEmpty(Icon) && IconPosition == IconPosition.Start)
+        {
+            classes.Add("form-field__label--with-start-icon");
+        }
+        
+        // Size modifiers
+        classes.Add(Size switch
+        {
+            FieldSize.Small => "form-field__label--sm",
+            FieldSize.Large => "form-field__label--lg",
+            _ => ""
+        });
+        
+        return string.Join(" ", classes);
+    }
+    
+    private string GetPlaceholderText()
+    {
+        // Hide placeholder for floating label variant to avoid conflicts
+        return Variant == FieldVariant.FloatingLabel ? "" : Placeholder;
     }
     
     private string GetInputClasses()
@@ -393,6 +574,7 @@
             FieldVariant.Clean => "form-field__input--clean",
             FieldVariant.Outlined => "form-field__input--outlined",
             FieldVariant.Filled => "form-field__input--filled",
+            FieldVariant.FloatingLabel => "form-field__input--floating-label",
             _ => "form-field__input--default"
         });
         
@@ -621,15 +803,29 @@
     {
         var newValue = e.Value?.ToString() ?? "";
         Value = newValue;
+        hasValue = !string.IsNullOrEmpty(newValue);
         await ValueChanged.InvokeAsync(newValue);
+        
+        if (Variant == FieldVariant.FloatingLabel)
+        {
+            await UpdateFloatingLabelState();
+        }
     }
     
     private async Task HandleInput(ChangeEventArgs e)
     {
         var newValue = e.Value?.ToString() ?? "";
         Value = newValue;
+        hasValue = !string.IsNullOrEmpty(newValue);
+        
+        // Only invoke OnInput callback, not ValueChanged
+        // ValueChanged should only be called on actual change events (blur/enter)
         await OnInput.InvokeAsync(newValue);
-        await ValueChanged.InvokeAsync(newValue);
+        
+        if (Variant == FieldVariant.FloatingLabel)
+        {
+            await UpdateFloatingLabelState();
+        }
     }
     
     private async Task HandleCheckboxChange(ChangeEventArgs e)
@@ -646,12 +842,24 @@
     
     private async Task HandleFocus(FocusEventArgs e)
     {
+        isFocused = true;
         await OnFocus.InvokeAsync(e);
+        
+        if (Variant == FieldVariant.FloatingLabel)
+        {
+            await UpdateFloatingLabelState();
+        }
     }
     
     private async Task HandleBlur(FocusEventArgs e)
     {
+        isFocused = false;
         await OnBlur.InvokeAsync(e);
+        
+        if (Variant == FieldVariant.FloatingLabel)
+        {
+            await UpdateFloatingLabelState();
+        }
     }
     
     private async Task HandleKeyDown(KeyboardEventArgs e)
@@ -698,4 +906,66 @@ Usage Examples:
             ShowCharacterCount="true"
             MaxLength="50"
             @bind-Value="password" />
+
+<!-- Floating Label Examples -->
+<!-- Basic floating label -->
+<RFormField Label="Email Address" 
+            FieldType="FieldType.Email"
+            Variant="FieldVariant.FloatingLabel"
+            @bind-Value="email" />
+
+<!-- Floating label with icon -->
+<RFormField Label="Password" 
+            FieldType="FieldType.Password"
+            Variant="FieldVariant.FloatingLabel"
+            Icon="lock"
+            IconPosition="IconPosition.Start"
+            @bind-Value="password" />
+
+<!-- Large floating label with validation -->
+<RFormField Label="Full Name" 
+            Variant="FieldVariant.FloatingLabel"
+            Size="FieldSize.Large"
+            IsRequired="true"
+            HasError="nameError"
+            ErrorMessage="Name is required"
+            @bind-Value="fullName" />
+
+<!-- Small floating label -->
+<RFormField Label="Search" 
+            FieldType="FieldType.Search"
+            Variant="FieldVariant.FloatingLabel"
+            Size="FieldSize.Small"
+            Icon="search"
+            @bind-Value="searchQuery" />
+
+<!-- Density Examples -->
+<!-- Dense form field -->
+<RFormField Label="Compact Email" 
+            FieldType="FieldType.Email"
+            Density="FormDensity.Dense"
+            @bind-Value="email" />
+
+<!-- Ultra-dense form field -->
+<RFormField Label="Ultra Compact Name" 
+            Density="FormDensity.UltraDense"
+            Size="FieldSize.Small"
+            @bind-Value="name" />
+
+<!-- Ultra-dense floating label -->
+<RFormField Label="Minimal Input" 
+            Variant="FieldVariant.FloatingLabel"
+            Density="FormDensity.UltraDense"
+            Icon="person"
+            @bind-Value="input" />
+
+<!-- Dense form in grid layout -->
+<div class="form-grid--2 form-grid--ultra-dense">
+    <RFormField Label="First Name" 
+                Density="FormDensity.UltraDense"
+                @bind-Value="firstName" />
+    <RFormField Label="Last Name" 
+                Density="FormDensity.UltraDense"
+                @bind-Value="lastName" />
+</div>
 *@

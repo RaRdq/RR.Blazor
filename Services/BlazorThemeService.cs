@@ -49,6 +49,7 @@ public class BlazorThemeService : IThemeService, IAsyncDisposable
     private bool isSystemDark;
     private bool isHighContrast;
     private bool isInitialized;
+    private bool isDisposed;
     
     private const string THEME_KEY = "rr-blazor-theme";
     private const string CUSTOM_THEMES_KEY = "rr-blazor-custom-themes";
@@ -77,25 +78,50 @@ public class BlazorThemeService : IThemeService, IAsyncDisposable
     public async Task InitializeAsync()
     {
         if (isInitialized) return;
+        isInitialized = true;
         
         try
         {
-            logger.LogInformation("Initializing theme service...");
+            // Theme is already applied by JavaScript, just sync state
+            try
+            {
+                var themeInfo = await jsRuntime.InvokeAsync<dynamic>("getSystemTheme");
+                if (themeInfo != null)
+                {
+                    isSystemDark = Convert.ToBoolean(themeInfo.systemDark ?? false);
+                    isHighContrast = Convert.ToBoolean(themeInfo.highContrast ?? false);
+                    
+                    // Get current theme from DOM
+                    var currentThemeMode = themeInfo.current?.ToString() ?? "light";
+                    if (Enum.TryParse<ThemeMode>(currentThemeMode, true, out ThemeMode parsedMode))
+                    {
+                        currentTheme.Mode = parsedMode;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogDebug(ex, "Failed to get theme info from JavaScript, using defaults");
+            }
             
-            await DetectSystemPreferencesAsync();
-            await LoadThemeFromStorageAsync();
-            await ApplyThemeAsync(currentTheme);
+            // Load saved configuration directly
+            try
+            {
+                await LoadThemeFromStorageAsync();
+            }
+            catch (Exception ex)
+            {
+                logger.LogDebug(ex, "Theme load failed");
+            }
             
-            systemThemeTimer.Start();
-            isInitialized = true;
-            logger.LogInformation("Theme service initialized successfully with mode: {Mode}", currentTheme.Mode);
+            // Start system theme monitoring
+            // DISABLED TEMPORARILY - may be causing infinite loops
+            // systemThemeTimer.Start();
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to initialize theme service");
-            isInitialized = true; // Mark as initialized to prevent retry loops
+            logger.LogWarning(ex, "Failed to initialize theme service, using defaults");
             currentTheme = ThemeConfiguration.Default;
-            await ApplyThemeAsync(currentTheme);
         }
     }
     
@@ -109,10 +135,8 @@ public class BlazorThemeService : IThemeService, IAsyncDisposable
     
     public async Task SetThemeModeAsync(ThemeMode mode)
     {
-        logger.LogInformation("Setting theme mode to: {Mode}", mode);
         currentTheme.Mode = mode;
         await SetThemeAsync(currentTheme);
-        logger.LogInformation("Theme mode set successfully to: {Mode}", mode);
     }
     
     public async Task ApplyThemeAsync(ThemeConfiguration theme)
@@ -120,10 +144,8 @@ public class BlazorThemeService : IThemeService, IAsyncDisposable
         try
         {
             var effectiveMode = theme.GetEffectiveMode(isSystemDark);
-            logger.LogInformation("Applying theme mode: {ThemeMode} (effective: {EffectiveMode}, systemDark: {IsSystemDark})", theme.Mode, effectiveMode, isSystemDark);
-            
-            await jsRuntime.InvokeVoidAsync("eval", $"document.documentElement.setAttribute('data-theme', '{effectiveMode.ToString().ToLower()}')");
-            logger.LogInformation("Theme applied: {EffectiveMode}", effectiveMode);
+            // Use proper JS interop method only
+            await jsRuntime.InvokeVoidAsync("setTheme", effectiveMode.ToString().ToLower());
         }
         catch (Exception ex)
         {
@@ -246,12 +268,16 @@ public class BlazorThemeService : IThemeService, IAsyncDisposable
     {
         try
         {
-            var preferences = await jsRuntime.InvokeAsync<bool[]>("eval", "[window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches, window.matchMedia && window.matchMedia('(prefers-contrast: more)').matches]");
-            isSystemDark = preferences[0];
-            isHighContrast = preferences[1];
+            var themeInfo = await jsRuntime.InvokeAsync<dynamic>("getSystemTheme");
+            if (themeInfo != null)
+            {
+                isSystemDark = Convert.ToBoolean(themeInfo.systemDark ?? false);
+                isHighContrast = Convert.ToBoolean(themeInfo.highContrast ?? false);
+            }
         }
-        catch
+        catch (Exception ex)
         {
+            logger.LogDebug(ex, "Failed to detect system preferences");
             isSystemDark = false;
             isHighContrast = false;
         }
@@ -261,9 +287,14 @@ public class BlazorThemeService : IThemeService, IAsyncDisposable
     {
         try
         {
-            var preferences = await jsRuntime.InvokeAsync<bool[]>("eval", "[window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches, window.matchMedia && window.matchMedia('(prefers-contrast: more)').matches]");
-            var newSystemDark = preferences[0];
-            var newHighContrast = preferences[1];
+            // Skip if not initialized or disposed
+            if (!isInitialized || isDisposed || jsRuntime == null) return;
+            
+            var themeInfo = await jsRuntime.InvokeAsync<dynamic>("getSystemTheme");
+            if (themeInfo == null) return;
+            
+            var newSystemDark = Convert.ToBoolean(themeInfo.systemDark ?? false);
+            var newHighContrast = Convert.ToBoolean(themeInfo.highContrast ?? false);
             
             if (newSystemDark != isSystemDark)
             {
@@ -314,9 +345,9 @@ public class BlazorThemeService : IThemeService, IAsyncDisposable
     {
         try
         {
+            isDisposed = true;
             systemThemeTimer?.Stop();
             systemThemeTimer?.Dispose();
-            
         }
         catch (Exception ex)
         {

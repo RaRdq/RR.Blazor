@@ -15,5 +15,8 @@ public enum FieldVariant
     Outlined = 2,
     
     /// <summary>Filled style with solid background</summary>
-    Filled = 3
+    Filled = 3,
+    
+    /// <summary>Floating label style with animated label positioning</summary>
+    FloatingLabel = 4
 }

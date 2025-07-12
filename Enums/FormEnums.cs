@@ -118,3 +118,24 @@ public enum SectionElevation
     /// </summary>
     High = 3
 }
+
+/// <summary>
+/// Form field density for spacing control
+/// </summary>
+public enum FormDensity
+{
+    /// <summary>
+    /// Standard comfortable spacing (default)
+    /// </summary>
+    Comfortable = 0,
+    
+    /// <summary>
+    /// Reduced spacing for denser forms
+    /// </summary>
+    Dense = 1,
+    
+    /// <summary>
+    /// Minimal spacing for ultra-dense forms
+    /// </summary>
+    UltraDense = 2
+}

@@ -2,6 +2,93 @@
 // Supporting functions for component interactions
 
 window.RRBlazor = {
+    // ===== THEME MANAGEMENT SYSTEM =====
+    // Fast, efficient theme switching with no delays
+    
+    // Initialize theme on page load (called immediately)
+    initializeTheme: function() {
+        // Get stored theme or default to 'system'
+        let themeMode = 'system';
+        try {
+            const stored = localStorage.getItem('rr-blazor-theme');
+            if (stored) {
+                const config = JSON.parse(stored);
+                themeMode = config.Mode || 'system';
+            }
+        } catch (e) {
+            // Ignore errors, use default
+        }
+        
+        // Apply system preference if mode is system
+        if (themeMode === 'system' || themeMode === '0') {
+            themeMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        } else if (themeMode === '1') {
+            themeMode = 'light';
+        } else if (themeMode === '2') {
+            themeMode = 'dark';
+        }
+        
+        // Apply theme immediately
+        document.documentElement.setAttribute('data-theme', themeMode);
+        return themeMode;
+    },
+    
+    // Set theme with instant application
+    setTheme: function(theme) {
+        if (theme && typeof theme === 'string') {
+            // Normalize theme value
+            const normalizedTheme = theme.toLowerCase();
+            document.documentElement.setAttribute('data-theme', normalizedTheme);
+            
+            // Store theme preference
+            try {
+                const config = { Mode: normalizedTheme };
+                localStorage.setItem('rr-blazor-theme', JSON.stringify(config));
+            } catch (e) {
+                // Ignore localStorage errors
+            }
+            
+            return true;
+        }
+        return false;
+    },
+    
+    // Get current theme information
+    getThemeInfo: function() {
+        const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+        const systemDark = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)').matches : false;
+        const highContrast = window.matchMedia ? window.matchMedia('(prefers-contrast: more)').matches : false;
+        
+        return {
+            current: currentTheme,
+            systemDark: Boolean(systemDark),
+            highContrast: Boolean(highContrast),
+            effectiveTheme: currentTheme // Already resolved
+        };
+    },
+    
+    // Monitor system theme changes
+    watchSystemTheme: function(callback) {
+        if (!window.matchMedia) return null;
+        
+        const darkModeQuery = window.matchMedia('(prefers-color-scheme: dark)');
+        const highContrastQuery = window.matchMedia('(prefers-contrast: more)');
+        
+        const handler = () => {
+            if (callback) {
+                callback(this.getThemeInfo());
+            }
+        };
+        
+        darkModeQuery.addEventListener('change', handler);
+        highContrastQuery.addEventListener('change', handler);
+        
+        // Return cleanup function
+        return () => {
+            darkModeQuery.removeEventListener('change', handler);
+            highContrastQuery.removeEventListener('change', handler);
+        };
+    },
     // Tab indicator positioning
     getTabIndicatorPosition: function(tabElementId) {
         const element = document.getElementById(tabElementId);
@@ -177,6 +264,99 @@ window.RRBlazor = {
             input.addEventListener('input', updateCount);
             updateCount(); // Initial update
         }
+        
+        // Floating label support
+        if (options.isFloatingLabel || element.classList.contains('form-field__wrapper--floating-label')) {
+            this.initializeFloatingLabel(input, element);
+        }
+    },
+    
+    // Floating label functionality
+    updateFloatingLabelClasses: function(wrapperElement, classString) {
+        if (!wrapperElement) return;
+        
+        // Get the base classes (everything except state classes)
+        const existingClasses = wrapperElement.className.split(' ');
+        const newClasses = classString ? classString.split(' ') : [];
+        
+        // Remove all floating-label state classes
+        const filteredClasses = existingClasses.filter(cls => 
+            !cls.startsWith('form-field__wrapper--has-value') &&
+            !cls.startsWith('form-field__wrapper--floating') &&
+            !cls.startsWith('form-field__wrapper--error') &&
+            !cls.startsWith('form-field__wrapper--disabled')
+        );
+        
+        // Combine with new state classes
+        const finalClasses = [...filteredClasses, ...newClasses].filter(cls => cls.length > 0);
+        
+        // Apply classes atomically
+        wrapperElement.className = finalClasses.join(' ');
+    },
+    
+    initializeFloatingLabel: function(inputElement, wrapperElement) {
+        if (!inputElement || !wrapperElement) return;
+        
+        const updateState = () => {
+            const hasValue = inputElement.value && inputElement.value.trim().length > 0;
+            const isFocused = document.activeElement === inputElement;
+            
+            // Remove all state classes first
+            wrapperElement.classList.remove('form-field__wrapper--has-value', 'form-field__wrapper--floating');
+            
+            // Add appropriate classes
+            if (hasValue) {
+                wrapperElement.classList.add('form-field__wrapper--has-value');
+            }
+            if (isFocused || hasValue) {
+                wrapperElement.classList.add('form-field__wrapper--floating');
+            }
+        };
+        
+        // Initialize state immediately
+        setTimeout(updateState, 0);
+        
+        // Event handlers with debouncing for input
+        let inputTimeout;
+        const debouncedInputHandler = () => {
+            clearTimeout(inputTimeout);
+            inputTimeout = setTimeout(updateState, 10);
+        };
+        
+        const focusHandler = () => {
+            clearTimeout(inputTimeout);
+            wrapperElement.classList.add('form-field__wrapper--floating');
+            updateState();
+        };
+        
+        const blurHandler = () => {
+            clearTimeout(inputTimeout);
+            setTimeout(() => {
+                if (!inputElement.value || inputElement.value.trim().length === 0) {
+                    wrapperElement.classList.remove('form-field__wrapper--floating');
+                }
+                updateState();
+            }, 50);
+        };
+        
+        // Attach event listeners
+        inputElement.addEventListener('focus', focusHandler);
+        inputElement.addEventListener('blur', blurHandler);
+        inputElement.addEventListener('input', debouncedInputHandler);
+        inputElement.addEventListener('change', updateState);
+        
+        // Store cleanup function
+        const existingCleanup = wrapperElement._rrCleanup;
+        wrapperElement._rrCleanup = () => {
+            if (existingCleanup) existingCleanup();
+            clearTimeout(inputTimeout);
+            inputElement.removeEventListener('focus', focusHandler);
+            inputElement.removeEventListener('blur', blurHandler);
+            inputElement.removeEventListener('input', debouncedInputHandler);
+            inputElement.removeEventListener('change', updateState);
+        };
+        
+        return updateState;
     },
     
     // Cleanup component
@@ -209,6 +389,20 @@ window.addEventListener = function(elementId, eventName, dotNetRef, methodName) 
     });
 };
 
+// Global functions for Blazor interop
+window.updateFloatingLabelClasses = function(wrapperElement, classString) {
+    return RRBlazor.updateFloatingLabelClasses(wrapperElement, classString);
+};
+
+window.initializeFloatingLabel = function(inputElement, wrapperElement) {
+    return RRBlazor.initializeFloatingLabel(inputElement, wrapperElement);
+};
+
+// Initialize theme immediately (before DOM load)
+(function() {
+    RRBlazor.initializeTheme();
+})();
+
 // Auto-initialize components on DOM load
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize any components that need it
@@ -217,4 +411,54 @@ document.addEventListener('DOMContentLoaded', function() {
         const options = element.getAttribute('data-rr-options');
         RRBlazor.initializeComponent(componentType, element.id, options ? JSON.parse(options) : {});
     });
+    
+    // Auto-initialize floating labels
+    document.querySelectorAll('.form-field__wrapper--floating-label').forEach(wrapper => {
+        const input = wrapper.querySelector('input, textarea, select');
+        if (input && !input.dataset.floatingLabelInitialized) {
+            RRBlazor.initializeFloatingLabel(input, wrapper);
+            input.dataset.floatingLabelInitialized = 'true';
+        }
+    });
 });
+
+// Global theme functions for Blazor interop
+window.setTheme = function(theme) {
+    return RRBlazor.setTheme(theme);
+};
+
+window.getSystemTheme = function() {
+    return RRBlazor.getThemeInfo();
+};
+
+// File download helpers (moved from PayrollAI.Shared.Client)
+window.downloadFileFromStream = async function(fileName, contentStream) {
+    try {
+        const arrayBuffer = await contentStream.arrayBuffer();
+        const blob = new Blob([arrayBuffer]);
+        const url = URL.createObjectURL(blob);
+        
+        const anchorElement = document.createElement('a');
+        anchorElement.href = url;
+        anchorElement.download = fileName ?? '';
+        anchorElement.click();
+        anchorElement.remove();
+        
+        URL.revokeObjectURL(url);
+        return true;
+    } catch (error) {
+        console.error('Download failed:', error);
+        return false;
+    }
+};
+
+// Simple file download from URL
+window.downloadFile = function(url, fileName) {
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName || 'download';
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+};
