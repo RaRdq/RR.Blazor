@@ -1,5 +1,6 @@
 @using RR.Blazor.Services
 @using RR.Blazor.Models
+@implements IDisposable
 @inject IThemeService ThemeService
 
 <button class="d-inline-flex align-center justify-center clickable border-light bg-elevated text-secondary hover:bg-primary hover:text-inverse rounded-lg transition-fast"
@@ -18,8 +19,17 @@
 
     protected override async Task OnInitializedAsync()
     {
-        currentMode = await ThemeService.GetThemeModeAsync();
-        ThemeService.ThemeChanged += OnThemeChanged;
+        try
+        {
+            currentMode = await ThemeService.GetThemeModeAsync();
+            ThemeService.ThemeChanged += OnThemeChanged;
+            Console.WriteLine($"RThemeSwitcher initialized with mode: {currentMode}");
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Failed to initialize theme switcher: {ex.Message}");
+            currentMode = ThemeMode.Light;
+        }
     }
 
     private void OnThemeChanged(ThemeConfiguration theme)
@@ -33,15 +43,30 @@
 
     private async Task ToggleTheme()
     {
-        currentMode = currentMode switch
+        try
         {
-            ThemeMode.Light => ThemeMode.Dark,
-            ThemeMode.Dark => ThemeMode.System,
-            ThemeMode.System => ThemeMode.Light,
-            _ => ThemeMode.Light
-        };
-        
-        await ThemeService.SetThemeModeAsync(currentMode);
+            Console.WriteLine($"RThemeSwitcher: Toggle clicked, current mode: {currentMode}");
+            
+            var newMode = currentMode switch
+            {
+                ThemeMode.Light => ThemeMode.Dark,
+                ThemeMode.Dark => ThemeMode.System,
+                ThemeMode.System => ThemeMode.Light,
+                _ => ThemeMode.Light
+            };
+            
+            Console.WriteLine($"RThemeSwitcher: Switching from {currentMode} to {newMode}");
+            currentMode = newMode;
+            
+            await ThemeService.SetThemeModeAsync(currentMode);
+            Console.WriteLine($"RThemeSwitcher: Theme service updated to {currentMode}");
+            
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Failed to toggle theme: {ex.Message}");
+        }
     }
 
     private string GetThemeIcon()

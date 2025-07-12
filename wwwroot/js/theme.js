@@ -10,6 +10,7 @@ export function applyTheme(themeData) {
     try {
         // Set theme mode as data attribute
         root.setAttribute('data-theme', themeData.mode);
+        console.log('RR.Blazor Theme: Set data-theme attribute to', themeData.mode);
         
         // Apply color variables
         if (themeData.colors) {
@@ -53,10 +54,19 @@ export function applyTheme(themeData) {
             root.classList.remove('theme-high-contrast');
         }
         
-        // Force style recalculation
+        // Force style recalculation and theme variable updates
         root.style.display = 'none';
         root.offsetHeight; // Trigger reflow
         root.style.display = '';
+        
+        // Force background redraw for gradient updates
+        const bodyEl = document.body;
+        if (bodyEl) {
+            bodyEl.style.opacity = '0.999';
+            setTimeout(() => {
+                bodyEl.style.opacity = '';
+            }, 1);
+        }
         
         // Notify other systems of theme change
         notifyThemeChange(themeData);

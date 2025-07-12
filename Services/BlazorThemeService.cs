@@ -46,14 +46,12 @@ public class BlazorThemeService : IThemeService, IAsyncDisposable
     
     private ThemeConfiguration currentTheme = ThemeConfiguration.Default;
     private readonly System.Timers.Timer systemThemeTimer;
-    private IJSObjectReference jsModule;
     private bool isSystemDark;
     private bool isHighContrast;
     private bool isInitialized;
     
     private const string THEME_KEY = "rr-blazor-theme";
     private const string CUSTOM_THEMES_KEY = "rr-blazor-custom-themes";
-    private const string THEME_MODULE_PATH = "./_content/RR.Blazor/js/theme.js";
     
     public event Action<ThemeConfiguration> ThemeChanged;
     public event Action<bool> SystemThemeChanged;
@@ -65,7 +63,7 @@ public class BlazorThemeService : IThemeService, IAsyncDisposable
     public BlazorThemeService(
         ILocalStorageService localStorage,
         IJSRuntime jsRuntime,
-        ILogger<BlazorThemeService> logger = null)
+        ILogger<BlazorThemeService> logger)
     {
         this.localStorage = localStorage;
         this.jsRuntime = jsRuntime;
@@ -82,21 +80,22 @@ public class BlazorThemeService : IThemeService, IAsyncDisposable
         
         try
         {
-            jsModule = await jsRuntime.InvokeAsync<IJSObjectReference>("import", THEME_MODULE_PATH);
+            logger.LogInformation("Initializing theme service...");
             
-            await LoadThemeFromStorageAsync();
             await DetectSystemPreferencesAsync();
+            await LoadThemeFromStorageAsync();
             await ApplyThemeAsync(currentTheme);
             
             systemThemeTimer.Start();
             isInitialized = true;
-            
-            logger?.LogInformation("Theme service initialized with mode: {Mode}", currentTheme.Mode);
+            logger.LogInformation("Theme service initialized successfully with mode: {Mode}", currentTheme.Mode);
         }
         catch (Exception ex)
         {
-            logger?.LogError(ex, "Failed to initialize theme service");
-            await ResetToDefaultAsync();
+            logger.LogError(ex, "Failed to initialize theme service");
+            isInitialized = true; // Mark as initialized to prevent retry loops
+            currentTheme = ThemeConfiguration.Default;
+            await ApplyThemeAsync(currentTheme);
         }
     }
     
@@ -110,61 +109,36 @@ public class BlazorThemeService : IThemeService, IAsyncDisposable
     
     public async Task SetThemeModeAsync(ThemeMode mode)
     {
+        logger.LogInformation("Setting theme mode to: {Mode}", mode);
         currentTheme.Mode = mode;
         await SetThemeAsync(currentTheme);
+        logger.LogInformation("Theme mode set successfully to: {Mode}", mode);
     }
     
     public async Task ApplyThemeAsync(ThemeConfiguration theme)
     {
-        if (jsModule == null) return;
-        
         try
         {
             var effectiveMode = theme.GetEffectiveMode(isSystemDark);
-            var themeData = new
-            {
-                mode = effectiveMode.ToString().ToLower(),
-                colors = GetThemeColors(theme),
-                animations = theme.AnimationsEnabled,
-                accessibility = theme.AccessibilityMode,
-                highContrast = theme.HighContrastMode,
-                customVariables = theme.CustomVariables
-            };
+            logger.LogInformation("Applying theme mode: {ThemeMode} (effective: {EffectiveMode}, systemDark: {IsSystemDark})", theme.Mode, effectiveMode, isSystemDark);
             
-            await jsModule.InvokeVoidAsync("applyTheme", themeData);
+            await jsRuntime.InvokeVoidAsync("eval", $"document.documentElement.setAttribute('data-theme', '{effectiveMode.ToString().ToLower()}')");
+            logger.LogInformation("Theme applied: {EffectiveMode}", effectiveMode);
         }
         catch (Exception ex)
         {
-            logger?.LogError(ex, "Failed to apply theme");
+            logger.LogError(ex, "Failed to apply theme");
         }
     }
     
     public async Task<bool> GetSystemDarkModeAsync()
     {
-        if (jsModule == null) return false;
-        
-        try
-        {
-            return await jsModule.InvokeAsync<bool>("getSystemDarkMode");
-        }
-        catch
-        {
-            return false;
-        }
+        return isSystemDark;
     }
     
     public async Task<bool> GetSystemHighContrastAsync()
     {
-        if (jsModule == null) return false;
-        
-        try
-        {
-            return await jsModule.InvokeAsync<bool>("getSystemHighContrast");
-        }
-        catch
-        {
-            return false;
-        }
+        return isHighContrast;
     }
     
     public async Task ResetToDefaultAsync()
@@ -197,7 +171,7 @@ public class BlazorThemeService : IThemeService, IAsyncDisposable
         }
         catch (Exception ex)
         {
-            logger?.LogError(ex, "Failed to save custom theme: {ThemeName}", theme.Name);
+            logger.LogError(ex, "Failed to save custom theme: {ThemeName}", theme.Name);
         }
     }
     
@@ -224,7 +198,7 @@ public class BlazorThemeService : IThemeService, IAsyncDisposable
         }
         catch (Exception ex)
         {
-            logger?.LogError(ex, "Failed to delete custom theme: {ThemeName}", themeName);
+            logger.LogError(ex, "Failed to delete custom theme: {ThemeName}", themeName);
         }
     }
     
@@ -251,7 +225,7 @@ public class BlazorThemeService : IThemeService, IAsyncDisposable
         }
         catch (Exception ex)
         {
-            logger?.LogWarning(ex, "Failed to load theme from storage, using default");
+            logger.LogWarning(ex, "Failed to load theme from storage, using default");
             currentTheme = ThemeConfiguration.Default;
         }
     }
@@ -264,22 +238,32 @@ public class BlazorThemeService : IThemeService, IAsyncDisposable
         }
         catch (Exception ex)
         {
-            logger?.LogError(ex, "Failed to save theme to storage");
+            logger.LogError(ex, "Failed to save theme to storage");
         }
     }
     
     private async Task DetectSystemPreferencesAsync()
     {
-        isSystemDark = await GetSystemDarkModeAsync();
-        isHighContrast = await GetSystemHighContrastAsync();
+        try
+        {
+            var preferences = await jsRuntime.InvokeAsync<bool[]>("eval", "[window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches, window.matchMedia && window.matchMedia('(prefers-contrast: more)').matches]");
+            isSystemDark = preferences[0];
+            isHighContrast = preferences[1];
+        }
+        catch
+        {
+            isSystemDark = false;
+            isHighContrast = false;
+        }
     }
     
     private async Task CheckSystemThemeAsync()
     {
         try
         {
-            var newSystemDark = await GetSystemDarkModeAsync();
-            var newHighContrast = await GetSystemHighContrastAsync();
+            var preferences = await jsRuntime.InvokeAsync<bool[]>("eval", "[window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches, window.matchMedia && window.matchMedia('(prefers-contrast: more)').matches]");
+            var newSystemDark = preferences[0];
+            var newHighContrast = preferences[1];
             
             if (newSystemDark != isSystemDark)
             {
@@ -303,7 +287,7 @@ public class BlazorThemeService : IThemeService, IAsyncDisposable
         }
         catch (Exception ex)
         {
-            logger?.LogDebug(ex, "Failed to check system theme");
+            logger.LogDebug(ex, "Failed to check system theme");
         }
     }
     
@@ -333,14 +317,10 @@ public class BlazorThemeService : IThemeService, IAsyncDisposable
             systemThemeTimer?.Stop();
             systemThemeTimer?.Dispose();
             
-            if (jsModule != null)
-            {
-                await jsModule.DisposeAsync();
-            }
         }
         catch (Exception ex)
         {
-            logger?.LogError(ex, "Failed to dispose theme service");
+            logger.LogError(ex, "Failed to dispose theme service");
         }
     }
 }

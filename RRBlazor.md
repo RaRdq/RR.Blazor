@@ -8,9 +8,12 @@
 Ultra-generic, lightweight and project-agnostic design system with enterprise-grade components and utilities for professional Blazor applications. Built primary for AI coding agents working over Blazor.
 
 **Note:** This documentation reflects the actual implementation as of the latest update (July 2025). Recent changes include:
-- Navigation SCSS files have been consolidated (_nav-menu.scss merged into _navigation.scss)
-- State files have been restructured (utilities vs components separation)
-- Full elevation system (0-24) and base animation classes have been added
+- Complete theme system overhaul with 2030 professional design
+- Mercury bank-inspired dark theme with sophisticated contrast
+- Consolidated SCSS utilities system (layout, visual effects)
+- All R* components are now fully theme-aware
+- Eliminated duplicate variables and non-semantic naming
+- Professional elevation system (0-24) with glassmorphism effects
 
 ### Key Features
 - 🎨 **100% Theme-aware**: Dynamic light/dark/high-contrast modes with CSS variables
@@ -92,6 +95,58 @@ builder.Services.AddRRBlazor(options =>
 <RButton Text="Submit" 
          Disabled="@isProcessing" 
          Loading="@isProcessing" />
+```
+
+## 2030 Professional Theme System
+
+### Modern Color Palette
+RR.Blazor now features a sophisticated 2030-ready color system with professional gray tones instead of outdated blue primaries:
+
+#### Light Theme (Professional)
+- **Primary**: Dark charcoal (`#24292f`) for sophisticated contrast
+- **Text**: Multi-level hierarchy with proper WCAG AA compliance
+- **Backgrounds**: Subtle gradients with modern off-whites (`#fdfdfe`)
+- **Borders**: Elegant definition with sophisticated opacity levels
+
+#### Dark Theme (Mercury-Inspired) 
+- **Primary**: Clean off-white (`#f0f6fc`) for premium feel
+- **Backgrounds**: Deep blue-grays with sophisticated depth
+- **Glass Effects**: Advanced glassmorphism with backdrop-filter
+- **Shadows**: Dramatic elevation for professional depth
+
+### Theme-Aware Components
+All R* components automatically adapt to theme changes:
+
+```html
+<!-- Automatically adapts to light/dark theme -->
+<RButton Text="Professional" Variant="ButtonVariant.Primary" />
+<RCard Title="Executive Dashboard" class="glass-medium" />
+<RFormField Label="Premium Input" Type="FieldType.Text" />
+```
+
+### Semantic Color System
+```scss
+// Use semantic variables instead of hardcoded colors
+--color-interactive-primary         // Professional primary color
+--color-text-primary               // Primary text with proper contrast
+--color-background-elevated        // Elevated surfaces
+--color-border-light              // Subtle borders
+```
+
+### Glassmorphism Effects
+Modern glass effects with theme-aware blending:
+```html
+<div class="glass-light">Light glass effect</div>
+<div class="glass-medium">Medium glass effect</div> 
+<div class="glass-frost">Frosted glass effect</div>
+```
+
+### Professional Elevation
+MudBlazor-style elevation system (0-24 levels):
+```html
+<RCard Elevation="4">Standard card</RCard>
+<RCard Elevation="12">Floating card</RCard>
+<RCard Elevation="20" class="glass-medium">Premium card</RCard>
 ```
 
 ## CSS Selector Reference
