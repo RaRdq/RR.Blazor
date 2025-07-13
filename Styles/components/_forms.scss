@@ -31,7 +31,7 @@
     display: flex;
     align-items: stretch; // Stretch for proper icon alignment
     
-    // Floating label variant - MudBlazor style
+    // Floating label variant
     &--floating-label {
       position: relative;
       
@@ -40,52 +40,41 @@
         left: var(--space-3);
         top: 50%;
         transform: translateY(-50%);
-        padding: 0 var(--space-1);
+        padding: 0 var(--space-2);
         margin: 0;
-        font-size: calc(var(--text-base) * 1.1); // 10% larger
+        font-size: var(--text-base);
         font-weight: var(--font-normal);
-        color: var(--color-text-tertiary);
-        background: transparent;
+        color: var(--color-text-secondary);
+        background: var(--color-background-elevated);
         pointer-events: none;
-        transition: all 200ms cubic-bezier(0.0, 0, 0.2, 1);
+        transition: all 200ms var(--ease-out);
         white-space: nowrap;
-        transform-origin: left center;
+        z-index: 10;
         
         &--with-start-icon {
           left: var(--space-12);
         }
       }
       
-      // Floating state - MudBlazor animation style
+      input {
+        z-index: 1;
+      }
+      
+      // Floating state - when input has focus, value, or is autofilled
       &.form-field__wrapper--floating .form-field__label,
       &.form-field__wrapper--has-value .form-field__label,
       &:has(input:focus) .form-field__label,
       &:has(input:not(:placeholder-shown)) .form-field__label,
       &:has(input:-webkit-autofill) .form-field__label,
       &:has(input[value]:not([value=""])) .form-field__label {
-        top: -8px;
-        left: var(--space-2);
-        transform: translateY(0) scale(0.75);
+        top: -10px;
+        left: var(--space-3);
+        transform: translateY(0) scale(0.85);
+        font-size: var(--text-xs);
         color: var(--color-interactive-primary);
         font-weight: var(--font-medium);
-        padding: 0 var(--space-1);
-        
-        // Clean background line through text
-        &::before {
-          content: '';
-          position: absolute;
-          left: -2px;
-          right: -2px;
-          top: 50%;
-          height: 2px;
-          background: var(--color-background-elevated);
-          z-index: -1;
-        }
-      }
-      
-      // Focus state with theme-aware color
-      &:has(input:focus) .form-field__label {
-        color: var(--color-interactive-primary);
+        padding: 0 var(--space-2);
+        background: var(--color-background-elevated);
       }
     }
   }
@@ -133,10 +122,9 @@
     width: 100%;
     padding: var(--space-4) var(--space-3); // 16px vertical, 12px horizontal
     min-height: 3.5rem; // 56px
-    border: none;
-    border-bottom: 1px solid var(--color-border-light);
-    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
-    background-color: var(--color-background-secondary);
+    border: 1px solid var(--color-border-medium);
+    border-radius: var(--radius-lg);
+    background-color: var(--color-background-elevated);
     color: var(--color-text-primary);
     font-size: var(--text-base);
     font-weight: var(--font-normal);
@@ -155,21 +143,19 @@
     
     // States
     &:hover:not(:focus):not(:disabled) {
-      border-bottom-color: var(--color-text-primary);
-      background-color: var(--color-background-tertiary);
+      border-color: var(--color-border-strong);
+      background-color: var(--color-background-elevated);
     }
     
     &:focus {
-      border-bottom-width: 2px;
-      border-bottom-color: var(--color-interactive-primary);
-      padding-bottom: calc(var(--space-4) - 1px); // Compensate for border width
-      background-color: var(--color-background-tertiary);
+      border-color: var(--color-interactive-primary);
+      box-shadow: 0 0 0 3px var(--theme-focus-ring);
     }
     
     &:disabled {
-      background-color: var(--color-background-primary);
+      background-color: var(--color-background-secondary);
       color: var(--color-text-disabled);
-      border-bottom-style: dotted;
+      border-color: var(--color-border-light);
       cursor: not-allowed;
       opacity: 0.6;
     }
@@ -178,9 +164,8 @@
     &:-webkit-autofill,
     &:-webkit-autofill:hover,
     &:-webkit-autofill:focus {
-      -webkit-box-shadow: 0 0 0 1000px var(--color-background-secondary) inset;
+      -webkit-box-shadow: 0 0 0 1000px var(--color-background-elevated) inset;
       -webkit-text-fill-color: var(--color-text-primary);
-      border-bottom-color: var(--color-interactive-primary);
     }
     
     // Placeholder
@@ -289,7 +274,7 @@
     }
   }
   
-  // Error & help messages
+  // Error & help messages with enhanced styling
   &__error {
     display: flex;
     align-items: center;
@@ -297,9 +282,12 @@
     margin-top: var(--space-1);
     font-size: var(--text-xs);
     color: var(--color-error);
+    font-weight: var(--font-medium);
+    animation: slideInDown 0.3s ease-out;
     
     i {
       font-size: var(--text-sm);
+      animation: bounce 0.6s ease-out;
     }
   }
   
@@ -312,25 +300,86 @@
     color: var(--color-text-tertiary);
   }
   
-  // Error state
+  // Error state with enhanced animations
   &--error {
     .form-field__input,
     .form-field__textarea,
     .form-field__select {
-      border-bottom-color: var(--color-error);
+      border-color: var(--color-error);
+      background-color: var(--color-error-bg, rgba(220, 38, 38, 0.03));
+      animation: errorPulse 0.6s ease-out;
+      transition: all var(--duration-fast) ease-out;
       
       &:focus {
-        border-bottom-color: var(--color-error);
-        border-bottom-width: 2px;
+        border-color: var(--color-error);
+        box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15);
+        background-color: var(--color-background-elevated);
       }
     }
     
     .form-field__icon-container {
       color: var(--color-error);
+      animation: shake 0.4s ease-in-out;
     }
     
     .form-field__label {
-      color: var(--color-error) !important;
+      color: var(--color-error);
+      transition: color var(--duration-fast) ease-out;
+    }
+    
+    .form-field__wrapper {
+      position: relative;
+      
+      &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        border: 2px solid var(--color-error);
+        border-radius: inherit;
+        opacity: 0;
+        pointer-events: none;
+        animation: errorGlow 0.8s ease-out;
+      }
+    }
+  }
+  
+  // Success/Valid state
+  &--valid {
+    .form-field__input,
+    .form-field__textarea,
+    .form-field__select {
+      border-color: var(--color-success);
+      background-color: var(--color-success-bg, rgba(34, 197, 94, 0.03));
+      transition: all var(--duration-fast) ease-out;
+      
+      &:focus {
+        border-color: var(--color-success);
+        box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
+        background-color: var(--color-background-elevated);
+      }
+    }
+    
+    .form-field__icon-container {
+      color: var(--color-success);
+    }
+    
+    .form-field__wrapper {
+      &::after {
+        content: '✓';
+        position: absolute;
+        right: var(--space-3);
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--color-success);
+        font-weight: bold;
+        font-size: var(--text-sm);
+        opacity: 0;
+        animation: successFadeIn 0.5s ease-out 0.2s forwards;
+        pointer-events: none;
+      }
     }
   }
 }

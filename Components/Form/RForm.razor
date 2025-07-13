@@ -3,11 +3,13 @@
 @using Microsoft.AspNetCore.Components.Forms
 @using RR.Blazor.Enums
 @using RR.Blazor.Models
+@using Microsoft.JSInterop
 @typeparam TModel where TModel : class
 @inherits ComponentBase
-@implements IDisposable
+@implements IAsyncDisposable
 
-<div class="r-form @GetFormLayoutClass() @GetFormDensityClass() @Class" 
+<CascadingValue Value="@GetValidationContext()">
+<div @ref="formElement" id="@FormId" class="r-form @GetFormLayoutClass() @GetFormDensityClass() @Class" 
      role="form" 
      aria-label="@AriaLabel"
      data-form-state="@State.ToString().ToLowerInvariant()"
@@ -39,27 +41,6 @@
             <DataAnnotationsValidator />
         }
         
-        @if (Options.ShowValidationSummary && (validationResult?.FormErrors.Any() == true || !string.IsNullOrEmpty(validationResult?.GeneralError)))
-        {
-            <div class="r-form__validation-summary pa-4 mb-4 bg-error-light border-light rounded" role="alert" aria-live="polite">
-                @if (!string.IsNullOrEmpty(validationResult?.GeneralError))
-                {
-                    <div class="d-flex align-center gap-2 mb-2">
-                        <i class="material-symbols-rounded text-error">error</i>
-                        <span class="text-body-2 text-error font-medium">@validationResult.GeneralError</span>
-                    </div>
-                }
-                @if (validationResult?.FormErrors.Any() == true)
-                {
-                    <ul class="ma-0 pa-0 list-style-none">
-                        @foreach (var error in validationResult.FormErrors)
-                        {
-                            <li class="text-body-2 text-error mb-1">• @error</li>
-                        }
-                    </ul>
-                }
-            </div>
-        }
 
         <div class="r-form__content">
             @if (FormFields != null)
@@ -82,19 +63,43 @@
         }
         else if (ShowDefaultActions)
         {
+            @* Validation summary near submit button *@
+            @if (HasAttemptedSubmit && ShouldShowValidationSummary())
+            {
+                <div class="r-form__validation-summary pa-4 mb-4 bg-error-light border-light rounded" role="alert" aria-live="polite">
+                    @if (!string.IsNullOrEmpty(validationResult?.GeneralError))
+                    {
+                        <div class="d-flex align-center gap-2 mb-2">
+                            <i class="material-symbols-rounded text-error">error</i>
+                            <span class="text-body-2 text-error font-medium">@validationResult.GeneralError</span>
+                        </div>
+                    }
+                    @if (GetAllValidationErrors().Any())
+                    {
+                        <ul class="ma-0 pa-0 list-style-none">
+                            @foreach (var error in GetAllValidationErrors())
+                            {
+                                <li class="text-body-2 text-error mb-1">• @error</li>
+                            }
+                        </ul>
+                    }
+                </div>
+            }
+            
             <div class="r-form__actions d-flex gap-3 justify-end mt-4">
                 @if (ShowCancelButton)
                 {
                     <RButton Text="@CancelText" 
                              Variant="ButtonVariant.Secondary" 
-                             Disabled="@(State == FormState.Submitting || State == FormState.Disabled)"
+                             Disabled="@IsCancelButtonDisabled()"
                              OnClick="@HandleCancel" />
                 }
-                <RButton Text="@SubmitText" 
+                <RButton Text="@GetSubmitButtonText()" 
                          Variant="ButtonVariant.Primary" 
                          Type="ButtonType.Submit"
-                         Loading="@(State == FormState.Submitting)"
-                         Disabled="@(State == FormState.Submitting || State == FormState.Disabled || (RequireValidation && !IsFormValid))"
+                         Loading="@IsSubmitButtonLoading()"
+                         Disabled="@IsSubmitButtonDisabled()"
+                         FullWidth="@SubmitButtonFullWidth"
                          Elevation="@(Layout == FormLayout.Executive ? 4 : 2)" />
             </div>
         }
@@ -110,6 +115,7 @@
         </div>
     }
 </div>
+</CascadingValue>
 
 @code {
     [Parameter] public TModel Model { get; set; } = default!;
@@ -138,6 +144,7 @@
     [Parameter] public string SubmitText { get; set; } = "Submit";
     [Parameter] public string CancelText { get; set; } = "Cancel";
     [Parameter] public bool RequireValidation { get; set; } = true;
+    [Parameter] public bool SubmitButtonFullWidth { get; set; } = false;
     
     // Events
     [Parameter] public EventCallback<FormSubmissionEventArgs<TModel>> OnValidSubmit { get; set; }
@@ -154,11 +161,41 @@
     
     // State
     public FormState State { get; private set; } = FormState.Ready;
-    public bool IsFormValid => validationResult?.IsValid ?? true;
+    public bool IsFormValid 
+    {
+        get
+        {
+            try
+            {
+                // Check custom validation
+                var customValid = validationResult?.IsValid ?? true;
+                
+                // Check DataAnnotations validation
+                var dataAnnotationsValid = true;
+                if (ValidationMode == ValidationMode.DataAnnotations || ValidationMode == ValidationMode.Hybrid)
+                {
+                    var editContext = new EditContext(Model);
+                    dataAnnotationsValid = editContext.Validate();
+                }
+                
+                return customValid && dataAnnotationsValid;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+    }
+    public string FormId { get; private set; } = $"r-form-{Guid.NewGuid():N}";
+    public bool HasAttemptedSubmit { get; private set; } = false;
     
     private FormValidationResult validationResult = new();
     private Timer? successMessageTimer;
     private Timer? validationDebounceTimer;
+    private ElementReference formElement;
+    private IJSObjectReference? jsModule;
+    
+    [Inject] private IJSRuntime JSRuntime { get; set; } = default!;
     
     protected override void OnInitialized()
     {
@@ -169,15 +206,22 @@
         
         AriaLabel ??= Title ?? "Form";
         
-        // Initialize validation if auto-validation is enabled
-        if (Options.ValidateOnChange || Options.ValidateOnBlur)
+        // Initialize with a clean validation state - don't run validation until needed
+        validationResult = new FormValidationResult { IsValid = true };
+    }
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
         {
-            _ = Task.Run(async () => await ValidateModelAsync());
+            // No JS initialization needed for basic validation
+            await Task.CompletedTask;
         }
     }
     
     private async Task HandleValidSubmit()
     {
+        HasAttemptedSubmit = true;
         await SetStateAsync(FormState.Validating);
         
         // Perform validation
@@ -245,6 +289,7 @@
     
     private async Task HandleInvalidSubmit()
     {
+        HasAttemptedSubmit = true;
         await SetStateAsync(FormState.Error);
         
         var args = new FormSubmissionEventArgs<TModel>(Model, validationResult);
@@ -275,64 +320,87 @@
     {
         var result = new FormValidationResult();
         
-        // DataAnnotations validation
-        if (ValidationMode == ValidationMode.DataAnnotations || ValidationMode == ValidationMode.Hybrid)
+        try
         {
-            var context = new ValidationContext(Model);
-            var validationResults = new List<ValidationResult>();
-            
-            if (!Validator.TryValidateObject(Model, context, validationResults, true))
+            // DataAnnotations validation
+            if (ValidationMode == ValidationMode.DataAnnotations || ValidationMode == ValidationMode.Hybrid)
             {
-                foreach (var validationResult in validationResults)
+                var context = new ValidationContext(Model);
+                var validationResults = new List<ValidationResult>();
+                
+                if (!Validator.TryValidateObject(Model, context, validationResults, true))
                 {
-                    if (validationResult.MemberNames?.Any() == true)
+                    foreach (var validationResult in validationResults)
                     {
-                        foreach (var memberName in validationResult.MemberNames)
+                        if (validationResult.MemberNames?.Any() == true)
                         {
-                            result.AddFieldError(memberName, validationResult.ErrorMessage ?? "Validation error");
+                            foreach (var memberName in validationResult.MemberNames)
+                            {
+                                result.AddFieldError(memberName, validationResult.ErrorMessage ?? "Validation error");
+                            }
+                        }
+                        else
+                        {
+                            result.AddFormError(validationResult.ErrorMessage ?? "Validation error");
                         }
                     }
-                    else
-                    {
-                        result.AddFormError(validationResult.ErrorMessage ?? "Validation error");
-                    }
                 }
             }
-        }
-        
-        // Custom validation
-        if (ValidationMode == ValidationMode.Custom || ValidationMode == ValidationMode.Hybrid)
-        {
-            if (CustomValidator != null)
+            
+            // Custom validation
+            if (ValidationMode == ValidationMode.Custom || ValidationMode == ValidationMode.Hybrid)
             {
-                var customResult = await CustomValidator(Model);
-                
-                // Merge custom validation results
-                foreach (var fieldError in customResult.FieldErrors)
+                if (CustomValidator != null)
                 {
-                    foreach (var error in fieldError.Value)
+                    var customResult = await CustomValidator(Model);
+                    
+                    // Merge custom validation results
+                    foreach (var fieldError in customResult.FieldErrors)
                     {
-                        result.AddFieldError(fieldError.Key, error);
+                        foreach (var error in fieldError.Value)
+                        {
+                            result.AddFieldError(fieldError.Key, error);
+                        }
                     }
-                }
-                
-                foreach (var formError in customResult.FormErrors)
-                {
-                    result.AddFormError(formError);
-                }
-                
-                if (!string.IsNullOrEmpty(customResult.GeneralError))
-                {
-                    result.GeneralError = customResult.GeneralError;
-                    result.IsValid = false;
+                    
+                    foreach (var formError in customResult.FormErrors)
+                    {
+                        result.AddFormError(formError);
+                    }
+                    
+                    if (!string.IsNullOrEmpty(customResult.GeneralError))
+                    {
+                        result.GeneralError = customResult.GeneralError;
+                        result.IsValid = false;
+                    }
                 }
             }
         }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Validation error: {ex.Message}");
+            result.AddFormError("An error occurred during validation");
+        }
         
+        // Update validation result
+        var previousValid = validationResult?.IsValid ?? true;
         validationResult = result;
-        StateHasChanged();
+        
+        // Only trigger StateHasChanged if validation state actually changed
+        if (previousValid != result.IsValid)
+        {
+            StateHasChanged();
+        }
         
         return result;
+    }
+    
+    /// <summary>
+    /// Public method to manually trigger validation (useful for autofill scenarios)
+    /// </summary>
+    public async Task RevalidateAsync()
+    {
+        await ValidateModelAsync();
     }
     
     private async Task SetStateAsync(FormState newState)
@@ -375,12 +443,19 @@
     
     private async Task FocusFirstInvalidFieldAsync()
     {
-        if (validationResult.FieldErrors.Any())
+        try
         {
-            var firstInvalidField = validationResult.FieldErrors.Keys.First();
-            // In a real implementation, you'd focus the actual form field
-            // This would require JavaScript interop to find and focus the field
-            await Task.CompletedTask;
+            if (validationResult.FieldErrors.Any())
+            {
+                // Simple focus management without JS dependency
+                var firstFieldName = validationResult.FieldErrors.Keys.First();
+                var fieldSelector = $"#{FormId} input[data-field='{firstFieldName}'], #{FormId} select[data-field='{firstFieldName}'], #{FormId} textarea[data-field='{firstFieldName}']";
+                await JSRuntime.InvokeVoidAsync("eval", $"document.querySelector('{fieldSelector}')?.focus()");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error focusing first invalid field: {ex.Message}");
         }
     }
     
@@ -406,9 +481,200 @@
         };
     }
     
-    public void Dispose()
+    private FormValidationContext GetValidationContext()
+    {
+        return new FormValidationContext
+        {
+            ValidationResult = GetCombinedValidationResult(),
+            State = State,
+            Options = Options,
+            HasAttemptedSubmit = HasAttemptedSubmit
+        };
+    }
+    
+    /// <summary>
+    /// Combines custom validation and DataAnnotations validation into one result
+    /// </summary>
+    private FormValidationResult GetCombinedValidationResult()
+    {
+        var combined = new FormValidationResult();
+        
+        // Add custom validation errors
+        if (validationResult != null)
+        {
+            foreach (var fieldError in validationResult.FieldErrors)
+            {
+                foreach (var error in fieldError.Value)
+                {
+                    combined.AddFieldError(fieldError.Key, error);
+                }
+            }
+            foreach (var formError in validationResult.FormErrors)
+            {
+                combined.AddFormError(formError);
+            }
+            if (!string.IsNullOrEmpty(validationResult.GeneralError))
+            {
+                combined.GeneralError = validationResult.GeneralError;
+            }
+        }
+        
+        // Add DataAnnotations validation errors
+        if (ValidationMode == ValidationMode.DataAnnotations || ValidationMode == ValidationMode.Hybrid)
+        {
+            try
+            {
+                var editContext = new EditContext(Model);
+                var validationResults = new List<ValidationResult>();
+                var context = new ValidationContext(Model);
+                
+                if (!Validator.TryValidateObject(Model, context, validationResults, true))
+                {
+                    foreach (var validationResult in validationResults)
+                    {
+                        if (validationResult.MemberNames?.Any() == true)
+                        {
+                            foreach (var memberName in validationResult.MemberNames)
+                            {
+                                combined.AddFieldError(memberName, validationResult.ErrorMessage ?? "Validation error");
+                            }
+                        }
+                        else
+                        {
+                            combined.AddFormError(validationResult.ErrorMessage ?? "Validation error");
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"DataAnnotations validation error: {ex.Message}");
+            }
+        }
+        
+        return combined;
+    }
+    
+    public async ValueTask DisposeAsync()
     {
         successMessageTimer?.Dispose();
         validationDebounceTimer?.Dispose();
+        await Task.CompletedTask;
+    }
+    
+    /// <summary>
+    /// Public method to manually focus the first invalid field
+    /// </summary>
+    public async Task FocusFirstInvalidAsync()
+    {
+        await FocusFirstInvalidFieldAsync();
+    }
+    
+    /// <summary>
+    /// Public method to focus a specific field by selector
+    /// </summary>
+    public async Task FocusFieldAsync(string fieldSelector)
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("eval", $"document.querySelector('{fieldSelector}')?.focus()");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error focusing field {fieldSelector}: {ex.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// Gets the submit button text based on current form state
+    /// </summary>
+    private string GetSubmitButtonText()
+    {
+        return State switch
+        {
+            FormState.Validating => "Validating...",
+            FormState.Submitting => "Submitting...",
+            FormState.Success => "Success!",
+            _ => SubmitText
+        };
+    }
+    
+    /// <summary>
+    /// Determines if the submit button should show loading state
+    /// </summary>
+    private bool IsSubmitButtonLoading()
+    {
+        return State == FormState.Submitting || State == FormState.Validating;
+    }
+    
+    /// <summary>
+    /// Determines if the submit button should be disabled
+    /// </summary>
+    private bool IsSubmitButtonDisabled()
+    {
+        return State switch
+        {
+            FormState.Submitting => true,
+            FormState.Validating => true,
+            FormState.Disabled => true,
+            FormState.Success => true, // Prevent double submission
+            _ => RequireValidation && !IsFormValid
+        };
+    }
+    
+    /// <summary>
+    /// Determines if the cancel button should be disabled
+    /// </summary>
+    private bool IsCancelButtonDisabled()
+    {
+        return State == FormState.Submitting || State == FormState.Disabled;
+    }
+    
+    /// <summary>
+    /// Public method to manually set form state
+    /// </summary>
+    public async Task SetFormStateAsync(FormState newState)
+    {
+        await SetStateAsync(newState);
+    }
+    
+    /// <summary>
+    /// Public method to reset form to ready state
+    /// </summary>
+    public async Task ResetToReadyAsync()
+    {
+        await SetStateAsync(FormState.Ready);
+        validationResult.Clear();
+        StateHasChanged();
+    }
+    
+    /// <summary>
+    /// Determines if validation summary should be shown
+    /// </summary>
+    private bool ShouldShowValidationSummary()
+    {
+        var hasErrors = !IsFormValid || !string.IsNullOrEmpty(validationResult?.GeneralError);
+        return Options.ShowValidationSummary && hasErrors && HasAttemptedSubmit;
+    }
+    
+    /// <summary>
+    /// Gets all validation errors from both DataAnnotations and custom validation
+    /// </summary>
+    private List<string> GetAllValidationErrors()
+    {
+        var errors = new List<string>();
+        
+        // Add custom validation errors
+        if (validationResult?.FormErrors != null)
+        {
+            errors.AddRange(validationResult.FormErrors);
+        }
+        
+        // Add DataAnnotations validation errors
+        var editContext = new EditContext(Model);
+        var validationMessages = editContext.GetValidationMessages();
+        errors.AddRange(validationMessages);
+        
+        return errors.Distinct().ToList();
     }
 }
