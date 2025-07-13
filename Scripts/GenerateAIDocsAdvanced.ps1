@@ -51,7 +51,7 @@ if (-not (Test-Path $OutputDir)) {
 
 # Initialize documentation structure
 $documentation = @{
-    '$schema' = 'https://rr-blazor.dev/schema/ai-docs.json'
+    '$schema' = 'https://rrblazor.dev/schema/ai-docs.json'
     version = '1.0.0'
     generated = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
     info = @{
@@ -93,22 +93,44 @@ foreach ($file in $componentFiles) {
         filePath = $file.FullName.Replace($ProjectPath, '').Replace('\', '/')
     }
     
-    # Extract AI metadata from @** blocks
-    if ($content -match '@\*\*\s*(.*?)\*\*@' -match '(?s)') {
+    # Extract AI metadata from @** blocks (multiline with dotall)
+    if ($content -match '(?s)@\*\*\s*(.*?)\*\*@') {
         $aiBlock = $Matches[1]
         
-        # Extract tags
-        if ($aiBlock -match '<summary>(.*?)</summary>') { $component.description = $Matches[1].Trim() }
-        if ($aiBlock -match '<category>(.*?)</category>') { $component.category = $Matches[1].Trim() }
-        if ($aiBlock -match '<complexity>(.*?)</complexity>') { $component.complexity = $Matches[1].Trim() }
-        if ($aiBlock -match '<ai-prompt>(.*?)</ai-prompt>') { $component.aiPrompt = $Matches[1].Trim() }
-        if ($aiBlock -match '<ai-common-use>(.*?)</ai-common-use>') { $component.commonUse = $Matches[1].Trim() }
-        if ($aiBlock -match '<ai-avoid>(.*?)</ai-avoid>') { $component.avoidUsage = $Matches[1].Trim() }
+        # Extract tags (multiline support)
+        if ($aiBlock -match '(?s)<summary>(.*?)</summary>') { $component.description = $Matches[1].Trim() -replace '\s+', ' ' }
+        if ($aiBlock -match '(?s)<category>(.*?)</category>') { $component.category = $Matches[1].Trim() }
+        if ($aiBlock -match '(?s)<complexity>(.*?)</complexity>') { $component.complexity = $Matches[1].Trim() }
+        if ($aiBlock -match '(?s)<ai-prompt>(.*?)</ai-prompt>') { $component.aiPrompt = $Matches[1].Trim() }
+        if ($aiBlock -match '(?s)<ai-common-use>(.*?)</ai-common-use>') { $component.commonUse = $Matches[1].Trim() }
+        if ($aiBlock -match '(?s)<ai-avoid>(.*?)</ai-avoid>') { $component.avoidUsage = $Matches[1].Trim() }
         
-        # Extract AI patterns
-        $patternMatches = [regex]::Matches($aiBlock, '<ai-pattern name="([^"]+)">(.*?)</ai-pattern>')
+        # Extract AI patterns (multiline support)
+        $patternMatches = [regex]::Matches($aiBlock, '(?s)<ai-pattern name="([^"]+)">(.*?)</ai-pattern>')
         foreach ($match in $patternMatches) {
             $component.patterns[$match.Groups[1].Value] = $match.Groups[2].Value.Trim()
+        }
+    }
+    
+    # Extract C# attributes for additional metadata
+    if ($content -match '@attribute \[Component\("([^"]*)"[^]]*Category\s*=\s*"([^"]*)"[^]]*Complexity\s*=\s*ComponentComplexity\.(\w+)[^]]*\]\)') {
+        if ([string]::IsNullOrEmpty($component.category) -or $component.category -eq 'Unknown') {
+            $component.category = $Matches[2]
+        }
+        if ([string]::IsNullOrEmpty($component.complexity) -or $component.complexity -eq 'Simple') {
+            $component.complexity = $Matches[3]
+        }
+    }
+    
+    if ($content -match '@attribute \[AIOptimized\([^]]*Prompt\s*=\s*"([^"]*)"[^]]*CommonUse\s*=\s*"([^"]*)"[^]]*AvoidUsage\s*=\s*"([^"]*)"[^]]*\]\)') {
+        if ([string]::IsNullOrEmpty($component.aiPrompt)) {
+            $component.aiPrompt = $Matches[1]
+        }
+        if ([string]::IsNullOrEmpty($component.commonUse)) {
+            $component.commonUse = $Matches[2]
+        }
+        if ([string]::IsNullOrEmpty($component.avoidUsage)) {
+            $component.avoidUsage = $Matches[3]
         }
     }
     
@@ -117,8 +139,8 @@ foreach ($file in $componentFiles) {
     if ($content -match $codeBlockPattern) {
         $codeBlock = $Matches[1]
         
-        # Find Parameter attributes
-        $parameterPattern = '\[Parameter\](?:\s*\[AIParameter\([^\]]*\)\])?\s*public\s+(\w+(?:\?)?)\s+(\w+)\s*\{[^}]*\}'
+        # Find Parameter attributes with better pattern matching
+        $parameterPattern = '(?s)\[Parameter\](?:[^\[]*\[AIParameter\([^\]]*\))?\s*public\s+(\w+(?:\?)?)\s+(\w+)\s*\{[^}]*\}'
         $paramMatches = [regex]::Matches($codeBlock, $parameterPattern)
         
         foreach ($paramMatch in $paramMatches) {
@@ -133,9 +155,17 @@ foreach ($file in $componentFiles) {
                 isRequired = $false
             }
             
-            # Extract AIParameter hint if present
-            if ($paramMatch.Value -match '\[AIParameter\("([^"]*)"') {
+            # Extract AIParameter hint if present (improved pattern)
+            if ($paramMatch.Value -match '\[AIParameter\(\s*"([^"]*)"') {
                 $parameter.aiHint = $Matches[1]
+            }
+            elseif ($paramMatch.Value -match '\[AIParameter\(\s*@"([^"]*)"') {
+                $parameter.aiHint = $Matches[1]
+            }
+            
+            # Check if parameter is marked as required
+            if ($paramMatch.Value -match 'Required\s*=\s*true' -or $paramType -notmatch '\?$') {
+                $parameter.isRequired = $true
             }
             
             $component.parameters[$paramName] = $parameter
