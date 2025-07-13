@@ -1,5 +1,25 @@
+@** 
+<summary>
+Professional content section component with header, collapsible content, and footer areas.
+Ideal for organizing page content with consistent styling and optional interactive features.
+</summary>
+<category>Layout</category>
+<complexity>Simple</complexity>
+<ai-prompt>Create content section with header and body</ai-prompt>
+<ai-common-use>page sections, content organization, collapsible panels, form groups</ai-common-use>
+<ai-avoid>Don't use for main app layout - use RAppShell instead. Avoid for simple content without headers.</ai-avoid>
+<ai-pattern name="basic-section">Title and ChildContent for simple content sections</ai-pattern>
+<ai-pattern name="collapsible-section">IsCollapsible="true" for expandable content panels</ai-pattern>
+<ai-pattern name="icon-section">Icon and Title for branded section headers</ai-pattern>
+<ai-pattern name="action-section">TitleContent for sections with header actions</ai-pattern>
+**@
 @using RR.Blazor.Enums
-@* RSection - Section wrapper with header/content areas using utility classes *@
+@using RR.Blazor.Attributes
+
+@attribute [Component("RSection", Category = "Layout", Complexity = ComponentComplexity.Simple)]
+@attribute [AIOptimized(Prompt = "Create content section with header and body", 
+                       CommonUse = "page sections, content organization, collapsible panels", 
+                       AvoidUsage = "Don't use for main app layout - use RAppShell instead")]
 
 <section class="section @GetSectionClasses()" 
          @onclick="HandleClick"
@@ -66,16 +86,20 @@
     [Parameter] public string SectionId { get; set; } = Guid.NewGuid().ToString("N")[..8];
     
     /// <summary>Section title</summary>
-    [Parameter] public string Title { get; set; }
+    [Parameter, AIParameter("Section header title", "Display name for the content section")] 
+    public string Title { get; set; }
     
     /// <summary>Section subtitle</summary>
-    [Parameter] public string Subtitle { get; set; }
+    [Parameter, AIParameter("Optional subtitle text", "Additional description below title")] 
+    public string Subtitle { get; set; }
     
     /// <summary>Icon for header</summary>
-    [Parameter] public string Icon { get; set; }
+    [Parameter, AIParameter("Material icon for section", "settings, dashboard, people, etc.")] 
+    public string Icon { get; set; }
     
     /// <summary>Whether section is collapsible</summary>
-    [Parameter] public bool IsCollapsible { get; set; }
+    [Parameter, AIParameter("Enable expand/collapse functionality", "true for interactive sections")] 
+    public bool IsCollapsible { get; set; }
     
     /// <summary>Whether section is collapsed (if collapsible)</summary>
     [Parameter] public bool IsCollapsed { get; set; }
@@ -91,7 +115,8 @@
     [Parameter] public bool NoFooterBorder { get; set; }
     
     /// <summary>Whether to remove content padding</summary>
-    [Parameter] public bool NoPadding { get; set; }
+    [Parameter, AIParameter("Remove inner content padding", "true for full-width content like tables")] 
+    public bool NoPadding { get; set; }
     
     /// <summary>Additional CSS classes</summary>
     [Parameter] public string Class { get; set; }
@@ -221,97 +246,3 @@
     
 }
 
-@* 
-Usage Examples:
-
-<!-- Basic section -->
-<RSection Title="Basic Section">
-    <div>Section content goes here...</div>
-</RSection>
-
-<!-- Section with subtitle and icon -->
-<RSection Title="Settings" 
-          Subtitle="Configure your preferences"
-          Icon="settings">
-    <div>Settings content...</div>
-</RSection>
-
-<!-- Section with header content (CLEAN API) -->
-<RSection Title="User Management" Icon="people">
-    <TitleContent>
-        <div class="d-flex align-center gap-2 ml-4">
-            <RButton Text="Add User" 
-                     Variant="ButtonVariant.Primary" 
-                     Size="ButtonSize.Small"
-                     Icon="add" IconPosition="IconPosition.Start" />
-            <RButton Variant="ButtonVariant.Ghost" 
-                     Icon="more_vert" IconPosition="IconPosition.Start" 
-                     Size="ButtonSize.Small" />
-        </div>
-    </TitleContent>
-    <div>User list content...</div>
-</RSection>
-
-<!-- Collapsible section -->
-<RSection Title="Advanced Options" 
-          IsCollapsible="true"
-          @bind-IsCollapsed="isCollapsed">
-    <div>Collapsible content...</div>
-</RSection>
-
-<!-- Use composition with dedicated components -->
-<RSection Title="Data Loading">
-    <RSkeleton Count="3" Height="60px" />
-</RSection>
-
-<!-- Error with composition -->
-<RSection Title="Failed Request">
-    <div class="py-6 px-4 border border-error bg-error-light rounded-md">
-        <div class="d-flex align-center">
-            <i class="material-symbols-rounded text-error mr-3">error</i>
-            <div>
-                <div class="text-error font-medium">Network Error</div>
-                <div class="text-secondary text-sm mt-1">Failed to fetch data from server</div>
-                <div class="mt-3">
-                    <RButton Text="Retry" 
-                             Variant="ButtonVariant.Outline" 
-                             Size="ButtonSize.Small"
-                             Icon="refresh" IconPosition="IconPosition.Start"
-                             OnClick="HandleRetry" />
-                </div>
-            </div>
-        </div>
-    </div>
-</RSection>
-
-<!-- Empty state with dedicated component -->
-<RSection Title="Documents">
-    <REmptyState Title="No documents found"
-                 Description="Upload documents to get started"
-                 Icon="description">
-        <Actions>
-            <RButton Text="Upload Document" 
-                     Variant="ButtonVariant.Primary"
-                     Icon="upload" IconPosition="IconPosition.Start" />
-        </Actions>
-    </REmptyState>
-</RSection>
-
-<!-- Section with footer -->
-<RSection Title="Form Section">
-    <div>Form content...</div>
-    <FooterContent>
-        <div class="d-flex align-center justify-end gap-2">
-            <RButton Text="Cancel" Variant="ButtonVariant.Secondary" />
-            <RButton Text="Save" Variant="ButtonVariant.Primary" />
-        </div>
-    </FooterContent>
-</RSection>
-
-<!-- No padding section -->
-<RSection Title="Table Data" NoPadding="true">
-    <table class="w-full">
-        <!-- Table content -->
-    </table>
-</RSection>
-*@

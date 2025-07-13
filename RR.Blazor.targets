@@ -1,0 +1,57 @@
+<Project>
+
+  <PropertyGroup>
+    <!-- Enable component registry generation by default -->
+    <GenerateComponentRegistry Condition="'$(GenerateComponentRegistry)' == ''">true</GenerateComponentRegistry>
+    <ComponentRegistryOutputPath Condition="'$(ComponentRegistryOutputPath)' == ''">$(OutputPath)wwwroot/rr-ai-docs.json</ComponentRegistryOutputPath>
+    <RRBlazorAnalyzersEnabled Condition="'$(RRBlazorAnalyzersEnabled)' == ''">false</RRBlazorAnalyzersEnabled>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(RRBlazorAnalyzersEnabled)' == 'true'">
+    <ProjectReference Include="$(MSBuildThisFileDirectory)Tools\Analyzers\RR.Blazor.Analyzers.csproj" PrivateAssets="all" IncludeAssets="analyzers" />
+  </ItemGroup>
+
+  <Target Name="GenerateRRBlazorComponentRegistry" 
+          BeforeTargets="Build" 
+          Condition="'$(GenerateComponentRegistry)' == 'true'">
+    
+    <PropertyGroup>
+      <_RRBlazorOutputDir>$(ComponentRegistryOutputPath.Substring(0, $(ComponentRegistryOutputPath.LastIndexOf('/'))))</_RRBlazorOutputDir>
+      <_AIDocsScript>$(MSBuildThisFileDirectory)Scripts\GenerateAIDocsAdvanced.ps1</_AIDocsScript>
+      <_AIDocsOutputPath>$(MSBuildThisFileDirectory)wwwroot\rr-ai-docs.json</_AIDocsOutputPath>
+    </PropertyGroup>
+
+    <!-- Create output directory -->
+    <MakeDir Directories="$(_RRBlazorOutputDir)" Condition="!Exists('$(_RRBlazorOutputDir)')" />
+
+    <!-- Generate comprehensive AI documentation using PowerShell -->
+    <Exec Command="pwsh &quot;$(_AIDocsScript)&quot; -ProjectPath &quot;$(MSBuildThisFileDirectory)&quot; -OutputPath &quot;wwwroot\rr-ai-docs.json&quot;" 
+          Condition="Exists('$(_AIDocsScript)') AND '$(Configuration)' == 'Release'"
+          ContinueOnError="true" />
+
+    <Message Text="✅ RR.Blazor AI documentation generated at: $(_AIDocsOutputPath)" 
+             Importance="high" 
+             Condition="Exists('$(_AIDocsOutputPath)')" />
+             
+    <Warning Text="⚠️ RR.Blazor AI documentation generation failed. Run 'pwsh GenerateAIDocsAdvanced.ps1' manually." 
+             Condition="!Exists('$(_AIDocsOutputPath)')" />
+  </Target>
+
+  <Target Name="ValidateRRBlazorComponents" 
+          AfterTargets="Build" 
+          Condition="'$(Configuration)' == 'Debug'">
+    
+    <!-- Run validation using local CLI tool -->
+    <Exec Command="dotnet run --project &quot;$(MSBuildThisFileDirectory)Tools\CLI\RR.Blazor.CLI.csproj&quot; -- validate --check-patterns --check-accessibility" 
+          Condition="Exists('$(MSBuildThisFileDirectory)Tools\CLI\RR.Blazor.CLI.csproj')"
+          ContinueOnError="true" />
+  </Target>
+
+  <Target Name="ShowRRBlazorInfo" BeforeTargets="Build">
+    <Message Text="🚀 RR.Blazor AI-First Component System" Importance="high" />
+    <Message Text="📊 Registry: $(ComponentRegistryOutputPath)" Importance="normal" />
+    <Message Text="🔍 Analyzers: $(RRBlazorAnalyzersEnabled)" Importance="normal" />
+    <Message Text="💡 Use 'dotnet run --project Tools/CLI' for advanced AI-assisted development" Importance="normal" />
+  </Target>
+
+</Project>

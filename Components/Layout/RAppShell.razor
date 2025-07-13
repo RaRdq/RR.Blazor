@@ -1,8 +1,23 @@
-@* RAppShell - Ultimate one-component app setup for AI-optimized development *@
+@** 
+<summary>
+Complete application shell with header, sidebar, navigation, search, and theme support.
+Zero-config setup for enterprise Blazor applications with professional styling and full responsiveness.
+</summary>
+<category>Layout</category>
+<complexity>Complex</complexity>
+<ai-prompt>Create complete app layout with header and sidebar</ai-prompt>
+<ai-common-use>main app layout, admin dashboards, enterprise applications, SaaS platforms</ai-common-use>
+<ai-avoid>Don't use for simple pages without navigation. Use RSection for content organization instead.</ai-avoid>
+<ai-pattern name="zero-config">Title only for minimal app setup</ai-pattern>
+<ai-pattern name="full-enterprise">All parameters for complete enterprise application</ai-pattern>
+<ai-pattern name="dashboard-layout">NavigationItems + CurrentUser for admin dashboards</ai-pattern>
+<ai-pattern name="responsive-shell">Auto-responsive sidebar and mobile-friendly behavior</ai-pattern>
+**@
 
 @using RR.Blazor.Models
 @using RR.Blazor.Services
 @using RR.Blazor.Enums
+@using RR.Blazor.Attributes
 @using Microsoft.AspNetCore.Components.Routing
 
 @inherits LayoutComponentBase
@@ -13,8 +28,13 @@
 @inject IAppConfigurationService ConfigService
 @implements IAsyncDisposable
 
+@attribute [Component("RAppShell", Category = "Layout", Complexity = ComponentComplexity.Complex)]
+@attribute [AIOptimized(Prompt = "Create complete app layout with header and sidebar", 
+                       CommonUse = "main app layout, admin dashboards, enterprise applications", 
+                       AvoidUsage = "Don't use for simple pages without navigation")]
+
 <RThemeProvider>
-<div class="app-shell min-h-screen d-flex" style="background: var(--theme-bg-primary);" data-theme="@GetEffectiveTheme()">
+<div class="app-shell min-h-screen d-flex" data-theme="@GetEffectiveTheme()">
     <!-- Sidebar -->
     @if (ShowSidebar)
     {
@@ -348,21 +368,25 @@
     // === CORE PARAMETERS ===
     
     /// <summary>App title (required)</summary>
-    [Parameter] public string Title { get; set; } = "RR.Blazor App";
+    [Parameter, AIParameter("Application name displayed in header", "Your App Name or company brand")] 
+    public string Title { get; set; } = "RR.Blazor App";
     
     /// <summary>Logo image source</summary>
     [Parameter] public string Logo { get; set; }
     
     /// <summary>Current user for user menu and permissions</summary>
-    [Parameter] public AppUser CurrentUser { get; set; }
+    [Parameter, AIParameter("Current logged-in user object", "AppUser with Name, Email, Avatar, Role properties")] 
+    public AppUser CurrentUser { get; set; }
     
     /// <summary>Theme mode (light/dark/system)</summary>
-    [Parameter] public string Theme { get; set; } = "system";
+    [Parameter, AIParameter("Theme preference", "light, dark, or system for auto-detection")] 
+    public string Theme { get; set; } = "system";
     
     // === LAYOUT CONTROL ===
     
     /// <summary>Show/hide sidebar</summary>
-    [Parameter] public bool ShowSidebar { get; set; } = true;
+    [Parameter, AIParameter("Display left navigation sidebar", "true for apps with navigation menus")] 
+    public bool ShowSidebar { get; set; } = true;
     
     /// <summary>Show/hide header</summary>
     [Parameter] public bool ShowHeader { get; set; } = true;
@@ -371,7 +395,8 @@
     [Parameter] public bool ShowToasts { get; set; } = true;
     
     /// <summary>Show/hide search functionality</summary>
-    [Parameter] public bool ShowSearch { get; set; } = true;
+    [Parameter, AIParameter("Enable global search in header", "true for content-rich applications")] 
+    public bool ShowSearch { get; set; } = true;
     
     /// <summary>Make search collapsible on the right side</summary>
     [Parameter] public bool SearchCollapsible { get; set; } = false;
@@ -406,7 +431,8 @@
     [Parameter] public string PageSubtitle { get; set; }
     
     /// <summary>Navigation items (smart default)</summary>
-    [Parameter] public List<AppNavItem> NavigationItems { get; set; }
+    [Parameter, AIParameter("Main navigation menu items", "List of AppNavItem with Text, Href, Icon properties")] 
+    public List<AppNavItem> NavigationItems { get; set; }
     
     /// <summary>Breadcrumb items</summary>
     [Parameter] public List<AppNavItem> Breadcrumbs { get; set; }
@@ -653,78 +679,3 @@
     }
 }
 
-@* 
-=== USAGE EXAMPLES ===
-
-<!-- ZERO CONFIG (3 lines!) -->
-<RAppShell Title="MyApp">
-    @Body
-</RAppShell>
-
-<!-- FULL FEATURED ENTERPRISE APP -->
-<RAppShell Title="PayrollAI" 
-           Logo="/logo.svg"
-           CurrentUser="@currentUser"
-           NavigationItems="@navItems"
-           UserPermissions="@userPermissions"
-           Theme="system"
-           ShowSearch="true"
-           ShowNotifications="true"
-           NotificationCount="@notificationCount"
-           PageTitle="@pageTitle"
-           PageSubtitle="@pageSubtitle"
-           Breadcrumbs="@breadcrumbs"
-           OnThemeChanged="HandleThemeChanged"
-           OnSearchChanged="HandleSearchChanged"
-           OnNotificationsClicked="HandleNotificationsClicked">
-    
-    <UserMenu>
-        <div class="user-menu-header pa-4 border-bottom">
-            <div class="d-flex align-center gap-3">
-                <RAvatar Text="@currentUser.GetInitials()" Size="AvatarSize.Medium" />
-                <div>
-                    <div class="font-bold">@currentUser.GetDisplayName()</div>
-                    <div class="text-sm text-secondary">@currentUser.Email</div>
-                </div>
-            </div>
-        </div>
-        <div class="user-menu-body">
-            <RButton Text="Profile" Icon="person" IconPosition="IconPosition.Start" Variant="ButtonVariant.Ghost" FullWidth="true" class="justify-start pa-3" />
-            <RButton Text="Settings" Icon="settings" IconPosition="IconPosition.Start" Variant="ButtonVariant.Ghost" FullWidth="true" class="justify-start pa-3" />
-            <RButton Text="Help" Icon="help" IconPosition="IconPosition.Start" Variant="ButtonVariant.Ghost" FullWidth="true" class="justify-start pa-3" />
-            <div class="border-top mt-2 pt-2">
-                <RButton Text="Logout" Icon="logout" IconPosition="IconPosition.Start" Variant="ButtonVariant.Ghost" FullWidth="true" class="justify-start pa-3" />
-            </div>
-        </div>
-    </UserMenu>
-    
-    <QuickActions>
-        <RButton Text="New Employee" Icon="add" IconPosition="IconPosition.Start" Variant="ButtonVariant.Primary" Size="ButtonSize.Small" />
-        <RButton Text="Export" Icon="download" IconPosition="IconPosition.Start" Variant="ButtonVariant.Secondary" Size="ButtonSize.Small" />
-    </QuickActions>
-    
-    <StatusBar>
-        <div class="d-flex justify-between align-center w-full pa-2 text-sm">
-            <span>Connected • Last sync: @DateTime.Now.ToString("HH:mm")</span>
-            <div class="d-flex gap-4">
-                <span>Users online: @onlineUserCount</span>
-                <RBadge Text="@systemStatus" Variant="@(systemStatus == "Healthy" ? BadgeVariant.Success : BadgeVariant.Warning)" />
-            </div>
-        </div>
-    </StatusBar>
-    
-    <ChildContent>
-        @Body
-    </ChildContent>
-</RAppShell>
-
-<!-- MINIMAL DASHBOARD -->
-<RAppShell Title="Dashboard" 
-           CurrentUser="@user"
-           ShowSearch="false"
-           ShowNotifications="false">
-    <div class="pa-6">
-        <h1>Welcome to your dashboard!</h1>
-    </div>
-</RAppShell>
-*@

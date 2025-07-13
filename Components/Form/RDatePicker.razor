@@ -1,7 +1,21 @@
-@* RDatePicker - Comprehensive Date/Time Selection Component *@
+@** 
+<summary>Professional date and time picker with calendar popup and time selection</summary>
+<category>Form</category>
+<complexity>Complex</complexity>
+<ai-prompt>Create a date/time picker with calendar popup and validation</ai-prompt>
+<ai-common-use>date selection, appointment scheduling, event planning, form dates</ai-common-use>
+<ai-avoid>Don't use for simple date input - use RDatePickerBasic instead</ai-avoid>
+<ai-pattern name="date-only">@bind-Value="selectedDate" ShowTime="false"</ai-pattern>
+<ai-pattern name="datetime">@bind-Value="dateTime" ShowTime="true" Use24HourFormat="false"</ai-pattern>
+<ai-pattern name="date-range">@bind-Value="startDate" @bind-EndValue="endDate" Range="true"</ai-pattern>
+<ai-pattern name="restricted-dates">MinDate="@DateTime.Today" MaxDate="@futureDate"</ai-pattern>
+<ai-pattern name="business-days">DisabledDaysOfWeek="@weekends" MinDate="@DateTime.Today"</ai-pattern>
+**@
+
+@attribute [Component("RDatePicker", Category = "Form")]
+@attribute [AIOptimized(Prompt = "Create date/time picker with calendar")]
+
 @using System.Globalization
-@using Microsoft.JSInterop
-@using RR.Blazor.Enums
 @inject IJSRuntime JSRuntime
 @implements IAsyncDisposable
 
@@ -188,16 +202,16 @@
 
     // Core Parameters
     [Parameter] public string InputId { get; set; } = Guid.NewGuid().ToString("N")[..8];
-    [Parameter] public DateTime? Value { get; set; }
-    [Parameter] public EventCallback<DateTime?> ValueChanged { get; set; }
-    [Parameter] public DateTime? EndValue { get; set; }
-    [Parameter] public EventCallback<DateTime?> EndValueChanged { get; set; }
+    [Parameter] [AIParameter("Selected date/time value", Example = "DateTime.Today")] public DateTime? Value { get; set; }
+    [Parameter] [AIParameter("Callback when date/time value changes", Example = "OnDateChanged")] public EventCallback<DateTime?> ValueChanged { get; set; }
+    [Parameter] [AIParameter("End date for range selection", Example = "endDate")] public DateTime? EndValue { get; set; }
+    [Parameter] [AIParameter("Callback when end date changes", Example = "OnEndDateChanged")] public EventCallback<DateTime?> EndValueChanged { get; set; }
     
     // Display Parameters
-    [Parameter] public string Label { get; set; }
-    [Parameter] public string Placeholder { get; set; }
-    [Parameter] public string Format { get; set; }
-    [Parameter] public FieldSize Size { get; set; } = FieldSize.Medium;
+    [Parameter] [AIParameter("Label text displayed above the picker", Example = "Select Date")] public string Label { get; set; }
+    [Parameter] [AIParameter("Placeholder text when no date selected", Example = "Choose a date...")] public string Placeholder { get; set; }
+    [Parameter] [AIParameter("Date format string", Example = "dd/MM/yyyy")] public string Format { get; set; }
+    [Parameter] [AIParameter("Size of the picker input (Small, Medium, Large)", Example = "FieldSize.Medium")] public FieldSize Size { get; set; } = FieldSize.Medium;
     /// <summary>Icon for the component</summary>
     [Parameter] public string Icon { get; set; }
     
@@ -209,19 +223,19 @@
     [Parameter] public string Class { get; set; }
     
     // Feature Parameters
-    [Parameter] public bool Range { get; set; }
-    [Parameter] public bool ShowTime { get; set; }
-    [Parameter] public bool Use24HourFormat { get; set; } = true;
-    [Parameter] public int MinuteInterval { get; set; } = 1;
+    [Parameter] [AIParameter("Enable date range selection", Example = "true")] public bool Range { get; set; }
+    [Parameter] [AIParameter("Show time picker alongside date", Example = "true")] public bool ShowTime { get; set; }
+    [Parameter] [AIParameter("Use 24-hour time format instead of AM/PM", Example = "false")] public bool Use24HourFormat { get; set; } = true;
+    [Parameter] [AIParameter("Minute interval for time picker", Example = "15")] public int MinuteInterval { get; set; } = 1;
     [Parameter] public bool ShowClearButton { get; set; } = true;
     [Parameter] public bool ShowTodayButton { get; set; } = true;
     [Parameter] public bool ShowWeekNumbers { get; set; }
     
     // Validation Parameters
-    [Parameter] public DateTime? MinDate { get; set; }
-    [Parameter] public DateTime? MaxDate { get; set; }
-    [Parameter] public Func<DateTime, bool> DisabledDates { get; set; }
-    [Parameter] public DayOfWeek[] DisabledDaysOfWeek { get; set; }
+    [Parameter] [AIParameter("Minimum selectable date", Example = "DateTime.Today")] public DateTime? MinDate { get; set; }
+    [Parameter] [AIParameter("Maximum selectable date", Example = "DateTime.Today.AddYears(1)")] public DateTime? MaxDate { get; set; }
+    [Parameter] [AIParameter("Function to disable specific dates", Example = "date => IsHoliday(date)")] public Func<DateTime, bool> DisabledDates { get; set; }
+    [Parameter] [AIParameter("Array of disabled days of week", Example = "new[] { DayOfWeek.Saturday, DayOfWeek.Sunday }")] public DayOfWeek[] DisabledDaysOfWeek { get; set; }
     [Parameter] public bool Required { get; set; }
     [Parameter] public string HelperText { get; set; }
     
@@ -1050,35 +1064,3 @@
 }
 </style>
 
-@* 
-Usage Examples:
-
-<!-- Basic date picker -->
-<RDatePicker @bind-Value="selectedDate" />
-
-<!-- Date range picker -->
-<RDatePicker @bind-Value="startDate" 
-             @bind-EndValue="endDate"
-             Range="true" 
-             Placeholder="Select date range..." />
-
-<!-- Date and time picker -->
-<RDatePicker @bind-Value="appointmentDateTime"
-             ShowTime="true"
-             Use24HourFormat="false"
-             MinuteInterval="15" />
-
-<!-- Advanced configuration -->
-<RDatePicker @bind-Value="meetingDate"
-             Label="Meeting Date"
-             ShowTime="true"
-             MinDate="@DateTime.Today"
-             MaxDate="@DateTime.Today.AddMonths(3)"
-             DisabledDaysOfWeek="@(new[] { DayOfWeek.Saturday, DayOfWeek.Sunday })"
-             Format="dd/MM/yyyy HH:mm"
-             Size="FieldSize.Large"
-             Icon="event"
-             IconPosition="IconPosition.Start"
-             HasError="@hasDateError"
-             ErrorMessage="Please select a valid meeting date" />
-*@

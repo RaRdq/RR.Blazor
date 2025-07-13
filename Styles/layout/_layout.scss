@@ -1,86 +1,53 @@
 @use '../abstracts' as *;
 
-// ==========================================================================
-// LAYOUT SYSTEM - BEM METHODOLOGY
-// Collapsible sidebar layout with responsive behavior
-// ==========================================================================
-
-// Layout Container
 .layout {
   display: flex;
   min-height: 100vh;
-  background: var(--color-background-secondary);
   position: relative;
-}
-
-.layout__container {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  margin-left: 16rem; // Default sidebar width (256px)
-  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  min-width: 0; // Prevent flex overflow
-  
-  &--fullwidth {
-    margin-left: 0;
-  }
-  
-  @include responsive-max(md) {
-    margin-left: 0; // Always fullwidth on mobile
-  }
 }
 
 .layout__main {
   flex: 1;
   overflow: auto;
-  background: var(--color-background-primary);
   position: relative;
-  padding-top: 4rem; // Account for fixed header height
+  padding-top: 4rem;
   min-height: calc(100vh - 4rem);
 }
-
-// ==========================================================================
-// SIDEBAR COMPONENT
-// ==========================================================================
 
 .sidebar {
   position: fixed;
   top: 0;
   left: 0;
-  width: 16rem; // 256px
+  width: 16rem;
   height: 100vh;
-  background: var(--color-background-elevated);
+  background: var(--theme-bg-sidebar, var(--color-background-elevated));
   border-right: 1px solid var(--color-border-light);
   display: flex;
   flex-direction: column;
-  z-index: 30;
+  z-index: var(--z-sticky);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   transform: translateX(0);
   
-  // Collapsed state
   &--collapsed {
-    width: 4rem; // 64px
+    width: 4rem;
     
     .layout__container {
       margin-left: 4rem;
     }
     
-    // Hide text in nav items
-    .nav-item__text {
+    .nav__text {
       opacity: 0;
       width: 0;
       overflow: hidden;
       transition: opacity 0.2s ease, width 0.3s ease;
     }
     
-    // Center icons in nav items
-    .nav-item {
+    .nav__item {
       justify-content: center;
       padding-left: var(--space-3);
       padding-right: var(--space-3);
     }
     
-    // Hide user info
     .user-info {
       opacity: 0;
       width: 0;
@@ -107,10 +74,9 @@
     }
   }
   
-  // Mobile states
   @include responsive-max(md) {
     transform: translateX(-100%);
-    width: 16rem; // Always full width on mobile
+    width: 16rem;
     
     &--open {
       transform: translateX(0);
@@ -124,8 +90,7 @@
         transform: translateX(0);
       }
       
-      // Reset collapsed styles on mobile
-      .nav-item__text,
+      .nav__text,
       .user-info,
       .user-menu__icon {
         opacity: 1;
@@ -133,7 +98,7 @@
         overflow: visible;
       }
       
-      .nav-item,
+      .nav__item,
       .user-menu__trigger {
         justify-content: flex-start;
         padding-left: var(--space-4);
@@ -143,13 +108,10 @@
   }
 }
 
-// Removed sidebar header - logo moved to main header
-
-// Sidebar Navigation
 .sidebar__nav {
   flex: 1;
-  padding: var(--space-3) var(--space-3); // Reduced top padding to start right under header
-  padding-top: calc(4rem + var(--space-3)); // Account for fixed header height
+  padding: var(--space-3) var(--space-3);
+  padding-top: calc(4rem + var(--space-3));
   overflow-y: auto;
   overflow-x: hidden;
   
@@ -172,72 +134,6 @@
   }
 }
 
-// Navigation Items
-.nav-items {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-
-.nav-item {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  border-radius: var(--radius-md);
-  text-decoration: none;
-  color: var(--color-text-primary);
-  transition: all var(--duration-normal) var(--ease-out);
-  position: relative;
-  overflow: hidden;
-  font-weight: var(--font-medium);
-  font-size: var(--text-sm);
-  
-  &:hover {
-    background: var(--color-interactive-light);
-    color: var(--color-interactive-primary);
-    
-    .nav-item__icon {
-      transform: scale(1.05);
-    }
-  }
-  
-  &--active {
-    background: var(--color-interactive-primary);
-    color: var(--color-background-elevated);
-    
-    &:hover {
-      background: var(--color-interactive-primary);
-      color: var(--color-background-elevated);
-    }
-  }
-  
-  // Focus state for accessibility
-  &:focus-visible {
-    outline: 2px solid var(--color-interactive-primary);
-    outline-offset: 2px;
-  }
-}
-
-.nav-item__icon {
-  flex-shrink: 0;
-  font-size: var(--icon-base);
-  transition: transform 0.2s ease;
-  width: var(--icon-base);
-  text-align: center;
-}
-
-.nav-item__text {
-  flex: 1;
-  white-space: nowrap;
-  transition: opacity 0.3s ease, width 0.3s ease;
-}
-
-.nav-divider {
-  height: 1px;
-  background: var(--color-border-light);
-  margin: var(--space-2) 0;
-}
 
 // Sidebar Footer
 .sidebar__footer {
@@ -349,7 +245,7 @@
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
   margin-bottom: var(--space-2);
-  z-index: 50;
+  z-index: var(--z-dropdown);
   overflow: hidden;
   max-height: 80vh;
   overflow-y: auto;
@@ -405,27 +301,7 @@
 // HEADER COMPONENT
 // ==========================================================================
 
-.header {
-  background: var(--color-background-elevated);
-  border-bottom: 1px solid var(--color-border-light);
-  position: fixed;
-  top: 0;
-  left: 16rem; // Account for sidebar width
-  right: 0;
-  z-index: 40;
-  flex-shrink: 0;
-  height: 4rem;
-  box-shadow: var(--shadow-sm);
-  transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  
-  .layout--sidebar-collapsed & {
-    left: 4rem; // Collapsed sidebar width
-  }
-  
-  @include responsive-max(md) {
-    left: 0; // Full width on mobile
-  }
-}
+// Legacy header positioning removed - now handled by main-content.scss
 
 .header__container {
   display: flex;
@@ -584,7 +460,7 @@
   position: fixed;
   inset: 0;
   background: var(--color-overlay-dark);
-  z-index: 25;
+  z-index: var(--z-base);
   opacity: 0;
   visibility: hidden;
   transition: all 0.3s ease;

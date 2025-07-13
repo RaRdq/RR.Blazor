@@ -1,6 +1,27 @@
+@** 
+<summary>
+Professional dropdown component for item selection with keyboard navigation and accessibility.
+Supports custom triggers, loading states, search filtering, and flexible item rendering.
+</summary>
+<category>Navigation</category>
+<complexity>Complex</complexity>
+<ai-prompt>Create dropdown menu for item selection</ai-prompt>
+<ai-common-use>select menus, action menus, option lists, context menus</ai-common-use>
+<ai-avoid>Don't use for simple text inputs - use RFormField instead. Avoid for navigation - use RNavMenu.</ai-avoid>
+<ai-pattern name="basic-dropdown">Items list with TriggerContent for basic selection</ai-pattern>
+<ai-pattern name="action-dropdown">Button trigger with action items for context menus</ai-pattern>
+<ai-pattern name="loading-dropdown">IsLoading="true" for async data loading</ai-pattern>
+<ai-pattern name="searchable-dropdown">Filterable items with search functionality</ai-pattern>
+**@
 @typeparam TValue
 @using Microsoft.AspNetCore.Components
+@using RR.Blazor.Attributes
 @implements IDisposable
+
+@attribute [Component("RDropdown", Category = "Navigation", Complexity = ComponentComplexity.Complex)]
+@attribute [AIOptimized(Prompt = "Create dropdown menu for item selection", 
+                       CommonUse = "select menus, action menus, option lists, context menus", 
+                       AvoidUsage = "Don't use for simple text inputs - use RFormField instead")]
 
 <div class="dropdown @GetDropdownClass()" @ref="dropdownRef">
     <!-- Trigger -->
@@ -86,22 +107,28 @@
     private bool isOpen = false;
 
     [Parameter] public RenderFragment TriggerContent { get; set; }
-    [Parameter] public IEnumerable<TValue> Items { get; set; }
-    [Parameter] public TValue SelectedValue { get; set; }
+    [Parameter, AIParameter("Collection of dropdown items", "List or IEnumerable of any type")] 
+    public IEnumerable<TValue> Items { get; set; }
+    [Parameter, AIParameter("Currently selected item", "Use with @bind-SelectedValue for two-way binding")] 
+    public TValue SelectedValue { get; set; }
     [Parameter] public EventCallback<TValue> SelectedValueChanged { get; set; }
-    [Parameter] public Func<TValue, string> ItemLabelSelector { get; set; }
+    [Parameter, AIParameter("Function to get display text", "item => item.Name or item => item.ToString()")] 
+    public Func<TValue, string> ItemLabelSelector { get; set; }
     [Parameter] public Func<TValue, string> ItemIconSelector { get; set; }
     [Parameter] public Func<TValue, bool> ItemDisabledSelector { get; set; }
     [Parameter] public Func<TValue, bool> SeparatorAfterSelector { get; set; }
-    [Parameter] public DropdownPosition Position { get; set; } = DropdownPosition.Bottom;
+    [Parameter, AIParameter("Dropdown positioning", "Bottom, Top, Auto for responsive positioning")] 
+    public DropdownPosition Position { get; set; } = DropdownPosition.Bottom;
     [Parameter] public string Header { get; set; }
     [Parameter] public string Footer { get; set; }
     [Parameter] public RenderFragment EmptyContent { get; set; }
     [Parameter] public string EmptyText { get; set; } = "No items available";
     [Parameter] public string LoadingText { get; set; } = "Loading...";
-    [Parameter] public bool IsLoading { get; set; } = false;
+    [Parameter, AIParameter("Show loading state", "true when fetching data asynchronously")] 
+    public bool IsLoading { get; set; } = false;
     [Parameter] public bool Disabled { get; set; } = false;
-    [Parameter] public bool CloseOnSelect { get; set; } = true;
+    [Parameter, AIParameter("Auto-close after selection", "false for multi-select scenarios")] 
+    public bool CloseOnSelect { get; set; } = true;
     [Parameter] public string AriaLabel { get; set; }
     [Parameter] public string AdditionalClass { get; set; }
     [Parameter] public EventCallback OnOpened { get; set; }

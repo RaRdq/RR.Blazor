@@ -1,24 +1,24 @@
-# Contributing to RR.Blazor - AI-Optimized Development Guide
+# Contributing to RR.Blazor
 
-## 🤖 AI-First Development Philosophy
+## Development Philosophy
 
-RR.Blazor is designed to be **AI-agent friendly**. Whether you're Claude, GPT-4, or a human developer, this guide ensures efficient contribution.
+RR.Blazor is designed to be AI-agent friendly. Whether you're Claude, GPT-4, or a human developer, this guide ensures efficient contribution.
 
 ## Core Principles
 
-### 1. **Ultra-Generic Design**
+### 1. Ultra-Generic Design
 - Components must work across ANY Blazor project
 - Zero business logic in components
 - Pure UI/UX functionality only
 - Theme-aware by default
 
-### 2. **AI-Optimized Code Structure**
+### 2. AI-Optimized Code Structure
 - Self-descriptive naming (no comments needed)
 - Flat structure with early returns
 - Let exceptions bubble up
 - Dense, production-ready code
 
-### 3. **Zero Dependencies Philosophy**
+### 3. Zero Dependencies Philosophy
 - RR.Core is optional (use #if RRCORE_ENABLED)
 - No external UI library dependencies
 - Pure Blazor components only
@@ -27,16 +27,15 @@ RR.Blazor is designed to be **AI-agent friendly**. Whether you're Claude, GPT-4,
 
 ### For Adding New Components
 
-```markdown
 1. Check existing components to avoid duplicates:
    - Search: "R*.razor" in Components/
-   - Review RRBlazor.md for component list
+   - Review wwwroot/rr-ai-docs.json for component list
 
 2. Follow component template:
    - Place in appropriate subfolder (Form/, Display/, Layout/)
    - Use RComponent naming convention
    - Implement theme-aware styling
-   - Add to RRBlazor.md documentation
+   - AI documentation auto-generated during build
 
 3. Component must include:
    - Full parameter documentation
@@ -44,23 +43,28 @@ RR.Blazor is designed to be **AI-agent friendly**. Whether you're Claude, GPT-4,
    - ARIA attributes for accessibility
    - Loading/disabled states
    - Theme CSS variable usage
-```
 
 ### For Updating Existing Components
 
-```csharp
-// ALWAYS check these before modifying:
-1. Run: git grep "ComponentName" -- "*.razor" "*.cs"
+Always check these before modifying:
+1. Run: `git grep "ComponentName" -- "*.razor" "*.cs"`
 2. Check for breaking changes in consuming projects
 3. Maintain backward compatibility
-4. Update RRBlazor.md if parameters change
-```
+4. Documentation auto-updates during Release builds
 
 ## Development Patterns
 
 ### Component Structure
 ```razor
 @* RExampleComponent.razor *@
+@**
+<summary>Example component for demonstration</summary>
+<category>Core</category>
+<complexity>Simple</complexity>
+<ai-prompt>example, demo, template</ai-prompt>
+<ai-common-use>UI patterns, component templates</ai-common-use>
+**@
+
 @namespace RR.Blazor.Components
 @inherits ComponentBase
 
@@ -109,16 +113,14 @@ RR.Blazor is designed to be **AI-agent friendly**. Whether you're Claude, GPT-4,
 ## Quick Contribution Checklist
 
 ### For AI Agents
-```markdown
 - [ ] Component is generic (no business logic)
 - [ ] Uses RR.Blazor naming convention (R prefix)
 - [ ] Theme-aware (uses CSS variables)
 - [ ] Accessibility compliant (ARIA, keyboard nav)
-- [ ] Added to RRBlazor.md with examples
+- [ ] AI metadata added with @** blocks
 - [ ] No hardcoded colors/spacing
 - [ ] Responsive design implemented
 - [ ] Loading/error states handled
-```
 
 ### For Human Developers
 1. Fork and clone the repository
@@ -152,11 +154,11 @@ public class RComponentTests
 ### Component Documentation Template
 ```markdown
 #### RComponentName
-\`\`\`razor
+```razor
 <RComponentName Property="value" 
                 Variant="ComponentVariant.Primary"
                 OnAction="@HandleAction" />
-\`\`\`
+```
 - **Properties**: List all parameters with types
 - **Events**: List all EventCallbacks
 - **Variants**: List all enum values
@@ -165,10 +167,10 @@ public class RComponentTests
 
 ## Integration with AI Tools
 
-### Claude Desktop Instructions
+### Claude Code Instructions
 ```bash
 # Add to Claude's context
-Provide @RR.Blazor/RRBlazor.md to Claude and ask:
+Provide @RR.Blazor/wwwroot/rr-ai-docs.json to Claude and ask:
 "Update my Blazor project to use RR.Blazor components"
 
 # For new projects
@@ -177,6 +179,7 @@ Provide @RR.Blazor/RRBlazor.md to Claude and ask:
 
 ### Custom AI Commands
 ```markdown
+/designer - Elite Frontend Architect with Plan-Implement-Reflect methodology
 /rr-blazor-init - Initialize RR.Blazor in current project
 /rr-blazor-upgrade - Upgrade components to latest patterns
 /rr-blazor-theme - Configure theme and styling
@@ -216,11 +219,52 @@ private string GetClasses() => new CssBuilder("component")
     .Build();
 ```
 
+## Documentation Generation
+
+### AI-First Documentation System
+RR.Blazor automatically generates comprehensive AI documentation during Release builds:
+
+```bash
+# Manual generation
+pwsh ./RR.Blazor/Scripts/GenerateAIDocsAdvanced.ps1 -ProjectPath ./RR.Blazor
+
+# Automatic generation (Release builds)
+dotnet build -c Release
+```
+
+**Generated documentation includes**:
+- 49 components with complete APIs
+- 800+ utility patterns with AI hints
+- 8 CSS variable pattern categories
+- Real-world usage patterns
+- Best practices and accessibility guidelines
+
 ## Questions or Issues?
 
 - **For AI Agents**: Include full context in your PR description
 - **For Humans**: Open an issue with the question template
 - **For Urgent**: Tag @RaRdq in the PR/issue
+
+## Building from Source
+
+```bash
+# Clone repository
+git clone https://github.com/RaRdq/RR.Blazor.git
+cd RR.Blazor
+
+# Generate AI documentation
+pwsh ./Scripts/GenerateAIDocsAdvanced.ps1 -ProjectPath . -OutputPath wwwroot/rr-ai-docs.json
+
+# Build project with tools
+dotnet build
+
+# Build with documentation generation (Release only)
+dotnet build -c Release
+
+# Use development tools
+dotnet run --project Tools/CLI -- validate --check-patterns
+dotnet run --project Tools/CLI -- generate component --name RNewComponent
+```
 
 ---
 

@@ -1,4 +1,25 @@
-@* RAvatar - Reusable avatar component with status indicators and theme support *@
+@** 
+<summary>
+Professional avatar component for user representation with status indicators and interactive features.
+Supports images, initials, icons, status badges, and notification counts with responsive sizing.
+</summary>
+<category>Core</category>
+<complexity>Simple</complexity>
+<ai-prompt>Create a professional avatar for user representation</ai-prompt>
+<ai-common-use>user profiles, team members, contact lists, navigation headers</ai-common-use>
+<ai-avoid>Don't use for decorative icons - use Icon component instead. Avoid for non-user content.</ai-avoid>
+<ai-pattern name="user-avatar">ImageSrc="/avatar.jpg" Alt="User Name" for profile pictures</ai-pattern>
+<ai-pattern name="initials-avatar">Text="JD" Variant="AvatarVariant.Primary" for text-based avatars</ai-pattern>
+<ai-pattern name="status-avatar">ShowStatus="true" Status="AvatarStatus.Online" for presence indicators</ai-pattern>
+<ai-pattern name="notification-avatar">ShowBadge="true" BadgeCount="3" for unread counts</ai-pattern>
+<ai-pattern name="clickable-avatar">IsClickable="true" OnClick="HandleClick" for interactive avatars</ai-pattern>
+**@
+@using RR.Blazor.Attributes
+
+@attribute [Component("RAvatar", Category = "Core", Complexity = ComponentComplexity.Simple)]
+@attribute [AIOptimized(Prompt = "Create a professional avatar for user representation", 
+                       CommonUse = "user profiles, team members, contact lists", 
+                       AvoidUsage = "Don't use for decorative icons - use Icon component instead")]
 
 <div class="avatar @GetAvatarClasses()" @onclick="HandleClick" role="@(IsClickable ? "button" : null)">
     @if (!string.IsNullOrEmpty(ImageSrc))
@@ -37,38 +58,76 @@
 </div>
 
 @code {
-    /// <summary>Avatar size variant</summary>
-    [Parameter] public AvatarSize Size { get; set; } = AvatarSize.Medium;
+    /// <summary>Avatar size variant - determines dimensions and icon/text sizing</summary>
+    /// <ai-hint>Medium is default, Large for prominent display, Small for compact layouts</ai-hint>
+    [Parameter]
+    [AIParameter(Hint = "Medium is default, Large for prominent display, Small for compact layouts", 
+                 SuggestedValues = new[] { "ExtraSmall", "Small", "Medium", "Large", "ExtraLarge" })]
+    public AvatarSize Size { get; set; } = AvatarSize.Medium;
     
-    /// <summary>Avatar variant style</summary>
-    [Parameter] public AvatarVariant Variant { get; set; } = AvatarVariant.Default;
+    /// <summary>Avatar variant style - determines color scheme and background</summary>
+    /// <ai-hint>Default for neutral, Primary for branded, Success/Warning/Error for status-based styling</ai-hint>
+    [Parameter]
+    [AIParameter(Hint = "Default for neutral, Primary for branded, Success/Warning/Error for status", 
+                 SuggestedValues = new[] { "Default", "Primary", "Success", "Warning", "Error", "Gradient" }, 
+                 IsRequired = false)]
+    public AvatarVariant Variant { get; set; } = AvatarVariant.Default;
     
-    /// <summary>Image source URL</summary>
-    [Parameter] public string ImageSrc { get; set; }
+    /// <summary>Image source URL for profile picture</summary>
+    /// <ai-hint>Use high-quality square images for best results. Falls back to text/icon if not provided</ai-hint>
+    [Parameter]
+    [AIParameter(Hint = "Use high-quality square images. Falls back to text/icon if not provided", IsRequired = false)]
+    public string ImageSrc { get; set; }
     
-    /// <summary>Image alt text</summary>
-    [Parameter] public string Alt { get; set; }
+    /// <summary>Image alt text for accessibility</summary>
+    /// <ai-hint>Use descriptive text like "John Doe's profile picture" for screen readers</ai-hint>
+    [Parameter]
+    [AIParameter(Hint = "Use descriptive text like 'John Doe profile picture' for screen readers", IsRequired = false)]
+    public string Alt { get; set; }
     
-    /// <summary>Text content (typically initials)</summary>
-    [Parameter] public string Text { get; set; }
+    /// <summary>Text content (typically initials) when no image is available</summary>
+    /// <ai-hint>Use 1-2 character initials like "JD", "AB". Automatically uppercase</ai-hint>
+    [Parameter]
+    [AIParameter(Hint = "Use 1-2 character initials like JD, AB. Automatically uppercase", IsRequired = false)]
+    public string Text { get; set; }
     
-    /// <summary>Material icon name</summary>
-    [Parameter] public string Icon { get; set; }
+    /// <summary>Material icon name as fallback when no image or text provided</summary>
+    /// <ai-hint>Common icons: person, account_circle, face, group. Defaults to "person"</ai-hint>
+    [Parameter]
+    [AIParameter(Hint = "Common icons: person, account_circle, face, group. Defaults to person", 
+                 SuggestedValues = new[] { "person", "account_circle", "face", "group" })]
+    public string Icon { get; set; }
     
-    /// <summary>Whether to show status indicator</summary>
-    [Parameter] public bool ShowStatus { get; set; }
+    /// <summary>Whether to show status indicator dot</summary>
+    /// <ai-hint>Use for presence indicators in chat, team lists, or user directories</ai-hint>
+    [Parameter]
+    [AIParameter(Hint = "Use for presence indicators in chat, team lists, user directories")]
+    public bool ShowStatus { get; set; }
     
-    /// <summary>Status state</summary>
-    [Parameter] public AvatarStatus Status { get; set; } = AvatarStatus.None;
+    /// <summary>Status state for presence indicator</summary>
+    /// <ai-hint>Online for active users, Away for inactive, Busy for do-not-disturb, Offline for unavailable</ai-hint>
+    [Parameter]
+    [AIParameter(Hint = "Online for active, Away for inactive, Busy for do-not-disturb, Offline for unavailable", 
+                 SuggestedValues = new[] { "Online", "Away", "Busy", "Offline" })]
+    public AvatarStatus Status { get; set; } = AvatarStatus.None;
     
-    /// <summary>Whether to show badge</summary>
-    [Parameter] public bool ShowBadge { get; set; }
+    /// <summary>Whether to show notification badge with count</summary>
+    /// <ai-hint>Use for unread message counts, notification indicators, or pending items</ai-hint>
+    [Parameter]
+    [AIParameter(Hint = "Use for unread message counts, notification indicators, pending items")]
+    public bool ShowBadge { get; set; }
     
-    /// <summary>Badge count</summary>
-    [Parameter] public int BadgeCount { get; set; }
+    /// <summary>Badge count number displayed in notification badge</summary>
+    /// <ai-hint>Shows actual count, displays "99+" for values over 99</ai-hint>
+    [Parameter]
+    [AIParameter(Hint = "Shows actual count, displays 99+ for values over 99")]
+    public int BadgeCount { get; set; }
     
-    /// <summary>Whether avatar is clickable</summary>
-    [Parameter] public bool IsClickable { get; set; }
+    /// <summary>Whether avatar is clickable - adds hover effects and cursor pointer</summary>
+    /// <ai-hint>Set to true for interactive avatars that open profiles, menus, or perform actions</ai-hint>
+    [Parameter]
+    [AIParameter(Hint = "Set to true for interactive avatars that open profiles or menus")]
+    public bool IsClickable { get; set; }
     
     /// <summary>Additional CSS classes</summary>
     [Parameter] public string Class { get; set; }
@@ -242,29 +301,3 @@
     }
 }
 
-@* 
-Usage Examples:
-
-<!-- Avatar with initials -->
-<RAvatar Text="JD" Size="AvatarSize.Large" Variant="AvatarVariant.Primary" />
-
-<!-- Avatar with image -->
-<RAvatar ImageSrc="/images/avatar.jpg" Alt="John Doe" ShowStatus="true" Status="AvatarStatus.Online" />
-
-<!-- Avatar with icon -->
-<RAvatar Icon="person" Variant="AvatarVariant.Gradient" Size="AvatarSize.Medium" />
-
-<!-- Clickable avatar with badge -->
-<RAvatar Text="AD" 
-         IsClickable="true" 
-         ShowBadge="true" 
-         BadgeCount="5" 
-         OnClick="HandleAvatarClick" />
-
-<!-- Different sizes -->
-<RAvatar Text="XS" Size="AvatarSize.ExtraSmall" />
-<RAvatar Text="SM" Size="AvatarSize.Small" />
-<RAvatar Text="MD" Size="AvatarSize.Medium" />
-<RAvatar Text="LG" Size="AvatarSize.Large" />
-<RAvatar Text="XL" Size="AvatarSize.ExtraLarge" />
-*@

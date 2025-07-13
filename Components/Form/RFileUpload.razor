@@ -1,4 +1,20 @@
-@* RFileUpload - Universal File Upload Component *@
+@** 
+<summary>Professional file upload component with drag-drop, validation, and preview</summary>
+<category>Form</category>
+<complexity>Complex</complexity>
+<ai-prompt>Create a file upload component with drag-drop and file validation</ai-prompt>
+<ai-common-use>document upload, image upload, file attachments, media upload</ai-common-use>
+<ai-avoid>Don't use for simple text input or when files are not needed</ai-avoid>
+<ai-pattern name="document-upload">AllowedTypes="new[] { \".pdf\", \".docx\" }" MaxSize="10MB"</ai-pattern>
+<ai-pattern name="image-upload">AllowedTypes="new[] { \".jpg\", \".png\" }" GenerateThumbnails="true"</ai-pattern>
+<ai-pattern name="multiple-files">Multiple="true" MaxFiles="5" ShowPreview="true"</ai-pattern>
+<ai-pattern name="button-mode">DisplayMode="RFileUploadDisplayMode.Button" ButtonText="Upload Files"</ai-pattern>
+<ai-pattern name="inline-mode">DisplayMode="RFileUploadDisplayMode.Inline" ShowPreview="false"</ai-pattern>
+**@
+
+@attribute [Component("RFileUpload", Category = "Form")]
+@attribute [AIOptimized(Prompt = "Create file upload with validation")]
+
 @using RR.Blazor.Enums
 @implements IAsyncDisposable
 @inject IJSRuntime JSRuntime
@@ -170,13 +186,13 @@
 @code {
     // Core Parameters
     /// <summary>Component identifier</summary>
-    [Parameter] public string ComponentId { get; set; } = $"file-upload-{Guid.NewGuid().ToString("N")[..8]}";
+    [Parameter] [AIParameter("Unique identifier for the file upload component", Example = "document-upload")] public string ComponentId { get; set; } = $"file-upload-{Guid.NewGuid().ToString("N")[..8]}";
     
     /// <summary>Input element identifier</summary>
     [Parameter] public string InputId { get; set; } = $"file-input-{Guid.NewGuid().ToString("N")[..8]}";
     
     /// <summary>Display mode for the upload component</summary>
-    [Parameter] public RFileUploadDisplayMode DisplayMode { get; set; } = RFileUploadDisplayMode.DropZone;
+    [Parameter] [AIParameter("Visual style mode (DropZone, Button, Inline, Minimal)", Example = "RFileUploadDisplayMode.DropZone")] public RFileUploadDisplayMode DisplayMode { get; set; } = RFileUploadDisplayMode.DropZone;
     
     /// <summary>Whether component is disabled</summary>
     [Parameter] public bool IsDisabled { get; set; }
@@ -186,16 +202,16 @@
 
     // File Configuration
     /// <summary>Allowed file types (extensions like .pdf, .jpg or MIME types)</summary>
-    [Parameter] public string[] AllowedTypes { get; set; }
+    [Parameter] [AIParameter("Array of allowed file extensions or MIME types", Example = "new[] { \".pdf\", \".jpg\", \".png\" }")] public string[] AllowedTypes { get; set; }
     
     /// <summary>Maximum file size in bytes</summary>
-    [Parameter] public long MaxSize { get; set; } = 10 * 1024 * 1024; // 10MB
+    [Parameter] [AIParameter("Maximum file size in bytes", Example = "10 * 1024 * 1024 // 10MB")] public long MaxSize { get; set; } = 10 * 1024 * 1024; // 10MB
     
     /// <summary>Maximum number of files</summary>
     [Parameter] public int MaxFiles { get; set; } = 10;
     
     /// <summary>Allow multiple file selection</summary>
-    [Parameter] public bool Multiple { get; set; } = true;
+    [Parameter] [AIParameter("Allow selecting multiple files at once", Example = "true")] public bool Multiple { get; set; } = true;
     
     /// <summary>Allow duplicate files</summary>
     [Parameter] public bool AllowDuplicates { get; set; } = true;
@@ -611,49 +627,3 @@
     }
 }
 
-@* 
-Usage Examples:
-
-<!-- Zero Config (works immediately) -->
-<RFileUpload />
-
-<!-- Basic Configuration -->
-<RFileUpload AllowedTypes="@(new[] {".pdf", ".jpg", ".png"})"
-             MaxSize="5 * 1024 * 1024"
-             Multiple="true"
-             @bind-Files="uploadedFiles" />
-
-<!-- Button Mode -->
-<RFileUpload DisplayMode="RFileUploadDisplayMode.Button"
-             ButtonText="Upload Documents"
-             Icon="upload"
-             IconPosition="IconPosition.Start"
-             AllowedTypes="@(new[] {".pdf", ".docx"})" />
-
-<!-- Inline Mode -->
-<RFileUpload DisplayMode="RFileUploadDisplayMode.Inline"
-             Multiple="false"
-             ShowPreview="false" />
-
-<!-- Advanced with Events -->
-<RFileUpload @bind-Files="files"
-             OnFilesSelected="HandleFilesSelected"
-             OnUploadComplete="HandleUploadComplete"
-             OnProgressChanged="HandleProgressChanged"
-             CustomValidator="ValidateFile" />
-
-@code {
-    private List<RFileInfo> files = new();
-
-    private async Task HandleFilesSelected(RFileUploadResult result)
-    {
-        // Handle file selection
-    }
-
-    private async Task<string> ValidateFile(IBrowserFile file)
-    {
-        // Custom validation logic
-        return null; // Valid
-    }
-}
-*@

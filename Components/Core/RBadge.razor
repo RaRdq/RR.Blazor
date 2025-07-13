@@ -1,5 +1,26 @@
+@** 
+<summary>
+Professional badge component for status indicators, counts, and labels.
+Supports multiple variants, sizes, and interactive states with enterprise-grade styling.
+</summary>
+<category>Core</category>
+<complexity>Simple</complexity>
+<ai-prompt>Create a professional badge for status or count display</ai-prompt>
+<ai-common-use>status indicators, counts, labels, notifications, tags</ai-common-use>
+<ai-avoid>Don't use for navigation buttons - use RButton instead. Avoid for large text content.</ai-avoid>
+<ai-pattern name="status-badge">Text="Active" Variant="BadgeVariant.Success" for status indicators</ai-pattern>
+<ai-pattern name="count-badge">Text="5" Variant="BadgeVariant.Primary" for notification counts</ai-pattern>
+<ai-pattern name="warning-badge">Text="Pending" Variant="BadgeVariant.Warning" for attention states</ai-pattern>
+<ai-pattern name="clickable-badge">Clickable="true" OnClick="HandleClick" for interactive badges</ai-pattern>
+**@
 @namespace RR.Blazor.Components
 @using RR.Blazor.Enums
+@using RR.Blazor.Attributes
+
+@attribute [Component("RBadge", Category = "Core", Complexity = ComponentComplexity.Simple)]
+@attribute [AIOptimized(Prompt = "Create a professional badge for status or count display", 
+                       CommonUse = "status indicators, counts, labels, notifications", 
+                       AvoidUsage = "Don't use for navigation - use RButton instead")]
 
 <span class="badge @GetBadgeClasses()" @onclick="HandleClick" @attributes="AdditionalAttributes">
     @if (!string.IsNullOrEmpty(Icon))
@@ -14,14 +35,42 @@
 </span>
 
 @code {
-    [Parameter] public string Text { get; set; }
-    [Parameter] public BadgeVariant Variant { get; set; } = RR.Blazor.Enums.BadgeVariant.Secondary;
-    [Parameter] public BadgeSize Size { get; set; } = RR.Blazor.Enums.BadgeSize.Medium;
-    [Parameter] public string Icon { get; set; }
-    [Parameter] public bool Clickable { get; set; }
+    /// <summary>Badge text content - typically short labels, counts, or status indicators</summary>
+    /// <ai-hint>Keep text short: "Active", "5", "New", "Pending". Use 1-10 characters max</ai-hint>
+    [Parameter]
+    [AIParameter(Hint = "Keep text short: Active, 5, New, Pending. Use 1-10 characters max", IsRequired = false)]
+    public string Text { get; set; }
+    /// <summary>Badge variant - determines color scheme and semantic meaning</summary>
+    /// <ai-hint>Primary for emphasis, Success for positive states, Warning for attention, Danger for errors</ai-hint>
+    [Parameter]
+    [AIParameter(Hint = "Primary for emphasis, Success for positive, Warning for attention, Danger for errors", 
+                 SuggestedValues = new[] { "Primary", "Secondary", "Success", "Warning", "Danger", "Info" }, 
+                 IsRequired = false)]
+    public BadgeVariant Variant { get; set; } = RR.Blazor.Enums.BadgeVariant.Secondary;
+    /// <summary>Badge size - affects padding, text size, and overall dimensions</summary>
+    /// <ai-hint>Medium is default, Small for compact layouts, Large for prominence</ai-hint>
+    [Parameter]
+    [AIParameter(Hint = "Medium is default, Small for compact layouts, Large for prominence", 
+                 SuggestedValues = new[] { "Small", "Medium", "Large" })]
+    public BadgeSize Size { get; set; } = RR.Blazor.Enums.BadgeSize.Medium;
+    /// <summary>Material icon name to display alongside text</summary>
+    /// <ai-hint>Common icons: check_circle, warning, error, info, star, notifications</ai-hint>
+    [Parameter]
+    [AIParameter(Hint = "Common icons: check_circle, warning, error, info, star, notifications", 
+                 SuggestedValues = new[] { "check_circle", "warning", "error", "info", "star", "notifications" })]
+    public string Icon { get; set; }
+    /// <summary>Whether badge is clickable - adds hover effects and cursor pointer</summary>
+    /// <ai-hint>Set to true for interactive badges that perform actions when clicked</ai-hint>
+    [Parameter]
+    [AIParameter(Hint = "Set to true for interactive badges that perform actions")]
+    public bool Clickable { get; set; }
+    /// <summary>Click event handler for interactive badges</summary>
     [Parameter] public EventCallback OnClick { get; set; }
+    /// <summary>Child content for custom badge content</summary>
     [Parameter] public RenderFragment ChildContent { get; set; }
+    /// <summary>Additional CSS classes</summary>
     [Parameter] public string Class { get; set; } = string.Empty;
+    /// <summary>Additional HTML attributes</summary>
     [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object> AdditionalAttributes { get; set; }
 
     private string GetBadgeClasses()

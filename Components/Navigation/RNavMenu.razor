@@ -1,4 +1,25 @@
+@** 
+<summary>
+Professional navigation menu component for sidebar and main navigation with hierarchical support.
+Supports collapsible groups, badges, icons, and responsive behavior for enterprise applications.
+</summary>
+<category>Navigation</category>
+<complexity>Complex</complexity>
+<ai-prompt>Create navigation menu for app sidebar</ai-prompt>
+<ai-common-use>sidebar navigation, main menu, hierarchical navigation, app structure</ai-common-use>
+<ai-avoid>Don't use for breadcrumbs - use RBreadcrumbs instead. Avoid for action menus - use RDropdown.</ai-avoid>
+<ai-pattern name="basic-nav">Items list with NavMenuItem objects for simple navigation</ai-pattern>
+<ai-pattern name="hierarchical-nav">NavMenuItem with Children for nested menu structure</ai-pattern>
+<ai-pattern name="badge-nav">NavMenuItem with Badge for notifications and counts</ai-pattern>
+<ai-pattern name="collapsible-nav">Responsive to SidebarCollapsed cascading parameter</ai-pattern>
+**@
 @using Microsoft.AspNetCore.Components.Routing
+@using RR.Blazor.Attributes
+
+@attribute [Component("RNavMenu", Category = "Navigation", Complexity = ComponentComplexity.Complex)]
+@attribute [AIOptimized(Prompt = "Create navigation menu for app sidebar", 
+                       CommonUse = "sidebar navigation, main menu, hierarchical navigation", 
+                       AvoidUsage = "Don't use for breadcrumbs - use RBreadcrumbs instead")]
 
 <nav class="nav-menu">
     @if (Items != null)
@@ -78,17 +99,19 @@
 
 @code {
     /// <summary>Navigation items</summary>
-    [Parameter] public List<NavMenuItem> Items { get; set; }
+    [Parameter, AIParameter("List of navigation menu items", "NavMenuItem with Text, Href, Icon, and optional Children")] 
+    public List<NavMenuItem> Items { get; set; }
     
     /// <summary>Custom navigation content</summary>
     [Parameter] public RenderFragment ChildContent { get; set; }
     
     /// <summary>Whether sidebar is collapsed</summary>
-    [CascadingParameter(Name = "SidebarCollapsed")] 
+    [CascadingParameter(Name = "SidebarCollapsed"), AIParameter("Responsive to sidebar state", "Auto-provided by RAppShell")] 
     public bool SidebarCollapsed { get; set; }
     
     /// <summary>Filter function for items</summary>
-    [Parameter] public Func<NavMenuItem, bool> ItemFilter { get; set; }
+    [Parameter, AIParameter("Function to filter menu items", "item => item.RequiredRole == userRole")] 
+    public Func<NavMenuItem, bool> ItemFilter { get; set; }
     
     /// <summary>Item clicked callback</summary>
     [Parameter] public EventCallback<NavMenuItem> OnItemClick { get; set; }
@@ -138,34 +161,3 @@
 }
 
 
-@* 
-Usage Example:
-
-@code {
-    private List<NavMenuItem> navItems = new()
-    {
-        new() { Text = "Dashboard", Icon = "dashboard", Href = "/" },
-        new() { Text = "Users", Icon = "people", Href = "/users", Badge = new() { Text = "5", Type = "info" } },
-        new() { IsDivider = true },
-        new() { 
-            Text = "Settings", 
-            Icon = "settings", 
-            Children = new()
-            {
-                new() { Text = "Profile", Icon = "person", Href = "/settings/profile" },
-                new() { Text = "Security", Icon = "security", Href = "/settings/security" },
-            }
-        }
-    };
-}
-
-<RNavMenu Items="@navItems" />
-
-// Or with custom content:
-<RNavMenu>
-    <NavLink class="nav-item" href="/" ActiveClass="nav-item--active">
-        <i class="material-symbols-rounded nav-item__icon">home</i>
-        <span class="nav-item__text">Home</span>
-    </NavLink>
-</RNavMenu>
-*@

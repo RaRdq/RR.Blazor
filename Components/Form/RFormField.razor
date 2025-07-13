@@ -1,10 +1,30 @@
-@* RFormField - Universal form field component with utility-first CSS approach *@
+@** 
+<summary>Universal form field component with professional validation and utility-first CSS</summary>
+<category>Form</category>
+<complexity>Complex</complexity>
+<ai-prompt>Create a professional form field for user input with validation</ai-prompt>
+<ai-common-use>text input, email validation, password fields, dropdowns, checkboxes, file uploads</ai-common-use>
+<ai-avoid>Don't use for display-only data or readonly content</ai-avoid>
+<ai-pattern name="text-input">FieldType="FieldType.Text" for basic text input</ai-pattern>
+<ai-pattern name="email-field">FieldType="FieldType.Email" Required="true" for email validation</ai-pattern>
+<ai-pattern name="password-field">FieldType="FieldType.Password" with strength indicators</ai-pattern>
+<ai-pattern name="select-dropdown">FieldType="FieldType.Select" with SelectOptions</ai-pattern>
+<ai-pattern name="checkbox-field">FieldType="FieldType.Checkbox" with CheckboxText</ai-pattern>
+<ai-pattern name="file-upload">FieldType="FieldType.File" with AcceptTypes</ai-pattern>
+<ai-pattern name="floating-label">Variant="FieldVariant.FloatingLabel" for modern forms</ai-pattern>
+<ai-pattern name="required-field">Required="true" ShowRequiredIndicator="true"</ai-pattern>
+**@
+
+@attribute [Component("RFormField", Category = "Form")]
+@attribute [AIOptimized(Prompt = "Create professional form field with validation")]
+
 @using RR.Blazor.Enums
 @using RR.Blazor.Models
 @implements IAsyncDisposable
 
 <div class="form-field @GetFieldGroupClasses() @GetFieldDensityClass()" 
-     data-field-density="@Density.ToString().ToLowerInvariant()">
+     data-field-density="@Density.ToString().ToLowerInvariant()"
+     data-field-size="@Size.ToString().ToLowerInvariant()">
     @* Label *@
     @if (!string.IsNullOrEmpty(Label) && Variant != FieldVariant.FloatingLabel)
     {
@@ -15,10 +35,11 @@
     
     @* Input Field *@
     <div @ref="wrapperElement" id="wrapper-@InputId" class="form-field__wrapper @GetInputWrapperClasses()">
-        @if (!string.IsNullOrEmpty(Icon) && IconPosition == IconPosition.Start)
+        @if (!string.IsNullOrEmpty(StartIcon))
         {
-            <div class="form-field__icon-container form-field__icon-container--start">
-                <i class="material-symbols-rounded @GetIconSizeClass()">@Icon</i>
+            <div class="form-field__icon-container form-field__icon-container--start @(OnStartIconClick.HasDelegate ? "clickable" : "")" 
+                 @onclick="HandleStartIconClick">
+                <i class="material-symbols-rounded @GetIconSizeClass()">@StartIcon</i>
             </div>
         }
         
@@ -151,11 +172,11 @@
             </label>
         }
         
-        @if (!string.IsNullOrEmpty(Icon) && IconPosition == IconPosition.End && FieldType != FieldType.Select)
+        @if (!string.IsNullOrEmpty(EndIcon) && FieldType != FieldType.Select)
         {
-            <div class="form-field__icon-container form-field__icon-container--end @(OnIconClick.HasDelegate ? "clickable" : "")" 
-                 @onclick="HandleIconClick">
-                <i class="material-symbols-rounded @GetIconSizeClass()">@Icon</i>
+            <div class="form-field__icon-container form-field__icon-container--end @(OnEndIconClick.HasDelegate ? "clickable" : "")" 
+                 @onclick="HandleEndIconClick">
+                <i class="material-symbols-rounded @GetIconSizeClass()">@EndIcon</i>
             </div>
         }
         
@@ -197,31 +218,31 @@
 
 @code {
     /// <summary>Input field identifier</summary>
-    [Parameter] public string InputId { get; set; } = Guid.NewGuid().ToString("N")[..8];
+    [Parameter] [AIParameter("Unique identifier for the input field", Example = "email-input")] public string InputId { get; set; } = Guid.NewGuid().ToString("N")[..8];
     
     /// <summary>Field type</summary>
-    [Parameter] public FieldType FieldType { get; set; } = FieldType.Text;
+    [Parameter] [AIParameter("Type of input field (Text, Email, Password, Select, etc.)", Example = "FieldType.Email")] public FieldType FieldType { get; set; } = FieldType.Text;
     
     /// <summary>Field size variant</summary>
     [Parameter] public FieldSize Size { get; set; } = FieldSize.Medium;
     
     /// <summary>Field style variant (Default, Clean, Outlined, Filled)</summary>
-    [Parameter] public FieldVariant Variant { get; set; } = FieldVariant.Default;
+    [Parameter] [AIParameter("Visual style variant of the field", Example = "FieldVariant.FloatingLabel")] public FieldVariant Variant { get; set; } = FieldVariant.Default;
     
     /// <summary>Field density for spacing control</summary>
     [Parameter] public FormDensity Density { get; set; } = FormDensity.Comfortable;
     
     /// <summary>Field label text</summary>
-    [Parameter] public string Label { get; set; }
+    [Parameter] [AIParameter("Label text displayed above the field", Example = "Email Address")] public string Label { get; set; }
     
     /// <summary>Input field value</summary>
-    [Parameter] public string Value { get; set; }
+    [Parameter] [AIParameter("Current value of the input field", Example = "user@example.com")] public string Value { get; set; }
     
     /// <summary>Callback when value changes</summary>
     [Parameter] public EventCallback<string> ValueChanged { get; set; }
     
     /// <summary>Placeholder text</summary>
-    [Parameter] public string Placeholder { get; set; }
+    [Parameter] [AIParameter("Placeholder text shown when field is empty", Example = "Enter your email address")] public string Placeholder { get; set; }
     
     /// <summary>Help text below the input</summary>
     [Parameter] public string HelpText { get; set; }
@@ -236,7 +257,7 @@
     [CascadingParameter] public FormValidationContext? ValidationContext { get; set; }
     
     /// <summary>Whether field is required</summary>
-    [Parameter] public bool Required { get; set; }
+    [Parameter] [AIParameter("Mark field as required for form validation", Example = "true")] public bool Required { get; set; }
     
     /// <summary>Whether to show required indicator (*)</summary>
     [Parameter] public bool ShowRequiredIndicator { get; set; } = true;
@@ -313,11 +334,11 @@
     /// <summary>Additional CSS classes for the input element</summary>
     [Parameter] public string InputClass { get; set; }
     
-    /// <summary>Icon name</summary>
-    [Parameter] public string Icon { get; set; }
+    /// <summary>Icon on the left side of the input</summary>
+    [Parameter] public string StartIcon { get; set; }
     
-    /// <summary>Icon position</summary>
-    [Parameter] public IconPosition IconPosition { get; set; } = IconPosition.Start;
+    /// <summary>Icon on the right side of the input</summary>
+    [Parameter] public string EndIcon { get; set; }
     
     /// <summary>Whether input spans full width</summary>
     [Parameter] public bool FullWidth { get; set; } = true;
@@ -407,8 +428,11 @@
     /// <summary>Called on key up</summary>
     [Parameter] public EventCallback<KeyboardEventArgs> OnKeyUp { get; set; }
     
-    /// <summary>Called when icon is clicked</summary>
-    [Parameter] public EventCallback OnIconClick { get; set; }
+    /// <summary>Called when start icon is clicked</summary>
+    [Parameter] public EventCallback OnStartIconClick { get; set; }
+    
+    /// <summary>Called when end icon is clicked</summary>
+    [Parameter] public EventCallback OnEndIconClick { get; set; }
     
     // Floating label state management
     private ElementReference wrapperElement;
@@ -640,7 +664,7 @@
         }
         
         // Icon adjustment
-        if (!string.IsNullOrEmpty(Icon) && IconPosition == IconPosition.Start)
+        if (!string.IsNullOrEmpty(StartIcon))
         {
             classes.Add("form-field__label--with-start-icon");
         }
@@ -677,12 +701,12 @@
         });
         
         // Icon modifiers
-        if (!string.IsNullOrEmpty(Icon) && IconPosition == IconPosition.Start)
+        if (!string.IsNullOrEmpty(StartIcon))
         {
             classes.Add("form-field__input--with-start-icon");
         }
         
-        if ((!string.IsNullOrEmpty(Icon) && IconPosition == IconPosition.End) || Loading)
+        if (!string.IsNullOrEmpty(EndIcon) || Loading)
         {
             classes.Add("form-field__input--with-end-icon");
         }
@@ -991,100 +1015,20 @@
         await OnKeyUp.InvokeAsync(e);
     }
     
-    private async Task HandleIconClick()
+    private async Task HandleStartIconClick()
     {
-        if (OnIconClick.HasDelegate)
+        if (OnStartIconClick.HasDelegate)
         {
-            await OnIconClick.InvokeAsync();
+            await OnStartIconClick.InvokeAsync();
+        }
+    }
+    
+    private async Task HandleEndIconClick()
+    {
+        if (OnEndIconClick.HasDelegate)
+        {
+            await OnEndIconClick.InvokeAsync();
         }
     }
 }
 
-@* 
-Usage Examples:
-
-<!-- Basic text input -->
-<RFormField Label="Full Name" 
-            Placeholder="Enter your full name"
-            @bind-Value="fullName" />
-
-<!-- Email with validation -->
-<RFormField Label="Email Address" 
-            FieldType="FieldType.Email"
-            Placeholder="Enter your email"
-            Required="true"
-            HasError="emailError"
-            ErrorMessage="Please enter a valid email"
-            @bind-Value="email" />
-
-<!-- Password with strength indicator -->
-<RFormField Label="Password" 
-            FieldType="FieldType.Password"
-            Icon="lock"
-            HelpText="Must be at least 8 characters"
-            ShowCharacterCount="true"
-            MaxLength="50"
-            @bind-Value="password" />
-
-<!-- Floating Label Examples -->
-<!-- Basic floating label -->
-<RFormField Label="Email Address" 
-            FieldType="FieldType.Email"
-            Variant="FieldVariant.FloatingLabel"
-            @bind-Value="email" />
-
-<!-- Floating label with icon -->
-<RFormField Label="Password" 
-            FieldType="FieldType.Password"
-            Variant="FieldVariant.FloatingLabel"
-            Icon="lock"
-            IconPosition="IconPosition.Start"
-            @bind-Value="password" />
-
-<!-- Large floating label with validation -->
-<RFormField Label="Full Name" 
-            Variant="FieldVariant.FloatingLabel"
-            Size="FieldSize.Large"
-            Required="true"
-            HasError="nameError"
-            ErrorMessage="Name is required"
-            @bind-Value="fullName" />
-
-<!-- Small floating label -->
-<RFormField Label="Search" 
-            FieldType="FieldType.Search"
-            Variant="FieldVariant.FloatingLabel"
-            Size="FieldSize.Small"
-            Icon="search"
-            @bind-Value="searchQuery" />
-
-<!-- Density Examples -->
-<!-- Dense form field -->
-<RFormField Label="Compact Email" 
-            FieldType="FieldType.Email"
-            Density="FormDensity.Dense"
-            @bind-Value="email" />
-
-<!-- Ultra-dense form field -->
-<RFormField Label="Ultra Compact Name" 
-            Density="FormDensity.UltraDense"
-            Size="FieldSize.Small"
-            @bind-Value="name" />
-
-<!-- Ultra-dense floating label -->
-<RFormField Label="Minimal Input" 
-            Variant="FieldVariant.FloatingLabel"
-            Density="FormDensity.UltraDense"
-            Icon="person"
-            @bind-Value="input" />
-
-<!-- Dense form in grid layout -->
-<div class="form-grid--2 form-grid--ultra-dense">
-    <RFormField Label="First Name" 
-                Density="FormDensity.UltraDense"
-                @bind-Value="firstName" />
-    <RFormField Label="Last Name" 
-                Density="FormDensity.UltraDense"
-                @bind-Value="lastName" />
-</div>
-*@

@@ -17,6 +17,14 @@
     <SupportedPlatform Include="browser" />
   </ItemGroup>
 
+  <!-- Exclude CLI and Analyzers tools from main project compilation -->
+  <ItemGroup>
+    <Compile Remove="Tools\**" />
+    <Content Remove="Tools\**" />
+    <EmbeddedResource Remove="Tools\**" />
+    <None Remove="Tools\**" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="9.0.7" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.7" />
@@ -54,5 +62,34 @@
     <SassCompilerBuildItem Include="Styles\main.scss" />
   </ItemGroup>
 
+  <!-- RR.Blazor AI-First Build Integration -->
+  <PropertyGroup>
+    <GenerateComponentRegistry Condition="'$(GenerateComponentRegistry)' == ''">true</GenerateComponentRegistry>
+    <ComponentRegistryOutputPath Condition="'$(ComponentRegistryOutputPath)' == ''">wwwroot/rr-components.json</ComponentRegistryOutputPath>
+    <RRBlazorAnalyzersEnabled Condition="'$(RRBlazorAnalyzersEnabled)' == ''">false</RRBlazorAnalyzersEnabled>
+  </PropertyGroup>
+
+  <!-- Include MSBuild targets for automatic schema generation -->
+  <Import Project="RR.Blazor.targets" />
+
+  <!-- Package consumers get the targets file -->
+  <ItemGroup>
+    <None Include="RR.Blazor.targets" Pack="true" PackagePath="build/RR.Blazor.targets" />
+    <None Include="Attributes/ComponentAttributes.cs" Pack="true" PackagePath="contentFiles/cs/any/Attributes/ComponentAttributes.cs" />
+    <None Include="Schema/ComponentMetadata.cs" Pack="true" PackagePath="contentFiles/cs/any/Schema/ComponentMetadata.cs" />
+  </ItemGroup>
+
+  <!-- NuGet Package Metadata -->
+  <PropertyGroup>
+    <PackageId>RR.Blazor</PackageId>
+    <PackageVersion>1.0.0</PackageVersion>
+    <Authors>RaRdq</Authors>
+    <Description>Enterprise-grade Blazor component library with AI-first development patterns, 51 components, 800+ utilities, and automatic schema generation.</Description>
+    <PackageTags>blazor;components;ai;enterprise;design-system;utilities</PackageTags>
+    <PackageProjectUrl>https://github.com/RaRdq/RR.Blazor</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/RaRdq/RR.Blazor</RepositoryUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+  </PropertyGroup>
 
 </Project>

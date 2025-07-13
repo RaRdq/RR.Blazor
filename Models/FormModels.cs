@@ -53,54 +53,38 @@ public delegate Task<FormValidationResult> FormValidationDelegate<T>(T model) wh
 /// <summary>
 /// Form submission event arguments
 /// </summary>
-public class FormSubmissionEventArgs<T> where T : class
+public class FormSubmissionEventArgs<T>(
+    T model,
+    FormValidationResult validationResult,
+    CancellationToken cancellationToken = default)
+    where T : class
 {
-    public T Model { get; set; }
-    public FormValidationResult ValidationResult { get; set; }
-    public CancellationToken CancellationToken { get; set; }
+    public T Model { get; set; } = model;
+    public FormValidationResult ValidationResult { get; set; } = validationResult;
+    public CancellationToken CancellationToken { get; set; } = cancellationToken;
     public bool Cancel { get; set; } = false;
-    
-    public FormSubmissionEventArgs(T model, FormValidationResult validationResult, CancellationToken cancellationToken = default)
-    {
-        Model = model;
-        ValidationResult = validationResult;
-        CancellationToken = cancellationToken;
-    }
 }
 
 /// <summary>
 /// Form state change event arguments
 /// </summary>
-public class FormStateChangedEventArgs
+public class FormStateChangedEventArgs(FormState previousState, FormState currentState, string? message = null)
 {
-    public FormState PreviousState { get; set; }
-    public FormState CurrentState { get; set; }
-    public string? Message { get; set; }
-    
-    public FormStateChangedEventArgs(FormState previousState, FormState currentState, string? message = null)
-    {
-        PreviousState = previousState;
-        CurrentState = currentState;
-        Message = message;
-    }
+    public FormState PreviousState { get; set; } = previousState;
+    public FormState CurrentState { get; set; } = currentState;
+    public string? Message { get; set; } = message;
 }
 
 /// <summary>
 /// Form field validation event arguments
 /// </summary>
-public class FieldValidationEventArgs
+public class FieldValidationEventArgs(string fieldName, object? value)
 {
-    public string FieldName { get; set; }
-    public object? Value { get; set; }
+    public string FieldName { get; set; } = fieldName;
+    public object? Value { get; set; } = value;
     public List<string> Errors { get; set; } = new();
     public bool IsValid => !Errors.Any();
-    
-    public FieldValidationEventArgs(string fieldName, object? value)
-    {
-        FieldName = fieldName;
-        Value = value;
-    }
-    
+
     public void AddError(string error)
     {
         Errors.Add(error);
