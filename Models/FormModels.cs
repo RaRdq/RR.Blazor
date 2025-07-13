@@ -164,6 +164,51 @@ public class FormOptions
 }
 
 /// <summary>
+/// Form validation context for cascading validation state to child fields
+/// </summary>
+public class FormValidationContext
+{
+    public FormValidationResult? ValidationResult { get; set; }
+    public FormState State { get; set; } = FormState.Ready;
+    public FormOptions Options { get; set; } = new();
+    public bool HasAttemptedSubmit { get; set; } = false;
+    
+    /// <summary>
+    /// Gets validation errors for a specific field
+    /// </summary>
+    public List<string> GetFieldErrors(string fieldName)
+    {
+        return ValidationResult?.GetFieldErrors(fieldName) ?? new List<string>();
+    }
+    
+    /// <summary>
+    /// Checks if a field has validation errors
+    /// </summary>
+    public bool HasFieldErrors(string fieldName)
+    {
+        return ValidationResult?.HasFieldErrors(fieldName) ?? false;
+    }
+    
+    /// <summary>
+    /// Gets the first error message for a field (for simple error display)
+    /// </summary>
+    public string? GetFieldErrorMessage(string fieldName)
+    {
+        var errors = GetFieldErrors(fieldName);
+        return errors.FirstOrDefault();
+    }
+    
+    /// <summary>
+    /// Determines if validation errors should be shown for a field
+    /// Only shows errors after user interaction OR after form submission attempt
+    /// </summary>
+    public bool ShouldShowFieldErrors(string fieldName, bool hasUserInteracted)
+    {
+        return (hasUserInteracted || HasAttemptedSubmit) && HasFieldErrors(fieldName);
+    }
+}
+
+/// <summary>
 /// Form section configuration
 /// </summary>
 public class FormSectionConfig

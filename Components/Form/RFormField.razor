@@ -1,5 +1,6 @@
 @* RFormField - Universal form field component with utility-first CSS approach *@
 @using RR.Blazor.Enums
+@using RR.Blazor.Models
 @implements IAsyncDisposable
 
 <div class="form-field @GetFieldGroupClasses() @GetFieldDensityClass()" 
@@ -40,6 +41,7 @@
                    max="@MaxValue"
                    step="@Step"
                    autocomplete="@AutoComplete"
+                   data-field="@GetEffectiveFieldName()"
                    @onchange="HandleValueChange"
                    @oninput="HandleInput"
                    @onfocus="HandleFocus"
@@ -167,11 +169,11 @@
     </div>
     
     @* Error Message *@
-    @if (HasError && !string.IsNullOrEmpty(ErrorMessage))
+    @if (IsInErrorState && !string.IsNullOrEmpty(GetEffectiveErrorMessage()))
     {
         <div class="form-field__error">
             <i class="material-symbols-rounded">error</i>
-            @ErrorMessage
+            @GetEffectiveErrorMessage()
         </div>
     }
     
@@ -227,6 +229,12 @@
     /// <summary>Error message to display</summary>
     [Parameter] public string ErrorMessage { get; set; }
     
+    /// <summary>Field name for binding to validation context (auto-derived from Label if not set)</summary>
+    [Parameter] public string FieldName { get; set; }
+    
+    /// <summary>Cascading validation context from parent form</summary>
+    [CascadingParameter] public FormValidationContext? ValidationContext { get; set; }
+    
     /// <summary>Whether field is required</summary>
     [Parameter] public bool IsRequired { get; set; }
     
@@ -239,8 +247,62 @@
     /// <summary>Whether field is readonly</summary>
     [Parameter] public bool IsReadOnly { get; set; }
     
-    /// <summary>Whether field has validation error</summary>
+    /// <summary>Whether field has validation error (auto-calculated from ErrorMessage)</summary>
     [Parameter] public bool HasError { get; set; }
+    
+    /// <summary>Computed property that returns true if there's an error message or HasError is explicitly set, but only after user interaction or form submission attempt</summary>
+    private bool IsInErrorState 
+    {
+        get
+        {
+            // If HasError is explicitly set, show it
+            if (HasError) return true;
+            
+            // If we have validation context, use its logic
+            if (ValidationContext != null && !string.IsNullOrEmpty(GetEffectiveFieldName()))
+            {
+                return ValidationContext.ShouldShowFieldErrors(GetEffectiveFieldName(), hasUserInteracted);
+            }
+            
+            // Fallback: only show explicit ErrorMessage after user interaction
+            return !string.IsNullOrEmpty(ErrorMessage) && hasUserInteracted;
+        }
+    }
+    
+    /// <summary>Gets the effective error message from parameter or validation context</summary>
+    private string GetEffectiveErrorMessage()
+    {
+        // Use explicit ErrorMessage if provided
+        if (!string.IsNullOrEmpty(ErrorMessage))
+            return ErrorMessage;
+            
+        // Auto-detect from validation context if available
+        if (ValidationContext != null && !string.IsNullOrEmpty(GetEffectiveFieldName()))
+        {
+            return ValidationContext.GetFieldErrorMessage(GetEffectiveFieldName()) ?? "";
+        }
+        
+        return "";
+    }
+    
+    /// <summary>Gets the effective field name (from parameter or auto-derived from Label)</summary>
+    private string GetEffectiveFieldName()
+    {
+        if (!string.IsNullOrEmpty(FieldName))
+            return FieldName;
+            
+        // Auto-derive field name from Label by removing spaces and making camelCase
+        if (!string.IsNullOrEmpty(Label))
+        {
+            var fieldName = Label.Replace(" ", "").Replace(":", "");
+            if (!string.IsNullOrEmpty(fieldName))
+            {
+                return char.ToLowerInvariant(fieldName[0]) + fieldName[1..];
+            }
+        }
+        
+        return "";
+    }
     
     /// <summary>Whether field is in loading state</summary>
     [Parameter] public bool IsLoading { get; set; }
@@ -353,6 +415,8 @@
     private ElementReference inputElement;
     private bool hasValue;
     private bool isFocused;
+    private bool hasUserInteracted = false;
+    private Timer? validationDebounceTimer;
     
     [Inject] private IJSRuntime JSRuntime { get; set; }
     
@@ -373,6 +437,7 @@
             await UpdateFloatingLabelState();
         }
     }
+    
     
     private async Task InitializeFloatingLabel()
     {
@@ -431,8 +496,41 @@
         }
     }
     
+    private async Task TriggerDebouncedValidation()
+    {
+        // Cancel existing timer
+        validationDebounceTimer?.Dispose();
+        
+        // Set up new debounced validation
+        var debounceMs = ValidationContext?.Options.ValidationDebounceMs ?? 300;
+        validationDebounceTimer = new Timer(async _ =>
+        {
+            await InvokeAsync(async () =>
+            {
+                await TriggerImmediateValidation();
+            });
+        }, null, debounceMs, Timeout.Infinite);
+    }
+    
+    private async Task TriggerImmediateValidation()
+    {
+        try
+        {
+            // This would trigger validation in the parent form
+            // For now, just update the visual state
+            StateHasChanged();
+            await Task.CompletedTask;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error in field validation: {ex.Message}");
+        }
+    }
+    
     public async ValueTask DisposeAsync()
     {
+        validationDebounceTimer?.Dispose();
+        
         if (Variant == FieldVariant.FloatingLabel)
         {
             try
@@ -455,7 +553,7 @@
             classes.Add("d-inline-flex");
         }
         
-        if (HasError)
+        if (IsInErrorState)
         {
             classes.Add("form-field--error");
         }
@@ -518,7 +616,7 @@
                 classes.Add("form-field__wrapper--floating");
             }
             
-            if (HasError)
+            if (IsInErrorState)
             {
                 classes.Add("form-field__wrapper--error");
             }
@@ -651,7 +749,7 @@
             _ => "w-5 h-5"
         });
         
-        if (HasError)
+        if (IsInErrorState)
         {
             classes.AddRange(new[] { "border-error", "focus:border-error" });
         }
@@ -801,6 +899,7 @@
     
     private async Task HandleValueChange(ChangeEventArgs e)
     {
+        hasUserInteracted = true;
         var newValue = e.Value?.ToString() ?? "";
         Value = newValue;
         hasValue = !string.IsNullOrEmpty(newValue);
@@ -818,9 +917,21 @@
         Value = newValue;
         hasValue = !string.IsNullOrEmpty(newValue);
         
+        // Only mark as user interacted if they're actually typing (value is not empty)
+        if (!string.IsNullOrEmpty(newValue))
+        {
+            hasUserInteracted = true;
+        }
+        
         // Only invoke OnInput callback, not ValueChanged
         // ValueChanged should only be called on actual change events (blur/enter)
         await OnInput.InvokeAsync(newValue);
+        
+        // Trigger real-time validation if enabled in form context
+        if (ValidationContext?.Options.ValidateOnChange == true)
+        {
+            await TriggerDebouncedValidation();
+        }
         
         if (Variant == FieldVariant.FloatingLabel)
         {
@@ -843,6 +954,7 @@
     private async Task HandleFocus(FocusEventArgs e)
     {
         isFocused = true;
+        // Don't mark as user interacted on focus - only on blur or value change
         await OnFocus.InvokeAsync(e);
         
         if (Variant == FieldVariant.FloatingLabel)
@@ -853,8 +965,15 @@
     
     private async Task HandleBlur(FocusEventArgs e)
     {
+        hasUserInteracted = true;
         isFocused = false;
         await OnBlur.InvokeAsync(e);
+        
+        // Trigger validation on blur if enabled in form context
+        if (ValidationContext?.Options.ValidateOnBlur == true)
+        {
+            await TriggerImmediateValidation();
+        }
         
         if (Variant == FieldVariant.FloatingLabel)
         {
