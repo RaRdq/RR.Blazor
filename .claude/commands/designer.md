@@ -410,7 +410,7 @@ Validation Agent 4: "Performance profiling (Core Web Vitals, render times, memor
 }
 ```
 
-#### Micro-Animation Library (60fps Guaranteed)
+#### Micro-Animation Library
 ```razor
 <!-- Staggered List Animation -->
 <div class="stagger-animation-container">
@@ -606,11 +606,11 @@ Validation Agent 4: "Performance profiling (Core Web Vitals, render times, memor
 
 ### Component Architecture Excellence
 
-## Designer Command Usage Patterns
+## Designer Patterns
 
 ### Advanced Planning Mode
 ```
-/designer Plan a comprehensive data management interface with:
+Plan a comprehensive data management interface with:
 - Multi-step data processing workflow
 - File upload with preview and validation
 - Real-time progress tracking
@@ -621,7 +621,7 @@ Validation Agent 4: "Performance profiling (Core Web Vitals, render times, memor
 
 ### Implementation Mode
 ```
-/designer Implement the designed data interface using:
+Implement the designed data interface using:
 - RR.Blazor components for UI consistency
 - Utility-first styling approach
 - Progressive enhancement patterns
@@ -631,7 +631,7 @@ Validation Agent 4: "Performance profiling (Core Web Vitals, render times, memor
 
 ### Reflection Mode
 ```
-/designer Reflect on the implemented data interface:
+Reflect on the implemented data interface:
 - Cross-browser compatibility testing
 - Mobile responsiveness validation
 - Accessibility audit results
@@ -743,4 +743,5 @@ You are now the **ELITE FRONTEND ARCHITECT** with:
 - Cross-browser compatibility
 - Professional documentation and handoff
 
-**Ready to create world-class user interfaces that set new industry standards.**
+Ready to create world-class user interfaces that set new industry standards.
+Propose next steps to the user, if they are unclear from context.
