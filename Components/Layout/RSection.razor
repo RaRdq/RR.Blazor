@@ -43,100 +43,20 @@
                 </div>
             }
             
-            @if (HeaderActions != null && !IsCollapsible)
-            {
-                <div class="section__actions">
-                    @HeaderActions
-                </div>
-            }
         </header>
     }
     
     @* Content *@
     <div id="@(IsCollapsible ? $"section-content-{SectionId}" : "")" 
          class="section__content @GetContentClasses()">
-        @if (IsLoading)
-        {
-            <div class="@GetLoadingClasses()">
-                <div class="d-flex align-center justify-center">
-                    <i class="material-symbols-rounded text-primary animate-spin mr-3">progress_activity</i>
-                    @if (!string.IsNullOrEmpty(LoadingText))
-                    {
-                        <span class="text-primary">@LoadingText</span>
-                    }
-                </div>
-            </div>
-        }
-        else if (HasError)
-        {
-            <div class="@GetErrorClasses()">
-                <div class="d-flex align-center">
-                    <i class="material-symbols-rounded text-error mr-3">error</i>
-                    <div>
-                        <div class="text-error font-medium">@ErrorTitle</div>
-                        @if (!string.IsNullOrEmpty(ErrorMessage))
-                        {
-                            <div class="text-secondary text-sm mt-1">@ErrorMessage</div>
-                        }
-                        @if (ShowRetryButton)
-                        {
-                            <div class="mt-3">
-                                <RButton Text="Retry" 
-                                         Variant="ButtonVariant.Outline" 
-                                         Size="ButtonSize.Small"
-                                         Icon="refresh" IconPosition="IconPosition.Start"
-                                         OnClick="HandleRetry" />
-                            </div>
-                        }
-                    </div>
-                </div>
-            </div>
-        }
-        else if (IsEmpty && ShowEmptyState)
-        {
-            <div class="@GetEmptyStateClasses()">
-                <div class="text-center">
-                    @if (!string.IsNullOrEmpty(EmptyIcon))
-                    {
-                        <i class="material-symbols-rounded text-secondary mb-3" style="font-size: 3rem;">@EmptyIcon</i>
-                    }
-                    <div class="text-secondary font-medium">@EmptyTitle</div>
-                    @if (!string.IsNullOrEmpty(EmptyMessage))
-                    {
-                        <div class="text-tertiary text-sm mt-1">@EmptyMessage</div>
-                    }
-                    @if (EmptyActions != null)
-                    {
-                        <div class="mt-4">
-                            @EmptyActions
-                        </div>
-                    }
-                </div>
-            </div>
-        }
-        else
-        {
-            @ChildContent
-        }
+        @ChildContent
     </div>
     
     @* Footer *@
-    @if (FooterContent != null || FooterActions != null)
+    @if (FooterContent != null)
     {
         <footer class="section__footer @GetFooterClasses()">
-            @if (FooterContent != null)
-            {
-                <div class="flex-grow-1">
-                    @FooterContent
-                </div>
-            }
-            
-            @if (FooterActions != null)
-            {
-                <div class="d-flex align-center gap-2">
-                    @FooterActions
-                </div>
-            }
+            @FooterContent
         </footer>
     }
 </section>
@@ -163,38 +83,6 @@
     /// <summary>Callback when collapsed state changes</summary>
     [Parameter] public EventCallback<bool> IsCollapsedChanged { get; set; }
     
-    /// <summary>Whether section is loading</summary>
-    [Parameter] public bool IsLoading { get; set; }
-    
-    /// <summary>Loading text to display</summary>
-    [Parameter] public string LoadingText { get; set; } = "Loading...";
-    
-    /// <summary>Whether section has error</summary>
-    [Parameter] public bool HasError { get; set; }
-    
-    /// <summary>Error title</summary>
-    [Parameter] public string ErrorTitle { get; set; } = "Error";
-    
-    /// <summary>Error message</summary>
-    [Parameter] public string ErrorMessage { get; set; }
-    
-    /// <summary>Whether to show retry button on error</summary>
-    [Parameter] public bool ShowRetryButton { get; set; }
-    
-    /// <summary>Whether content is empty</summary>
-    [Parameter] public bool IsEmpty { get; set; }
-    
-    /// <summary>Whether to show empty state</summary>
-    [Parameter] public bool ShowEmptyState { get; set; } = true;
-    
-    /// <summary>Empty state icon</summary>
-    [Parameter] public string EmptyIcon { get; set; } = "inbox";
-    
-    /// <summary>Empty state title</summary>
-    [Parameter] public string EmptyTitle { get; set; } = "No data available";
-    
-    /// <summary>Empty state message</summary>
-    [Parameter] public string EmptyMessage { get; set; }
     
     /// <summary>Whether to remove header border</summary>
     [Parameter] public bool NoHeaderBorder { get; set; }
@@ -214,28 +102,17 @@
     /// <summary>Title content area</summary>
     [Parameter] public RenderFragment TitleContent { get; set; }
     
-    /// <summary>Header actions area</summary>
-    [Parameter] public RenderFragment HeaderActions { get; set; }
-    
     /// <summary>Footer content area</summary>
     [Parameter] public RenderFragment FooterContent { get; set; }
-    
-    /// <summary>Footer actions area</summary>
-    [Parameter] public RenderFragment FooterActions { get; set; }
-    
-    /// <summary>Empty state actions</summary>
-    [Parameter] public RenderFragment EmptyActions { get; set; }
     
     /// <summary>Section click event handler</summary>
     [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
     
-    /// <summary>Retry event handler</summary>
-    [Parameter] public EventCallback OnRetry { get; set; }
     
     /// <summary>Collapse/expand event handler</summary>
     [Parameter] public EventCallback<bool> OnToggleCollapse { get; set; }
     
-    private bool HasHeader => !string.IsNullOrEmpty(Title) || TitleContent != null || HeaderActions != null;
+    private bool HasHeader => !string.IsNullOrEmpty(Title) || TitleContent != null;
     
     private string GetSectionClasses()
     {
@@ -246,10 +123,6 @@
             classes.Add("section--collapsible");
         }
         
-        if (IsLoading)
-        {
-            classes.Add("section--loading");
-        }
         
         if (!string.IsNullOrEmpty(Class))
         {
@@ -300,7 +173,7 @@
             classes.Add("section__content--collapsed");
         }
         
-        if (!NoPadding && !IsEmpty && !IsLoading && !HasError)
+        if (!NoPadding)
         {
             classes.Add("py-4");
         }
@@ -325,20 +198,6 @@
         return string.Join(" ", classes);
     }
     
-    private string GetLoadingClasses()
-    {
-        return "py-8 text-center";
-    }
-    
-    private string GetErrorClasses()
-    {
-        return "py-6 px-4 border border-error-light bg-danger-light rounded-md";
-    }
-    
-    private string GetEmptyStateClasses()
-    {
-        return "py-12 text-center";
-    }
     
     private string GetIconSizeClass()
     {
@@ -360,10 +219,6 @@
         }
     }
     
-    private async Task HandleRetry()
-    {
-        await OnRetry.InvokeAsync();
-    }
 }
 
 @* 
@@ -381,17 +236,19 @@ Usage Examples:
     <div>Settings content...</div>
 </RSection>
 
-<!-- Section with header actions -->
+<!-- Section with header content (CLEAN API) -->
 <RSection Title="User Management" Icon="people">
-    <HeaderActions>
-        <RButton Text="Add User" 
-                 Variant="ButtonVariant.Primary" 
-                 Size="ButtonSize.Small"
-                 Icon="add" IconPosition="IconPosition.Start" />
-        <RButton Variant="ButtonVariant.Ghost" 
-                 Icon="more_vert" IconPosition="IconPosition.Start" 
-                 Size="ButtonSize.Small" />
-    </HeaderActions>
+    <TitleContent>
+        <div class="d-flex align-center gap-2 ml-4">
+            <RButton Text="Add User" 
+                     Variant="ButtonVariant.Primary" 
+                     Size="ButtonSize.Small"
+                     Icon="add" IconPosition="IconPosition.Start" />
+            <RButton Variant="ButtonVariant.Ghost" 
+                     Icon="more_vert" IconPosition="IconPosition.Start" 
+                     Size="ButtonSize.Small" />
+        </div>
+    </TitleContent>
     <div>User list content...</div>
 </RSection>
 
@@ -402,43 +259,53 @@ Usage Examples:
     <div>Collapsible content...</div>
 </RSection>
 
-<!-- Loading section -->
-<RSection Title="Data Loading" 
-          Loading="true"
-          LoadingText="Fetching data...">
-    <div>This content is hidden while loading</div>
+<!-- Use composition with dedicated components -->
+<RSection Title="Data Loading">
+    <RSkeleton Count="3" Height="60px" />
 </RSection>
 
-<!-- Error section -->
-<RSection Title="Failed Request" 
-          HasError="true"
-          ErrorTitle="Network Error"
-          ErrorMessage="Failed to fetch data from server"
-          ShowRetryButton="true"
-          OnRetry="HandleRetry">
-    <div>This content is hidden due to error</div>
+<!-- Error with composition -->
+<RSection Title="Failed Request">
+    <div class="py-6 px-4 border border-error bg-error-light rounded-md">
+        <div class="d-flex align-center">
+            <i class="material-symbols-rounded text-error mr-3">error</i>
+            <div>
+                <div class="text-error font-medium">Network Error</div>
+                <div class="text-secondary text-sm mt-1">Failed to fetch data from server</div>
+                <div class="mt-3">
+                    <RButton Text="Retry" 
+                             Variant="ButtonVariant.Outline" 
+                             Size="ButtonSize.Small"
+                             Icon="refresh" IconPosition="IconPosition.Start"
+                             OnClick="HandleRetry" />
+                </div>
+            </div>
+        </div>
+    </div>
 </RSection>
 
-<!-- Empty state section -->
-<RSection Title="Documents" 
-          IsEmpty="true"
-          EmptyIcon="description"
-          EmptyTitle="No documents found"
-          EmptyMessage="Upload documents to get started">
-    <EmptyActions>
-        <RButton Text="Upload Document" 
-                 Variant="ButtonVariant.Primary"
-                 Icon="upload" IconPosition="IconPosition.Start" />
-    </EmptyActions>
+<!-- Empty state with dedicated component -->
+<RSection Title="Documents">
+    <REmptyState Title="No documents found"
+                 Description="Upload documents to get started"
+                 Icon="description">
+        <Actions>
+            <RButton Text="Upload Document" 
+                     Variant="ButtonVariant.Primary"
+                     Icon="upload" IconPosition="IconPosition.Start" />
+        </Actions>
+    </REmptyState>
 </RSection>
 
 <!-- Section with footer -->
 <RSection Title="Form Section">
     <div>Form content...</div>
-    <FooterActions>
-        <RButton Text="Cancel" Variant="ButtonVariant.Secondary" />
-        <RButton Text="Save" Variant="ButtonVariant.Primary" />
-    </FooterActions>
+    <FooterContent>
+        <div class="d-flex align-center justify-end gap-2">
+            <RButton Text="Cancel" Variant="ButtonVariant.Secondary" />
+            <RButton Text="Save" Variant="ButtonVariant.Primary" />
+        </div>
+    </FooterContent>
 </RSection>
 
 <!-- No padding section -->

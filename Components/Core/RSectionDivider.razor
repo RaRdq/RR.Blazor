@@ -1,0 +1,232 @@
+@using RR.Blazor.Enums
+@* RSectionDivider - Beautiful section divider component using utility-first approach *@
+
+<div class="@GetDividerClasses()">
+    @if (!string.IsNullOrEmpty(Icon))
+    {
+        <div class="@GetIconWrapperClasses()">
+            <i class="material-symbols-rounded @GetIconClasses()">@Icon</i>
+        </div>
+    }
+    
+    <div class="@GetContentClasses()">
+        @if (!string.IsNullOrEmpty(Title))
+        {
+            <h6 class="@GetTitleClasses()">@Title</h6>
+        }
+        
+        @if (!string.IsNullOrEmpty(Subtitle))
+        {
+            <p class="@GetSubtitleClasses()">@Subtitle</p>
+        }
+        
+        @if (ChildContent != null)
+        {
+            @ChildContent
+        }
+    </div>
+    
+    @if (ShowLine)
+    {
+        <div class="@GetLineClasses()"></div>
+    }
+</div>
+
+@code {
+    [Parameter] public string Title { get; set; }
+    [Parameter] public string Subtitle { get; set; }
+    [Parameter] public string Icon { get; set; }
+    [Parameter] public bool ShowLine { get; set; } = true;
+    [Parameter] public SectionDividerVariant Variant { get; set; } = SectionDividerVariant.Default;
+    [Parameter] public SectionDividerSize Size { get; set; } = SectionDividerSize.Default;
+    [Parameter] public SectionDividerAlignment Alignment { get; set; } = SectionDividerAlignment.Left;
+    [Parameter] public string Class { get; set; }
+    [Parameter] public RenderFragment ChildContent { get; set; }
+    
+    private string GetDividerClasses()
+    {
+        var classes = new List<string> { "d-flex", "align-center", "w-100", "position-relative" };
+        
+        // Gap based on size
+        switch (Size)
+        {
+            case SectionDividerSize.Compact:
+                classes.Add("gap-1");
+                classes.Add("my-2");
+                break;
+            case SectionDividerSize.Large:
+                classes.Add("gap-3");
+                classes.Add("my-4");
+                break;
+            default:
+                classes.Add("gap-2");
+                classes.Add("my-3");
+                break;
+        }
+        
+        // Alignment
+        if (Alignment == SectionDividerAlignment.Right)
+        {
+            classes.Add("flex-row-reverse");
+        }
+        
+        if (!string.IsNullOrEmpty(Class))
+        {
+            classes.Add(Class);
+        }
+        
+        return string.Join(" ", classes);
+    }
+    
+    private string GetIconWrapperClasses()
+    {
+        var classes = new List<string> { "d-flex", "align-center", "justify-center", "rounded-full", "shadow-sm", "flex-shrink-0", "position-relative", "overflow-hidden" };
+        
+        // Size-based dimensions
+        switch (Size)
+        {
+            case SectionDividerSize.Compact:
+                classes.Add("w-6");
+                classes.Add("h-6");
+                break;
+            case SectionDividerSize.Large:
+                classes.Add("w-10");
+                classes.Add("h-10");
+                break;
+            default:
+                classes.Add("w-8");
+                classes.Add("h-8");
+                break;
+        }
+        
+        // Variant-based background
+        switch (Variant)
+        {
+            case SectionDividerVariant.Primary:
+                classes.Add("glass-primary");
+                break;
+            case SectionDividerVariant.Secondary:
+                classes.Add("glass-secondary");
+                break;
+            case SectionDividerVariant.Success:
+                classes.Add("glass-success");
+                break;
+            case SectionDividerVariant.Warning:
+                classes.Add("glass-warning");
+                break;
+            case SectionDividerVariant.Error:
+                classes.Add("glass-error");
+                break;
+            case SectionDividerVariant.Info:
+                classes.Add("glass-info");
+                break;
+            default:
+                classes.Add("bg-secondary");
+                break;
+        }
+        
+        // Add hover effect
+        classes.Add("transition-all");
+        classes.Add("hover:scale-110");
+        
+        return string.Join(" ", classes);
+    }
+    
+    private string GetIconClasses()
+    {
+        var classes = new List<string>();
+        
+        switch (Size)
+        {
+            case SectionDividerSize.Compact:
+                classes.Add("text-sm");
+                break;
+            case SectionDividerSize.Large:
+                classes.Add("text-lg");
+                break;
+            default:
+                classes.Add("text-base");
+                break;
+        }
+        
+        return string.Join(" ", classes);
+    }
+    
+    private string GetContentClasses()
+    {
+        var classes = new List<string> { "flex-grow-1", "min-w-0" };
+        
+        if (Alignment == SectionDividerAlignment.Center)
+        {
+            classes.Add("text-center");
+            classes.Add("d-flex");
+            classes.Add("flex-column");
+            classes.Add("align-center");
+        }
+        
+        return string.Join(" ", classes);
+    }
+    
+    private string GetTitleClasses()
+    {
+        var classes = new List<string> { "ma-0", "text-primary", "font-semibold", "line-height-tight" };
+        
+        switch (Size)
+        {
+            case SectionDividerSize.Compact:
+                classes.Add("text-subtitle-2");
+                break;
+            case SectionDividerSize.Large:
+                classes.Add("text-h6");
+                break;
+            default:
+                classes.Add("text-subtitle-1");
+                break;
+        }
+        
+        return string.Join(" ", classes);
+    }
+    
+    private string GetSubtitleClasses()
+    {
+        var classes = new List<string> { "ma-0", "text-secondary", "line-height-normal" };
+        
+        // Add top margin if not compact
+        if (Size != SectionDividerSize.Compact)
+        {
+            classes.Add("mt-1");
+        }
+        
+        switch (Size)
+        {
+            case SectionDividerSize.Compact:
+                classes.Add("text-caption");
+                break;
+            case SectionDividerSize.Large:
+                classes.Add("text-body-2");
+                break;
+            default:
+                classes.Add("text-caption");
+                break;
+        }
+        
+        return string.Join(" ", classes);
+    }
+    
+    private string GetLineClasses()
+    {
+        var classes = new List<string> { "flex-grow-1", "border-b", "border-light", "position-relative", "overflow-hidden" };
+        
+        // Adjust margin based on alignment
+        if (Alignment == SectionDividerAlignment.Right)
+        {
+            classes.Add("mr-2");
+        }
+        else
+        {
+            classes.Add("ml-2");
+        }
+        
+        return string.Join(" ", classes);
+    }
+}

@@ -8,4 +8,13 @@ namespace RR.Blazor.Enums
         Glass,
         Flat
     }
+    
+    public enum RibbonVariant
+    {
+        Primary,
+        Success,
+        Warning,
+        Error,
+        Info
+    }
 }

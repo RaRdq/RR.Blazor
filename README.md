@@ -91,6 +91,38 @@ builder.Services.AddRRBlazor(blazor => blazor
 
 ## AI Integration (Claude, GPT-4, etc.)
 
+### Elite Designer Command Setup
+
+RR.Blazor includes an **Elite Frontend Architect** Claude command that implements Anthropic's Plan-Implement-Reflect methodology for creating world-class user interfaces.
+
+#### Installation
+```bash
+# 1. Copy the designer command to your project
+cp RR.Blazor/.claude/commands/designer.md .claude/commands/
+
+# 2. Use the designer command in Claude
+/designer Plan a comprehensive data dashboard with real-time updates and mobile optimization
+```
+
+#### What the Designer Command Provides
+- ✅ **Plan-Implement-Reflect mastery** (Anthropic 2024-2025 methodology)
+- ✅ **Complete RR.Blazor expertise** (all 51 components + 800+ utilities)
+- ✅ **2025 design trends** (neomorphism, glassmorphism, micro-animations)
+- ✅ **Performance optimization** (virtual scrolling, lazy loading, 60fps)
+- ✅ **Accessibility compliance** (WCAG 2.1 AA+, screen reader optimized)
+
+#### Usage Examples
+```bash
+# Planning phase
+/designer Plan an employee onboarding wizard with multi-step progress tracking
+
+# Implementation phase  
+/designer Implement the designed wizard using RR.Blazor components and utility-first styling
+
+# Reflection phase
+/designer Reflect on the implementation with accessibility and performance validation
+```
+
 ### Quick Start with Claude Desktop
 ```bash
 # 1. Add RR.Blazor context to Claude
@@ -106,14 +138,23 @@ Provide @RR.Blazor/RRBlazor.md
 ### Custom AI Commands
 Add these to your AI assistant's context:
 ```markdown
+/designer - Elite Frontend Architect with Plan-Implement-Reflect methodology
 /rr-blazor-init - Initialize RR.Blazor in current project
 /rr-blazor-upgrade - Upgrade components to latest patterns
 /rr-blazor-theme - Configure theme and styling
 /rr-blazor-component - Generate new component following patterns
 ```
 
-### Example AI Prompt
+### Example AI Prompts
 ```markdown
+# Using the Elite Designer Command
+/designer Create a modern data visualization dashboard with:
+- Real-time chart updates
+- Responsive grid layout
+- Dark/light theme support
+- Mobile-optimized interactions
+
+# Using RR.Blazor Reference
 Using @RR.Blazor/RRBlazor.md as reference:
 1. Replace all custom cards with RCard
 2. Replace all buttons with RButton

@@ -14,36 +14,24 @@
     @if (HasHeader)
     {
         <div class="@GetHeaderClasses()">
-            @if (!string.IsNullOrEmpty(Title) || HeaderContent != null)
+            @if (!string.IsNullOrEmpty(Icon))
             {
-                <div class="@GetTitleSectionClasses()">
-                    @if (!string.IsNullOrEmpty(Icon))
-                    {
-                        <i class="material-symbols-rounded mr-3 @GetIconSizeClass()">@Icon</i>
-                    }
-                    
-                    <div class="flex-grow-1">
-                        @if (!string.IsNullOrEmpty(Title))
-                        {
-                            <h3 class="@GetTitleClasses()">@Title</h3>
-                        }
-                        
-                        @if (!string.IsNullOrEmpty(Subtitle))
-                        {
-                            <p class="@GetSubtitleClasses()">@Subtitle</p>
-                        }
-                        
-                        @HeaderContent
-                    </div>
-                </div>
+                <i class="material-symbols-rounded mr-3 @GetIconSizeClass()">@Icon</i>
             }
             
-            @if (HeaderContent != null)
-            {
-                <div class="@GetHeaderActionsClasses()">
-                    @HeaderContent
-                </div>
-            }
+            <div class="flex-grow-1">
+                @if (!string.IsNullOrEmpty(Title))
+                {
+                    <h3 class="@GetTitleClasses()">@Title</h3>
+                }
+                
+                @if (!string.IsNullOrEmpty(Subtitle))
+                {
+                    <p class="@GetSubtitleClasses()">@Subtitle</p>
+                }
+            </div>
+            
+            @HeaderContent
         </div>
     }
     
@@ -75,22 +63,10 @@
     }
     
     @* Footer *@
-    @if (FooterContent != null || FooterActions != null)
+    @if (FooterContent != null)
     {
         <div class="@GetFooterClasses()">
-            @if (FooterContent != null)
-            {
-                <div class="flex-grow-1">
-                    @FooterContent
-                </div>
-            }
-            
-            @if (FooterActions != null)
-            {
-                <div class="@GetFooterActionsClasses()">
-                    @FooterActions
-                </div>
-            }
+            @FooterContent
         </div>
     }
     
@@ -108,53 +84,6 @@
         </div>
     }
     
-    @* Status Badge *@
-    @if (!string.IsNullOrEmpty(StatusText))
-    {
-        <div class="@GetStatusBadgeClasses()">
-            @StatusText
-        </div>
-    }
-    
-    @* Quick Actions *@
-    @if (QuickActions != null)
-    {
-        <div class="@GetQuickActionsClasses()">
-            @QuickActions
-        </div>
-    }
-    
-    @* Notification Indicator *@
-    @if (ShowNotification)
-    {
-        <div class="@GetNotificationClasses()">
-            @if (NotificationCount > 0)
-            {
-                <span class="notification__count">@(NotificationCount > 99 ? "99+" : NotificationCount.ToString())</span>
-            }
-        </div>
-    }
-    
-    @* Priority Indicator *@
-    @if (!string.IsNullOrEmpty(Priority))
-    {
-        <div class="@GetPriorityClasses()"></div>
-    }
-    
-    @* Tags *@
-    @if (Tags?.Any() == true)
-    {
-        <div class="@GetTagsClasses()">
-            @foreach (var tag in Tags.Take(3))
-            {
-                <span class="card__tag">@tag</span>
-            }
-            @if (Tags.Count > 3)
-            {
-                <span class="card__tag card__tag--overflow">+@(Tags.Count - 3)</span>
-            }
-        </div>
-    }
     
     @* Ribbon/Badge (Legacy Support) *@
     @if (!string.IsNullOrEmpty(RibbonText))
@@ -206,7 +135,7 @@
     [Parameter] public string RibbonText { get; set; }
     
     /// <summary>Ribbon variant</summary>
-    [Parameter] public string RibbonVariant { get; set; } = "primary";
+    [Parameter] public RibbonVariant RibbonVariant { get; set; } = RibbonVariant.Primary;
     
     /// <summary>Whether to remove padding from content</summary>
     [Parameter] public bool NoPadding { get; set; }
@@ -223,14 +152,13 @@
     /// <summary>Header content area</summary>
     [Parameter] public RenderFragment HeaderContent { get; set; }
     
+    
     /// <summary>Media content area</summary>
     [Parameter] public RenderFragment MediaContent { get; set; }
     
     /// <summary>Footer content area</summary>
     [Parameter] public RenderFragment FooterContent { get; set; }
     
-    /// <summary>Footer actions area</summary>
-    [Parameter] public RenderFragment FooterActions { get; set; }
     
     /// <summary>Click event handler</summary>
     [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
@@ -250,29 +178,9 @@
     /// <summary>Elevation level (0-24)</summary>
     [Parameter] public int Elevation { get; set; } = -1;
     
-    /// <summary>Status badge text for quick identification</summary>
-    [Parameter] public string StatusText { get; set; }
     
-    /// <summary>Status variant (success, warning, error, info, default)</summary>
-    [Parameter] public string StatusVariant { get; set; } = "default";
     
-    /// <summary>Quick action buttons displayed in top-right corner</summary>
-    [Parameter] public RenderFragment QuickActions { get; set; }
     
-    /// <summary>Whether to show a notification indicator</summary>
-    [Parameter] public bool ShowNotification { get; set; }
-    
-    /// <summary>Notification count for badge display</summary>
-    [Parameter] public int NotificationCount { get; set; }
-    
-    /// <summary>Priority indicator (high, medium, low)</summary>
-    [Parameter] public string Priority { get; set; }
-    
-    /// <summary>Whether card has urgent state styling</summary>
-    [Parameter] public bool IsUrgent { get; set; }
-    
-    /// <summary>Tag collection for categorization</summary>
-    [Parameter] public List<string> Tags { get; set; } = new();
     
     private bool HasHeader => !string.IsNullOrEmpty(Title) || HeaderContent != null;
     
@@ -335,16 +243,6 @@
             }
         }
         
-        // Priority and urgency states
-        if (IsUrgent)
-        {
-            classes.AddRange(new[] { "card--urgent", "border-l-4", "border-warning" });
-        }
-        
-        if (!string.IsNullOrEmpty(Priority))
-        {
-            classes.Add($"card--priority-{Priority.ToLower()}");
-        }
         
         if (IsSelected)
         {
@@ -399,10 +297,6 @@
         return "text-sm text-secondary mt-1 mb-0";
     }
     
-    private string GetHeaderActionsClasses()
-    {
-        return "d-flex align-center gap-2 ml-4";
-    }
     
     private string GetMediaClasses()
     {
@@ -460,13 +354,9 @@
     
     private string GetFooterClasses()
     {
-        return "d-flex align-center justify-between p-4 pt-0 border-t border-light mt-4";
+        return "p-4 pt-0 border-t border-light mt-4";
     }
     
-    private string GetFooterActionsClasses()
-    {
-        return "d-flex align-center gap-2";
-    }
     
     private string GetLoadingOverlayClasses()
     {
@@ -490,10 +380,10 @@
         
         classes.Add(RibbonVariant switch
         {
-            "success" => "bg-success text-white",
-            "warning" => "bg-warning text-white",
-            "error" => "bg-error text-white",
-            "info" => "bg-info text-white",
+            RibbonVariant.Success => "bg-success text-white",
+            RibbonVariant.Warning => "bg-warning text-white",
+            RibbonVariant.Error => "bg-error text-white",
+            RibbonVariant.Info => "bg-info text-white",
             _ => "bg-primary text-white"
         });
         
@@ -505,66 +395,6 @@
         return "text-lg";
     }
     
-    private string GetStatusBadgeClasses()
-    {
-        var classes = new List<string>
-        {
-            "absolute",
-            "top-3",
-            "left-3",
-            "px-2",
-            "py-1",
-            "text-xs",
-            "font-medium",
-            "rounded-full",
-            "z-10"
-        };
-        
-        classes.Add(StatusVariant switch
-        {
-            "success" => "bg-success text-white",
-            "warning" => "bg-warning text-black",
-            "error" => "bg-error text-white",
-            "info" => "bg-info text-white",
-            _ => "bg-secondary text-white"
-        });
-        
-        return string.Join(" ", classes);
-    }
-    
-    private string GetQuickActionsClasses()
-    {
-        return "absolute top-3 right-3 z-10 d-flex gap-1";
-    }
-    
-    private string GetNotificationClasses()
-    {
-        return "absolute top-2 right-2 z-20 " +
-               "w-3 h-3 bg-error rounded-full " +
-               "d-flex align-center justify-center";
-    }
-    
-    private string GetPriorityClasses()
-    {
-        var baseClasses = "absolute top-0 right-0 w-0 h-0 " +
-                         "border-l-12 border-b-12 border-transparent z-10";
-        
-        var colorClass = Priority?.ToLower() switch
-        {
-            "high" => "border-r-error",
-            "medium" => "border-r-warning", 
-            "low" => "border-r-info",
-            _ => "border-r-secondary"
-        };
-        
-        return $"{baseClasses} {colorClass}";
-    }
-    
-    private string GetTagsClasses()
-    {
-        return "absolute bottom-3 left-3 right-3 " +
-               "d-flex flex-wrap gap-1 z-10";
-    }
     
     private async Task HandleClick(MouseEventArgs e)
     {
@@ -604,29 +434,26 @@ Usage Examples:
        IsClickable="true"
        OnClick="HandleCardClick" />
 
-<!-- Card with header actions -->
+<!-- Card with header content (CLEAN API) -->
 <RCard Title="Card with Actions" Subtitle="Management card">
-    <HeaderActions>
-        <RButton Variant="ButtonVariant.Ghost" Icon="edit" IconPosition="IconPosition.Start" Size="ButtonSize.Small" />
-        <RButton Variant="ButtonVariant.Ghost" Icon="delete" IconPosition="IconPosition.Start" Size="ButtonSize.Small" />
-    </HeaderActions>
+    <HeaderContent>
+        <div class="d-flex align-center gap-2 ml-4">
+            <RButton Variant="ButtonVariant.Ghost" Icon="edit" IconPosition="IconPosition.Start" Size="ButtonSize.Small" />
+            <RButton Variant="ButtonVariant.Ghost" Icon="delete" IconPosition="IconPosition.Start" Size="ButtonSize.Small" />
+        </div>
+    </HeaderContent>
     <div>Card content with action buttons in header</div>
 </RCard>
 
-<!-- Business card with status and quick actions -->
-<RCard Title="Employee Payment" 
-       Subtitle="John Doe - March 2024"
-       StatusText="Pending"
-       StatusVariant="warning"
-       Priority="high"
-       IsUrgent="true"
-       ShowNotification="true"
-       NotificationCount="3"
-       Tags="@(new List<string> { "Payroll", "Review", "Urgent" })">
-    <QuickActions>
-        <RButton Icon="visibility" Variant="ButtonVariant.Ghost" Size="ButtonSize.Small" />
-        <RButton Icon="edit" Variant="ButtonVariant.Ghost" Size="ButtonSize.Small" />
-    </QuickActions>
+<!-- Business card with clean composition -->
+<RCard Title="Employee Payment" Subtitle="John Doe - March 2024">
+    <HeaderContent>
+        <div class="d-flex align-center gap-2 ml-4">
+            <RBadge Text="Pending" Variant="BadgeVariant.Warning" />
+            <RButton Icon="visibility" Variant="ButtonVariant.Ghost" Size="ButtonSize.Small" />
+            <RButton Icon="edit" Variant="ButtonVariant.Ghost" Size="ButtonSize.Small" />
+        </div>
+    </HeaderContent>
     <div class="pa-4">
         <div class="text-2xl font-bold text-primary">$4,250.00</div>
         <div class="text-sm text-secondary">Regular pay period</div>
@@ -635,10 +462,12 @@ Usage Examples:
 
 <!-- Card with footer -->
 <RCard Title="Card with Footer" Content="Main content area">
-    <FooterActions>
-        <RButton Text="Cancel" Variant="ButtonVariant.Secondary" Size="ButtonSize.Small" />
-        <RButton Text="Save" Variant="ButtonVariant.Primary" Size="ButtonSize.Small" />
-    </FooterActions>
+    <FooterContent>
+        <div class="d-flex align-center justify-end gap-2">
+            <RButton Text="Cancel" Variant="ButtonVariant.Secondary" Size="ButtonSize.Small" />
+            <RButton Text="Save" Variant="ButtonVariant.Primary" Size="ButtonSize.Small" />
+        </div>
+    </FooterContent>
 </RCard>
 
 <!-- Different variants -->
@@ -655,37 +484,40 @@ Usage Examples:
 <RCard Title="Luxury Shadow" Elevation="16" />
 <RCard Title="Maximum Shadow" Elevation="24" />
 
-<!-- Priority indicators -->
-<RCard Title="High Priority Task" Priority="high" Content="This requires immediate attention" />
-<RCard Title="Medium Priority" Priority="medium" Content="Should be completed soon" />
-<RCard Title="Low Priority" Priority="low" Content="Can be done when time permits" />
+<!-- Use composition with utility classes and proper components -->
+<RCard Title="High Priority Task" class="border-l-4 border-error">
+    <HeaderContent>
+        <RBadge Text="High Priority" Variant="BadgeVariant.Error" />
+    </HeaderContent>
+    <div>This requires immediate attention</div>
+</RCard>
 
-<!-- Status indicators -->
-<RCard Title="Success Status" StatusText="Completed" StatusVariant="success" />
-<RCard Title="Warning Status" StatusText="Pending" StatusVariant="warning" />
-<RCard Title="Error Status" StatusText="Failed" StatusVariant="error" />
-<RCard Title="Info Status" StatusText="Processing" StatusVariant="info" />
+<!-- Status with proper badge component -->
+<RCard Title="Task Status">
+    <HeaderContent>
+        <RBadge Text="Completed" Variant="BadgeVariant.Success" />
+    </HeaderContent>
+    <div>Task completed successfully</div>
+</RCard>
 
-<!-- Notification cards -->
-<RCard Title="Task Manager" ShowNotification="true" NotificationCount="5" />
-<RCard Title="Messages" ShowNotification="true" NotificationCount="12" />
+<!-- Notification with badge -->
+<RCard Title="Task Manager">
+    <HeaderContent>
+        <RBadge Text="5" Variant="BadgeVariant.Error" />
+    </HeaderContent>
+    <div>You have 5 pending tasks</div>
+</RCard>
 
-<!-- Tagged content -->
-<RCard Title="Project Alpha" 
-       Tags="@(new List<string> { "Development", "High Priority", "Client Work", "Q1", "Backend" })"
-       Content="Multiple tags with overflow handling" />
-
-<!-- Loading card -->
-<RCard Title="Loading Card" 
-       Loading="true" 
-       LoadingText="Processing..."
-       Content="This content is hidden while loading" />
+<!-- Loading card with composition -->
+<RCard Title="Loading Card" IsLoading="true" LoadingText="Processing...">
+    <div>This content is hidden while loading</div>
+</RCard>
 
 <!-- Card with ribbon (legacy support) -->
 <RCard Title="Featured Card" 
        Content="This card has a ribbon"
        RibbonText="NEW"
-       RibbonVariant="success" />
+       RibbonVariant="RibbonVariant.Success" />
 
 <!-- Selected/Active card -->
 <RCard Title="Selected Card" 

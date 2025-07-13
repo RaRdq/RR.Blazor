@@ -136,9 +136,11 @@ RR.Blazor features a sophisticated theme system designed for professional enterp
        Elevation="4"
        Variant="CardVariant.Elevated"
        IsClickable="true">
-    <HeaderActions>
-        <RButton Text="Export" Size="ButtonSize.Small" Icon="download" />
-    </HeaderActions>
+    <HeaderContent>
+        <div class="d-flex justify-end">
+            <RButton Text="Export" Size="ButtonSize.Small" Icon="download" IconPosition="IconPosition.Start" />
+        </div>
+    </HeaderContent>
     <ChildContent>
         <div class="pa-6">
             <!-- Card content -->
@@ -209,9 +211,11 @@ RR.Blazor features a sophisticated theme system designed for professional enterp
           Subtitle="Manage system users"
           Elevation="2"
           IsCollapsible="true">
-    <HeaderActions>
-        <RButton Text="Add User" Icon="add" />
-    </HeaderActions>
+    <HeaderContent>
+        <div class="d-flex justify-end">
+            <RButton Text="Add User" Icon="add" IconPosition="IconPosition.Start" />
+        </div>
+    </HeaderContent>
     <ChildContent>
         <!-- Section content -->
     </ChildContent>
@@ -520,6 +524,77 @@ RR.Blazor features a sophisticated theme system designed for professional enterp
 ```razor
 <RThemeSwitcher ShowLabel="true" OnThemeChanged="@HandleThemeChange" />
 ```
+
+## Comprehensive Utility System (800+ Classes)
+
+### Utility-First Component Patterns
+
+RR.Blazor follows a **utility-first philosophy** where simple layouts use utility classes instead of specialized components. This approach provides maximum flexibility while maintaining consistency.
+
+#### Professional Card Layout (Utility-First Approach)
+```html
+<!-- ✅ PREFERRED: Utility-first approach -->
+<div class="elevation-4 glass-light pa-6 rounded-lg">
+    <div class="d-flex justify-between align-center mb-4">
+        <h3 class="text-h5 ma-0">Analytics Dashboard</h3>
+        <div class="d-flex gap-2">
+            <button class="btn-ghost btn-sm">Export</button>
+            <button class="btn-ghost btn-sm">⚙️</button>
+        </div>
+    </div>
+    <div class="d-flex flex-column gap-3">
+        <div class="text-2xl font-bold">$125,430</div>
+        <div class="text-sm text-secondary">Monthly revenue</div>
+    </div>
+</div>
+
+<!-- ⚠️ COMPONENT-HEAVY: Use only when complex logic needed -->
+<RCard Title="Analytics Dashboard" Elevation="4" class="glass-light">
+    <HeaderContent>
+        <div class="d-flex justify-end gap-2">
+            <RButton Text="Export" Variant="ButtonVariant.Ghost" Size="ButtonSize.Small" />
+            <RButton Icon="settings" Variant="ButtonVariant.Ghost" Size="ButtonSize.Small" />
+        </div>
+    </HeaderContent>
+    <div class="pa-6">
+        <div class="text-2xl font-bold">$125,430</div>
+        <div class="text-sm text-secondary">Monthly revenue</div>
+    </div>
+</RCard>
+```
+
+#### Form Layout (Utility-First Pattern)
+```html
+<!-- ✅ PREFERRED: Clean utility composition -->
+<div class="elevation-2 pa-6 rounded-lg bg-elevated">
+    <h2 class="text-h6 mb-4">User Information</h2>
+    <div class="d-flex flex-column gap-4">
+        <div class="form-grid form-grid--2">
+            <RFormField Label="First Name" @bind-Value="model.FirstName" />
+            <RFormField Label="Last Name" @bind-Value="model.LastName" />
+        </div>
+        <RFormField Label="Email" Type="FieldType.Email" @bind-Value="model.Email" />
+        <div class="d-flex justify-end gap-3 pt-4 border-t border-light">
+            <button class="btn-secondary">Cancel</button>
+            <button class="btn-primary">Save</button>
+        </div>
+    </div>
+</div>
+```
+
+#### When to Use Components vs Utilities
+
+**Use Utility Classes When:**
+- Simple layouts (cards, modals, forms)
+- One-time or project-specific designs
+- Rapid prototyping
+- Maximum customization needed
+
+**Use Components When:**
+- Complex interactions (data tables, virtual lists)
+- Consistent behavior needed across app
+- Business logic integration required
+- Advanced accessibility features needed
 
 ## Comprehensive Utility System (800+ Classes)
 
