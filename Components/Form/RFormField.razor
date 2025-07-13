@@ -8,7 +8,7 @@
     @* Label *@
     @if (!string.IsNullOrEmpty(Label) && Variant != FieldVariant.FloatingLabel)
     {
-        <label class="form-field__label @(IsRequired && ShowRequiredIndicator ? "form-field__label--required" : "")" for="@InputId">
+        <label class="form-field__label @(Required && ShowRequiredIndicator ? "form-field__label--required" : "")" for="@InputId">
             @Label
         </label>
     }
@@ -33,9 +33,9 @@
                    class="form-field__input @GetInputClasses()" 
                    value="@Value" 
                    placeholder="@GetPlaceholderText()"
-                   disabled="@IsDisabled"
-                   readonly="@IsReadOnly"
-                   required="@IsRequired"
+                   disabled="@Disabled"
+                   readonly="@ReadOnly"
+                   required="@Required"
                    maxlength="@(MaxLength > 0 ? MaxLength : null)"
                    min="@MinValue"
                    max="@MaxValue"
@@ -55,9 +55,9 @@
                       id="@InputId" 
                       class="form-field__textarea @GetTextareaClasses()"
                       placeholder="@GetPlaceholderText()"
-                      disabled="@IsDisabled"
-                      readonly="@IsReadOnly"
-                      required="@IsRequired"
+                      disabled="@Disabled"
+                      readonly="@ReadOnly"
+                      required="@Required"
                       maxlength="@(MaxLength > 0 ? MaxLength : null)"
                       rows="@Rows"
                       @onchange="HandleValueChange"
@@ -72,8 +72,8 @@
             <select @ref="inputElement"
                     id="@InputId" 
                     class="form-field__select @GetSelectClasses()"
-                    disabled="@IsDisabled"
-                    required="@IsRequired"
+                    disabled="@Disabled"
+                    required="@Required"
                     @onchange="HandleValueChange"
                     @onfocus="HandleFocus"
                     @onblur="HandleBlur">
@@ -91,8 +91,8 @@
                        type="checkbox" 
                        class="form-field__checkbox @GetCheckboxClasses()"
                        checked="@IsChecked"
-                       disabled="@IsDisabled"
-                       required="@IsRequired"
+                       disabled="@Disabled"
+                       required="@Required"
                        @onchange="HandleCheckboxChange" />
                 @if (!string.IsNullOrEmpty(CheckboxText))
                 {
@@ -118,7 +118,7 @@
                        min="@MinValue"
                        max="@MaxValue"
                        step="@Step"
-                       disabled="@IsDisabled"
+                       disabled="@Disabled"
                        @onchange="HandleValueChange"
                        @oninput="HandleInput" />
                 @if (ShowRangeValue)
@@ -133,7 +133,7 @@
         {
             <InputFile id="@InputId" 
                        class="@($"form-field__file {GetFileInputClasses()}")"
-                       disabled="@IsDisabled"
+                       disabled="@Disabled"
                        accept="@AcceptTypes"
                        multiple="@AllowMultiple"
                        OnChange="HandleFileChange" />
@@ -160,7 +160,7 @@
         }
         
         @* Loading spinner *@
-        @if (IsLoading)
+        @if (Loading)
         {
             <div class="form-field__icon-container form-field__icon-container--end">
                 <i class="material-symbols-rounded @GetIconSizeClass() animate-spin">progress_activity</i>
@@ -236,16 +236,16 @@
     [CascadingParameter] public FormValidationContext? ValidationContext { get; set; }
     
     /// <summary>Whether field is required</summary>
-    [Parameter] public bool IsRequired { get; set; }
+    [Parameter] public bool Required { get; set; }
     
     /// <summary>Whether to show required indicator (*)</summary>
     [Parameter] public bool ShowRequiredIndicator { get; set; } = true;
     
     /// <summary>Whether field is disabled</summary>
-    [Parameter] public bool IsDisabled { get; set; }
+    [Parameter] public bool Disabled { get; set; }
     
     /// <summary>Whether field is readonly</summary>
-    [Parameter] public bool IsReadOnly { get; set; }
+    [Parameter] public bool ReadOnly { get; set; }
     
     /// <summary>Whether field has validation error (auto-calculated from ErrorMessage)</summary>
     [Parameter] public bool HasError { get; set; }
@@ -305,7 +305,7 @@
     }
     
     /// <summary>Whether field is in loading state</summary>
-    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public bool Loading { get; set; }
     
     /// <summary>Additional CSS classes for the field group</summary>
     [Parameter] public string Class { get; set; }
@@ -585,7 +585,7 @@
             "text-primary"
         };
         
-        if (IsDisabled)
+        if (Disabled)
         {
             classes.Add("text-muted");
         }
@@ -621,7 +621,7 @@
                 classes.Add("form-field__wrapper--error");
             }
             
-            if (IsDisabled)
+            if (Disabled)
             {
                 classes.Add("form-field__wrapper--disabled");
             }
@@ -634,7 +634,7 @@
     {
         var classes = new List<string>();
         
-        if (IsRequired && ShowRequiredIndicator)
+        if (Required && ShowRequiredIndicator)
         {
             classes.Add("form-field__label--required");
         }
@@ -682,7 +682,7 @@
             classes.Add("form-field__input--with-start-icon");
         }
         
-        if ((!string.IsNullOrEmpty(Icon) && IconPosition == IconPosition.End) || IsLoading)
+        if ((!string.IsNullOrEmpty(Icon) && IconPosition == IconPosition.End) || Loading)
         {
             classes.Add("form-field__input--with-end-icon");
         }
@@ -754,7 +754,7 @@
             classes.AddRange(new[] { "border-error", "focus:border-error" });
         }
         
-        if (IsDisabled)
+        if (Disabled)
         {
             classes.AddRange(new[] { "opacity-50", "cursor-not-allowed" });
         }
@@ -782,7 +782,7 @@
             _ => "text-base"
         });
         
-        if (IsDisabled)
+        if (Disabled)
         {
             classes.AddRange(new[] { "text-muted", "cursor-not-allowed" });
         }
@@ -802,7 +802,7 @@
             "cursor-pointer"
         };
         
-        if (IsDisabled)
+        if (Disabled)
         {
             classes.AddRange(new[] { "opacity-50", "cursor-not-allowed" });
         }
@@ -829,7 +829,7 @@
             "hover:file:bg-primary-hover"
         };
         
-        if (IsDisabled)
+        if (Disabled)
         {
             classes.AddRange(new[] { "opacity-50", "cursor-not-allowed" });
         }
@@ -1012,7 +1012,7 @@ Usage Examples:
 <RFormField Label="Email Address" 
             FieldType="FieldType.Email"
             Placeholder="Enter your email"
-            IsRequired="true"
+            Required="true"
             HasError="emailError"
             ErrorMessage="Please enter a valid email"
             @bind-Value="email" />
@@ -1045,7 +1045,7 @@ Usage Examples:
 <RFormField Label="Full Name" 
             Variant="FieldVariant.FloatingLabel"
             Size="FieldSize.Large"
-            IsRequired="true"
+            Required="true"
             HasError="nameError"
             ErrorMessage="Name is required"
             @bind-Value="fullName" />

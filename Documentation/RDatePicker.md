@@ -86,8 +86,8 @@ Lightweight version using native HTML date/datetime inputs for basic scenarios.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `IsDisabled` | `bool` | `false` | Disable the entire component |
-| `IsReadOnly` | `bool` | `false` | Make input read-only |
+| `Disabled` | `bool` | `false` | Disable the entire component |
+| `ReadOnly` | `bool` | `false` | Make input read-only |
 | `HasError` | `bool` | `false` | Show error state styling |
 | `ErrorMessage` | `string?` | `null` | Error message to display |
 
@@ -215,7 +215,7 @@ RDatePicker works seamlessly with Blazor forms and validation:
     
     <RDatePicker @bind-Value="model.EventDate"
                  Label="Event Date"
-                 IsRequired="true" />
+                 Required="true" />
     
     <ValidationMessage For="@(() => model.EventDate)" />
     
