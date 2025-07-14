@@ -1,14 +1,15 @@
 # AI-First Designer Integration Example
 
-This document demonstrates how to use the `/designer` command with RR.Blazor's AI-first documentation system.
+This document demonstrates how to use the `/designer` command with RR.Blazor's AI-first documentation system for creating Fortune 500-grade interfaces.
 
 ## Quick Start
 
 The `/designer` command automatically loads `@RR.Blazor/wwwroot/rr-ai-docs.json` to access:
-- 49+ components with complete API documentation
-- 800+ utility patterns for rapid development  
-- AI-optimized usage examples
-- Performance and accessibility best practices
+- **49+ Components**: Complete R* component library with AI metadata
+- **800+ Utility Classes**: Comprehensive spacing, typography, layout, and visual effects
+- **200+ CSS Variables**: Semantic design tokens with pattern documentation
+- **AI Patterns**: Pre-built executive dashboard and form patterns
+- **Performance Standards**: Sub-3s load times, 60fps interactions guaranteed
 
 ## Example Design Request
 
@@ -28,22 +29,48 @@ The AI will automatically:
 - Design accessibility-compliant interface
 
 #### 2. **IMPLEMENT Phase**  
-Generate production-ready code using:
+Generate production-ready code using optimal component selection:
 ```razor
+<!-- Executive Analytics Dashboard -->
 <div class="d-flex flex-column gap-6 pa-8">
-  <!-- AI selects optimal components from documentation -->
-  <RSection Title="Analytics Overview" Icon="analytics" class="glass-light elevation-2">
-    <div class="stats-grid gap-4">
-      <RStatsCard Title="Active Employees" Value="1,247" 
-                  Variant="StatsVariant.Success" class="elevation-4" />
-      <!-- Additional stats cards -->
+  <!-- Header Section with Actions -->
+  <div class="d-flex justify-between align-center mb-6">
+    <h1 class="text-h4 font-semibold ma-0">Employee Analytics</h1>
+    <div class="d-flex gap-3">
+      <RFormField Type="FieldType.Search" Placeholder="Search..." class="w-64" />
+      <RButton Text="Export Data" Icon="download" IconPosition="IconPosition.Start" 
+               Variant="ButtonVariant.Secondary" Elevation="2" />
     </div>
-  </RSection>
+  </div>
+
+  <!-- Key Metrics Grid -->
+  <div class="stats-grid gap-4 mb-6">
+    <RCard Title="Active Employees" Elevation="4" class="glass-light">
+      <div class="pa-6">
+        <div class="d-flex justify-between align-center">
+          <span class="text-3xl font-bold text-success">1,247</span>
+          <RBadge Text="+12%" Variant="BadgeVariant.Success" />
+        </div>
+        <p class="text-body-2 text--secondary mt-2 mb-0">↗ 8.2% from last month</p>
+      </div>
+    </RCard>
+    
+    <RCard Title="Payroll Processing" Elevation="4" class="glass-light">
+      <div class="pa-6">
+        <div class="d-flex justify-between align-center">
+          <span class="text-3xl font-bold text-primary">$2.4M</span>
+          <RBadge Text="On Time" Variant="BadgeVariant.Info" />
+        </div>
+        <p class="text-body-2 text--secondary mt-2 mb-0">Monthly total processed</p>
+      </div>
+    </RCard>
+  </div>
   
-  <RCard Title="Employee Data" Elevation="6" class="glass-medium">
+  <!-- Data Table Section -->
+  <RCard Title="Employee Directory" Elevation="6" class="glass-medium">
     <div class="pa-6">
-      <RDataTable TItem="Employee" Items="@employees" 
-                  class="elevation-1" Striped="true" />
+      <RDataTable Items="@employees" class="elevation-1" 
+                  Striped="true" Hoverable="true" />
     </div>
   </RCard>
 </div>

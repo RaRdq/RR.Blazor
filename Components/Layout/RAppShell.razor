@@ -294,14 +294,17 @@ Zero-config setup for enterprise Blazor applications with professional styling a
         
         <!-- Main Content Area -->
         <main class="main">
-            @if (ChildContent != null)
-            {
-                @ChildContent
-            }
-            else
-            {
-                @Body
-            }
+            <div class="main__content @(ContentCentered && !string.IsNullOrEmpty(ContentMaxWidth) ? "main__content--centered" : "")" 
+                 style="@GetContentStyle()">
+                @if (ChildContent != null)
+                {
+                    @ChildContent
+                }
+                else
+                {
+                    @Body
+                }
+            </div>
         </main>
         
         <!-- Status Bar -->
@@ -474,6 +477,12 @@ Zero-config setup for enterprise Blazor applications with professional styling a
     
     /// <summary>Main content</summary>
     [Parameter] public RenderFragment ChildContent { get; set; }
+    
+    /// <summary>Content maximum width (e.g., "1200px", "90%"). Default is no constraint.</summary>
+    [Parameter] public string ContentMaxWidth { get; set; } = null;
+    
+    /// <summary>Whether content should be centered when max width is applied</summary>
+    [Parameter] public bool ContentCentered { get; set; } = true;
     
     // === EVENT CALLBACKS ===
     
@@ -657,6 +666,14 @@ Zero-config setup for enterprise Blazor applications with professional styling a
         searchQuery = string.Empty;
         showSearchResults = false;
         StateHasChanged();
+    }
+    
+    private string GetContentStyle()
+    {
+        if (string.IsNullOrEmpty(ContentMaxWidth))
+            return "";
+        
+        return $"max-width: {ContentMaxWidth};";
     }
     
     public async ValueTask DisposeAsync()

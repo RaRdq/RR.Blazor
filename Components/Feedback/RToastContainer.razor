@@ -35,7 +35,7 @@
                 </div>
                 @if (toast.ShowCloseButton)
                 {
-                    <button class="toast__close" @onclick="() => RemoveToast(toast.Id)" aria-label="Close notification">
+                    <button class="toast__close" @onclick="@((MouseEventArgs e) => RemoveToast(toast.Id))" @onclick:stopPropagation="true" aria-label="Close notification">
                         <i class="material-symbols-rounded">close</i>
                     </button>
                 }
@@ -99,7 +99,17 @@
                 if (toast.Duration > 0)
                 {
                     var timer = new Timer(
-                        _ => InvokeAsync(() => RemoveToast(toast.Id)), 
+                        _ => InvokeAsync(async () => 
+                        {
+                            try 
+                            {
+                                await RemoveToastInternal(toast.Id, true);
+                            }
+                            catch (Exception)
+                            {
+                                // Silently handle timer errors to prevent crashes
+                            }
+                        }), 
                         null, 
                         TimeSpan.FromMilliseconds(toast.Duration), 
                         Timeout.InfiniteTimeSpan
@@ -148,7 +158,27 @@
     
     private void RemoveToast(string toastId)
     {
-        ToastService.Remove(toastId);
+        InvokeAsync(async () =>
+        {
+            try
+            {
+                // First try the service removal (which should trigger HandleToastRemove)
+                ToastService.Remove(toastId);
+                
+                // Add a small delay to allow service event to fire
+                await Task.Delay(50);
+                
+                // If toast still exists, force remove it
+                if (toasts.Any(t => t.Id == toastId) && !removingToasts.Contains(toastId))
+                {
+                    await RemoveToastInternal(toastId, true);
+                }
+            }
+            catch (Exception)
+            {
+                // Silently handle removal errors
+            }
+        });
     }
     
     private async Task RemoveToastInternal(string toastId, bool animate)

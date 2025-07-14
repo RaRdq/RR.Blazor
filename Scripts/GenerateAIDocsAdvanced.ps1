@@ -49,30 +49,19 @@ if (-not (Test-Path $OutputDir)) {
     New-Item -Path $OutputDir -ItemType Directory -Force | Out-Null
 }
 
-# Initialize documentation structure
+# Initialize documentation structure (AI-optimized, no waste)
 $documentation = @{
-    '$schema' = 'https://rrblazor.dev/schema/ai-docs.json'
-    version = '1.0.0'
-    generated = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
-    info = @{
-        name = 'RR.Blazor'
-        description = 'Enterprise Blazor component library - AI-optimized documentation'
-        author = 'RaRdq'
-        license = 'MIT'
-        componentCount = 0
-        utilityPatternCount = 0
-    }
     components = @{}
     utilityPatterns = @{}
     cssVariables = @{}
-    bestPractices = @{}
     aiPatterns = @()
 }
 
 Write-Host "📂 Scanning components..." -ForegroundColor Yellow
 
-# Extract Components
-$componentFiles = Get-ChildItem -Path "$ProjectPath/Components" -Filter "*.razor" -Recurse | Where-Object { $_.Name.StartsWith('R') }
+# Extract ALL Components (not just R* prefixed)
+$componentFiles = Get-ChildItem -Path "$ProjectPath/Components" -Filter "*.razor" -Recurse
+Write-Host "  Found $($componentFiles.Count) component files" -ForegroundColor DarkGray
 
 foreach ($file in $componentFiles) {
     Write-Host "  📄 Processing $($file.Name)..." -ForegroundColor DarkGray
@@ -177,150 +166,341 @@ foreach ($file in $componentFiles) {
 
 Write-Host "🎨 Extracting SCSS patterns..." -ForegroundColor Yellow
 
-# Extract Utility Patterns from SCSS
+# Extract Utility Patterns from SCSS - DYNAMIC SCANNING
 $scssFiles = Get-ChildItem -Path "$ProjectPath/Styles" -Filter "*.scss" -Recurse
+Write-Host "  Found $($scssFiles.Count) SCSS files" -ForegroundColor DarkGray
 
-$utilityPatterns = @{
-    spacing = @{
-        padding = @{
-            pattern = 'pa-{0-24}, px-{0-24}, py-{0-24}, pt-{0-24}, pr-{0-24}, pb-{0-24}, pl-{0-24}'
-            description = 'Padding utilities following design system scale'
-            aiHint = 'Use pa-6 for standard card padding, px-4 py-2 for buttons'
-            scale = @(0, 1, 2, 3, 4, 5, 6, 8, 10, 12, 16, 20, 24)
-        }
-        margin = @{
-            pattern = 'ma-{0-24}, mx-{0-24}, my-{0-24}, mt-{0-24}, mr-{0-24}, mb-{0-24}, ml-{0-24}, mx-auto'
-            description = 'Margin utilities including auto centering'
-            aiHint = 'Use mx-auto for centering, mb-4 for standard spacing'
-            scale = @(0, 1, 2, 3, 4, 5, 6, 8, 10, 12, 16, 20, 24)
-        }
-        gap = @{
-            pattern = 'gap-{0-24}, gap-x-{0-24}, gap-y-{0-24}'
-            description = 'Grid and flexbox gap utilities'
-            aiHint = 'Use gap-4 for standard spacing in flex/grid layouts'
+$utilityPatterns = @{}
+$extractedCssVariables = @{}
+$extractedUtilityClasses = @()
+
+foreach ($scssFile in $scssFiles) {
+    $scssContent = Get-Content $scssFile.FullName -Raw -Encoding UTF8
+    
+    # Extract CSS variables (--variable-name)
+    $cssVariableMatches = [regex]::Matches($scssContent, '--([a-zA-Z0-9-]+):\s*([^;]+);')
+    foreach ($match in $cssVariableMatches) {
+        $varName = $match.Groups[1].Value
+        $varValue = $match.Groups[2].Value.Trim()
+        $extractedCssVariables["--$varName"] = $varValue
+    }
+    
+    # Extract ALL class selectors from SCSS - comprehensive patterns
+    # Start with a simpler, more inclusive pattern
+    $allClassMatches = [regex]::Matches($scssContent, '\.([a-zA-Z0-9_\\-]+(?:[\\\\]?[:@\\-][a-zA-Z0-9_\\-]+)*)')
+    foreach ($match in $allClassMatches) {
+        $className = $match.Groups[1].Value
+        # Clean up escaped characters
+        $className = $className -replace '\\:', ':'
+        $className = $className -replace '\\\\', ''
+        
+        # Filter out component names and BEM elements
+        if ($className -notmatch '^[A-Z]' -and $className -notmatch '__' -and $className.Length -gt 1) {
+            $extractedUtilityClasses += $className
         }
     }
-    layout = @{
-        flexbox = @{
-            pattern = 'd-flex, flex-{direction}, justify-{content}, align-{items}, flex-{wrap}'
-            values = @{
-                direction = @('row', 'column', 'row-reverse', 'column-reverse')
-                content = @('start', 'end', 'center', 'between', 'around', 'evenly')
-                items = @('start', 'end', 'center', 'baseline', 'stretch')
-                wrap = @('wrap', 'nowrap', 'wrap-reverse')
-            }
-            aiHint = 'Use d-flex justify-between align-center for header layouts'
+    
+    # Extract mixins (@mixin name)
+    $mixinMatches = [regex]::Matches($scssContent, '@mixin\s+([a-zA-Z0-9-]+)')
+    foreach ($match in $mixinMatches) {
+        $mixinName = $match.Groups[1].Value
+        if (-not $utilityPatterns.ContainsKey('mixins')) {
+            $utilityPatterns['mixins'] = @{}
         }
-        grid = @{
-            pattern = 'd-grid, grid-cols-{1-12}, grid-rows-{1-6}, col-span-{1-12}'
-            description = 'CSS Grid utilities for complex layouts'
-            aiHint = 'Use d-grid grid-cols-2 gap-4 for two-column layouts'
-        }
-    }
-    effects = @{
-        elevation = @{
-            pattern = 'elevation-{0-24}, elevation-lift, hover:elevation-{0-24}'
-            description = 'Material Design elevation system with interactive states'
-            aiHint = 'Use elevation-4 for cards, elevation-8 for modals, elevation-lift for hover'
-            scale = @(0, 1, 2, 4, 6, 8, 12, 16, 20, 24)
-        }
-        glassmorphism = @{
-            pattern = 'glass, glass-{variant}, backdrop-blur-{size}'
-            variants = @('light', 'medium', 'heavy', 'frost', 'crystal', 'interactive')
-            description = 'Modern glassmorphism effects with backdrop filters'
-            aiHint = 'Use glass-light for subtle effects, glass-medium for prominence'
-        }
-    }
-    typography = @{
-        textSize = @{
-            pattern = 'text-{size}'
-            values = @('xs', 'sm', 'base', 'lg', 'xl', '2xl', '3xl', '4xl', '5xl', '6xl')
-            semantic = @('text-h1', 'text-h2', 'text-h3', 'text-h4', 'text-h5', 'text-h6', 'text-body-1', 'text-body-2', 'text-caption')
-            aiHint = 'Use text-h4 for section headers, text-body-1 for content'
-        }
-        textWeight = @{
-            pattern = 'font-{weight}'
-            values = @('thin', 'light', 'normal', 'medium', 'semibold', 'bold', 'extrabold', 'black')
-            aiHint = 'Use font-semibold for emphasis, font-medium for buttons'
-        }
-    }
-    business = @{
-        formGrids = @{
-            pattern = 'form-grid, form-grid--{columns}'
-            values = @('1', '2', '3', '4', 'auto')
-            description = 'Professional form layout grids'
-            aiHint = 'Use form-grid--2 for dual-column forms'
-        }
-        statsGrids = @{
-            pattern = 'stats-grid, action-grid'
-            description = 'Dashboard and analytics layout patterns'
-            aiHint = 'Use stats-grid for metric cards layout'
+        $utilityPatterns['mixins'][$mixinName] = @{
+            pattern = "@include $mixinName"
+            description = "SCSS mixin for reusable styles"
+            aiHint = "Use @include $mixinName for consistent styling"
         }
     }
 }
 
-# Extract CSS Variables as concise patterns (AI-optimized)
+# If compiled CSS exists, extract utilities from there too for completeness
+$compiledCssPath = Join-Path $ProjectPath "wwwroot/css/main.css"
+if (Test-Path $compiledCssPath) {
+    Write-Host "  📄 Analyzing compiled CSS for additional utilities..." -ForegroundColor DarkGray
+    $compiledCss = Get-Content $compiledCssPath -Raw -Encoding UTF8
+    
+    # Extract all class selectors from compiled CSS
+    $compiledClassMatches = [regex]::Matches($compiledCss, '^\s*\.([a-zA-Z0-9_\\-]+(?:[:@\\-][a-zA-Z0-9_\\-]+)*)', [System.Text.RegularExpressions.RegexOptions]::Multiline)
+    foreach ($match in $compiledClassMatches) {
+        $className = $match.Groups[1].Value
+        # Clean up and filter
+        if ($className -notmatch '^[A-Z]' -and $className -notmatch '__' -and $className.Length -gt 1) {
+            $extractedUtilityClasses += $className
+        }
+    }
+}
+
+# Remove duplicates first
+$extractedUtilityClasses = $extractedUtilityClasses | Sort-Object -Unique
+
+Write-Host "  📊 Total unique utility classes found: $($extractedUtilityClasses.Count)" -ForegroundColor DarkGray
+
+# Group utility classes by patterns - comprehensive categories based on actual usage
+$spacingClasses = $extractedUtilityClasses | Where-Object { 
+    $_ -match '^(p|pt|pr|pb|pl|px|py|m|mt|mr|mb|ml|mx|my|gap|gap-x|gap-y|space-x|space-y)(-n)?-' -or
+    $_ -match '^(pa|ma)(-n)?-' -or
+    $_ -match '^(section-spacing|card-spacing|content-spacing)'
+}
+$layoutClasses = $extractedUtilityClasses | Where-Object { 
+    $_ -match '^(d-|flex|justify|align|items|grid|container|columns|aspect|place|inset|static|fixed|absolute|relative|sticky)' -or
+    $_ -match '^(center|max-w|max-h|min-w|min-h|w-|h-|size-|object-|overflow|resize)'
+}
+$effectClasses = $extractedUtilityClasses | Where-Object { 
+    $_ -match '^(elevation|glass|backdrop|shadow|blur|brightness|contrast|grayscale|hue-rotate|invert|saturate|sepia|mix-blend)' -or
+    $_ -match '^(drop-shadow|scale|rotate|translate|transform|transition|animate|spin|shimmer|pulse)'
+}
+$typographyClasses = $extractedUtilityClasses | Where-Object { 
+    $_ -match '^(text|font|leading|tracking|whitespace|break|truncate|line-clamp|uppercase|lowercase|capitalize|normal-case)'
+}
+$borderClasses = $extractedUtilityClasses | Where-Object { 
+    $_ -match '^(border|rounded|ring|outline|divide)'
+}
+$backgroundClasses = $extractedUtilityClasses | Where-Object { 
+    $_ -match '^(bg-|background)'
+}
+$stateClasses = $extractedUtilityClasses | Where-Object { 
+    $_ -match '^(hover:|focus:|active:|disabled:|is-|sr-only|not-sr-only|invisible|visible|hidden|cursor|select|list)'
+}
+$colorClasses = $extractedUtilityClasses | Where-Object { 
+    $_ -match '^(text-|bg-|border-|ring-|from-|via-|to-)' -and $_ -match '(primary|secondary|success|warning|error|info|light|dark|transparent|current)'
+}
+
+# Create dynamic utility patterns based on discovered classes
+if ($spacingClasses.Count -gt 0) {
+    # Group spacing utilities by type for better organization
+    $paddingUtils = $spacingClasses | Where-Object { $_ -match '^p[tlrbxy]?-' }
+    $marginUtils = $spacingClasses | Where-Object { $_ -match '^m[tlrbxy]?(-n)?-' }
+    $gapUtils = $spacingClasses | Where-Object { $_ -match '^(gap|space)-' }
+    
+    $utilityPatterns['spacing'] = @{
+        total = $spacingClasses.Count
+        padding = @{
+            count = $paddingUtils.Count
+            examples = ($paddingUtils | Select-Object -First 5) -join ', '
+            pattern = 'p{direction}-{size} where direction: t|r|b|l|x|y or empty'
+        }
+        margin = @{
+            count = $marginUtils.Count
+            examples = ($marginUtils | Select-Object -First 5) -join ', '
+            pattern = 'm{direction}(-n)?-{size} where n = negative'
+        }
+        gap = @{
+            count = $gapUtils.Count
+            examples = ($gapUtils | Select-Object -First 5) -join ', '
+            pattern = 'gap(-{axis})?-{size} or space-{axis}-{size}'
+        }
+        aiHint = "Use padding (p-*), margin (m-*), gap-* for consistent spacing"
+    }
+}
+
+if ($layoutClasses.Count -gt 0) {
+    $utilityPatterns['layout'] = @{
+        discovered = $layoutClasses | Sort-Object -Unique
+        pattern = ($layoutClasses | Sort-Object -Unique | Select-Object -First 10) -join ', '
+        description = "Layout utilities discovered from SCSS files"
+        aiHint = "Use discovered layout classes for responsive designs"
+    }
+}
+
+if ($effectClasses.Count -gt 0) {
+    $utilityPatterns['effects'] = @{
+        discovered = $effectClasses | Sort-Object -Unique
+        pattern = ($effectClasses | Sort-Object -Unique | Select-Object -First 10) -join ', '
+        description = "Visual effect utilities discovered from SCSS files"
+        aiHint = "Use discovered effect classes for modern UI"
+    }
+}
+
+if ($typographyClasses.Count -gt 0) {
+    $utilityPatterns['typography'] = @{
+        discovered = $typographyClasses | Sort-Object -Unique
+        pattern = ($typographyClasses | Sort-Object -Unique | Select-Object -First 10) -join ', '
+        description = "Typography utilities discovered from SCSS files"
+        aiHint = "Use discovered typography classes for consistent text styling"
+    }
+}
+
+if ($borderClasses.Count -gt 0) {
+    $utilityPatterns['borders'] = @{
+        discovered = $borderClasses | Sort-Object -Unique
+        pattern = ($borderClasses | Sort-Object -Unique | Select-Object -First 10) -join ', '
+        description = "Border utilities discovered from SCSS files"
+        aiHint = "Use discovered border classes for consistent styling"
+    }
+}
+
+if ($backgroundClasses.Count -gt 0) {
+    $utilityPatterns['backgrounds'] = @{
+        discovered = $backgroundClasses | Sort-Object -Unique
+        pattern = ($backgroundClasses | Sort-Object -Unique | Select-Object -First 10) -join ', '
+        description = "Background utilities discovered from SCSS files"
+        aiHint = "Use discovered background classes for surfaces and containers"
+    }
+}
+
+if ($stateClasses.Count -gt 0) {
+    $utilityPatterns['states'] = @{
+        discovered = $stateClasses | Sort-Object -Unique
+        pattern = ($stateClasses | Sort-Object -Unique | Select-Object -First 10) -join ', '
+        description = "State and interaction utilities discovered from SCSS files"
+        aiHint = "Use discovered state classes for interactive elements"
+    }
+}
+
+if ($colorClasses.Count -gt 0) {
+    $utilityPatterns['colors'] = @{
+        discovered = $colorClasses | Sort-Object -Unique
+        pattern = ($colorClasses | Sort-Object -Unique | Select-Object -First 10) -join ', '
+        description = "Semantic color utilities discovered from SCSS files"
+        aiHint = "Use discovered color classes for consistent theming"
+    }
+}
+
+Write-Host "  📊 CSS variables found: $($extractedCssVariables.Count)" -ForegroundColor DarkGray
+
+# Extract CSS Variables as concise patterns (AI-optimized from discovered variables)
 $cssVariablePatterns = @{}
 
-# Define semantic patterns that AI can understand and extrapolate
-$cssVariablePatterns = @{
-    '--color-[category]-[variant]' = @{
-        pattern = '--color-[category]-[variant]'
-        category = 'color'
-        explanation = 'Semantic color system'
-        categories = @('interactive', 'text', 'background', 'status', 'surface', 'border', 'glass', 'gradient')
-        variants = @('primary', 'secondary', 'light', 'dark', 'hover', 'focus', 'disabled')
+# Group discovered CSS variables by patterns
+$colorVars = @($extractedCssVariables.Keys | Where-Object { $_ -match '--color-' })
+$spacingVars = @($extractedCssVariables.Keys | Where-Object { $_ -match '--(space|gap|margin|padding)-' })
+$fontVars = @($extractedCssVariables.Keys | Where-Object { $_ -match '--font-' })
+$shadowVars = @($extractedCssVariables.Keys | Where-Object { $_ -match '--shadow-' })
+$radiusVars = @($extractedCssVariables.Keys | Where-Object { $_ -match '--radius-' })
+
+# Create dynamic CSS variable patterns (token-optimized)
+if ($colorVars.Count -gt 0) {
+    # Extract categories and variants from color variables
+    $colorCategories = @{}
+    $colorVariants = @{}
+    
+    foreach ($colorVar in $colorVars) {
+        $parts = ($colorVar -replace '^--color-', '') -split '-'
+        if ($parts.Count -ge 2) {
+            # For compound names like "background-elevated", "text-primary"
+            $category = $parts[0]
+            $variant = $parts[1..($parts.Count-1)] -join '-'
+            
+            if (-not $colorCategories.ContainsKey($category)) {
+                $colorCategories[$category] = @()
+            }
+            if ($variant -and -not $colorCategories[$category].Contains($variant)) {
+                $colorCategories[$category] += $variant
+            }
+        } else {
+            # For single names like "error", "success"
+            if (-not $colorVariants.ContainsKey('status')) {
+                $colorVariants['status'] = @()
+            }
+            if (-not $colorVariants['status'].Contains($parts[0])) {
+                $colorVariants['status'] += $parts[0]
+            }
+        }
+    }
+    
+    $cssVariablePatterns['--color-{category}-{variant}'] = @{
+        pattern = '--color-{category}-{variant}'
+        categories = ($colorCategories.Keys | Sort-Object)
+        variants = @{}
         aiHint = 'Use --color-text-primary for main text, --color-background-elevated for cards'
     }
-    '--space-{0-24}' = @{
-        pattern = '--space-{0-24}'
-        category = 'spacing'
-        explanation = 'Design system spacing scale'
-        scale = @(0, 1, 2, 3, 4, 5, 6, 8, 10, 12, 16, 20, 24)
-        aiHint = 'Standard spacing scale: 0=0px, 1=0.25rem, 4=1rem, 6=1.5rem, 24=6rem'
+    
+    # Add variants for each category
+    foreach ($category in $colorCategories.Keys) {
+        $cssVariablePatterns['--color-{category}-{variant}'].variants[$category] = $colorCategories[$category] | Sort-Object
     }
-    '--shadow-{variant}' = @{
-        pattern = '--shadow-{variant}'
-        category = 'effect'
-        explanation = 'Elevation shadow system'
-        variants = @('none', 'sm', 'md', 'lg', 'xl', '2xl', 'inset', 'lift', 'focus')
-        aiHint = 'Use --shadow-md for cards, --shadow-lg for modals, --shadow-lift for hover'
+    
+    # Add single color variables if any
+    if ($colorVariants.Count -gt 0) {
+        $cssVariablePatterns['--color-{status}'] = @{
+            pattern = '--color-{status}'
+            values = ($colorVariants['status'] | Sort-Object)
+            aiHint = 'Use for status colors like --color-error, --color-success'
+        }
     }
-    '--gradient-{variant}' = @{
-        pattern = '--gradient-{variant}'
-        category = 'effect'
-        explanation = 'Professional gradient backgrounds'
-        variants = @('subtle', 'executive', 'primary', 'success', 'warning', 'danger', 'dark')
-        aiHint = 'Use --gradient-subtle for backgrounds, --gradient-executive for premium feel'
+}
+
+if ($spacingVars.Count -gt 0) {
+    # Extract only the suffix parts after --space-
+    $spacingSuffixes = $spacingVars | ForEach-Object { $_ -replace '^--space-', '' } | Sort-Object -Unique
+    $cssVariablePatterns['--space-{sizes}'] = @{
+        pattern = '--space-{size}'
+        sizes = $spacingSuffixes
+        aiHint = 'Standard spacing scale for consistent layouts'
     }
-    '--font-{type}-{variant}' = @{
-        pattern = '--font-{type}-{variant}'
-        category = 'typography'
-        explanation = 'Typography system variables'
-        types = @('size', 'weight', 'family', 'height')
-        variants = @('xs', 'sm', 'md', 'lg', 'xl', 'thin', 'normal', 'bold', 'mono', 'sans')
-        aiHint = 'Use --font-size-lg for headers, --font-weight-semibold for emphasis'
+}
+
+if ($fontVars.Count -gt 0) {
+    # Group font variables by type
+    $fontWeights = @()
+    $fontFamilies = @()
+    $fontSizes = @()
+    
+    foreach ($fontVar in $fontVars) {
+        $suffix = $fontVar -replace '^--font-', ''
+        if ($suffix -match '^(thin|extralight|light|normal|medium|semibold|bold|extrabold|black)$') {
+            $fontWeights += $suffix
+        } elseif ($suffix -match '^family-') {
+            $fontFamilies += $suffix -replace '^family-', ''
+        } else {
+            $fontSizes += $suffix
+        }
     }
-    '--radius-{size}' = @{
+    
+    if ($fontWeights.Count -gt 0) {
+        $cssVariablePatterns['--font-{weight}'] = @{
+            pattern = '--font-{weight}'
+            weights = ($fontWeights | Sort-Object -Unique)
+            aiHint = 'Font weight scale from thin to black'
+        }
+    }
+    
+    if ($fontFamilies.Count -gt 0) {
+        $cssVariablePatterns['--font-family-{type}'] = @{
+            pattern = '--font-family-{type}'
+            types = ($fontFamilies | Sort-Object -Unique)
+            aiHint = 'Font family types (primary, secondary, mono)'
+        }
+    }
+    
+    if ($fontSizes.Count -gt 0) {
+        $cssVariablePatterns['--font-{size}'] = @{
+            pattern = '--font-{size}'
+            sizes = ($fontSizes | Sort-Object -Unique)
+            aiHint = 'Font size scale if defined'
+        }
+    }
+}
+
+if ($shadowVars.Count -gt 0) {
+    # Extract only the suffix parts after --shadow-
+    $shadowSuffixes = $shadowVars | ForEach-Object { $_ -replace '^--shadow-', '' } | Sort-Object -Unique
+    $cssVariablePatterns['--shadow-{variants}'] = @{
+        pattern = '--shadow-{level}'
+        variants = $shadowSuffixes
+        aiHint = 'Elevation shadow system'
+    }
+}
+
+if ($radiusVars.Count -gt 0) {
+    # Extract only the suffix parts after --radius-
+    $radiusSuffixes = $radiusVars | ForEach-Object { $_ -replace '^--radius-', '' } | Sort-Object -Unique
+    $cssVariablePatterns['--radius-{variants}'] = @{
         pattern = '--radius-{size}'
-        category = 'shape'
-        explanation = 'Border radius scale'
-        sizes = @('none', 'sm', 'md', 'lg', 'xl', '2xl', 'full', 'pill')
-        aiHint = 'Use --radius-md for cards, --radius-full for circular elements'
+        variants = $radiusSuffixes
+        aiHint = 'Border radius scale'
     }
-    '--transition-{speed}' = @{
-        pattern = '--transition-{speed}'
-        category = 'animation'
-        explanation = 'Animation timing system'
-        speeds = @('fast', 'normal', 'slow', 'none')
-        aiHint = 'Use --transition-normal for most interactions, --transition-fast for hover'
-    }
-    '--z-{layer}' = @{
-        pattern = '--z-{layer}'
-        category = 'layout'
-        explanation = 'Z-index layering system'
-        layers = @('base', 'elevated', 'sticky', 'fixed', 'modal', 'popover', 'tooltip')
-        aiHint = 'Use --z-modal for overlays, --z-tooltip for highest priority'
+}
+
+# Add fallback patterns for common cases where no variables are discovered
+if ($cssVariablePatterns.Count -eq 0) {
+    $cssVariablePatterns['--discovered-variables'] = @{
+        pattern = 'No CSS variables automatically discovered'
+        category = 'fallback'
+        explanation = 'CSS variables would be extracted from SCSS files when available'
+        aiHint = 'Use standard CSS variables for theming and design tokens'
     }
 }
 
@@ -411,9 +591,9 @@ $documentation.aiPatterns = @(
     }
 )
 
-# Update counts
-$documentation.info.componentCount = $documentation.components.Count
-$documentation.info.utilityPatternCount = $utilityPatterns.Keys.Count
+# Counts calculated dynamically for output display only
+$componentCount = $documentation.components.Count
+$utilityPatternCount = $utilityPatterns.Keys.Count
 
 Write-Host "💾 Generating JSON output..." -ForegroundColor Yellow
 
@@ -432,8 +612,8 @@ $jsonOutput = $jsonOutput -replace '\\u003c', '<' -replace '\\u003e', '>'
 $jsonOutput | Out-File -FilePath $OutputPath -Encoding UTF8 -Force
 
 Write-Host "✅ AI Documentation generated successfully!" -ForegroundColor Green
-Write-Host "📄 Components: $($documentation.info.componentCount)" -ForegroundColor White
-Write-Host "🎨 Utility patterns: $($documentation.info.utilityPatternCount)" -ForegroundColor White
+Write-Host "📄 Components: $componentCount" -ForegroundColor White
+Write-Host "🎨 Utility patterns: $utilityPatternCount" -ForegroundColor White
 Write-Host "📊 CSS variables: $($documentation.cssVariables.Count)" -ForegroundColor White
 Write-Host "💡 AI patterns: $($documentation.aiPatterns.Count)" -ForegroundColor White
 Write-Host "📂 Output: $OutputPath" -ForegroundColor White
@@ -441,6 +621,6 @@ Write-Host "📂 Output: $OutputPath" -ForegroundColor White
 return @{
     Success = $true
     OutputPath = $OutputPath
-    ComponentCount = $documentation.info.componentCount
-    UtilityCount = $documentation.info.utilityPatternCount
+    ComponentCount = $componentCount
+    UtilityCount = $utilityPatternCount
 }

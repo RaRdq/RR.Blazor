@@ -24,8 +24,9 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
                        CommonUse = "dashboards, forms, data views, settings panels", 
                        AvoidUsage = "Don't use for navigation breadcrumbs - use RBreadcrumbs instead")]
 
-<div class="tabs @Class">
-    <!-- Tab Navigation -->
+<CascadingValue Value="this">
+    <div class="tabs @Class">
+        <!-- Tab Navigation -->
     <nav class="tabs__nav tabs__nav--@Variant.ToString().ToLower()" role="tablist">
         <!-- Animated Indicator -->
         @if (Variant != TabsVariant.Card)
@@ -37,7 +38,7 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
         @foreach (var tab in tabs)
         {
             <button type="button"
-                    class="tab @GetTabClasses(tab)"
+                    class="tabs__tab @GetTabClasses(tab)"
                     role="tab"
                     aria-selected="@(tab.Id == ActiveTabId)"
                     aria-controls="panel-@tab.Id"
@@ -48,7 +49,7 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
                 
                 @if (!string.IsNullOrEmpty(tab.Icon) && tab.IconPosition == IconPosition.Start)
                 {
-                    <i class="material-symbols-rounded tab__icon tab__icon--start @GetTabIconSize()">@tab.Icon</i>
+                    <i class="material-symbols-rounded tabs__tab__icon tabs__tab__icon--start @GetTabIconSize()">@tab.Icon</i>
                 }
                 
                 @if (!string.IsNullOrEmpty(tab.Text))
@@ -58,20 +59,20 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
                 
                 @if (tab.BadgeCount > 0)
                 {
-                    <span class="tab__badge @GetBadgeVariant(tab.BadgeVariant)">
+                    <span class="tabs__tab__badge @GetBadgeVariant(tab.BadgeVariant)">
                         @(tab.BadgeCount > 99 ? "99+" : tab.BadgeCount.ToString())
                     </span>
                 }
                 
                 @if (!string.IsNullOrEmpty(tab.Icon) && tab.IconPosition == IconPosition.End)
                 {
-                    <i class="material-symbols-rounded tab__icon tab__icon--end @GetTabIconSize()">@tab.Icon</i>
+                    <i class="material-symbols-rounded tabs__tab__icon tabs__tab__icon--end @GetTabIconSize()">@tab.Icon</i>
                 }
                 
                 @if (tab.IsClosable)
                 {
                     <button type="button" 
-                            class="tab__close ml-2 p-1 rounded hover:bg-overlay-dark-10"
+                            class="tabs__tab__close"
                             @onclick="() => CloseTab(tab.Id)"
                             @onclick:stopPropagation="true">
                         <i class="material-symbols-rounded text-xs">close</i>
@@ -84,7 +85,7 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
         @if (ShowAddButton)
         {
             <button type="button" 
-                    class="tab tab--add-button"
+                    class="tabs__tab tabs__tab--add-button"
                     @onclick="HandleAddTab">
                 <i class="material-symbols-rounded text-sm">add</i>
             </button>
@@ -104,7 +105,10 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
             </div>
         }
     </div>
-</div>
+    
+    @ChildContent
+    </div>
+</CascadingValue>
 
 @code {
     /// <summary>Tab variant style</summary>
@@ -301,20 +305,20 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
         // Size classes
         classes.Add(Size switch
         {
-            ButtonSize.Small => "tab--small",
-            ButtonSize.Large => "tab--large",
+            ButtonSize.Small => "tabs__tab--small",
+            ButtonSize.Large => "tabs__tab--large",
             _ => ""
         });
         
         // State classes
         if (tab.Id == ActiveTabId)
         {
-            classes.Add("tab--active");
+            classes.Add("tabs__tab--active");
         }
         
         if (tab.IsDisabled)
         {
-            classes.Add("tab--disabled");
+            classes.Add("tabs__tab--disabled");
         }
         
         return string.Join(" ", classes.Where(c => !string.IsNullOrEmpty(c)));
@@ -329,9 +333,9 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
     
     private string GetBadgeVariant(string variant) => variant switch
     {
-        "danger" => "tab__badge--danger",
-        "warning" => "tab__badge--warning",
-        "success" => "tab__badge--success",
+        "danger" => "tabs__tab__badge--danger",
+        "warning" => "tabs__tab__badge--warning", 
+        "success" => "tabs__tab__badge--success",
         _ => ""
     };
     

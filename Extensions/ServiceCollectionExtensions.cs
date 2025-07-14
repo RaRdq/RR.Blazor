@@ -15,16 +15,26 @@ namespace RR.Blazor.Extensions
         /// </summary>
         public static IServiceCollection AddRRBlazor(this IServiceCollection services, Action<RRBlazorOptions> configure = null)
         {
+            // Configuration - create first so we can use it
+            var options = new RRBlazorOptions();
+            configure?.Invoke(options);
+            services.AddSingleton(options);
+            
             // Core services
             services.AddScoped<IModalService, ModalService>();
             services.AddScoped<IThemeService, BlazorThemeService>();
             services.AddScoped<IAppSearchService, AppSearchService>();
-            services.AddScoped<IToastService, ToastService>();
             
-            // Configuration
-            var options = new RRBlazorOptions();
-            configure?.Invoke(options);
-            services.AddSingleton(options);
+            // Toast service with configuration from options
+            services.AddRRToast(toastOptions =>
+            {
+                toastOptions.Position = options.Toast.Position;
+                toastOptions.MaxToasts = options.Toast.MaxToasts;
+                toastOptions.DefaultDuration = options.Toast.DefaultDuration;
+                toastOptions.ShowCloseButton = options.Toast.ShowCloseButton;
+                toastOptions.NewestOnTop = options.Toast.NewestOnTop;
+                toastOptions.PreventDuplicates = options.Toast.PreventDuplicates;
+            });
             
             // Theme configuration
             if (options.Theme != null)
@@ -44,6 +54,17 @@ namespace RR.Blazor.Extensions
         /// <summary>Theme configuration</summary>
         public ThemeConfiguration Theme { get; set; } = ThemeConfiguration.Default;
         
+        /// <summary>Toast service configuration</summary>
+        public ToastServiceOptions Toast { get; set; } = new ToastServiceOptions
+        {
+            Position = ToastPosition.TopRight,
+            MaxToasts = 5,
+            DefaultDuration = 4000,
+            ShowCloseButton = true,
+            NewestOnTop = true,
+            PreventDuplicates = false
+        };
+        
         /// <summary>Whether animations are enabled</summary>
         public bool AnimationsEnabled { get; set; } = true;
         
@@ -51,6 +72,13 @@ namespace RR.Blazor.Extensions
         public RRBlazorOptions WithTheme(Action<ThemeConfiguration> configure)
         {
             configure?.Invoke(Theme);
+            return this;
+        }
+        
+        /// <summary>Configure toast settings</summary>
+        public RRBlazorOptions WithToasts(Action<ToastServiceOptions> configure)
+        {
+            configure?.Invoke(Toast);
             return this;
         }
         
