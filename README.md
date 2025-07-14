@@ -441,7 +441,7 @@ RR.Blazor includes 800+ utility classes inspired by modern CSS frameworks:
 <RForm TModel="UserModel" @bind-Model="model" OnValidSubmit="@HandleSubmit">
     <FormFields>
         <RFormField Label="Email Address"
-                    FieldType="FieldType.Email"
+                    Type="FieldType.Email"
                     @bind-Value="model.Email"
                     Size="FieldSize.Large"
                     Variant="FieldVariant.FloatingLabel"
@@ -449,7 +449,7 @@ RR.Blazor includes 800+ utility classes inspired by modern CSS frameworks:
                     Required />
                     
         <RFormField Label="Password"
-                    FieldType="@(showPassword ? FieldType.Text : FieldType.Password)"
+                    Type="@(showPassword ? FieldType.Text : FieldType.Password)"
                     @bind-Value="model.Password"
                     StartIcon="lock"
                     EndIcon="@(showPassword ? "visibility_off" : "visibility")"

@@ -5,12 +5,12 @@
 <ai-prompt>Create a professional form field for user input with validation</ai-prompt>
 <ai-common-use>text input, email validation, password fields, dropdowns, checkboxes, file uploads</ai-common-use>
 <ai-avoid>Don't use for display-only data or readonly content</ai-avoid>
-<ai-pattern name="text-input">FieldType="FieldType.Text" for basic text input</ai-pattern>
-<ai-pattern name="email-field">FieldType="FieldType.Email" Required="true" for email validation</ai-pattern>
-<ai-pattern name="password-field">FieldType="FieldType.Password" with strength indicators</ai-pattern>
-<ai-pattern name="select-dropdown">FieldType="FieldType.Select" with SelectOptions</ai-pattern>
-<ai-pattern name="checkbox-field">FieldType="FieldType.Checkbox" with CheckboxText</ai-pattern>
-<ai-pattern name="file-upload">FieldType="FieldType.File" with AcceptTypes</ai-pattern>
+<ai-pattern name="text-input">Type="FieldType.Text" for basic text input</ai-pattern>
+<ai-pattern name="email-field">Type="FieldType.Email" Required="true" for email validation</ai-pattern>
+<ai-pattern name="password-field">Type="FieldType.Password" with strength indicators</ai-pattern>
+<ai-pattern name="select-dropdown">Type="FieldType.Select" with SelectOptions</ai-pattern>
+<ai-pattern name="checkbox-field">Type="FieldType.Checkbox" with CheckboxText</ai-pattern>
+<ai-pattern name="file-upload">Type="FieldType.File" with AcceptTypes</ai-pattern>
 <ai-pattern name="floating-label">Variant="FieldVariant.FloatingLabel" for modern forms</ai-pattern>
 <ai-pattern name="required-field">Required="true" ShowRequiredIndicator="true"</ai-pattern>
 **@
@@ -43,10 +43,10 @@
             </div>
         }
         
-        @if (FieldType == FieldType.Text || FieldType == FieldType.Email || FieldType == FieldType.Password || 
-             FieldType == FieldType.Number || FieldType == FieldType.Tel || FieldType == FieldType.Url || 
-             FieldType == FieldType.Search || FieldType == FieldType.Date || FieldType == FieldType.Time || 
-             FieldType == FieldType.DateTime)
+        @if (Type == FieldType.Text || Type == FieldType.Email || Type == FieldType.Password || 
+             Type == FieldType.Number || Type == FieldType.Tel || Type == FieldType.Url || 
+             Type == FieldType.Search || Type == FieldType.Date || Type == FieldType.Time || 
+             Type == FieldType.DateTime)
         {
             <input @ref="inputElement" 
                    id="@InputId" 
@@ -70,7 +70,7 @@
                    @onkeydown="HandleKeyDown"
                    @onkeyup="HandleKeyUp" />
         }
-        else if (FieldType == FieldType.Textarea)
+        else if (Type == FieldType.Textarea)
         {
             <textarea @ref="inputElement"
                       id="@InputId" 
@@ -88,7 +88,7 @@
                       @onkeydown="HandleKeyDown"
                       @onkeyup="HandleKeyUp">@Value</textarea>
         }
-        else if (FieldType == FieldType.Select)
+        else if (Type == FieldType.Select)
         {
             <select @ref="inputElement"
                     id="@InputId" 
@@ -105,7 +105,7 @@
                 @SelectOptions
             </select>
         }
-        else if (FieldType == FieldType.Checkbox)
+        else if (Type == FieldType.Checkbox)
         {
             <div class="d-flex align-center gap-2">
                 <input id="@InputId" 
@@ -123,13 +123,13 @@
                 }
             </div>
         }
-        else if (FieldType == FieldType.Radio)
+        else if (Type == FieldType.Radio)
         {
             <div class="d-flex flex-column gap-2">
                 @RadioOptions
             </div>
         }
-        else if (FieldType == FieldType.Range)
+        else if (Type == FieldType.Range)
         {
             <div class="w-full">
                 <input id="@InputId" 
@@ -150,7 +150,7 @@
                 }
             </div>
         }
-        else if (FieldType == FieldType.File)
+        else if (Type == FieldType.File)
         {
             <InputFile id="@InputId" 
                        class="@($"form-field__file {GetFileInputClasses()}")"
@@ -159,7 +159,7 @@
                        multiple="@AllowMultiple"
                        OnChange="HandleFileChange" />
         }
-        else if (FieldType == FieldType.Custom)
+        else if (Type == FieldType.Custom)
         {
             @ChildContent
         }
@@ -172,7 +172,7 @@
             </label>
         }
         
-        @if (!string.IsNullOrEmpty(EndIcon) && FieldType != FieldType.Select)
+        @if (!string.IsNullOrEmpty(EndIcon) && Type != FieldType.Select)
         {
             <div class="form-field__icon-container form-field__icon-container--end @(OnEndIconClick.HasDelegate ? "clickable" : "")" 
                  @onclick="HandleEndIconClick">
@@ -218,10 +218,12 @@
 
 @code {
     /// <summary>Input field identifier</summary>
-    [Parameter] [AIParameter("Unique identifier for the input field", Example = "email-input")] public string InputId { get; set; } = Guid.NewGuid().ToString("N")[..8];
+    [Parameter] [AIParameter("Unique identifier for the input field", Example = "email-input")] 
+    public string InputId { get; set; } = Guid.NewGuid().ToString("N")[..8];
     
     /// <summary>Field type</summary>
-    [Parameter] [AIParameter("Type of input field (Text, Email, Password, Select, etc.)", Example = "FieldType.Email")] public FieldType FieldType { get; set; } = FieldType.Text;
+    [Parameter] [AIParameter("Type of input field (Text, Email, Password, Select, etc.)", Example = "FieldType.Email")] 
+    public FieldType Type { get; set; } = FieldType.Text;
     
     /// <summary>Field size variant</summary>
     [Parameter] public FieldSize Size { get; set; } = FieldSize.Medium;
@@ -254,7 +256,7 @@
     [Parameter] public string FieldName { get; set; }
     
     /// <summary>Cascading validation context from parent form</summary>
-    [CascadingParameter] public FormValidationContext? ValidationContext { get; set; }
+    [CascadingParameter] public FormValidationContext ValidationContext { get; set; }
     
     /// <summary>Whether field is required</summary>
     [Parameter] [AIParameter("Mark field as required for form validation", Example = "true")] public bool Required { get; set; }
@@ -837,7 +839,7 @@
         return "";
     }
     
-    private string GetHtmlInputType() => FieldType switch
+    private string GetHtmlInputType() => Type switch
     {
         FieldType.Email => "email",
         FieldType.Password => "password",

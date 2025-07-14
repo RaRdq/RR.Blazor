@@ -229,7 +229,7 @@ Existing `RFormField` date inputs can be easily migrated:
 
 ```html
 <!-- Old RFormField approach -->
-<RFormField FieldType="FieldType.Date" 
+<RFormField Type="FieldType.Date" 
             @bind-Value="dateString" 
             Label="Select Date" />
 

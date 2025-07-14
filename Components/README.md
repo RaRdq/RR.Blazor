@@ -1,50 +1,92 @@
 # RR.Blazor Components Organization
 
-This directory contains all RR.Blazor components organized by category for better maintainability and discoverability.
+This directory contains all RR.Blazor components organized by category and structural relationships for better maintainability and discoverability.
 
-## Component Categories
+## Component Architecture
 
-### Core (`/Core`)
-Foundational components that are used throughout the system:
+### Standalone Components
+Components that work independently without requiring other components:
+
+#### Core (`/Core`)
 - **RButton** - Primary button component with variants and states
 - **RCard** - Generic card container with elevation and variants
 - **RAvatar** - User avatar with status indicators and sizes
 - **RBadge** - Status badges and indicators
 - **RDivider** - Visual separators and dividers
+- **RChip** - Removable labels and tags
 - **RThemeProvider** - Theme context provider
 - **RThemeSwitcher** - Theme toggle component
 
-### Display (`/Display`)
-Components for displaying information and data:
+#### Display (`/Display`)
 - **RStatsCard** - Dashboard statistics card with icons and values
 - **REmptyState** - Empty state messaging
 - **RSkeleton** - Loading placeholders
 - **RProgressBar** - Progress indicators
 - **RInfoItem** - Key-value information display
 - **RSummaryItem** - Summary data display
-- **RAccordion** - Collapsible content sections
-- **RAccordionItem** - Individual accordion panels
+- **RMetric** - Statistical data presentation
+- **RTimeline** - Event timeline visualization
 
-### Form (`/Form`)
-Input and form-related components:
+#### Form (`/Form`)
 - **RFormField** - Universal form input component
 - **RDatePicker** - Date selection component
 - **RDatePickerBasic** - Simplified date picker
 - **RFileUpload** - File upload with drag-and-drop
 - **RSwitcher** - Toggle switches and radio groups
 
-### Navigation (`/Navigation`)
-Components for navigation and wayfinding:
+#### Navigation (`/Navigation`)
 - **RBreadcrumbs** - Breadcrumb navigation
 - **RNavMenu** - Navigation menu
-- **RTabs** - Tab navigation container
-- **RTabItem** - Individual tab items
 - **RDropdown** - Dropdown menus
 
-### Feedback (`/Feedback`)
-Components for user feedback and modals:
+#### Layout (`/Layout`)
+- **RAppShell** - Complete application shell
+- **RSection** - Content sections with headers
+- **RGrid** - Grid layout system
+
+### Composite Component Systems
+Components that work together as integrated systems:
+
+#### Data Tables (`/Data`)
+**Primary Component**: `RDataTable`
+- **RDataTable** - Main data table with sorting and filtering
+- **RDataTableColumn** - ⚠️ Column configuration (requires RDataTable)
+
+**Usage**: RDataTableColumn components are defined within RDataTable's ColumnsContent
+
+#### Lists (`/Data`)
+**Primary Component**: `RList` or `RVirtualList`
+- **RList** - Generic list container
+- **RListItem** - ⚠️ List item with actions (requires RList)
+- **RVirtualList** - Performance-optimized virtual scrolling
+
+**Usage**: RListItem components are defined within RList's ChildContent
+
+#### Accordions (`/Display`)
+**Primary Component**: `RAccordion`
+- **RAccordion** - Collapsible content sections container
+- **RAccordionItem** - ⚠️ Individual accordion panels (requires RAccordion)
+
+**Usage**: RAccordionItem components are defined within RAccordion's ChildContent
+
+#### Tabs (`/Navigation`)
+**Primary Component**: `RTabs`
+- **RTabs** - Tab navigation container
+- **RTabItem** - ⚠️ Individual tab items (requires RTabs)
+
+**Usage**: RTabItem components are defined within RTabs' ChildContent
+
+#### Forms (`/Form`)
+**Primary Component**: `RForm`
+- **RForm** - Form container with validation
+- **RFormSection** - ⚠️ Organized form layout sections (requires RForm)
+
+**Usage**: RFormSection components are defined within RForm's FormFields
+
+#### Modals (`/Feedback`)
+**Primary Component**: `RModal` + `RModalProvider`
 - **RModal** - Base modal component
-- **RModalProvider** - Modal service provider
+- **RModalProvider** - Modal service provider (required for service-based modals)
 - **RConfirmModal** - Confirmation dialogs
 - **RConfirmationModal** - Enhanced confirmation dialogs
 - **RMessageModal** - Message display modals
@@ -54,19 +96,13 @@ Components for user feedback and modals:
 - **RSelectModal** - Selection modals
 - **RToastContainer** - Toast notification system
 
-### Data (`/Data`)
-Components for displaying structured data:
-- **RDataTable** - Data table with sorting and filtering
-- **RDataTableColumn** - Table column configuration
-- **RList** - Generic list component
-- **RListItem** - List item with actions
-- **RVirtualList** - Virtualized list for performance
-
-### Layout (`/Layout`)
-Components for layout and structure:
-- **RAppShell** - Complete application shell
-- **RSection** - Content sections with headers
+#### Action Groups (`/Core`)
+**Primary Component**: `RActionGroup`
 - **RActionGroup** - Action button groupings
+
+#### Filter System (`/Data`)
+**Primary Component**: `RFilterBar`
+- **RFilterBar** - Data filtering interface
 
 ## Usage
 

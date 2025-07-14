@@ -154,7 +154,7 @@ $ignoredParameters = @(
     
     # Common Blazor attributes  
     'onclick', 'onchange', 'onfocus', 'onblur', 'onkeydown', 'onkeyup', 'onmouseenter', 'onmouseleave',
-    'bind', 'bind-value', 'bind-checked', 'ref',
+    'bind', 'bind-value', 'bind-checked', 'ref', 'after',
     
     # Standard HTML input attributes
     'name', 'value', 'checked', 'selected', 'disabled', 'readonly', 'required', 'placeholder',
@@ -164,6 +164,91 @@ $ignoredParameters = @(
     'form', 'formaction', 'formmethod', 'formnovalidate', 'formtarget'
 )
 
+# Component structural constraints (child components that require specific parents)
+$componentConstraints = @{
+    'RDataTableColumn' = @{
+        RequiredParent = 'RDataTable'
+        Context = 'ColumnsContent'
+        Description = 'RDataTableColumn must be used within RDataTable''s ColumnsContent'
+    }
+    'RListItem' = @{
+        RequiredParent = 'RList'
+        Context = 'ChildContent'
+        Description = 'RListItem must be used within RList''s ChildContent'
+    }
+    'RTabItem' = @{
+        RequiredParent = 'RTabs'
+        Context = 'ChildContent'
+        Description = 'RTabItem must be used within RTabs'' ChildContent'
+    }
+    'RAccordionItem' = @{
+        RequiredParent = 'RAccordion'
+        Context = 'ChildContent'
+        Description = 'RAccordionItem must be used within RAccordion''s ChildContent'
+    }
+    'RFormSection' = @{
+        RequiredParent = 'RForm'
+        Context = 'FormFields'
+        Description = 'RFormSection must be used within RForm''s FormFields'
+    }
+}
+
+# Function to check component structural constraints
+function Test-ComponentConstraints {
+    param(
+        [string]$Content,
+        [string]$FilePath
+    )
+    
+    $constraintViolations = @()
+    
+    foreach ($childComponent in $componentConstraints.Keys) {
+        $constraint = $componentConstraints[$childComponent]
+        $requiredParent = $constraint.RequiredParent
+        
+        # Find all instances of child component
+        $childPattern = "(?s)<$childComponent[^>]*(?:/>|>.*?</$childComponent>)"
+        $childMatches = [regex]::Matches($Content, $childPattern)
+        
+        foreach ($childMatch in $childMatches) {
+            $childStart = $childMatch.Index
+            $childEnd = $childMatch.Index + $childMatch.Length
+            
+            # Look for parent component that contains this child
+            $parentPattern = "(?s)<$requiredParent[^>]*>.*?</$requiredParent>"
+            $parentMatches = [regex]::Matches($Content, $parentPattern)
+            
+            $foundValidParent = $false
+            foreach ($parentMatch in $parentMatches) {
+                $parentStart = $parentMatch.Index
+                $parentEnd = $parentMatch.Index + $parentMatch.Length
+                
+                # Check if child is within parent boundaries
+                if ($childStart -ge $parentStart -and $childEnd -le $parentEnd) {
+                    $foundValidParent = $true
+                    break
+                }
+            }
+            
+            if (-not $foundValidParent) {
+                $lineNumber = ($Content.Substring(0, $childStart) -split "`n").Count
+                
+                $constraintViolations += @{
+                    File = $FilePath
+                    LineNumber = $lineNumber
+                    Component = $childComponent
+                    RequiredParent = $requiredParent
+                    Context = $constraint.Context
+                    Description = $constraint.Description
+                    MatchedText = $childMatch.Value
+                }
+            }
+        }
+    }
+    
+    return $constraintViolations
+}
+
 Write-Host "🔍 Scanning solution for R* component usage..." -ForegroundColor Yellow
 
 # Find all .razor files to validate (exclude RR.Blazor itself)
@@ -172,11 +257,16 @@ $razorFiles = Get-ChildItem -Path $SolutionPath -Filter "*.razor" -Recurse | Whe
 }
 
 $violations = @()
+$structuralViolations = @()
 $totalComponentsFound = 0
 
 foreach ($file in $razorFiles) {
     $content = Get-Content $file.FullName -Raw -Encoding UTF8
     $relativePath = $file.FullName.Replace($SolutionPath, '').TrimStart('\', '/')
+    
+    # Check structural constraints first
+    $constraintViolations = Test-ComponentConstraints -Content $content -FilePath $relativePath
+    $structuralViolations += $constraintViolations
     
     # Find all R* component usages (multi-line aware)
     $componentPattern = '(?s)<(R[A-Z]\w*)\s+([^>]*?)/?>'
@@ -195,7 +285,8 @@ foreach ($file in $razorFiles) {
         $validParams = $componentParameters[$componentName]
         
         # Extract parameters from attributes section (handle quoted values, expressions)
-        $paramPattern = '(\w+)\s*=\s*(?:"[^"]*"|@[^"\s]+|{[^}]*}|\S+)'
+        # Skip @bind-* directives as they are not component parameters
+        $paramPattern = '(?<!@bind-[^:\s]*:)(?<!@on\w*:)(\w+)\s*=\s*(?:"[^"]*"|@[^"\s]+|{[^}]*}|\S+)'
         $paramMatches = [regex]::Matches($attributesSection, $paramPattern)
         
         foreach ($paramMatch in $paramMatches) {
@@ -203,6 +294,11 @@ foreach ($file in $razorFiles) {
             
             # Skip ignored parameters (no false positives)
             if ($paramName -in $ignoredParameters) {
+                continue
+            }
+            
+            # Skip parameters that are part of @bind-* directives (like 'after' in @bind-value:after)
+            if ($paramName -match '^(after|event)$' -and $attributesSection -match "@bind-[^:\s]*:$paramName") {
                 continue
             }
             
@@ -254,16 +350,28 @@ foreach ($file in $razorFiles) {
     }
 }
 
+# Report structural constraint violations first
+if ($structuralViolations.Count -gt 0) {
+    Write-Host "`n🏗️ STRUCTURAL CONSTRAINT VIOLATIONS:" -ForegroundColor Red
+    foreach ($violation in $structuralViolations) {
+        Write-Host "  ❌ $($violation.File):$($violation.LineNumber) - $($violation.Component) used outside required parent" -ForegroundColor Red
+        Write-Host "     Required: $($violation.Description)" -ForegroundColor Yellow
+    }
+}
+
 # Report Results
 Write-Host "`n📊 VALIDATION RESULTS:" -ForegroundColor Cyan
-Write-Host "  Total violations found: $($violations.Count)" -ForegroundColor $(if ($violations.Count -eq 0) { 'Green' } else { 'Red' })
+$totalViolations = $violations.Count + $structuralViolations.Count
+Write-Host "  Total violations found: $totalViolations" -ForegroundColor $(if ($totalViolations -eq 0) { 'Green' } else { 'Red' })
+Write-Host "    Parameter violations: $($violations.Count)" -ForegroundColor $(if ($violations.Count -eq 0) { 'Green' } else { 'Red' })
+Write-Host "    Structural violations: $($structuralViolations.Count)" -ForegroundColor $(if ($structuralViolations.Count -eq 0) { 'Green' } else { 'Red' })
 Write-Host "  Files scanned: $($razorFiles.Count)" -ForegroundColor White
 Write-Host "  R* components found: $totalComponentsFound" -ForegroundColor White
 Write-Host "  Component types validated: $($componentParameters.Count)" -ForegroundColor White
 
-if ($violations.Count -eq 0) {
-    Write-Host "  ✅ No parameter violations found!" -ForegroundColor Green
-    return @{ Success = $true; Violations = @() }
+if ($totalViolations -eq 0) {
+    Write-Host "  ✅ No violations found!" -ForegroundColor Green
+    return @{ Success = $true; Violations = @(); StructuralViolations = @() }
 }
 
 # Group violations by component
@@ -328,11 +436,15 @@ Write-Host "`n💡 RECOMMENDATIONS:" -ForegroundColor Cyan
 Write-Host "  • Use source code as truth, not incomplete documentation" -ForegroundColor Gray
 Write-Host "  • Consider parameter naming conventions (camelCase vs PascalCase)" -ForegroundColor Gray
 Write-Host "  • Check component documentation for parameter usage examples" -ForegroundColor Gray
+Write-Host "  • Ensure child components are used within their required parent components" -ForegroundColor Gray
 
 return @{
-    Success = $violations.Count -eq 0
+    Success = $totalViolations -eq 0
     Violations = $violations
+    StructuralViolations = $structuralViolations
     ViolationCount = $violations.Count
+    StructuralViolationCount = $structuralViolations.Count
+    TotalViolationCount = $totalViolations
     ComponentsScanned = $componentParameters.Count
     FilesScanned = $razorFiles.Count
 }
