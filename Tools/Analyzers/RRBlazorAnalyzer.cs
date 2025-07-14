@@ -1,4 +1,6 @@
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Text;
 using System;
@@ -6,7 +8,6 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
-using System.Text.Json;
 using System.Text.RegularExpressions;
 
 namespace RR.Blazor.Analyzers
@@ -37,7 +38,7 @@ namespace RR.Blazor.Analyzers
         private static readonly DiagnosticDescriptor DeprecatedParameterRule = new DiagnosticDescriptor(
             "RR1003",
             "Deprecated RR.Blazor parameter",
-            "Parameter '{0}' on component '{1}' is deprecated. Use '{2}' instead{3}.",
+            "Parameter '{0}' on component '{1}' is deprecated. Use '{2}' instead.",
             Category,
             DiagnosticSeverity.Warning,
             isEnabledByDefault: true,
@@ -52,27 +53,29 @@ namespace RR.Blazor.Analyzers
             isEnabledByDefault: true,
             helpLinkUri: "https://docs.rr-blazor.dev/styling");
 
-        public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
-            ImmutableArray.Create(InvalidComponentParameterRule, UnknownComponentRule, DeprecatedParameterRule, InlineStyleRule);
+        private static readonly DiagnosticDescriptor MalformedIconRule = new DiagnosticDescriptor(
+            "RR1005",
+            "Malformed icon attribute",
+            "Icon attribute appears to be malformed. Ensure proper syntax: Icon=\"value\" IconPosition=\"IconPosition.Start\"",
+            Category,
+            DiagnosticSeverity.Error,
+            isEnabledByDefault: true,
+            helpLinkUri: "https://docs.rr-blazor.dev/icons");
 
-        private Dictionary<string, ComponentInfo> componentDocs = new Dictionary<string, ComponentInfo>();
+        public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
+            ImmutableArray.Create(InvalidComponentParameterRule, UnknownComponentRule, DeprecatedParameterRule, InlineStyleRule, MalformedIconRule);
+
+        private Dictionary<string, ComponentInfo> componentRegistry = new Dictionary<string, ComponentInfo>();
 
         public override void Initialize(AnalysisContext context)
         {
             context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
             context.EnableConcurrentExecution();
 
-            // Register to analyze additional files (AI docs)
             context.RegisterCompilationStartAction(compilationContext =>
             {
-                // Load AI documentation from additional files
-                var aiDocsFile = compilationContext.Options.AdditionalFiles
-                    .FirstOrDefault(f => Path.GetFileName(f.Path) == "rr-ai-docs.json");
-
-                if (aiDocsFile != null)
-                {
-                    LoadComponentDocumentation(aiDocsFile);
-                }
+                // Build component registry from actual source files
+                BuildComponentRegistryFromSource(compilationContext);
 
                 // Register to analyze Razor files
                 compilationContext.RegisterAdditionalFileAction(fileContext =>
@@ -85,36 +88,82 @@ namespace RR.Blazor.Analyzers
             });
         }
 
-        private void LoadComponentDocumentation(AdditionalText aiDocsFile)
+        private void BuildComponentRegistryFromSource(CompilationStartAnalysisContext context)
         {
-            try
+            // Find all R*.razor component files in RR.Blazor project
+            var componentFiles = context.Options.AdditionalFiles
+                .Where(f => f.Path.Contains("RR.Blazor") && 
+                           f.Path.Contains("Components") && 
+                           Path.GetExtension(f.Path) == ".razor" &&
+                           Path.GetFileNameWithoutExtension(f.Path).StartsWith("R"))
+                .ToList();
+
+            foreach (var file in componentFiles)
             {
-                var content = aiDocsFile.GetText()?.ToString();
-                if (string.IsNullOrEmpty(content)) return;
-
-                using var doc = JsonDocument.Parse(content);
-                if (doc.RootElement.TryGetProperty("components", out var componentsElement))
+                try
                 {
-                    foreach (var component in componentsElement.EnumerateObject())
-                    {
-                        var info = new ComponentInfo { Name = component.Name };
-                        
-                        if (component.Value.TryGetProperty("parameters", out var parametersElement))
-                        {
-                            foreach (var param in parametersElement.EnumerateObject())
-                            {
-                                info.Parameters.Add(param.Name);
-                            }
-                        }
+                    var sourceText = file.GetText();
+                    if (sourceText == null) continue;
 
-                        componentDocs[component.Name] = info;
+                    var content = sourceText.ToString();
+                    var componentName = Path.GetFileNameWithoutExtension(file.Path);
+                    
+                    // Extract parameters from @code block
+                    var parameters = ExtractParametersFromRazorFile(content);
+                    
+                    componentRegistry[componentName] = new ComponentInfo 
+                    { 
+                        Name = componentName,
+                        Parameters = new HashSet<string>(parameters)
+                    };
+                }
+                catch (Exception)
+                {
+                    // Silently continue - don't crash analyzer
+                }
+            }
+        }
+
+        private List<string> ExtractParametersFromRazorFile(string content)
+        {
+            var parameters = new List<string>();
+            
+            // Extract @code blocks with better handling of nested braces
+            var codeBlockRegex = new Regex(@"@code\s*{((?:[^{}]|{[^{}]*})*?)}", RegexOptions.Singleline);
+            var codeBlocks = codeBlockRegex.Matches(content);
+
+            foreach (Match codeBlock in codeBlocks)
+            {
+                var codeContent = codeBlock.Groups[1].Value;
+                
+                // Find [Parameter] properties with improved regex that handles multi-line definitions and attributes
+                var parameterRegex = new Regex(@"\[Parameter\](?:\s*\[[^\]]*\])*\s*(?:\/\/\/[^\r\n]*[\r\n]+)*\s*(?:\/\*\*[^*]*\*+(?:[^/*][^*]*\*+)*\/\s*)*(?:public\s+)?(?:virtual\s+)?(?:override\s+)?([^=\s]+)\s+(\w+)\s*(?:{[^}]*}|;)", RegexOptions.Multiline | RegexOptions.IgnoreCase);
+                var parameterMatches = parameterRegex.Matches(codeContent);
+
+                foreach (Match paramMatch in parameterMatches)
+                {
+                    var parameterName = paramMatch.Groups[2].Value;
+                    if (!string.IsNullOrEmpty(parameterName))
+                    {
+                        parameters.Add(parameterName);
+                    }
+                }
+
+                // Also find EventCallback parameters which might have different patterns
+                var eventCallbackRegex = new Regex(@"\[Parameter\](?:\s*\[[^\]]*\])*\s*(?:\/\/\/[^\r\n]*[\r\n]+)*\s*(?:public\s+)?EventCallback(?:<[^>]*>)?\s+(\w+)\s*(?:{[^}]*}|;)", RegexOptions.Multiline | RegexOptions.IgnoreCase);
+                var eventCallbackMatches = eventCallbackRegex.Matches(codeContent);
+
+                foreach (Match eventMatch in eventCallbackMatches)
+                {
+                    var parameterName = eventMatch.Groups[1].Value;
+                    if (!string.IsNullOrEmpty(parameterName))
+                    {
+                        parameters.Add(parameterName);
                     }
                 }
             }
-            catch (Exception)
-            {
-                // Silently fail - analyzer shouldn't crash compilation
-            }
+
+            return parameters;
         }
 
         private void AnalyzeRazorFile(AdditionalFileAnalysisContext context)
@@ -125,17 +174,26 @@ namespace RR.Blazor.Analyzers
             var content = sourceText.ToString();
             
             // Skip if no RR.Blazor components
-            if (!content.Contains("<R")) return;
+            if (!content.Contains("<R") && !content.Contains("</R")) return;
 
-            // Regex to match RR.Blazor components
-            var componentRegex = new Regex(@"<(R[A-Z][a-zA-Z]*)\s+([^>]*?)/?>");
+            // Skip RR.Blazor component files themselves
+            if (context.AdditionalFile.Path.Contains("RR.Blazor") && 
+                context.AdditionalFile.Path.Contains("Components")) return;
+
+            // Analyze component usage
+            AnalyzeComponentUsage(context, sourceText, content);
+        }
+
+        private void AnalyzeComponentUsage(AdditionalFileAnalysisContext context, SourceText sourceText, string content)
+        {
+            // Regex to match RR.Blazor components (both self-closing and with content)
+            var componentRegex = new Regex(@"<(R[A-Z][a-zA-Z]*)\s+([^>]*?)(?:\s*/>|>)", RegexOptions.Multiline);
             var matches = componentRegex.Matches(content);
 
             foreach (Match match in matches)
             {
                 var componentName = match.Groups[1].Value;
                 var parametersText = match.Groups[2].Value;
-                var lineNumber = GetLineNumber(sourceText, match.Index);
                 var linePositionSpan = GetLinePositionSpan(sourceText, match.Index, match.Length);
 
                 // Parse parameters
@@ -149,12 +207,16 @@ namespace RR.Blazor.Analyzers
         private Dictionary<string, string> ParseParameters(string parametersText)
         {
             var parameters = new Dictionary<string, string>();
-            var paramRegex = new Regex(@"([a-zA-Z][a-zA-Z0-9]*)\s*=\s*""([^""]*)""");
+            
+            // Handle both simple and complex parameter patterns
+            var paramRegex = new Regex(@"([a-zA-Z][a-zA-Z0-9]*)\s*=\s*""([^""]*)""", RegexOptions.Multiline);
             var matches = paramRegex.Matches(parametersText);
 
             foreach (Match match in matches)
             {
-                parameters[match.Groups[1].Value] = match.Groups[2].Value;
+                var paramName = match.Groups[1].Value;
+                var paramValue = match.Groups[2].Value;
+                parameters[paramName] = paramValue;
             }
 
             return parameters;
@@ -166,50 +228,64 @@ namespace RR.Blazor.Analyzers
             var location = Location.Create(context.AdditionalFile.Path, 
                 new TextSpan(0, 0), linePositionSpan);
 
-            // Check if component exists
-            if (!componentDocs.ContainsKey(componentName))
+            // Check if component exists in our registry
+            if (!componentRegistry.ContainsKey(componentName))
             {
                 context.ReportDiagnostic(Diagnostic.Create(UnknownComponentRule, location, componentName));
                 return;
             }
 
-            var componentInfo = componentDocs[componentName];
+            var componentInfo = componentRegistry[componentName];
             var validParameters = new HashSet<string>(componentInfo.Parameters);
             
-            // Add common Blazor parameters
-            validParameters.UnionWith(new[] { "Class", "Id", "ChildContent", "@onclick", "@ref", "@bind-Value" });
+            // Add standard Blazor parameters
+            validParameters.UnionWith(new[] { 
+                "Class", "Id", "ChildContent", "AdditionalAttributes",
+                "@ref", "@key", "@onclick", "@onmouseenter", "@onmouseleave",
+                "@onfocus", "@onblur", "@onchange", "@oninput", "@onkeydown", "@onkeyup"
+            });
 
-            // Deprecated parameter mappings
-            var deprecatedParams = new Dictionary<string, (string replacement, string message)>
+            // Current deprecated parameters (based on CLAUDE.md migration)
+            var deprecatedParams = new Dictionary<string, string>
             {
-                ["Style"] = ("Class", " (use utility classes instead)"),
-                ["IsClickable"] = ("Clickable", ""),
-                ["Icon"] = ("StartIcon or EndIcon", " (based on position)"),
-                ["IconPosition"] = ("StartIcon or EndIcon", " (use StartIcon/EndIcon directly)")
+                ["StartIcon"] = "Icon + IconPosition=\"IconPosition.Start\"",
+                ["EndIcon"] = "Icon + IconPosition=\"IconPosition.End\"",
+                ["MaxHeight"] = "removed (use utility classes)"
             };
 
             foreach (var param in parameters)
             {
                 var paramName = param.Key.TrimStart('@');
+                var paramValue = param.Value;
 
-                // Check for Style attribute
-                if (paramName == "Style")
+                // Check for inline styles
+                if (paramName == "Style" || paramName == "style")
                 {
                     context.ReportDiagnostic(Diagnostic.Create(InlineStyleRule, location));
+                    continue;
+                }
+
+                // Check for malformed icon attributes
+                if (paramName == "Icon" && paramValue.Contains("IconPosition="))
+                {
+                    context.ReportDiagnostic(Diagnostic.Create(MalformedIconRule, location));
                     continue;
                 }
 
                 // Check for deprecated parameters
                 if (deprecatedParams.ContainsKey(paramName))
                 {
-                    var (replacement, message) = deprecatedParams[paramName];
+                    var replacement = deprecatedParams[paramName];
                     context.ReportDiagnostic(Diagnostic.Create(DeprecatedParameterRule, location, 
-                        paramName, componentName, replacement, message));
+                        paramName, componentName, replacement));
                     continue;
                 }
 
                 // Check if parameter is valid
-                if (!validParameters.Contains(paramName) && !paramName.StartsWith("on"))
+                if (!validParameters.Contains(paramName) && 
+                    !paramName.StartsWith("on") && 
+                    !paramName.StartsWith("@") &&
+                    !paramName.StartsWith("bind-"))
                 {
                     var availableParams = string.Join(", ", validParameters.Take(10));
                     if (validParameters.Count > 10) availableParams += "...";
@@ -218,11 +294,6 @@ namespace RR.Blazor.Analyzers
                         componentName, paramName, availableParams));
                 }
             }
-        }
-
-        private int GetLineNumber(SourceText sourceText, int position)
-        {
-            return sourceText.Lines.GetLineFromPosition(position).LineNumber + 1;
         }
 
         private LinePositionSpan GetLinePositionSpan(SourceText sourceText, int start, int length)

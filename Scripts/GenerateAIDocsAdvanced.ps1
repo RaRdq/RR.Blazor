@@ -123,10 +123,98 @@ foreach ($file in $componentFiles) {
         }
     }
     
-    # Extract parameters from entire component content (not just @code blocks)
-    # Updated pattern to match parameters anywhere in the file
-    $parameterPattern = '(?s)(?:\/\/\/\s*<summary>(.*?)<\/summary>\s*)?\[Parameter\](?:[^\[]*\[AIParameter\([^\]]*\))?\s*public\s+(\w+(?:\?)?)\s+(\w+)\s*\{[^}]*\}'
-    $paramMatches = [regex]::Matches($content, $parameterPattern)
+    # Extract parameters using a much more robust approach
+    # Split content into lines and process line by line for better accuracy
+    $lines = $content -split "`n"
+    $inCodeBlock = $false
+    $paramMatches = @()
+    
+    for ($i = 0; $i -lt $lines.Length; $i++) {
+        $line = $lines[$i].Trim()
+        
+        # Track if we're in a @code block
+        if ($line -match '@code\s*{') {
+            $inCodeBlock = $true
+            continue
+        }
+        if ($line -match '^\s*}\s*$' -and $inCodeBlock) {
+            $inCodeBlock = $false
+            continue
+        }
+        
+        # Look for [Parameter] attribute (can be standalone or with other attributes)
+        if ($line -match '\[Parameter[\],]') {
+            # Collect the full parameter definition which might span multiple lines
+            $parameterLines = @($line)
+            $parameterFound = $false
+            $j = $i + 1
+            
+            # Collect all lines until we find the property declaration
+            while ($j -lt $lines.Length -and $j -lt ($i + 10)) {
+                $nextLine = $lines[$j].Trim()
+                
+                # Skip empty lines
+                if ([string]::IsNullOrWhiteSpace($nextLine)) {
+                    $j++
+                    continue
+                }
+                
+                $parameterLines += $nextLine
+                
+                # Check if this line contains a property declaration
+                if ($nextLine -match '^(?:public\s+)?(?:virtual\s+)?(?:override\s+)?(\w+(?:<[^>]*>)?(?:\?)?)\s+(\w+)\s*\{\s*(?:get;?\s*set;?\s*\}|get;\s*set;\s*\}?)') {
+                    $paramType = $Matches[1]
+                    $paramName = $Matches[2]
+                    $parameterFound = $true
+                    break
+                }
+                
+                # Also check if the property is embedded in the current line
+                if ($nextLine -match '\[.*?\].*?(?:public\s+)?(?:virtual\s+)?(?:override\s+)?(\w+(?:<[^>]*>)?(?:\?)?)\s+(\w+)\s*\{\s*(?:get;?\s*set;?\s*\}|get;\s*set;\s*\}?)') {
+                    $paramType = $Matches[1]
+                    $paramName = $Matches[2]
+                    $parameterFound = $true
+                    break
+                }
+                
+                $j++
+            }
+            
+            if ($parameterFound) {
+                # Look backward for XML documentation
+                $description = ""
+                $k = $i - 1
+                while ($k -ge 0 -and $k -gt ($i - 5)) {
+                    $docLine = $lines[$k].Trim()
+                    if ($docLine -match '\/\/\/\s*<summary>(.*?)<\/summary>') {
+                        $description = $Matches[1].Trim()
+                        break
+                    }
+                    if ($docLine -match '\/\/\/\s*(.*)') {
+                        $description = $Matches[1].Trim()
+                        break
+                    }
+                    $k--
+                }
+                
+                # Create parameter match object
+                $paramMatch = @{
+                    Groups = @(
+                        @{ Success = $true; Value = ($parameterLines -join "`n") },  # Full match
+                        @{ Success = ![string]::IsNullOrEmpty($description); Value = $description },  # Description
+                        @{ Value = $paramType },  # Type
+                        @{ Value = $paramName }   # Name
+                    )
+                    Value = ($parameterLines -join "`n")
+                }
+                
+                $paramMatches += $paramMatch
+                
+                # Don't skip ahead - let the outer loop continue normally
+                # $i = $j
+            }
+        }
+    }
     
     foreach ($paramMatch in $paramMatches) {
         $paramDescription = if ($paramMatch.Groups[1].Success) { $paramMatch.Groups[1].Value.Trim() } else { '' }

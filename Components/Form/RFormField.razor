@@ -452,73 +452,14 @@
     
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender && Variant == FieldVariant.FloatingLabel)
-        {
-            await InitializeFloatingLabel();
-        }
-        else if (Variant == FieldVariant.FloatingLabel)
-        {
-            await UpdateFloatingLabelState();
-        }
+        // Removed JS-based floating label logic - handled purely with CSS
+        await Task.CompletedTask;
     }
     
     
-    private async Task InitializeFloatingLabel()
-    {
-        if (Variant != FieldVariant.FloatingLabel) return;
-        
-        try
-        {
-            // Initialize JavaScript floating label functionality using element references
-            // Check if the function exists before calling
-            var hasFunction = await JSRuntime.InvokeAsync<bool>("eval", "typeof initializeFloatingLabel === 'function'");
-            if (hasFunction)
-            {
-                await JSRuntime.InvokeVoidAsync("initializeFloatingLabel", inputElement, wrapperElement);
-            }
-        }
-        catch
-        {
-            // Ignore errors in initialization
-        }
-    }
+    // Removed - floating labels handled purely with CSS
     
-    private async Task UpdateFloatingLabelState()
-    {
-        if (Variant != FieldVariant.FloatingLabel) return;
-        
-        var newHasValue = !string.IsNullOrEmpty(Value);
-        
-        // Only update if state actually changed
-        if (newHasValue == hasValue) return;
-        
-        hasValue = newHasValue;
-        
-        try
-        {
-            // Update the wrapper classes via JavaScript for immediate response
-            var classes = new List<string>();
-            if (hasValue) classes.Add("form-field__wrapper--has-value");
-            if (isFocused) classes.Add("form-field__wrapper--floating");
-            
-            // Check if the function exists before calling
-            var hasFunction = await JSRuntime.InvokeAsync<bool>("eval", "typeof updateFloatingLabelClasses === 'function'");
-            if (hasFunction)
-            {
-                await JSRuntime.InvokeVoidAsync("updateFloatingLabelClasses", wrapperElement, string.Join(" ", classes));
-            }
-            else
-            {
-                // Fallback to Blazor state management
-                StateHasChanged();
-            }
-        }
-        catch
-        {
-            // Fallback to Blazor state management
-            StateHasChanged();
-        }
-    }
+    // Removed - floating labels handled purely with CSS
     
     private async Task TriggerDebouncedValidation()
     {
@@ -554,18 +495,7 @@
     public async ValueTask DisposeAsync()
     {
         validationDebounceTimer?.Dispose();
-        
-        if (Variant == FieldVariant.FloatingLabel)
-        {
-            try
-            {
-                await JSRuntime.InvokeVoidAsync("RRBlazor.cleanupComponent", $"wrapper-{InputId}");
-            }
-            catch
-            {
-                // Ignore disposal errors
-            }
-        }
+        await Task.CompletedTask;
     }
     
     private string GetFieldGroupClasses()
@@ -929,10 +859,7 @@
         hasValue = !string.IsNullOrEmpty(newValue);
         await ValueChanged.InvokeAsync(newValue);
         
-        if (Variant == FieldVariant.FloatingLabel)
-        {
-            await UpdateFloatingLabelState();
-        }
+        // CSS handles floating label state
     }
     
     private async Task HandleInput(ChangeEventArgs e)
@@ -957,10 +884,7 @@
             await TriggerDebouncedValidation();
         }
         
-        if (Variant == FieldVariant.FloatingLabel)
-        {
-            await UpdateFloatingLabelState();
-        }
+        // CSS handles floating label state
     }
     
     private async Task HandleCheckboxChange(ChangeEventArgs e)
@@ -981,10 +905,7 @@
         // Don't mark as user interacted on focus - only on blur or value change
         await OnFocus.InvokeAsync(e);
         
-        if (Variant == FieldVariant.FloatingLabel)
-        {
-            await UpdateFloatingLabelState();
-        }
+        // CSS handles floating label state
     }
     
     private async Task HandleBlur(FocusEventArgs e)
@@ -999,10 +920,7 @@
             await TriggerImmediateValidation();
         }
         
-        if (Variant == FieldVariant.FloatingLabel)
-        {
-            await UpdateFloatingLabelState();
-        }
+        // CSS handles floating label state
     }
     
     private async Task HandleKeyDown(KeyboardEventArgs e)

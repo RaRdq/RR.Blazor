@@ -308,6 +308,13 @@ window.RRBlazor = {
         }
     },
     
+    // Update URL without causing page scroll
+    updateUrlWithoutScroll: function(newUrl) {
+        if (window.history && window.history.pushState) {
+            window.history.pushState({ path: newUrl }, '', newUrl);
+        }
+    },
+    
     // Adjust dropdown position based on viewport constraints
     adjustDropdownPosition: function(dropdownElement) {
         if (!dropdownElement) return;
@@ -390,6 +397,10 @@ window.updateFloatingLabelClasses = function(wrapperElement, classString) {
 
 window.initializeFloatingLabel = function(inputElement, wrapperElement) {
     return RRBlazor.initializeFloatingLabel(inputElement, wrapperElement);
+};
+
+window.updateUrlWithoutScroll = function(newUrl) {
+    return RRBlazor.updateUrlWithoutScroll(newUrl);
 };
 
 
