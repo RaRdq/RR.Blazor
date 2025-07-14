@@ -1,0 +1,107 @@
+@** 
+<summary>
+Professional chip component for tags, filters, and selections with interactive states.
+Supports removable chips, selection indicators, icons, and multiple variants.
+</summary>
+<category>Core</category>
+<complexity>Simple</complexity>
+<ai-prompt>Create a chip/tag for filters, selections, or labels</ai-prompt>
+<ai-common-use>filter chips, tag lists, multi-select indicators, status tags</ai-common-use>
+<ai-avoid>Don't use for buttons - use RButton. Avoid for large content blocks.</ai-avoid>
+<ai-pattern name="filter-chip">Clickable="true" OnClick="ToggleFilter" for interactive filters</ai-pattern>
+<ai-pattern name="removable-chip">Closeable="true" OnClose="RemoveChip" for deletable tags</ai-pattern>
+<ai-pattern name="selected-chip">Selected="true" for active state indication</ai-pattern>
+**@
+@using RR.Blazor.Enums
+
+<span class="@GetChipClasses()" @onclick="HandleClick">
+    @if (!string.IsNullOrEmpty(Icon) && IconPosition == IconPosition.Start)
+    {
+        <i class="material-symbols-rounded chip__icon chip__icon--start">@Icon</i>
+    }
+    
+    <span class="chip__label">@Text</span>
+    
+    @if (!string.IsNullOrEmpty(Icon) && IconPosition == IconPosition.End && !Closeable)
+    {
+        <i class="material-symbols-rounded chip__icon chip__icon--end">@Icon</i>
+    }
+    
+    @if (Closeable)
+    {
+        <button class="chip__close" @onclick:stopPropagation="true" @onclick="HandleClose" aria-label="Remove @Text">
+            <i class="material-symbols-rounded">close</i>
+        </button>
+    }
+</span>
+
+@code {
+    [Parameter] public string Text { get; set; } = "";
+    [Parameter] public string Icon { get; set; }
+    [Parameter] public IconPosition IconPosition { get; set; } = IconPosition.Start;
+    [Parameter] public ChipVariant Variant { get; set; } = ChipVariant.Default;
+    [Parameter] public ChipSize Size { get; set; } = ChipSize.Medium;
+    [Parameter] public bool Clickable { get; set; }
+    [Parameter] public bool Selected { get; set; }
+    [Parameter] public bool Closeable { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public EventCallback OnClick { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public string Class { get; set; }
+
+    private string GetChipClasses()
+    {
+        var classes = new List<string> { "chip" };
+        
+        // Variant
+        classes.Add($"chip--{Variant.ToString().ToLower()}");
+        
+        // Size
+        classes.Add($"chip--{Size.ToString().ToLower()}");
+        
+        // States
+        if (Clickable && !Disabled)
+        {
+            classes.Add("chip--clickable");
+        }
+        
+        if (Selected)
+        {
+            classes.Add("chip--selected");
+        }
+        
+        if (Closeable)
+        {
+            classes.Add("chip--closeable");
+        }
+        
+        if (Disabled)
+        {
+            classes.Add("chip--disabled");
+        }
+        
+        if (!string.IsNullOrEmpty(Class))
+        {
+            classes.Add(Class);
+        }
+        
+        return string.Join(" ", classes);
+    }
+
+    private async Task HandleClick()
+    {
+        if (Clickable && !Disabled && OnClick.HasDelegate)
+        {
+            await OnClick.InvokeAsync();
+        }
+    }
+
+    private async Task HandleClose()
+    {
+        if (!Disabled && OnClose.HasDelegate)
+        {
+            await OnClose.InvokeAsync();
+        }
+    }
+}
+

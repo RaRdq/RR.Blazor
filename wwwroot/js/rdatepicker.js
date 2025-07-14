@@ -364,7 +364,15 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-// Export for module systems
+// Export for ES6 modules
+export const init = window.RDatePicker.init.bind(window.RDatePicker);
+export const open = window.RDatePicker.open.bind(window.RDatePicker);
+export const close = window.RDatePicker.close.bind(window.RDatePicker);
+export const formatDate = window.RDatePicker.formatDate.bind(window.RDatePicker);
+export const parseDate = window.RDatePicker.parseDate.bind(window.RDatePicker);
+export const destroy = window.RDatePicker.destroy.bind(window.RDatePicker);
+
+// Export for CommonJS modules
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = window.RDatePicker;
 }

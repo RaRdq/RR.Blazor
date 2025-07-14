@@ -4,23 +4,56 @@
   position: relative;
   
   &__trigger {
-    background: none;
-    border: none;
+    background: var(--color-background-elevated);
+    border: var(--border-1) solid var(--color-border-light);
+    border-radius: var(--radius-md);
     margin: 0;
-    padding: 0;
+    padding: var(--space-3) var(--space-4);
     cursor: pointer;
-    transition: var(--transition-colors);
+    transition: all var(--duration-normal) var(--ease-out);
     width: 100%;
     text-align: left;
+    position: relative;
+    overflow: hidden;
     
-    &:hover {
-      opacity: 0.8;
+    // Add dropdown indicator
+    &::after {
+      content: 'expand_more';
+      font-family: 'Material Symbols Rounded';
+      position: absolute;
+      right: var(--space-3);
+      top: 50%;
+      transform: translateY(-50%);
+      transition: transform var(--duration-normal) var(--ease-out);
+      font-size: var(--icon-base);
+      color: var(--color-text-secondary);
     }
     
-    &:focus {
+    &--open::after {
+      transform: translateY(-50%) rotate(180deg);
+    }
+    
+    &:hover:not(:disabled) {
+      border-color: var(--color-border-medium);
+      box-shadow: var(--shadow-sm);
+      transform: translateY(-1px);
+    }
+    
+    &:focus:not(:disabled) {
       outline: var(--border-2) solid var(--color-interactive-focus);
-      outline-offset: var(--border-2);
-      border-radius: var(--radius-sm);
+      outline-offset: var(--border-1);
+      border-color: var(--color-interactive-primary);
+    }
+    
+    &:disabled {
+      opacity: var(--opacity-disabled);
+      cursor: not-allowed;
+      
+      &:hover {
+        transform: none;
+        box-shadow: none;
+        border-color: var(--color-border-light);
+      }
     }
   }
   
@@ -35,17 +68,23 @@
     background: var(--color-background-elevated);
     border: var(--border-1) solid var(--color-border-light);
     border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-lg);
-    min-width: var(--container-xs);
+    box-shadow: var(--shadow-xl);
+    backdrop-filter: blur(16px);
+    min-width: 20rem;
     max-width: min(400px, 90vw);
     max-height: min(400px, 40vh);
     overflow-y: auto;
     width: max-content;
     animation: dropdownSlideIn var(--duration-normal) var(--ease-out);
     
+    // Modern glassmorphism effect
+    @supports (backdrop-filter: blur(var(--blur-lg))) {
+      background: color-mix(in srgb, var(--color-background-elevated) 85%, transparent);
+    }
+    
     // Custom scrollbar
     &::-webkit-scrollbar {
-      width: 4px;
+      width: var(--space-1);
     }
     
     &::-webkit-scrollbar-track {
@@ -54,7 +93,7 @@
     
     &::-webkit-scrollbar-thumb {
       background: var(--color-border-medium);
-      border-radius: 2px;
+      border-radius: var(--radius-sm);
       
       &:hover {
         background: var(--color-border-strong);
@@ -65,8 +104,14 @@
   // Animation for top positions
   &--top &__content,
   &--topend &__content,
-  &--topstart &__content {
+  &--topstart &__content,
+  &--position-above &__content {
     animation: dropdownSlideUp var(--duration-normal) var(--ease-out);
+  }
+  
+  // Animation for bottom positions
+  &--position-below &__content {
+    animation: dropdownSlideIn var(--duration-normal) var(--ease-out);
   }
   
   // BOTTOM positioning - below trigger (default)
@@ -168,18 +213,19 @@
   &__item {
     background: none;
     border: none;
-    margin: 0;
+    margin: var(--space-1) var(--space-2);
     padding: 0;
     display: flex;
     align-items: center;
     gap: var(--space-3);
-    width: 100%;
-    padding: var(--space-3) var(--space-4);
+    width: calc(100% - #{var(--space-4)});
+    padding: var(--space-3) var(--space-3);
     text-align: left;
     color: var(--color-text-secondary);
     transition: all var(--duration-normal) var(--ease-out);
     cursor: pointer;
     position: relative;
+    border-radius: var(--radius-md);
     
     // Icon styling
     i {
@@ -193,17 +239,21 @@
       flex: 1;
       font-size: var(--text-sm);
       font-weight: var(--font-medium);
+      line-height: 1.4;
     }
     
     &:hover:not(&--disabled) {
       background: var(--color-interactive-light);
       color: var(--color-text-primary);
+      transform: translateX(var(--space-px));
+      box-shadow: var(--shadow-sm);
     }
     
     &--active {
       background: var(--color-interactive-primary);
       color: var(--color-text-inverse);
       font-weight: var(--font-semibold);
+      box-shadow: var(--shadow-sm);
       
       &::before {
         content: '';
@@ -211,26 +261,34 @@
         left: 0;
         top: 50%;
         transform: translateY(-50%);
-        width: 3px;
+        width: var(--space-1);
         height: 60%;
         background: var(--color-text-inverse);
-        border-radius: 0 2px 2px 0;
+        border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+      }
+      
+      &:hover {
+        background: var(--color-interactive-hover);
+        transform: translateX(var(--space-px));
       }
     }
     
     &--disabled {
-      opacity: 0.5;
+      opacity: var(--opacity-disabled);
       cursor: not-allowed;
       
       &:hover {
         background: none;
         color: var(--color-text-secondary);
+        transform: none;
+        box-shadow: none;
       }
     }
     
     // Check icon alignment
     > i:last-child {
       margin-left: auto;
+      opacity: var(--opacity-disabled);
     }
   }
   

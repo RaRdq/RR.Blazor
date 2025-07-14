@@ -130,6 +130,26 @@ export function disposeSystemThemeListener() {
     }
 }
 
+// Enhanced setTheme export for modules
+export function setTheme(theme) {
+    if (theme && typeof theme === 'string') {
+        const normalizedTheme = theme.toLowerCase();
+        const effectiveTheme = normalizedTheme === 'system' ? getEffectiveTheme(normalizedTheme) : normalizedTheme;
+        
+        const themeData = {
+            mode: effectiveTheme,
+            colors: {},
+            customVariables: {},
+            animations: true,
+            accessibility: false,
+            highContrast: getSystemHighContrast()
+        };
+        
+        return applyTheme(themeData);
+    }
+    return false;
+}
+
 // Utility functions for theme management
 export function getEffectiveTheme(themeMode) {
     switch (themeMode) {
@@ -203,6 +223,20 @@ export function validateTheme(themeData) {
     return true;
 }
 
+// Export theme info for compatibility
+export function getThemeInfo() {
+    const currentTheme = getCurrentTheme();
+    const systemDark = getSystemDarkMode();
+    const highContrast = getSystemHighContrast();
+    
+    return {
+        current: currentTheme,
+        systemDark: Boolean(systemDark),
+        highContrast: Boolean(highContrast),
+        effectiveTheme: currentTheme
+    };
+}
+
 // Global theme utilities
 window.RRTheme = {
     applyTheme,
@@ -213,5 +247,33 @@ window.RRTheme = {
     getCurrentTheme,
     setCSSVariable,
     getCSSVariable,
-    validateTheme
+    validateTheme,
+    getThemeInfo
 };
+
+// Initialize theme immediately (before DOM load)
+(function() {
+    // Get stored theme or default to 'system'
+    let themeMode = 'system';
+    try {
+        const stored = localStorage.getItem('rr-blazor-theme');
+        if (stored) {
+            const config = JSON.parse(stored);
+            themeMode = config.Mode || 'system';
+        }
+    } catch (e) {
+        // Ignore errors, use default
+    }
+    
+    // Apply system preference if mode is system
+    if (themeMode === 'system' || themeMode === '0') {
+        themeMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    } else if (themeMode === '1') {
+        themeMode = 'light';
+    } else if (themeMode === '2') {
+        themeMode = 'dark';
+    }
+    
+    // Apply theme immediately
+    document.documentElement.setAttribute('data-theme', themeMode);
+})();

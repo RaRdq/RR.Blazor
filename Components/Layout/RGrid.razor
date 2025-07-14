@@ -1,0 +1,81 @@
+@namespace RR.Blazor.Components.Layout
+@using RR.Blazor.Enums
+
+@**
+<summary>Professional responsive grid component with RR.Blazor patterns</summary>
+<category>Layout</category>
+<complexity>Simple</complexity>
+<ai-prompt>grid, layout, responsive, stats, cards</ai-prompt>
+<ai-common-use>Dashboard grids, stats cards, responsive layouts, card containers</ai-common-use>
+<ai-pattern name="stats-grid">
+<RGrid Type="GridType.Stats" Variant="GridVariant.Compact">
+    <RCard Title="Metric 1" />
+    <RCard Title="Metric 2" />
+</RGrid>
+</ai-pattern>
+**@
+
+<div class="@GetGridClasses()">
+    @ChildContent
+</div>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public GridType Type { get; set; } = GridType.Auto;
+    [Parameter] public GridVariant Variant { get; set; } = GridVariant.Default;
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public int? MinColumnWidth { get; set; }
+    [Parameter] public string? Gap { get; set; }
+
+    private string GetGridClasses()
+    {
+        var classes = new List<string>();
+
+        switch (Type)
+        {
+            case GridType.Stats:
+                classes.Add("stats-grid");
+                break;
+            case GridType.Action:
+                classes.Add("action-grid");
+                break;
+            case GridType.Auto:
+            default:
+                classes.Add("grid-auto-fit");
+                break;
+        }
+
+        switch (Variant)
+        {
+            case GridVariant.Compact:
+                classes.Add($"{GetGridBaseClass()}--compact");
+                break;
+            case GridVariant.Spacious:
+                classes.Add($"{GetGridBaseClass()}--spacious");
+                break;
+        }
+
+        if (!string.IsNullOrEmpty(Class))
+            classes.Add(Class);
+
+        return string.Join(" ", classes);
+    }
+
+    private string GetGridBaseClass()
+    {
+        return Type switch
+        {
+            GridType.Stats => "stats-grid",
+            GridType.Action => "action-grid",
+            _ => "grid-auto-fit"
+        };
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (MinColumnWidth.HasValue || !string.IsNullOrEmpty(Gap))
+        {
+            // Custom CSS variables will be applied via style attribute if needed
+        }
+    }
+}

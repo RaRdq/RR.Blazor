@@ -12,7 +12,10 @@ AI agents consistently hallucinate component APIs, mix framework versions, and g
 
 ## Key Features
 
+- **Everything ON by Default**: Full functionality works out-of-the-box with zero configuration
+- **Fluent Configuration API**: Clean, chainable configuration with `.WithTheme()`, `.WithToasts()`, etc.
 - **100% Theme-aware**: Dynamic light/dark/high-contrast modes with CSS variables
+- **Complete Toast System**: Auto-dismissing notifications with manual close, positioning, and animations
 - **Accessibility First**: WCAG 2.1 AA compliant with screen reader support  
 - **Zero Dependencies**: Pure Blazor components, no external UI libraries
 - **Fully Responsive**: Mobile-first design with 44px touch targets
@@ -62,6 +65,11 @@ builder.Services.AddRRBlazor(blazor => blazor
         .PrimaryColor = "#3498DB"
         .WithAnimations(true)
     )
+    .WithToasts(toast => {
+        toast.Position = ToastPosition.BottomRight;
+        toast.DefaultDuration = 6000;
+        toast.MaxToasts = 10;
+    })
 );
 ```
 
@@ -108,6 +116,50 @@ builder.Services.AddRRBlazor(blazor => blazor
     </div>
 </RCard>
 ```
+
+## Configuration Philosophy
+
+RR.Blazor follows the **"Everything ON by Default"** principle - all services and functionality work immediately with sensible defaults, while providing a fluent API for customization when needed.
+
+### Default Behavior
+```csharp
+// Everything works immediately - no configuration required
+builder.Services.AddRRBlazor();
+```
+
+**What you get automatically:**
+- ✅ Complete theme system (follows system preferences)
+- ✅ Full toast notification system (4s auto-hide, close buttons, top-right)
+- ✅ Professional animations and transitions
+- ✅ All 49 components with consistent styling
+- ✅ 800+ utility classes available
+- ✅ Accessibility features enabled
+
+### Fluent Customization
+```csharp
+// Customize only what you need
+builder.Services.AddRRBlazor(options => options
+    .WithTheme(theme => {
+        theme.Mode = ThemeMode.Dark;           // Force dark mode
+        theme.PrimaryColor = "#FF6B35";        // Brand color
+        theme.AnimationsEnabled = false;       // Disable animations
+    })
+    .WithToasts(toast => {
+        toast.Position = ToastPosition.BottomCenter;  // Different position
+        toast.DefaultDuration = 8000;                 // Longer display
+        toast.MaxToasts = 3;                          // Fewer simultaneous
+        toast.PreventDuplicates = true;               // Block duplicates
+    })
+    .WithAnimations(false)                     // Global animation toggle
+);
+```
+
+### Design Benefits
+- **Zero Learning Curve**: Works immediately for new users
+- **Progressive Enhancement**: Customize as you learn
+- **Consistent API**: All `.With*()` methods follow same pattern  
+- **Type Safety**: Full IntelliSense and compile-time checking
+- **Future Proof**: Easy to add new configuration options
 
 ## AI Integration
 
@@ -241,7 +293,7 @@ Add these to your AI assistant's context:
 - **RModalProvider** - Modal management service
 - **RPreviewModal** - Content preview modals
 - **RSelectModal** - Selection interface modals
-- **RToastContainer** - Toast notification system
+- **RToastContainer** - Complete toast notification system with auto-removal and manual close
 
 ### Navigation Components (5)
 - **RBreadcrumbs** - Breadcrumb trail navigation
@@ -442,6 +494,10 @@ RR.Blazor includes 800+ utility classes inspired by modern CSS frameworks:
 ```
 
 ### Toast Notifications
+
+RR.Blazor includes a complete toast notification system that works out-of-the-box with automatic positioning, animations, and theme integration.
+
+#### Basic Usage
 ```razor
 @inject IToastService ToastService
 
@@ -455,7 +511,58 @@ RR.Blazor includes 800+ utility classes inspired by modern CSS frameworks:
     {
         ToastService.ShowError("An error occurred", "Error Details");
     }
+    
+    private void ShowCustomToast()
+    {
+        ToastService.Show(new ToastMessage 
+        {
+            Type = ToastType.Info,
+            Title = "Custom Toast",
+            Message = "This toast has custom settings",
+            Duration = 0, // Never auto-hide
+            ActionText = "Dismiss",
+            OnAction = () => Console.WriteLine("Action clicked!")
+        });
+    }
 }
+```
+
+#### Toast Configuration
+```csharp
+// Configure toast behavior in Program.cs
+builder.Services.AddRRBlazor(options => options
+    .WithToasts(toast => {
+        toast.Position = ToastPosition.TopRight;    // TopLeft, TopCenter, TopRight,
+                                                   // BottomLeft, BottomCenter, BottomRight
+        toast.MaxToasts = 5;                       // Maximum visible toasts
+        toast.DefaultDuration = 4000;              // Auto-hide after 4 seconds
+        toast.ShowCloseButton = true;              // X button to manually close
+        toast.NewestOnTop = true;                  // Stack newest toasts on top
+        toast.PreventDuplicates = false;           // Allow similar messages
+    })
+);
+```
+
+#### Default Settings (Everything Enabled)
+- **Position**: `ToastPosition.TopRight` - Professional placement
+- **Duration**: `4000ms` (4 seconds) - Optimal reading time
+- **Max Toasts**: `5` - Prevents UI overflow
+- **Close Button**: `true` - Always allow manual dismissal
+- **Auto-Hide**: `true` - Toasts disappear automatically
+- **Animations**: Full slide-in/out with position-aware directions
+
+#### Toast Container Setup
+```razor
+<!-- Add to your main layout (automatically included in RAppShell) -->
+<RToastContainer />
+```
+
+#### Toast Types and Icons
+```csharp
+ToastService.ShowSuccess("Success message");    // ✓ check_circle
+ToastService.ShowError("Error message");        // ❌ error  
+ToastService.ShowWarning("Warning message");    // ⚠️ warning
+ToastService.ShowInfo("Info message");          // ℹ️ info
 ```
 
 ## Theme System

@@ -94,49 +94,15 @@ class ModalProvider {
     }
 }
 
-// Export utility functions that can be used by individual modals
 export const modalUtils = {
-    // Copy text to clipboard with fallback for older browsers
     copyToClipboard(text) {
-        if (navigator.clipboard && window.isSecureContext) {
-            return navigator.clipboard.writeText(text);
-        } else {
-            // Fallback for older browsers or non-HTTPS contexts
-            const textArea = document.createElement('textarea');
-            textArea.value = text;
-            textArea.style.position = 'fixed';
-            textArea.style.left = '-999999px';
-            textArea.style.top = '-999999px';
-            document.body.appendChild(textArea);
-            textArea.focus();
-            textArea.select();
-
-            try {
-                document.execCommand('copy');
-                return Promise.resolve();
-            } catch (err) {
-                console.error('Failed to copy to clipboard:', err);
-                return Promise.reject(err);
-            } finally {
-                document.body.removeChild(textArea);
-            }
-        }
+        return RRBlazor.copyToClipboard(text);
     },
 
-    // Download content as file
     downloadContent(content, fileName, contentType = 'text/plain') {
-        const blob = new Blob([content], { type: contentType });
-        const url = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = fileName;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(url);
+        return RRBlazor.downloadContent(content, fileName, contentType);
     },
 
-    // Setup form validation for modal forms
     setupFormValidation(formElement) {
         if (!formElement) return;
 

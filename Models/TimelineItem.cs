@@ -9,7 +9,7 @@ namespace RR.Blazor.Models
         public string Title { get; set; } = "";
         public string Description { get; set; } = "";
         public string Subtitle { get; set; } = "";
-        public DateTime? Timestamp { get; set; } = DateTime.Now;
+        public DateTime? Timestamp { get; set; } = DateTime.UtcNow;
         public string Status { get; set; } = "default"; // default, success, warning, error, info, pending
         public string Icon { get; set; } = "";
         public string Avatar { get; set; } = "";

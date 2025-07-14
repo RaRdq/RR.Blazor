@@ -123,42 +123,38 @@ foreach ($file in $componentFiles) {
         }
     }
     
-    # Extract parameters from @code blocks
-    $codeBlockPattern = '@code\s*\{(.*?)\}'
-    if ($content -match $codeBlockPattern) {
-        $codeBlock = $Matches[1]
+    # Extract parameters from entire component content (not just @code blocks)
+    # Updated pattern to match parameters anywhere in the file
+    $parameterPattern = '(?s)(?:\/\/\/\s*<summary>(.*?)<\/summary>\s*)?\[Parameter\](?:[^\[]*\[AIParameter\([^\]]*\))?\s*public\s+(\w+(?:\?)?)\s+(\w+)\s*\{[^}]*\}'
+    $paramMatches = [regex]::Matches($content, $parameterPattern)
+    
+    foreach ($paramMatch in $paramMatches) {
+        $paramDescription = if ($paramMatch.Groups[1].Success) { $paramMatch.Groups[1].Value.Trim() } else { '' }
+        $paramType = $paramMatch.Groups[2].Value
+        $paramName = $paramMatch.Groups[3].Value
         
-        # Find Parameter attributes with better pattern matching
-        $parameterPattern = '(?s)\[Parameter\](?:[^\[]*\[AIParameter\([^\]]*\))?\s*public\s+(\w+(?:\?)?)\s+(\w+)\s*\{[^}]*\}'
-        $paramMatches = [regex]::Matches($codeBlock, $parameterPattern)
-        
-        foreach ($paramMatch in $paramMatches) {
-            $paramType = $paramMatch.Groups[1].Value
-            $paramName = $paramMatch.Groups[2].Value
-            
-            $parameter = @{
-                name = $paramName
-                type = $paramType
-                description = ''
-                aiHint = ''
-                isRequired = $false
-            }
-            
-            # Extract AIParameter hint if present (improved pattern)
-            if ($paramMatch.Value -match '\[AIParameter\(\s*"([^"]*)"') {
-                $parameter.aiHint = $Matches[1]
-            }
-            elseif ($paramMatch.Value -match '\[AIParameter\(\s*@"([^"]*)"') {
-                $parameter.aiHint = $Matches[1]
-            }
-            
-            # Check if parameter is marked as required
-            if ($paramMatch.Value -match 'Required\s*=\s*true' -or $paramType -notmatch '\?$') {
-                $parameter.isRequired = $true
-            }
-            
-            $component.parameters[$paramName] = $parameter
+        $parameter = @{
+            name = $paramName
+            type = $paramType
+            description = $paramDescription
+            aiHint = ''
+            isRequired = $false
         }
+        
+        # Extract AIParameter hint if present (improved pattern)
+        if ($paramMatch.Value -match '\[AIParameter\(\s*"([^"]*)"') {
+            $parameter.aiHint = $Matches[1]
+        }
+        elseif ($paramMatch.Value -match '\[AIParameter\(\s*@"([^"]*)"') {
+            $parameter.aiHint = $Matches[1]
+        }
+        
+        # Check if parameter is marked as required
+        if ($paramMatch.Value -match 'Required\s*=\s*true' -or $paramType -notmatch '\?$') {
+            $parameter.isRequired = $true
+        }
+        
+        $component.parameters[$paramName] = $parameter
     }
     
     $documentation.components[$componentName] = $component

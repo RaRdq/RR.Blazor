@@ -2,94 +2,6 @@
 // Supporting functions for component interactions
 
 window.RRBlazor = {
-    // ===== THEME MANAGEMENT SYSTEM =====
-    // Fast, efficient theme switching with no delays
-    
-    // Initialize theme on page load (called immediately)
-    initializeTheme: function() {
-        // Get stored theme or default to 'system'
-        let themeMode = 'system';
-        try {
-            const stored = localStorage.getItem('rr-blazor-theme');
-            if (stored) {
-                const config = JSON.parse(stored);
-                themeMode = config.Mode || 'system';
-            }
-        } catch (e) {
-            // Ignore errors, use default
-        }
-        
-        // Apply system preference if mode is system
-        if (themeMode === 'system' || themeMode === '0') {
-            themeMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-        } else if (themeMode === '1') {
-            themeMode = 'light';
-        } else if (themeMode === '2') {
-            themeMode = 'dark';
-        }
-        
-        // Apply theme immediately
-        document.documentElement.setAttribute('data-theme', themeMode);
-        return themeMode;
-    },
-    
-    // Set theme with instant application
-    setTheme: function(theme) {
-        if (theme && typeof theme === 'string') {
-            // Normalize theme value
-            const normalizedTheme = theme.toLowerCase();
-            document.documentElement.setAttribute('data-theme', normalizedTheme);
-            
-            // Store theme preference
-            try {
-                const config = { Mode: normalizedTheme };
-                localStorage.setItem('rr-blazor-theme', JSON.stringify(config));
-            } catch (e) {
-                // Ignore localStorage errors
-            }
-            
-            return true;
-        }
-        return false;
-    },
-    
-    // Get current theme information
-    getThemeInfo: function() {
-        const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
-        const systemDark = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)').matches : false;
-        const highContrast = window.matchMedia ? window.matchMedia('(prefers-contrast: more)').matches : false;
-        
-        return {
-            current: currentTheme,
-            systemDark: Boolean(systemDark),
-            highContrast: Boolean(highContrast),
-            effectiveTheme: currentTheme // Already resolved
-        };
-    },
-    
-    // Monitor system theme changes
-    watchSystemTheme: function(callback) {
-        if (!window.matchMedia) return null;
-        
-        const darkModeQuery = window.matchMedia('(prefers-color-scheme: dark)');
-        const highContrastQuery = window.matchMedia('(prefers-contrast: more)');
-        
-        const handler = () => {
-            if (callback) {
-                callback(this.getThemeInfo());
-            }
-        };
-        
-        darkModeQuery.addEventListener('change', handler);
-        highContrastQuery.addEventListener('change', handler);
-        
-        // Return cleanup function
-        return () => {
-            darkModeQuery.removeEventListener('change', handler);
-            highContrastQuery.removeEventListener('change', handler);
-        };
-    },
-    // Tab indicator positioning
     getTabIndicatorPosition: function(tabElementId) {
         const element = document.getElementById(tabElementId);
         if (!element) {
@@ -133,20 +45,29 @@ window.RRBlazor = {
         }
     },
     
-    // Copy text to clipboard
-    copyToClipboard: async function(text) {
-        try {
-            await navigator.clipboard.writeText(text);
-            return true;
-        } catch (err) {
-            // Fallback for older browsers
+    copyToClipboard: function(text) {
+        if (navigator.clipboard && window.isSecureContext) {
+            return navigator.clipboard.writeText(text);
+        } else {
+            // Fallback for older browsers or non-HTTPS contexts
             const textArea = document.createElement('textarea');
             textArea.value = text;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-999999px';
+            textArea.style.top = '-999999px';
             document.body.appendChild(textArea);
+            textArea.focus();
             textArea.select();
-            const success = document.execCommand('copy');
-            document.body.removeChild(textArea);
-            return success;
+
+            try {
+                document.execCommand('copy');
+                return Promise.resolve();
+            } catch (err) {
+                console.error('Failed to copy to clipboard:', err);
+                return Promise.reject(err);
+            } finally {
+                document.body.removeChild(textArea);
+            }
         }
     },
     
@@ -217,10 +138,29 @@ window.RRBlazor = {
         
         window.addEventListener('resize', updateIndicator);
         
-        // Store cleanup function
-        element._rrCleanup = () => {
-            window.removeEventListener('resize', updateIndicator);
-        };
+        // Enhanced scroll detection for mobile indicators
+        const navElement = element.querySelector('.tabs__nav');
+        if (navElement) {
+            const checkScrollable = () => {
+                const isScrollable = navElement.scrollWidth > navElement.clientWidth;
+                navElement.classList.toggle('scrollable', isScrollable);
+            };
+            
+            // Check on init and resize
+            checkScrollable();
+            window.addEventListener('resize', checkScrollable);
+            
+            // Store enhanced cleanup
+            element._rrCleanup = () => {
+                window.removeEventListener('resize', updateIndicator);
+                window.removeEventListener('resize', checkScrollable);
+            };
+        } else {
+            // Store cleanup function
+            element._rrCleanup = () => {
+                window.removeEventListener('resize', updateIndicator);
+            };
+        }
     },
     
     // Initialize form field component  
@@ -366,6 +306,60 @@ window.RRBlazor = {
             element._rrCleanup();
             delete element._rrCleanup;
         }
+    },
+    
+    // Adjust dropdown position based on viewport constraints
+    adjustDropdownPosition: function(dropdownElement) {
+        if (!dropdownElement) return;
+        
+        const viewport = dropdownElement.querySelector('.dropdown__viewport');
+        const content = dropdownElement.querySelector('.dropdown__content');
+        
+        if (!viewport || !content) return;
+        
+        // Get dropdown and viewport dimensions
+        const dropdownRect = dropdownElement.getBoundingClientRect();
+        const viewportHeight = window.innerHeight;
+        const viewportWidth = window.innerWidth;
+        
+        // Calculate space above and below the dropdown trigger
+        const spaceAbove = dropdownRect.top;
+        const spaceBelow = viewportHeight - dropdownRect.bottom;
+        
+        // Get content dimensions (temporarily show it to measure)
+        const originalDisplay = content.style.display;
+        content.style.visibility = 'hidden';
+        content.style.display = 'block';
+        const contentRect = content.getBoundingClientRect();
+        content.style.display = originalDisplay;
+        content.style.visibility = '';
+        
+        const contentHeight = contentRect.height || 250; // Fallback height
+        const shouldPositionAbove = spaceBelow < contentHeight && spaceAbove > spaceBelow;
+        
+        if (shouldPositionAbove) {
+            viewport.style.bottom = '100%';
+            viewport.style.top = 'auto';
+            viewport.style.marginBottom = '8px';
+            viewport.style.marginTop = '0';
+        } else {
+            viewport.style.top = '100%';
+            viewport.style.bottom = 'auto';
+            viewport.style.marginTop = '8px';
+            viewport.style.marginBottom = '0';
+        }
+        
+        if (dropdownRect.right + 320 > viewportWidth) { // 320px typical dropdown width
+            viewport.style.right = '0';
+            viewport.style.left = 'auto';
+        } else {
+            viewport.style.left = '0';
+            viewport.style.right = 'auto';
+        }
+        
+        const dropdown = dropdownElement;
+        dropdown.classList.remove('dropdown--position-above', 'dropdown--position-below');
+        dropdown.classList.add(shouldPositionAbove ? 'dropdown--position-above' : 'dropdown--position-below');
     }
 };
 
@@ -398,12 +392,7 @@ window.initializeFloatingLabel = function(inputElement, wrapperElement) {
     return RRBlazor.initializeFloatingLabel(inputElement, wrapperElement);
 };
 
-// Initialize theme immediately (before DOM load)
-(function() {
-    RRBlazor.initializeTheme();
-})();
 
-// Auto-initialize components on DOM load
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize any components that need it
     document.querySelectorAll('[data-rr-component]').forEach(element => {
@@ -422,16 +411,18 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-// Global theme functions for Blazor interop
-window.setTheme = function(theme) {
-    return RRBlazor.setTheme(theme);
+window.RRBlazor.downloadContent = function(content, fileName, contentType = 'text/plain') {
+    const blob = new Blob([content], { type: contentType });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
 };
 
-window.getSystemTheme = function() {
-    return RRBlazor.getThemeInfo();
-};
-
-// File download helpers (moved from PayrollAI.Shared.Client)
 window.downloadFileFromStream = async function(fileName, contentStream) {
     try {
         const arrayBuffer = await contentStream.arrayBuffer();

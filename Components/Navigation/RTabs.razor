@@ -25,7 +25,7 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
                        AvoidUsage = "Don't use for navigation breadcrumbs - use RBreadcrumbs instead")]
 
 <CascadingValue Value="this">
-    <div class="tabs @Class">
+    <div @ref="tabsElement" class="tabs @Class">
         <!-- Tab Navigation -->
     <nav class="tabs__nav tabs__nav--@Variant.ToString().ToLower()" role="tablist">
         <!-- Animated Indicator -->
@@ -153,6 +153,7 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
     [Parameter] public EventCallback<TabClosedEventArgs> OnTabClosed { get; set; }
     
     private readonly List<RTabItemInfo> tabs = new();
+    private ElementReference tabsElement;
     private ElementReference? activeTabElement;
     private double indicatorLeft = 0;
     private double indicatorWidth = 0;
@@ -161,7 +162,17 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
     {
         if (firstRender)
         {
-            await UpdateIndicatorPosition();
+            try
+            {
+                // Initialize tabs with scroll detection
+                await JSRuntime.InvokeVoidAsync("RRBlazor.initializeTabs", tabsElement, new { });
+                await UpdateIndicatorPosition();
+            }
+            catch (Exception ex)
+            {
+                // Fallback if JS fails
+                Console.WriteLine($"RTabs initialization failed: {ex.Message}");
+            }
         }
     }
     

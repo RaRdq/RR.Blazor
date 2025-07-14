@@ -1,41 +1,17 @@
 // RAppShell JavaScript module for enhanced functionality
 
-export function initialize(theme) {
-    console.log('RAppShell initialized with theme:', theme);
+export function initialize() {
+    console.log('RAppShell initialized');
     
-    // Set initial theme
-    setTheme(theme);
-    
-    // Set up keyboard shortcuts
     setupKeyboardShortcuts();
     
-    // Set up click outside handling for dropdowns
     setupClickOutside();
     
-    // Set up responsive handling
     setupResponsive();
     
-    // Set up accessibility features
     setupAccessibility();
 }
 
-export function setTheme(theme) {
-    const root = document.documentElement;
-    const effectiveTheme = theme === 'system' ? getSystemTheme() : theme;
-    
-    root.setAttribute('data-theme', effectiveTheme);
-    root.style.setProperty('--theme-transition', 'all 0.3s ease');
-    
-    // Store theme preference
-    localStorage.setItem('rr-app-shell-theme', theme);
-}
-
-export function getSystemTheme() {
-    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-        return 'dark';
-    }
-    return 'light';
-}
 
 export function isMobile() {
     return window.innerWidth < 768;
@@ -172,9 +148,15 @@ function closeSearch() {
 }
 
 function closeAllDropdowns() {
-    const dropdowns = document.querySelectorAll('.dropdown-content');
-    dropdowns.forEach(dropdown => {
-        dropdown.style.display = 'none';
+    const dropdowns = document.querySelectorAll('.dropdown__viewport');
+    dropdowns.forEach(viewport => {
+        const dropdown = viewport.closest('.dropdown');
+        if (dropdown) {
+            const trigger = dropdown.querySelector('.dropdown__trigger');
+            if (trigger) {
+                trigger.click(); // This will trigger the Blazor close logic
+            }
+        }
     });
 }
 
@@ -240,30 +222,16 @@ export function scrollToElement(selector) {
 }
 
 export function copyToClipboard(text) {
-    return navigator.clipboard.writeText(text).then(() => {
+    return RRBlazor.copyToClipboard(text).then(() => {
         announce('Copied to clipboard');
         return true;
     }).catch(() => {
-        // Fallback for older browsers
-        const textArea = document.createElement('textarea');
-        textArea.value = text;
-        document.body.appendChild(textArea);
-        textArea.select();
-        const success = document.execCommand('copy');
-        document.body.removeChild(textArea);
-        
-        if (success) {
-            announce('Copied to clipboard');
-        }
-        
-        return success;
+        announce('Failed to copy to clipboard');
+        return false;
     });
 }
 
-// Export for global access
 window.RRAppShell = {
-    setTheme,
-    getSystemTheme,
     isMobile,
     isTablet,
     isDesktop,

@@ -16,7 +16,9 @@ Supports custom triggers, loading states, search filtering, and flexible item re
 @typeparam TValue
 @using Microsoft.AspNetCore.Components
 @using RR.Blazor.Attributes
+@using RR.Blazor.Enums
 @implements IDisposable
+@inject IJSRuntime JSRuntime
 
 @attribute [Component("RDropdown", Category = "Navigation", Complexity = ComponentComplexity.Complex)]
 @attribute [AIOptimized(Prompt = "Create dropdown menu for item selection", 
@@ -228,6 +230,14 @@ Supports custom triggers, loading states, search filtering, and flexible item re
         isOpen = true;
         await OnOpened.InvokeAsync();
         StateHasChanged();
+        
+        // For Auto positioning or when in a constrained space, 
+        // adjust positioning based on viewport
+        if (Position == DropdownPosition.Auto || Position == DropdownPosition.TopEnd)
+        {
+            await Task.Delay(10); // Wait for DOM to update
+            await JSRuntime.InvokeVoidAsync("RRBlazor.adjustDropdownPosition", dropdownRef);
+        }
     }
 
     private async Task CloseDropdown()
@@ -276,15 +286,3 @@ Supports custom triggers, loading states, search filtering, and flexible item re
     }
 }
 
-@code {
-    public enum DropdownPosition
-    {
-        Top,
-        TopEnd,
-        TopStart,
-        Bottom,
-        BottomEnd,
-        BottomStart,
-        Auto
-    }
-}

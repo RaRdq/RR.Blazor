@@ -85,7 +85,7 @@ public class BlazorThemeService : IThemeService, IAsyncDisposable
             // Theme is already applied by JavaScript, just sync state
             try
             {
-                var themeInfo = await jsRuntime.InvokeAsync<dynamic>("getSystemTheme");
+                var themeInfo = await jsRuntime.InvokeAsync<dynamic>("RRTheme.getThemeInfo");
                 if (themeInfo != null)
                 {
                     isSystemDark = Convert.ToBoolean(themeInfo.systemDark ?? false);
@@ -145,7 +145,17 @@ public class BlazorThemeService : IThemeService, IAsyncDisposable
         {
             var effectiveMode = theme.GetEffectiveMode(isSystemDark);
             // Use proper JS interop method only
-            await jsRuntime.InvokeVoidAsync("setTheme", effectiveMode.ToString().ToLower());
+            var themeData = new
+            {
+                mode = effectiveMode.ToString().ToLower(),
+                colors = GetThemeColors(theme),
+                customVariables = new Dictionary<string, string>(),
+                animations = theme.AnimationsEnabled,
+                accessibility = theme.AccessibilityMode,
+                highContrast = theme.HighContrastMode || isHighContrast
+            };
+            
+            await jsRuntime.InvokeVoidAsync("RRTheme.applyTheme", themeData);
         }
         catch (Exception ex)
         {
@@ -268,7 +278,7 @@ public class BlazorThemeService : IThemeService, IAsyncDisposable
     {
         try
         {
-            var themeInfo = await jsRuntime.InvokeAsync<dynamic>("getSystemTheme");
+            var themeInfo = await jsRuntime.InvokeAsync<dynamic>("RRTheme.getThemeInfo");
             if (themeInfo != null)
             {
                 isSystemDark = Convert.ToBoolean(themeInfo.systemDark ?? false);
@@ -290,7 +300,7 @@ public class BlazorThemeService : IThemeService, IAsyncDisposable
             // Skip if not initialized or disposed
             if (!isInitialized || isDisposed || jsRuntime == null) return;
             
-            var themeInfo = await jsRuntime.InvokeAsync<dynamic>("getSystemTheme");
+            var themeInfo = await jsRuntime.InvokeAsync<dynamic>("RRTheme.getThemeInfo");
             if (themeInfo == null) return;
             
             var newSystemDark = Convert.ToBoolean(themeInfo.systemDark ?? false);

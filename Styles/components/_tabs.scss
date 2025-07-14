@@ -18,9 +18,48 @@
     padding: var(--space-1) var(--space-2);
     gap: var(--space-1);
     overflow-x: auto;
+    position: relative; // Required for indicator positioning
+    scroll-behavior: smooth; // Enhanced scroll behavior
+    -webkit-overflow-scrolling: touch; // Smooth iOS scrolling
     
     @include responsive-max(md) {
       padding: var(--space-1);
+      scrollbar-width: none; // Firefox
+      -ms-overflow-style: none; // IE/Edge
+      
+      &::-webkit-scrollbar {
+        display: none; // Hide on mobile
+      }
+      
+      // Touch scroll indicators for mobile
+      &::before,
+      &::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: var(--space-4);
+        pointer-events: none;
+        z-index: 2;
+        transition: opacity var(--duration-fast);
+        opacity: 0;
+      }
+      
+      &::before {
+        left: 0;
+        background: linear-gradient(90deg, var(--color-background-elevated), transparent);
+      }
+      
+      &::after {
+        right: 0;
+        background: linear-gradient(-90deg, var(--color-background-elevated), transparent);
+      }
+      
+      // Show indicators when scrollable content exists
+      &.scrollable::before,
+      &.scrollable::after {
+        opacity: 1;
+      }
     }
     
     // Custom scrollbar
@@ -35,6 +74,43 @@
     &::-webkit-scrollbar-thumb {
       background: var(--color-border-medium);
       border-radius: var(--radius-sm);
+    }
+  }
+  
+  // Animated Tab Indicator
+  &__indicator {
+    position: absolute;
+    bottom: 0;
+    height: 2px;
+    background: var(--color-interactive-primary);
+    border-radius: var(--radius-full);
+    transition: all var(--duration-normal) var(--ease-out);
+    z-index: 1;
+    opacity: 1;
+    
+    // Enhanced animation properties
+    transition-property: left, width, background-color;
+    transition-duration: var(--duration-normal);
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    
+    // Hide for card variant (handled in component)
+    .tabs--card & {
+      display: none;
+    }
+    
+    // Variant-specific styling
+    .tabs--underline & {
+      height: 3px;
+      bottom: -1px;
+    }
+    
+    .tabs--pills & {
+      display: none; // Pills use background highlight
+    }
+    
+    .tabs--glass & {
+      background: rgba(255, 255, 255, 0.8);
+      backdrop-filter: blur(var(--blur-sm));
     }
   }
   
@@ -59,6 +135,19 @@
     @include responsive-max(md) {
       padding: var(--space-2) var(--space-4);
       font-size: var(--text-xs);
+      min-width: max-content; // Prevent text wrapping
+      flex-shrink: 0; // Prevent compression
+      
+      // Touch-friendly interaction
+      @include touch-friendly;
+      
+      // Enhanced tap target
+      &::before {
+        content: '';
+        position: absolute;
+        inset: -var(--space-2);
+        z-index: -1;
+      }
     }
     
     &--small {
@@ -149,7 +238,7 @@
     &--disabled,
     &:disabled,
     &[disabled] {
-      opacity: var(--disabled-opacity);
+      opacity: var(--opacity-disabled);
       cursor: not-allowed;
       pointer-events: none;
     }

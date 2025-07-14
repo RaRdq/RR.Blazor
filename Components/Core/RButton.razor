@@ -16,6 +16,9 @@ Supports 9 variants, 5 sizes, loading states, elevation effects, and comprehensi
 **@
 @using RR.Blazor.Enums
 @using RR.Blazor.Attributes
+@using Microsoft.AspNetCore.Components
+@inject IJSRuntime JSRuntime
+@inject NavigationManager Navigation
 
 @attribute [Component("RButton", Category = "Core", Complexity = ComponentComplexity.Simple)]
 @attribute [AIOptimized(Prompt = "Create a professional button for user actions", 
@@ -219,6 +222,19 @@ Supports 9 variants, 5 sizes, loading states, elevation effects, and comprehensi
     
     /// <summary>Custom loading text override</summary>
     [Parameter] public string LoadingText { get; set; } = "Processing...";
+    
+    /// <summary>URL for navigation when button is clicked</summary>
+    /// <ai-hint>Button will navigate to this URL when clicked, use _blank target for new window</ai-hint>
+    [Parameter]
+    [AIParameter(Hint = "Button navigates to this URL when clicked", IsRequired = false)]
+    public string Href { get; set; }
+    
+    /// <summary>Target for navigation (_blank for new window)</summary>
+    /// <ai-hint>Use _blank to open in new window/tab</ai-hint>
+    [Parameter]
+    [AIParameter(Hint = "_blank for new window, _self for same window", 
+                 SuggestedValues = new[] { "_blank", "_self" })]
+    public string Target { get; set; } = "_self";
     
     private string GetButtonClasses()
     {
@@ -517,6 +533,30 @@ Supports 9 variants, 5 sizes, loading states, elevation effects, and comprehensi
                 
                 var confirmed = await ConfirmAction();
                 if (!confirmed) return;
+            }
+            
+            // Handle navigation if Href is provided
+            if (!string.IsNullOrEmpty(Href))
+            {
+                if (Target == "_blank")
+                {
+                    // Open in new window/tab using JavaScript
+                    await JSRuntime.InvokeVoidAsync("open", Href, "_blank");
+                }
+                else
+                {
+                    // Navigate in same window
+                    if (Uri.IsWellFormedUriString(Href, UriKind.Absolute))
+                    {
+                        // External URL - use JavaScript to navigate
+                        await JSRuntime.InvokeVoidAsync("window.location.assign", Href);
+                    }
+                    else
+                    {
+                        // Internal route - use NavigationManager
+                        Navigation.NavigateTo(Href);
+                    }
+                }
             }
             
             await OnClick.InvokeAsync(e);

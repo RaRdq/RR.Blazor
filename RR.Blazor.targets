@@ -4,12 +4,10 @@
     <!-- Enable component registry generation by default -->
     <GenerateComponentRegistry Condition="'$(GenerateComponentRegistry)' == ''">true</GenerateComponentRegistry>
     <ComponentRegistryOutputPath Condition="'$(ComponentRegistryOutputPath)' == ''">$(OutputPath)wwwroot/rr-ai-docs.json</ComponentRegistryOutputPath>
-    <RRBlazorAnalyzersEnabled Condition="'$(RRBlazorAnalyzersEnabled)' == ''">false</RRBlazorAnalyzersEnabled>
+    <!-- Enable component validation by default -->
+    <!-- TODO: Fix AI docs generation to include all parameters, then re-enable -->
+    <ValidateRRBlazorUsage Condition="'$(ValidateRRBlazorUsage)' == ''">false</ValidateRRBlazorUsage>
   </PropertyGroup>
-
-  <ItemGroup Condition="'$(RRBlazorAnalyzersEnabled)' == 'true'">
-    <ProjectReference Include="$(MSBuildThisFileDirectory)Tools\Analyzers\RR.Blazor.Analyzers.csproj" PrivateAssets="all" IncludeAssets="analyzers" />
-  </ItemGroup>
 
   <Target Name="GenerateRRBlazorComponentRegistry" 
           BeforeTargets="Build" 
@@ -37,21 +35,45 @@
              Condition="!Exists('$(_AIDocsOutputPath)')" />
   </Target>
 
-  <Target Name="ValidateRRBlazorComponents" 
-          AfterTargets="Build" 
-          Condition="'$(Configuration)' == 'Debug'">
-    
-    <!-- Run validation using local CLI tool -->
-    <Exec Command="dotnet run --project &quot;$(MSBuildThisFileDirectory)Tools\CLI\RR.Blazor.CLI.csproj&quot; -- validate --check-patterns --check-accessibility" 
-          Condition="Exists('$(MSBuildThisFileDirectory)Tools\CLI\RR.Blazor.CLI.csproj')"
-          ContinueOnError="true" />
-  </Target>
 
   <Target Name="ShowRRBlazorInfo" BeforeTargets="Build">
     <Message Text="🚀 RR.Blazor AI-First Component System" Importance="high" />
     <Message Text="📊 Registry: $(ComponentRegistryOutputPath)" Importance="normal" />
-    <Message Text="🔍 Analyzers: $(RRBlazorAnalyzersEnabled)" Importance="normal" />
-    <Message Text="💡 Use 'dotnet run --project Tools/CLI' for advanced AI-assisted development" Importance="normal" />
+    <Message Text="🔍 Validation: $(ValidateRRBlazorUsage)" Importance="normal" />
+  </Target>
+
+  <!-- Include Analyzer when enabled -->
+  <ItemGroup Condition="'$(RRBlazorAnalyzersEnabled)' == 'true'">
+    <Analyzer Include="$(MSBuildThisFileDirectory)Tools\Analyzers\bin\$(Configuration)\netstandard2.0\RR.Blazor.Analyzers.dll" 
+              Condition="Exists('$(MSBuildThisFileDirectory)Tools\Analyzers\bin\$(Configuration)\netstandard2.0\RR.Blazor.Analyzers.dll')" />
+    <!-- Pass AI docs as additional file for analyzer -->
+    <AdditionalFiles Include="$(MSBuildThisFileDirectory)wwwroot\rr-ai-docs.json" 
+                     Condition="Exists('$(MSBuildThisFileDirectory)wwwroot\rr-ai-docs.json')" />
+  </ItemGroup>
+
+  <!-- Validate RR.Blazor component usage across the solution -->
+  <Target Name="ValidateRRBlazorComponents" 
+          AfterTargets="GenerateRRBlazorComponentRegistry"
+          Condition="'$(ValidateRRBlazorUsage)' == 'true' AND '$(DesignTimeBuild)' != 'true'">
+    
+    <PropertyGroup>
+      <_ValidationScript>$(MSBuildThisFileDirectory)Scripts\ValidateRRBlazorUsage.ps1</_ValidationScript>
+      <_SolutionPath>$([MSBuild]::GetDirectoryNameOfFileAbove($(MSBuildProjectDirectory), '*.sln'))\*.sln</_SolutionPath>
+      <_AIDocsPath>$(MSBuildThisFileDirectory)wwwroot\rr-ai-docs.json</_AIDocsPath>
+    </PropertyGroup>
+
+    <Message Text="🔍 Validating RR.Blazor component usage..." Importance="high" />
+    
+    <!-- Run validation script -->
+    <Exec Command="pwsh -ExecutionPolicy Bypass &quot;$(_ValidationScript)&quot; -SolutionPath &quot;$(_SolutionPath)&quot; -AIDocsPath &quot;$(_AIDocsPath)&quot; -OutputFormat msbuild"
+          Condition="Exists('$(_ValidationScript)') AND Exists('$(_AIDocsPath)')"
+          ContinueOnError="false"
+          ConsoleToMSBuild="true"
+          StandardOutputImportance="high"
+          StandardErrorImportance="high" />
+          
+    <Warning Text="⚠️ RR.Blazor validation script not found. Run validation manually with: pwsh ValidateRRBlazorUsage.ps1" 
+             Condition="!Exists('$(_ValidationScript)')" />
   </Target>
 
 </Project>

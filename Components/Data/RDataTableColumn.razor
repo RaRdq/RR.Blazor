@@ -2,6 +2,27 @@
 @typeparam TItem
 @implements IDisposable
 
+<th class="pa-3 text-left font-semibold text-primary text-sm @(Sortable ? "cursor-pointer hover:bg-secondary transition-colors" : "") @HeaderClass"
+    style="@GetColumnStyle()"
+    @onclick="() => Sortable && Parent != null ? Parent.OnSort.InvokeAsync(Key) : Task.CompletedTask">
+    @if (HeaderTemplate != null)
+    {
+        @HeaderTemplate
+    }
+    else
+    {
+        <div class="d-flex align-center gap-2">
+            @Header
+            @if (Sortable && Parent?.SortColumn == Key)
+            {
+                <i class="material-symbols-rounded text-base text-secondary">
+                    @(Parent.SortDescending ? "arrow_drop_down" : "arrow_drop_up")
+                </i>
+            }
+        </div>
+    }
+</th>
+
 @code {
     [Parameter] public string Key { get; set; } = "";
     [Parameter] public string Header { get; set; } = "";
@@ -35,6 +56,17 @@
             };
             Parent.AddColumn(column);
         }
+    }
+
+    private string GetColumnStyle()
+    {
+        var styles = new List<string>();
+        
+        if (!string.IsNullOrEmpty(Width)) styles.Add($"width: {Width}");
+        if (!string.IsNullOrEmpty(MinWidth)) styles.Add($"min-width: {MinWidth}");
+        if (!string.IsNullOrEmpty(MaxWidth)) styles.Add($"max-width: {MaxWidth}");
+        
+        return string.Join("; ", styles);
     }
     
     public void Dispose()

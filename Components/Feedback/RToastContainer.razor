@@ -3,44 +3,32 @@
 @implements IDisposable
 
 <div class="toast-container toast-container--@GetPositionClass()">
-    @if (toasts.Any())
+    @foreach (var toast in toasts)
     {
-        var orderedToasts = ToastService.Options.NewestOnTop ? toasts.AsEnumerable().Reverse() : toasts;
-        @foreach (var toast in orderedToasts)
-        {
-            <div class="toast toast--@(toast.Type.ToString().ToLower()) toast--@(GetToastState(toast.Id))" 
-                 @key="toast.Id">
-                <div class="toast__icon">
-                    @if (!string.IsNullOrEmpty(toast.Icon))
-                    {
-                        <i class="material-symbols-rounded">@toast.Icon</i>
-                    }
-                    else
-                    {
-                        <i class="material-symbols-rounded">@GetDefaultIcon(toast.Type)</i>
-                    }
-                </div>
-                <div class="toast__content">
-                    @if (!string.IsNullOrEmpty(toast.Title))
-                    {
-                        <h5 class="toast__title">@toast.Title</h5>
-                    }
-                    <p class="toast__message">@toast.Message</p>
-                    @if (!string.IsNullOrEmpty(toast.ActionText) && toast.OnAction != null)
-                    {
-                        <button class="toast__action" @onclick="() => HandleAction(toast)">
-                            @toast.ActionText
-                        </button>
-                    }
-                </div>
-                @if (toast.ShowCloseButton)
+        <div class="toast toast--@(toast.Type.ToString().ToLower()) toast--@GetToastState(toast.Id)" @key="toast.Id">
+            <div class="toast__icon">
+                <i class="material-symbols-rounded">@GetIcon(toast)</i>
+            </div>
+            <div class="toast__content">
+                @if (!string.IsNullOrEmpty(toast.Title))
                 {
-                    <button class="toast__close" @onclick="@((MouseEventArgs e) => RemoveToast(toast.Id))" @onclick:stopPropagation="true" aria-label="Close notification">
-                        <i class="material-symbols-rounded">close</i>
+                    <h5 class="toast__title">@toast.Title</h5>
+                }
+                <p class="toast__message">@toast.Message</p>
+                @if (!string.IsNullOrEmpty(toast.ActionText) && toast.OnAction != null)
+                {
+                    <button class="toast__action" @onclick="() => HandleAction(toast)">
+                        @toast.ActionText
                     </button>
                 }
             </div>
-        }
+            @if (toast.ShowCloseButton)
+            {
+                <button class="toast__close" @onclick="() => RemoveToast(toast.Id)" aria-label="Close">
+                    <i class="material-symbols-rounded">close</i>
+                </button>
+            }
+        </div>
     }
 </div>
 
@@ -48,180 +36,78 @@
     private readonly List<ToastMessage> toasts = new();
     private readonly Dictionary<string, Timer> timers = new();
     private readonly Dictionary<string, string> toastStates = new();
-    private readonly HashSet<string> removingToasts = new();
-    private readonly SemaphoreSlim semaphore = new(1, 1);
+    private bool disposed = false;
     
     protected override void OnInitialized()
     {
-        ToastService.OnShow += HandleToastShow;
-        ToastService.OnRemove += HandleToastRemove;
-        ToastService.OnClearAll += HandleClearAll;
+        ToastService.OnShow += ShowToast;
+        ToastService.OnRemove += RemoveToast;
+        ToastService.OnClearAll += ClearAll;
     }
     
-    private void HandleToastShow(ToastMessage toast)
+    private async void ShowToast(ToastMessage toast)
     {
-        InvokeAsync(async () =>
+        // Remove excess toasts
+        while (toasts.Count >= ToastService.Options.MaxToasts)
         {
-            await semaphore.WaitAsync();
-            try
-            {
-                // Remove oldest toasts if we have too many
-                while (toasts.Count >= ToastService.Options.MaxToasts)
-                {
-                    var toastToRemove = ToastService.Options.NewestOnTop 
-                        ? toasts.First() 
-                        : toasts.Last();
-                    await RemoveToastInternal(toastToRemove.Id, false);
-                }
-                
-                // Add new toast
-                if (ToastService.Options.NewestOnTop)
-                {
-                    toasts.Add(toast);
-                }
-                else
-                {
-                    toasts.Insert(0, toast);
-                }
-                
-                toastStates[toast.Id] = "entering";
-                StateHasChanged();
-                
-                // Trigger animation to visible state
-                await Task.Delay(50);
-                if (toastStates.ContainsKey(toast.Id))
-                {
-                    toastStates[toast.Id] = "visible";
-                    StateHasChanged();
-                }
-                
-                // Set up auto-remove timer if duration > 0
-                if (toast.Duration > 0)
-                {
-                    var timer = new Timer(
-                        _ => InvokeAsync(async () => 
-                        {
-                            try 
-                            {
-                                await RemoveToastInternal(toast.Id, true);
-                            }
-                            catch (Exception)
-                            {
-                                // Silently handle timer errors to prevent crashes
-                            }
-                        }), 
-                        null, 
-                        TimeSpan.FromMilliseconds(toast.Duration), 
-                        Timeout.InfiniteTimeSpan
-                    );
-                    timers[toast.Id] = timer;
-                }
-            }
-            finally
-            {
-                semaphore.Release();
-            }
-        });
-    }
-    
-    private void HandleToastRemove(string id)
-    {
-        InvokeAsync(() => RemoveToastInternal(id, true));
-    }
-    
-    private void HandleClearAll()
-    {
-        InvokeAsync(async () =>
+            var oldest = toasts.First();
+            RemoveToast(oldest.Id);
+        }
+        
+        toasts.Add(toast);
+        toastStates[toast.Id] = "entering";
+        StateHasChanged();
+        
+        // Animate to visible
+        await Task.Delay(50);
+        if (toastStates.ContainsKey(toast.Id))
         {
-            await semaphore.WaitAsync();
-            try
-            {
-                // Clean up all timers
-                foreach (var timer in timers.Values)
-                {
-                    timer.Dispose();
-                }
-                timers.Clear();
-                
-                // Clear all toasts
-                toasts.Clear();
-                toastStates.Clear();
-                removingToasts.Clear();
-                StateHasChanged();
-            }
-            finally
-            {
-                semaphore.Release();
-            }
-        });
-    }
-    
-    private void RemoveToast(string toastId)
-    {
-        InvokeAsync(async () =>
-        {
-            try
-            {
-                // First try the service removal (which should trigger HandleToastRemove)
-                ToastService.Remove(toastId);
-                
-                // Add a small delay to allow service event to fire
-                await Task.Delay(50);
-                
-                // If toast still exists, force remove it
-                if (toasts.Any(t => t.Id == toastId) && !removingToasts.Contains(toastId))
-                {
-                    await RemoveToastInternal(toastId, true);
-                }
-            }
-            catch (Exception)
-            {
-                // Silently handle removal errors
-            }
-        });
-    }
-    
-    private async Task RemoveToastInternal(string toastId, bool animate)
-    {
-        await semaphore.WaitAsync();
-        try
-        {
-            // Prevent double removal
-            if (removingToasts.Contains(toastId))
-                return;
-            
-            removingToasts.Add(toastId);
-            
-            // Animate out if requested
-            if (animate && toastStates.ContainsKey(toastId))
-            {
-                toastStates[toastId] = "exiting";
-                StateHasChanged();
-                await Task.Delay(300); // Wait for animation
-            }
-            
-            // Remove from collections
-            var toast = toasts.FirstOrDefault(t => t.Id == toastId);
-            if (toast != null)
-            {
-                toasts.Remove(toast);
-            }
-            
-            toastStates.Remove(toastId);
-            removingToasts.Remove(toastId);
+            toastStates[toast.Id] = "visible";
             StateHasChanged();
+        }
+        
+        // Auto-remove timer
+        if (toast.Duration > 0)
+        {
+            var timer = new Timer(_ => RemoveToast(toast.Id), null, toast.Duration, Timeout.Infinite);
+            timers[toast.Id] = timer;
+        }
+    }
+    
+    private async void RemoveToast(string id)
+    {
+        if (toastStates.ContainsKey(id))
+        {
+            // Animate out
+            toastStates[id] = "exiting";
+            StateHasChanged();
+            await Task.Delay(300);
+        }
+        
+        var toast = toasts.FirstOrDefault(t => t.Id == id);
+        if (toast != null)
+        {
+            toasts.Remove(toast);
+            toastStates.Remove(id);
             
-            // Clean up timer
-            if (timers.TryGetValue(toastId, out var timer))
+            if (timers.TryGetValue(id, out var timer))
             {
                 timer.Dispose();
-                timers.Remove(toastId);
+                timers.Remove(id);
             }
+            
+            StateHasChanged();
         }
-        finally
-        {
-            semaphore.Release();
-        }
+    }
+    
+    private void ClearAll()
+    {
+        toasts.Clear();
+        toastStates.Clear();
+        foreach (var timer in timers.Values)
+            timer.Dispose();
+        timers.Clear();
+        StateHasChanged();
     }
     
     private void HandleAction(ToastMessage toast)
@@ -230,48 +116,39 @@
         RemoveToast(toast.Id);
     }
     
-    private string GetToastState(string toastId)
-    {
-        return toastStates.TryGetValue(toastId, out var state) ? state : "entering";
-    }
+    private string GetToastState(string toastId) =>
+        toastStates.TryGetValue(toastId, out var state) ? state : "visible";
     
-    private string GetPositionClass()
+    private string GetPositionClass() => ToastService.Options.Position switch
     {
-        return ToastService.Options.Position switch
-        {
-            ToastPosition.TopLeft => "top-left",
-            ToastPosition.TopCenter => "top-center",
-            ToastPosition.TopRight => "top-right",
-            ToastPosition.BottomLeft => "bottom-left",
-            ToastPosition.BottomCenter => "bottom-center",
-            ToastPosition.BottomRight => "bottom-right",
-            _ => "top-right"
-        };
-    }
-    
-    private string GetDefaultIcon(ToastType type) => type switch
-    {
-        ToastType.Success => "check_circle",
-        ToastType.Error => "error",
-        ToastType.Warning => "warning",
-        ToastType.Info => "info",
-        _ => "info"
+        ToastPosition.TopLeft => "top-left",
+        ToastPosition.TopCenter => "top-center", 
+        ToastPosition.TopRight => "top-right",
+        ToastPosition.BottomLeft => "bottom-left",
+        ToastPosition.BottomCenter => "bottom-center",
+        ToastPosition.BottomRight => "bottom-right",
+        _ => "top-right"
     };
+    
+    private string GetIcon(ToastMessage toast) => 
+        !string.IsNullOrEmpty(toast.Icon) ? toast.Icon : toast.Type switch
+        {
+            ToastType.Success => "check_circle",
+            ToastType.Error => "error", 
+            ToastType.Warning => "warning",
+            ToastType.Info => "info",
+            _ => "info"
+        };
     
     public void Dispose()
     {
-        ToastService.OnShow -= HandleToastShow;
-        ToastService.OnRemove -= HandleToastRemove;
-        ToastService.OnClearAll -= HandleClearAll;
+        disposed = true;
+        ToastService.OnShow -= ShowToast;
+        ToastService.OnRemove -= RemoveToast;
+        ToastService.OnClearAll -= ClearAll;
         
         foreach (var timer in timers.Values)
-        {
             timer.Dispose();
-        }
-        timers.Clear();
-        toastStates.Clear();
-        removingToasts.Clear();
-        semaphore.Dispose();
     }
 }
 

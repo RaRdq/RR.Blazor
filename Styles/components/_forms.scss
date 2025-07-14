@@ -47,12 +47,12 @@
         color: var(--color-text-secondary);
         background: transparent;
         pointer-events: none;
-        transition: all 200ms var(--ease-out);
+        transition: all var(--duration-normal) var(--ease-out);
         white-space: nowrap;
         z-index: 10;
         
         &--with-start-icon {
-          left: var(--space-12);
+          left: var(--space-11); // Position after icon but before it gets too far
         }
       }
       
@@ -77,36 +77,34 @@
         background: var(--color-background-elevated);
         
         &.form-field__label--with-start-icon {
-          left: var(--space-12);
+          left: var(--space-3); // Keep same left position as non-icon labels to avoid overlap
         }
       }
       
-      // Keep icons visible but subtle when field has value
-      &.form-field__wrapper--has-value,
-      &:has(input:not(:placeholder-shown)),
-      &:has(input:-webkit-autofill),
-      &:has(input[value]:not([value=""])) {
-        .form-field__icon-container--start {
-          opacity: 0.7;
-          color: var(--color-text-secondary);
-          
-          i {
-            font-size: var(--icon-base); // Keep original size
-          }
+      // When input has value or is focused - make icon float up to align with floating label
+      &.form-field__wrapper--floating .form-field__icon-container--start,
+      &.form-field__wrapper--has-value .form-field__icon-container--start,
+      &:has(input:focus) .form-field__icon-container--start,
+      &:has(input:not(:placeholder-shown)) .form-field__icon-container--start,
+      &:has(input:-webkit-autofill) .form-field__icon-container--start,
+      &:has(input[value]:not([value=""])) .form-field__icon-container--start {
+        transform: translateY(-50%) translateY(-8px); // Maintain centering + move up to align with floating label
+        opacity: 0.7; // More subtle when floating to not compete with label
+        
+        i {
+          font-size: var(--icon-sm); // Slightly smaller when floating for better hierarchy
         }
       }
       
-      // On focus, highlight the icon
-      &:has(input:focus) {
-        .form-field__icon-container--start {
-          opacity: 1;
-          color: var(--color-interactive-primary);
-        }
+      // On focus, make icon fully visible and primary colored
+      &:has(input:focus) .form-field__icon-container--start {
+        opacity: 1;
+        color: var(--color-interactive-primary);
       }
     }
   }
   
-  // Icon containers - proper alignment
+  // Icon containers - perfect alignment with input text baseline
   &__icon-container {
     position: absolute;
     top: 0;
@@ -118,11 +116,11 @@
     color: var(--color-text-tertiary);
     pointer-events: none;
     z-index: 2;
-    transition: color var(--duration-normal) var(--ease-out), opacity var(--duration-normal) var(--ease-out);
+    transition: color var(--duration-normal) var(--ease-out), opacity var(--duration-normal) var(--ease-out), transform var(--duration-normal) var(--ease-out);
     
     &--start {
       left: 0;
-      opacity: 0.6; // Start with subtle opacity for better UX
+      opacity: var(--opacity-disabled); // Start with subtle opacity for better UX
     }
     
     &--end {
@@ -138,10 +136,13 @@
       }
     }
     
-    // Icon sizing
+    // Icon sizing - perfectly aligned with input text
     i {
       font-size: var(--icon-base); // 20px
       line-height: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       transition: all var(--duration-normal) var(--ease-out);
     }
   }
@@ -161,14 +162,6 @@
     transition: all var(--duration-normal) var(--ease-out);
     outline: none;
     
-    // Icon padding
-    &--with-start-icon {
-      padding-left: var(--space-12); // 48px
-    }
-    
-    &--with-end-icon {
-      padding-right: var(--space-12);
-    }
     
     // States
     &:hover:not(:focus):not(:disabled) {
@@ -186,7 +179,7 @@
       color: var(--color-text-disabled);
       border-color: var(--color-border-light);
       cursor: not-allowed;
-      opacity: 0.6;
+      opacity: var(--opacity-disabled);
     }
     
     // Autofill styling
@@ -200,35 +193,50 @@
     // Placeholder
     &::placeholder {
       color: var(--color-text-tertiary);
-      opacity: 0.8;
+      opacity: var(--opacity-hover);
     }
     
-    // Size variants
+    // Size variants - use padding-block to avoid conflicts with icon padding
     &--sm {
-      padding: var(--space-3) var(--space-3);
+      padding: var(--space-3);
       font-size: var(--text-sm);
       min-height: 2.5rem; // 40px
-      
-      &.form-field__input--with-start-icon {
-        padding-left: var(--space-10); // 40px
-      }
-      
-      &.form-field__input--with-end-icon {
-        padding-right: var(--space-10);
-      }
     }
     
     &--lg {
       padding: var(--space-5) var(--space-4);
       font-size: var(--text-lg);
       min-height: 4rem; // 64px
-      
-      &.form-field__input--with-start-icon {
-        padding-left: var(--space-14); // 56px
+    }
+    
+    // Icon padding with higher specificity to ensure they override size padding
+    &--with-start-icon {
+      &.form-field__input--sm {
+        padding-left: var(--space-10) !important; // 40px
       }
       
-      &.form-field__input--with-end-icon {
-        padding-right: var(--space-14);
+      &.form-field__input--lg {
+        padding-left: var(--space-14) !important; // 56px
+      }
+      
+      // Default (medium) size
+      &:not(.form-field__input--sm):not(.form-field__input--lg) {
+        padding-left: var(--space-12) !important; // 48px
+      }
+    }
+    
+    &--with-end-icon {
+      &.form-field__input--sm {
+        padding-right: var(--space-10) !important; // 40px
+      }
+      
+      &.form-field__input--lg {
+        padding-right: var(--space-14) !important; // 56px
+      }
+      
+      // Default (medium) size
+      &:not(.form-field__input--sm):not(.form-field__input--lg) {
+        padding-right: var(--space-12) !important; // 48px
       }
     }
     
@@ -299,7 +307,7 @@
     
     &:disabled {
       cursor: not-allowed;
-      opacity: 0.6;
+      opacity: var(--opacity-disabled);
     }
   }
   
@@ -327,6 +335,35 @@
     margin-top: var(--space-1);
     font-size: var(--text-xs);
     color: var(--color-text-tertiary);
+  }
+  
+  // Form density variants - ensure consistent icon alignment
+  &--dense {
+    .form-field__icon-container {
+      height: var(--space-5); // Smaller height for dense forms
+      
+      i {
+        font-size: var(--icon-sm); // Smaller icons for dense forms
+      }
+    }
+    
+    .form-field__label {
+      font-size: var(--text-sm);
+    }
+  }
+  
+  &--ultra-dense {
+    .form-field__icon-container {
+      height: var(--space-4); // Even smaller for ultra-dense
+      
+      i {
+        font-size: var(--icon-xs); // Smallest icons
+      }
+    }
+    
+    .form-field__label {
+      font-size: var(--text-xs);
+    }
   }
   
   // Error state with enhanced animations
@@ -615,7 +652,7 @@
   input:disabled + .checkbox__box {
     background: var(--color-background-secondary);
     border-color: var(--color-border-light);
-    opacity: 0.6;
+    opacity: var(--opacity-disabled);
   }
 }
 
@@ -679,7 +716,7 @@
   input:disabled + .radio__circle {
     background: var(--color-background-secondary);
     border-color: var(--color-border-light);
-    opacity: 0.6;
+    opacity: var(--opacity-disabled);
   }
 }
 
@@ -741,7 +778,7 @@
   }
   
   input:disabled + .switch__track {
-    opacity: 0.6;
+    opacity: var(--opacity-disabled);
     cursor: not-allowed;
   }
 }
