@@ -1,20 +1,23 @@
 #!/usr/bin/env pwsh
 <#
 .SYNOPSIS
-    FIXED - Generates comprehensive AI-optimized documentation for RR.Blazor components with bulletproof parameter extraction
+    Generates 2 separate AI-optimized documentation files for RR.Blazor components and styles
     
 .DESCRIPTION
-    Extracts components, utility patterns, CSS variables, and best practices from RR.Blazor project.
-    FIXED: Now properly handles multi-line parameter definitions, AIParameter attributes, and complex types.
+    Creates rr-ai-styles.json (utility classes & CSS variables) and rr-ai-components.json (R* components)
+    with AI instructions at the top and concise formatting for AI consumption.
     
 .PARAMETER ProjectPath
     Path to the RR.Blazor project directory
     
-.PARAMETER OutputPath
-    Output path for the generated JSON documentation
+.PARAMETER StylesOutputPath
+    Output path for the styles JSON documentation
+    
+.PARAMETER ComponentsOutputPath
+    Output path for the components JSON documentation
     
 .EXAMPLE
-    .\GenerateAIDocsAdvanced_Fixed.ps1 -ProjectPath "C:\Projects\PayrollAI\RR.Blazor" -OutputPath ".\rr-ai-docs.json"
+    .\GenerateDocumentation.ps1 -ProjectPath "C:\Projects\PayrollAI\RR.Blazor"
 #>
 
 param(
@@ -22,34 +25,251 @@ param(
     [string]$ProjectPath,
     
     [Parameter(Mandatory = $false)]
-    [string]$OutputPath = "wwwroot/rr-ai-docs.json"
+    [string]$StylesOutputPath = "wwwroot/rr-ai-styles.json",
+    
+    [Parameter(Mandatory = $false)]
+    [string]$ComponentsOutputPath = "wwwroot/rr-ai-components.json"
 )
 
 $ErrorActionPreference = "Stop"
 
-Write-Host "🚀 Generating FIXED AI-First Documentation for RR.Blazor..." -ForegroundColor Cyan
+Write-Host "🚀 Generating AI-First Documentation (2 files)..." -ForegroundColor Cyan
 
 # Normalize paths
 $ProjectPath = Resolve-Path $ProjectPath
-$OutputPath = if ([System.IO.Path]::IsPathRooted($OutputPath)) {
-    [System.IO.Path]::GetFullPath($OutputPath)
+$StylesOutputPath = if ([System.IO.Path]::IsPathRooted($StylesOutputPath)) {
+    [System.IO.Path]::GetFullPath($StylesOutputPath)
 } else {
-    [System.IO.Path]::GetFullPath((Join-Path $ProjectPath $OutputPath))
+    [System.IO.Path]::GetFullPath((Join-Path $ProjectPath $StylesOutputPath))
 }
 
-$OutputDir = Split-Path $OutputPath -Parent
-if (-not (Test-Path $OutputDir)) {
-    New-Item -Path $OutputDir -ItemType Directory -Force | Out-Null
+$ComponentsOutputPath = if ([System.IO.Path]::IsPathRooted($ComponentsOutputPath)) {
+    [System.IO.Path]::GetFullPath($ComponentsOutputPath)
+} else {
+    [System.IO.Path]::GetFullPath((Join-Path $ProjectPath $ComponentsOutputPath))
 }
 
-# BULLETPROOF PARAMETER EXTRACTION FUNCTION (Define first!)
+# Create output directories
+$StylesOutputDir = Split-Path $StylesOutputPath -Parent
+$ComponentsOutputDir = Split-Path $ComponentsOutputPath -Parent
+@($StylesOutputDir, $ComponentsOutputDir) | ForEach-Object {
+    if (-not (Test-Path $_)) {
+        New-Item -Path $_ -ItemType Directory -Force | Out-Null
+    }
+}
+
+# ===============================
+# GENERATE STYLES DOCUMENTATION
+# ===============================
+Write-Host "🎨 Generating styles documentation from SCSS files..." -ForegroundColor Yellow
+
+# Function to extract CSS classes and variables from SCSS files
+function Extract-ScssClasses {
+    param([string]$ScssDirectory)
+    
+    $classes = @{}
+    $variables = @{}
+    
+    $scssFiles = Get-ChildItem -Path $ScssDirectory -Filter "*.scss" -Recurse
+    Write-Host "  Found $($scssFiles.Count) SCSS files" -ForegroundColor DarkGray
+    
+    foreach ($file in $scssFiles) {
+        $content = Get-Content $file.FullName -Raw -Encoding UTF8
+        
+        # Extract CSS classes (.class-name)
+        $classMatches = [regex]::Matches($content, '\.([a-zA-Z0-9_-]+(?:\[[^\]]+\])?)', [System.Text.RegularExpressions.RegexOptions]::Multiline)
+        foreach ($match in $classMatches) {
+            $className = $match.Groups[1].Value
+            if (-not $classes.ContainsKey($className)) {
+                $classes[$className] = @{
+                    "file" = $file.Name
+                    "category" = "extracted"
+                }
+            }
+        }
+        
+        # Extract CSS variables (--var-name)
+        $varMatches = [regex]::Matches($content, '--([a-zA-Z0-9_-]+)', [System.Text.RegularExpressions.RegexOptions]::Multiline)
+        foreach ($match in $varMatches) {
+            $varName = $match.Groups[1].Value
+            if (-not $variables.ContainsKey($varName)) {
+                $variables[$varName] = @{
+                    "file" = $file.Name
+                    "category" = "extracted"
+                }
+            }
+        }
+    }
+    
+    return @{
+        "classes" = $classes
+        "variables" = $variables
+    }
+}
+
+# Extract actual classes and variables from SCSS files
+$stylesPath = Join-Path $ProjectPath "Styles"
+if (Test-Path $stylesPath) {
+    $extractedStyles = Extract-ScssClasses -ScssDirectory $stylesPath
+    Write-Host "  Extracted $($extractedStyles.classes.Count) classes and $($extractedStyles.variables.Count) variables" -ForegroundColor DarkGray
+} else {
+    Write-Host "  Warning: Styles directory not found at $stylesPath" -ForegroundColor Yellow
+    $extractedStyles = @{ "classes" = @{}; "variables" = @{} }
+}
+
+# Function to generate bracket notation patterns from actual classes
+function Generate-BracketPatterns {
+    param([hashtable]$Classes)
+    
+    $patterns = @{}
+    
+    foreach ($className in $Classes.Keys) {
+        $category = "other"
+        
+        # Categorize and extract patterns
+        if ($className -match '^(p|m|pa|ma|pt|pb|pl|pr|px|py|mt|mb|ml|mr|mx|my|gap)-(.+)$') { 
+            $category = "spacing"
+            $prefix = $Matches[1]
+            $value = $Matches[2]
+            if (-not $patterns.ContainsKey($category)) { $patterns[$category] = @{} }
+            if (-not $patterns[$category].ContainsKey($prefix)) { $patterns[$category][$prefix] = @() }
+            $patterns[$category][$prefix] += $value
+        }
+        elseif ($className -match '^(d|flex|justify|align|grid|col|row)-(.+)$') { 
+            $category = "layout"
+            $prefix = $Matches[1]
+            $value = $Matches[2]
+            if (-not $patterns.ContainsKey($category)) { $patterns[$category] = @{} }
+            if (-not $patterns[$category].ContainsKey($prefix)) { $patterns[$category][$prefix] = @() }
+            $patterns[$category][$prefix] += $value
+        }
+        elseif ($className -match '^(text|font|leading|tracking)-(.+)$') { 
+            $category = "typography"
+            $prefix = $Matches[1]
+            $value = $Matches[2]
+            if (-not $patterns.ContainsKey($category)) { $patterns[$category] = @{} }
+            if (-not $patterns[$category].ContainsKey($prefix)) { $patterns[$category][$prefix] = @() }
+            $patterns[$category][$prefix] += $value
+        }
+        elseif ($className -match '^(bg|border|rounded)-(.+)$') { 
+            $category = "appearance"
+            $prefix = $Matches[1]
+            $value = $Matches[2]
+            if (-not $patterns.ContainsKey($category)) { $patterns[$category] = @{} }
+            if (-not $patterns[$category].ContainsKey($prefix)) { $patterns[$category][$prefix] = @() }
+            $patterns[$category][$prefix] += $value
+        }
+        elseif ($className -match '^(w|h|min|max)-(.+)$') { 
+            $category = "sizing"
+            $prefix = $Matches[1]
+            $value = $Matches[2]
+            if (-not $patterns.ContainsKey($category)) { $patterns[$category] = @{} }
+            if (-not $patterns[$category].ContainsKey($prefix)) { $patterns[$category][$prefix] = @() }
+            $patterns[$category][$prefix] += $value
+        }
+        elseif ($className -match '^(elevation|shadow|glass|backdrop)-(.+)$') { 
+            $category = "effects"
+            $prefix = $Matches[1]
+            $value = $Matches[2]
+            if (-not $patterns.ContainsKey($category)) { $patterns[$category] = @{} }
+            if (-not $patterns[$category].ContainsKey($prefix)) { $patterns[$category][$prefix] = @() }
+            $patterns[$category][$prefix] += $value
+        }
+        elseif ($className -match '^(cursor|user-select|pointer)-(.+)$') { 
+            $category = "interactive"
+            $prefix = $Matches[1]
+            $value = $Matches[2]
+            if (-not $patterns.ContainsKey($category)) { $patterns[$category] = @{} }
+            if (-not $patterns[$category].ContainsKey($prefix)) { $patterns[$category][$prefix] = @() }
+            $patterns[$category][$prefix] += $value
+        }
+        elseif ($className -match '^(animate|transition|duration|ease)-(.+)$') { 
+            $category = "animations"
+            $prefix = $Matches[1]
+            $value = $Matches[2]
+            if (-not $patterns.ContainsKey($category)) { $patterns[$category] = @{} }
+            if (-not $patterns[$category].ContainsKey($prefix)) { $patterns[$category][$prefix] = @() }
+            $patterns[$category][$prefix] += $value
+        }
+    }
+    
+    # Convert to bracket notation
+    $bracketPatterns = @{}
+    foreach ($category in $patterns.Keys) {
+        $bracketPatterns[$category] = @()
+        foreach ($prefix in $patterns[$category].Keys) {
+            $values = $patterns[$category][$prefix] | Sort-Object -Unique
+            $bracketNotation = "$prefix-[$($values -join ', ')]"
+            $bracketPatterns[$category] += $bracketNotation
+        }
+    }
+    
+    return $bracketPatterns
+}
+
+# Generate bracket notation patterns
+$bracketPatterns = Generate-BracketPatterns -Classes $extractedStyles.classes
+
+# Group variables by category with bracket notation
+$categorizedVars = @{}
+foreach ($varName in $extractedStyles.variables.Keys) {
+    $category = "other"
+    
+    if ($varName -match '^(space|spacing)') { $category = "spacing" }
+    elseif ($varName -match '^(color|text|bg|background|border)') { $category = "colors" }
+    elseif ($varName -match '^(font|text|leading|tracking)') { $category = "typography" }
+    elseif ($varName -match '^(shadow|elevation)') { $category = "elevation" }
+    elseif ($varName -match '^(radius|border-radius)') { $category = "borders" }
+    
+    if (-not $categorizedVars.ContainsKey($category)) {
+        $categorizedVars[$category] = @()
+    }
+    $categorizedVars[$category] += $varName
+}
+
+$stylesDoc = [ordered]@{
+    "_ai_instructions" = @{
+        "CRITICAL" = "You must use bracket notation for extrapolation. You are required to understand patterns like justify-[start, center, end, between] means justify-start, justify-center, justify-end, justify-between"
+        "NAVIGATION" = @{
+            "ai_instructions" = "Lines 1-15: You must read these AI instructions and bracket notation rules first"
+            "utility_patterns" = "Lines 16-80: You must use these utility classes in bracket notation for extrapolation"
+            "css_variables" = "Lines 81-120: You must use these CSS variables grouped by category"
+        }
+        "BRACKET_NOTATION" = @{
+            "FORMAT" = "You must understand that prefix-[value1, value2, value3, ...] means prefix-value1, prefix-value2, prefix-value3, etc."
+            "EXAMPLES" = @(
+                "You must know that p-[0, 1, 2, 4, 8] means p-0, p-1, p-2, p-4, p-8",
+                "You must know that text-[xs, sm, base, lg, xl] means text-xs, text-sm, text-base, text-lg, text-xl",
+                "You must know that justify-[start, center, end, between] means justify-start, justify-center, justify-end, justify-between"
+            )
+        }
+        "USAGE_DIRECTIVE" = "You must extrapolate from these patterns to generate the exact classes needed. You are not allowed to invent classes that don't exist in these patterns."
+        "EXTRACTION_INFO" = @{
+            "total_classes" = $extractedStyles.classes.Count
+            "total_variables" = $extractedStyles.variables.Count
+            "source_directory" = "RR.Blazor/Styles/"
+        }
+    }
+    
+    "utility_patterns" = $bracketPatterns
+    "css_variables" = $categorizedVars
+}
+
+# Generate styles JSON
+$stylesJson = $stylesDoc | ConvertTo-Json -Depth 10 -Compress:$false
+$stylesJson = $stylesJson -replace '\\u003c', '<' -replace '\\u003e', '>'
+$stylesJson | Out-File -FilePath $StylesOutputPath -Encoding UTF8 -Force
+
+Write-Host "✅ Styles documentation generated: $StylesOutputPath" -ForegroundColor Green
+
+# PARAMETER EXTRACTION FUNCTION
 function Extract-ComponentParameters {
     param(
         [string]$Content,
         [string]$ComponentName
     )
     
-    $parameters = @()
+    $parameters = New-Object System.Collections.ArrayList
     $lines = $Content -split "`n"
     
     # Track @code block state
@@ -70,7 +290,7 @@ function Extract-ComponentParameters {
             # Count braces to handle nested blocks
             $openBraces = ($line -split '\{').Count - 1
             $closeBraces = ($line -split '\}').Count - 1
-            $codeBlockDepth += ($openBraces - $closeBraces)
+            $codeBlockDepth = $codeBlockDepth + ($openBraces - $closeBraces)
             
             if ($codeBlockDepth -le 0) {
                 $inCodeBlock = $false
@@ -79,27 +299,25 @@ function Extract-ComponentParameters {
             }
         }
         
-        # Look for [Parameter] or [CascadingParameter] attributes
-        if ($line -match '\[(Parameter|CascadingParameter)(?:[\],]|$)') {
-            $attributeType = $Matches[1]
+        # Look for [Parameter] attributes
+        if ($line -match '\[Parameter(?:[\],]|$)') {
+            # Collect parameter definition lines
+            $fullParameterText = ""
+            $propertyFound = $false
             
-            # Skip CascadingParameter for now (different behavior)
-            if ($attributeType -eq "CascadingParameter") {
-                continue
-            }
-            
-            # Collect all lines for this parameter (multi-line support)
-            $parameterLines = @()
-            $currentLine = $i
-            
-            # Collect XML documentation (look backward)
+            # Look for XML documentation above
             $description = ""
+            $aiHint = ""
             for ($k = $i - 1; $k -ge [Math]::Max(0, $i - 10); $k--) {
                 $docLine = $lines[$k].Trim()
-                if ($docLine -match '^\s*$') { break }
+                if ($docLine -match '^$') { continue }
                 if ($docLine -match '///\s*<summary>(.*?)</summary>') {
                     $description = $Matches[1].Trim()
                     break
+                }
+                if ($docLine -match '///\s*<ai-hint>(.*?)</ai-hint>') {
+                    $aiHint = $Matches[1].Trim()
+                    continue
                 }
                 if ($docLine -match '///\s*(.+)') {
                     $description = $Matches[1].Trim()
@@ -107,15 +325,12 @@ function Extract-ComponentParameters {
                 }
             }
             
-            # Collect parameter definition lines (look forward)
-            $fullParameterText = ""
-            $propertyFound = $false
-            
+            # Collect parameter definition lines
             for ($j = $i; $j -lt [Math]::Min($lines.Length, $i + 20); $j++) {
                 $currentLine = $lines[$j].Trim()
                 if ([string]::IsNullOrWhiteSpace($currentLine)) { continue }
                 
-                $fullParameterText += " " + $currentLine
+                $fullParameterText = $fullParameterText + " " + $currentLine
                 
                 # Check if we found the property declaration
                 if ($currentLine -match 'public\s+[^{]+\{\s*get;\s*set;\s*\}') {
@@ -126,21 +341,13 @@ function Extract-ComponentParameters {
             
             if (-not $propertyFound) { continue }
             
-            # Extract parameter info using bulletproof regex
-            $parameterMatch = $null
-            
-            # Pattern 1: Full property pattern with all variations
-            if ($fullParameterText -match 'public\s+(?:virtual\s+)?(?:override\s+)?(?:static\s+)?([^\s]+(?:<[^>]*>)?(?:\?)?)\s+(@?\w+)\s*\{\s*get;\s*set;\s*\}(?:\s*=\s*([^;]+))?;?') {
-                $parameterMatch = @{
-                    Type = $Matches[1].Trim()
-                    Name = $Matches[2].Trim()
-                    DefaultValue = if ($Matches[3]) { $Matches[3].Trim() } else { $null }
-                }
-            }
-            
-            if ($parameterMatch) {
+            # Extract parameter info
+            if ($fullParameterText -match 'public\s+(?:virtual\s+)?(?:override\s+)?(?:static\s+)?([^\s]+(?:<[^>]*>)?(?:\?)?\s*)\s+(@?\w+)\s*\{\s*get;\s*set;\s*\}(?:\s*=\s*([^;]+))?;?') {
+                $paramType = $Matches[1].Trim()
+                $paramName = $Matches[2].Trim()
+                $defaultValue = if ($Matches[3]) { $Matches[3].Trim() } else { $null }
+                
                 # Extract AIParameter hint
-                $aiHint = ""
                 if ($fullParameterText -match '\[AIParameter\(\s*["]([^"]*)["]') {
                     $aiHint = $Matches[1]
                 }
@@ -148,29 +355,30 @@ function Extract-ComponentParameters {
                     $aiHint = $Matches[1]
                 }
                 
+                # Extract suggested values
+                $suggestedValues = @()
+                if ($fullParameterText -match 'SuggestedValues\s*=\s*new\[\]\s*\{\s*([^}]+)\}') {
+                    $valuesText = $Matches[1]
+                    $suggestedValues = @($valuesText -split ',' | ForEach-Object { $_.Trim().Trim('"') })
+                }
+                
                 # Check if required
                 $isRequired = $false
                 if ($fullParameterText -match 'Required\s*=\s*true') {
                     $isRequired = $true
                 }
-                # Non-nullable value types are typically required
-                if ($parameterMatch.Type -match '^(bool|int|double|float|decimal|DateTime|Guid)$' -and $parameterMatch.Type -notmatch '\?') {
-                    $isRequired = $true
-                }
                 
                 $param = [PSCustomObject]@{
-                    Name = $parameterMatch.Name
-                    Type = $parameterMatch.Type
+                    Name = $paramName
+                    Type = $paramType
                     Description = $description
                     AIHint = $aiHint
+                    SuggestedValues = $suggestedValues
                     IsRequired = $isRequired
-                    DefaultValue = $parameterMatch.DefaultValue
-                    FullText = $fullParameterText.Trim()
+                    DefaultValue = $defaultValue
                 }
                 
-                $parameters += $param
-                
-                Write-Host "      📌 $($param.Name) : $($param.Type)" -ForegroundColor DarkGreen
+                $parameters.Add($param) | Out-Null
             }
         }
     }
@@ -178,161 +386,136 @@ function Extract-ComponentParameters {
     return $parameters
 }
 
-# Initialize documentation structure
-$documentation = @{
-    components = @{}
-    utilityPatterns = @{}
-    cssVariables = @{}
-    aiPatterns = @()
-}
+# ===============================
+# GENERATE COMPONENTS DOCUMENTATION
+# ===============================
+Write-Host "📂 Generating components documentation..." -ForegroundColor Yellow
 
-Write-Host "📂 Scanning components with BULLETPROOF parameter extraction..." -ForegroundColor Yellow
+$componentFiles = Get-ChildItem -Path "$ProjectPath/Components" -Filter "R*.razor" -Recurse
+Write-Host "  Found $($componentFiles.Count) R* component files" -ForegroundColor DarkGray
 
-# Extract ALL Components
-$componentFiles = Get-ChildItem -Path "$ProjectPath/Components" -Filter "*.razor" -Recurse
-Write-Host "  Found $($componentFiles.Count) component files" -ForegroundColor DarkGray
+$components = @{}
 
 foreach ($file in $componentFiles) {
-    Write-Host "  📄 Processing $($file.Name)..." -ForegroundColor DarkGray
-    
     $content = Get-Content $file.FullName -Raw -Encoding UTF8
     $componentName = [System.IO.Path]::GetFileNameWithoutExtension($file.Name)
     
-    $component = @{
-        name = $componentName
-        category = 'Unknown'
-        complexity = 'Simple'
-        description = ''
-        aiPrompt = ''
-        commonUse = ''
-        avoidUsage = ''
-        patterns = @{}
-        parameters = @{}
-        filePath = $file.FullName.Replace($ProjectPath, '').Replace('\', '/')
-    }
-    
-    # Extract AI metadata from @** blocks
+    # Extract purpose from @** blocks
+    $purpose = ""
     if ($content -match '(?s)@\*\*\s*(.*?)\*\*@') {
         $aiBlock = $Matches[1]
-        
-        if ($aiBlock -match '(?s)<summary>(.*?)</summary>') { $component.description = $Matches[1].Trim() -replace '\s+', ' ' }
-        if ($aiBlock -match '(?s)<category>(.*?)</category>') { $component.category = $Matches[1].Trim() }
-        if ($aiBlock -match '(?s)<complexity>(.*?)</complexity>') { $component.complexity = $Matches[1].Trim() }
-        if ($aiBlock -match '(?s)<ai-prompt>(.*?)</ai-prompt>') { $component.aiPrompt = $Matches[1].Trim() }
-        if ($aiBlock -match '(?s)<ai-common-use>(.*?)</ai-common-use>') { $component.commonUse = $Matches[1].Trim() }
-        if ($aiBlock -match '(?s)<ai-avoid>(.*?)</ai-avoid>') { $component.avoidUsage = $Matches[1].Trim() }
-        
-        $patternMatches = [regex]::Matches($aiBlock, '(?s)<ai-pattern name="([^"]+)">(.*?)</ai-pattern>')
-        foreach ($match in $patternMatches) {
-            $component.patterns[$match.Groups[1].Value] = $match.Groups[2].Value.Trim()
+        if ($aiBlock -match '(?s)<summary>(.*?)</summary>') { 
+            $purpose = $Matches[1].Trim() -replace '\s+', ' ' 
+        }
+        elseif ($aiBlock -match '(?s)<ai-prompt>(.*?)</ai-prompt>') { 
+            $purpose = $Matches[1].Trim() 
         }
     }
     
-    # Extract C# attributes
-    if ($content -match '@attribute \[Component\("([^"]*)"[^]]*Category\s*=\s*"([^"]*)"[^]]*Complexity\s*=\s*ComponentComplexity\.(\w+)[^]]*\]\)') {
-        if ([string]::IsNullOrEmpty($component.category) -or $component.category -eq 'Unknown') {
-            $component.category = $Matches[2]
-        }
-        if ([string]::IsNullOrEmpty($component.complexity) -or $component.complexity -eq 'Simple') {
-            $component.complexity = $Matches[3]
+    # Fallback to XML comments
+    if ([string]::IsNullOrEmpty($purpose)) {
+        if ($content -match '(?s)///\s*<summary>(.*?)</summary>') {
+            $purpose = $Matches[1].Trim() -replace '\s+', ' '
         }
     }
     
-    if ($content -match '@attribute \[AIOptimized\([^]]*Prompt\s*=\s*"([^"]*)"[^]]*CommonUse\s*=\s*"([^"]*)"[^]]*AvoidUsage\s*=\s*"([^"]*)"[^]]*\]\)') {
-        if ([string]::IsNullOrEmpty($component.aiPrompt)) {
-            $component.aiPrompt = $Matches[1]
-        }
-        if ([string]::IsNullOrEmpty($component.commonUse)) {
-            $component.commonUse = $Matches[2]
-        }
-        if ([string]::IsNullOrEmpty($component.avoidUsage)) {
-            $component.avoidUsage = $Matches[3]
-        }
-    }
-    
-    # BULLETPROOF PARAMETER EXTRACTION
+    # Extract essential parameters
     $parameters = Extract-ComponentParameters -Content $content -ComponentName $componentName
+    $essentialParams = @()
     
     foreach ($param in $parameters) {
-        $component.parameters[$param.Name] = @{
-            name = $param.Name
-            type = $param.Type
-            description = $param.Description
-            aiHint = $param.AIHint
-            isRequired = $param.IsRequired
-            defaultValue = $param.DefaultValue
+        # Include only essential parameters
+        $isEssential = $param.AIHint -or $param.IsRequired -or 
+                      $param.Name -in @('Text', 'Icon', 'Variant', 'Size', 'OnClick', 'Disabled', 'Loading', 'Value', 'Label', 'Title', 'Content', 'Items', 'ChildContent')
+        
+        if ($isEssential) {
+            $paramDesc = $param.Name + ": " + $param.Type
+            if ($param.AIHint) {
+                $paramDesc += " - " + $param.AIHint
+            }
+            if ($param.SuggestedValues.Count -gt 0) {
+                $paramDesc += " [" + ($param.SuggestedValues -join ', ') + "]"
+            }
+            $essentialParams += $paramDesc
         }
     }
     
-    $documentation.components[$componentName] = $component
-    Write-Host "    ✅ Extracted $($parameters.Count) parameters" -ForegroundColor Green
-}
-
-
-# Add minimal SCSS processing (from original script)
-$utilityPatterns = @{
-    'mixins' = @{
-        'responsive-grid' = @{
-            pattern = "@include responsive-grid"
-            description = "SCSS mixin for responsive grid layouts"
-            aiHint = "Use for consistent responsive grid patterns"
+    # Create structured format according to requirements
+    $componentInfo = [ordered]@{
+        "Purpose" = if ([string]::IsNullOrEmpty($purpose)) { "UI component" } else { $purpose }
+        "Parameters" = [ordered]@{}
+    }
+    
+    # Add essential parameters with proper formatting
+    foreach ($param in $parameters) {
+        $isEssential = $param.AIHint -or $param.IsRequired -or 
+                      $param.Name -in @('Text', 'Icon', 'Variant', 'Size', 'OnClick', 'Disabled', 'Loading', 'Value', 'Label', 'Title', 'Content', 'Items', 'ChildContent')
+        
+        if ($isEssential) {
+            $paramValue = $param.Type
+            
+            # Add enum values in bracket notation if available
+            if ($param.SuggestedValues.Count -gt 0) {
+                $paramValue += "[" + ($param.SuggestedValues -join ', ') + "]"
+            }
+            
+            # Add AI hint
+            if ($param.AIHint) {
+                $paramValue += " - " + $param.AIHint
+            }
+            
+            $componentInfo.Parameters[$param.Name] = $paramValue
         }
     }
+    
+    $components[$componentName] = $componentInfo
 }
 
-$documentation.utilityPatterns = $utilityPatterns
-
-# Add minimal CSS variables
-$documentation.cssVariables = @{
-    '--color-{category}-{variant}' = @{
-        pattern = '--color-{category}-{variant}'
-        categories = @('text', 'background', 'border')
-        aiHint = 'Use semantic color variables for theming'
+$componentsDoc = [ordered]@{
+    "_ai_instructions" = @{
+        "CRITICAL" = "You must use this exact component format for UI generation"
+        "NAVIGATION" = @{
+            "ai_instructions" = "Lines 1-15: You must read these AI instructions first"
+            "components" = "Lines 16+: Components with structured format and essential parameters"
+        }
+        "USAGE_DIRECTIVE" = "You must use <RComponentName Parameter1='value' Parameter2='value' /> in Blazor markup"
+        "COMPONENT_FORMAT" = "Each component has Purpose and Parameters with Type, enum values [brackets], and AI hints"
+        "ESSENTIAL_ONLY" = "You are only shown essential parameters with AI hints. Standard Blazor parameters (@bind-*, :after, etc.) are available but not documented."
+        "EXTRACTION_INFO" = @{
+            "total_components" = $components.Count
+            "source_directory" = "RR.Blazor/Components/"
+        }
     }
+    
+    "components" = $components
 }
 
-# Add minimal best practices
-$documentation.bestPractices = @{
-    componentUsage = @{
-        buttons = 'Use RButton with proper Variant for different action types'
-        cards = 'Use RCard with elevation for content containers'
-        forms = 'Use RFormField with proper validation for user input'
-    }
-}
+# Generate components JSON
+$componentsJson = $componentsDoc | ConvertTo-Json -Depth 10 -Compress:$false
+$componentsJson = $componentsJson -replace '\\u003c', '<' -replace '\\u003e', '>'
+$componentsJson | Out-File -FilePath $ComponentsOutputPath -Encoding UTF8 -Force
 
-# Add AI patterns
-$documentation.aiPatterns = @(
-    @{
-        name = 'Basic Button Usage'
-        category = 'Forms'
-        prompt = 'Create a primary action button'
-        code = '<RButton Text="Save" Variant="ButtonVariant.Primary" IconPosition="IconPosition.Start" Icon="save" />'
-        useCase = 'primary actions, form submission'
-    }
-)
+Write-Host "✅ Components documentation generated: $ComponentsOutputPath" -ForegroundColor Green
 
-Write-Host "💾 Generating JSON output..." -ForegroundColor Yellow
+# Final summary
+$componentCount = $components.Count
+$totalParameters = ($components.Values | ForEach-Object { $_.parameters.Count } | Measure-Object -Sum).Sum
 
-# Generate JSON
-$jsonOutput = $documentation | ConvertTo-Json -Depth 10 -Compress:$false
-
-# Fix HTML escaping
-$jsonOutput = $jsonOutput -replace '\\u003c', '<' -replace '\\u003e', '>'
-
-# Write to file
-$jsonOutput | Out-File -FilePath $OutputPath -Encoding UTF8 -Force
-
-$componentCount = $documentation.components.Count
-$totalParameters = "Calculated successfully"
-
-Write-Host "✅ FIXED AI Documentation generated successfully!" -ForegroundColor Green
-Write-Host "📄 Components: $componentCount" -ForegroundColor White
-Write-Host "🔧 Total Parameters: $totalParameters" -ForegroundColor White
-Write-Host "📂 Output: $OutputPath" -ForegroundColor White
+Write-Host "🎉 Documentation generation completed!" -ForegroundColor Cyan
+Write-Host "📊 Statistics:" -ForegroundColor White
+Write-Host "  • R* Components: $componentCount" -ForegroundColor White
+Write-Host "  • Essential Parameters: $totalParameters" -ForegroundColor White
+Write-Host "  • Extracted Classes: $($extractedStyles.classes.Count)" -ForegroundColor White
+Write-Host "  • Extracted Variables: $($extractedStyles.variables.Count)" -ForegroundColor White
+Write-Host "  • Styles Output: $StylesOutputPath" -ForegroundColor White
+Write-Host "  • Components Output: $ComponentsOutputPath" -ForegroundColor White
 
 return @{
     Success = $true
-    OutputPath = $OutputPath
+    StylesOutputPath = $StylesOutputPath
+    ComponentsOutputPath = $ComponentsOutputPath
     ComponentCount = $componentCount
     ParameterCount = $totalParameters
+    ExtractedClasses = $extractedStyles.classes.Count
+    ExtractedVariables = $extractedStyles.variables.Count
 }

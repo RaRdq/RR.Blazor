@@ -167,23 +167,24 @@ builder.Services.AddRRBlazor(options => options
 
 RR.Blazor features an AI-first documentation system that automatically generates comprehensive, machine-readable documentation for AI agents.
 
-**Location**: `wwwroot/rr-ai-docs.json`
+**Components**: `wwwroot/rr-ai-components.json`
+**Styles**: `wwwroot/rr-ai-styles.json`
 
 **Contains**:
-- 49 components with complete API documentation
-- 800+ utility patterns with AI hints  
-- 8 CSS variable pattern categories
-- 8 real-world usage patterns
-- Best practices and accessibility guidelines
+- 51 components with structured format and essential parameters
+- 2,227 utility classes with bracket notation patterns
+- 806 CSS variables with semantic categorization
+- AI-optimized format for pattern extrapolation
+- Source of truth extraction from actual code
 
 ### For Claude Code Users
 
 ```bash
 # Load the AI-optimized documentation
-# File: RR.Blazor/wwwroot/rr-ai-docs.json contains everything AI needs
+# Files: RR.Blazor/wwwroot/rr-ai-components.json + rr-ai-styles.json contain everything AI needs
 
-# Generate new documentation manually
-pwsh ./RR.Blazor/Scripts/GenerateAIDocsAdvanced.ps1 -ProjectPath ./RR.Blazor
+# Generate new documentation manually (creates both files)
+pwsh ./RR.Blazor/Scripts/GenerateDocumentation.ps1 -ProjectPath ./RR.Blazor
 
 # Documentation regenerates automatically on Release builds
 dotnet build -c Release
@@ -224,7 +225,7 @@ cp RR.Blazor/.claude/commands/designer.md .claude/commands/
 ### AI Prompts
 
 ```
-Using RR.Blazor components from rr-ai-docs.json, create a user management interface with:
+Using RR.Blazor components from rr-ai-components.json and utilities from rr-ai-styles.json, create a user management interface with:
 - Search and filter functionality using RFormField
 - Data display using RDataTable with elevation-2
 - Action buttons using RButton Primary variant  
@@ -653,7 +654,8 @@ Modern CSS features used: CSS Grid, Flexbox, CSS Variables, backdrop-filter
 
 ## Documentation
 
-- [AI-Optimized Component Documentation](wwwroot/rr-ai-docs.json) - Machine-readable component reference
+- [AI-Optimized Component Documentation](wwwroot/rr-ai-components.json) - Machine-readable component reference
+- [AI-Optimized Styles Documentation](wwwroot/rr-ai-styles.json) - Utility classes with bracket notation
 - [Contributing Guide](CONTRIBUTING.md) - AI-optimized development guide
 - Live Examples - Coming soon
 
@@ -691,7 +693,7 @@ git clone https://github.com/RaRdq/RR.Blazor.git
 cd RR.Blazor
 
 # Generate AI documentation
-pwsh ./Scripts/GenerateAIDocsAdvanced.ps1 -ProjectPath . -OutputPath wwwroot/rr-ai-docs.json
+pwsh ./Scripts/GenerateDocumentation.ps1 -ProjectPath .
 
 # Build project with tools
 dotnet build

@@ -3,7 +3,7 @@
   <PropertyGroup>
     <!-- Enable component registry generation by default -->
     <GenerateComponentRegistry Condition="'$(GenerateComponentRegistry)' == ''">true</GenerateComponentRegistry>
-    <ComponentRegistryOutputPath Condition="'$(ComponentRegistryOutputPath)' == ''">$(OutputPath)wwwroot/rr-ai-docs.json</ComponentRegistryOutputPath>
+    <ComponentRegistryOutputPath Condition="'$(ComponentRegistryOutputPath)' == ''">$(OutputPath)wwwroot/rr-ai-components.json</ComponentRegistryOutputPath>
     <!-- Enable component validation by default -->
     <ValidateRRBlazorUsage Condition="'$(ValidateRRBlazorUsage)' == ''">false</ValidateRRBlazorUsage>
     <RRBlazorAnalyzersEnabled Condition="'$(RRBlazorAnalyzersEnabled)' == ''">false</RRBlazorAnalyzersEnabled>
@@ -16,23 +16,28 @@
     <PropertyGroup>
       <_RRBlazorOutputDir>$(ComponentRegistryOutputPath.Substring(0, $(ComponentRegistryOutputPath.LastIndexOf('/'))))</_RRBlazorOutputDir>
       <_AIDocsScript>$(MSBuildThisFileDirectory)Scripts\GenerateDocumentation.ps1</_AIDocsScript>
-      <_AIDocsOutputPath>$(MSBuildThisFileDirectory)wwwroot\rr-ai-docs.json</_AIDocsOutputPath>
+      <_AIComponentsOutputPath>$(MSBuildThisFileDirectory)wwwroot\rr-ai-components.json</_AIComponentsOutputPath>
+      <_AIStylesOutputPath>$(MSBuildThisFileDirectory)wwwroot\rr-ai-styles.json</_AIStylesOutputPath>
     </PropertyGroup>
 
     <!-- Create output directory -->
     <MakeDir Directories="$(_RRBlazorOutputDir)" Condition="!Exists('$(_RRBlazorOutputDir)')" />
 
     <!-- Generate comprehensive AI documentation using PowerShell -->
-    <Exec Command="pwsh &quot;$(_AIDocsScript)&quot; -ProjectPath &quot;$(MSBuildThisFileDirectory)&quot; -OutputPath &quot;wwwroot\rr-ai-docs.json&quot;" 
+    <Exec Command="pwsh &quot;$(_AIDocsScript)&quot; -ProjectPath &quot;$(MSBuildThisFileDirectory)&quot;" 
           Condition="Exists('$(_AIDocsScript)') AND '$(Configuration)' == 'Release'"
           ContinueOnError="true" />
 
-    <Message Text="✅ RR.Blazor AI documentation generated at: $(_AIDocsOutputPath)" 
+    <Message Text="✅ RR.Blazor AI documentation generated at: $(_AIComponentsOutputPath)" 
              Importance="high" 
-             Condition="Exists('$(_AIDocsOutputPath)')" />
+             Condition="Exists('$(_AIComponentsOutputPath)')" />
+             
+    <Message Text="✅ RR.Blazor AI styles generated at: $(_AIStylesOutputPath)" 
+             Importance="high" 
+             Condition="Exists('$(_AIStylesOutputPath)')" />
              
     <Warning Text="⚠️ RR.Blazor AI documentation generation failed. Run 'pwsh GenerateDocumentation.ps1' manually." 
-             Condition="!Exists('$(_AIDocsOutputPath)')" />
+             Condition="!Exists('$(_AIComponentsOutputPath)') OR !Exists('$(_AIStylesOutputPath)')" />
   </Target>
 
 
