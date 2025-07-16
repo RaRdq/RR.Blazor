@@ -316,8 +316,10 @@ All RR.Blazor components use a consistent Icon system for maximum flexibility an
 <!-- Unified Icon + IconPosition pattern -->
 <RButton Icon="save" IconPosition="IconPosition.Start" Text="Save" />
 <RCard Icon="dashboard" Title="Analytics Dashboard" />
-<RSection Icon="settings" Title="Configuration" />
-<RListItem Icon="person" IconPosition="IconPosition.End" Title="User Profile" />
+<RSection Icon="settings" Text="Configuration" />
+<RList>
+    <RListItem Icon="person" IconPosition="IconPosition.End" Text="User Profile" />
+</RList>
 ```
 
 ### IconPosition Values
@@ -441,7 +443,7 @@ RR.Blazor includes 800+ utility classes inspired by modern CSS frameworks:
 ```razor
 <RForm TModel="UserModel" @bind-Model="model" OnValidSubmit="@HandleSubmit">
     <FormFields>
-        <RFormField Label="Email Address"
+        <RFormField Text="Email Address"
                     Type="FieldType.Email"
                     @bind-Value="model.Email"
                     Size="FieldSize.Large"
@@ -449,7 +451,7 @@ RR.Blazor includes 800+ utility classes inspired by modern CSS frameworks:
                     StartIcon="email"
                     Required />
                     
-        <RFormField Label="Password"
+        <RFormField Text="Password"
                     Type="@(showPassword ? FieldType.Text : FieldType.Password)"
                     @bind-Value="model.Password"
                     StartIcon="lock"
@@ -466,7 +468,10 @@ RR.Blazor includes 800+ utility classes inspired by modern CSS frameworks:
 ```razor
 <RVirtualList Items="@thousandsOfItems" ItemHeight="60">
     <ItemTemplate Context="item">
-        <RListItem Title="@item.Name" Subtitle="@item.Description" />
+        <div class="list-item">
+            <h4>@item.Name</h4>
+            <p>@item.Description</p>
+        </div>
     </ItemTemplate>
 </RVirtualList>
 ```
