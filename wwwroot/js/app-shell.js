@@ -231,6 +231,10 @@ export function copyToClipboard(text) {
     });
 }
 
+export function updateUrlWithoutScroll(newUrl) {
+    return RRBlazor.updateUrlWithoutScroll(newUrl);
+}
+
 window.RRAppShell = {
     isMobile,
     isTablet,
@@ -240,5 +244,6 @@ window.RRAppShell = {
     scrollToTop,
     scrollToElement,
     copyToClipboard,
-    getPerformanceMetrics
+    getPerformanceMetrics,
+    updateUrlWithoutScroll
 };

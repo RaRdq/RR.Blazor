@@ -1,55 +1,195 @@
-@* RConfirmationModal - Generic confirmation modal component *@
+@using RR.Blazor.Components
+@using RR.Blazor.Enums
 
-<RModal Visible="@Visible"
-        Size="ModalSize.Small"
-        Variant="@Variant"
-        Title="@Title"
-        CloseOnBackdrop="@(!Processing)"
-        Processing="@Processing"
-        CancelText="@CancelText"
-        PrimaryText="@ConfirmText"
-        PrimaryIcon="@GetConfirmIcon()"
-        PrimaryButtonClass="@GetConfirmButtonClass()"
-        ShowPrimaryButtonSpinner="@Processing"
-        OnCancel="Cancel"
-        OnClose="Cancel"
-        OnPrimaryAction="Confirm">
-    
-    <div class="flex flex-col items-center text-center gap-4">
-        @if (!string.IsNullOrEmpty(IconName))
-        {
-            <div class="flex items-center justify-center w-12 h-12 rounded-xl @GetIconBackgroundClass()">
-                <i class="material-symbols-rounded @GetIconColorClass()">@IconName</i>
-            </div>
-        }
-        <div class="flex flex-col gap-2">
-            @if (ChildContent != null)
+@* RConfirmationModal - Ultra-generic, theme-aware confirmation modal component *@
+@* Consolidates all confirmation modal functionality into one professional component *@
+
+<RModal Visible="@Visible" 
+        Size="@Size" 
+        Variant="@GetModalVariant()"
+        OnClose="HandleCancel"
+        CloseOnBackdrop="@(!IsProcessing)">
+    <HeaderContent>
+        <div class="flex items-center gap-3">
+            @if (!string.IsNullOrEmpty(GetEffectiveIcon()))
             {
-                @ChildContent
+                <i class="material-symbols-rounded text-2xl @GetIconClass()">@GetEffectiveIcon()</i>
             }
-            else
+            <h3 class="text-h5 ma-0 font-semibold">@Title</h3>
+        </div>
+    </HeaderContent>
+    <ChildContent>
+        <div class="pa-6">
+            <div class="flex flex-col items-center text-center gap-4">
+                @if (ShowCenteredIcon && !string.IsNullOrEmpty(GetEffectiveIcon()))
+                {
+                    <div class="flex items-center justify-center w-12 h-12 rounded-xl @GetIconBackgroundClass()">
+                        <i class="material-symbols-rounded @GetIconColorClass()">@GetEffectiveIcon()</i>
+                    </div>
+                }
+                
+                <div class="flex flex-col gap-2">
+                    @if (ChildContent != null)
+                    {
+                        @ChildContent
+                    }
+                    else if (!string.IsNullOrEmpty(Message))
+                    {
+                        <p class="text-body-1 text-secondary ma-0">@Message</p>
+                    }
+                    
+                    @if (!string.IsNullOrEmpty(Details))
+                    {
+                        <div class="mt-3 pa-3 bg-surface-elevated rounded-lg border border-outline-variant">
+                            <p class="text-sm text-secondary ma-0">@Details</p>
+                        </div>
+                    }
+                </div>
+            </div>
+            
+            @if (ShowDetails && DetailsDictionary.Any())
             {
-                <p class="text-center text-base">@Message</p>
+                <RCard Variant="CardVariant.Outlined" Class="mt-4">
+                    <div class="pa-4">
+                        <h4 class="text-subtitle font-medium mb-3">Details:</h4>
+                        <div class="flex flex-col gap-2">
+                            @foreach (var detail in DetailsDictionary)
+                            {
+                                <div class="flex justify-between items-center">
+                                    <span class="text-body-2 text-secondary">@detail.Key:</span>
+                                    <span class="text-body-2 font-medium">@detail.Value</span>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </RCard>
+            }
+            
+            @if (ShowWarning && (Variant == ConfirmationVariant.Danger || Variant == ConfirmationVariant.Destructive))
+            {
+                <div class="mt-4 flex items-center gap-2 pa-3 bg-error-container text-error rounded-lg">
+                    <i class="material-symbols-rounded">warning</i>
+                    <span class="text-sm">This action cannot be undone</span>
+                </div>
             }
         </div>
-    </div>
-    
+    </ChildContent>
+    <FooterContent>
+        <RActionGroup Direction="ActionGroupDirection.Horizontal" 
+                      Alignment="ActionGroupAlignment.End" 
+                      Spacing="ActionGroupSpacing.Medium">
+            <RButton Text="@CancelText"
+                     Variant="ButtonVariant.Ghost"
+                     Size="ButtonSize.Medium"
+                     OnClick="HandleCancel"
+                     Disabled="@IsProcessing" />
+            <RButton Text="@ConfirmText"
+                     Variant="@GetConfirmVariant()"
+                     Size="ButtonSize.Medium"
+                     Loading="@IsProcessing"
+                     OnClick="HandleConfirm"
+                     Icon="@(IsProcessing ? "" : ConfirmIcon)" />
+        </RActionGroup>
+    </FooterContent>
 </RModal>
 
 @code {
     [Parameter] public bool Visible { get; set; }
     [Parameter] public string Title { get; set; } = "Confirm Action";
     [Parameter] public string Message { get; set; } = "Are you sure you want to proceed?";
-    [Parameter] public string ConfirmText { get; set; } = "Yes";
+    [Parameter] public string Icon { get; set; } = "";
+    [Parameter] public string ConfirmText { get; set; } = "Confirm";
     [Parameter] public string CancelText { get; set; } = "Cancel";
-    [Parameter] public string IconName { get; set; } = "warning";
-    [Parameter] public ModalVariant Variant { get; set; } = ModalVariant.Warning;
-    [Parameter] public bool Processing { get; set; }
-    [Parameter] public RenderFragment ChildContent { get; set; }
+    [Parameter] public string ConfirmIcon { get; set; } = "";
+    [Parameter] public bool IsProcessing { get; set; }
+    [Parameter] public ConfirmationVariant Variant { get; set; } = ConfirmationVariant.Warning;
+    [Parameter] public ModalSize Size { get; set; } = ModalSize.Medium;
+    [Parameter] public bool ShowDetails { get; set; }
+    [Parameter] public Dictionary<string, string> DetailsDictionary { get; set; } = new();
+    [Parameter] public string Details { get; set; } = "";
+    [Parameter] public bool ShowWarning { get; set; } = true;
+    [Parameter] public bool ShowCenteredIcon { get; set; } = true;
+    [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public EventCallback OnConfirm { get; set; }
     [Parameter] public EventCallback OnCancel { get; set; }
 
-    private async Task Confirm()
+
+
+    private string GetEffectiveIcon()
+    {
+        if (!string.IsNullOrEmpty(Icon)) return Icon;
+        
+        return Variant switch
+        {
+            ConfirmationVariant.Info => "info",
+            ConfirmationVariant.Warning => "warning",
+            ConfirmationVariant.Danger or ConfirmationVariant.Destructive => "error",
+            ConfirmationVariant.Success => "check_circle",
+            _ => "help"
+        };
+    }
+
+    private ModalVariant GetModalVariant()
+    {
+        return Variant switch
+        {
+            ConfirmationVariant.Info => ModalVariant.Info,
+            ConfirmationVariant.Warning => ModalVariant.Warning,
+            ConfirmationVariant.Danger or ConfirmationVariant.Destructive => ModalVariant.Destructive,
+            ConfirmationVariant.Success => ModalVariant.Success,
+            _ => ModalVariant.Warning
+        };
+    }
+
+    private ButtonVariant GetConfirmVariant()
+    {
+        return Variant switch
+        {
+            ConfirmationVariant.Info => ButtonVariant.Primary,
+            ConfirmationVariant.Warning => ButtonVariant.Warning,
+            ConfirmationVariant.Danger or ConfirmationVariant.Destructive => ButtonVariant.Danger,
+            ConfirmationVariant.Success => ButtonVariant.Success,
+            _ => ButtonVariant.Primary
+        };
+    }
+
+    private string GetIconClass()
+    {
+        return Variant switch
+        {
+            ConfirmationVariant.Info => "text-info",
+            ConfirmationVariant.Warning => "text-warning",
+            ConfirmationVariant.Danger or ConfirmationVariant.Destructive => "text-error",
+            ConfirmationVariant.Success => "text-success",
+            _ => "text-secondary"
+        };
+    }
+
+    private string GetIconBackgroundClass()
+    {
+        return Variant switch
+        {
+            ConfirmationVariant.Info => "bg-info-container border border-info",
+            ConfirmationVariant.Warning => "bg-warning-container border border-warning",
+            ConfirmationVariant.Danger or ConfirmationVariant.Destructive => "bg-error-container border border-error",
+            ConfirmationVariant.Success => "bg-success-container border border-success",
+            _ => "bg-info-container border border-primary"
+        };
+    }
+
+    private string GetIconColorClass()
+    {
+        return Variant switch
+        {
+            ConfirmationVariant.Info => "text-info",
+            ConfirmationVariant.Warning => "text-warning",
+            ConfirmationVariant.Danger or ConfirmationVariant.Destructive => "text-error",
+            ConfirmationVariant.Success => "text-success",
+            _ => "text-primary"
+        };
+    }
+
+    private async Task HandleConfirm()
     {
         if (OnConfirm.HasDelegate)
         {
@@ -57,47 +197,11 @@
         }
     }
 
-    private async Task Cancel()
+    private async Task HandleCancel()
     {
         if (OnCancel.HasDelegate)
         {
             await OnCancel.InvokeAsync();
         }
     }
-
-    private string GetConfirmButtonClass() => Variant switch
-    {
-        ModalVariant.Destructive => "bg-error-light text-inverse hover:opacity-90",
-        ModalVariant.Warning => "bg-warning text-inverse hover:opacity-90",
-        ModalVariant.Success => "bg-success text-inverse hover:opacity-90",
-        ModalVariant.Info => "bg-info text-inverse hover:opacity-90",
-        _ => "bg-primary text-inverse hover:opacity-90"
-    };
-
-    private string GetConfirmIcon() => Variant switch
-    {
-        ModalVariant.Destructive => "delete",
-        ModalVariant.Warning => "warning",
-        ModalVariant.Success => "check",
-        ModalVariant.Info => "info",
-        _ => "check"
-    };
-
-    private string GetIconBackgroundClass() => Variant switch
-    {
-        ModalVariant.Destructive => "bg-error-light border border-error",
-        ModalVariant.Warning => "bg-warning-light border border-warning",
-        ModalVariant.Success => "bg-success-light border border-success",
-        ModalVariant.Info => "bg-info-light border border-info",
-        _ => "bg-info-light border border-primary"
-    };
-
-    private string GetIconColorClass() => Variant switch
-    {
-        ModalVariant.Destructive => "text-error",
-        ModalVariant.Warning => "text-warning",
-        ModalVariant.Success => "text-success",
-        ModalVariant.Info => "text-info",
-        _ => "text-primary"
-    };
 }
