@@ -1,4 +1,5 @@
 @using RR.Blazor.Enums
+@using RR.Blazor.Models
 @* RDataTable - Generic data table component with sorting, filtering, and pagination *@
 @typeparam TItem
 
@@ -6,11 +7,11 @@
     <div class="bg-elevated rounded-lg overflow-hidden shadow-sm @Class">
         @if (ShowHeader)
         {
-            <div class="d-flex justify-between align-center pa-4 border-b">
-                <div class="d-flex flex-column gap-1">
+            <div class="flex justify-between align-center pa-4 border-b">
+                <div class="flex flex-col gap-1">
                     @if (!string.IsNullOrEmpty(Title))
                     {
-                        <h3 class="text-lg font-semibold text-primary ma-0 @(!string.IsNullOrEmpty(Icon) ? "d-flex align-center gap-2" : "")">
+                        <h3 class="text-lg font-semibold text-primary ma-0 @(!string.IsNullOrEmpty(Icon) ? "flex align-center gap-2" : "")">
                             @if (!string.IsNullOrEmpty(Icon))
                             {
                                 <i class="material-symbols-rounded text-xl">@Icon</i>
@@ -25,7 +26,7 @@
                 </div>
                 @if (HeaderContent != null)
                 {
-                    <div class="d-flex gap-2">
+                    <div class="flex gap-2">
                         @HeaderContent
                     </div>
                 }
@@ -64,8 +65,8 @@
                             {
                                 @foreach (var column in GetEffectiveColumns().Where(c => !c.Hidden))
                                 {
-                                    <th class="pa-3 text-left font-semibold text-primary text-sm @(column.Sortable ? "cursor-pointer hover:bg-secondary transition-colors" : "") @column.HeaderClass"
-                                        style="@GetColumnStyle(column)"
+                                    <th class="pa-3 text-left font-semibold text-primary text-sm @(column.Sortable ? "cursor-pointer hover:text-interactive transition-all" : "") @column.HeaderClass @(StickyColumns.Contains(column.Key) ? "position-sticky bg-elevated shadow-sm" : "") @(ResizableColumns ? "resizable-column" : "")"
+                                        style="@GetColumnStyleWithSticky(column)"
                                         @onclick="() => column.Sortable ? OnSort.InvokeAsync(column.Key) : Task.CompletedTask">
                                         @if (column.HeaderTemplate != null)
                                         {
@@ -73,13 +74,23 @@
                                         }
                                         else
                                         {
-                                            <div class="d-flex align-center gap-2">
-                                                @column.Header
-                                                @if (column.Sortable && SortColumn == column.Key)
+                                            <div class="flex align-center justify-between gap-2">
+                                                <div class="flex align-center gap-2">
+                                                    @column.Header
+                                                    @if (column.Sortable && SortColumn == column.Key)
+                                                    {
+                                                        <i class="material-symbols-rounded text-base text-secondary animate-scale-in">
+                                                            @(SortDescending ? "arrow_drop_down" : "arrow_drop_up")
+                                                        </i>
+                                                    }
+                                                </div>
+                                                @if (ResizableColumns)
                                                 {
-                                                    <i class="material-symbols-rounded text-base text-secondary">
-                                                        @(SortDescending ? "arrow_drop_down" : "arrow_drop_up")
-                                                    </i>
+                                                    <div class="column-resize-handle cursor-col-resize opacity-0 hover:opacity-100 transition-opacity"
+                                                         @onmousedown="@((e) => StartColumnResize(column.Key, e))"
+                                                         @onmousedown:preventDefault="true">
+                                                        <i class="material-symbols-rounded text-sm">drag_indicator</i>
+                                                    </div>
                                                 }
                                             </div>
                                         }
@@ -140,20 +151,18 @@
                             }
                         }
                     }
-                    else if (!IsLoading)
+                    else if (!Loading)
                     {
-                        <tr>
-                            <td colspan="@GetColSpan()" class="pa-8 text-center">
+                        <tr class="empty-state-row">
+                            <td colspan="@GetColSpan()" class="table-empty">
                                 @if (EmptyStateContent != null)
                                 {
                                     @EmptyStateContent
                                 }
                                 else
                                 {
-                                    <div class="d-flex flex-column align-center gap-3">
-                                        <i class="material-symbols-rounded text-4xl text-muted">inbox</i>
-                                        <p class="text-secondary ma-0">@(EmptyMessage ?? "No data available")</p>
-                                    </div>
+                                    <h3>No data available</h3>
+                                    <p>@(EmptyMessage ?? "No items match your current filters")</p>
                                 }
                             </td>
                         </tr>
@@ -162,10 +171,10 @@
             </table>
         </div>
 
-        @if (IsLoading)
+        @if (Loading)
         {
-            <div class="d-flex align-center justify-center pa-8">
-                <div class="d-flex align-center gap-3">
+            <div class="flex align-center justify-center pa-8">
+                <div class="flex align-center gap-3">
                     <div class="spinner"></div>
                     <span class="text-secondary">@(LoadingMessage ?? "Loading...")</span>
                 </div>
@@ -174,17 +183,17 @@
 
         @if (ShowPagination && TotalItems > 0)
         {
-            <div class="d-flex justify-between align-center pa-4 border-t">
+            <div class="flex justify-between align-center pa-4 border-t">
                 <div class="text-sm text-secondary">
                     Showing @((CurrentPage - 1) * PageSize + 1) to @Math.Min(CurrentPage * PageSize, TotalItems) of @TotalItems entries
                 </div>
-                <div class="d-flex align-center gap-3">
+                <div class="flex align-center gap-3">
                     <RButton Variant="ButtonVariant.Ghost" 
                             Size="ButtonSize.Small" 
                             Icon="chevron_left" IconPosition="IconPosition.Start" 
                             OnClick="() => OnPageChange.InvokeAsync(CurrentPage - 1)" 
                             Disabled="@(CurrentPage <= 1)" />
-                    <span class="text-sm font-medium px-3">Page @CurrentPage of @TotalPages</span>
+                    <span class="text-sm font-medium pl-3 pr-3">Page @CurrentPage of @TotalPages</span>
                     <RButton Variant="ButtonVariant.Ghost" 
                             Size="ButtonSize.Small" 
                             Icon="chevron_right" IconPosition="IconPosition.Start" 
@@ -207,7 +216,7 @@
     // Core Configuration
     [Parameter] public string Class { get; set; }
     [Parameter] public List<TItem> Items { get; set; }
-    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public bool Loading { get; set; }
     [Parameter] public int Elevation { get; set; } = 2;
 
     // Header Configuration  
@@ -237,7 +246,7 @@
     [Parameter] public RenderFragment ChildContent { get; set; }
 
     // Row Interaction
-    [Parameter] public bool IsRowClickable { get; set; }
+    [Parameter] public bool RowClickable { get; set; }
     [Parameter] public EventCallback<TItem> OnRowClick { get; set; }
     [Parameter] public Func<TItem, string> RowClassFunc { get; set; }
 
@@ -273,6 +282,13 @@
     [Parameter] public string Height { get; set; }
     [Parameter] public bool Virtualize { get; set; }
     [Parameter] public float ItemSize { get; set; } = 50f;
+    [Parameter] public bool ResizableColumns { get; set; }
+    [Parameter] public List<string> StickyColumns { get; set; } = new();
+
+    // Column Filtering
+    [Parameter] public Dictionary<string, string> ColumnFilters { get; set; } = new();
+    [Parameter] public EventCallback<Dictionary<string, string>> ColumnFiltersChanged { get; set; }
+    [Parameter] public EventCallback<RR.Blazor.Models.ColumnFilterEventArgs> OnColumnFilter { get; set; }
 
     private int TotalPages => (int)Math.Ceiling(TotalItems / (double)PageSize);
     
@@ -334,8 +350,8 @@
         var baseClass = "border-b transition-colors";
         if (Hoverable) baseClass += " hover:bg-secondary";
         if (Striped) baseClass += " odd:bg-surface-elevated";
-        if (Dense) baseClass += " py-1";
-        if (IsRowClickable) baseClass += " cursor-pointer hover:bg-secondary";
+        if (Dense) baseClass += " pt-1 pb-1";
+        if (RowClickable) baseClass += " cursor-pointer hover:bg-secondary";
         
         var customClass = RowClassFunc?.Invoke(item) ?? RowClass;
         
@@ -385,6 +401,43 @@
         return string.Join("; ", styles);
     }
 
+    private string GetColumnStyleWithSticky(RDataTableColumn<TItem> column)
+    {
+        var styles = new List<string>();
+        
+        if (!string.IsNullOrEmpty(column.Width)) styles.Add($"width: {column.Width}");
+        if (!string.IsNullOrEmpty(column.MinWidth)) styles.Add($"min-width: {column.MinWidth}");
+        if (!string.IsNullOrEmpty(column.MaxWidth)) styles.Add($"max-width: {column.MaxWidth}");
+        
+        if (StickyColumns.Contains(column.Key))
+        {
+            var stickyIndex = StickyColumns.IndexOf(column.Key);
+            var leftOffset = 0;
+            for (var i = 0; i < stickyIndex; i++)
+            {
+                var prevColumn = GetEffectiveColumns().FirstOrDefault(c => c.Key == StickyColumns[i]);
+                if (prevColumn != null && !string.IsNullOrEmpty(prevColumn.Width))
+                {
+                    leftOffset += int.Parse(prevColumn.Width.Replace("px", "").Replace("%", ""));
+                }
+                else
+                {
+                    leftOffset += 120; // Default column width
+                }
+            }
+            styles.Add($"left: {leftOffset}px");
+            styles.Add("z-index: 10");
+        }
+        
+        return string.Join("; ", styles);
+    }
+
+    private void StartColumnResize(string columnKey, Microsoft.AspNetCore.Components.Web.MouseEventArgs e)
+    {
+        // Column resizing implementation would go here
+        // For now, just a placeholder
+    }
+
     private object GetFormattedCellValue(TItem item, RDataTableColumn<TItem> column)
     {
         var value = column.ValueFunc?.Invoke(item) ?? GetCellValue(item, column.Key);
@@ -414,6 +467,34 @@
         var count = GetEffectiveColumns().Count(c => !c.Hidden);
         if (MultiSelection || SingleSelection) count++;
         return Math.Max(1, count);
+    }
+
+    public async Task CloseAllFilterDropdowns(string excludeColumnKey = "")
+    {
+        foreach (var column in GetEffectiveColumns())
+        {
+            if (column.Key != excludeColumnKey)
+            {
+                var columnComponent = _childColumns.FirstOrDefault(c => c.Key == column.Key);
+            }
+        }
+        await Task.CompletedTask;
+    }
+
+    public async Task OnColumnFilterChanged(RR.Blazor.Models.ColumnFilterEventArgs filterArgs)
+    {
+        if (string.IsNullOrEmpty(filterArgs.FilterValue))
+        {
+            ColumnFilters.Remove(filterArgs.ColumnKey);
+        }
+        else
+        {
+            ColumnFilters[filterArgs.ColumnKey] = filterArgs.FilterValue;
+        }
+        
+        await ColumnFiltersChanged.InvokeAsync(ColumnFilters);
+        await OnColumnFilter.InvokeAsync(filterArgs);
+        StateHasChanged();
     }
 
     private async Task ToggleAllSelection(bool selected)
@@ -467,5 +548,8 @@
         public string HeaderClass { get; set; } = "";
         public Func<T, object> ValueFunc { get; set; }
         public string Format { get; set; }
+        public bool Filterable { get; set; }
+        public RR.Blazor.Enums.FilterType FilterType { get; set; } = RR.Blazor.Enums.FilterType.Search;
+        public List<RR.Blazor.Models.FilterOption> FilterOptions { get; set; } = new();
     }
 }

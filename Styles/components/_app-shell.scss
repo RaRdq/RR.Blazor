@@ -1,446 +1,281 @@
 @use '../abstracts' as *;
 
-// RAppShell - Ultimate app layout component
+// ============================================================================
+// APP SHELL COMPONENT - Structural Layout + Interactive Features
+// ============================================================================
+
+// Layout-specific CSS custom properties
+:root {
+  --header-height: 4rem;
+  --sidebar-width-expanded: 16rem;
+  --sidebar-width-collapsed: 4rem;
+  --footer-height: 0;
+}
+
+// Primary app shell layout structure
 .app-shell {
-  position: relative;
+  display: flex;
   min-height: 100vh;
-  overflow: hidden;
-  background: linear-gradient(135deg, 
-    var(--color-background-primary) 0%, 
-    var(--color-background-secondary) 100%);
-}
-
-// ============================================================================
-// SIDEBAR COMPONENT
-// ============================================================================
-
-.sidebar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 16rem; // 256px
-  height: 100vh;
-  background: var(--color-background-elevated);
-  border-right: var(--border-1) solid var(--color-border-light);
-  display: flex;
-  flex-direction: column;
-  z-index: var(--z-sidebar);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  transform: translateX(0);
+  position: relative;
+  background: var(--color-background-primary);
   
-  &--collapsed {
-    width: 4rem; // 64px
+  // Touch-friendly minimum targets (44px)
+  * {
+    min-height: var(--touch-target-min, 44px);
   }
   
-  &--closed {
-    transform: translateX(-100%);
-  }
-  
+  // Mobile-first responsive foundation
   @include responsive-max(md) {
-    transform: translateX(-100%);
-    
-    &:not(.sidebar--closed) {
-      transform: translateX(0);
-    }
+    flex-direction: column;
   }
 }
 
-.sidebar__nav {
+.layout {
+  @extend .app-shell;
+}
+
+.layout-main {
   flex: 1;
-  padding: var(--space-3) var(--space-3);
-  padding-top: calc(4rem + var(--space-3)); // Account for header
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: auto;
+  position: relative;
+  padding-top: 4rem;
+  min-height: calc(100vh - 4rem);
 }
 
-.sidebar__footer {
-  padding: var(--space-3);
-  flex-shrink: 0;
-}
-
-// ============================================================================
-// HEADER COMPONENT
-// ============================================================================
-
-.header {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4rem; // 64px
-  background: var(--color-background-elevated);
-  border-bottom: var(--border-1) solid var(--color-border-light);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 var(--space-6);
-  z-index: var(--z-header);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  
-  @include responsive-max(md) {
-    padding: 0 var(--space-4);
-  }
-  
-  @include responsive-max(sm) {
-    padding: 0 var(--space-3);
-  }
-}
-
-.header__left {
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
-  min-width: 0;
-  flex: 1;
-}
-
-.header__right {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  flex-shrink: 0;
-}
-
-.header__logo {
-  display: flex;
-  align-items: center;
-  height: 2.5rem;
-  flex-shrink: 0;
-  
-  @include responsive-max(sm) {
-    height: 2rem;
-  }
-}
-
-.header__logo-img {
-  height: 100%;
-  width: auto;
-  object-fit: contain;
-}
-
-.header__brand {
-  font-size: var(--text-xl);
-  font-weight: var(--font-bold);
-  color: var(--color-text-primary);
-  white-space: nowrap;
-  
-  @include responsive-max(sm) {
-    font-size: var(--text-lg);
-  }
-}
-
-.header__title-group {
-  min-width: 0;
-  flex: 1;
-  margin-left: var(--space-4);
-}
-
-.header__title {
-  font-size: var(--text-xl);
-  font-weight: var(--font-semibold);
-  color: var(--color-text-primary);
-  margin: 0;
-  line-height: 1.2;
-  
-  @include responsive-max(sm) {
-    font-size: var(--text-lg);
-  }
-}
-
-.header__subtitle {
-  font-size: var(--text-sm);
-  color: var(--color-text-secondary);
-  margin: 0;
-  line-height: 1.2;
-  
-  @include responsive-max(sm) {
-    font-size: var(--text-xs);
-  }
-}
-
-// ============================================================================
-// MAIN CONTENT COMPONENT
-// ============================================================================
-
+// Main content area
 .main-content {
   flex: 1;
-  display: flex;
-  flex-direction: column;
   min-height: 100vh;
-  margin-left: 16rem; // Default sidebar width
-  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  padding-top: var(--header-height, 4rem);
+  transition: all var(--duration-normal) var(--ease-out);
   
-  &--collapsed {
-    margin-left: 4rem; // Collapsed sidebar width
+  &-expanded {
+    margin-left: var(--sidebar-width-expanded, 16rem);
   }
   
-  &--expanded {
-    margin-left: 16rem; // Full sidebar width
+  &-collapsed {
+    margin-left: var(--sidebar-width-collapsed, 4rem);
+  }
+  
+  &-centered {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    max-width: 100%;
   }
   
   @include responsive-max(md) {
-    margin-left: 0 !important;
+    &-expanded,
+    &-collapsed {
+      margin-left: 0;
+    }
   }
 }
 
 .main {
   flex: 1;
-  width: 100%;
-  padding-top: 4rem; // Account for fixed header
-  padding-left: var(--space-6);
-  padding-right: var(--space-6);
-  padding-bottom: var(--space-4); // Reduced to avoid excessive empty space
-  min-height: calc(100vh - 4rem);
-  background: var(--color-background-primary);
-  overflow-x: hidden;
-  overflow-y: auto;
-  
-  @include responsive-max(md) {
-    padding-left: var(--space-4);
-    padding-right: var(--space-4);
-  }
-  
-  @include responsive-max(sm) {
-    padding-left: var(--space-3);
-    padding-right: var(--space-3);
-  }
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
-.main__content {
-  width: 100%;
-  
-  &--centered {
-    margin-left: auto;
-    margin-right: auto;
-  }
-}
-
-// ============================================================================
-// MOBILE SIDEBAR BACKDROP
-// ============================================================================
-
-.sidebar-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  z-index: var(--z-overlay);
-  opacity: 0;
-  visibility: hidden;
-  transition: all 0.3s ease;
-  
-  &--active {
-    opacity: 1;
-    visibility: visible;
-  }
-}
-  
-  // Fixed positioning for mobile backdrop
-  @include responsive-max(md) {
-    .sidebar:not(.sidebar--closed) + .main-content {
-      margin-left: 0;
-    }
+// App shell interactive enhancements
+.app-shell {
+  // Enhanced gradient background for visual depth
+  &-enhanced {
+    background: linear-gradient(135deg, 
+      var(--color-background-primary) 0%, 
+      var(--color-background-secondary) 100%);
+    overflow: hidden;
   }
   
-  // Status bar at bottom
-  .status-bar {
-    background: var(--color-background-elevated);
-    border-top: var(--border-1) solid var(--color-border-light);
-    padding: var(--space-2) var(--space-4);
-    font-size: var(--text-sm);
-    color: var(--color-text-secondary);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    min-height: 2.5rem;
-    z-index: var(--z-sticky);
-  }
-  
-  // Quick actions floating button
-  .quick-actions-floating {
-    position: fixed;
-    bottom: var(--space-6);
-    right: var(--space-6);
-    z-index: var(--z-floating);
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
-    
-    .button {
-      box-shadow: var(--shadow-2xl);
-      border-radius: var(--radius-full);
-      width: 3.5rem;
-      height: 3.5rem;
+  // Breadcrumb enhancements within app shell context
+  .breadcrumbs {
+    // Enhanced mobile behavior - collapse to dropdown on small screens
+    @include responsive-max(lg) {
+      .breadcrumb-item:not(:last-child) {
+        display: none;
+      }
       
-      &:hover {
-        transform: translateY(-2px);
-        box-shadow: var(--shadow-2xl);
+      &::before {
+        content: '...';
+        color: var(--color-text-secondary);
+        margin-right: var(--space-2);
       }
     }
   }
+}
+
+
+// ============================================================================
+// FLOATING ACTIONS - Interactive Features Only
+// ============================================================================
+
+.quick-actions-floating {
+  // Enhanced button styling (positioning handled in layout)
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
   
-  // Enhanced search container
-  .search-container {
-    position: relative;
+  .button,
+  .rbutton {
+    box-shadow: var(--shadow-xl);
+    border-radius: var(--radius-full);
+    width: 3.5rem;
+    height: 3.5rem;
     transition: all var(--duration-normal) var(--ease-out);
     
-    &.search-expanded {
-      width: 256px;
+    &:hover {
+      transform: translateY(-2px) scale(1.05);
+      box-shadow: var(--shadow-2xl);
     }
     
-    &.search-collapsed {
-      width: auto;
+    &:active {
+      transform: translateY(0) scale(0.95);
     }
     
-    .search-results {
-      max-height: 400px;
-      overflow-y: auto;
-      border: var(--border-1) solid var(--color-border-light);
-      
-      // Custom scrollbar
-      &::-webkit-scrollbar {
-        width: var(--space-1);
-      }
-      
-      &::-webkit-scrollbar-track {
-        background: transparent;
-      }
-      
-      &::-webkit-scrollbar-thumb {
-        background: var(--color-border-light);
-        border-radius: var(--radius-full);
-        
-        &:hover {
-          background: var(--color-border-medium);
-        }
-      }
+    // Touch-friendly sizing on mobile
+    @include responsive-max(md) {
+      width: 3rem;
+      height: 3rem;
     }
     
-    .search-result-item {
-      transition: all var(--duration-fast) var(--ease-out);
-      border: none;
-      background: transparent;
-      
-      &:hover {
-        background: var(--color-background-secondary);
-        transform: translateX(4px);
-      }
-      
-      &:focus {
-        outline: 2px solid var(--color-interactive-primary);
-        outline-offset: -2px;
-      }
+    @include responsive-max(sm) {
+      width: 2.75rem;
+      height: 2.75rem;
     }
   }
+}
   
-  // User menu enhancements
-  .user-menu-compact {
-    transition: all var(--duration-slow) var(--ease-out);
-    border-radius: var(--radius-md);
+// ============================================================================
+// SEARCH ENHANCEMENTS - Interactive Features Only
+// ============================================================================
+
+.search-container {
+  // Enhanced interaction animations
+  transition: all var(--duration-normal) var(--ease-out);
+  
+  &.search-expanded {
+    transform: scale(1.02);
+  }
+  
+  .search-results {
+    // Enhanced scrollbar styling
+    &::-webkit-scrollbar {
+      width: 6px;
+    }
+    
+    &::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    
+    &::-webkit-scrollbar-thumb {
+      background: var(--color-border-light);
+      border-radius: var(--radius-full);
+      
+      &:hover {
+        background: var(--color-border-medium);
+      }
+    }
+    
+    // Smooth entrance animation
+    animation: searchDropIn var(--duration-normal) var(--ease-out);
+  }
+  
+  .search-result-item {
+    // Enhanced hover animations
+    transition: all var(--duration-fast) var(--ease-out);
     
     &:hover {
-      background: var(--color-background-secondary);
-    }
-  }
-  
-  // Breadcrumbs
-  .breadcrumbs {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: var(--space-1);
-    
-    a {
-      text-decoration: none;
-      transition: color var(--duration-fast) var(--ease-out);
-      
-      &:hover {
-        text-decoration: underline;
-      }
-    }
-  }
-  
-  // Responsive enhancements
-  @include responsive-max(lg) {
-    .search-container {
-      width: 100% !important;
-      max-width: none;
-      
-      input {
-        width: 100%;
-      }
+      background: var(--color-interactive-light);
+      transform: translateX(4px);
+      border-left: 3px solid var(--color-interactive-primary);
     }
     
-    .quick-actions-floating {
-      bottom: var(--space-4);
-      right: var(--space-4);
-      
-      .button {
-        width: 3rem;
-        height: 3rem;
-      }
+    &:focus {
+      background: var(--color-interactive-light);
+      transform: translateX(4px);
     }
   }
+}
   
-  @include responsive-max(md) {
-    .header {
-      padding: var(--space-2) var(--space-3);
-      
-      &__title {
-        font-size: var(--text-lg);
-      }
-      
-      &__subtitle {
-        display: none;
-      }
+// ============================================================================
+// USER MENU ENHANCEMENTS - Interactive Features Only
+// ============================================================================
+
+.user-menu-compact {
+  transition: all var(--duration-slow) var(--ease-out);
+  border-radius: var(--radius-md);
+  
+  &:hover {
+    background: var(--color-interactive-light);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+  }
+  
+  &:active {
+    transform: translateY(0);
+  }
+}
+  
+// ============================================================================
+// RESPONSIVE INTERACTIVE ENHANCEMENTS
+// ============================================================================
+
+@include responsive-max(lg) {
+  .search-container {
+    // Enhanced mobile search experience
+    &.search-expanded {
+      position: fixed;
+      top: var(--header-height);
+      left: 0;
+      right: 0;
+      z-index: var(--z-overlay);
+      background: var(--color-background-elevated);
+      padding: var(--space-4);
+      border-bottom: var(--border-1) solid var(--color-border-light);
     }
-    
+  }
+}
+
+@include responsive-max(md) {
+  .app-shell {
+    // Enhanced mobile app shell behavior
     .breadcrumbs {
+      padding: var(--space-1) 0;
+      
+      &::before {
+        font-size: var(--text-xs);
+      }
+    }
+  }
+}
+
+@include responsive-max(sm) {
+  .search-container {
+    // Hide search on very small screens for clean interface
+    &:not(.search-expanded) {
       display: none;
     }
-    
-    .status-bar {
-      padding: var(--space-1-5) var(--space-3);
-      font-size: var(--text-xs);
-    }
   }
-  
-  @include responsive-max(sm) {
-    .header__right {
-      gap: var(--space-2);
-      
-      .search-container {
-        display: none;
-      }
-    }
-    
-    .quick-actions-floating {
-      bottom: var(--space-3);
-      right: var(--space-3);
-      
-      .button {
-        width: 2.5rem;
-        height: 2.5rem;
-      }
-    }
-  }
+}
 
-// Animation states for search
+// ============================================================================
+// ANIMATIONS - Interactive Features
+// ============================================================================
+
+
+
 .search-results {
-  animation: dropdownSlideIn var(--duration-fast) var(--ease-out);
+  animation: searchDropIn var(--duration-normal) var(--ease-out);
   transform-origin: top;
 }
 
 
-// Accessibility enhancements
-.keyboard-navigation {
-  .search-result-item:focus,
-  .button:focus,
-  .nav-item:focus {
-    outline: 2px solid var(--color-interactive-primary);
-    outline-offset: 2px;
-  }
-}
+
+// ============================================================================
+// ACCESSIBILITY ENHANCEMENTS
+// ============================================================================
 
 // High contrast mode
 [data-high-contrast="true"] {
@@ -453,37 +288,63 @@
     .search-result-item:hover {
       background: var(--color-interactive-primary);
       color: var(--color-text-inverted);
+      border-left-color: var(--color-text-inverted);
     }
     
-    .status-bar {
-      border-top-width: 2px;
+    .quick-actions-floating .button,
+    .quick-actions-floating .rbutton {
+      border: 2px solid var(--color-text-primary);
     }
   }
 }
 
-// Dark theme optimizations
+// Reduced motion preferences
+@media (prefers-reduced-motion: reduce) {
+  .search-container,
+  .search-results,
+  .search-result-item,
+  .user-menu-compact,
+  .quick-actions-floating .button,
+  .quick-actions-floating .rbutton {
+    transition: none;
+    animation: none;
+    transform: none !important;
+  }
+}
+
+// ============================================================================
+// THEME OPTIMIZATIONS
+// ============================================================================
+
+// Dark theme enhancements
 [data-theme="dark"] {
   .app-shell {
-    .search-results {
-      background: var(--color-background-elevated);
+    &-enhanced {
+      background: linear-gradient(135deg, 
+        var(--color-background-primary) 0%, 
+        color-mix(in srgb, var(--color-background-primary) 90%, var(--color-interactive-primary) 10%) 100%);
     }
     
-    .quick-actions-floating .button {
+    .search-results {
+      background: var(--color-background-elevated);
+      backdrop-filter: blur(8px);
+    }
+    
+    .quick-actions-floating .button,
+    .quick-actions-floating .rbutton {
       background: var(--color-background-elevated);
       border: var(--border-1) solid var(--color-border-light);
+      backdrop-filter: blur(8px);
     }
   }
 }
 
-// Screen reader only announcements
-.sr-only {
-  position: absolute !important;
-  width: 1px !important;
-  height: 1px !important;
-  padding: 0 !important;
-  margin: -1px !important;
-  overflow: hidden !important;
-  clip: rect(0, 0, 0, 0) !important;
-  white-space: nowrap !important;
-  border: 0 !important;
+// Light theme enhancements
+[data-theme="light"] {
+  .app-shell {
+    .search-results {
+      backdrop-filter: blur(4px);
+    }
+  }
 }
+

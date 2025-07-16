@@ -1,143 +1,281 @@
-// Responsive Utilities
-// Mobile-first responsive helper classes
+// RR.Blazor Mobile-First Responsive Utilities
+// Complete responsive system with breakpoint-specific classes
 
 @use '../abstracts' as *;
+@use 'sass:map';
 
-// ============================================================================
-// DISPLAY UTILITIES - Responsive visibility control
-// ============================================================================
+// ===== BREAKPOINT SYSTEM =====
+// Mobile-first approach: Base styles for mobile, then adapt up
+$breakpoints: (
+  md: 768px,    // Tablets
+  lg: 1024px,   // Desktops
+  xl: 1280px,   // Large desktops
+  xxl: 1536px   // Ultra-wide
+);
 
-// Hide/Show at different breakpoints
-// Base display utilities are in _essentials.scss
-
-// Small screens (mobile)
-.d-sm-none { @include responsive-max(sm) { display: none !important; } }
-.d-sm-block { @include responsive-max(sm) { display: block !important; } }
-.d-sm-flex { @include responsive-max(sm) { display: flex !important; } }
-
-// Medium screens (tablet)
-.d-md-none { @include responsive-max(md) { display: none !important; } }
-.d-md-block { @include responsive-max(md) { display: block !important; } }
-.d-md-flex { @include responsive-max(md) { display: flex !important; } }
-
-// Large screens (desktop)
-.d-lg-none { @include responsive-min(lg) { display: none !important; } }
-.d-lg-block { @include responsive-min(lg) { display: block !important; } }
-.d-lg-flex { @include responsive-min(lg) { display: flex !important; } }
-
-// Legacy support
-.u-hidden { @include responsive-max(sm) { display: none !important; } }
-.u-visible { @include responsive-max(sm) { display: block !important; } }
-
-// ============================================================================
-// SPACING UTILITIES - Responsive spacing controls
-// ============================================================================
-
-// Mobile-specific spacing
-@include responsive-max(sm) {
-  .m-sm-0 { margin: 0 !important; }
-  .m-sm-2 { margin: var(--space-2) !important; }
-  .m-sm-3 { margin: var(--space-3) !important; }
-  .m-sm-4 { margin: var(--space-4) !important; }
-  
-  .p-sm-0 { padding: 0 !important; }
-  .p-sm-2 { padding: var(--space-2) !important; }
-  .p-sm-3 { padding: var(--space-3) !important; }
-  .p-sm-4 { padding: var(--space-4) !important; }
-  
-  .px-sm-2 { padding-left: var(--space-2) !important; padding-right: var(--space-2) !important; }
-  .px-sm-3 { padding-left: var(--space-3) !important; padding-right: var(--space-3) !important; }
-  .px-sm-4 { padding-left: var(--space-4) !important; padding-right: var(--space-4) !important; }
-  
-  .py-sm-2 { padding-top: var(--space-2) !important; padding-bottom: var(--space-2) !important; }
-  .py-sm-3 { padding-top: var(--space-3) !important; padding-bottom: var(--space-3) !important; }
-  .py-sm-4 { padding-top: var(--space-4) !important; padding-bottom: var(--space-4) !important; }
-}
-
-// ============================================================================
-// TEXT UTILITIES - Responsive typography
-// ============================================================================
-
-// Mobile text sizing (prevent iOS zoom)
-@include responsive-max(sm) {
-  .text-sm-base { font-size: var(--text-base) !important; }
-  .text-sm-lg { font-size: var(--text-lg) !important; }
-  .text-sm-xs { font-size: var(--text-xs) !important; }
-}
-
-// Responsive text alignment
-
-@include responsive-max(sm) {
-  .text-sm-center { text-align: center !important; }
-  .text-sm-left { text-align: left !important; }
-}
-
-// ============================================================================
-// FLEX UTILITIES - Responsive flexbox
-// ============================================================================
-
-// Flex direction
-.flex-column { flex-direction: column !important; }
-.flex-row { flex-direction: row !important; }
-
-@include responsive-max(sm) {
-  .flex-sm-column { flex-direction: column !important; }
-  .flex-sm-row { flex-direction: row !important; }
-}
-
-// Flex wrap
-.flex-wrap { flex-wrap: wrap !important; }
-.flex-nowrap { flex-wrap: nowrap !important; }
-
-// Justify content - use semantic .flex-* classes from _layout.scss instead
-
-@include responsive-max(sm) {
-  .justify-sm-center { justify-content: center !important; }
-  .justify-sm-start { justify-content: flex-start !important; }
-}
-
-// Align items - base utilities in _grid.scss
-
-// ============================================================================
-// WIDTH UTILITIES - Responsive widths
-// ============================================================================
-
-// Base width utilities are in _essentials.scss and _sizing.scss
-
-@include responsive-max(sm) {
-  .w-sm-full { width: 100% !important; }
-  .w-sm-auto { width: auto !important; }
-}
-
-// ============================================================================
-// TOUCH-FRIENDLY UTILITIES - Mobile interactions
-// ============================================================================
-
-@include responsive-max(md) {
-  .touch-target {
-    min-height: 2.75rem !important;
-    min-width: 2.75rem !important;
-  }
-  
-  .touch-button {
-    min-height: 2.75rem !important;
-    padding: var(--space-3) var(--space-4) !important;
-  }
-  
-  .touch-input {
-    font-size: var(--text-base) !important;
-  }
-  
-  .tap-area {
-    padding: var(--space-3) !important;
-  }
-  
-  .mobile-card {
-    margin: var(--space-2) !important;
-    padding: var(--space-4) !important;
+// ===== RESPONSIVE MIXINS =====
+@mixin respond-to($breakpoint) {
+  @if map-has-key($breakpoints, $breakpoint) {
+    @media (min-width: map.get($breakpoints, $breakpoint)) {
+      @content;
+    }
   }
 }
 
+// ===== MOBILE-FIRST RESPONSIVE SPACING =====
+// Generate breakpoint-specific spacing utilities
+@each $breakpoint, $value in $breakpoints {
+  @media (min-width: $value) {
+    // Padding utilities
+    @for $i from 0 through 24 {
+      .#{$breakpoint}\:pa-#{$i} { padding: var(--space-#{$i}) !important; }
+      .#{$breakpoint}\:pt-#{$i} { padding-top: var(--space-#{$i}) !important; }
+      .#{$breakpoint}\:pb-#{$i} { padding-bottom: var(--space-#{$i}) !important; }
+      .#{$breakpoint}\:pl-#{$i} { padding-left: var(--space-#{$i}) !important; }
+      .#{$breakpoint}\:pr-#{$i} { padding-right: var(--space-#{$i}) !important; }
+    }
+    
+    // Margin utilities
+    @for $i from 0 through 24 {
+      .#{$breakpoint}\:ma-#{$i} { margin: var(--space-#{$i}) !important; }
+      .#{$breakpoint}\:mt-#{$i} { margin-top: var(--space-#{$i}) !important; }
+      .#{$breakpoint}\:mb-#{$i} { margin-bottom: var(--space-#{$i}) !important; }
+      .#{$breakpoint}\:ml-#{$i} { margin-left: var(--space-#{$i}) !important; }
+      .#{$breakpoint}\:mr-#{$i} { margin-right: var(--space-#{$i}) !important; }
+    }
+    
+    // Gap utilities
+    @for $i from 0 through 24 {
+      .#{$breakpoint}\:gap-#{$i} { gap: var(--space-#{$i}) !important; }
+      .#{$breakpoint}\:gap-x-#{$i} { column-gap: var(--space-#{$i}) !important; }
+      .#{$breakpoint}\:gap-y-#{$i} { row-gap: var(--space-#{$i}) !important; }
+    }
+    
+    // Display utilities
+    .#{$breakpoint}\:block { display: block !important; }
+    .#{$breakpoint}\:inline { display: inline !important; }
+    .#{$breakpoint}\:inline-block { display: inline-block !important; }
+    .#{$breakpoint}\:flex { display: flex !important; }
+    .#{$breakpoint}\:inline-flex { display: inline-flex !important; }
+    .#{$breakpoint}\:grid { display: grid !important; }
+    .#{$breakpoint}\:inline-grid { display: inline-grid !important; }
+    .#{$breakpoint}\:hidden { display: none !important; }
+    
+    // Flexbox utilities
+    .#{$breakpoint}\:flex-row { flex-direction: row !important; }
+    .#{$breakpoint}\:flex-col { flex-direction: column !important; }
+    .#{$breakpoint}\:flex-wrap { flex-wrap: wrap !important; }
+    .#{$breakpoint}\:flex-nowrap { flex-wrap: nowrap !important; }
+    
+    // Justify content
+    .#{$breakpoint}\:justify-start { justify-content: flex-start !important; }
+    .#{$breakpoint}\:justify-center { justify-content: center !important; }
+    .#{$breakpoint}\:justify-end { justify-content: flex-end !important; }
+    .#{$breakpoint}\:justify-between { justify-content: space-between !important; }
+    .#{$breakpoint}\:justify-around { justify-content: space-around !important; }
+    .#{$breakpoint}\:justify-evenly { justify-content: space-evenly !important; }
+    
+    // Align items
+    .#{$breakpoint}\:items-start { align-items: flex-start !important; }
+    .#{$breakpoint}\:items-center { align-items: center !important; }
+    .#{$breakpoint}\:items-end { align-items: flex-end !important; }
+    .#{$breakpoint}\:items-baseline { align-items: baseline !important; }
+    .#{$breakpoint}\:items-stretch { align-items: stretch !important; }
+    
+    // Grid utilities
+    .#{$breakpoint}\:grid-cols-1 { grid-template-columns: repeat(1, 1fr) !important; }
+    .#{$breakpoint}\:grid-cols-2 { grid-template-columns: repeat(2, 1fr) !important; }
+    .#{$breakpoint}\:grid-cols-3 { grid-template-columns: repeat(3, 1fr) !important; }
+    .#{$breakpoint}\:grid-cols-4 { grid-template-columns: repeat(4, 1fr) !important; }
+    .#{$breakpoint}\:grid-cols-5 { grid-template-columns: repeat(5, 1fr) !important; }
+    .#{$breakpoint}\:grid-cols-6 { grid-template-columns: repeat(6, 1fr) !important; }
+    .#{$breakpoint}\:grid-cols-12 { grid-template-columns: repeat(12, 1fr) !important; }
+    
+    // Width utilities
+    .#{$breakpoint}\:w-auto { width: auto !important; }
+    .#{$breakpoint}\:w-full { width: 100% !important; }
+    .#{$breakpoint}\:w-1\/2 { width: 50% !important; }
+    .#{$breakpoint}\:w-1\/3 { width: 33.333333% !important; }
+    .#{$breakpoint}\:w-2\/3 { width: 66.666667% !important; }
+    .#{$breakpoint}\:w-1\/4 { width: 25% !important; }
+    .#{$breakpoint}\:w-3\/4 { width: 75% !important; }
+    
+    // Height utilities
+    .#{$breakpoint}\:h-auto { height: auto !important; }
+    .#{$breakpoint}\:h-full { height: 100% !important; }
+    .#{$breakpoint}\:h-screen { height: 100vh !important; }
+    
+    // Text alignment
+    .#{$breakpoint}\:text-left { text-align: left !important; }
+    .#{$breakpoint}\:text-center { text-align: center !important; }
+    .#{$breakpoint}\:text-right { text-align: right !important; }
+    .#{$breakpoint}\:text-justify { text-align: justify !important; }
+  }
+}
+
+// ===== MOBILE-FIRST ADAPTIVE LAYOUT PATTERNS =====
+// Common responsive patterns that work automatically
+
+// Adaptive flex layout - column on mobile, row on desktop
+.flex-mobile-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  
+  @media (min-width: 768px) {
+    flex-direction: row;
+    gap: var(--space-4);
+  }
+}
+
+// Adaptive grid layout - single column on mobile, multi-column on desktop
+.grid-mobile-stack {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-3);
+  
+  @media (min-width: 768px) {
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: var(--space-4);
+  }
+}
+
+// Responsive gap - tighter on mobile, comfortable on desktop
+.gap-responsive {
+  gap: var(--space-2);
+  
+  @media (min-width: 768px) {
+    gap: var(--space-4);
+  }
+}
+
+// Responsive padding - tighter on mobile, comfortable on desktop
+.pa-responsive {
+  padding: var(--space-3);
+  
+  @media (min-width: 768px) {
+    padding: var(--space-6);
+  }
+}
+
+// ===== TOUCH-FRIENDLY UTILITIES =====
+// Touch target utilities moved to utilities/_accessibility.scss
+
+// ===== RESPONSIVE VISIBILITY UTILITIES =====
+// Control element visibility across breakpoints
+
+// Show only on mobile
+.mobile-only {
+  display: block;
+  
+  @media (min-width: 768px) {
+    display: none;
+  }
+}
+
+// Hide on mobile
+.mobile-hidden {
+  display: none;
+  
+  @media (min-width: 768px) {
+    display: block;
+  }
+}
+
+// Show only on tablet and up
+.tablet-up {
+  display: none;
+  
+  @media (min-width: 768px) {
+    display: block;
+  }
+}
+
+// Show only on desktop and up
+.desktop-up {
+  display: none;
+  
+  @media (min-width: 1024px) {
+    display: block;
+  }
+}
+
+// ===== RESPONSIVE TYPOGRAPHY SCALING =====
+// Fluid typography that scales with screen size
+
+.text-responsive {
+  font-size: clamp(0.875rem, 2vw, 1rem);
+  line-height: 1.5;
+}
+
+.text-responsive-lg {
+  font-size: clamp(1.125rem, 3vw, 1.5rem);
+  line-height: 1.4;
+}
+
+.text-responsive-xl {
+  font-size: clamp(1.5rem, 4vw, 2.25rem);
+  line-height: 1.3;
+}
+
+// ===== MOBILE-FIRST CONTAINER UTILITIES =====
+// Responsive container patterns
+
+.container-responsive {
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 var(--space-4);
+  
+  // Mobile-first responsive container
+  @include responsive-min(md) {
+    max-width: 768px;
+    padding: 0 var(--space-6);
+  }
+  
+  @include responsive-min(lg) {
+    max-width: 1024px;
+    padding: 0 var(--space-8);
+  }
+  
+  @include responsive-min(xl) {
+    max-width: 1280px;
+  }
+}
+
+// ===== MOBILE GESTURE UTILITIES =====
+// Enable smooth scrolling and touch behaviors
+
+.scroll-smooth {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+.swipe-enabled {
+  -webkit-overflow-scrolling: touch;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  
+  > * {
+    scroll-snap-align: start;
+  }
+}
+
+// ===== MOBILE PERFORMANCE UTILITIES =====
+// Optimize rendering for mobile devices
+
+.mobile-optimized {
+  // Improve scrolling performance
+  -webkit-overflow-scrolling: touch;
+  
+  // Reduce repaints
+  transform: translateZ(0);
+  will-change: transform;
+  
+  // Optimize touch interactions
+  touch-action: manipulation;
+}
+
+// ===== PRINT UTILITIES =====
 @media print {
   .no-print {
     display: none !important;

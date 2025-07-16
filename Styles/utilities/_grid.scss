@@ -1,0 +1,328 @@
+@use '../abstracts' as *;
+@use 'sass:map';
+
+// ===== CSS GRID UTILITIES =====
+// Advanced SCSS with loops and map-based generation
+// Common utilities developers actually use in practice
+
+// ===== GRID DISPLAY =====
+.grid { display: grid !important; }
+.inline-grid { display: inline-grid !important; }
+
+// ===== GRID TEMPLATE COLUMNS =====
+@for $i from 1 through 12 {
+  .grid-cols-#{$i} {
+    grid-template-columns: repeat(#{$i}, minmax(0, 1fr)) !important;
+  }
+}
+
+.grid-cols-none {
+  grid-template-columns: none !important;
+}
+
+// ===== GRID TEMPLATE ROWS =====
+@for $i from 1 through 6 {
+  .grid-rows-#{$i} {
+    grid-template-rows: repeat(#{$i}, minmax(0, 1fr)) !important;
+  }
+}
+
+.grid-rows-none {
+  grid-template-rows: none !important;
+}
+
+// ===== GRID AUTO-FIT PATTERNS =====
+$auto-fit-sizes: (150, 200, 250, 300, 350, 400);
+
+@each $size in $auto-fit-sizes {
+  .grid-auto-fit-#{$size} {
+    grid-template-columns: repeat(auto-fit, minmax(#{$size}px, 1fr)) !important;
+  }
+}
+
+// ===== COLUMN SPAN UTILITIES =====
+.col-auto {
+  grid-column: auto !important;
+}
+
+@for $i from 1 through 12 {
+  .col-span-#{$i} {
+    grid-column: span #{$i} / span #{$i} !important;
+  }
+}
+
+.col-span-full {
+  grid-column: 1 / -1 !important;
+}
+
+// ===== COLUMN START/END UTILITIES =====
+@for $i from 1 through 13 {
+  .col-start-#{$i} {
+    grid-column-start: #{$i} !important;
+  }
+  
+  @if $i <= 13 {
+    .col-end-#{$i} {
+      grid-column-end: #{$i} !important;
+    }
+  }
+}
+
+.col-start-auto {
+  grid-column-start: auto !important;
+}
+
+.col-end-auto {
+  grid-column-end: auto !important;
+}
+
+// ===== ROW SPAN UTILITIES =====
+.row-auto {
+  grid-row: auto !important;
+}
+
+@for $i from 1 through 6 {
+  .row-span-#{$i} {
+    grid-row: span #{$i} / span #{$i} !important;
+  }
+}
+
+.row-span-full {
+  grid-row: 1 / -1 !important;
+}
+
+// ===== ROW START/END UTILITIES =====
+@for $i from 1 through 7 {
+  .row-start-#{$i} {
+    grid-row-start: #{$i} !important;
+  }
+  
+  .row-end-#{$i} {
+    grid-row-end: #{$i} !important;
+  }
+}
+
+.row-start-auto {
+  grid-row-start: auto !important;
+}
+
+.row-end-auto {
+  grid-row-end: auto !important;
+}
+
+// ===== GRID FLOW UTILITIES =====
+$grid-flow-values: (
+  'row': row,
+  'col': column,
+  'dense': dense,
+  'row-dense': row dense,
+  'col-dense': column dense
+);
+
+@each $name, $value in $grid-flow-values {
+  .grid-flow-#{$name} {
+    grid-auto-flow: #{$value} !important;
+  }
+}
+
+// ===== AUTO COLUMNS/ROWS =====
+$auto-values: (
+  'auto': auto,
+  'min': min-content,
+  'max': max-content,
+  'fr': minmax(0, 1fr)
+);
+
+@each $name, $value in $auto-values {
+  .auto-cols-#{$name} {
+    grid-auto-columns: #{$value} !important;
+  }
+  
+  .auto-rows-#{$name} {
+    grid-auto-rows: #{$value} !important;
+  }
+}
+
+// ===== GRID ITEM ALIGNMENT =====
+$grid-justify-values: (
+  'start': start,
+  'end': end,
+  'center': center,
+  'stretch': stretch
+);
+
+@each $name, $value in $grid-justify-values {
+  .justify-items-#{$name} {
+    justify-items: #{$value} !important;
+  }
+  
+  .justify-self-#{$name} {
+    justify-self: #{$value} !important;
+  }
+}
+
+.justify-self-auto {
+  justify-self: auto !important;
+}
+
+// ===== GRID GAP UTILITIES =====
+$gap-sizes: (0, px, 0-5, 1, 1-5, 2, 2-5, 3, 3-5, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24);
+$common-gap-sizes: (0, 1, 2, 3, 4, 5, 6, 8, 10, 12);
+
+// All gap sizes
+@each $size in $gap-sizes {
+  .gap-#{$size} {
+    gap: var(--space-#{$size}) !important;
+  }
+}
+
+// Common column/row gap sizes only
+@each $size in $common-gap-sizes {
+  .gap-x-#{$size} {
+    column-gap: var(--space-#{$size}) !important;
+  }
+  
+  .gap-y-#{$size} {
+    row-gap: var(--space-#{$size}) !important;
+  }
+}
+
+// ===== COMMON GRID PATTERNS =====
+// Base responsive auto-fit pattern
+.grid-auto-fit {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(var(--min-column-width, 200px), 1fr));
+  gap: var(--gap, var(--space-4));
+  
+  @include responsive-max(md) {
+    grid-template-columns: 1fr;
+    gap: var(--space-3);
+  }
+}
+
+// Common variations
+$grid-patterns: (
+  'sm': (width: 150px, gap: var(--space-3)),
+  'lg': (width: 250px, gap: var(--space-6)),
+  'cards': (width: 280px, gap: var(--space-4))
+);
+
+@each $name, $config in $grid-patterns {
+  .grid-auto-fit-#{$name} {
+    @extend .grid-auto-fit;
+    --min-column-width: #{map.get($config, width)};
+    --gap: #{map.get($config, gap)};
+  }
+}
+
+// Responsive card container
+.card-container {
+  display: grid;
+  gap: var(--space-4);
+  width: 100%;
+  
+  @include responsive-min(md) {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-6);
+  }
+  
+  @include responsive-min(lg) {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  
+  @include responsive-min(xl) {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+// ===== EXTENDED GRID TEMPLATE COLUMNS =====
+// Auto-fit grid patterns with CSS variables
+.grid-cols-auto-fit-200 { grid-template-columns: repeat(auto-fit, minmax(var(--space-200), 1fr)) !important; }
+.grid-cols-auto-fit-250 { grid-template-columns: repeat(auto-fit, minmax(var(--space-250), 1fr)) !important; }
+.grid-cols-auto-fit-300 { grid-template-columns: repeat(auto-fit, minmax(var(--space-300), 1fr)) !important; }
+
+// ===== LEGACY FLEX COLUMN SUPPORT =====
+// Essential column utilities (most commonly used)
+.col-6 { flex: 0 0 50%; max-width: 50%; }
+.col-12 { flex: 0 0 100%; max-width: 100%; }
+
+// ===== RESPONSIVE GRID UTILITIES =====
+$breakpoints-list: (sm, md, lg, xl);
+
+// Mobile-first grid utilities - default mobile styles
+.sm\:grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)) !important; }
+.sm\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+.sm\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+.sm\:grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
+.sm\:grid-cols-5 { grid-template-columns: repeat(5, minmax(0, 1fr)) !important; }
+.sm\:grid-cols-6 { grid-template-columns: repeat(6, minmax(0, 1fr)) !important; }
+.sm\:grid-cols-none { grid-template-columns: none !important; }
+
+@include responsive-min(md) {
+  // Override mobile grid styles when needed
+}
+
+// Mobile-first md grid utilities
+.md\:grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)) !important; }
+.md\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+.md\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+.md\:grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
+.md\:grid-cols-5 { grid-template-columns: repeat(5, minmax(0, 1fr)) !important; }
+.md\:grid-cols-6 { grid-template-columns: repeat(6, minmax(0, 1fr)) !important; }
+.md\:grid-cols-none { grid-template-columns: none !important; }
+
+@include responsive-min(lg) {
+  // Override md grid styles when needed
+}
+
+// Mobile-first lg grid utilities  
+.lg\:grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)) !important; }
+.lg\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+.lg\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+.lg\:grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
+.lg\:grid-cols-5 { grid-template-columns: repeat(5, minmax(0, 1fr)) !important; }
+.lg\:grid-cols-6 { grid-template-columns: repeat(6, minmax(0, 1fr)) !important; }
+.lg\:grid-cols-7 { grid-template-columns: repeat(7, minmax(0, 1fr)) !important; }
+.lg\:grid-cols-8 { grid-template-columns: repeat(8, minmax(0, 1fr)) !important; }
+.lg\:grid-cols-9 { grid-template-columns: repeat(9, minmax(0, 1fr)) !important; }
+.lg\:grid-cols-10 { grid-template-columns: repeat(10, minmax(0, 1fr)) !important; }
+.lg\:grid-cols-11 { grid-template-columns: repeat(11, minmax(0, 1fr)) !important; }
+.lg\:grid-cols-12 { grid-template-columns: repeat(12, minmax(0, 1fr)) !important; }
+.lg\:grid-cols-none { grid-template-columns: none !important; }
+
+@include responsive-min(xl) {
+  // Override lg grid styles when needed
+}
+
+@each $breakpoint in $breakpoints-list {
+  @include responsive-min($breakpoint) {
+    .#{$breakpoint}\:grid {
+      display: grid !important;
+    }
+    
+    // Grid columns 1-12
+    @for $i from 1 through 12 {
+      .#{$breakpoint}\:grid-cols-#{$i} {
+        grid-template-columns: repeat(#{$i}, minmax(0, 1fr)) !important;
+      }
+    }
+    
+    // Grid rows 1-6
+    @for $i from 1 through 6 {
+      .#{$breakpoint}\:grid-rows-#{$i} {
+        grid-template-rows: repeat(#{$i}, minmax(0, 1fr)) !important;
+      }
+    }
+    
+    // Column spans 1-12
+    @for $i from 1 through 12 {
+      .#{$breakpoint}\:col-span-#{$i} {
+        grid-column: span #{$i} / span #{$i} !important;
+      }
+    }
+    
+    .#{$breakpoint}\:col-span-full {
+      grid-column: 1 / -1 !important;
+    }
+  }
+}

@@ -1,32 +1,32 @@
 @using RR.Blazor.Enums
 @* RModal - Generic modal component with comprehensive configuration *@
 
-@if (IsVisible)
+@if (Visible)
 {
 <div class="modal @Class" @onclick="HandleBackdropClick">
-    <div class="modal__backdrop"></div>
-    <div class="modal__content @GetSizeClass()" @onclick:stopPropagation="true">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content @GetSizeClass()" @onclick:stopPropagation="true">
         @if (ShowHeader)
         {
-            <div class="modal__header">
-                <div class="modal__header-content d-flex align-center gap-3">
+            <div class="modal-header">
+                <div class="modal-header-content flex align-center gap-3">
                     @if (!string.IsNullOrEmpty(Icon))
                     {
                         <i class="material-symbols-rounded text-primary text-xl">@Icon</i>
                     }
-                    <div class="d-flex flex-column">
-                        <h3 class="modal__title ma-0">@Title</h3>
+                    <div class="flex flex-col">
+                        <h3 class="modal-title ma-0">@Title</h3>
                         @if (!string.IsNullOrEmpty(Subtitle))
                         {
-                            <p class="modal__subtitle ma-0 text-sm text-secondary">@Subtitle</p>
+                            <p class="modal-subtitle ma-0 text-sm text-secondary">@Subtitle</p>
                         }
                     </div>
                 </div>
-                <div class="modal__header-actions d-flex align-center gap-2">
+                <div class="modal-header-actions flex align-center gap-2">
                     @HeaderContent
                     @if (ShowCloseButton)
                     {
-                        <button type="button" class="modal__close" @onclick="HandleClose" disabled="@IsProcessing">
+                        <button type="button" class="modal-close" @onclick="HandleClose" disabled="@Processing">
                             <i class="material-symbols-rounded">close</i>
                         </button>
                     }
@@ -34,13 +34,13 @@
             </div>
         }
         
-        <div class="modal__body">
-            @if (IsProcessing && ShowProcessingOverlay)
+        <div class="modal-body">
+            @if (Processing && ShowProcessingOverlay)
             {
-                <div class="modal__overlay modal__overlay--processing">
-                    <div class="modal__processing">
+                <div class="modal-overlay modal-overlay-processing">
+                    <div class="modal-processing">
                         <div class="spinner"></div>
-                        <p class="modal__processing-text">@ProcessingMessage</p>
+                        <p class="modal-processing-text">@ProcessingMessage</p>
                     </div>
                 </div>
             }
@@ -49,14 +49,14 @@
         
         @if (ShowFooter)
         {
-            <div class="modal__footer">
+            <div class="modal-footer">
                 @if (FooterContent != null)
                 {
                     @FooterContent
                 }
                 else
                 {
-                    <div class="modal__footer-buttons">
+                    <div class="modal-footer-buttons">
                         @if (ShowCancelButton)
                         {
                             <RButton Variant="ButtonVariant.Ghost" 
@@ -64,7 +64,7 @@
                                     Icon="@CancelIcon" IconPosition="IconPosition.Start" 
                                     Class="@CancelButtonClass" 
                                     OnClick="HandleCancel" 
-                                    Disabled="@IsProcessing">
+                                    Disabled="@Processing">
                                 @CancelText
                             </RButton>
                         }
@@ -72,18 +72,18 @@
                         {
                             <RButton Variant="ButtonVariant.Primary" 
                                     Size="@ButtonSize" 
-                                    Icon="@(IsProcessing && ShowPrimaryButtonSpinner ? null : PrimaryIcon)" IconPosition="IconPosition.Start" 
+                                    Icon="@(Processing && ShowPrimaryButtonSpinner ? null : PrimaryIcon)" IconPosition="IconPosition.Start" 
                                     Class="@PrimaryButtonClass" 
                                     OnClick="HandlePrimaryAction" 
-                                    Disabled="@(IsProcessing || PrimaryButtonDisabled)"
-                                    Loading="@(IsProcessing && ShowPrimaryButtonSpinner)">
-                                @(IsProcessing && !string.IsNullOrEmpty(ProcessingButtonText) ? ProcessingButtonText : PrimaryText)
+                                    Disabled="@(Processing || PrimaryButtonDisabled)"
+                                    Loading="@(Processing && ShowPrimaryButtonSpinner)">
+                                @(Processing && !string.IsNullOrEmpty(ProcessingButtonText) ? ProcessingButtonText : PrimaryText)
                             </RButton>
                         }
                     </div>
                     @if (ShowUnsavedIndicator && HasUnsavedChanges)
                     {
-                        <div class="modal__unsaved-indicator">
+                        <div class="modal-unsaved-indicator">
                             <i class="material-symbols-rounded">info</i>
                             <span>You have unsaved changes</span>
                         </div>
@@ -96,8 +96,8 @@
 }
 
 @code {
-    [Parameter] public bool IsVisible { get; set; }
-    [Parameter] public EventCallback<bool> IsVisibleChanged { get; set; }
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public EventCallback<bool> VisibleChanged { get; set; }
     [Parameter] public ModalSize Size { get; set; } = ModalSize.Medium;
     [Parameter] public ModalVariant Variant { get; set; } = ModalVariant.Default;
     [Parameter] public string Class { get; set; }
@@ -125,7 +125,7 @@
     [Parameter] public ButtonSize ButtonSize { get; set; } = ButtonSize.Medium;
     
     // Processing State
-    [Parameter] public bool IsProcessing { get; set; }
+    [Parameter] public bool Processing { get; set; }
     [Parameter] public string ProcessingMessage { get; set; } = "Processing...";
     [Parameter] public string ProcessingButtonText { get; set; }
     [Parameter] public bool ShowProcessingOverlay { get; set; } = true;
@@ -147,7 +147,7 @@
     
     private async Task HandleBackdropClick()
     {
-        if (CloseOnBackdrop && !IsProcessing && Variant != ModalVariant.Protected)
+        if (CloseOnBackdrop && !Processing && Variant != ModalVariant.Protected)
         {
             await HandleClose();
         }
@@ -155,17 +155,17 @@
     
     private async Task HandleClose()
     {
-        if (!IsProcessing)
+        if (!Processing)
         {
-            IsVisible = false;
-            await IsVisibleChanged.InvokeAsync(false);
+            Visible = false;
+            await VisibleChanged.InvokeAsync(false);
             await OnClose.InvokeAsync();
         }
     }
     
     private async Task HandleCancel()
     {
-        if (!IsProcessing)
+        if (!Processing)
         {
             if (OnCancel.HasDelegate)
             {
@@ -180,7 +180,7 @@
     
     private async Task HandlePrimaryAction()
     {
-        if (!IsProcessing && !PrimaryButtonDisabled)
+        if (!Processing && !PrimaryButtonDisabled)
         {
             await OnPrimaryAction.InvokeAsync();
         }
@@ -188,11 +188,11 @@
     
     private string GetSizeClass() => Size switch
     {
-        ModalSize.Small => "modal__content--small",
-        ModalSize.Large => "modal__content--large",
-        ModalSize.XLarge => "modal__content--xlarge",
-        ModalSize.Wide => "modal__content--wide",
-        ModalSize.Full => "modal__content--full",
+        ModalSize.Small => "modal-content-small",
+        ModalSize.Large => "modal-content-large",
+        ModalSize.XLarge => "modal-content-xlarge",
+        ModalSize.Wide => "modal-content-wide",
+        ModalSize.Full => "modal-content-full",
         _ => "" // default size
     };
 }

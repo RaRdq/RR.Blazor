@@ -94,7 +94,7 @@ public class ModalInstance<T>
     public ModalOptions<T> Options { get; set; } = new();
     public TaskCompletionSource<ModalResult<T>> TaskSource { get; set; } = new();
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-    public bool IsVisible { get; set; }
+    public bool Visible { get; set; }
     public T Result { get; set; }
 }
 

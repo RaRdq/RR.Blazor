@@ -63,42 +63,85 @@ $ComponentsOutputDir = Split-Path $ComponentsOutputPath -Parent
 # ===============================
 Write-Host "🎨 Generating styles documentation from SCSS files..." -ForegroundColor Yellow
 
-# Function to extract CSS classes and variables from SCSS files
-function Extract-ScssClasses {
-    param([string]$ScssDirectory)
+# Function to extract CSS classes and variables from compiled CSS
+function Extract-CssClasses {
+    param([string]$CssFilePath, [string]$ScssDirectory)
     
     $classes = @{}
     $variables = @{}
     
+    # First extract variables from SCSS files (CSS doesn't contain variable definitions)
     $scssFiles = Get-ChildItem -Path $ScssDirectory -Filter "*.scss" -Recurse
-    Write-Host "  Found $($scssFiles.Count) SCSS files" -ForegroundColor DarkGray
+    Write-Host "  Extracting CSS variables from $($scssFiles.Count) SCSS files" -ForegroundColor DarkGray
     
     foreach ($file in $scssFiles) {
         $content = Get-Content $file.FullName -Raw -Encoding UTF8
         
-        # Extract CSS classes (.class-name)
-        $classMatches = [regex]::Matches($content, '\.([a-zA-Z0-9_-]+(?:\[[^\]]+\])?)', [System.Text.RegularExpressions.RegexOptions]::Multiline)
-        foreach ($match in $classMatches) {
-            $className = $match.Groups[1].Value
-            if (-not $classes.ContainsKey($className)) {
-                $classes[$className] = @{
-                    "file" = $file.Name
-                    "category" = "extracted"
-                }
-            }
-        }
-        
-        # Extract CSS variables (--var-name)
-        $varMatches = [regex]::Matches($content, '--([a-zA-Z0-9_-]+)', [System.Text.RegularExpressions.RegexOptions]::Multiline)
-        foreach ($match in $varMatches) {
+        # Extract CSS variables (--var-name) - comprehensive patterns
+        # Pattern 1: Variable definitions (--var-name: value;)
+        $varMatches1 = [regex]::Matches($content, '--([a-zA-Z0-9_-]+)\s*:', [System.Text.RegularExpressions.RegexOptions]::Multiline)
+        foreach ($match in $varMatches1) {
             $varName = $match.Groups[1].Value
             if (-not $variables.ContainsKey($varName)) {
                 $variables[$varName] = @{
                     "file" = $file.Name
-                    "category" = "extracted"
+                    "category" = "css-variable-definition"
                 }
             }
         }
+        
+        # Pattern 2: Variable usage (var(--var-name))
+        $varMatches2 = [regex]::Matches($content, 'var\(\s*--([a-zA-Z0-9_-]+)', [System.Text.RegularExpressions.RegexOptions]::Multiline)
+        foreach ($match in $varMatches2) {
+            $varName = $match.Groups[1].Value
+            if (-not $variables.ContainsKey($varName)) {
+                $variables[$varName] = @{
+                    "file" = $file.Name
+                    "category" = "css-variable-usage"
+                }
+            }
+        }
+        
+        # Pattern 3: SCSS variable aliases ($var: var(--var-name))
+        $varMatches3 = [regex]::Matches($content, '\$[a-zA-Z0-9_-]+\s*:\s*var\(\s*--([a-zA-Z0-9_-]+)', [System.Text.RegularExpressions.RegexOptions]::Multiline)
+        foreach ($match in $varMatches3) {
+            $varName = $match.Groups[1].Value
+            if (-not $variables.ContainsKey($varName)) {
+                $variables[$varName] = @{
+                    "file" = $file.Name
+                    "category" = "css-variable-alias"
+                }
+            }
+        }
+    }
+    
+    # Use compiled CSS as the definitive source - it has all classes properly generated
+    if ((Test-Path $CssFilePath) -and (Get-Item $CssFilePath).Length -gt 1000) {
+        Write-Host "  Extracting all classes from compiled CSS: $CssFilePath" -ForegroundColor DarkGray
+        $cssContent = Get-Content $CssFilePath -Raw -Encoding UTF8
+        
+        # Check if CSS is valid (not just error messages) - look for CSS compilation errors, not CSS variables
+        if ($cssContent -notmatch "^/\* Error:" -and $cssContent -match "\.[a-zA-Z]") {
+            # Extract all CSS class selectors (.class-name, .class-name:hover, etc.)
+            $classMatches = [regex]::Matches($cssContent, '\.([a-zA-Z][a-zA-Z0-9_-]*(?:\\:[a-zA-Z0-9_-]+)*)', [System.Text.RegularExpressions.RegexOptions]::Multiline)
+            foreach ($match in $classMatches) {
+                $fullClassName = $match.Groups[1].Value
+                # Clean pseudo-classes and escape sequences for base class name
+                $baseClassName = $fullClassName -replace '\\:', ':' -replace ':.*$', ''
+                
+                if (-not $classes.ContainsKey($baseClassName)) {
+                    $classes[$baseClassName] = @{
+                        "file" = "compiled-css"
+                        "category" = "css-generated"
+                    }
+                }
+            }
+            Write-Host "  Extracted $($classes.Count) classes from compiled CSS" -ForegroundColor DarkGray
+        } else {
+            throw "CSS compilation failed. Build errors must be fixed first. Run 'dotnet build' to see errors."
+        }
+    } else {
+        throw "CSS file not found or too small at $CssFilePath. Run 'dotnet build' first."
     }
     
     return @{
@@ -107,10 +150,224 @@ function Extract-ScssClasses {
     }
 }
 
-# Extract actual classes and variables from SCSS files
+# SCSS-only extraction - purely based on SCSS source of truth
+function Extract-ScssUtilityClasses {
+    param([array]$ScssFiles)
+    
+    $classes = @{}
+    
+    # Extract classes directly from SCSS files (source of truth)
+    foreach ($file in $ScssFiles) {
+        $content = Get-Content $file.FullName -Raw -Encoding UTF8
+        
+        # Extract explicit class definitions (.class-name)
+        $classMatches = [regex]::Matches($content, '\.([a-zA-Z][a-zA-Z0-9_-]*)', [System.Text.RegularExpressions.RegexOptions]::Multiline)
+        foreach ($match in $classMatches) {
+            $className = $match.Groups[1].Value
+            # Skip SCSS interpolation patterns and selectors with pseudo-classes in source
+            if ($className -notmatch '#\{' -and $className -notmatch ':' -and -not $classes.ContainsKey($className)) {
+                $classes[$className] = @{
+                    "file" = $file.Name
+                    "category" = "explicit-scss"
+                }
+            }
+        }
+        
+        # Extract BEM notation classes (.parent { &-child { ... } })
+        $classes = Extract-BemClasses -Content $content -File $file -Classes $classes
+        
+        # Extract @each loop generated classes
+        $classes = Extract-AtEachClasses -Content $content -File $file -Classes $classes
+        
+        # Extract @for loop generated classes
+        $classes = Extract-ForLoopClasses -Content $content -File $file -Classes $classes
+    }
+    
+    Write-Host "  Extracted $($classes.Count) classes directly from SCSS source files" -ForegroundColor DarkGray
+    return $classes
+}
+
+# Extract BEM notation classes from SCSS
+function Extract-BemClasses {
+    param([string]$Content, [System.IO.FileInfo]$File, [hashtable]$Classes)
+    
+    # Find BEM parent classes with nested &- children
+    # Pattern: .parent { ... &-child { ... } ... }
+    $bemMatches = [regex]::Matches($Content, '\.([a-zA-Z][a-zA-Z0-9_-]*)\s*\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}', [System.Text.RegularExpressions.RegexOptions]::Multiline)
+    
+    foreach ($match in $bemMatches) {
+        $parentClass = $match.Groups[1].Value
+        $parentContent = $match.Groups[2].Value
+        
+        # Find all &-child patterns within this parent
+        $childMatches = [regex]::Matches($parentContent, '&-([a-zA-Z0-9_-]+)', [System.Text.RegularExpressions.RegexOptions]::Multiline)
+        
+        foreach ($childMatch in $childMatches) {
+            $childName = $childMatch.Groups[1].Value
+            $fullClassName = "$parentClass-$childName"
+            
+            if (-not $Classes.ContainsKey($fullClassName)) {
+                $Classes[$fullClassName] = @{
+                    "file" = $File.Name
+                    "category" = "bem-scss"
+                }
+            }
+        }
+        
+        # Also add the parent class if not already present
+        if (-not $Classes.ContainsKey($parentClass)) {
+            $Classes[$parentClass] = @{
+                "file" = $File.Name
+                "category" = "bem-parent-scss"
+            }
+        }
+    }
+    
+    return $Classes
+}
+
+# Extract classes generated by @for loops in SCSS
+function Extract-ForLoopClasses {
+    param([string]$Content, [System.IO.FileInfo]$File, [hashtable]$Classes)
+    
+    # Pattern: @for $i from 1 through 12 { .col-#{$i} { ... } }
+    $forMatches = [regex]::Matches($Content, '@for\s+\$(\w+)\s+from\s+(\d+)\s+through\s+(\d+)\s*\{[^}]*\.([a-zA-Z0-9_-]*)-#\{\$\1\}', [System.Text.RegularExpressions.RegexOptions]::Multiline)
+    
+    foreach ($match in $forMatches) {
+        $variable = $match.Groups[1].Value
+        $start = [int]$match.Groups[2].Value
+        $end = [int]$match.Groups[3].Value
+        $prefix = $match.Groups[4].Value
+        
+        for ($i = $start; $i -le $end; $i++) {
+            $generatedClass = "$prefix-$i"
+            
+            if (-not $Classes.ContainsKey($generatedClass)) {
+                $Classes[$generatedClass] = @{
+                    "file" = $File.Name
+                    "category" = "generated-for-loop"
+                }
+            }
+        }
+    }
+    
+    return $Classes
+}
+
+# Extract classes generated by @each loops in SCSS
+function Extract-AtEachClasses {
+    param([string]$Content, [System.IO.FileInfo]$File, [hashtable]$Classes)
+    
+    # Pattern 1: @each $name, $value in $map { .prefix-#{$name} }
+    $eachMatches1 = [regex]::Matches($Content, '@each\s+\$([^,\s]+)(?:,\s*\$[^{]+)?\s+in\s+\$([^{]+)\s*\{[^}]*\.([a-zA-Z0-9_-]*)-#\{\$\1\}', [System.Text.RegularExpressions.RegexOptions]::Multiline)
+    foreach ($match in $eachMatches1) {
+        $variableName = $match.Groups[1].Value.Trim()
+        $mapName = $match.Groups[2].Value.Trim()
+        $classPrefix = $match.Groups[3].Value.Trim()
+        
+        # Find the map definition in the same file or imported files
+        $mapPattern = "\`$${mapName}\s*:\s*\([^)]+\)"
+        $mapMatch = [regex]::Match($Content, $mapPattern, [System.Text.RegularExpressions.RegexOptions]::Multiline)
+        
+        if ($mapMatch.Success) {
+            $mapContent = $mapMatch.Value
+            # Extract map keys 
+            $keyMatches = [regex]::Matches($mapContent, '([''"])([\w-]+)\1\s*:')
+            foreach ($keyMatch in $keyMatches) {
+                $key = $keyMatch.Groups[2].Value
+                $generatedClass = if ($classPrefix) { "$classPrefix-$key" } else { $key }
+                
+                if (-not $Classes.ContainsKey($generatedClass)) {
+                    $Classes[$generatedClass] = @{
+                        "file" = $File.Name
+                        "category" = "generated-at-each"
+                    }
+                }
+            }
+        }
+    }
+    
+    # Pattern 2: @each $item in (list) { .#{$item} }
+    $eachMatches2 = [regex]::Matches($Content, '@each\s+\$([^{]+)\s+in\s+\(([^)]+)\)\s*\{[^}]*\.#\{\$\1\}', [System.Text.RegularExpressions.RegexOptions]::Multiline)
+    foreach ($match in $eachMatches2) {
+        $variableName = $match.Groups[1].Value.Trim()
+        $listContent = $match.Groups[2].Value.Trim()
+        
+        # Extract list items
+        $items = $listContent -split ',' | ForEach-Object { $_.Trim().Trim('"').Trim("'") }
+        foreach ($item in $items) {
+            if ($item -and $item -ne '') {
+                $generatedClass = $item
+                
+                if (-not $Classes.ContainsKey($generatedClass)) {
+                    $Classes[$generatedClass] = @{
+                        "file" = $File.Name
+                        "category" = "generated-at-each-list"
+                    }
+                }
+            }
+        }
+    }
+    
+    # Pattern 3: @each $name, $ratio in $aspect-ratios { .aspect-#{$name} }
+    $eachMatches3 = [regex]::Matches($Content, '@each\s+\$([^,\s]+),\s*\$[^{]+\s+in\s+\$([^{]+)\s*\{[^}]*\.([a-zA-Z0-9_-]*)-#\{\$\1\}', [System.Text.RegularExpressions.RegexOptions]::Multiline)
+    foreach ($match in $eachMatches3) {
+        $variableName = $match.Groups[1].Value.Trim()
+        $mapName = $match.Groups[2].Value.Trim()
+        $classPrefix = $match.Groups[3].Value.Trim()
+        
+        # Find the map definition in the same file
+        $mapPattern = "\`$${mapName}\s*:\s*\("
+        $mapStart = $Content.IndexOf("`$${mapName}:")
+        if ($mapStart -gt -1) {
+            # Extract map content manually to handle nested parentheses
+            $parenCount = 0
+            $mapContent = ""
+            $inMap = $false
+            
+            for ($i = $mapStart; $i -lt $Content.Length; $i++) {
+                $char = $Content[$i]
+                if ($char -eq '(' -and -not $inMap) {
+                    $inMap = $true
+                    $parenCount = 1
+                    $mapContent += $char
+                } elseif ($inMap) {
+                    $mapContent += $char
+                    if ($char -eq '(') { $parenCount++ }
+                    elseif ($char -eq ')') { 
+                        $parenCount--
+                        if ($parenCount -eq 0) { break }
+                    }
+                }
+            }
+            
+            # Extract map keys
+            if ($mapContent) {
+                $keyMatches = [regex]::Matches($mapContent, '([a-zA-Z0-9_-]+)\s*:')
+                foreach ($keyMatch in $keyMatches) {
+                    $key = $keyMatch.Groups[1].Value
+                    $generatedClass = "$classPrefix-$key"
+                    
+                    if (-not $Classes.ContainsKey($generatedClass)) {
+                        $Classes[$generatedClass] = @{
+                            "file" = $File.Name
+                            "category" = "generated-at-each-map"
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    return $Classes
+}
+
+# Extract actual classes and variables from compiled CSS and SCSS files
 $stylesPath = Join-Path $ProjectPath "Styles"
+$cssPath = Join-Path $ProjectPath "wwwroot\css\main.css"
+
 if (Test-Path $stylesPath) {
-    $extractedStyles = Extract-ScssClasses -ScssDirectory $stylesPath
+    $extractedStyles = Extract-CssClasses -CssFilePath $cssPath -ScssDirectory $stylesPath
     Write-Host "  Extracted $($extractedStyles.classes.Count) classes and $($extractedStyles.variables.Count) variables" -ForegroundColor DarkGray
 } else {
     Write-Host "  Warning: Styles directory not found at $stylesPath" -ForegroundColor Yellow
@@ -122,12 +379,30 @@ function Generate-BracketPatterns {
     param([hashtable]$Classes)
     
     $patterns = @{}
+    $standaloneClasses = @{}
     
     foreach ($className in $Classes.Keys) {
         $category = "other"
+        $isStandalone = $false
         
-        # Categorize and extract patterns
-        if ($className -match '^(p|m|pa|ma|pt|pb|pl|pr|px|py|mt|mb|ml|mr|mx|my|gap)-(.+)$') { 
+        # Handle standalone classes (no prefix-suffix pattern) - detect from actual CSS patterns
+        if ($className -notmatch '^[a-z]+-[a-z0-9-]+$' -and $className -match '^[a-z][a-z-]*[a-z]?$') {
+            # Categorize standalone classes by common CSS properties they likely represent
+            if ($className -match '^(flex|grid|block|inline|hidden|visible|overflow)') {
+                $category = "layout"
+                $isStandalone = $true
+            }
+            elseif ($className -match '^(bold|italic|underline|uppercase|lowercase|capitalize)$') {
+                $category = "typography"
+                $isStandalone = $true
+            }
+            elseif ($className -match '^(pointer|grab|wait|help|crosshair)$') {
+                $category = "interactive"
+                $isStandalone = $true
+            }
+        }
+        # Categorize and extract patterns with prefix-suffix structure
+        elseif ($className -match '^(p|m|pa|ma|pt|pb|pl|pr|px|py|mt|mb|ml|mr|mx|my|gap)-(.+)$') { 
             $category = "spacing"
             $prefix = $Matches[1]
             $value = $Matches[2]
@@ -191,6 +466,12 @@ function Generate-BracketPatterns {
             if (-not $patterns[$category].ContainsKey($prefix)) { $patterns[$category][$prefix] = @() }
             $patterns[$category][$prefix] += $value
         }
+        
+        # Collect standalone classes by category
+        if ($isStandalone) {
+            if (-not $standaloneClasses.ContainsKey($category)) { $standaloneClasses[$category] = @() }
+            $standaloneClasses[$category] += $className
+        }
     }
     
     # Convert to bracket notation
@@ -204,27 +485,40 @@ function Generate-BracketPatterns {
         }
     }
     
+    # Add standalone classes in bracket notation format
+    foreach ($category in $standaloneClasses.Keys) {
+        if (-not $bracketPatterns.ContainsKey($category)) { $bracketPatterns[$category] = @() }
+        $standaloneValues = $standaloneClasses[$category] | Sort-Object -Unique
+        # Add standalone classes as a special bracket notation
+        $standaloneBracket = "[" + ($standaloneValues -join ', ') + "]"
+        $bracketPatterns[$category] = @($standaloneBracket) + $bracketPatterns[$category]
+    }
+    
     return $bracketPatterns
 }
 
 # Generate bracket notation patterns
 $bracketPatterns = Generate-BracketPatterns -Classes $extractedStyles.classes
 
-# Group variables by category with bracket notation
+# Group CSS variables by category (only actual --variables)
 $categorizedVars = @{}
 foreach ($varName in $extractedStyles.variables.Keys) {
     $category = "other"
     
-    if ($varName -match '^(space|spacing)') { $category = "spacing" }
-    elseif ($varName -match '^(color|text|bg|background|border)') { $category = "colors" }
-    elseif ($varName -match '^(font|text|leading|tracking)') { $category = "typography" }
-    elseif ($varName -match '^(shadow|elevation)') { $category = "elevation" }
-    elseif ($varName -match '^(radius|border-radius)') { $category = "borders" }
+    # Categorize actual CSS variables by their semantic meaning
+    if ($varName -match '^(space|spacing)-') { $category = "spacing" }
+    elseif ($varName -match '^color-') { $category = "colors" }
+    elseif ($varName -match '^(font|text|leading|tracking)-') { $category = "typography" }
+    elseif ($varName -match '^(shadow|elevation)-') { $category = "elevation" }
+    elseif ($varName -match '^(radius|border-radius)-') { $category = "borders" }
+    elseif ($varName -match '^(blur|glass|backdrop)-') { $category = "effects" }
+    elseif ($varName -match '^(duration|ease|transition)-') { $category = "animations" }
+    elseif ($varName -match '^(icon|size)-') { $category = "sizing" }
     
     if (-not $categorizedVars.ContainsKey($category)) {
         $categorizedVars[$category] = @()
     }
-    $categorizedVars[$category] += $varName
+    $categorizedVars[$category] += "--$varName"  # Add -- prefix for proper CSS variable format
 }
 
 $stylesDoc = [ordered]@{
@@ -233,7 +527,7 @@ $stylesDoc = [ordered]@{
         "NAVIGATION" = @{
             "ai_instructions" = "Lines 1-15: You must read these AI instructions and bracket notation rules first"
             "utility_patterns" = "Lines 16-80: You must use these utility classes in bracket notation for extrapolation"
-            "css_variables" = "Lines 81-120: You must use these CSS variables grouped by category"
+            "css_variables" = "Lines 81+: You must use these CSS custom properties (--variables) for component styling"
         }
         "BRACKET_NOTATION" = @{
             "FORMAT" = "You must understand that prefix-[value1, value2, value3, ...] means prefix-value1, prefix-value2, prefix-value3, etc."
@@ -244,6 +538,11 @@ $stylesDoc = [ordered]@{
             )
         }
         "USAGE_DIRECTIVE" = "You must extrapolate from these patterns to generate the exact classes needed. You are not allowed to invent classes that don't exist in these patterns."
+        "CSS_VARIABLES_VS_UTILITIES" = @{
+            "UTILITY_CLASSES" = "Use utility classes (pa-4, text-primary) for standard HTML elements and components"
+            "CSS_VARIABLES" = "Use CSS variables (var(--color-primary)) for custom component styling or dynamic values"
+            "EXAMPLE" = "Use 'bg-primary' for standard styling, use 'background: var(--color-primary)' for dynamic theming"
+        }
         "EXTRACTION_INFO" = @{
             "total_classes" = $extractedStyles.classes.Count
             "total_variables" = $extractedStyles.variables.Count
@@ -426,7 +725,7 @@ foreach ($file in $componentFiles) {
     foreach ($param in $parameters) {
         # Include only essential parameters
         $isEssential = $param.AIHint -or $param.IsRequired -or 
-                      $param.Name -in @('Text', 'Icon', 'Variant', 'Size', 'OnClick', 'Disabled', 'Loading', 'Value', 'Label', 'Title', 'Content', 'Items', 'ChildContent')
+                      $param.Name -in @('Text', 'Icon', 'Variant', 'Size', 'OnClick', 'Disabled', 'Loading', 'Value', 'Label', 'Title', 'Content', 'Items', 'ChildContent', 'HeaderContent', 'MediaContent', 'FooterContent')
         
         if ($isEssential) {
             $paramDesc = $param.Name + ": " + $param.Type
@@ -449,7 +748,7 @@ foreach ($file in $componentFiles) {
     # Add essential parameters with proper formatting
     foreach ($param in $parameters) {
         $isEssential = $param.AIHint -or $param.IsRequired -or 
-                      $param.Name -in @('Text', 'Icon', 'Variant', 'Size', 'OnClick', 'Disabled', 'Loading', 'Value', 'Label', 'Title', 'Content', 'Items', 'ChildContent')
+                      $param.Name -in @('Text', 'Icon', 'Variant', 'Size', 'OnClick', 'Disabled', 'Loading', 'Value', 'Label', 'Title', 'Content', 'Items', 'ChildContent', 'HeaderContent', 'MediaContent', 'FooterContent')
         
         if ($isEssential) {
             $paramValue = $param.Type

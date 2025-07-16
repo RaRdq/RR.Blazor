@@ -16,6 +16,7 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
 **@
 @using RR.Blazor.Enums
 @using RR.Blazor.Attributes
+@using RR.Blazor.Components
 @implements IDisposable
 @inject IJSRuntime JSRuntime
 
@@ -25,79 +26,111 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
                        AvoidUsage = "Don't use for navigation breadcrumbs - use RBreadcrumbs instead")]
 
 <CascadingValue Value="this">
-    <div @ref="tabsElement" class="tabs @Class">
-        <!-- Tab Navigation -->
-    <nav class="tabs__nav tabs__nav--@Variant.ToString().ToLower()" role="tablist">
-        <!-- Animated Indicator -->
-        @if (Variant != TabsVariant.Card)
+    @ChildContent
+    
+    <div @ref="tabsElement" class="tabs @GetTabsClasses()">
+        @if (tabs.Count == 0)
         {
-            <div class="tabs__indicator" style="@GetIndicatorStyle()"></div>
+            <REmptyState Icon="tab" 
+                         Title="@($"No tabs available ({tabs.Count} tabs registered)")" 
+                         Description="@($"This tab container has no content to display. Debug: {(ChildContent != null ? "Has ChildContent" : "No ChildContent")}")" />
         }
-        
-        <!-- Tab Headers -->
-        @foreach (var tab in tabs)
+        else
         {
-            <button type="button"
-                    class="tabs__tab @GetTabClasses(tab)"
-                    role="tab"
-                    aria-selected="@(tab.Id == ActiveTabId)"
-                    aria-controls="panel-@tab.Id"
-                    tabindex="@(tab.Id == ActiveTabId ? 0 : -1)"
-                    disabled="@tab.IsDisabled"
-                    @onclick="() => SelectTab(tab.Id)"
-                    @onkeydown="@(e => HandleKeyDown(e, tab.Id))">
-                
-                @if (!string.IsNullOrEmpty(tab.Icon) && tab.IconPosition == IconPosition.Start)
+        <!-- Tab Navigation with Scroll Arrows -->
+        <nav class="tabs-nav tabs-nav-@Variant.ToString().ToLower() @(isScrollable ? "tabs-nav-scrollable" : "")" role="tablist">
+        <!-- Left Scroll Arrow -->
+        <button type="button" 
+                class="tabs-nav-arrow tabs-nav-arrow-left @(canScrollLeft ? "tabs-nav-arrow-visible" : "")"
+                @onclick="ScrollLeft"
+                aria-label="Scroll tabs left">
+            <i class="material-symbols-rounded">chevron_left</i>
+        </button>
+        
+        <!-- Scrollable Tab Container -->
+        <div class="tabs-nav-container" @ref="navContainer">
+            <div class="tabs-nav-wrapper" @ref="navWrapper">
+                <!-- Animated Indicator -->
+                @if (Variant != TabsVariant.Card)
                 {
-                    <i class="material-symbols-rounded tabs__tab__icon tabs__tab__icon--start @GetTabIconSize()">@tab.Icon</i>
+                    <div class="tabs-indicator" style="@GetIndicatorStyle()"></div>
                 }
                 
-                @if (!string.IsNullOrEmpty(tab.Text))
+                <!-- Tab Headers -->
+                @foreach (var tab in tabs)
                 {
-                    <span>@tab.Text</span>
-                }
-                
-                @if (tab.BadgeCount > 0)
-                {
-                    <span class="tabs__tab__badge @GetBadgeVariant(tab.BadgeVariant)">
-                        @(tab.BadgeCount > 99 ? "99+" : tab.BadgeCount.ToString())
-                    </span>
-                }
-                
-                @if (!string.IsNullOrEmpty(tab.Icon) && tab.IconPosition == IconPosition.End)
-                {
-                    <i class="material-symbols-rounded tabs__tab__icon tabs__tab__icon--end @GetTabIconSize()">@tab.Icon</i>
-                }
-                
-                @if (tab.IsClosable)
-                {
-                    <button type="button" 
-                            class="tabs__tab__close"
-                            @onclick="() => CloseTab(tab.Id)"
-                            @onclick:stopPropagation="true">
-                        <i class="material-symbols-rounded text-xs">close</i>
+                    <button type="button"
+                            id="tab-@tab.Id"
+                            class="tabs-tab @GetTabClasses(tab)"
+                            role="tab"
+                            aria-selected="@(tab.Id == ActiveTabId)"
+                            aria-controls="panel-@tab.Id"
+                            tabindex="@(tab.Id == ActiveTabId ? 0 : -1)"
+                            disabled="@tab.IsDisabled"
+                            @onclick="() => SelectTab(tab.Id)"
+                            @onkeydown="@(e => HandleKeyDown(e, tab.Id))">
+                        
+                        @if (!string.IsNullOrEmpty(tab.Icon) && tab.IconPosition == IconPosition.Start)
+                        {
+                            <i class="material-symbols-rounded tabs-tab-icon tabs-tab-icon-start @GetTabIconSize()">@tab.Icon</i>
+                        }
+                        
+                        @if (!string.IsNullOrEmpty(tab.Text))
+                        {
+                            <span>@tab.Text</span>
+                        }
+                        
+                        @if (tab.BadgeCount > 0)
+                        {
+                            <span class="tabs-tab-badge @GetBadgeVariant(tab.BadgeVariant)">
+                                @(tab.BadgeCount > 99 ? "99+" : tab.BadgeCount.ToString())
+                            </span>
+                        }
+                        
+                        @if (!string.IsNullOrEmpty(tab.Icon) && tab.IconPosition == IconPosition.End)
+                        {
+                            <i class="material-symbols-rounded tabs-tab-icon tabs-tab-icon-end @GetTabIconSize()">@tab.Icon</i>
+                        }
+                        
+                        @if (tab.Closable)
+                        {
+                            <button type="button" 
+                                    class="tabs-tab-close"
+                                    @onclick="() => CloseTab(tab.Id)"
+                                    @onclick:stopPropagation="true">
+                                <i class="material-symbols-rounded text-xs">close</i>
+                            </button>
+                        }
                     </button>
                 }
-            </button>
-        }
+                
+                <!-- Add Tab Button -->
+                @if (ShowAddButton)
+                {
+                    <button type="button" 
+                            class="tabs-tab tabs-tab-add-button"
+                            @onclick="HandleAddTab">
+                        <i class="material-symbols-rounded text-sm">add</i>
+                    </button>
+                }
+            </div>
+        </div>
         
-        <!-- Add Tab Button -->
-        @if (ShowAddButton)
-        {
-            <button type="button" 
-                    class="tabs__tab tabs__tab--add-button"
-                    @onclick="HandleAddTab">
-                <i class="material-symbols-rounded text-sm">add</i>
-            </button>
-        }
+        <!-- Right Scroll Arrow -->
+        <button type="button" 
+                class="tabs-nav-arrow tabs-nav-arrow-right @(canScrollRight ? "tabs-nav-arrow-visible" : "")"
+                @onclick="ScrollRight"
+                aria-label="Scroll tabs right">
+            <i class="material-symbols-rounded">chevron_right</i>
+        </button>
     </nav>
     
     <!-- Tab Content -->
-    <div class="tabs__content @(NoPadding ? "tabs__content--no-padding" : "")">
+    <div class="tabs-content @(NoPadding ? "tabs-content-no-padding" : "")">
         @foreach (var tab in tabs)
         {
             <div id="panel-@tab.Id"
-                 class="tabs__panel @(tab.Id == ActiveTabId ? "tabs__panel--active" : "") @(FadeOnly ? "tabs__panel--fade-only" : "")"
+                 class="tabs-panel @(tab.Id == ActiveTabId ? "tabs-panel-active" : "") @(FadeOnly ? "tabs-panel-fade-only" : "")"
                  role="tabpanel"
                  aria-labelledby="tab-@tab.Id"
                  tabindex="0">
@@ -105,8 +138,7 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
             </div>
         }
     </div>
-    
-    @ChildContent
+        }
     </div>
 </CascadingValue>
 
@@ -129,6 +161,7 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
     /// <summary>Whether to show add tab button</summary>
     [Parameter, AIParameter("Show + button for adding new tabs", "true for dynamic tab creation")] 
     public bool ShowAddButton { get; set; }
+    
     
     /// <summary>Whether tab content has no padding</summary>
     [Parameter, AIParameter("Remove padding from tab content area", "true for full-width content like tables")] 
@@ -154,9 +187,13 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
     
     private readonly List<RTabItemInfo> tabs = new();
     private ElementReference tabsElement;
-    private ElementReference? activeTabElement;
+    private ElementReference navContainer;
+    private ElementReference navWrapper;
     private double indicatorLeft = 0;
     private double indicatorWidth = 0;
+    private bool isScrollable = false;
+    private bool canScrollLeft = false;
+    private bool canScrollRight = false;
     
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -164,29 +201,70 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
         {
             try
             {
-                // Initialize tabs with scroll detection
-                await JSRuntime.InvokeVoidAsync("RRBlazor.initializeTabs", tabsElement, new { });
-                await UpdateIndicatorPosition();
+                // Initialize tabs with scroll detection even if no tabs yet
+                await JSRuntime.InvokeVoidAsync("RRBlazor.initializeTabs", tabsElement, navContainer, navWrapper);
+                
+                if (tabs.Count > 0)
+                {
+                    await UpdateIndicatorPosition();
+                    await UpdateScrollState();
+                }
             }
-            catch (Exception ex)
+            catch
             {
-                // Fallback if JS fails
-                Console.WriteLine($"RTabs initialization failed: {ex.Message}");
+                // JavaScript initialization failed, continue without it
             }
         }
     }
     
     public void AddTab(RTabItemInfo tab)
     {
-        tabs.Add(tab);
+        if (tab == null) return;
         
-        // Set first tab as active if none selected
+        // Check if tab already exists
+        var existingTab = tabs.FirstOrDefault(t => t.Id == tab.Id);
+        if (existingTab != null)
+        {
+            // Update existing tab
+            existingTab.Text = tab.Text;
+            existingTab.Icon = tab.Icon;
+            existingTab.IconPosition = tab.IconPosition;
+            existingTab.IsDisabled = tab.IsDisabled;
+            existingTab.Closable = tab.Closable;
+            existingTab.BadgeCount = tab.BadgeCount;
+            existingTab.BadgeVariant = tab.BadgeVariant;
+            existingTab.Content = tab.Content;
+        }
+        else
+        {
+            tabs.Add(tab);
+        }
+        
         if (string.IsNullOrEmpty(ActiveTabId) && tabs.Count == 1)
         {
             ActiveTabId = tab.Id;
         }
         
         StateHasChanged();
+        
+        // Update indicator position after state change (non-blocking)
+        _ = InvokeAsync(async () =>
+        {
+            try
+            {
+                await UpdateIndicatorPosition();
+                await UpdateScrollState();
+            }
+            catch
+            {
+                // Continue if JavaScript fails
+            }
+        });
+    }
+    
+    public List<RTabItemInfo> GetTabs()
+    {
+        return tabs;
     }
     
     public void RemoveTab(string tabId)
@@ -219,17 +297,35 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
         if (tabId == ActiveTabId) return;
         
         var oldTabId = ActiveTabId;
+        
+        // INSTANT UI UPDATE - No delays, user sees immediate feedback
         ActiveTabId = tabId;
-        
-        await ActiveTabIdChanged.InvokeAsync(ActiveTabId);
-        await OnTabChanged.InvokeAsync(new TabChangedEventArgs
-        {
-            OldTabId = oldTabId,
-            NewTabId = ActiveTabId
-        });
-        
-        await UpdateIndicatorPosition();
         StateHasChanged();
+        
+        // Background operations - non-blocking for instant UX
+        _ = InvokeAsync(async () =>
+        {
+            try
+            {
+                // Notify callbacks in background
+                await ActiveTabIdChanged.InvokeAsync(ActiveTabId);
+                await OnTabChanged.InvokeAsync(new TabChangedEventArgs
+                {
+                    OldTabId = oldTabId,
+                    NewTabId = ActiveTabId
+                });
+                
+                // Scroll to active tab if needed
+                await ScrollToTab(tabId);
+                
+                // Update indicator with smooth animation
+                await UpdateIndicatorPosition();
+            }
+            catch
+            {
+                // Silently handle background operation failures
+            }
+        });
     }
     
     private async Task CloseTab(string tabId)
@@ -266,7 +362,7 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
                 }
                 break;
             case "Delete":
-                if (tabs.FirstOrDefault(t => t.Id == tabId)?.IsClosable == true)
+                if (tabs.FirstOrDefault(t => t.Id == tabId)?.Closable == true)
                 {
                     await CloseTab(tabId);
                 }
@@ -297,11 +393,73 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
             var activeTab = tabs.FirstOrDefault(t => t.Id == ActiveTabId);
             if (activeTab != null)
             {
-                var result = await JSRuntime.InvokeAsync<TabIndicatorPosition>("RRBlazor.getTabIndicatorPosition", $"tab-{ActiveTabId}");
+                var result = await JSRuntime.InvokeAsync<TabIndicatorPosition>("RRBlazor.getTabIndicatorPosition", $"tab-{ActiveTabId}", navWrapper);
                 indicatorLeft = result.Left;
                 indicatorWidth = result.Width;
                 StateHasChanged();
             }
+        }
+        catch
+        {
+            // Fallback if JS fails
+        }
+    }
+    
+    private async Task UpdateScrollState()
+    {
+        try
+        {
+            var scrollInfo = await JSRuntime.InvokeAsync<ScrollInfo>("RRBlazor.getTabScrollInfo", navWrapper);
+            
+            // Only update state if values actually changed
+            if (isScrollable != scrollInfo.IsScrollable || 
+                canScrollLeft != scrollInfo.CanScrollLeft || 
+                canScrollRight != scrollInfo.CanScrollRight)
+            {
+                isScrollable = scrollInfo.IsScrollable;
+                canScrollLeft = scrollInfo.CanScrollLeft;
+                canScrollRight = scrollInfo.CanScrollRight;
+                StateHasChanged();
+            }
+        }
+        catch
+        {
+            // Fallback if JS fails
+        }
+    }
+    
+    private async Task ScrollLeft()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("RRBlazor.scrollTabsLeft", navWrapper);
+            await UpdateScrollState();
+        }
+        catch
+        {
+            // Fallback if JS fails
+        }
+    }
+    
+    private async Task ScrollRight()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("RRBlazor.scrollTabsRight", navWrapper);
+            await UpdateScrollState();
+        }
+        catch
+        {
+            // Fallback if JS fails
+        }
+    }
+    
+    private async Task ScrollToTab(string tabId)
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("RRBlazor.scrollToTab", navWrapper, $"tab-{tabId}");
+            await UpdateScrollState();
         }
         catch
         {
@@ -316,20 +474,20 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
         // Size classes
         classes.Add(Size switch
         {
-            ButtonSize.Small => "tabs__tab--small",
-            ButtonSize.Large => "tabs__tab--large",
+            ButtonSize.Small => "tabs-tab-small",
+            ButtonSize.Large => "tabs-tab-large",
             _ => ""
         });
         
         // State classes
         if (tab.Id == ActiveTabId)
         {
-            classes.Add("tabs__tab--active");
+            classes.Add("tabs-tab-active");
         }
         
         if (tab.IsDisabled)
         {
-            classes.Add("tabs__tab--disabled");
+            classes.Add("tabs-tab-disabled");
         }
         
         return string.Join(" ", classes.Where(c => !string.IsNullOrEmpty(c)));
@@ -344,15 +502,20 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
     
     private string GetBadgeVariant(string variant) => variant switch
     {
-        "danger" => "tabs__tab__badge--danger",
-        "warning" => "tabs__tab__badge--warning", 
-        "success" => "tabs__tab__badge--success",
+        "danger" => "tabs-tab-badge-danger",
+        "warning" => "tabs-tab-badge-warning", 
+        "success" => "tabs-tab-badge-success",
         _ => ""
     };
     
     private string GetIndicatorStyle()
     {
         return $"left: {indicatorLeft}px; width: {indicatorWidth}px;";
+    }
+    
+    private string GetTabsClasses()
+    {
+        return Class ?? "";
     }
     
     public void Dispose()
@@ -367,7 +530,7 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
         public string Icon { get; set; }
         public IconPosition IconPosition { get; set; } = IconPosition.Start;
         public bool IsDisabled { get; set; }
-        public bool IsClosable { get; set; }
+        public bool Closable { get; set; }
         public int BadgeCount { get; set; }
         public string BadgeVariant { get; set; }
         public RenderFragment Content { get; set; }
@@ -388,6 +551,13 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
     {
         public double Left { get; set; }
         public double Width { get; set; }
+    }
+    
+    private class ScrollInfo
+    {
+        public bool IsScrollable { get; set; }
+        public bool CanScrollLeft { get; set; }
+        public bool CanScrollRight { get; set; }
     }
 }
 

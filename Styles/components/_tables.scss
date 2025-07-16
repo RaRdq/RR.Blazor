@@ -1,28 +1,76 @@
-// RR.Blazor Table Component - Professional Data Tables
+// RR.Blazor Table Component - Mobile-First Professional Data Tables
 @use '../abstracts' as *;
+@use 'sass:map';
 
-// Data Table Container - Executive design
+// Table system configuration maps
+$table-sizes: (
+  'compact': (
+    'header-padding': var(--space-3) var(--space-4),
+    'cell-padding': var(--space-2) var(--space-3),
+    'font-size': var(--text-xs)
+  ),
+  'normal': (
+    'header-padding': var(--space-4) var(--space-6),
+    'cell-padding': var(--space-4) var(--space-3),
+    'font-size': var(--text-sm)
+  ),
+  'comfortable': (
+    'header-padding': var(--space-6) var(--space-8),
+    'cell-padding': var(--space-6) var(--space-4),
+    'font-size': var(--text-base)
+  )
+);
+
+$table-variants: (
+  'default': (
+    'border': var(--border-1) solid var(--color-border-light),
+    'shadow': var(--shadow-xl),
+    'header-bg': var(--glass-light-bg),
+    'row-hover': var(--glass-hover-bg)
+  ),
+  'bordered': (
+    'border': var(--border-1) solid var(--color-border-light),
+    'shadow': var(--shadow-md),
+    'header-bg': var(--color-background-secondary),
+    'row-hover': var(--color-background-hover)
+  ),
+  'striped': (
+    'border': var(--border-1) solid var(--color-border-light),
+    'shadow': var(--shadow-sm),
+    'header-bg': var(--color-background-elevated),
+    'row-hover': var(--color-background-hover)
+  )
+);
+
+// Professional Data Table Container - Mobile-first with theme awareness
 .table {
-  background: var(--color-background-elevated);
-  border-radius: var(--radius-xl);
-  border: var(--border-1) solid var(--color-border-light);
+  @extend %table-base;
   overflow: hidden;
+  background: var(--color-background-elevated);
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
   
-  &__header {
+  &-header {
     padding: var(--space-6);
-    background: linear-gradient(135deg, var(--color-background-elevated) 0%, var(--color-background-secondary) 100%);
+    background: var(--glass-light-bg);
     border-bottom: var(--border-1) solid var(--color-border-light);
+    backdrop-filter: blur(var(--glass-light-blur));
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
     gap: var(--space-4);
     
-    @include responsive-max(md) {
-      padding: var(--space-4);
-      flex-direction: column;
-      align-items: stretch;
-      gap: var(--space-3);
+    // Mobile-first responsive layout
+    padding: var(--space-4);
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-3);
+    
+    @include responsive-min(md) {
+      padding: var(--space-6);
+      flex-direction: row;
+      align-items: flex-start;
+      gap: var(--space-4);
     }
     
     &-content {
@@ -38,7 +86,6 @@
       display: flex;
       align-items: center;
       gap: var(--space-2);
-      
     }
     
     &-subtitle {
@@ -52,18 +99,30 @@
       gap: var(--space-2);
       flex-wrap: wrap;
       
-      @include responsive-max(md) {
+      // Mobile-first responsive actions
+      width: 100%;
+      flex-direction: column;
+      gap: var(--space-2);
+      
+      .button {
+        @extend %touch-target;
         width: 100%;
-        justify-content: stretch;
+        justify-content: center;
+      }
+      
+      // Tablet and desktop
+      @include responsive-min(md) {
+        width: auto;
+        flex-direction: row;
         
         .button {
-          flex: 1;
+          width: auto;
         }
       }
     }
   }
   
-  &__filters {
+  &-filters {
     padding: var(--space-4) var(--space-6);
     background: var(--color-background-secondary);
     border-bottom: var(--border-1) solid var(--color-border-light);
@@ -72,11 +131,75 @@
     flex-wrap: wrap;
     align-items: center;
     
-    @include responsive-max(md) {
-      padding: var(--space-3) var(--space-4);
+    // Mobile-first responsive filters
+    padding: var(--space-3) var(--space-4);
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-2);
+    
+    @include responsive-min(md) {
+      padding: var(--space-4) var(--space-6);
+      flex-direction: row;
+      align-items: center;
+      gap: var(--space-3);
+    }
+    
+    // Filter toggle for mobile (collapsible)
+    &-toggle {
+      @extend %button-base;
+      @extend %touch-target;
+      width: 100%;
+      justify-content: space-between;
+      padding: var(--space-3);
+      background: var(--color-background-elevated);
+      border: var(--border-1) solid var(--color-border-light);
+      border-radius: var(--radius-md);
+      min-height: 2.75rem; // WCAG AA touch target
+      
+      // Show only on mobile
+      @include responsive-min(md) {
+        display: none;
+      }
+      
+      span {
+        font-weight: var(--font-medium);
+        color: var(--color-text-primary);
+      }
+      
+      i {
+        color: var(--color-text-secondary);
+        transition: transform var(--duration-fast) var(--ease-out);
+      }
+      
+      &.expanded i {
+        transform: rotate(180deg);
+      }
+    }
+    
+    // Collapsible filter content
+    &-content {
+      display: none;
       flex-direction: column;
-      align-items: stretch;
       gap: var(--space-2);
+      
+      // Show when expanded on mobile
+      &.expanded {
+        display: flex;
+        
+        @include responsive-max(md) {
+          flex-direction: column;
+        }
+      }
+      
+      // Always visible on desktop
+      @include responsive-min(md) {
+        display: flex !important;
+        flex-direction: row;
+        gap: var(--space-3);
+        flex-wrap: wrap;
+        align-items: center;
+        width: 100%;
+      }
     }
     
     .input,
@@ -86,38 +209,53 @@
     }
   }
   
-  &__content {
+  &-content {
     overflow-x: auto;
     max-height: 70vh;
     
-    // Custom scrollbar for webkit browsers
-    &::-webkit-scrollbar {
-      width: 8px;
-      height: 8px;
-    }
-    
-    &::-webkit-scrollbar-track {
-      background: var(--color-background-secondary);
-    }
-    
-    &::-webkit-scrollbar-thumb {
-      background: var(--color-border-medium);
-      border-radius: var(--radius-sm);
+    // Mobile-optimized scrolling with theme awareness
+    @media (hover: none) and (pointer: coarse) {
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
       
-      &:hover {
-        background: var(--color-border-strong);
+      &::-webkit-scrollbar {
+        width: 0;
+        height: 0;
+      }
+    }
+    
+    // Desktop scrollbar with theme styling
+    @media (hover: hover) and (pointer: fine) {
+      &::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      
+      &::-webkit-scrollbar-track {
+        background: var(--color-background-secondary);
+      }
+      
+      &::-webkit-scrollbar-thumb {
+        background: var(--color-border-medium);
+        border-radius: var(--radius-sm);
+        
+        &:hover {
+          background: var(--color-border-strong);
+        }
       }
     }
   }
   
-  &__table {
+  &-table {
     width: 100%;
     border-collapse: collapse;
     font-size: var(--text-sm);
     
-    // Header styling
     thead {
-      background: linear-gradient(135deg, var(--color-background-secondary) 0%, var(--color-background-secondary) 100%);
+      background: var(--glass-medium-bg);
+      backdrop-filter: blur(var(--glass-medium-blur));
       position: sticky;
       top: 0;
       z-index: 10;
@@ -133,25 +271,54 @@
         border-bottom: var(--border-2) solid var(--color-border-medium);
         white-space: nowrap;
         
+        // Mobile-first edge padding
         &:first-child {
-          padding-left: var(--space-6);
+          padding-left: var(--space-3);
+          
+          @include responsive-min(md) {
+            padding-left: var(--space-6);
+          }
         }
         
         &:last-child {
-          padding-right: var(--space-6);
+          padding-right: var(--space-3);
+          
+          @include responsive-min(md) {
+            padding-right: var(--space-6);
+          }
         }
         
-        // Sortable headers
+        // Enhanced sortable headers with WCAG AA touch targets
         &.sortable {
+          @extend %button-base;
+          @extend %touch-target;
           cursor: pointer;
           user-select: none;
           position: relative;
-          transition: background-color var(--duration-fast) var(--ease-out);
+          transition: all var(--duration-fast) var(--ease-out);
+          display: flex;
+          align-items: center;
+          padding: var(--space-3) var(--space-4);
+          border-radius: var(--radius-sm);
           
-          &:hover {
-            background: var(--color-background-hover);
+          // Responsive hover and interaction states
+          @media (hover: hover) and (pointer: fine) {
+            &:hover {
+              background: var(--glass-hover-bg);
+              backdrop-filter: blur(var(--glass-hover-blur));
+              transform: scale(1.02);
+              color: var(--color-interactive-primary);
+            }
           }
           
+          @media (hover: none) and (pointer: coarse) {
+            &:active {
+              background: var(--glass-hover-bg);
+              transform: scale(0.98);
+            }
+          }
+          
+          // Sort indicators with mobile-first sizing
           &::after {
             content: '';
             position: absolute;
@@ -160,49 +327,86 @@
             transform: translateY(-50%);
             width: 0;
             height: 0;
-            border-left: 4px solid transparent;
-            border-right: 4px solid transparent;
-            border-bottom: 6px solid var(--color-text-tertiary);
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-bottom: 8px solid var(--color-text-tertiary);
             opacity: var(--opacity-disabled);
+            transition: all var(--duration-fast) var(--ease-out);
+            
+            // Desktop refinement
+            @include responsive-min(md) {
+              border-left: 4px solid transparent;
+              border-right: 4px solid transparent;
+              border-bottom: 6px solid var(--color-text-tertiary);
+            }
           }
           
+          // Sort states with responsive indicators
           &.sort-asc::after {
-            border-bottom: 6px solid var(--color-interactive-primary);
+            border-bottom: 8px solid var(--color-interactive-primary);
             opacity: 1;
+            transform: translateY(-50%) scale(1.1);
+            
+            @include responsive-min(md) {
+              border-bottom: 6px solid var(--color-interactive-primary);
+            }
           }
           
           &.sort-desc::after {
             border-bottom: none;
-            border-top: 6px solid var(--color-interactive-primary);
+            border-top: 8px solid var(--color-interactive-primary);
             opacity: 1;
+            transform: translateY(-50%) scale(1.1);
+            
+            @include responsive-min(md) {
+              border-top: 6px solid var(--color-interactive-primary);
+            }
           }
         }
       }
     }
     
-    // Body styling
+    // Enhanced body with theme-aware row states
     tbody {
       tr {
-        transition: background-color var(--duration-fast) var(--ease-out);
+        transition: all var(--duration-fast) var(--ease-out);
         
-        &:hover {
-          background: var(--color-background-hover);
+        // Responsive hover effects
+        @media (hover: hover) and (pointer: fine) {
+          &:hover {
+            background: var(--glass-hover-bg);
+            backdrop-filter: blur(var(--glass-hover-blur));
+            transform: scale(1.005);
+            box-shadow: var(--theme-shadow-md);
+          }
         }
         
+        // Touch device active states
+        @media (hover: none) and (pointer: coarse) {
+          &:active {
+            background: var(--glass-hover-bg);
+            transform: scale(0.98);
+          }
+        }
+        
+        // Row state modifiers
         &:nth-child(even) {
-          background: var(--color-background-primary);
+          background: var(--glass-light-bg);
           
           &:hover {
-            background: var(--color-background-hover);
+            background: var(--glass-hover-bg);
+            backdrop-filter: blur(var(--glass-hover-blur));
           }
         }
         
         &.selected {
-          background: var(--color-interactive-primary) !important;
+          background: var(--glass-primary-bg);
           color: var(--color-text-inverse);
+          box-shadow: var(--glass-primary-shadow);
+          backdrop-filter: blur(var(--glass-medium-blur));
           
           &:hover {
-            background: var(--color-interactive-primary-hover) !important;
+            background: var(--color-interactive-primary-hover);
           }
         }
         
@@ -221,15 +425,24 @@
         border-bottom: var(--border-1) solid var(--color-border-light);
         vertical-align: middle;
         
+        // Mobile-first edge padding
         &:first-child {
-          padding-left: var(--space-6);
+          padding-left: var(--space-3);
+          
+          @include responsive-min(md) {
+            padding-left: var(--space-6);
+          }
         }
         
         &:last-child {
-          padding-right: var(--space-6);
+          padding-right: var(--space-3);
+          
+          @include responsive-min(md) {
+            padding-right: var(--space-6);
+          }
         }
         
-        // Special cell types
+        // Semantic cell type modifiers
         &.number {
           text-align: right;
           font-variant-numeric: tabular-nums;
@@ -258,20 +471,65 @@
     }
   }
   
-  &__footer {
+  &-footer {
     padding: var(--space-4) var(--space-6);
-    background: var(--color-background-secondary);
+    background: var(--glass-light-bg);
     border-top: var(--border-1) solid var(--color-border-light);
+    backdrop-filter: blur(var(--glass-light-blur));
     display: flex;
     justify-content: space-between;
     align-items: center;
     gap: var(--space-4);
     
-    @include responsive-max(md) {
-      padding: var(--space-3) var(--space-4);
-      flex-direction: column;
-      align-items: stretch;
-      gap: var(--space-3);
+    // Mobile-first responsive footer
+    padding: var(--space-3) var(--space-4);
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-3);
+    
+    @include responsive-min(md) {
+      padding: var(--space-4) var(--space-6);
+      flex-direction: row;
+      align-items: center;
+      gap: var(--space-4);
+    }
+    
+    // Pagination with mobile-optimized touch targets
+    &-pagination {
+      display: flex;
+      gap: var(--space-2);
+      align-items: center;
+      
+      // Mobile-specific pagination layout
+      @include responsive-max(md) {
+        justify-content: center;
+        width: 100%;
+        
+        .button {
+          min-width: 2.75rem; // 44px WCAG AA
+          min-height: 2.75rem; // 44px WCAG AA touch target
+          
+          .button-text {
+            display: none;
+          }
+        }
+        
+        .page-info {
+          font-size: var(--text-sm);
+          font-weight: var(--font-medium);
+          color: var(--color-text-primary);
+          padding: var(--space-2) var(--space-3);
+          background: var(--color-background-elevated);
+          border-radius: var(--radius-md);
+        }
+      }
+      
+      // Desktop pagination layout
+      @include responsive-min(md) {
+        .button-text {
+          display: inline;
+        }
+      }
     }
     
     &-info {
@@ -285,73 +543,203 @@
         color: var(--color-text-primary);
         font-weight: var(--font-semibold);
       }
-    }
-    
-    &-pagination {
-      display: flex;
-      gap: var(--space-2);
-      align-items: center;
       
+      // Mobile-first info layout
       @include responsive-max(md) {
         justify-content: center;
-        width: 100%;
+        text-align: center;
       }
     }
   }
   
-  // Variants
-  &--compact {
-    .table__table {
+  // Table size variants using configuration maps
+  @each $size-name, $size-props in $table-sizes {
+    &-#{$size-name} {
+      .table-table {
+        font-size: map.get($size-props, 'font-size');
+        
+        thead th {
+          padding: map.get($size-props, 'header-padding');
+        }
+        
+        tbody td {
+          padding: map.get($size-props, 'cell-padding');
+        }
+      }
+    }
+  }
+  
+  // Table style variants
+  &-bordered {
+    .table-table {
+      tbody td,
       thead th {
-        padding: var(--space-3) var(--space-2);
-      }
-      
-      tbody td {
-        padding: var(--space-3) var(--space-2);
-      }
-    }
-  }
-  
-  &--bordered {
-    .table__table {
-      tbody {
-        td {
-          border-right: var(--border-1) solid var(--color-border-light);
-          
-          &:last-child {
-            border-right: none;
-          }
-        }
-      }
-      
-      thead {
-        th {
-          border-right: var(--border-1) solid var(--color-border-light);
-          
-          &:last-child {
-            border-right: none;
-          }
+        border-right: var(--border-1) solid var(--color-border-light);
+        
+        &:last-child {
+          border-right: none;
         }
       }
     }
   }
   
-  &--striped {
-    .table__table tbody tr:nth-child(even) {
+  &-striped {
+    .table-table tbody tr:nth-child(even) {
       background: var(--color-background-secondary);
     }
   }
   
-  &--hover {
-    .table__table tbody tr {
+  &-hover {
+    .table-table tbody tr {
       cursor: pointer;
       
-      &:hover {
-        background: var(--color-background-elevated);
+      @media (hover: hover) and (pointer: fine) {
+        &:hover {
+          background: var(--color-background-elevated);
+        }
       }
     }
   }
 }
+
+// Column Filter Dropdown - Modern Filtering UI
+.column-filter-dropdown {
+  background: var(--color-background-elevated);
+  border: var(--border-1) solid var(--color-border-light);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--theme-shadow-xl);
+  backdrop-filter: blur(var(--blur-md));
+  z-index: 1000;
+  min-width: 200px;
+  max-width: 350px;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: -6px;
+    right: var(--space-4);
+    width: 0;
+    height: 0;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-bottom: 6px solid var(--color-background-elevated);
+  }
+  
+  .rformfield {
+    margin-bottom: 0;
+    
+    input, select {
+      transition: all var(--transition-fast) ease;
+      
+      &:focus {
+        transform: scale(1.02);
+        box-shadow: var(--theme-shadow-md);
+      }
+    }
+  }
+  
+  // Multi-select checkbox styling
+  label {
+    border-radius: var(--radius-md);
+    transition: all var(--transition-fast) ease;
+    
+    &:hover {
+      transform: scale(1.02);
+      background: var(--color-background-secondary) !important;
+    }
+    
+    input[type="checkbox"] {
+      transform: scale(1.1);
+      accent-color: var(--color-interactive-primary);
+    }
+  }
+  
+  // Filter buttons
+  .rbutton {
+    transition: all var(--transition-fast) ease;
+    
+    &:hover {
+      transform: scale(1.05);
+    }
+    
+    &:active {
+      transform: scale(0.98);
+    }
+  }
+}
+
+// Enhanced filter button in table headers
+.table th .rbutton {
+  transition: all var(--transition-fast) ease;
+  
+  &:hover {
+    transform: scale(1.1);
+    box-shadow: var(--theme-shadow-sm);
+  }
+  
+  &:active {
+    transform: scale(0.95);
+  }
+  
+  // Active filter state
+  &.scale-110 {
+    transform: scale(1.1);
+    animation: pulse-filter 2s infinite;
+  }
+}
+
+// Modern column resizing and sticky columns
+.resizable-column {
+  position: relative;
+  
+  .column-resize-handle {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: col-resize;
+    user-select: none;
+    
+    &:hover {
+      background: var(--color-interactive-primary);
+    }
+    
+    i {
+      transform: rotate(90deg);
+      color: var(--color-text-secondary);
+    }
+  }
+}
+
+// Sticky columns with modern shadows
+.position-sticky {
+  border-right: var(--border-1) solid var(--color-border-medium);
+  
+  &:after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: -1px;
+    bottom: 0;
+    width: 8px;
+    background: linear-gradient(
+      90deg, 
+      rgba(0, 0, 0, 0.1) 0%, 
+      transparent 100%
+    );
+    pointer-events: none;
+  }
+}
+
+// Enhanced sort indicators with animations
+.animate-scale-in {
+  animation: scaleIn var(--duration-fast) var(--ease-out);
+}
+
 
 // Empty State for Tables
 .table-empty {
@@ -374,20 +762,34 @@
   }
 }
 
-// Loading state overlay
-.table--loading {
+.table-loading {
   position: relative;
   
   &::after {
     content: '';
     position: absolute;
     inset: 0;
-    background: var(--color-overlay-light);
-    backdrop-filter: blur(2px);
+    background: var(--glass-frost-bg);
+    backdrop-filter: blur(var(--glass-frost-blur));
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 100;
+  }
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 44px;
+    height: 44px;
+    border: 3px solid var(--color-border-light);
+    border-top: 3px solid var(--color-interactive-primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    z-index: 101;
   }
 }
 
@@ -400,13 +802,13 @@
   flex-direction: column;
   gap: var(--space-1);
   
-  &__title {
+  &-title {
     font-weight: var(--font-semibold);
     color: var(--color-text-primary);
     line-height: 1.3;
   }
   
-  &__subtitle {
+  &-subtitle {
     font-size: var(--text-xs);
     color: var(--color-text-secondary);
     line-height: 1.4;
@@ -455,13 +857,13 @@
   flex-direction: column;
   gap: var(--space-1);
   
-  &__value {
+  &-value {
     font-weight: var(--font-semibold);
     color: var(--color-success);
     font-size: var(--text-sm);
   }
   
-  &__currency {
+  &-currency {
     font-size: var(--text-xs);
     color: var(--color-text-secondary);
     text-transform: uppercase;
@@ -480,45 +882,45 @@
   text-transform: uppercase;
   letter-spacing: 0.025em;
   
-  &__dot {
+  &-dot {
     width: 6px;
     height: 6px;
     border-radius: var(--radius-full);
     flex-shrink: 0;
   }
   
-  &--active {
+  &.table-status-active {
     background: var(--color-success-background);
     color: var(--color-success-text);
     
-    .table-status__dot {
+    .table-status-dot {
       background: var(--color-success);
     }
   }
   
-  &--inactive {
+  &.table-status-inactive {
     background: var(--color-error-background);
     color: var(--color-error-text);
     
-    .table-status__dot {
+    .table-status-dot {
       background: var(--color-error);
     }
   }
   
-  &--pending {
+  &.table-status-pending {
     background: var(--color-warning-background);
     color: var(--color-warning-text);
     
-    .table-status__dot {
+    .table-status-dot {
       background: var(--color-warning);
     }
   }
   
-  &--draft {
+  &.table-status-draft {
     background: var(--color-background-secondary);
     color: var(--color-text-secondary);
     
-    .table-status__dot {
+    .table-status-dot {
       background: var(--color-border-medium);
     }
   }
@@ -530,7 +932,7 @@
   gap: var(--space-1);
   align-items: center;
   
-  &__button {
+  &-button {
     padding: var(--space-1) var(--space-2);
     border-radius: var(--radius-sm);
     background: transparent;
@@ -545,7 +947,7 @@
       color: var(--color-text-primary);
     }
     
-    &--primary {
+    &.table-actions-button-primary {
       color: var(--color-interactive-primary);
       
       &:hover {
@@ -553,7 +955,7 @@
       }
     }
     
-    &--danger {
+    &.table-actions-button-danger {
       color: var(--color-error);
       
       &:hover {
@@ -578,16 +980,16 @@
 }
 
 // Inactive row state
-.table__row--inactive {
+.table-row-inactive {
   opacity: var(--opacity-disabled);
   
-  .table-cell-primary__title {
+  .table-cell-primary-title {
     color: var(--color-text-secondary);
   }
 }
 
 // Selected row state (matching existing pattern)
-.table__row--selected {
+.table-row-selected {
   background: var(--color-background-primary-hover);
   
   &:hover {
@@ -595,13 +997,190 @@
   }
 }
 
-// Responsive adjustments for enhanced cells
+// ===== MOBILE-FIRST TABLE CARD LAYOUT =====
+// Transform tables into card-based mobile view for better UX
+
+.table-mobile-cards {
+  // Mobile-first: start with cards, show table on larger screens
+  .table-table {
+    display: none;
+    
+    @include responsive-min(md) {
+      display: table;
+    }
+  }
+  
+  .table-content {
+    padding: var(--space-3);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    overflow-x: visible;
+    max-height: none;
+    
+    @include responsive-min(md) {
+      display: block;
+      overflow-x: auto;
+      max-height: 70vh;
+      padding: 0;
+    }
+  }
+}
+
+// Mobile card representation of table rows
+.table-mobile-card {
+  // Mobile-first: show cards by default
+  display: block;
+  
+  @include responsive-min(md) {
+    display: none;
+  }
+  
+  @include responsive-max(md) {
+    // Mobile card styling
+    background: var(--color-background-elevated);
+    border-radius: var(--radius-lg);
+    border: var(--border-1) solid var(--color-border-light);
+    padding: var(--space-4);
+    box-shadow: var(--shadow-sm);
+    
+    &.table-mobile-card-selected {
+      border-color: var(--color-interactive-primary);
+      background: var(--color-background-primary-hover);
+    }
+    
+    &.table-mobile-card-inactive {
+      opacity: var(--opacity-disabled);
+    }
+    
+    &-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: var(--space-3);
+      
+      &-title {
+        font-weight: var(--font-semibold);
+        color: var(--color-text-primary);
+        font-size: var(--text-base);
+      }
+      
+      &-status {
+        flex-shrink: 0;
+      }
+    }
+    
+    &-body {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+    }
+    
+    &-field {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      min-height: 44px;
+      
+      &-label {
+        font-size: var(--text-sm);
+        color: var(--color-text-secondary);
+        font-weight: var(--font-medium);
+        min-width: 80px;
+        flex-shrink: 0;
+      }
+      
+      &-value {
+        font-size: var(--text-sm);
+        color: var(--color-text-primary);
+        text-align: right;
+        flex: 1;
+      }
+    }
+    
+    &-actions {
+      display: flex;
+      gap: var(--space-2);
+      margin-top: var(--space-3);
+      padding-top: var(--space-3);
+      border-top: var(--border-1) solid var(--color-border-light);
+      
+      .button {
+        flex: 1;
+        min-height: 40px;
+        justify-content: center;
+        font-size: var(--text-sm);
+      }
+    }
+  }
+}
+
+// Priority column system for mobile
+.table-column-priority {
+  &-high {
+    // Always visible on all screen sizes
+    display: table-cell;
+  }
+  
+  &-medium {
+    // Mobile-first: hide by default, show on tablet+
+    display: none;
+    
+    @include responsive-min(md) {
+      display: table-cell;
+    }
+  }
+  
+  &-low {
+    // Mobile-first: hide by default, show on desktop+
+    display: none;
+    
+    @include responsive-min(lg) {
+      display: table-cell;
+    }
+  }
+}
+
+// Mobile table scroll indicators
+.table-scroll-indicator {
+  // Mobile-first: show indicator by default
+  display: block;
+  
+  @include responsive-min(md) {
+    display: none;
+  }
+  
+  @include responsive-max(md) {
+    // Mobile scroll indicator styling
+    position: sticky;
+    right: 0;
+    background: linear-gradient(270deg, 
+      var(--color-background-elevated) 0%, 
+      transparent 100%);
+    width: 2rem;
+    pointer-events: none;
+    
+    &::after {
+      content: '→';
+      position: absolute;
+      right: var(--space-2);
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--color-text-secondary);
+      font-size: var(--text-sm);
+    }
+  }
+}
+
+// Mobile-first responsive adjustments for enhanced cells
 @include responsive-max(md) {
   .table-actions {
     gap: 0;
     
-    &__button {
+    &-button {
       padding: var(--space-1);
+      min-height: 44px;
+      min-width: 44px;
       
       &-text {
         display: none;
@@ -610,7 +1189,7 @@
   }
   
   // Hide cell subtitles and icons on mobile for density
-  .table-cell-primary__subtitle {
+  .table-cell-primary-subtitle {
     display: none;
   }
   
@@ -623,8 +1202,24 @@
     align-items: center;
     gap: var(--space-2);
     
-    &__currency {
+    &-currency {
       display: none;
+    }
+  }
+  
+  // Compact table cells on mobile
+  .table-table {
+    th, td {
+      padding: var(--space-2);
+      font-size: var(--text-xs);
+      
+      &:first-child {
+        padding-left: var(--space-2);
+      }
+      
+      &:last-child {
+        padding-right: var(--space-2);
+      }
     }
   }
 }

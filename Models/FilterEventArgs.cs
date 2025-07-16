@@ -33,4 +33,12 @@ namespace RR.Blazor.Models
         public bool IsActive { get; set; }
         public int Count { get; set; }
     }
+
+    public class ColumnFilterEventArgs
+    {
+        public string ColumnKey { get; set; } = "";
+        public string FilterValue { get; set; } = "";
+        public RR.Blazor.Enums.FilterType FilterType { get; set; }
+        public List<string> SelectedValues { get; set; } = new();
+    }
 }

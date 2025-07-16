@@ -41,7 +41,7 @@ public class AppNavItem : NavMenuItem
     /// <summary>Check if user can access this item</summary>
     public bool CanAccess(AppUser user, string[] userPermissions = null)
     {
-        if (!IsVisible) return false;
+        if (!Visible) return false;
         
         if (RequiresAuth && (user == null || !user.IsAuthenticated))
             return false;

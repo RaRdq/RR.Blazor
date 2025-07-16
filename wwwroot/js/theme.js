@@ -259,21 +259,26 @@ window.RRTheme = {
         const stored = localStorage.getItem('rr-blazor-theme');
         if (stored) {
             const config = JSON.parse(stored);
-            themeMode = config.Mode || 'system';
+            // Handle both string and numeric enum values
+            const mode = config.Mode;
+            if (typeof mode === 'number') {
+                themeMode = mode === 0 ? 'system' : mode === 1 ? 'light' : mode === 2 ? 'dark' : 'system';
+            } else if (typeof mode === 'string') {
+                themeMode = mode.toLowerCase();
+            }
         }
     } catch (e) {
-        // Ignore errors, use default
+        console.warn('Failed to load theme from localStorage:', e);
     }
     
     // Apply system preference if mode is system
-    if (themeMode === 'system' || themeMode === '0') {
-        themeMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-    } else if (themeMode === '1') {
-        themeMode = 'light';
-    } else if (themeMode === '2') {
-        themeMode = 'dark';
+    if (themeMode === 'system' || themeMode === 0) {
+        const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        themeMode = prefersDark ? 'dark' : 'light';
+        console.log('System theme detected:', themeMode);
     }
     
     // Apply theme immediately
     document.documentElement.setAttribute('data-theme', themeMode);
+    console.log('Initial theme applied:', themeMode);
 })();

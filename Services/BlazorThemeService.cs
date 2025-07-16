@@ -33,6 +33,7 @@ public interface IThemeService
     Task DeleteCustomThemeAsync(string themeName);
     Task<bool> IsDarkModeAsync();
     Task<ThemeMode> GetThemeModeAsync();
+    Task ClearThemeStorageAsync();
 }
 
 /// <summary>
@@ -82,32 +83,24 @@ public class BlazorThemeService : IThemeService, IAsyncDisposable
         
         try
         {
-            // Theme is already applied by JavaScript, just sync state
+            // Detect system preferences first
             try
             {
-                var themeInfo = await jsRuntime.InvokeAsync<dynamic>("RRTheme.getThemeInfo");
-                if (themeInfo != null)
-                {
-                    isSystemDark = Convert.ToBoolean(themeInfo.systemDark ?? false);
-                    isHighContrast = Convert.ToBoolean(themeInfo.highContrast ?? false);
-                    
-                    // Get current theme from DOM
-                    var currentThemeMode = themeInfo.current?.ToString() ?? "light";
-                    if (Enum.TryParse<ThemeMode>(currentThemeMode, true, out ThemeMode parsedMode))
-                    {
-                        currentTheme.Mode = parsedMode;
-                    }
-                }
+                await DetectSystemPreferencesAsync();
             }
             catch (Exception ex)
             {
-                logger.LogDebug(ex, "Failed to get theme info from JavaScript, using defaults");
+                logger.LogDebug(ex, "Failed to detect system preferences, using defaults");
+                isSystemDark = false;
+                isHighContrast = false;
             }
             
             // Load saved configuration directly
             try
             {
                 await LoadThemeFromStorageAsync();
+                // Apply the loaded theme immediately
+                await ApplyThemeAsync(currentTheme);
             }
             catch (Exception ex)
             {
@@ -245,6 +238,21 @@ public class BlazorThemeService : IThemeService, IAsyncDisposable
         return currentTheme.Mode;
     }
     
+    public async Task ClearThemeStorageAsync()
+    {
+        try
+        {
+            await localStorage.RemoveItemAsync(THEME_KEY);
+            currentTheme = ThemeConfiguration.Default;
+            await ApplyThemeAsync(currentTheme);
+            ThemeChanged?.Invoke(currentTheme);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to clear theme storage");
+        }
+    }
+    
     private async Task LoadThemeFromStorageAsync()
     {
         try
@@ -253,11 +261,25 @@ public class BlazorThemeService : IThemeService, IAsyncDisposable
             if (savedTheme != null)
             {
                 currentTheme = savedTheme;
+                logger.LogDebug("Theme loaded from storage: {ThemeMode}", savedTheme.Mode);
+            }
+            else
+            {
+                logger.LogDebug("No saved theme found, using default");
+                currentTheme = ThemeConfiguration.Default;
             }
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Failed to load theme from storage, using default");
+            logger.LogWarning(ex, "Failed to load theme from storage, clearing and using default");
+            try
+            {
+                await localStorage.RemoveItemAsync(THEME_KEY);
+            }
+            catch
+            {
+                // Ignore cleanup errors
+            }
             currentTheme = ThemeConfiguration.Default;
         }
     }

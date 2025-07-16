@@ -285,20 +285,96 @@ foreach ($file in $razorFiles) {
         $validParams = $componentParameters[$componentName]
         
         # Extract parameters from attributes section (handle quoted values, expressions)
-        # Skip @bind-* directives as they are not component parameters
-        $paramPattern = '(?<!@bind-[^:\s]*:)(?<!@on\w*:)(\w+)\s*=\s*(?:"[^"]*"|@[^"\s]+|{[^}]*}|\S+)'
-        $paramMatches = [regex]::Matches($attributesSection, $paramPattern)
+        # First, remove all @bind-* directives to avoid false matches with :after syntax
+        $cleanedAttributes = $attributesSection -replace '@bind[-\w]*:[^=\s]*="[^"]*"', ''
+        
+        # Extract parameters using a more robust parser for complex expressions
+        $parameters = @()
+        $i = 0
+        $attributesLength = $cleanedAttributes.Length
+        
+        while ($i -lt $attributesLength) {
+            # Skip whitespace
+            while ($i -lt $attributesLength -and $cleanedAttributes[$i] -match '\s') { $i++ }
+            if ($i -ge $attributesLength) { break }
+            
+            # Find parameter name (skip any non-word characters first)
+            if ($cleanedAttributes[$i] -notmatch '\w') {
+                $i++
+                continue
+            }
+            
+            $paramStart = $i
+            while ($i -lt $attributesLength -and $cleanedAttributes[$i] -match '\w') { $i++ }
+            if ($i -eq $paramStart) { 
+                $i++
+                continue 
+            }
+            
+            $paramName = $cleanedAttributes.Substring($paramStart, $i - $paramStart)
+            
+            # Skip whitespace and check for =
+            while ($i -lt $attributesLength -and $cleanedAttributes[$i] -match '\s') { $i++ }
+            
+            # Check if this is a boolean attribute (no =) or a value attribute (has =)
+            if ($i -ge $attributesLength -or $cleanedAttributes[$i] -ne '=') { 
+                # Boolean attribute - just add the parameter name
+                $parameters += $paramName
+                continue 
+            }
+            
+            # Has = so parse the value
+            $i++ # Skip =
+            while ($i -lt $attributesLength -and $cleanedAttributes[$i] -match '\s') { $i++ }
+            
+            # Parse parameter value with proper nesting handling
+            if ($i -lt $attributesLength) {
+                if ($cleanedAttributes[$i] -eq '"') {
+                    # Handle quoted string with proper nesting
+                    $i++
+                    $nestLevel = 0
+                    $inString = $false
+                    while ($i -lt $attributesLength) {
+                        $char = $cleanedAttributes[$i]
+                        if ($char -eq '"' -and -not $inString) {
+                            if ($nestLevel -eq 0) {
+                                $i++
+                                break
+                            }
+                            $inString = $true
+                        } elseif ($char -eq '"' -and $inString) {
+                            $inString = $false
+                        } elseif (-not $inString) {
+                            if ($char -eq '{' -or $char -eq '(') {
+                                $nestLevel++
+                            } elseif ($char -eq '}' -or $char -eq ')') {
+                                $nestLevel--
+                            }
+                        } elseif ($char -eq '\') {
+                            $i++ # Skip escaped character
+                        }
+                        $i++
+                    }
+                } else {
+                    # Handle unquoted value
+                    while ($i -lt $attributesLength -and $cleanedAttributes[$i] -notmatch '\s') { $i++ }
+                }
+                
+                $parameters += $paramName
+            }
+        }
+        
+        # Create mock matches object for compatibility
+        $paramMatches = @()
+        foreach ($param in $parameters) {
+            $paramMatches += @{ Groups = @(@{}, @{ Value = $param }) }
+        }
         
         foreach ($paramMatch in $paramMatches) {
             $paramName = $paramMatch.Groups[1].Value
             
             # Skip ignored parameters (no false positives)
             if ($paramName -in $ignoredParameters) {
-                continue
-            }
-            
-            # Skip parameters that are part of @bind-* directives (like 'after' in @bind-value:after)
-            if ($paramName -match '^(after|event)$' -and $attributesSection -match "@bind-[^:\s]*:$paramName") {
                 continue
             }
             

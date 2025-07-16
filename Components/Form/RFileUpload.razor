@@ -25,16 +25,16 @@
     {
         <div class="@GetUploadZoneClasses()" @onclick="@(() => TriggerFileSelect())">
             <InputFile id="@InputId"
-                       class="file-upload-area__input"
+                       class="upload-area-input"
                        accept="@GetAcceptString()"
                        multiple="@Multiple"
-                       disabled="@IsDisabled"
+                       disabled="@Disabled"
                        OnChange="HandleFileChange" />
 
-            <label for="@InputId" class="file-upload-area__label">
+            <label for="@InputId" class="upload-area-label">
                 <i class="material-symbols-rounded">@GetUploadIcon()</i>
-                <h5 class="file-upload-area__text">@GetUploadText()</h5>
-                <p class="file-upload-area__hint">@GetUploadHint()</p>
+                <h5 class="upload-area-text">@GetUploadText()</h5>
+                <p class="upload-area-hint">@GetUploadHint()</p>
                 @if (ShowBrowseButton)
                 {
                     <RButton Text="@BrowseButtonText" 
@@ -47,12 +47,12 @@
     }
     else if (DisplayMode == RFileUploadDisplayMode.Button)
     {
-        <div class="d-flex flex-column gap-2">
+        <div class="flex flex-col gap-2">
             <InputFile id="@InputId"
-                       class="file-upload__input"
+                       class="file-upload-input"
                        accept="@GetAcceptString()"
                        multiple="@Multiple"
-                       disabled="@IsDisabled"
+                       disabled="@Disabled"
                        OnChange="HandleFileChange" />
 
             <label for="@InputId" class="@GetButtonClasses()">
@@ -65,7 +65,7 @@
             
             @if (!string.IsNullOrEmpty(HelpText))
             {
-                <p class="file-upload__hint">@HelpText</p>
+                <p class="file-upload-hint">@HelpText</p>
             }
         </div>
     }
@@ -75,17 +75,17 @@
                    class="@GetMinimalClasses()"
                    accept="@GetAcceptString()"
                    multiple="@Multiple"
-                   disabled="@IsDisabled"
+                   disabled="@Disabled"
                    OnChange="HandleFileChange" />
     }
     else if (DisplayMode == RFileUploadDisplayMode.Inline)
     {
-        <div class="d-flex align-center gap-3">
+        <div class="flex align-center gap-3">
             <InputFile id="@InputId"
-                       class="file-upload__input"
+                       class="file-upload-input"
                        accept="@GetAcceptString()"
                        multiple="@Multiple"
-                       disabled="@IsDisabled"
+                       disabled="@Disabled"
                        OnChange="HandleFileChange" />
 
             <label for="@InputId" class="@GetInlineButtonClasses()">
@@ -103,7 +103,7 @@
     }
 
     @* Error Display *@
-    <div class="file-upload-errors" style="display: none;"></div>
+    <div class="file-upload-errors hidden"></div>
 
     @* File Preview/List *@
     @if (ShowPreview && SelectedFiles.Any())
@@ -112,7 +112,7 @@
             @foreach (var file in SelectedFiles)
             {
                 <div class="file-preview" data-file-id="@file.Id">
-                    <div class="file-preview__info">
+                    <div class="file-preview-info">
                         @if (file.IsImage && !string.IsNullOrEmpty(file.ThumbnailUrl))
                         {
                             <div class="w-10 h-10 rounded overflow-hidden">
@@ -124,9 +124,9 @@
                             <i class="material-symbols-rounded">@GetFileIcon(file.Extension)</i>
                         }
                         
-                        <div class="file-preview__details">
-                            <p class="file-preview__name">@file.Name</p>
-                            <p class="file-preview__size">@FormatFileSize(file.Size)</p>
+                        <div class="file-preview-details">
+                            <p class="file-preview-name">@file.Name</p>
+                            <p class="file-preview-size">@FormatFileSize(file.Size)</p>
                             
                             @if (file.Status == RFileUploadStatus.Failed && !string.IsNullOrEmpty(file.ErrorMessage))
                             {
@@ -135,14 +135,14 @@
                         </div>
                     </div>
 
-                    <div class="d-flex align-center gap-2">
+                    <div class="flex align-center gap-2">
                         @if (ShowProgress && file.Status == RFileUploadStatus.Uploading)
                         {
                             <div class="upload-progress w-24">
-                                <div class="upload-progress__bar">
-                                    <div class="upload-progress__bar__fill" style="width: @(file.UploadProgress)%"></div>
+                                <div class="upload-progress-bar">
+                                    <div class="upload-progress-bar-fill" style="width: @(file.UploadProgress)%"></div>
                                 </div>
-                                <p class="upload-progress__text text-xs">@(Math.Round(file.UploadProgress))%</p>
+                                <p class="upload-progress-text text-xs">@(Math.Round(file.UploadProgress))%</p>
                             </div>
                         }
                         else if (file.Status == RFileUploadStatus.Completed)
@@ -172,11 +172,11 @@
     @if (ShowProgress && IsUploading)
     {
         <div class="upload-progress mt-4">
-            <h6 class="upload-progress__title">Uploading Files...</h6>
-            <div class="upload-progress__bar">
-                <div class="upload-progress__bar__fill" style="width: @(OverallProgress)%"></div>
+            <h6 class="upload-progress-title">Uploading Files...</h6>
+            <div class="upload-progress-bar">
+                <div class="upload-progress-bar-fill" style="width: @(OverallProgress)%"></div>
             </div>
-            <p class="upload-progress__text">
+            <p class="upload-progress-text">
                 @CompletedUploads of @TotalUploads files uploaded (@(Math.Round(OverallProgress))%)
             </p>
         </div>
@@ -195,7 +195,7 @@
     [Parameter] [AIParameter("Visual style mode (DropZone, Button, Inline, Minimal)", Example = "RFileUploadDisplayMode.DropZone")] public RFileUploadDisplayMode DisplayMode { get; set; } = RFileUploadDisplayMode.DropZone;
     
     /// <summary>Whether component is disabled</summary>
-    [Parameter] public bool IsDisabled { get; set; }
+    [Parameter] public bool Disabled { get; set; }
     
     /// <summary>Additional CSS classes</summary>
     [Parameter] public string Class { get; set; }
@@ -482,9 +482,9 @@
 
     private string GetUploadZoneClasses()
     {
-        var classes = new List<string> { "file-upload-area" };
+        var classes = new List<string> { "upload-area" };
         
-        if (IsDisabled)
+        if (Disabled)
         {
             classes.Add("opacity-50");
             classes.Add("cursor-not-allowed");
@@ -497,12 +497,12 @@
     {
         var classes = new List<string> 
         { 
-            "file-upload__label",
+            "file-upload-label",
             "btn",
             "btn-secondary"
         };
         
-        if (IsDisabled)
+        if (Disabled)
         {
             classes.Add("btn-disabled");
         }
@@ -512,12 +512,12 @@
 
     private string GetMinimalClasses()
     {
-        return "form-field__file";
+        return "form-field-file";
     }
 
     private string GetInlineButtonClasses()
     {
-        return "btn btn-ghost btn-sm d-flex align-center gap-1";
+        return "btn btn-ghost btn-sm flex align-center gap-1";
     }
 
     private string GetAcceptString()

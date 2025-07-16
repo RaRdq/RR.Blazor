@@ -2,28 +2,447 @@
 // File upload UI patterns for forms and workflows
 @use '../abstracts' as *;
 
-// ===== UPLOAD SECTION =====
-.upload-section {
-  @include flex-column;
-  gap: $space-6;
+// ===== CONSOLIDATED UPLOAD PATTERNS =====
+.upload {
+  // Base upload container
+  & {
+    position: relative;
+    
+    // Upload section wrapper
+    &-section {
+      @include flex-column;
+      gap: var(--space-6);
+    }
+    
+    // Upload info with title and list
+    &-info {
+      &-title {
+        @include text-heading-md;
+        color: var(--color-text-primary);
+        margin: 0 0 var(--space-4) 0;
+        font-weight: var(--font-semibold);
+      }
+      
+      &-list {
+        margin: 0;
+        padding-left: var(--space-6);
+        color: var(--color-text-secondary);
+        line-height: 1.6;
+        
+        & li {
+          margin-bottom: var(--space-2);
+          
+          &:last-child {
+            margin-bottom: 0;
+          }
+        }
+      }
+    }
+    
+    // Primary upload area (main drop zone)
+    &-area {
+      position: relative;
+      border: 2px dashed var(--color-border-medium);
+      border-radius: var(--radius-xl);
+      padding: var(--space-12) var(--space-8);
+      text-align: center;
+      transition: var(--transition-normal);
+      background: var(--color-background-secondary);
+      cursor: pointer;
+      
+      &:hover {
+        border-color: var(--color-interactive-primary);
+        background: var(--color-background-elevated);
+        transform: translateY(-2px);
+      }
+      
+      &-input {
+        position: absolute;
+        opacity: 0;
+        width: 100%;
+        height: 100%;
+        cursor: pointer;
+        inset: 0;
+      }
+      
+      &-label {
+        @include flex-column;
+        align-items: center;
+        gap: var(--space-4);
+        cursor: pointer;
+        pointer-events: none;
+        
+        & i {
+          font-size: var(--space-12);
+          color: var(--color-interactive-primary);
+          margin-bottom: var(--space-2);
+        }
+      }
+      
+      &-text {
+        @include text-heading-md;
+        font-weight: var(--font-medium);
+        color: var(--color-text-primary);
+        margin: 0;
+      }
+      
+      &-hint {
+        @include text-body;
+        color: var(--color-text-secondary);
+        margin: 0;
+      }
+    }
+    
+    // Alternative upload zone style
+    &-zone {
+      border: 2px dashed var(--color-border-medium);
+      border-radius: var(--radius-lg);
+      padding: var(--space-8);
+      text-align: center;
+      cursor: pointer;
+      transition: all var(--duration-normal) var(--ease-out);
+      background: var(--color-background-secondary);
+      position: relative;
+      
+      &:hover {
+        border-color: var(--color-interactive-primary);
+        background: var(--color-background-elevated);
+      }
+      
+      &-dragover,
+      &-active {
+        border-color: var(--color-interactive-primary);
+        background: var(--color-background-elevated);
+        transform: scale(1.02);
+      }
+      
+      &-content {
+        @include flex-column;
+        align-items: center;
+        gap: var(--space-3);
+      }
+      
+      &-icon {
+        font-size: var(--space-12);
+        color: var(--color-interactive-primary);
+      }
+      
+      &-input {
+        position: absolute;
+        opacity: 0;
+        width: 100%;
+        height: 100%;
+        cursor: pointer;
+        inset: 0;
+      }
+      
+      &-supported {
+        @include text-caption;
+        color: var(--color-text-secondary);
+        margin-top: var(--space-2);
+      }
+      
+      &-file-info {
+        @include flex-column;
+        align-items: center;
+        gap: var(--space-2);
+        
+        & i {
+          font-size: var(--space-8);
+          color: var(--color-interactive-primary);
+        }
+        
+        & h4 {
+          @include text-heading-sm;
+          color: var(--color-text-primary);
+          margin: 0;
+        }
+      }
+      
+      // Zone disabled state
+      &-disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        
+        &:hover {
+          border-color: var(--color-border-medium);
+          background: var(--color-background-secondary);
+          transform: none;
+        }
+      }
+      
+      & h5 {
+        @include text-heading-sm;
+        color: var(--color-text-primary);
+        margin: 0;
+      }
+      
+      & p {
+        @include text-body;
+        color: var(--color-text-secondary);
+        margin: 0;
+      }
+    }
+    
+    // Upload progress indicators
+    &-progress {
+      text-align: center;
+      padding: var(--space-6) 0;
+      
+      &-title {
+        @include text-heading-md;
+        margin: 0 0 var(--space-6) 0;
+        color: var(--color-text-primary);
+      }
+      
+      &-bar {
+        width: 100%;
+        height: var(--space-3);
+        background: var(--color-background-secondary);
+        border-radius: var(--radius-full);
+        overflow: hidden;
+        margin-bottom: var(--space-4);
+        border: var(--border-1) solid var(--color-border-light);
+        
+        &-fill {
+          height: 100%;
+          background: var(--color-interactive-primary);
+          border-radius: var(--radius-full);
+          transition: width 0.3s ease;
+          position: relative;
+          
+          &::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, 
+              transparent 0%, 
+              rgba(255, 255, 255, 0.2) 50%, 
+              transparent 100%);
+            animation: loadingShimmer 2s infinite;
+          }
+        }
+      }
+      
+      &-text {
+        @include text-body;
+        color: var(--color-text-secondary);
+        margin-bottom: var(--space-6);
+        font-weight: var(--font-medium);
+      }
+    }
+    
+    // Upload complete states
+    &-complete {
+      text-align: center;
+      padding: var(--space-6) 0;
+      
+      &-title {
+        @include text-heading-md;
+        margin: 0 0 var(--space-4) 0;
+        color: var(--color-text-primary);
+      }
+      
+      &-message {
+        @include text-body;
+        color: var(--color-text-secondary);
+        margin-bottom: var(--space-4);
+      }
+    }
+    
+    // Upload error states
+    &-error {
+      text-align: center;
+      padding: var(--space-6) 0;
+      
+      &-title {
+        @include text-heading-md;
+        margin: 0 0 var(--space-4) 0;
+        color: var(--color-text-error);
+      }
+      
+      &-message {
+        @include text-body;
+        color: var(--color-text-secondary);
+        margin-bottom: var(--space-4);
+      }
+    }
+    
+    &-errors {
+      margin-top: var(--space-4);
+      
+      &-title {
+        @include text-heading-sm;
+        color: var(--color-text-primary);
+        margin: 0 0 var(--space-3) 0;
+      }
+    }
+    
+    &-results {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: var(--space-4);
+      margin-top: var(--space-4);
+    }
+    
+    &-content {
+      @include flex-column;
+      align-items: center;
+      gap: var(--space-3);
+    }
+    
+    &-icon {
+      font-size: var(--space-12);
+      color: var(--color-interactive-primary);
+    }
+  }
 }
 
-.upload-info {
-  &__title {
-    @include text-heading-md;
-    color: var(--color-text-primary);
-    margin: 0 0 $space-4 0;
-    font-weight: var(--font-semibold);
-  }
-
-  &__list {
-    margin: 0;
-    padding-left: $space-6;
-    color: var(--color-text-secondary);
-    line-height: 1.6;
-
-    & li {
-      margin-bottom: $space-2;
+// ===== FILE UPLOAD COMPONENT =====
+.file-upload {
+  // Base file upload container
+  & {
+    position: relative;
+    display: inline-block;
+    width: 100%;
+    
+    // Input element (hidden)
+    &-input {
+      position: absolute;
+      left: -9999px;
+      opacity: 0;
+    }
+    
+    // Button-style label
+    &-label {
+      @include flex-center;
+      gap: var(--space-2);
+      padding: var(--space-3) var(--space-4);
+      background: var(--color-background-elevated);
+      border: 2px dashed var(--color-border-medium);
+      border-radius: var(--radius-md);
+      color: var(--color-text-secondary);
+      cursor: pointer;
+      transition: all var(--duration-normal) var(--ease-out);
+      text-decoration: none;
+      
+      &:hover {
+        border-color: var(--color-interactive-primary);
+        color: var(--color-interactive-primary);
+        background: var(--color-background-primary);
+      }
+    }
+    
+    // Dropzone style
+    &-dropzone {
+      @include flex-column;
+      align-items: center;
+      gap: var(--space-2);
+      padding: var(--space-8) var(--space-6);
+      border: 2px dashed var(--color-border-medium);
+      border-radius: var(--radius-lg);
+      background: var(--color-background-secondary);
+      text-align: center;
+      cursor: pointer;
+      transition: var(--transition-normal);
+      
+      &:hover {
+        border-color: var(--color-interactive-primary);
+        background: var(--color-background-elevated);
+      }
+      
+      & i {
+        font-size: var(--space-9);
+        color: var(--color-interactive-primary);
+        margin-bottom: var(--space-2);
+      }
+      
+      & p {
+        margin: 0;
+        color: var(--color-text-primary);
+        font-weight: var(--font-medium);
+        
+        &:last-child {
+          @include text-caption;
+          color: var(--color-text-secondary);
+          font-weight: normal;
+        }
+      }
+    }
+    
+    // Helper text
+    &-hint {
+      @include text-caption;
+      color: var(--color-text-secondary);
+      margin-top: var(--space-1);
+    }
+    
+    // Section wrapper
+    &-section {
+      @include flex-column;
+      gap: var(--space-4);
+    }
+    
+    // Area extension (backward compatibility)
+    &-area {
+      // Extends upload-area for existing usage
+      @extend .upload-area;
+      
+      &-input {
+        @extend .upload-area-input;
+      }
+      
+      &-label {
+        @extend .upload-area-label;
+      }
+    }
+    
+    // Simple mode styles
+    &-simple {
+      @include flex-start;
+      align-items: center;
+      gap: var(--space-3);
+    }
+    
+    // Compact mode styles  
+    &-compact {
+      @include flex-start;
+      align-items: center;
+      gap: var(--space-2);
+    }
+    
+    // File count display
+    &-count {
+      @include text-caption;
+      color: var(--color-text-secondary);
+      font-weight: var(--font-medium);
+    }
+    
+    // Error handling
+    &-errors {
+      margin-top: var(--space-3);
+      
+      &.hidden {
+        display: none;
+      }
+    }
+    
+    &-error {
+      @include flex-start;
+      align-items: center;
+      gap: var(--space-2);
+      padding: var(--space-2) var(--space-3);
+      background: var(--color-error-bg);
+      border: var(--border-1) solid var(--color-error-light);
+      border-radius: var(--radius-md);
+      color: var(--color-error);
+      font-size: var(--text-sm);
+      margin-bottom: var(--space-2);
+      
+      & i {
+        color: var(--color-error);
+        font-size: var(--text-base);
+      }
       
       &:last-child {
         margin-bottom: 0;
@@ -32,302 +451,110 @@
   }
 }
 
-// ===== FILE UPLOAD AREA =====
-.file-upload-area {
-  position: relative;
-  border: 2px dashed var(--color-border-medium);
-  border-radius: $radius-xl;
-  padding: $space-12 $space-8;
-  text-align: center;
-  transition: var(--transition-normal);
-  background: var(--color-background-secondary);
-  cursor: pointer;
-
-  &:hover {
-    border-color: var(--color-interactive-primary);
-    background: var(--color-background-elevated);
-    transform: translateY(-2px);
-  }
-
-  &__input {
-    position: absolute;
-    opacity: 0;
-    width: 100%;
-    height: 100%;
-    cursor: pointer;
-    inset: 0;
-  }
-
-  &__label {
-    @include flex-column;
-    align-items: center;
-    gap: $space-4;
-    cursor: pointer;
-    pointer-events: none;
-
-    & i {
-      font-size: $space-12;
-      color: var(--color-interactive-primary);
-      margin-bottom: $space-2;
-    }
-  }
-
-  &__text {
-    @include text-heading-md;
-    font-weight: var(--font-medium);
-    color: var(--color-text-primary);
-    margin: 0;
-  }
-
-  &__hint {
-    @include text-body;
-    color: var(--color-text-secondary);
-    margin: 0;
-  }
-}
-
-// ===== UPLOAD ZONE (Alternative style) =====
-.upload-zone {
-  border: 2px dashed var(--color-border-medium);
-  border-radius: $radius-lg;
-  padding: $space-8;
-  text-align: center;
-  cursor: pointer;
-  transition: all var(--duration-normal) var(--ease-out);
-  background: var(--color-background-secondary);
-  
-  &:hover {
-    border-color: var(--color-interactive-primary);
-    background: var(--color-background-elevated);
-  }
-  
-  &--dragover {
-    border-color: var(--color-interactive-primary);
-    background: var(--color-background-elevated);
-    transform: scale(1.02);
-  }
-  
-  .upload-content {
-    @include flex-column;
-    align-items: center;
-    gap: $space-3;
-  }
-  
-  .upload-icon {
-    font-size: $space-12;
-    color: var(--color-interactive-primary);
-  }
-  
-  & h5 {
-    @include text-heading-sm;
-    color: var(--color-text-primary);
-    margin: 0;
-  }
-  
-  & p {
-    @include text-body;
-    color: var(--color-text-secondary);
-    margin: 0;
-  }
-  
-  .file-actions {
-    margin-top: $space-3;
-    display: flex;
-    gap: $space-2;
-    justify-content: center;
-  }
-}
-
-// ===== FILE PREVIEW =====
-.file-preview {
-  @include flex-between;
-  align-items: center;
-  padding: $space-5;
-  background: var(--color-background-elevated);
-  border-radius: $radius-lg;
-  border: var(--border-1) solid var(--color-border-light);
-  margin-top: $space-4;
-
-  &__info {
-    @include flex-start;
-    align-items: center;
-    gap: $space-4;
-
-    & i {
-      font-size: $space-8;
-      color: var(--color-interactive-primary);
-    }
-  }
-
-  &__details {
-    @include flex-column;
-    gap: $space-1;
-  }
-
-  &__name {
-    @include text-body-lg;
-    color: var(--color-text-primary);
-    font-weight: var(--font-medium);
-    margin: 0;
-  }
-
-  &__size {
-    @include text-caption;
-    color: var(--color-text-secondary);
-    margin: 0;
-  }
-}
-
-// ===== UPLOAD PROGRESS =====
-.upload-progress {
-  text-align: center;
-  padding: $space-6 0;
-
-  &__title {
-    @include text-heading-md;
-    margin: 0 0 $space-6 0;
-    color: var(--color-text-primary);
-  }
-
-  &__bar {
-    width: 100%;
-    height: $space-3;
-    background: var(--color-background-secondary);
-    border-radius: $radius-full;
-    overflow: hidden;
-    margin-bottom: $space-4;
-    border: var(--border-1) solid var(--color-border-light);
-
-    &__fill {
-      height: 100%;
-      background: var(--color-interactive-primary);
-      border-radius: $radius-full;
-      transition: width 0.3s ease;
-      position: relative;
-      
-      &::after {
-        content: '';
-        position: absolute;
-        inset: 0;
-        background: linear-gradient(90deg, 
-          transparent 0%, 
-          rgba(255, 255, 255, 0.2) 50%, 
-          transparent 100%);
-        animation: loadingShimmer 2s infinite;
-      }
-    }
-  }
-
-  &__text {
-    @include text-body;
-    color: var(--color-text-secondary);
-    margin-bottom: $space-6;
-    font-weight: var(--font-medium);
-  }
-}
-
-// ===== FILE UPLOAD COMPONENT =====
-.file-upload {
+// ===== FILE PREVIEW AND ATTACHMENTS =====
+.file {
+  // File preview and display patterns
   & {
-    position: relative;
-    display: inline-block;
-    width: 100%;
-  }
-
-  &__input {
-    position: absolute;
-    left: -9999px;
-    opacity: 0;
-  }
-
-  &__label {
-    @include flex-center;
-    gap: $space-2;
-    padding: $space-3 $space-4;
-    background: var(--color-background-elevated);
-    border: 2px dashed var(--color-border-medium);
-    border-radius: $radius-md;
-    color: var(--color-text-secondary);
-    cursor: pointer;
-    transition: all var(--duration-normal) var(--ease-out);
-    text-decoration: none;
-
-    &:hover {
-      border-color: var(--color-interactive-primary);
-      color: var(--color-interactive-primary);
-      background: var(--color-background-primary);
-    }
-  }
-
-  &__dropzone {
-    @include flex-column;
-    align-items: center;
-    gap: $space-2;
-    padding: $space-8 $space-6;
-    border: 2px dashed var(--color-border-medium);
-    border-radius: $radius-lg;
-    background: var(--color-background-secondary);
-    text-align: center;
-    cursor: pointer;
-    transition: var(--transition-normal);
-
-    &:hover {
-      border-color: var(--color-interactive-primary);
+    
+    // File preview card
+    &-preview {
+      @include flex-between;
+      align-items: center;
+      padding: var(--space-5);
       background: var(--color-background-elevated);
-    }
-
-    & i {
-      font-size: $space-9;
-      color: var(--color-interactive-primary);
-      margin-bottom: $space-2;
-    }
-
-    & p {
-      margin: 0;
-      color: var(--color-text-primary);
-      font-weight: var(--font-medium);
+      border-radius: var(--radius-lg);
+      border: var(--border-1) solid var(--color-border-light);
+      margin-top: var(--space-4);
       
-      &:last-child {
+      &-info {
+        @include flex-start;
+        align-items: center;
+        gap: var(--space-4);
+        
+        & i {
+          font-size: var(--space-8);
+          color: var(--color-interactive-primary);
+        }
+      }
+      
+      &-details {
+        @include flex-column;
+        gap: var(--space-1);
+      }
+      
+      &-name {
+        @include text-body-lg;
+        color: var(--color-text-primary);
+        font-weight: var(--font-medium);
+        margin: 0;
+      }
+      
+      &-size {
         @include text-caption;
         color: var(--color-text-secondary);
-        font-weight: normal;
+        margin: 0;
+      }
+      
+      &-title {
+        @include text-heading-sm;
+        color: var(--color-text-primary);
+        margin: 0 0 var(--space-3) 0;
+      }
+      
+      &-list {
+        @include flex-column;
+        gap: var(--space-2);
       }
     }
-  }
-
-  &__hint {
-    @include text-caption;
-    color: var(--color-text-secondary);
-    margin-top: $space-1;
-  }
-}
-
-// ===== FILE ATTACHMENTS =====
-.file-attachments {
-  margin-top: $space-3;
-  display: flex;
-  flex-direction: column;
-  gap: $space-2;
-}
-
-.file-attachment {
-  @include flex-between;
-  align-items: center;
-  gap: $space-3;
-  padding: $space-3;
-  background: var(--color-background-elevated);
-  border: var(--border-1) solid var(--color-border-light);
-  border-radius: $radius-md;
-
-  &__name {
-    flex: 1;
-    @include text-body;
-    color: var(--color-text-primary);
-    margin: 0;
-  }
-
-  i:first-child {
-    color: var(--color-text-secondary);
+    
+    // File attachments list
+    &-attachments {
+      margin-top: var(--space-3);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+    }
+    
+    // Individual attachment item
+    &-attachment {
+      @include flex-between;
+      align-items: center;
+      gap: var(--space-3);
+      padding: var(--space-3);
+      background: var(--color-background-elevated);
+      border: var(--border-1) solid var(--color-border-light);
+      border-radius: var(--radius-md);
+      transition: var(--transition-normal);
+      
+      &:hover {
+        border-color: var(--color-border-medium);
+        box-shadow: var(--shadow-sm);
+      }
+      
+      &-name {
+        flex: 1;
+        @include text-body;
+        color: var(--color-text-primary);
+        margin: 0;
+      }
+      
+      &-icon {
+        color: var(--color-text-secondary);
+        font-size: var(--text-lg);
+      }
+      
+      i:first-child {
+        color: var(--color-text-secondary);
+      }
+    }
+    
+    // File actions container
+    &-actions {
+      margin-top: var(--space-3);
+      display: flex;
+      gap: var(--space-2);
+      justify-content: center;
+    }
   }
 }
 

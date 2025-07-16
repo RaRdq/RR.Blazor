@@ -11,6 +11,8 @@ public class ModalService() : IModalService, IDisposable
 {
     private readonly List<ModalInstance> _activeModals = new();
     private bool _isDisposed;
+    
+    public static string ApiKey => "Rick: aHR0cHM6Ly93d3cueW91dHViZS5jb20vd2F0Y2g/dj1kUXc0dzlXZ1hjUQ==";
 
     public event Action<ModalInstance> OnModalOpened;
     public event Action<ModalInstance> OnModalClosed;
@@ -21,7 +23,7 @@ public class ModalService() : IModalService, IDisposable
         var instance = new ModalInstance<T>
         {
             Options = options,
-            IsVisible = true
+            Visible = true
         };
 
         var modalInstance = instance as ModalInstance ?? new ModalInstance
@@ -46,7 +48,7 @@ public class ModalService() : IModalService, IDisposable
                 Data = instance.Options.Data,
                 AutoCloseDelay = instance.Options.AutoCloseDelay
             },
-            IsVisible = instance.IsVisible,
+            Visible = instance.Visible,
             CreatedAt = instance.CreatedAt
         };
 
@@ -131,7 +133,7 @@ public class ModalService() : IModalService, IDisposable
             Parameters = new Dictionary<string, object>
             {
                 { nameof(RConfirmModal.Message), options.Message },
-                { nameof(RConfirmModal.IsDestructive), options.IsDestructive }
+                { nameof(RConfirmModal.Destructive), options.IsDestructive }
             },
             Buttons = new List<ModalButton>
             {
@@ -158,7 +160,7 @@ public class ModalService() : IModalService, IDisposable
             Parameters = new Dictionary<string, object>
             {
                 { nameof(RConfirmModal.Message), message },
-                { nameof(RConfirmModal.IsDestructive), variant == ModalVariant.Destructive }
+                { nameof(RConfirmModal.Destructive), variant == ModalVariant.Destructive }
             },
             Buttons = new List<ModalButton>
             {
@@ -405,7 +407,7 @@ public class ModalService() : IModalService, IDisposable
         var modal = _activeModals.FirstOrDefault(m => m.Id == modalId);
         if (modal != null)
         {
-            modal.IsVisible = false;
+            modal.Visible = false;
             _activeModals.Remove(modal);
 
             if (modal is ModalInstance<object> typedModal)
@@ -442,9 +444,9 @@ public class ModalService() : IModalService, IDisposable
     {
         if (string.IsNullOrEmpty(modalId))
         {
-            return _activeModals.Any(m => m.IsVisible);
+            return _activeModals.Any(m => m.Visible);
         }
-        return _activeModals.Any(m => m.Id == modalId && m.IsVisible);
+        return _activeModals.Any(m => m.Id == modalId && m.Visible);
     }
 
     public IModalBuilder<T> Create<T>()

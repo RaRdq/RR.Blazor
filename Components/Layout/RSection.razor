@@ -9,7 +9,7 @@ Ideal for organizing page content with consistent styling and optional interacti
 <ai-common-use>page sections, content organization, collapsible panels, form groups</ai-common-use>
 <ai-avoid>Don't use for main app layout - use RAppShell instead. Avoid for simple content without headers.</ai-avoid>
 <ai-pattern name="basic-section">Title and ChildContent for simple content sections</ai-pattern>
-<ai-pattern name="collapsible-section">IsCollapsible="true" for expandable content panels</ai-pattern>
+<ai-pattern name="collapsible-section">Collapsible="true" for expandable content panels</ai-pattern>
 <ai-pattern name="icon-section">Icon and Title for branded section headers</ai-pattern>
 <ai-pattern name="action-section">TitleContent for sections with header actions</ai-pattern>
 **@
@@ -23,40 +23,40 @@ Ideal for organizing page content with consistent styling and optional interacti
 
 <section class="section @GetSectionClasses()" 
          @onclick="HandleClick"
-         role="@(IsCollapsible ? "button" : null)"
-         aria-expanded="@(IsCollapsible ? (!IsCollapsed).ToString().ToLower() : null)"
-         aria-controls="@(IsCollapsible ? $"section-content-{SectionId}" : null)"
-         tabindex="@(IsCollapsible ? 0 : null)">
+         role="@(Collapsible ? "button" : null)"
+         aria-expanded="@(Collapsible ? (!Collapsed).ToString().ToLower() : null)"
+         aria-controls="@(Collapsible ? $"section-content-{SectionId}" : null)"
+         tabindex="@(Collapsible ? 0 : null)">
     
     @* Header *@
     @if (HasHeader)
     {
-        <header class="section__header @GetHeaderClasses()" @onclick="HandleHeaderClick">
+        <header class="section-header @GetHeaderClasses()" @onclick="HandleHeaderClick">
             @if (!string.IsNullOrEmpty(Title) || TitleContent != null)
             {
-                <div class="section__title @GetTitleSectionClasses()">
+                <div class="section-title @GetTitleSectionClasses()">
                     @if (!string.IsNullOrEmpty(Icon))
                     {
                         <i class="material-symbols-rounded mr-3 @GetIconSizeClass()">@Icon</i>
                     }
                     
-                    <div class="flex-grow-1">
+                    <div class="grow">
                         @if (!string.IsNullOrEmpty(Title))
                         {
-                            <h2 class="section__title @GetTitleClasses()">@Title</h2>
+                            <h2 class="section-title @GetTitleClasses()">@Title</h2>
                         }
                         
                         @if (!string.IsNullOrEmpty(Subtitle))
                         {
-                            <div class="section__subtitle">@Subtitle</div>
+                            <div class="section-subtitle">@Subtitle</div>
                         }
                         
                         @TitleContent
                     </div>
                     
-                    @if (IsCollapsible)
+                    @if (Collapsible)
                     {
-                        <div class="ml-3 transition-transform @(IsCollapsed ? "" : "rotate-180")">
+                        <div class="ml-3 transition-transform @(Collapsed ? "" : "rotate-180")">
                             <i class="material-symbols-rounded text-secondary">expand_more</i>
                         </div>
                     }
@@ -67,15 +67,15 @@ Ideal for organizing page content with consistent styling and optional interacti
     }
     
     @* Content *@
-    <div id="@(IsCollapsible ? $"section-content-{SectionId}" : "")" 
-         class="section__content @GetContentClasses()">
+    <div id="@(Collapsible ? $"section-content-{SectionId}" : "")" 
+         class="section-content @GetContentClasses()">
         @ChildContent
     </div>
     
     @* Footer *@
     @if (FooterContent != null)
     {
-        <footer class="section__footer @GetFooterClasses()">
+        <footer class="section-footer @GetFooterClasses()">
             @FooterContent
         </footer>
     }
@@ -99,13 +99,13 @@ Ideal for organizing page content with consistent styling and optional interacti
     
     /// <summary>Whether section is collapsible</summary>
     [Parameter, AIParameter("Enable expand/collapse functionality", "true for interactive sections")] 
-    public bool IsCollapsible { get; set; }
+    public bool Collapsible { get; set; }
     
     /// <summary>Whether section is collapsed (if collapsible)</summary>
-    [Parameter] public bool IsCollapsed { get; set; }
+    [Parameter] public bool Collapsed { get; set; }
     
     /// <summary>Callback when collapsed state changes</summary>
-    [Parameter] public EventCallback<bool> IsCollapsedChanged { get; set; }
+    [Parameter] public EventCallback<bool> CollapsedChanged { get; set; }
     
     
     /// <summary>Whether to remove header border</summary>
@@ -141,11 +141,11 @@ Ideal for organizing page content with consistent styling and optional interacti
     
     private string GetSectionClasses()
     {
-        var classes = new List<string> { "d-flex", "flex-column" };
+        var classes = new List<string> { "flex", "flex-col" };
         
-        if (IsCollapsible)
+        if (Collapsible)
         {
-            classes.Add("section--collapsible");
+            classes.Add("section-collapsible");
         }
         
         
@@ -161,7 +161,7 @@ Ideal for organizing page content with consistent styling and optional interacti
     {
         var classes = new List<string>
         {
-            "d-flex",
+            "flex",
             "align-center",
             "justify-between"
         };
@@ -171,9 +171,9 @@ Ideal for organizing page content with consistent styling and optional interacti
             classes.AddRange(new[] { "pb-3", "border-b", "border-light" });
         }
         
-        if (IsCollapsible)
+        if (Collapsible)
         {
-            classes.AddRange(new[] { "cursor-pointer", "user-select-none", "hover:bg-secondary", "rounded-md", "px-3", "py-2", "mx--3", "my--2" });
+            classes.AddRange(new[] { "cursor-pointer", "user-select-none", "hover:bg-secondary", "rounded-md", "pl-3 pr-3", "pt-2 pb-2", "ml-3 mr-3", "mt-2 mb-2" });
         }
         
         return string.Join(" ", classes);
@@ -181,7 +181,7 @@ Ideal for organizing page content with consistent styling and optional interacti
     
     private string GetTitleSectionClasses()
     {
-        return "d-flex align-center flex-grow-1";
+        return "flex align-center grow";
     }
     
     private string GetTitleClasses()
@@ -191,16 +191,16 @@ Ideal for organizing page content with consistent styling and optional interacti
     
     private string GetContentClasses()
     {
-        var classes = new List<string> { "flex-grow-1", "min-h-0" };
+        var classes = new List<string> { "grow", "min-h-0" };
         
-        if (IsCollapsible && IsCollapsed)
+        if (Collapsible && Collapsed)
         {
-            classes.Add("section__content--collapsed");
+            classes.Add("section-content-collapsed");
         }
         
         if (!NoPadding)
         {
-            classes.Add("py-4");
+            classes.Add("pt-4 pb-4");
         }
         
         return string.Join(" ", classes);
@@ -210,7 +210,7 @@ Ideal for organizing page content with consistent styling and optional interacti
     {
         var classes = new List<string>
         {
-            "d-flex",
+            "flex",
             "align-center",
             "justify-between"
         };
@@ -236,11 +236,11 @@ Ideal for organizing page content with consistent styling and optional interacti
     
     private async Task HandleHeaderClick(MouseEventArgs e)
     {
-        if (IsCollapsible)
+        if (Collapsible)
         {
-            IsCollapsed = !IsCollapsed;
-            await IsCollapsedChanged.InvokeAsync(IsCollapsed);
-            await OnToggleCollapse.InvokeAsync(IsCollapsed);
+            Collapsed = !Collapsed;
+            await CollapsedChanged.InvokeAsync(Collapsed);
+            await OnToggleCollapse.InvokeAsync(Collapsed);
         }
     }
     

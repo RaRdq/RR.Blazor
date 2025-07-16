@@ -8,7 +8,7 @@
         @foreach (var (item, index) in Items.Select((item, index) => (item, index)))
         {
             <div class="timeline-item @GetItemClasses(item, index)">
-                <div class="timeline-item__marker @GetMarkerClasses(item)">
+                <div class="timeline-item-marker @GetMarkerClasses(item)">
                     @if (!string.IsNullOrEmpty(item.Icon))
                     {
                         <i class="material-symbols-rounded text-xs">@item.Icon</i>
@@ -19,16 +19,16 @@
                     }
                 </div>
                 
-                <div class="timeline-item__content">
-                    <div class="timeline-item__header">
+                <div class="timeline-item-content">
+                    <div class="timeline-item-header">
                         @if (!string.IsNullOrEmpty(item.Title))
                         {
-                            <h4 class="timeline-item__title">@item.Title</h4>
+                            <h4 class="timeline-item-title">@item.Title</h4>
                         }
                         
                         @if (item.Timestamp.HasValue)
                         {
-                            <time class="timeline-item__time" datetime="@item.Timestamp.Value.ToString("yyyy-MM-ddTHH:mm:ss")">
+                            <time class="timeline-item-time" datetime="@item.Timestamp.Value.ToString("yyyy-MM-ddTHH:mm:ss")">
                                 @GetFormattedTime(item.Timestamp.Value)
                             </time>
                         }
@@ -36,27 +36,27 @@
                     
                     @if (!string.IsNullOrEmpty(item.Description))
                     {
-                        <div class="timeline-item__description">@item.Description</div>
+                        <div class="timeline-item-description">@item.Description</div>
                     }
                     
                     @if (!string.IsNullOrEmpty(item.Subtitle))
                     {
-                        <div class="timeline-item__subtitle">@item.Subtitle</div>
+                        <div class="timeline-item-subtitle">@item.Subtitle</div>
                     }
                     
                     @if (item.Tags?.Any() == true)
                     {
-                        <div class="timeline-item__tags">
+                        <div class="timeline-item-tags">
                             @foreach (var tag in item.Tags)
                             {
-                                <span class="timeline-item__tag">@tag</span>
+                                <span class="timeline-item-tag">@tag</span>
                             }
                         </div>
                     }
                     
                     @if (item.Actions?.Any() == true)
                     {
-                        <div class="timeline-item__actions">
+                        <div class="timeline-item-actions">
                             @foreach (var action in item.Actions)
                             {
                                 <RButton Text="@action.Text"
@@ -71,7 +71,7 @@
                     
                     @if (item.CustomContent != null)
                     {
-                        <div class="timeline-item__custom">
+                        <div class="timeline-item-custom">
                             @item.CustomContent
                         </div>
                     }
@@ -79,24 +79,24 @@
             </div>
         }
     }
-    else if (!IsLoading)
+    else if (!Loading)
     {
         <REmptyState Title="No Timeline Items"
                      Description="There are no items to display in this timeline."
                      Icon="timeline" />
     }
     
-    @if (IsLoading)
+    @if (Loading)
     {
-        <div class="timeline__loading">
+        <div class="timeline-loading">
             @for (int i = 0; i < LoadingItemCount; i++)
             {
-                <div class="timeline-item timeline-item--skeleton">
-                    <div class="timeline-item__marker timeline-item__marker--skeleton"></div>
-                    <div class="timeline-item__content">
-                        <div class="skeleton-text skeleton-text--title"></div>
-                        <div class="skeleton-text skeleton-text--line"></div>
-                        <div class="skeleton-text skeleton-text--line" style="width: 75%;"></div>
+                <div class="timeline-item timeline-item-skeleton">
+                    <div class="timeline-item-marker timeline-item-marker-skeleton"></div>
+                    <div class="timeline-item-content">
+                        <div class="skeleton-text skeleton--text-title"></div>
+                        <div class="skeleton-text skeleton--text-line"></div>
+                        <div class="skeleton-text skeleton--text-line w-75"></div>
                     </div>
                 </div>
             }
@@ -112,7 +112,7 @@
     [Parameter] public TimelineVariant Variant { get; set; } = TimelineVariant.Default;
     
     /// <summary>Whether timeline is loading</summary>
-    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public bool Loading { get; set; }
     
     /// <summary>Number of skeleton items to show when loading</summary>
     [Parameter] public int LoadingItemCount { get; set; } = 3;
@@ -127,7 +127,7 @@
     [Parameter] public string Class { get; set; }
     
     /// <summary>Whether timeline is compact</summary>
-    [Parameter] public bool IsCompact { get; set; }
+    [Parameter] public bool Compact { get; set; }
     
     /// <summary>Timeline orientation</summary>
     [Parameter] public string Orientation { get; set; } = "vertical"; // vertical, horizontal
@@ -136,12 +136,12 @@
     {
         var classes = new List<string>();
         
-        classes.Add($"timeline--{Variant}");
-        classes.Add($"timeline--{Orientation}");
+        classes.Add($"timeline-{Variant.ToString().ToLowerInvariant()}");
+        classes.Add($"timeline-{Orientation.ToLowerInvariant()}");
         
-        if (IsCompact)
+        if (Compact)
         {
-            classes.Add("timeline--compact");
+            classes.Add("timeline-compact");
         }
         
         if (!string.IsNullOrEmpty(Class))
@@ -158,22 +158,22 @@
         
         if (!string.IsNullOrEmpty(item.Status))
         {
-            classes.Add($"timeline-item--{item.Status}");
+            classes.Add($"timeline-item-{item.Status.ToLowerInvariant()}");
         }
         
         if (item.IsHighlighted)
         {
-            classes.Add("timeline-item--highlighted");
+            classes.Add("timeline-item-highlighted");
         }
         
         if (index == 0)
         {
-            classes.Add("timeline-item--first");
+            classes.Add("timeline-item-first");
         }
         
         if (index == Items.Count - 1)
         {
-            classes.Add("timeline-item--last");
+            classes.Add("timeline-item-last");
         }
         
         return string.Join(" ", classes);
@@ -185,12 +185,12 @@
         
         if (!string.IsNullOrEmpty(item.Status))
         {
-            classes.Add($"timeline-item__marker--{item.Status}");
+            classes.Add($"timeline-item-marker-{item.Status.ToLowerInvariant()}");
         }
         
         if (!string.IsNullOrEmpty(item.Avatar))
         {
-            classes.Add("timeline-item__marker--avatar");
+            classes.Add("timeline-item-marker-avatar");
         }
         
         return string.Join(" ", classes);

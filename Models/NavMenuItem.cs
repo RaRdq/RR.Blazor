@@ -9,7 +9,7 @@ public class NavMenuItem
     public string Text { get; set; } = string.Empty;
     public string Icon { get; set; }
     public string Href { get; set; } = "#";
-    public bool IsVisible { get; set; } = true;
+    public bool Visible { get; set; } = true;
     public bool IsHighlighted { get; set; }
     public bool IsDivider { get; set; }
     public bool MatchExact { get; set; }

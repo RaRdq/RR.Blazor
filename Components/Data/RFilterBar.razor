@@ -3,7 +3,7 @@
 @using RR.Blazor.Models
 
 <RCard Variant="CardVariant.Flat" Class="pa-4">
-    <div class="d-flex flex-wrap gap-4 align-center">
+    <div class="flex flex-wrap gap-4 align-center">
         @* Search Field *@
         @if (ShowSearch)
         {
@@ -12,7 +12,7 @@
                            Value="@SearchValue"
                            ValueChanged="OnSearchValueChanged"
                            Placeholder="@SearchPlaceholder"
-                           Icon="search"
+                           StartIcon="search"
                            Size="FieldSize.Small" />
             </div>
         }
@@ -26,16 +26,25 @@
                            Label="@filter.Label"
                            Value="@filter.Value"
                            ValueChanged="@(EventCallback.Factory.Create<string>(this, value => HandleFilterChanged(filter.Key, value)))"
-                           Options="@filter.Options"
                            Size="FieldSize.Small"
-                           Class="min-w-32" />
+                           Class="min-w-32">
+                    <SelectOptions>
+                        @if (filter.Options != null)
+                        {
+                            @foreach (var option in filter.Options)
+                            {
+                                <option value="@option.Value">@option.Label</option>
+                            }
+                        }
+                    </SelectOptions>
+                </RFormField>
             }
         }
 
         @* Date Range Filter *@
         @if (ShowDateRange)
         {
-            <div class="d-flex gap-2 align-center">
+            <div class="flex gap-2 align-center">
                 <RFormField Type="FieldType.Date"
                            Label="From"
                            Value="@DateFrom?.ToString("yyyy-MM-dd")"
@@ -55,7 +64,7 @@
         @* Quick Filter Buttons *@
         @if (QuickFilters != null && QuickFilters.Any())
         {
-            <div class="d-flex gap-2">
+            <div class="flex gap-2">
                 @foreach (var quickFilter in QuickFilters)
                 {
                     <RButton Text="@quickFilter.Label"
@@ -75,9 +84,18 @@
                        Label="Status"
                        Value="@StatusFilter"
                        ValueChanged="OnStatusFilterChanged"
-                       Options="@StatusOptions"
                        Size="FieldSize.Small"
-                       Class="min-w-32" />
+                       Class="min-w-32">
+                <SelectOptions>
+                    @if (StatusOptions != null)
+                    {
+                        @foreach (var option in StatusOptions)
+                        {
+                            <option value="@option.Key">@option.Value</option>
+                        }
+                    }
+                </SelectOptions>
+            </RFormField>
         }
 
         @* Custom Filter Content *@
@@ -100,7 +118,7 @@
         @* Filter Count Badge *@
         @if (ShowFilterCount && HasActiveFilters())
         {
-            <div class="d-flex align-center gap-2">
+            <div class="flex align-center gap-2">
                 <RBadge Text="@($"{GetActiveFilterCount()} active")"
                        Variant="BadgeVariant.Info"
                        Size="BadgeSize.Small" />
@@ -320,8 +338,17 @@ Usage Examples:
         <RFormField Type="FieldType.Select"
                    Label="Department"
                    Value="@departmentFilter"
-                   Options="@departmentOptions"
-                   Size="FieldSize.Small" />
+                   Size="FieldSize.Small">
+            <SelectOptions>
+                @if (departmentOptions != null)
+                {
+                    @foreach (var option in departmentOptions)
+                    {
+                        <option value="@option.Value">@option.Text</option>
+                    }
+                }
+            </SelectOptions>
+        </RFormField>
     </CustomFilters>
 </RFilterBar>
 

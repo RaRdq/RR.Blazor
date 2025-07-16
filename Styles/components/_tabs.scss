@@ -1,178 +1,370 @@
-// RR.Blazor Tabs Component - Professional Tab Navigation
+// RR.Blazor Tabs Component - Mobile-First Professional Navigation
 @use '../abstracts' as *;
+@use 'sass:map';
 
-// Tab Container - Professional design
+// Tab system configuration maps
+$tab-sizes: (
+  'small': (
+    'height': 2.25rem,
+    'padding': var(--space-2) var(--space-4),
+    'font-size': var(--text-xs),
+    'max-width': 150px
+  ),
+  'medium': (
+    'height': 3rem,
+    'padding': var(--space-3) var(--space-6),
+    'font-size': var(--text-sm),
+    'max-width': 200px
+  ),
+  'large': (
+    'height': 3.25rem,
+    'padding': var(--space-4) var(--space-6),
+    'font-size': var(--text-base),
+    'max-width': 250px
+  )
+);
+
+$tab-variants: (
+  'default': (
+    'nav-bg': linear-gradient(135deg, var(--theme-glass-light-bg) 0%, var(--theme-glass-medium-bg) 50%, var(--theme-glass-light-bg) 100%),
+    'nav-border': var(--theme-glass-border),
+    'content-bg': var(--color-background-elevated),
+    'indicator-display': block
+  ),
+  'pills': (
+    'nav-bg': var(--color-background-secondary),
+    'nav-border': none,
+    'content-bg': var(--color-background-elevated),
+    'indicator-display': none
+  ),
+  'underline': (
+    'nav-bg': transparent,
+    'nav-border': var(--border-2) solid var(--color-border-light),
+    'content-bg': transparent,
+    'indicator-display': block
+  ),
+  'glass': (
+    'nav-bg': color-mix(in srgb, var(--color-background-elevated) 5%, transparent),
+    'nav-border': var(--glass-light-border),
+    'content-bg': transparent,
+    'indicator-display': block
+  )
+);
+
+// Tab Container - Mobile-first with theme awareness
 .tabs {
+  @extend %card-base-enhanced;
   display: flex;
   flex-direction: column;
-  border-radius: var(--radius-xl);
-  overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-  border: var(--border-1) solid var(--color-border-light);
+  width: 100%;
+  overflow: visible;
   
-  // Tab Navigation
-  &__nav {
+  // Ambient lighting effect
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: var(--border-05);
+    background: linear-gradient(90deg, 
+      transparent 0%, 
+      var(--color-interactive-primary) 50%, 
+      transparent 100%);
+    opacity: var(--opacity-60);
+    z-index: var(--z-base);
+  }
+  
+  // Tab Navigation - Mobile-first scrollable header
+  &-nav {
+    position: relative;
     display: flex;
-    background: linear-gradient(135deg, var(--color-background-elevated) 0%, var(--color-background-secondary) 100%);
-    border-bottom: var(--border-1) solid var(--color-border-light);
-    padding: var(--space-1) var(--space-2);
-    gap: var(--space-1);
-    overflow-x: auto;
-    position: relative; // Required for indicator positioning
-    scroll-behavior: smooth; // Enhanced scroll behavior
-    -webkit-overflow-scrolling: touch; // Smooth iOS scrolling
+    padding: var(--space-2) var(--space-3);
+    backdrop-filter: var(--glass-medium-blur);
+    flex-shrink: 0;
     
+    // Mobile-first responsive padding
     @include responsive-max(md) {
       padding: var(--space-1);
-      scrollbar-width: none; // Firefox
-      -ms-overflow-style: none; // IE/Edge
+    }
+    
+    // Scrollable container with mobile-optimized overflow
+    &-container {
+      flex: 1;
+      overflow: hidden;
+      position: relative;
+      min-width: 0;
+    }
+    
+    &-wrapper {
+      display: flex;
+      gap: var(--space-2);
+      overflow-x: auto;
+      overflow-y: hidden;
+      scroll-behavior: smooth;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+      height: fit-content;
+      width: 100%;
+      max-width: 100%;
       
       &::-webkit-scrollbar {
-        display: none; // Hide on mobile
+        display: none;
+      }
+    }
+    
+    // Neo-morphism shadow effect
+    &::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg,
+        transparent 0%,
+        var(--theme-border-light) 20%,
+        var(--theme-border-light) 80%,
+        transparent 100%);
+      opacity: 0.5;
+    }
+    
+    // Mobile-optimized arrows with consistent spacing
+    &-arrow {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 2.5rem;
+      height: 2.5rem;
+      @extend %button-base;
+      border-radius: var(--radius-full);
+      z-index: 3;
+      opacity: 0;
+      pointer-events: none;
+      transition: all var(--duration-fast) var(--ease-out);
+      
+      // Mobile-first sizing
+      @include responsive-max(md) {
+        width: 2rem;
+        height: 2rem;
       }
       
-      // Touch scroll indicators for mobile
+      // Enhanced visibility gradient
+      background: linear-gradient(
+        135deg,
+        var(--color-background-elevated) 0%,
+        var(--color-background-hover) 100%
+      );
+      
+      &:hover {
+        background: linear-gradient(
+          135deg,
+          var(--color-background-hover) 0%,
+          var(--color-interactive-primary) 100%
+        );
+        border-color: var(--color-interactive-primary);
+        transform: translateY(-50%) scale(1.1);
+        
+        i { color: var(--color-text-on-primary); }
+      }
+      
+      &-visible {
+        opacity: 0.9;
+        pointer-events: auto;
+      }
+      
+      &-left {
+        left: var(--space-1);
+        box-shadow: var(--shadow-md), 4px 0 12px var(--color-overlay-light);
+      }
+      
+      &-right {
+        right: var(--space-1);
+        box-shadow: var(--shadow-md), -4px 0 12px var(--color-overlay-light);
+      }
+      
+      i {
+        font-size: 1.25rem;
+        color: var(--color-text-secondary);
+        transition: color var(--duration-fast) var(--ease-out);
+        
+        @include responsive-max(md) {
+          font-size: 1rem;
+        }
+      }
+    }
+    
+    
+    
+    // Enhanced fade edges with theme awareness
+    &::before,
+    &::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: var(--space-12);
+      pointer-events: none;
+      z-index: 2;
+      transition: opacity var(--duration-fast);
+      opacity: 0;
+    }
+    
+    &::before {
+      left: 0;
+      background: linear-gradient(90deg, 
+        var(--color-background-elevated) 0%,
+        var(--color-background-elevated) 30%,
+        transparent 100%);
+    }
+    
+    &::after {
+      right: 0;
+      background: linear-gradient(-90deg, 
+        var(--color-background-elevated) 0%,
+        var(--color-background-elevated) 30%,
+        transparent 100%);
+    }
+    
+    &-scrollable {
       &::before,
       &::after {
-        content: '';
-        position: absolute;
-        top: 0;
-        bottom: 0;
-        width: var(--space-4);
-        pointer-events: none;
-        z-index: 2;
-        transition: opacity var(--duration-fast);
-        opacity: 0;
+        opacity: 0.95;
       }
-      
-      &::before {
-        left: 0;
-        background: linear-gradient(90deg, var(--color-background-elevated), transparent);
-      }
-      
-      &::after {
-        right: 0;
-        background: linear-gradient(-90deg, var(--color-background-elevated), transparent);
-      }
-      
-      // Show indicators when scrollable content exists
-      &.scrollable::before,
-      &.scrollable::after {
-        opacity: 1;
-      }
-    }
-    
-    // Custom scrollbar
-    &::-webkit-scrollbar {
-      height: 4px;
-    }
-    
-    &::-webkit-scrollbar-track {
-      background: transparent;
-    }
-    
-    &::-webkit-scrollbar-thumb {
-      background: var(--color-border-medium);
-      border-radius: var(--radius-sm);
     }
   }
   
-  // Animated Tab Indicator
-  &__indicator {
+  // Enhanced Tab Indicator - mobile-first with theme awareness
+  &-indicator {
     position: absolute;
     bottom: 0;
-    height: 2px;
-    background: var(--color-interactive-primary);
+    height: 3px;
+    background: linear-gradient(90deg, 
+      var(--color-interactive-primary) 0%,
+      var(--theme-primary-hover) 50%,
+      var(--color-interactive-primary) 100%);
     border-radius: var(--radius-full);
-    transition: all var(--duration-normal) var(--ease-out);
-    z-index: 1;
+    z-index: 2;
     opacity: 1;
+    box-shadow: 
+      0 0 12px var(--color-interactive-primary),
+      0 0 24px color-mix(in srgb, var(--color-interactive-primary) 30%, transparent);
     
-    // Enhanced animation properties
-    transition-property: left, width, background-color;
-    transition-duration: var(--duration-normal);
-    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    // Optimized transition for mobile performance
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    transition-property: left, width, background, box-shadow, opacity;
     
-    // Hide for card variant (handled in component)
-    .tabs--card & {
-      display: none;
+    // Enhanced pulsing glow effect
+    &::before {
+      content: '';
+      position: absolute;
+      top: -2px;
+      left: -4px;
+      right: -4px;
+      bottom: -2px;
+      background: inherit;
+      border-radius: inherit;
+      opacity: 0.3;
+      filter: blur(6px);
+      z-index: -1;
+      animation: breathe 2s var(--ease-in-out) infinite;
     }
     
-    // Variant-specific styling
-    .tabs--underline & {
-      height: 3px;
-      bottom: -1px;
+    // Mobile-first responsive behavior
+    @include responsive-max(md) {
+      height: 2px;
+      box-shadow: 
+        0 0 8px var(--color-interactive-primary),
+        0 0 16px color-mix(in srgb, var(--color-interactive-primary) 20%, transparent);
+      
+      &::before {
+        top: -1px;
+        bottom: -1px;
+        filter: blur(4px);
+        opacity: 0.4;
+      }
     }
     
-    .tabs--pills & {
-      display: none; // Pills use background highlight
-    }
-    
-    .tabs--glass & {
-      background: rgba(255, 255, 255, 0.8);
-      backdrop-filter: blur(var(--blur-sm));
+    @include responsive-max(lg) {
+      height: 2px;
     }
   }
   
-  // Individual Tab Button
-  &__tab {
+  // Individual Tab Button - Mobile-first with size variants
+  &-tab {
+    @extend %button-base;
     display: flex;
     align-items: center;
     gap: var(--space-2);
-    padding: var(--space-3) var(--space-5);
-    border-radius: var(--radius-lg);
-    font-size: var(--text-sm);
-    font-weight: var(--font-medium);
+    border-radius: var(--radius-2xl);
     color: var(--color-text-secondary);
     background: transparent;
-    border: none;
+    border: 1px solid transparent;
     cursor: pointer;
     transition: all var(--duration-fast) var(--ease-out);
     white-space: nowrap;
     position: relative;
-    min-height: 2.75rem;
+    flex-shrink: 0;
+    min-width: fit-content;
+    overflow: hidden;
+    text-overflow: ellipsis;
     
+    // Mobile-first default (medium) size
+    height: map.get($tab-sizes, 'medium', 'height');
+    padding: map.get($tab-sizes, 'medium', 'padding');
+    font-size: map.get($tab-sizes, 'medium', 'font-size');
+    max-width: map.get($tab-sizes, 'medium', 'max-width');
+    
+    // Mobile-first responsive adjustments
     @include responsive-max(md) {
+      height: 2.5rem;
       padding: var(--space-2) var(--space-4);
       font-size: var(--text-xs);
-      min-width: max-content; // Prevent text wrapping
-      flex-shrink: 0; // Prevent compression
-      
-      // Touch-friendly interaction
+      max-width: 150px;
       @include touch-friendly;
-      
-      // Enhanced tap target
-      &::before {
-        content: '';
-        position: absolute;
-        inset: -var(--space-2);
-        z-index: -1;
+    }
+    
+    // Size variants using SCSS loops
+    @each $size-name, $size-props in $tab-sizes {
+      &-#{$size-name} {
+        height: map.get($size-props, 'height');
+        padding: map.get($size-props, 'padding');
+        font-size: map.get($size-props, 'font-size');
+        max-width: map.get($size-props, 'max-width');
       }
     }
     
-    &--small {
-      padding: var(--space-2) var(--space-4);
-      font-size: var(--text-xs);
-      min-height: 2.25rem;
+    // Subtle gradient overlay
+    &::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, 
+        color-mix(in srgb, var(--color-background-elevated) 10%, transparent) 0%,
+        transparent 50%,
+        color-mix(in srgb, var(--color-background-elevated) 5%, transparent) 100%);
+      opacity: 0;
+      transition: opacity var(--duration-normal) var(--ease-out);
+      border-radius: inherit;
+      z-index: 0;
     }
     
-    &--large {
-      padding: var(--space-4) var(--space-6);
-      font-size: var(--text-base);
-      min-height: 3.25rem;
+    // Content wrapper for z-index layering
+    & > * {
+      position: relative;
+      z-index: 1;
     }
     
-    &__icon {
-      &--start {
-        margin-right: var(--space-1);
-      }
-      
-      &--end {
-        margin-left: var(--space-1);
-      }
+    // Icon positioning with consistent spacing
+    &-icon {
+      &-start { margin-right: var(--space-1); }
+      &-end { margin-left: var(--space-1); }
     }
     
-    &__badge {
+    // Badge system with semantic variants
+    &-badge {
+      @extend %badge-base;
       margin-left: var(--space-2);
       padding: var(--space-1) var(--space-2);
       font-size: var(--text-xs);
@@ -184,24 +376,24 @@
       min-width: 1.25rem;
       text-align: center;
       
-      &--danger {
+      // Semantic variant colors
+      &-danger {
         background: var(--color-danger);
         color: var(--color-text-on-primary);
       }
-      
-      &--warning {
+      &-warning {
         background: var(--color-warning);
         color: var(--color-text-on-primary);
       }
-      
-      &--success {
+      &-success {
         background: var(--color-success);
         color: var(--color-text-on-primary);
       }
     }
     
-    // Close button styling
-    &__close {
+    // Close button with enhanced touch targets
+    &-close {
+      @extend %button-base;
       margin-left: var(--space-2);
       padding: var(--space-1);
       border-radius: var(--radius-sm);
@@ -211,31 +403,96 @@
       cursor: pointer;
       transition: background var(--duration-fast) var(--ease-out);
       
+      // Mobile-first: Touch-friendly targets
+      min-width: 44px;
+      min-height: 44px;
+      
+      // Medium screens and up: Can be slightly smaller
+      @include responsive-min(md) {
+        min-width: 40px;
+        min-height: 40px;
+      }
+      
       &:hover {
         background: var(--color-overlay-dark-10);
       }
     }
     
+    // Enhanced hover - optimized for mobile and desktop
     &:hover {
       color: var(--color-text-primary);
-      background: var(--color-background-hover);
-      transform: translateY(-1px);
-    }
-    
-    // Active/Selected state
-    &--active,
-    &.active {
-      color: var(--color-text-on-primary);
-      background: var(--color-interactive-primary);
-      box-shadow: var(--shadow-md);
+      background: transparent;
       
-      &:hover {
+      // Desktop-only transform effects
+      @media (hover: hover) and (pointer: fine) {
         transform: translateY(-1px);
-        box-shadow: var(--shadow-lg);
+        
+        // Enhanced underline effect on hover
+        &::after {
+          content: '';
+          position: absolute;
+          bottom: 0;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 70%;
+          height: 2px;
+          background: linear-gradient(90deg, 
+            transparent 0%, 
+            var(--color-text-secondary) 20%, 
+            var(--color-text-secondary) 80%, 
+            transparent 100%);
+          transition: all var(--duration-fast) var(--ease-out);
+          border-radius: var(--radius-full);
+          opacity: 0.6;
+        }
       }
     }
     
-    &--disabled,
+    // Active/Selected state with theme awareness
+    &-active,
+    &.active {
+      color: var(--color-interactive-primary);
+      background: transparent;
+      box-shadow: none;
+      position: relative;
+      
+      // Enhanced active underline
+      &::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, 
+          transparent 0%, 
+          var(--color-interactive-primary) 10%, 
+          var(--color-interactive-primary) 90%, 
+          transparent 100%);
+        border-radius: var(--radius-full);
+        box-shadow: 
+          0 0 8px color-mix(in srgb, var(--color-interactive-primary) 40%, transparent),
+          0 0 16px color-mix(in srgb, var(--color-interactive-primary) 20%, transparent);
+        animation: glow-pulse 2s var(--ease-in-out) infinite;
+        
+        // Mobile-optimized height
+        @include responsive-max(md) {
+          height: 2px;
+        }
+      }
+      
+      &:hover {
+        background: transparent;
+        box-shadow: none;
+        
+        @media (hover: hover) and (pointer: fine) {
+          transform: translateY(-1px);
+        }
+      }
+    }
+    
+    // State modifiers with consistent patterns
+    &-disabled,
     &:disabled,
     &[disabled] {
       opacity: var(--opacity-disabled);
@@ -243,8 +500,7 @@
       pointer-events: none;
     }
     
-    // Loading state
-    &--loading {
+    &-loading {
       position: relative;
       
       &::after {
@@ -258,12 +514,11 @@
         border: 2px solid transparent;
         border-top-color: currentColor;
         border-radius: 50%;
-        animation: spin 0.8s linear infinite;
+        animation: spin var(--duration-slow) linear infinite;
       }
     }
     
-    // Add button variant
-    &--add-button {
+    &-add-button {
       min-width: 2.75rem;
       justify-content: center;
       color: var(--color-text-secondary);
@@ -275,128 +530,129 @@
     }
   }
   
-  &__content {
+  &-content {
     flex: 1;
     padding: var(--space-6);
     background: var(--color-background-elevated);
-    min-height: 20rem;
+    color: var(--color-text-primary);
     position: relative;
+    overflow: visible;
     
+    // Mobile-first responsive padding
     @include responsive-max(md) {
       padding: var(--space-4);
     }
     
-    &--no-padding {
+    @include responsive-max(sm) {
+      padding: var(--space-3);
+    }
+    
+    &-no-padding {
       padding: 0;
     }
   }
   
-  &__panel {
+  &-panel {
     display: none;
     width: 100%;
     opacity: 0;
     transform: translateY(8px);
-    transition: all var(--duration-normal) var(--ease-out);
+    transition: all var(--duration-fast) var(--ease-out);
+    height: auto;
+    overflow: visible;
+    box-sizing: border-box;
     
-    &--active {
+    // Mobile-first optimized transitions
+    @include responsive-max(md) {
+      transform: translateY(4px);
+    }
+    
+    &-active {
       display: block;
       opacity: 1;
       transform: translateY(0);
     }
     
-    &--fade-only {
+    &-fade-only {
       transform: none;
       
-      &.tabs__panel--active {
+      &.tabs-panel-active {
         transform: none;
       }
     }
   }
-  
-  &--pills {
-    .tabs__nav {
-      background: var(--color-background-secondary);
-      border-radius: var(--radius-full);
-      padding: var(--space-1);
-      margin: var(--space-2);
-      border: none;
-    }
-    
-    .tabs__tab {
-      border-radius: var(--radius-full);
-      
-      &--active {
-        background: var(--color-background-elevated);
-        color: var(--color-text-primary);
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-      }
-    }
-    
-    .tabs__content {
-      border-radius: 0 0 var(--radius-xl) var(--radius-xl);
-    }
-  }
-  
-  &--underline {
-    background: transparent;
-    box-shadow: none;
-    border: none;
-    
-    .tabs__nav {
-      background: transparent;
-      border-bottom: var(--border-2) solid var(--color-border-light);
-      border-radius: 0;
-      padding: 0;
-      gap: var(--space-6);
-    }
-    
-    .tabs__tab {
-      border-radius: 0;
-      padding: var(--space-4) var(--space-2);
-      position: relative;
-      background: transparent;
-      
-      &::after {
-        content: '';
-        position: absolute;
-        bottom: -2px;
-        left: 0;
-        right: 0;
-        height: 2px;
-        background: transparent;
-        transition: background var(--duration-fast) var(--ease-out);
-      }
-      
-      &--active {
-        color: var(--color-interactive-primary);
+  // Tab variants using configuration maps
+  @each $variant-name, $variant-props in $tab-variants {
+    &-#{$variant-name} {
+      @if $variant-name == 'underline' {
         background: transparent;
         box-shadow: none;
+        border: none;
+      }
+      @if $variant-name == 'glass' {
+        background: var(--glass-bg-medium);
+        backdrop-filter: blur(var(--blur-lg));
+        border: var(--border-1) solid var(--glass-border-light);
+      }
+      @if $variant-name == 'pills' {
+        .tabs-nav {
+          background: var(--color-background-secondary);
+          border-radius: var(--radius-full);
+          padding: var(--space-1);
+          margin: var(--space-2);
+          border: none;
+        }
         
-        &::after {
-          background: var(--color-interactive-primary);
+        .tabs-tab {
+          border-radius: var(--radius-full);
+          
+          &-active {
+            background: var(--color-background-elevated);
+            color: var(--color-text-primary);
+            box-shadow: var(--shadow-md);
+          }
+        }
+        
+        .tabs-content {
+          border-radius: 0 0 var(--radius-xl) var(--radius-xl);
         }
       }
       
-      &:hover {
-        background: transparent;
-        transform: none;
+      .tabs-nav {
+        background: map.get($variant-props, 'nav-bg');
         
-        &::after {
-          background: var(--color-border-medium);
+        @if map.get($variant-props, 'nav-border') {
+          border-bottom: map.get($variant-props, 'nav-border');
+        }
+        
+        @if $variant-name == 'underline' {
+          border-radius: 0;
+          padding: 0;
+          gap: var(--space-6);
+        }
+      }
+      
+      .tabs-content {
+        background: map.get($variant-props, 'content-bg');
+        
+        @if $variant-name == 'underline' {
+          padding-top: var(--space-6);
+        }
+      }
+      
+      .tabs-indicator {
+        @if map.get($variant-props, 'indicator-display') == none {
+          display: none;
         }
       }
     }
-    
-    .tabs__content {
-      background: transparent;
-      padding-top: var(--space-6);
-    }
   }
   
-  &--vertical {
+  // Special variant: vertical layout
+  &-vertical {
     flex-direction: row;
     
-    .tabs__nav {
+    .tabs-nav {
       flex-direction: column;
       border-bottom: none;
       border-right: var(--border-1) solid var(--color-border-light);
@@ -404,29 +660,14 @@
       padding: var(--space-2);
     }
     
-    .tabs__tab {
+    .tabs-tab {
       justify-content: flex-start;
       width: 100%;
       text-align: left;
     }
     
-    .tabs__content {
+    .tabs-content {
       flex: 1;
-    }
-  }
-  
-  &--glass {
-    background: var(--glass-bg-medium);
-    backdrop-filter: blur(var(--blur-lg));
-    border: var(--border-1) solid var(--glass-border-light);
-    
-    .tabs__nav {
-      background: rgba(255, 255, 255, 0.05);
-      border-color: var(--glass-border-light);
-    }
-    
-    .tabs__content {
-      background: transparent;
     }
   }
 }
@@ -446,12 +687,12 @@
     margin-bottom: var(--space-4);
   }
   
-  &__content {
+  &-content {
     flex: 1;
     min-width: 0;
   }
   
-  &__title {
+  &-title {
     margin: 0 0 var(--space-1) 0;
     font-size: var(--text-2xl);
     font-weight: var(--font-semibold);
@@ -465,14 +706,14 @@
     }
   }
   
-  &__subtitle {
+  &-subtitle {
     margin: 0;
     font-size: var(--text-sm);
     color: var(--color-text-secondary);
     line-height: var(--leading-relaxed);
   }
   
-  &__actions {
+  &-actions {
     display: flex;
     gap: var(--space-2);
     flex-wrap: wrap;
@@ -481,7 +722,7 @@
       width: 100%;
       justify-content: stretch;
       
-      .button {
+      > .button {
         flex: 1;
       }
     }
@@ -499,7 +740,7 @@
   }
   
   // Loading state
-  &--loading {
+  &-loading {
     position: relative;
     min-height: 20rem;
     
@@ -508,7 +749,7 @@
       position: absolute;
       inset: 0;
       background: var(--color-overlay-light);
-      backdrop-filter: blur(2px);
+      backdrop-filter: var(--glass-light-blur);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -517,5 +758,7 @@
   }
 }
 
-// Animation imported from abstracts/_animations.scss
+// Responsive tab behavior variables moved to abstracts/_variables.scss
+
+// Animation keyframes are defined in abstracts/_animations.scss
 

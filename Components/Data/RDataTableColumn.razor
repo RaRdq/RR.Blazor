@@ -1,23 +1,104 @@
+@using RR.Blazor.Enums
+@using RR.Blazor.Models
 @* RDataTableColumn - Column definition for RDataTable *@
 @typeparam TItem
 @implements IDisposable
 
-<th class="pa-3 text-left font-semibold text-primary text-sm @(Sortable ? "cursor-pointer hover:bg-secondary transition-colors" : "") @HeaderClass"
-    style="@GetColumnStyle()"
-    @onclick="() => Sortable && Parent != null ? Parent.OnSort.InvokeAsync(Key) : Task.CompletedTask">
+<th class="pa-3 text-left font-semibold text-primary text-sm position-relative @HeaderClass"
+    style="@GetColumnStyle()">
     @if (HeaderTemplate != null)
     {
         @HeaderTemplate
     }
     else
     {
-        <div class="d-flex align-center gap-2">
-            @Header
-            @if (Sortable && Parent?.SortColumn == Key)
+        <div class="flex align-center justify-between gap-2">
+            <div class="flex align-center gap-2 @(Sortable ? "cursor-pointer hover:text-interactive transition-colors" : "")"
+                 @onclick="() => Sortable && Parent != null ? Parent.OnSort.InvokeAsync(Key) : Task.CompletedTask">
+                @Header
+                @if (Sortable && Parent?.SortColumn == Key)
+                {
+                    <i class="material-symbols-rounded text-base text-secondary">
+                        @(Parent.SortDescending ? "arrow_drop_down" : "arrow_drop_up")
+                    </i>
+                }
+            </div>
+            
+            @if (Filterable)
             {
-                <i class="material-symbols-rounded text-base text-secondary">
-                    @(Parent.SortDescending ? "arrow_drop_down" : "arrow_drop_up")
-                </i>
+                <div class="flex align-center">
+                    <RButton Size="ButtonSize.Small" 
+                             Variant="@(HasActiveFilter ? ButtonVariant.Primary : ButtonVariant.Ghost)"
+                             Icon="@(HasActiveFilter ? "filter_alt" : "filter_list")" 
+                             Title="Filter column"
+                             Class="@(HasActiveFilter ? "scale-110" : "")"
+                             OnClick="ToggleFilterDropdown" />
+                </div>
+                
+                @if (showFilterDropdown)
+                {
+                    <div class="column-filter-dropdown glass-light shadow-8 position-absolute z-50 min-w-250 right-0 top-100">
+                        <div class="pa-4 flex flex-col gap-3">
+                            <div class="flex justify-between align-center">
+                                <span class="text-sm font-semibold">Filter @Header</span>
+                                <RButton Size="ButtonSize.Small" 
+                                         Variant="ButtonVariant.Ghost" 
+                                         Icon="close" 
+                                         OnClick="CloseFilterDropdown" />
+                            </div>
+                            
+                            @if (FilterType == FilterType.Search || FilterType == FilterType.Text)
+                            {
+                                <RFormField Type="FieldType.Search"
+                                           Value="@currentFilterValue"
+                                           ValueChanged="OnFilterValueChanged"
+                                           Placeholder="@($"Search {Header}...")"
+                                           Size="FieldSize.Small" />
+                            }
+                            else if (FilterType == FilterType.Select && FilterOptions?.Any() == true)
+                            {
+                                <RFormField Type="FieldType.Select"
+                                           Value="@currentFilterValue"
+                                           ValueChanged="OnFilterValueChanged"
+                                           Size="FieldSize.Small">
+                                    <option value="">All @Header</option>
+                                    @foreach (var option in FilterOptions)
+                                    {
+                                        <option value="@option.Value">@option.Label</option>
+                                    }
+                                </RFormField>
+                            }
+                            else if (FilterType == FilterType.MultiSelect && FilterOptions?.Any() == true)
+                            {
+                                <div class="max-h-48 overflow-y-auto flex flex-col gap-2">
+                                    @foreach (var option in FilterOptions)
+                                    {
+                                        <label class="flex align-center gap-2 cursor-pointer pa-2 rounded hover:bg-secondary transition-colors">
+                                            <input type="checkbox" 
+                                                   checked="@selectedMultiValues.Contains(option.Value)"
+                                                   @onchange="@((e) => ToggleMultiSelectValue(option.Value, (bool)e.Value!))" />
+                                            <span class="text-sm">@option.Label</span>
+                                        </label>
+                                    }
+                                </div>
+                            }
+                            
+                            <div class="flex gap-2 pt-2 border-t">
+                                <RButton Text="Clear" 
+                                         Size="ButtonSize.Small" 
+                                         Variant="ButtonVariant.Ghost"
+                                         OnClick="ClearFilter" />
+                                @if (FilterType == FilterType.MultiSelect)
+                                {
+                                    <RButton Text="Apply" 
+                                             Size="ButtonSize.Small" 
+                                             Variant="ButtonVariant.Primary"
+                                             OnClick="ApplyMultiSelectFilter" />
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
             }
         </div>
     }
@@ -35,10 +116,25 @@
     [Parameter] public string CellClass { get; set; } = "";
     [Parameter] public string HeaderClass { get; set; } = "";
     
+    // New filtering parameters
+    [Parameter] public bool Filterable { get; set; }
+    [Parameter] public FilterType FilterType { get; set; } = FilterType.Search;
+    [Parameter] public List<FilterOption> FilterOptions { get; set; } = new();
+    [Parameter] public string FilterValue { get; set; } = "";
+    [Parameter] public EventCallback<ColumnFilterEventArgs> OnFilterChanged { get; set; }
+    
     [CascadingParameter] public RDataTable<TItem> Parent { get; set; }
+    
+    // Filter state
+    private bool showFilterDropdown = false;
+    private string currentFilterValue = "";
+    private HashSet<string> selectedMultiValues = new();
+    
+    private bool HasActiveFilter => !string.IsNullOrEmpty(currentFilterValue) || selectedMultiValues.Any();
     
     protected override void OnInitialized()
     {
+        currentFilterValue = FilterValue;
         if (Parent != null)
         {
             var column = new RDataTable<TItem>.RDataTableColumn<TItem>
@@ -52,10 +148,116 @@
                 MinWidth = MinWidth,
                 MaxWidth = MaxWidth,
                 CellClass = CellClass,
-                HeaderClass = HeaderClass
+                HeaderClass = HeaderClass,
+                Filterable = Filterable,
+                FilterType = FilterType,
+                FilterOptions = FilterOptions
             };
             Parent.AddColumn(column);
         }
+    }
+    
+    protected override void OnParametersSet()
+    {
+        if (currentFilterValue != FilterValue)
+        {
+            currentFilterValue = FilterValue;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ToggleFilterDropdown()
+    {
+        showFilterDropdown = !showFilterDropdown;
+        if (showFilterDropdown)
+        {
+            // Close other filter dropdowns
+            if (Parent != null)
+            {
+                await Parent.CloseAllFilterDropdowns(Key);
+            }
+        }
+        StateHasChanged();
+    }
+    
+    private void CloseFilterDropdown()
+    {
+        showFilterDropdown = false;
+        StateHasChanged();
+    }
+    
+    public void CloseDropdownFromParent()
+    {
+        showFilterDropdown = false;
+        StateHasChanged();
+    }
+
+    private async Task OnFilterValueChanged(string value)
+    {
+        currentFilterValue = value;
+        var filterArgs = new ColumnFilterEventArgs
+        {
+            ColumnKey = Key,
+            FilterValue = value,
+            FilterType = FilterType
+        };
+        await OnFilterChanged.InvokeAsync(filterArgs);
+        if (Parent != null)
+        {
+            await Parent.OnColumnFilterChanged(filterArgs);
+        }
+    }
+
+    private void ToggleMultiSelectValue(string value, bool selected)
+    {
+        if (selected)
+        {
+            selectedMultiValues.Add(value);
+        }
+        else
+        {
+            selectedMultiValues.Remove(value);
+        }
+        StateHasChanged();
+    }
+
+    private async Task ApplyMultiSelectFilter()
+    {
+        var filterValue = string.Join(",", selectedMultiValues);
+        currentFilterValue = filterValue;
+        var filterArgs = new ColumnFilterEventArgs
+        {
+            ColumnKey = Key,
+            FilterValue = filterValue,
+            FilterType = FilterType,
+            SelectedValues = selectedMultiValues.ToList()
+        };
+        await OnFilterChanged.InvokeAsync(filterArgs);
+        if (Parent != null)
+        {
+            await Parent.OnColumnFilterChanged(filterArgs);
+        }
+        showFilterDropdown = false;
+        StateHasChanged();
+    }
+
+    private async Task ClearFilter()
+    {
+        currentFilterValue = "";
+        selectedMultiValues.Clear();
+        var filterArgs = new ColumnFilterEventArgs
+        {
+            ColumnKey = Key,
+            FilterValue = "",
+            FilterType = FilterType
+        };
+        await OnFilterChanged.InvokeAsync(filterArgs);
+        if (Parent != null)
+        {
+            await Parent.OnColumnFilterChanged(filterArgs);
+        }
+        showFilterDropdown = false;
+        StateHasChanged();
     }
 
     private string GetColumnStyle()

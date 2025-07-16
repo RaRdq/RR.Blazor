@@ -1,0 +1,264 @@
+@use '../abstracts' as *;
+@use 'sass:map';
+
+// Unified Status System - All status-related components
+// Configuration maps for DRY implementation
+$status-types: (
+  'success': (
+    'color': var(--color-success),
+    'bg-light': var(--color-success-background),
+    'bg-indicator': var(--color-success-background),
+    'border': var(--color-success)
+  ),
+  'warning': (
+    'color': var(--color-warning),
+    'bg-light': var(--color-warning-background),
+    'bg-indicator': var(--color-warning-background),
+    'border': var(--color-warning)
+  ),
+  'error': (
+    'color': var(--color-error),
+    'bg-light': var(--color-error-background),
+    'bg-indicator': var(--color-error-background),
+    'border': var(--color-error)
+  ),
+  'info': (
+    'color': var(--color-info),
+    'bg-light': var(--color-info-background),
+    'bg-indicator': var(--color-info-background),
+    'border': var(--color-info)
+  ),
+  'pending': (
+    'color': var(--color-text-secondary),
+    'bg-light': var(--color-background-secondary),
+    'bg-indicator': var(--color-background-secondary),
+    'border': var(--color-border-medium)
+  )
+);
+
+$status-sizes: (
+  'small': (
+    'padding': var(--space-1) var(--space-2),
+    'font-size': var(--text-xs),
+    'gap': var(--space-1)
+  ),
+  'medium': (
+    'padding': var(--space-2) var(--space-3),
+    'font-size': var(--text-sm),
+    'gap': var(--space-2)
+  ),
+  'large': (
+    'padding': var(--space-3) var(--space-4),
+    'font-size': var(--text-base),
+    'gap': var(--space-2)
+  )
+);
+
+// Base Status Component
+.status {
+  display: inline-flex;
+  align-items: center;
+  font-weight: var(--font-medium);
+  line-height: var(--line-height-tight);
+  transition: all var(--duration-fast) var(--ease-out);
+  
+  // Default medium size
+  padding: map.get($status-sizes, 'medium', 'padding');
+  font-size: map.get($status-sizes, 'medium', 'font-size');
+  gap: map.get($status-sizes, 'medium', 'gap');
+  
+  // Mode variants using &- pattern
+  &-indicator {
+    border-radius: var(--radius-full);
+    font-size: var(--text-xs);
+  }
+  
+  &-message {
+    border-radius: var(--radius-md);
+    border: var(--border-1) solid transparent;
+  }
+  
+  &-badge {
+    border-radius: var(--radius-full);
+    font-size: var(--text-xs);
+    font-weight: var(--font-bold);
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+  }
+  
+  // Size variants using configuration maps
+  @each $size-name, $size-props in $status-sizes {
+    &-#{$size-name} {
+      padding: map.get($size-props, 'padding');
+      font-size: map.get($size-props, 'font-size');
+      gap: map.get($size-props, 'gap');
+    }
+  }
+  
+  // Status type variants - Generated with loops for consistency
+  @each $type-name, $type-props in $status-types {
+    &-#{$type-name} {
+      color: map.get($type-props, 'color');
+      
+      // Combine with mode variants
+      &.status-indicator {
+        background: map.get($type-props, 'bg-indicator');
+      }
+      
+      &.status-message {
+        background: map.get($type-props, 'bg-light');
+        border-color: map.get($type-props, 'border');
+      }
+      
+      &.status-badge {
+        background: map.get($type-props, 'color');
+        color: var(--color-text-on-primary);
+      }
+    }
+  }
+  
+  // Interactive states
+  &-loading {
+    position: relative;
+    
+    &::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        90deg,
+        transparent 0%,
+        var(--color-background-elevated) 50%,
+        transparent 100%
+      );
+      animation: shimmer 1.5s infinite;
+      border-radius: inherit;
+    }
+  }
+  
+  &-pulsing {
+    animation: pulseSoft 2s infinite;
+  }
+  
+  // Component parts
+  &-icon {
+    font-size: 1rem;
+    flex-shrink: 0;
+  }
+  
+  &-text {
+    flex: 1;
+  }
+  
+  &-dot {
+    width: var(--space-2);
+    height: var(--space-2);
+    background: currentColor;
+    border-radius: 50%;
+    flex-shrink: 0;
+    
+    &-pulsing {
+      animation: pulseSoft var(--duration-slow) infinite;
+    }
+  }
+
+  // Special status patterns
+  &-new {
+    position: relative;
+    
+    &::after {
+      content: 'NEW';
+      position: absolute;
+      top: calc(-1 * var(--space-2));
+      right: calc(-1 * var(--space-2));
+      background: var(--color-success);
+      color: var(--color-text-on-primary);
+      font-size: var(--text-xs);
+      font-weight: var(--font-bold);
+      padding: var(--space-px) var(--space-2);
+      border-radius: var(--radius-full);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+  }
+  
+  &-updated {
+    position: relative;
+    
+    &::after {
+      content: '';
+      position: absolute;
+      top: var(--space-1);
+      right: var(--space-1);
+      width: var(--space-2);
+      height: var(--space-2);
+      background: var(--color-warning);
+      border-radius: var(--radius-full);
+      animation: pulseSoft 2s infinite;
+    }
+  }
+}
+
+// Status Bar Component (moved from app-shell)
+.status {
+  &-bar {
+    background: var(--color-background-elevated);
+    border-top: var(--border-1) solid var(--color-border-light);
+    padding: var(--space-2) var(--space-4);
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 2.5rem;
+    z-index: var(--z-sticky);
+    
+    // Mobile-first responsive adjustments
+    @include responsive-max(md) {
+      padding: var(--space-2) var(--space-3);
+      font-size: var(--text-xs);
+    }
+    
+    &-item {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      
+      &-text {
+        @include responsive-max(sm) {
+          display: none;
+        }
+      }
+    }
+    
+    &-actions {
+      display: flex;
+      gap: var(--space-2);
+      align-items: center;
+    }
+  }
+}
+
+// Generate utility classes for common status patterns
+@each $type-name, $type-props in $status-types {
+  // Utility classes for quick application
+  .is-#{$type-name} {
+    color: map.get($type-props, 'color');
+    
+    &-bg {
+      background: map.get($type-props, 'bg-light');
+      border-color: map.get($type-props, 'border');
+    }
+    
+    &-border {
+      border: var(--border-1) solid map.get($type-props, 'border');
+    }
+  }
+  
+  // Extend placeholders for component usage
+  %status-#{$type-name} {
+    color: map.get($type-props, 'color');
+    background: map.get($type-props, 'bg-light');
+    border-color: map.get($type-props, 'border');
+  }
+}

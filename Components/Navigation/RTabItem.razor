@@ -71,11 +71,55 @@ Supports closable tabs, disabled states, and badge notifications for professiona
             Icon = Icon,
             IconPosition = IconPosition,
             IsDisabled = Disabled,
-            IsClosable = Closable,
+            Closable = Closable,
             BadgeCount = BadgeCount,
             BadgeVariant = BadgeVariant,
             Content = ChildContent
         });
+    }
+    
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender && Parent != null)
+        {
+            // Ensure tab is added after render
+            var existingTab = Parent.GetTabs().FirstOrDefault(t => t.Id == Id);
+            if (existingTab == null)
+            {
+                Parent.AddTab(new RTabs.RTabItemInfo
+                {
+                    Id = Id,
+                    Text = Text,
+                    Icon = Icon,
+                    IconPosition = IconPosition,
+                    IsDisabled = Disabled,
+                    Closable = Closable,
+                    BadgeCount = BadgeCount,
+                    BadgeVariant = BadgeVariant,
+                    Content = ChildContent
+                });
+            }
+        }
+    }
+    
+    protected override void OnParametersSet()
+    {
+        // Update tab info if parameters change
+        if (Parent != null)
+        {
+            var existingTab = Parent.GetTabs().FirstOrDefault(t => t.Id == Id);
+            if (existingTab != null)
+            {
+                existingTab.Text = Text;
+                existingTab.Icon = Icon;
+                existingTab.IconPosition = IconPosition;
+                existingTab.IsDisabled = Disabled;
+                existingTab.Closable = Closable;
+                existingTab.BadgeCount = BadgeCount;
+                existingTab.BadgeVariant = BadgeVariant;
+                existingTab.Content = ChildContent;
+            }
+        }
     }
     
     public void Dispose()

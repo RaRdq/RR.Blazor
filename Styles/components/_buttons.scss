@@ -12,7 +12,7 @@
   text-decoration: none;
   white-space: nowrap;
   user-select: none;
-  transition: all var(--duration-fast) var(--ease-out);
+  transition: all var(--duration-normal) var(--ease-out);
   cursor: pointer;
   border-radius: var(--radius-lg);
   border: var(--border-1) solid transparent;
@@ -22,19 +22,49 @@
   font-size: var(--text-sm);
   line-height: 1;
   
-  // Default size
+  // Default size optimized for mobile touch (44px minimum)
   padding: var(--space-3) var(--space-4);
-  min-height: 3rem;
+  min-height: 44px;    // WCAG AA touch target requirement
+  min-width: 44px;     // WCAG AA touch target requirement  
+  font-size: var(--text-base);    // Mobile-readable text
+  
+  // Desktop refinement: smaller, more compact
+  @media (min-width: 768px) {
+    min-height: 40px;
+    font-size: var(--text-sm);
+    padding: var(--space-2) var(--space-3);
+  }
   
   // Ensure all nested elements inherit color
   *, i, span {
     color: inherit;
   }
   
-  // Mobile touch targets
-  @include responsive-max(md) {
-    min-height: var(--space-11);
+  // All icon fonts inherit color properly (library agnostic)
+  [class*="icon"],
+  [class*="material"],
+  [class*="fa"],
+  [class*="feather"] {
+    color: inherit;
+  }
+  
+  // Material Icons in buttons inherit color properly
+  .material-symbols-rounded {
+    color: inherit;
+  }
+  
+  // Touch optimization for mobile devices
+  @media (hover: none) and (pointer: coarse) {
+    // Enhance touch targets on touch devices
+    min-height: 48px;    // Extra generous for touch
+    min-width: 48px;
     font-size: var(--text-base);
+    padding: var(--space-3) var(--space-4);
+    
+    // Disable hover effects that don't work on touch
+    &:hover {
+      transform: none;
+    }
   }
   
   // Disabled state
@@ -52,59 +82,74 @@
     outline-offset: 2px;
   }
   
-  // PRIMARY VARIANT
-  &--primary {
+  // PRIMARY VARIANT - Modern with theme-aware elevation
+  &-primary {
     background: var(--color-interactive-primary);
     color: var(--color-text-inverse);
     border: none;
+    box-shadow: var(--theme-shadow-md);
+    
+    .material-symbols-rounded {
+      color: var(--color-text-inverse);
+    }
     
     &:hover {
       background: var(--color-interactive-hover);
-      transform: translateY(-1px);
+      box-shadow: var(--theme-shadow-lg);
     }
     
     &:active {
       background: var(--color-interactive-active);
-      transform: translateY(0);
+      box-shadow: var(--theme-shadow-sm);
     }
+    
+    @extend .hover-scale !optional;
   }
   
-  // SECONDARY VARIANT - Professional outline
-  &--secondary {
+  // SECONDARY VARIANT - Professional elevated with theme awareness
+  &-secondary {
     background: var(--color-background-elevated);
     color: var(--color-text-primary);
     border: var(--border-1) solid var(--color-border-medium);
-    box-shadow: var(--shadow-sm);
+    box-shadow: var(--theme-shadow-sm);
     
     &:hover {
       background: var(--color-background-secondary);
       border-color: var(--color-border-strong);
-      transform: translateY(-1px);
-      box-shadow: var(--shadow-md);
+      box-shadow: var(--theme-shadow-lg);
     }
     
     &:active {
-      transform: translateY(0);
-      box-shadow: var(--shadow-sm);
+      box-shadow: var(--theme-shadow-sm);
     }
+    
+    @extend .hover-scale !optional;
   }
   
-  // GLASS VARIANT
-  &--glass {
-    background: color-mix(in srgb, var(--color-background-elevated) 10%, transparent);
+  // GLASS VARIANT - Modern glassmorphism with theme awareness
+  &-glass {
+    background: var(--theme-glass-light-bg);
     color: var(--color-text-primary);
-    border: var(--border-1) solid var(--color-border-light);
-    backdrop-filter: blur(var(--blur-lg));
+    border: var(--border-1) solid var(--theme-glass-light-border);
+    backdrop-filter: var(--theme-glass-light-blur) saturate(120%);
+    box-shadow: var(--theme-glass-light-shadow);
     
     &:hover {
-      background: color-mix(in srgb, var(--color-background-elevated) 15%, transparent);
-      border-color: var(--color-border-medium);
-      transform: translateY(-1px);
+      background: var(--theme-glass-hover-bg);
+      border-color: var(--theme-glass-hover-border);
+      transform: scale(1.01);
+      box-shadow: var(--theme-glass-hover-shadow);
+      backdrop-filter: var(--theme-glass-hover-blur) saturate(150%);
+    }
+    
+    &:active {
+      transform: scale(0.99);
+      box-shadow: var(--theme-glass-light-shadow);
     }
   }
   
-  // OUTLINE VARIANT - Clean professional outline
-  &--outline {
+  // OUTLINE VARIANT - Clean professional outline with theme awareness
+  &-outline {
     background: transparent;
     color: var(--color-interactive-primary);
     border: var(--border-1) solid var(--color-interactive-primary);
@@ -113,108 +158,230 @@
       background: var(--color-interactive-light);
       border-color: var(--color-interactive-hover);
       color: var(--color-interactive-hover);
+      transform: scale(1.01);
+      box-shadow: var(--theme-shadow-sm);
+    }
+    
+    &:active {
+      transform: scale(0.99);
+      box-shadow: none;
     }
   }
   
-  // GHOST VARIANT - Minimal design
-  &--ghost {
-    background: transparent;
+  // GHOST VARIANT - Minimal with subtle theme-aware effects
+  &-ghost {
+    background: var(--theme-ghost);
     color: var(--color-text-secondary);
     border: none;
     
     &:hover {
-      background: var(--color-background-secondary);
+      background: var(--theme-ghost-hover);
       color: var(--color-text-primary);
+      transform: scale(1.01);
+    }
+    
+    &:active {
+      transform: scale(0.99);
     }
   }
   
-  // DANGER VARIANT
-  &--danger {
+  // DANGER VARIANT - Enhanced with theme-aware elevation
+  &-danger {
     background: var(--color-error);
     color: var(--color-text-inverse);
     border: none;
+    box-shadow: var(--theme-shadow-md);
+    
+    .material-symbols-rounded {
+      color: var(--color-text-inverse);
+    }
     
     &:hover {
-      background: var(--color-error);
-      opacity: var(--opacity-hover);
-      transform: translateY(-1px);
+      background: color-mix(in srgb, var(--color-error) 90%, black);
+      transform: scale(1.01);
+      box-shadow: var(--theme-shadow-lg);
+    }
+    
+    &:active {
+      transform: scale(0.99);
+      box-shadow: var(--theme-shadow-sm);
     }
   }
   
-  // SUCCESS VARIANT
-  &--success {
+  // SUCCESS VARIANT - Enhanced with theme-aware elevation
+  &-success {
     background: var(--color-success);
     color: var(--color-text-inverse);
     border: none;
+    box-shadow: var(--theme-shadow-md);
+    
+    .material-symbols-rounded {
+      color: var(--color-text-inverse);
+    }
     
     &:hover {
-      background: var(--color-success);
-      opacity: var(--opacity-hover);
-      transform: translateY(-1px);
+      background: color-mix(in srgb, var(--color-success) 90%, black);
+      transform: scale(1.01);
+      box-shadow: var(--theme-shadow-lg);
+    }
+    
+    &:active {
+      transform: scale(0.99);
+      box-shadow: var(--theme-shadow-sm);
     }
   }
   
-  // WARNING VARIANT
-  &--warning {
+  // WARNING VARIANT - Enhanced with theme-aware elevation
+  &-warning {
     background: var(--color-warning);
     color: var(--color-text-inverse);
     border: none;
+    box-shadow: var(--theme-shadow-md);
+    
+    .material-symbols-rounded {
+      color: var(--color-text-inverse);
+    }
     
     &:hover {
-      background: var(--color-warning);
-      opacity: var(--opacity-hover);
-      transform: translateY(-1px);
+      background: color-mix(in srgb, var(--color-warning) 90%, black);
+      transform: scale(1.01);
+      box-shadow: var(--theme-shadow-lg);
+    }
+    
+    &:active {
+      transform: scale(0.99);
+      box-shadow: var(--theme-shadow-sm);
     }
   }
   
-  // SIZE VARIANTS
-  &--sm,
-  &--small {
-    padding: var(--space-2) var(--space-4);
-    font-size: var(--text-xs);
-    min-height: 2.25rem;
+  // INFO VARIANT - Enhanced with theme-aware elevation
+  &-info {
+    background: var(--color-info);
+    color: var(--color-text-inverse);
+    border: none;
+    box-shadow: var(--theme-shadow-md);
+    
+    .material-symbols-rounded {
+      color: var(--color-text-inverse);
+    }
+    
+    &:hover {
+      background: color-mix(in srgb, var(--color-info) 90%, black);
+      transform: scale(1.01);
+      box-shadow: var(--theme-shadow-lg);
+    }
+    
+    &:active {
+      transform: scale(0.99);
+      box-shadow: var(--theme-shadow-sm);
+    }
+  }
+  
+  // SIZE VARIANTS - Mobile-first with WCAG AA compliance
+  &-sm,
+  &-small {
+    // Mobile: Still maintain touch targets
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--text-sm);
+    min-height: 44px;    // WCAG AA minimum
+    min-width: 44px;     // WCAG AA minimum
     gap: var(--space-1);
+    
+    // Desktop: Meet 44px touch target minimum
+    @media (min-width: 768px) {
+      padding: var(--space-1) var(--space-2);
+      font-size: var(--text-xs);
+      min-height: 44px;
+      min-width: 44px;
+    }
   }
   
-  &--lg,
-  &--large {
-    padding: var(--space-4) var(--space-8);
-    font-size: var(--text-base);
-    min-height: 3.25rem;
-    gap: var(--space-3);
-  }
-  
-  &--xl {
-    padding: var(--space-5) var(--space-10);
+  &-lg,
+  &-large {
+    // Mobile: Generous touch targets
+    padding: var(--space-4) var(--space-6);
     font-size: var(--text-lg);
-    min-height: 3.75rem;
+    min-height: 52px;    // Extra generous
+    min-width: 52px;
     gap: var(--space-3);
+    
+    // Desktop: Refined proportions
+    @media (min-width: 768px) {
+      padding: var(--space-3) var(--space-4);
+      font-size: var(--text-base);
+      min-height: 48px;
+      min-width: 48px;
+    }
   }
   
-  // ICON ONLY VARIANTS
-  &--icon {
+  &-xl {
+    // Mobile: Very generous touch targets
+    padding: var(--space-5) var(--space-8);
+    font-size: var(--text-xl);
+    min-height: 60px;    // Extra large for important actions
+    min-width: 60px;
+    gap: var(--space-4);
+    
+    // Desktop: Refined proportions
+    @media (min-width: 768px) {
+      padding: var(--space-4) var(--space-6);
+      font-size: var(--text-lg);
+      min-height: 56px;
+      min-width: 56px;
+    }
+  }
+  
+  // ICON ONLY VARIANTS - Mobile-first with WCAG AA compliance
+  &-icon {
+    // Mobile: Square touch targets
     padding: var(--space-3);
-    min-width: 2.75rem;
+    min-width: 44px;     // WCAG AA minimum
+    min-height: 44px;    // WCAG AA minimum
     gap: 0;
     
-    &.button--sm {
+    // Desktop: Smaller, more compact
+    @media (min-width: 768px) {
       padding: var(--space-2);
-      min-width: 2.25rem;
+      min-width: 40px;
+      min-height: 40px;
     }
     
-    &.button--lg {
+    &.button-sm {
+      // Mobile: Still maintain touch targets
+      padding: var(--space-2);
+      min-width: 44px;     // WCAG AA minimum
+      min-height: 44px;    // WCAG AA minimum
+      
+      // Desktop: Meet 44px touch target minimum
+      @media (min-width: 768px) {
+        padding: var(--space-1);
+        min-width: 44px;
+        min-height: 44px;
+      }
+    }
+    
+    &.button-lg {
+      // Mobile: Generous touch targets
       padding: var(--space-4);
-      min-width: 3.25rem;
+      min-width: 52px;
+      min-height: 52px;
+      
+      // Desktop: Refined
+      @media (min-width: 768px) {
+        padding: var(--space-3);
+        min-width: 48px;
+        min-height: 48px;
+      }
     }
   }
   
   // FULL WIDTH VARIANT
-  &--full {
+  &-full {
     width: 100%;
   }
   
   // LOADING STATE
-  &--loading {
+  &-loading {
     position: relative;
     pointer-events: none;
     
@@ -247,41 +414,80 @@
     }
   }
   
+  
+  // PROGRESS BAR
+  &-progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 2px;
+    background: var(--color-interactive-light);
+    transition: all var(--duration-normal) var(--ease-out);
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  }
+  
+  // NOTIFICATION BADGE
+  &-badge {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 var(--space-1);
+    background: var(--color-error);
+    color: var(--color-text-inverse);
+    border-radius: var(--radius-full);
+    font-size: var(--text-xs);
+    font-weight: var(--font-bold);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--color-background-elevated);
+    z-index: 1;
+  }
+  
+  // TOOLTIP
+  &-tooltip {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-bottom: var(--space-2);
+    padding: var(--space-1) var(--space-2);
+    background: var(--color-background-elevated);
+    color: var(--color-text-primary);
+    font-size: var(--text-xs);
+    border-radius: var(--radius-md);
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--duration-fast) var(--ease-out);
+    z-index: 50;
+    box-shadow: var(--theme-shadow-lg);
+  }
+  
   // FLOATING ACTION BUTTON
-  &--fab {
+  &-fab {
     border-radius: var(--radius-full);
     width: 3.5rem;
     height: 3.5rem;
     padding: 0;
-    box-shadow: var(--shadow-md);
+    box-shadow: var(--theme-shadow-md);
     
     &:hover {
-      box-shadow: var(--shadow-lg);
-    }
-  }
-  
-  // GRADIENT VARIANT - Premium look
-  &--gradient {
-    background: var(--gradient-executive);
-    color: var(--color-text-primary);
-    border: none;
-    box-shadow: var(--shadow-md);
-    
-    &:hover {
-      transform: translateY(-2px);
-      box-shadow: var(--shadow-lg);
+      box-shadow: var(--theme-shadow-lg);
     }
   }
 }
 
-// Button Group - Professional grouping
+// Button Group - Professional grouping with theme awareness
 .button-group {
   display: inline-flex;
   border-radius: var(--radius-lg);
   overflow: hidden;
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--theme-shadow-sm);
   
-  .button {
+  > .button {
     border-radius: 0;
     border-right: var(--border-1) solid var(--color-border-light);
     
@@ -303,10 +509,10 @@
   }
   
   // Vertical variant
-  &--vertical {
+  &-vertical {
     flex-direction: column;
     
-    .button {
+    > .button {
       border-right: none;
       border-bottom: var(--border-1) solid var(--color-border-light);
       

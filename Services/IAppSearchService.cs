@@ -155,7 +155,7 @@ public class NavigationSearchProvider(List<AppNavItem> navItems) : ISearchProvid
         var results = new List<AppSearchResult>();
         var searchLower = query.ToLowerInvariant();
         
-        foreach (var item in navItems.Where(i => i.IsVisible))
+        foreach (var item in navItems.Where(i => i.Visible))
         {
             var relevance = CalculateRelevance(item, searchLower);
             if (relevance > 0)
