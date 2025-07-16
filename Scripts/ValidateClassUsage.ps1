@@ -32,7 +32,7 @@
 
 .EXAMPLE
     # Validate specific projects only
-    .\ValidateClassUsage.ps1 -ProjectPaths @("PayrollAI.Client", "PayrollAI.Shared.Client")
+    .\ValidateClassUsage.ps1 -ProjectPaths @("MyApp.Client", "MyApp.Shared.Client")
 
 .EXAMPLE
     # Validate with custom solution path
@@ -72,7 +72,7 @@ if (Test-Path $StylesDocPath) {
             $prefix = $matches[1]
             $values = $matches[2] -split ',\s*'
             foreach ($value in $values) {
-                "$prefix-$value"
+                "$prefix-$($value.Trim())"
             }
         }
         # Handle plain bracket pattern (e.g., "[block, flex, grid, hidden]")
@@ -100,9 +100,9 @@ if (Test-Path $StylesDocPath) {
         }
     }
     
-    # No hardcoded classes - only use what's explicitly documented in AI styles
+    # CLAUDE.md compliance: Only use what's explicitly documented in AI styles (no SCSS fallback)
     
-    Write-Host "📚 Loaded $($availableClasses.Count) utility classes from documentation" -ForegroundColor Green
+    Write-Host "📚 Loaded $($availableClasses.Count) utility classes from AI documentation (single source of truth)" -ForegroundColor Green
     
     if ($Verbose) {
         Write-Host "Sample classes loaded:" -ForegroundColor Gray
@@ -111,31 +111,14 @@ if (Test-Path $StylesDocPath) {
         }
     }
 } else {
-    Write-Host "⚠️ Styles documentation not found at $StylesDocPath" -ForegroundColor Yellow
+    Write-Host "❌ ERROR: Styles documentation not found at $StylesDocPath" -ForegroundColor Red
+    Write-Host "   This file is the single source of truth for all CSS classes" -ForegroundColor Red
+    Write-Host "   Run: pwsh ./RR.Blazor/Scripts/GenerateDocumentation.ps1 -ProjectPath ./RR.Blazor" -ForegroundColor Yellow
 }
 
-# Extract classes from SCSS files as fallback
-$scssClasses = @{}
-$scssFiles = Get-ChildItem -Path $StylesPath -Recurse -Filter "*.scss"
-foreach ($file in $scssFiles) {
-    $content = Get-Content $file.FullName -Raw
-    
-    # Extract class definitions (.class-name)
-    $classMatches = [regex]::Matches($content, '\.([a-zA-Z][a-zA-Z0-9-_]*)\s*\{')
-    foreach ($match in $classMatches) {
-        $className = $match.Groups[1].Value
-        if (-not $scssClasses.ContainsKey($className)) {
-            $scssClasses[$className] = $file.Name
-        }
-    }
-}
-
-Write-Host "🎨 Found $($scssClasses.Count) classes in SCSS files" -ForegroundColor Green
-
-# Combine available classes
+# Single source of truth: rr-ai-styles.json only (no SCSS fallback)
 $allClasses = @{}
 $availableClasses.Keys | ForEach-Object { $allClasses[$_] = "utility" }
-$scssClasses.Keys | ForEach-Object { $allClasses[$_] = "component" }
 
 # Find all Razor files based on project paths or auto-detection
 if ($ProjectPaths.Count -gt 0) {
@@ -205,7 +188,7 @@ function IsValidClass($class) {
     # Must be a valid CSS class name
     if ($class -notmatch '^[a-zA-Z][a-zA-Z0-9-_]*$') { return $true }
     
-    # Check against available classes
+    # Check against AI documentation classes (single source of truth)
     $cleanClass = $class -replace '^(sm|md|lg|xl|xxl):', ''
     return $allClasses.ContainsKey($cleanClass)
 }
@@ -272,9 +255,9 @@ foreach ($file in $razorFiles) {
                     File = $relativePath
                     Line = ($content.Substring(0, $match.Index) -split "`n").Length
                     Type = "MissingClass"
-                    Issue = "Class not found in RR.Blazor styles"
+                    Issue = "Class not found in RR.Blazor AI documentation"
                     Content = $class
-                    Suggestion = "Check spelling or add class to RR.Blazor"
+                    Suggestion = "Check spelling or add class to RR.Blazor system"
                 }
             }
         }

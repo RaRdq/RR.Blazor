@@ -508,12 +508,6 @@ if ($Fix) {
     Write-Host "  ✅ Fixed $fixCount invalid parameters in $($fixedFiles.Count) files" -ForegroundColor Green
 }
 
-Write-Host "`n💡 RECOMMENDATIONS:" -ForegroundColor Cyan
-Write-Host "  • Use source code as truth, not incomplete documentation" -ForegroundColor Gray
-Write-Host "  • Consider parameter naming conventions (camelCase vs PascalCase)" -ForegroundColor Gray
-Write-Host "  • Check component documentation for parameter usage examples" -ForegroundColor Gray
-Write-Host "  • Ensure child components are used within their required parent components" -ForegroundColor Gray
-
 return @{
     Success = $totalViolations -eq 0
     Violations = $violations

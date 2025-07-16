@@ -1,0 +1,243 @@
+@** 
+<summary>Professional checkbox component with enterprise styling and accessibility</summary>
+<category>Form</category>
+<complexity>Simple</complexity>
+<ai-prompt>Create a modern checkbox for user selections with professional styling</ai-prompt>
+<ai-common-use>form selections, multi-select lists, permission toggles, settings</ai-common-use>
+<ai-avoid>Don't use for binary toggle switches (use RSwitcher) or single selections (use RRadio)</ai-avoid>
+<ai-pattern name="basic-checkbox">Text="Accept Terms" @bind-Checked="acceptTerms"</ai-pattern>
+<ai-pattern name="with-description">Text="Enable Notifications" Description="Receive email updates" @bind-Checked="notifications"</ai-pattern>
+<ai-pattern name="disabled-state">Text="Premium Feature" Disabled="true" Description="Upgrade required"</ai-pattern>
+<ai-pattern name="validation-error">Text="Required Field" @bind-Checked="required" ValidationMessage="This field is required"</ai-pattern>
+<ai-pattern name="with-icon">Text="Important Item" Icon="star" @bind-Checked="starred"</ai-pattern>
+**@
+
+@attribute [Component("RCheckbox", Category = "Form")]
+@attribute [AIOptimized(Prompt = "Create professional checkbox with validation")]
+
+@using RR.Blazor.Enums
+
+<div class="flex items-start gap-3 @GetContainerClasses()">
+    <div class="relative flex items-center justify-center">
+        <input type="checkbox" 
+               id="@Id"
+               name="@Name"
+               @bind="Checked"
+               @bind:after="OnCheckedChanged"
+               disabled="@Disabled"
+               class="peer absolute opacity-0 w-6 h-6 cursor-pointer disabled:cursor-not-allowed" />
+        
+        <div class="@GetCheckboxClasses()">
+            @if (Checked)
+            {
+                <i class="material-symbols-rounded text-white text-base font-bold leading-none">check</i>
+            }
+        </div>
+    </div>
+    
+    @if (!string.IsNullOrEmpty(Text) || !string.IsNullOrEmpty(Description) || !string.IsNullOrEmpty(Icon))
+    {
+        <label for="@Id" class="@GetLabelClasses()">
+            <div class="flex items-center gap-2">
+                @if (!string.IsNullOrEmpty(Icon))
+                {
+                    <i class="material-symbols-rounded @GetIconClasses()">@Icon</i>
+                }
+                @if (!string.IsNullOrEmpty(Text))
+                {
+                    <span class="@GetTextClasses()">@Text</span>
+                }
+                @if (Required)
+                {
+                    <span class="text-error ml-1">*</span>
+                }
+            </div>
+            @if (!string.IsNullOrEmpty(Description))
+            {
+                <div class="@GetDescriptionClasses()">@Description</div>
+            }
+        </label>
+    }
+    
+    @if (ChildContent != null)
+    {
+        <div class="grow">
+            @ChildContent
+        </div>
+    }
+</div>
+
+@if (!string.IsNullOrEmpty(ValidationMessage))
+{
+    <div class="text-error text-sm mt-1 ml-9">@ValidationMessage</div>
+}
+
+@code {
+    /// <summary>Unique identifier for the checkbox input</summary>
+    [Parameter] public string Id { get; set; } = $"checkbox-{Guid.NewGuid():N}";
+    
+    /// <summary>Name attribute for form submission</summary>
+    [Parameter] public string? Name { get; set; }
+    
+    /// <summary>Whether the checkbox is checked</summary>
+    [Parameter] public bool Checked { get; set; }
+    
+    /// <summary>Callback when checked state changes</summary>
+    [Parameter] public EventCallback<bool> CheckedChanged { get; set; }
+    
+    /// <summary>Label text for the checkbox</summary>
+    [Parameter] public string? Text { get; set; }
+    
+    /// <summary>Description text shown below the label</summary>
+    [Parameter] public string? Description { get; set; }
+    
+    /// <summary>Icon displayed next to the text</summary>
+    [Parameter] public string? Icon { get; set; }
+    
+    /// <summary>Visual style variant of the checkbox</summary>
+    [Parameter] public CheckboxVariant Variant { get; set; } = CheckboxVariant.Default;
+    
+    /// <summary>Size of the checkbox</summary>
+    [Parameter] public CheckboxSize Size { get; set; } = CheckboxSize.Medium;
+    
+    /// <summary>Whether the checkbox is disabled</summary>
+    [Parameter] public bool Disabled { get; set; }
+    
+    /// <summary>Whether the field is required</summary>
+    [Parameter] public bool Required { get; set; }
+    
+    /// <summary>Validation error message to display</summary>
+    [Parameter] public string? ValidationMessage { get; set; }
+    
+    /// <summary>Additional CSS classes to apply</summary>
+    [Parameter] public string? Class { get; set; }
+    
+    /// <summary>Custom content to render alongside the checkbox</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    
+    /// <summary>Callback when checkbox is clicked</summary>
+    [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
+
+    private async Task OnCheckedChanged()
+    {
+        await CheckedChanged.InvokeAsync(Checked);
+        await OnClick.InvokeAsync();
+    }
+
+    private string GetContainerClasses()
+    {
+        var classes = new List<string> { "r-checkbox" };
+        
+        if (Disabled)
+            classes.Add("is-disabled");
+            
+        if (!string.IsNullOrEmpty(ValidationMessage))
+            classes.Add("is-error");
+            
+        if (Checked)
+            classes.Add("is-selected");
+
+        if (!string.IsNullOrEmpty(Class))
+            classes.Add(Class);
+
+        return string.Join(" ", classes);
+    }
+
+    private string GetCheckboxClasses()
+    {
+        var classes = new List<string> 
+        { 
+            "w-6 h-6 rounded border-2 transition-all duration-200 flex items-center justify-center",
+            "peer-focus:ring-2 peer-focus:ring-primary peer-focus:ring-opacity-50"
+        };
+
+        // Base styles
+        if (Checked)
+        {
+            classes.Add(Variant switch
+            {
+                CheckboxVariant.Primary => "bg-primary border-primary",
+                CheckboxVariant.Success => "bg-success border-success",
+                CheckboxVariant.Warning => "bg-warning border-warning",
+                CheckboxVariant.Danger => "bg-error border-error",
+                _ => "bg-primary border-primary"
+            });
+        }
+        else
+        {
+            classes.Add("bg-surface-elevated border-border-medium hover:border-primary");
+        }
+
+        // Disabled state
+        if (Disabled)
+        {
+            classes.Add("opacity-50 cursor-not-allowed");
+        }
+        else
+        {
+            classes.Add("cursor-pointer hover:shadow-sm");
+        }
+
+        // Size variants
+        classes.Add(Size switch
+        {
+            CheckboxSize.Small => "w-5 h-5",
+            CheckboxSize.Large => "w-7 h-7",
+            _ => "w-6 h-6"
+        });
+
+        return string.Join(" ", classes);
+    }
+
+    private string GetLabelClasses()
+    {
+        var classes = new List<string> { "cursor-pointer select-none grow" };
+        
+        if (Disabled)
+            classes.Add("cursor-not-allowed opacity-60");
+
+        return string.Join(" ", classes);
+    }
+
+    private string GetTextClasses()
+    {
+        var classes = new List<string> { "text-primary font-medium" };
+
+        classes.Add(Size switch
+        {
+            CheckboxSize.Small => "text-sm",
+            CheckboxSize.Large => "text-lg",
+            _ => "text-base"
+        });
+
+        return string.Join(" ", classes);
+    }
+
+    private string GetDescriptionClasses()
+    {
+        var classes = new List<string> { "text-secondary mt-1" };
+
+        classes.Add(Size switch
+        {
+            CheckboxSize.Small => "text-xs",
+            CheckboxSize.Large => "text-base",
+            _ => "text-sm"
+        });
+
+        return string.Join(" ", classes);
+    }
+
+    private string GetIconClasses()
+    {
+        var classes = new List<string> { "text-primary" };
+
+        classes.Add(Size switch
+        {
+            CheckboxSize.Small => "text-base",
+            CheckboxSize.Large => "text-xl",
+            _ => "text-lg"
+        });
+
+        return string.Join(" ", classes);
+    }
+}

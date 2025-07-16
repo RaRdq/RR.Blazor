@@ -18,7 +18,7 @@ The `/designer` command automatically loads `@RR.Blazor/wwwroot/rr-ai-components
 ### Input
 ```
 /designer
-Create an executive-grade employee analytics dashboard with real-time metrics, data visualization, and interactive filtering.
+Create an executive-grade business analytics dashboard with real-time metrics, data visualization, and interactive filtering.
 ```
 
 ### Expected AI Process
@@ -37,7 +37,7 @@ Generate production-ready code using optimal component selection:
 <div class="d-flex flex-column gap-6 pa-8">
   <!-- Header Section with Actions -->
   <div class="d-flex justify-between align-center mb-6">
-    <h1 class="text-h4 font-semibold ma-0">Employee Analytics</h1>
+    <h1 class="text-h4 font-semibold ma-0">Business Analytics</h1>
     <div class="d-flex gap-3">
       <RFormField Type="FieldType.Search" Placeholder="Search..." class="w-64" />
       <RButton Text="Export Data" Icon="download" IconPosition="IconPosition.Start" 
@@ -47,7 +47,7 @@ Generate production-ready code using optimal component selection:
 
   <!-- Key Metrics Grid -->
   <div class="stats-grid gap-4 mb-6">
-    <RCard Title="Active Employees" Elevation="4" class="glass-light">
+    <RCard Title="Active Users" Elevation="4" class="glass-light">
       <div class="pa-6">
         <div class="d-flex justify-between align-center">
           <span class="text-3xl font-bold text-success">1,247</span>
@@ -57,7 +57,7 @@ Generate production-ready code using optimal component selection:
       </div>
     </RCard>
     
-    <RCard Title="Payroll Processing" Elevation="4" class="glass-light">
+    <RCard Title="Revenue Processing" Elevation="4" class="glass-light">
       <div class="pa-6">
         <div class="d-flex justify-between align-center">
           <span class="text-3xl font-bold text-primary">$2.4M</span>
@@ -69,9 +69,9 @@ Generate production-ready code using optimal component selection:
   </div>
   
   <!-- Data Table Section -->
-  <RCard Title="Employee Directory" Elevation="6" class="glass-medium">
+  <RCard Title="User Directory" Elevation="6" class="glass-medium">
     <div class="pa-6">
-      <RDataTable Items="@employees" class="elevation-1" 
+      <RDataTable Items="@users" class="elevation-1" 
                   Striped="true" Hoverable="true" />
     </div>
   </RCard>
@@ -90,9 +90,9 @@ Validate implementation against:
 ### Complex Dashboard Request
 ```
 /designer
-Plan and implement a multi-tenant payroll dashboard featuring:
-- Real-time payment processing status
-- Interactive employee data filtering
+Plan and implement a multi-tenant business dashboard featuring:
+- Real-time order processing status
+- Interactive customer data filtering
 - Mobile-responsive design with touch optimization
 - Dark/light theme support
 - Accessibility compliance for screen readers
@@ -101,7 +101,7 @@ Plan and implement a multi-tenant payroll dashboard featuring:
 ### Form Design Request
 ```
 /designer
-Create a dense, professional employee onboarding form with:
+Create a dense, professional customer onboarding form with:
 - Multi-step wizard interface
 - Real-time validation feedback
 - File upload capabilities
@@ -139,12 +139,12 @@ Create a dense, professional employee onboarding form with:
 - **Maintainable Code**: RR.Blazor component architecture
 - **Future-Proof**: Auto-updated component references
 
-## Integration with PayrollAI
+## Integration with Business Applications
 
-The designer command understands PayrollAI's specific patterns:
-- Multi-company data visualization
-- Payroll processing workflows
-- Employee management interfaces
+The designer command understands common business application patterns:
+- Multi-tenant data visualization
+- Business process workflows
+- Customer management interfaces
 - Real-time SignalR integration
 - Role-based access controls
 

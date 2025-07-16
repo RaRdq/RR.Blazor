@@ -213,7 +213,7 @@ cp RR.Blazor/.claude/commands/designer.md .claude/commands/
 **Usage Examples**:
 ```bash
 # Planning phase
-/designer Plan an employee onboarding wizard with multi-step progress tracking
+/designer Plan a user onboarding wizard with multi-step progress tracking
 
 # Implementation phase  
 /designer Implement the designed wizard using RR.Blazor components and utility-first styling
@@ -417,22 +417,22 @@ RR.Blazor includes 800+ utility classes inspired by modern CSS frameworks:
 ```razor
 <div class="d-flex justify-between align-center mb-4">
     <RFormField Type="FieldType.Search" 
-                Placeholder="Search employees..." 
+                Placeholder="Search users..." 
                 Class="flex-grow-1 mr-4" />
-    <RButton Text="Add Employee" 
+    <RButton Text="Add User" 
              Variant="ButtonVariant.Primary" 
              Icon="add" 
              IconPosition="IconPosition.Start" />
 </div>
 
-<RDataTable Items="@employees" 
+<RDataTable Items="@users" 
             Class="elevation-2" 
             Striped="true" 
             Hoverable="true">
     <Columns>
-        <RDataTableColumn Field="Name" Title="Employee" />
+        <RDataTableColumn Field="Name" Title="User" />
         <RDataTableColumn Field="Department" Title="Department" />
-        <RDataTableColumn Field="Salary" Title="Salary" Format="C" />
+        <RDataTableColumn Field="Role" Title="Role" />
     </Columns>
 </RDataTable>
 ```

@@ -1,0 +1,264 @@
+@** 
+<summary>Professional radio button component with enterprise styling and accessibility</summary>
+<category>Form</category>
+<complexity>Simple</complexity>
+<ai-prompt>Create a modern radio button for single selections with professional styling</ai-prompt>
+<ai-common-use>option selection, settings toggles, form choices, exclusive selections</ai-common-use>
+<ai-avoid>Don't use for multiple selections (use RCheckbox) or on/off toggles (use RSwitcher)</ai-avoid>
+<ai-pattern name="basic-radio">Text="Option 1" Value="option1" @bind-SelectedValue="selectedOption" Name="options"</ai-pattern>
+<ai-pattern name="with-description">Text="Premium Plan" Description="Advanced features included" Value="premium" @bind-SelectedValue="plan"</ai-pattern>
+<ai-pattern name="disabled-option">Text="Enterprise" Value="enterprise" Disabled="true" Description="Contact sales"</ai-pattern>
+<ai-pattern name="with-icon">Text="Email Notifications" Icon="email" Value="email" @bind-SelectedValue="notifyMethod"</ai-pattern>
+<ai-pattern name="group-radio">Multiple RRadio components with same Name property for grouping</ai-pattern>
+**@
+
+@attribute [Component("RRadio", Category = "Form")]
+@attribute [AIOptimized(Prompt = "Create professional radio button with validation")]
+
+@using RR.Blazor.Enums
+
+<div class="flex items-start gap-3 @GetContainerClasses()">
+    <div class="relative flex items-center justify-center">
+        <input type="radio" 
+               id="@Id"
+               name="@Name"
+               value="@Value"
+               checked="@IsSelected"
+               @onchange="OnSelectionChanged"
+               disabled="@Disabled"
+               class="peer absolute opacity-0 w-6 h-6 cursor-pointer disabled:cursor-not-allowed" />
+        
+        <div class="@GetRadioClasses()">
+            @if (IsSelected)
+            {
+                <div class="@GetInnerDotClasses()"></div>
+            }
+        </div>
+    </div>
+    
+    @if (!string.IsNullOrEmpty(Text) || !string.IsNullOrEmpty(Description) || !string.IsNullOrEmpty(Icon))
+    {
+        <label for="@Id" class="@GetLabelClasses()">
+            <div class="flex items-center gap-2">
+                @if (!string.IsNullOrEmpty(Icon))
+                {
+                    <i class="material-symbols-rounded @GetIconClasses()">@Icon</i>
+                }
+                @if (!string.IsNullOrEmpty(Text))
+                {
+                    <span class="@GetTextClasses()">@Text</span>
+                }
+                @if (Required)
+                {
+                    <span class="text-error ml-1">*</span>
+                }
+            </div>
+            @if (!string.IsNullOrEmpty(Description))
+            {
+                <div class="@GetDescriptionClasses()">@Description</div>
+            }
+        </label>
+    }
+    
+    @if (ChildContent != null)
+    {
+        <div class="grow">
+            @ChildContent
+        </div>
+    }
+</div>
+
+@if (!string.IsNullOrEmpty(ValidationMessage))
+{
+    <div class="text-error text-sm mt-1 ml-9">@ValidationMessage</div>
+}
+
+@code {
+    /// <summary>Unique identifier for the radio input</summary>
+    [Parameter] public string Id { get; set; } = $"radio-{Guid.NewGuid():N}";
+    
+    /// <summary>Name attribute for grouping radio buttons</summary>
+    [Parameter] public string? Name { get; set; }
+    
+    /// <summary>Value of this radio option</summary>
+    [Parameter] public string? Value { get; set; }
+    
+    /// <summary>Currently selected value in the radio group</summary>
+    [Parameter] public string? SelectedValue { get; set; }
+    
+    /// <summary>Callback when selection changes</summary>
+    [Parameter] public EventCallback<string?> SelectedValueChanged { get; set; }
+    
+    /// <summary>Label text for the radio button</summary>
+    [Parameter] public string? Text { get; set; }
+    
+    /// <summary>Description text shown below the label</summary>
+    [Parameter] public string? Description { get; set; }
+    
+    /// <summary>Icon displayed next to the text</summary>
+    [Parameter] public string? Icon { get; set; }
+    
+    /// <summary>Visual style variant of the radio button</summary>
+    [Parameter] public RadioVariant Variant { get; set; } = RadioVariant.Default;
+    
+    /// <summary>Size of the radio button</summary>
+    [Parameter] public RadioSize Size { get; set; } = RadioSize.Medium;
+    
+    /// <summary>Whether the radio button is disabled</summary>
+    [Parameter] public bool Disabled { get; set; }
+    
+    /// <summary>Whether the field is required</summary>
+    [Parameter] public bool Required { get; set; }
+    
+    /// <summary>Validation error message to display</summary>
+    [Parameter] public string? ValidationMessage { get; set; }
+    
+    /// <summary>Additional CSS classes to apply</summary>
+    [Parameter] public string? Class { get; set; }
+    
+    /// <summary>Custom content to render alongside the radio button</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    
+    /// <summary>Callback when radio button is clicked</summary>
+    [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
+
+    private bool IsSelected => Value == SelectedValue;
+
+    private async Task OnSelectionChanged(ChangeEventArgs e)
+    {
+        var newValue = e.Value?.ToString();
+        await SelectedValueChanged.InvokeAsync(newValue);
+        await OnClick.InvokeAsync();
+    }
+
+    private string GetContainerClasses()
+    {
+        var classes = new List<string> { "r-radio" };
+        
+        if (Disabled)
+            classes.Add("is-disabled");
+            
+        if (!string.IsNullOrEmpty(ValidationMessage))
+            classes.Add("is-error");
+            
+        if (IsSelected)
+            classes.Add("is-selected");
+
+        if (!string.IsNullOrEmpty(Class))
+            classes.Add(Class);
+
+        return string.Join(" ", classes);
+    }
+
+    private string GetRadioClasses()
+    {
+        var classes = new List<string> 
+        { 
+            "rounded-full border-2 transition-all duration-200 flex items-center justify-center",
+            "peer-focus:ring-2 peer-focus:ring-primary peer-focus:ring-opacity-50"
+        };
+
+        // Base styles
+        if (IsSelected)
+        {
+            classes.Add(Variant switch
+            {
+                RadioVariant.Primary => "bg-primary border-primary",
+                RadioVariant.Success => "bg-success border-success",
+                RadioVariant.Warning => "bg-warning border-warning",
+                RadioVariant.Danger => "bg-error border-error",
+                _ => "bg-primary border-primary"
+            });
+        }
+        else
+        {
+            classes.Add("bg-surface-elevated border-border-medium hover:border-primary");
+        }
+
+        // Disabled state
+        if (Disabled)
+        {
+            classes.Add("opacity-50 cursor-not-allowed");
+        }
+        else
+        {
+            classes.Add("cursor-pointer hover:shadow-sm");
+        }
+
+        // Size variants
+        classes.Add(Size switch
+        {
+            RadioSize.Small => "w-5 h-5",
+            RadioSize.Large => "w-7 h-7",
+            _ => "w-6 h-6"
+        });
+
+        return string.Join(" ", classes);
+    }
+
+    private string GetInnerDotClasses()
+    {
+        var classes = new List<string> { "rounded-full bg-white" };
+
+        classes.Add(Size switch
+        {
+            RadioSize.Small => "w-2 h-2",
+            RadioSize.Large => "w-3 h-3",
+            _ => "w-2.5 h-2.5"
+        });
+
+        return string.Join(" ", classes);
+    }
+
+    private string GetLabelClasses()
+    {
+        var classes = new List<string> { "cursor-pointer select-none grow" };
+        
+        if (Disabled)
+            classes.Add("cursor-not-allowed opacity-60");
+
+        return string.Join(" ", classes);
+    }
+
+    private string GetTextClasses()
+    {
+        var classes = new List<string> { "text-primary font-medium" };
+
+        classes.Add(Size switch
+        {
+            RadioSize.Small => "text-sm",
+            RadioSize.Large => "text-lg",
+            _ => "text-base"
+        });
+
+        return string.Join(" ", classes);
+    }
+
+    private string GetDescriptionClasses()
+    {
+        var classes = new List<string> { "text-secondary mt-1" };
+
+        classes.Add(Size switch
+        {
+            RadioSize.Small => "text-xs",
+            RadioSize.Large => "text-base",
+            _ => "text-sm"
+        });
+
+        return string.Join(" ", classes);
+    }
+
+    private string GetIconClasses()
+    {
+        var classes = new List<string> { "text-primary" };
+
+        classes.Add(Size switch
+        {
+            RadioSize.Small => "text-base",
+            RadioSize.Large => "text-xl",
+            _ => "text-lg"
+        });
+
+        return string.Join(" ", classes);
+    }
+}
