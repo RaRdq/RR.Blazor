@@ -34,10 +34,10 @@
     }
     
     @* Input Field *@
-    <div @ref="wrapperElement" id="wrapper-@InputId" class="form-field @GetInputWrapperClasses()">
+    <div @ref="wrapperElement" id="wrapper-@InputId" class="@GetInputWrapperClasses()">
         @if (!string.IsNullOrEmpty(StartIcon))
         {
-            <div class="form-field-input icon-interactive @(OnStartIconClick.HasDelegate ? "clickable" : "")" 
+            <div class="form-field-icon icon-interactive @(OnStartIconClick.HasDelegate ? "clickable" : "")" 
                  @onclick="HandleStartIconClick">
                 <i class="material-symbols-rounded @GetIconSizeClass()">@StartIcon</i>
             </div>
@@ -169,12 +169,16 @@
         {
             <label class="form-field-label @GetFloatingLabelClasses()" for="@InputId">
                 @Text
+                @if (Required && ShowRequiredIndicator)
+                {
+                    <span class="text-error ml-1">*</span>
+                }
             </label>
         }
         
         @if (!string.IsNullOrEmpty(EndIcon) && Type != FieldType.Select)
         {
-            <div class="form-field-input icon-interactive @(OnEndIconClick.HasDelegate ? "clickable" : "")" 
+            <div class="form-field-icon icon-interactive @(OnEndIconClick.HasDelegate ? "clickable" : "")" 
                  @onclick="HandleEndIconClick">
                 <i class="material-symbols-rounded @GetIconSizeClass()">@EndIcon</i>
             </div>
@@ -183,7 +187,7 @@
         @* Loading spinner *@
         @if (Loading)
         {
-            <div class="form-field-input icon-muted">
+            <div class="form-field-icon icon-muted">
                 <i class="material-symbols-rounded @GetIconSizeClass() animate-spin">progress_activity</i>
             </div>
         }
@@ -256,7 +260,7 @@
     [Parameter] public string FieldName { get; set; }
     
     /// <summary>Cascading validation context from parent form</summary>
-    [CascadingParameter] public FormValidationContext ValidationContext { get; set; }
+    [CascadingParameter] public FormValidationContext? ValidationContext { get; set; }
     
     /// <summary>Whether field is required</summary>
     [Parameter] [AIParameter("Mark field as required for form validation", Example = "true")] public bool Required { get; set; }
@@ -442,14 +446,14 @@
     private bool hasValue;
     private bool isFocused;
     private bool hasUserInteracted = false;
-    private Timer? validationDebounceTimer;
+    private CancellationTokenSource? validationCancellationTokenSource;
     
     [Inject] private IJSRuntime JSRuntime { get; set; }
     
     protected override void OnParametersSet()
     {
         // Update hasValue when parameters change
-        hasValue = !string.IsNullOrEmpty(Value);
+        hasValue = !string.IsNullOrEmpty(Value) || (Type == FieldType.Checkbox && Checked);
     }
     
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -465,18 +469,38 @@
     
     private async Task TriggerDebouncedValidation()
     {
-        // Cancel existing timer
-        validationDebounceTimer?.Dispose();
+        // Cancel any existing validation
+        validationCancellationTokenSource?.Cancel();
+        validationCancellationTokenSource?.Dispose();
         
-        // Set up new debounced validation
-        var debounceMs = ValidationContext?.Options.ValidationDebounceMs ?? 300;
-        validationDebounceTimer = new Timer(async _ =>
+        // Create new cancellation token source
+        validationCancellationTokenSource = new CancellationTokenSource();
+        var cancellationToken = validationCancellationTokenSource.Token;
+        
+        try
         {
-            await InvokeAsync(async () =>
+            // Set up debounced validation
+            var debounceMs = ValidationContext?.Options?.ValidationDebounceMs ?? 300;
+            await Task.Delay(debounceMs, cancellationToken);
+            
+            // If not cancelled, trigger validation
+            if (!cancellationToken.IsCancellationRequested)
             {
-                await TriggerImmediateValidation();
-            });
-        }, null, debounceMs, Timeout.Infinite);
+                await InvokeAsync(async () =>
+                {
+                    await TriggerImmediateValidation();
+                });
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected when operation is cancelled
+        }
+        catch (Exception ex)
+        {
+            // Log unexpected errors
+            Console.WriteLine($"Error in debounced validation: {ex.Message}");
+        }
     }
     
     private async Task TriggerImmediateValidation()
@@ -496,7 +520,8 @@
     
     public async ValueTask DisposeAsync()
     {
-        validationDebounceTimer?.Dispose();
+        validationCancellationTokenSource?.Cancel();
+        validationCancellationTokenSource?.Dispose();
         await Task.CompletedTask;
     }
     
@@ -556,7 +581,7 @@
     
     private string GetInputWrapperClasses()
     {
-        var classes = new List<string> { "form-field" };
+        var classes = new List<string> { "form-field-wrapper" };
         
         if (FullWidth)
         {
@@ -567,7 +592,7 @@
         {
             classes.Add("form-field-floating-label");
             
-            if (!string.IsNullOrEmpty(Value) || hasValue)
+            if (hasValue || !string.IsNullOrEmpty(Value))
             {
                 classes.Add("form-field-has-value");
             }
@@ -609,8 +634,8 @@
     
     private string GetPlaceholderText()
     {
-        // Hide placeholder for floating label variant to avoid conflicts
-        return Variant == FieldVariant.FloatingLabel ? "" : Placeholder;
+        // Use a single space for floating label variant to enable CSS :not(:placeholder-shown) selector
+        return Variant == FieldVariant.FloatingLabel ? " " : Placeholder;
     }
     
     private string GetInputClasses()
@@ -876,7 +901,7 @@
         await OnInput.InvokeAsync(newValue);
         
         // Trigger real-time validation if enabled in form context
-        if (ValidationContext?.Options.ValidateOnChange == true)
+        if (ValidationContext?.Options?.ValidateOnChange == true)
         {
             await TriggerDebouncedValidation();
         }
@@ -912,7 +937,7 @@
         await OnBlur.InvokeAsync(e);
         
         // Trigger validation on blur if enabled in form context
-        if (ValidationContext?.Options.ValidateOnBlur == true)
+        if (ValidationContext?.Options?.ValidateOnBlur == true)
         {
             await TriggerImmediateValidation();
         }

@@ -22,10 +22,10 @@
 @using RR.Blazor.Models
 @using Microsoft.JSInterop
 @typeparam TModel where TModel : class
-@inherits ComponentBase
+@inherits RFormBase
 @implements IAsyncDisposable
 
-<CascadingValue Value="@GetValidationContext()">
+<CascadingValue Value="@GetFormValidationContext()">
 <div @ref="formElement" id="@FormId" class="r-form @GetFormLayoutClass() @GetFormDensityClass() @Class" 
      role="form" 
      aria-label="@AriaLabel"
@@ -56,6 +56,10 @@
         @if (ValidationMode == ValidationMode.DataAnnotations || ValidationMode == ValidationMode.Hybrid)
         {
             <DataAnnotationsValidator />
+        }
+        @if (ValidationMode == ValidationMode.Custom || ValidationMode == ValidationMode.Hybrid)
+        {
+            <ValidationSummary />
         }
         
 
@@ -103,23 +107,39 @@
                 </div>
             }
             
-            <div class="r-form-actions flex gap-3 justify-end mt-4">
-                @if (ShowCancelButton)
-                {
-                    <RButton Text="@CancelText" 
-                             Variant="ButtonVariant.Secondary" 
-                             Disabled="@IsCancelButtonDisabled()"
-                             OnClick="@HandleCancel" />
-                }
-                <RButton Text="@GetSubmitButtonText()" 
-                         Variant="ButtonVariant.Primary" 
-                         Type="ButtonType.Submit"
-                         Size="@SubmitButtonSize"
-                         Loading="@IsSubmitButtonLoading()"
-                         Disabled="@IsSubmitButtonDisabled()"
-                         FullWidth="@SubmitButtonFullWidth"
-                         Elevation="@(Layout == FormLayout.Executive ? 4 : 2)" />
-            </div>
+            @if (SubmitButtonFullWidth && !ShowCancelButton)
+            {
+                <div class="r-form-actions w-full mt-4">
+                    <RButton Text="@GetSubmitButtonText()" 
+                             Variant="ButtonVariant.Primary" 
+                             Type="ButtonType.Submit"
+                             Size="@SubmitButtonSize"
+                             Loading="@IsSubmitButtonLoading()"
+                             Disabled="@IsSubmitButtonDisabled()"
+                             FullWidth="true"
+                             Elevation="@(Layout == FormLayout.Executive ? 4 : 2)" />
+                </div>
+            }
+            else
+            {
+                <div class="r-form-actions flex gap-3 justify-end mt-4">
+                    @if (ShowCancelButton)
+                    {
+                        <RButton Text="@CancelText" 
+                                 Variant="ButtonVariant.Secondary" 
+                                 Disabled="@IsCancelButtonDisabled()"
+                                 OnClick="@HandleCancel" />
+                    }
+                    <RButton Text="@GetSubmitButtonText()" 
+                             Variant="ButtonVariant.Primary" 
+                             Type="ButtonType.Submit"
+                             Size="@SubmitButtonSize"
+                             Loading="@IsSubmitButtonLoading()"
+                             Disabled="@IsSubmitButtonDisabled()"
+                             FullWidth="@SubmitButtonFullWidth"
+                             Elevation="@(Layout == FormLayout.Executive ? 4 : 2)" />
+                </div>
+            }
         }
     </EditForm>
 
@@ -136,46 +156,27 @@
 </CascadingValue>
 
 @code {
+    // TModel-specific parameters (not inherited from base)
     [Parameter] [AIParameter("Data model bound to the form", Example = "userModel")] public TModel Model { get; set; } = default!;
     [Parameter] [AIParameter("Callback when model data changes", Example = "OnModelChanged")] public EventCallback<TModel> ModelChanged { get; set; }
     
-    // Form Configuration
-    [Parameter] [AIParameter("Validation strategy (DataAnnotations, Custom, Hybrid)", Example = "ValidationMode.DataAnnotations")] public ValidationMode ValidationMode { get; set; } = ValidationMode.DataAnnotations;
-    [Parameter] [AIParameter("Form layout style (Default, Executive, Modal, Compact)", Example = "FormLayout.Executive")] public FormLayout Layout { get; set; } = FormLayout.Default;
-    [Parameter] [AIParameter("Form spacing density (Comfortable, Dense, UltraDense)", Example = "FormDensity.Comfortable")] public FormDensity Density { get; set; } = FormDensity.Comfortable;
-    [Parameter] [AIParameter("Form configuration options", Example = "new FormOptions { SuccessMessage = \"Saved!\" }")] public FormOptions Options { get; set; } = new();
-    
-    // Content Areas
-    [Parameter] public RenderFragment? ChildContent { get; set; }
-    [Parameter] public RenderFragment? FormFields { get; set; }
+    // Additional content areas specific to generic form
     [Parameter] public RenderFragment? FormActions { get; set; }
     
-    // Header
-    [Parameter] [AIParameter("Form title displayed in header", Example = "User Registration")] public string? Title { get; set; }
-    [Parameter] [AIParameter("Form description or instructions", Example = "Please fill in all required fields")] public string? Description { get; set; }
-    [Parameter] [AIParameter("Icon displayed next to form title", Example = "person_add")] public string? Icon { get; set; }
-    [Parameter] [AIParameter("Whether to show the form header section", Example = "true")] public bool ShowFormHeader { get; set; } = true;
+    // Strongly typed events (for explicit generic usage - backward compatibility)
+    [Parameter] [AIParameter("Called when form is submitted with valid data", Example = "HandleValidSubmit")] public EventCallback<FormSubmissionEventArgs<TModel>> OnValidSubmitTyped { get; set; }
+    [Parameter] [AIParameter("Called when form is submitted with invalid data", Example = "HandleInvalidSubmit")] public EventCallback<FormSubmissionEventArgs<TModel>> OnInvalidSubmitTyped { get; set; }
+    [Parameter] [AIParameter("Called when form state changes (submitting, success, error)", Example = "OnFormStateChanged")] public EventCallback<FormStateChangedEventArgs> OnStateChangedTyped { get; set; }
     
-    // Actions
-    [Parameter] [AIParameter("Show default submit/cancel buttons", Example = "true")] public bool ShowDefaultActions { get; set; } = true;
-    [Parameter] [AIParameter("Show cancel button alongside submit", Example = "true")] public bool ShowCancelButton { get; set; } = false;
-    [Parameter] [AIParameter("Text for the submit button", Example = "Save Changes")] public string SubmitText { get; set; } = "Submit";
-    [Parameter] [AIParameter("Text for the cancel button", Example = "Cancel")] public string CancelText { get; set; } = "Cancel";
-    [Parameter] [AIParameter("Require validation before allowing submission", Example = "true")] public bool RequireValidation { get; set; } = true;
-    [Parameter] public bool SubmitButtonFullWidth { get; set; } = false;
-    [Parameter] [AIParameter("Size of the submit button", Example = "ButtonSize.Large")] public ButtonSize SubmitButtonSize { get; set; } = ButtonSize.Medium;
-    
-    // Events
-    [Parameter] [AIParameter("Called when form is submitted with valid data", Example = "HandleValidSubmit")] public EventCallback<FormSubmissionEventArgs<TModel>> OnValidSubmit { get; set; }
-    [Parameter] [AIParameter("Called when form is submitted with invalid data", Example = "HandleInvalidSubmit")] public EventCallback<FormSubmissionEventArgs<TModel>> OnInvalidSubmit { get; set; }
-    [Parameter] [AIParameter("Called when form state changes (submitting, success, error)", Example = "OnFormStateChanged")] public EventCallback<FormStateChangedEventArgs> OnStateChanged { get; set; }
-    [Parameter] public EventCallback OnCancel { get; set; }
+    // Object-based events (for smart wrapper compatibility) 
+    [Parameter] public EventCallback<object> OnValidSubmitObject { get; set; }
+    [Parameter] public EventCallback<object> OnInvalidSubmitObject { get; set; }
+    [Parameter] public EventCallback<object> OnStateChangedObject { get; set; }
     
     // Validation
-    [Parameter] public FormValidationDelegate<TModel>? CustomValidator { get; set; }
+    [Parameter] public FormValidationDelegate<TModel>? CustomValidatorTyped { get; set; }
     
     // Styling
-    [Parameter] public string? Class { get; set; }
     [Parameter] public string? AriaLabel { get; set; }
     
     // State
@@ -223,6 +224,9 @@
             throw new ArgumentNullException(nameof(Model), "Model is required for RForm component");
         }
         
+        // Initialize Options if null
+        Options ??= new FormOptions();
+        
         AriaLabel ??= Title ?? "Form";
         
         // Initialize with a clean validation state - don't run validation until needed
@@ -259,7 +263,28 @@
         {
             var args = new FormSubmissionEventArgs<TModel>(Model, validation);
             
-            if (OnValidSubmit.HasDelegate)
+            // Handle callbacks - try object-based first (for smart wrapper), then strongly typed, then base class
+            if (OnValidSubmitObject.HasDelegate)
+            {
+                await OnValidSubmitObject.InvokeAsync(args);
+                
+                if (args.Cancel)
+                {
+                    await SetStateAsync(FormState.Ready);
+                    return;
+                }
+            }
+            else if (OnValidSubmitTyped.HasDelegate)
+            {
+                await OnValidSubmitTyped.InvokeAsync(args);
+                
+                if (args.Cancel)
+                {
+                    await SetStateAsync(FormState.Ready);
+                    return;
+                }
+            }
+            else if (OnValidSubmit.HasDelegate)
             {
                 await OnValidSubmit.InvokeAsync(args);
                 
@@ -313,7 +338,16 @@
         
         var args = new FormSubmissionEventArgs<TModel>(Model, validationResult);
         
-        if (OnInvalidSubmit.HasDelegate)
+        // Handle callbacks - try object-based first (for smart wrapper), then strongly typed, then base class
+        if (OnInvalidSubmitObject.HasDelegate)
+        {
+            await OnInvalidSubmitObject.InvokeAsync(args);
+        }
+        else if (OnInvalidSubmitTyped.HasDelegate)
+        {
+            await OnInvalidSubmitTyped.InvokeAsync(args);
+        }
+        else if (OnInvalidSubmit.HasDelegate)
         {
             await OnInvalidSubmit.InvokeAsync(args);
         }
@@ -369,9 +403,9 @@
             // Custom validation
             if (ValidationMode == ValidationMode.Custom || ValidationMode == ValidationMode.Hybrid)
             {
-                if (CustomValidator != null)
+                if (CustomValidatorTyped != null)
                 {
-                    var customResult = await CustomValidator(Model);
+                    var customResult = await CustomValidatorTyped(Model);
                     
                     // Merge custom validation results
                     foreach (var fieldError in customResult.FieldErrors)
@@ -427,7 +461,12 @@
         var previousState = State;
         State = newState;
         
-        if (OnStateChanged.HasDelegate)
+        if (OnStateChangedTyped.HasDelegate)
+        {
+            var args = new FormStateChangedEventArgs(previousState, newState);
+            await OnStateChangedTyped.InvokeAsync(args);
+        }
+        else if (OnStateChanged.HasDelegate)
         {
             var args = new FormStateChangedEventArgs(previousState, newState);
             await OnStateChanged.InvokeAsync(args);
@@ -500,7 +539,7 @@
         };
     }
     
-    private FormValidationContext GetValidationContext()
+    private FormValidationContext GetFormValidationContext()
     {
         return new FormValidationContext
         {
