@@ -168,27 +168,22 @@
         @if (!string.IsNullOrEmpty(Text) && Variant == FieldVariant.FloatingLabel)
         {
             <label class="form-field-label @GetFloatingLabelClasses()" for="@InputId">
-                @Text
-                @if (Required && ShowRequiredIndicator)
-                {
-                    <span class="text-error ml-1">*</span>
-                }
+                @Text@if (Required && ShowRequiredIndicator){<span class="text-error">*</span>}
             </label>
         }
         
-        @if (!string.IsNullOrEmpty(EndIcon) && Type != FieldType.Select)
+        @* End Icon or Loading spinner (mutually exclusive) *@
+        @if (Loading)
+        {
+            <div class="form-field-icon form-field-icon-loading">
+                <i class="material-symbols-rounded @GetIconSizeClass() animate-spin">progress_activity</i>
+            </div>
+        }
+        else if (!string.IsNullOrEmpty(EndIcon) && Type != FieldType.Select)
         {
             <div class="form-field-icon icon-interactive @(OnEndIconClick.HasDelegate ? "clickable" : "")" 
                  @onclick="HandleEndIconClick">
                 <i class="material-symbols-rounded @GetIconSizeClass()">@EndIcon</i>
-            </div>
-        }
-        
-        @* Loading spinner *@
-        @if (Loading)
-        {
-            <div class="form-field-icon icon-muted">
-                <i class="material-symbols-rounded @GetIconSizeClass() animate-spin">progress_activity</i>
             </div>
         }
     </div>
@@ -196,7 +191,7 @@
     @* Error Message *@
     @if (IsInErrorState && !string.IsNullOrEmpty(GetEffectiveErrorMessage()))
     {
-        <div class="form-field-input-error">
+        <div class="form-field-error">
             <i class="material-symbols-rounded">error</i>
             @GetEffectiveErrorMessage()
         </div>
@@ -208,11 +203,11 @@
         <div class="form-field-help @GetHelpClasses()">
             @if (!string.IsNullOrEmpty(HelpText))
             {
-                <span class="form-field-help">@HelpText</span>
+                <span class="form-field-help-text">@HelpText</span>
             }
             @if (ShowCharacterCount && MaxLength > 0)
             {
-                <span class="form-field-help @GetCharacterCountClasses()">
+                <span class="form-field-help-counter @GetCharacterCountClasses()">
                     @(Value?.Length ?? 0) / @MaxLength
                 </span>
             }
@@ -454,6 +449,12 @@
     {
         // Update hasValue when parameters change
         hasValue = !string.IsNullOrEmpty(Value) || (Type == FieldType.Checkbox && Checked);
+        
+        // Ensure floating label state is updated for pre-filled values
+        if (Variant == FieldVariant.FloatingLabel && hasValue)
+        {
+            StateHasChanged();
+        }
     }
     
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -537,7 +538,7 @@
         // State classes
         if (IsInErrorState)
         {
-            classes.Add("form-field-input-error");
+            classes.Add("form-field-error-state");
         }
         else if (!string.IsNullOrEmpty(Value) && !IsInErrorState)
         {
@@ -592,7 +593,7 @@
         {
             classes.Add("form-field-floating-label");
             
-            if (hasValue || !string.IsNullOrEmpty(Value))
+            if (!string.IsNullOrEmpty(Value) || (Type == FieldType.Checkbox && Checked))
             {
                 classes.Add("form-field-has-value");
             }
@@ -634,7 +635,7 @@
     
     private string GetPlaceholderText()
     {
-        // Use a single space for floating label variant to enable CSS :not(:placeholder-shown) selector
+        // Use single space for floating label variant to enable CSS :not(:placeholder-shown) selector
         return Variant == FieldVariant.FloatingLabel ? " " : Placeholder;
     }
     
@@ -881,7 +882,8 @@
         hasValue = !string.IsNullOrEmpty(newValue);
         await ValueChanged.InvokeAsync(newValue);
         
-        // CSS handles floating label state
+        // Force state update for floating label
+        StateHasChanged();
     }
     
     private async Task HandleInput(ChangeEventArgs e)
@@ -906,7 +908,8 @@
             await TriggerDebouncedValidation();
         }
         
-        // CSS handles floating label state
+        // Force state update for floating label
+        StateHasChanged();
     }
     
     private async Task HandleCheckboxChange(ChangeEventArgs e)
@@ -927,7 +930,8 @@
         // Don't mark as user interacted on focus - only on blur or value change
         await OnFocus.InvokeAsync(e);
         
-        // CSS handles floating label state
+        // Force state update for floating label
+        StateHasChanged();
     }
     
     private async Task HandleBlur(FocusEventArgs e)
@@ -942,7 +946,8 @@
             await TriggerImmediateValidation();
         }
         
-        // CSS handles floating label state
+        // Force state update for floating label
+        StateHasChanged();
     }
     
     private async Task HandleKeyDown(KeyboardEventArgs e)

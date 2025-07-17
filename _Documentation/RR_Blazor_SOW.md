@@ -99,6 +99,40 @@ Projects achieve custom styling through utility composition and CSS custom prope
 3. **Use existing mixins** - Review `RR.Blazor/Styles/abstracts/_mixins.scss`
 4. **Compose first** - Try utility composition before custom CSS
 
+### **Auto-Generated Documentation System**
+
+**RR.Blazor** features an intelligent, auto-generated documentation system that automatically maintains component documentation:
+
+#### **Component Documentation (`rr-ai-components.json`)**
+- **Auto-Generated**: Documentation is automatically generated from component attributes and parameters
+- **AI-Optimized**: Includes AI-specific hints and usage patterns for intelligent development assistance
+- **Structured Format**: Consistent JSON structure with purpose, parameters, and usage examples
+- **Live Updates**: Documentation updates automatically when components are modified
+
+```json
+{
+  "RTooltip": {
+    "Purpose": "Professional tooltip component for contextual information",
+    "Parameters": {
+      "Position": "TooltipPosition[Top, Bottom, Left, Right] - Position hints",
+      "Content": "string - Content description and usage guidance"
+    }
+  }
+}
+```
+
+#### **Style Documentation (`rr-ai-styles.json`)**
+- **Utility Catalog**: Complete catalog of all available utility classes
+- **Pattern Recognition**: Automatically identifies and documents utility patterns
+- **Bracket Notation**: Uses bracket notation for utility variations (e.g., `text-[xs, sm, base, lg]`)
+- **AI Integration**: Optimized for AI-powered development tools and code completion
+
+#### **Documentation Maintenance**
+- **Zero Manual Updates**: No need to manually update documentation when adding components
+- **Consistent Structure**: Enforced documentation patterns across all components
+- **AI-Enhanced**: Includes AI-specific hints and suggestions for optimal usage
+- **Live Validation**: Automatically validates documentation completeness
+
 ```scss
 // ✅ STEP 1: Research existing patterns
 @use 'RR.Blazor/Styles/abstracts' as *;

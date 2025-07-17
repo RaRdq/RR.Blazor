@@ -250,9 +250,9 @@ $componentConstraints = @{
         Description = 'RAccordionItem must be used within RAccordion''s ChildContent'
     }
     'RFormSection' = @{
-        RequiredParent = 'RForm'
+        RequiredParent = @('RForm', 'RFormGeneric')
         Context = 'FormFields'
-        Description = 'RFormSection must be used within RForm''s FormFields'
+        Description = 'RFormSection must be used within RForm''s or RFormGeneric''s FormFields'
     }
 }
 
@@ -267,7 +267,12 @@ function Test-ComponentConstraints {
     
     foreach ($childComponent in $componentConstraints.Keys) {
         $constraint = $componentConstraints[$childComponent]
-        $requiredParent = $constraint.RequiredParent
+        $requiredParents = $constraint.RequiredParent
+        
+        # Ensure it's an array
+        if ($requiredParents -is [string]) {
+            $requiredParents = @($requiredParents)
+        }
         
         # Find all instances of child component
         $childPattern = "(?s)<$childComponent[^>]*(?:/>|>.*?</$childComponent>)"
@@ -277,18 +282,26 @@ function Test-ComponentConstraints {
             $childStart = $childMatch.Index
             $childEnd = $childMatch.Index + $childMatch.Length
             
-            # Look for parent component that contains this child
-            $parentPattern = "(?s)<$requiredParent[^>]*>.*?</$requiredParent>"
-            $parentMatches = [regex]::Matches($Content, $parentPattern)
-            
             $foundValidParent = $false
-            foreach ($parentMatch in $parentMatches) {
-                $parentStart = $parentMatch.Index
-                $parentEnd = $parentMatch.Index + $parentMatch.Length
+            
+            # Check each possible parent type
+            foreach ($requiredParent in $requiredParents) {
+                # Look for parent component that contains this child
+                $parentPattern = "(?s)<$requiredParent[^>]*>.*?</$requiredParent>"
+                $parentMatches = [regex]::Matches($Content, $parentPattern)
                 
-                # Check if child is within parent boundaries
-                if ($childStart -ge $parentStart -and $childEnd -le $parentEnd) {
-                    $foundValidParent = $true
+                foreach ($parentMatch in $parentMatches) {
+                    $parentStart = $parentMatch.Index
+                    $parentEnd = $parentMatch.Index + $parentMatch.Length
+                    
+                    # Check if child is within parent boundaries
+                    if ($childStart -ge $parentStart -and $childEnd -le $parentEnd) {
+                        $foundValidParent = $true
+                        break
+                    }
+                }
+                
+                if ($foundValidParent) {
                     break
                 }
             }

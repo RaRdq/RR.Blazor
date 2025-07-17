@@ -43,109 +43,234 @@
   @extend %form-group-base;
   
   // Density variants using extends
-  &.form-field-comfortable {
+  &-comfortable {
     @extend %form-field-comfortable;
   }
   
-  &.form-field-dense {
+  &-dense {
     @extend %form-field-dense;
   }
   
-  &.form-field-ultra-dense {
+  &-ultra-dense {
     @extend %form-field-ultra-dense;
   }
   
-  // Floating label wrapper styles - RFormField specific with CSS-driven state detection
-  .form-field-wrapper.form-field-floating-label {
+  // Floating label wrapper styles - Professional Material Design 3 implementation
+  &-wrapper {
     position: relative;
+    display: flex;
+    align-items: center;
     
-    .form-field-input {
-      padding-top: var(--space-5); // Extra space for floating label
-      padding-bottom: var(--space-4);
+    &.form-field-floating-label {
+      position: relative;
       
-      // Floating label specific placeholder handling
-      &::placeholder {
-        opacity: 0; // Hide placeholder when floating label is used
-        transition: opacity 0.2s ease-in-out;
+      .form-field-input {
+        padding-top: var(--space-5); // 20px - space for floating label (reduced)
+        padding-bottom: var(--space-2); // 8px - consistent with non-floating (reduced)
+        
+        // Floating label specific placeholder handling
+        &::placeholder {
+          opacity: 0; // Hide placeholder until label floats
+          transition: opacity 300ms var(--ease-out);
+        }
+        
+        // Show placeholder when focused and label is floating
+        &:focus::placeholder {
+          opacity: 0.6;
+          transition-delay: 150ms;
+        }
+        
+        // Material Design 3 floating label positioning and animation
+        &:focus,
+        &:not(:placeholder-shown) {
+          ~ .form-field-label {
+            top: -0.75rem; // Position OUTSIDE input field border - float above border
+            left: var(--space-3);
+            transform: translateY(0) scale(0.75); // Scale down to 75%
+            color: var(--color-interactive-primary);
+            font-weight: var(--font-medium);
+            background: linear-gradient(to bottom, transparent 40%, var(--color-background-primary) 40%, var(--color-background-primary) 60%, transparent 60%);
+            padding: 0 var(--space-1);
+            z-index: 10; // Ensure label is above input border
+            border-radius: 0;
+          }
+        }
+        
+        // Also trigger floating when input has value attribute or is not empty
+        &[value]:not([value=""]) {
+          ~ .form-field-label {
+            top: -0.75rem;
+            left: var(--space-3);
+            transform: translateY(0) scale(0.75);
+            color: var(--color-text-primary);
+            font-weight: var(--font-medium);
+            background: var(--color-background-primary);
+            padding: 0 var(--space-1);
+            z-index: 10;
+            border-radius: var(--radius-sm);
+          }
+        }
+        
+        // Enhanced focus state with proper Material Design 3 colors
+        &:focus ~ .form-field-label {
+          color: var(--color-interactive-primary);
+        }
+        
+        // Error state floating label
+        &:invalid ~ .form-field-label {
+          color: var(--color-error);
+        }
       }
       
-      // Show placeholder when focused and label is floating
-      &:focus::placeholder {
-        opacity: 0.6;
-        transition-delay: 0.2s;
+      .form-field-label {
+        position: absolute;
+        left: var(--space-4); // Start inside input field
+        top: 50%;
+        transform: translateY(-50%) scale(1); // Start at full size
+        color: var(--color-text-secondary);
+        font-size: var(--text-base);
+        font-weight: var(--font-normal);
+        pointer-events: none;
+        transition: all 300ms var(--ease-out); // Smooth Material Design 3 transition
+        z-index: 10;
+        transform-origin: top left; // Scale from top-left corner
+        line-height: 1.2; // Consistent line height
+        white-space: nowrap; // Prevent text wrapping
+        max-width: calc(100% - var(--space-8)); // Prevent overflow
+        overflow: hidden;
+        text-overflow: ellipsis;
+        background: transparent; // No background by default
+        padding: 0; // No padding by default
       }
-    }
-    
-    .form-field-label {
-      position: absolute;
-      left: var(--space-3);
-      top: 50%;
-      transform: translateY(-50%);
-      color: var(--color-text-secondary);
-      font-size: var(--text-base);
-      font-weight: var(--font-normal);
-      pointer-events: none;
-      transition: all var(--transition-fast) var(--ease-out);
-      z-index: 10;
-      background: var(--color-background-primary);
-      padding: 0 var(--space-1);
-      border-radius: var(--radius-sm);
-    }
-    
-    // CSS-driven floating state detection - much more reliable
-    .form-field-input:focus ~ .form-field-label,
-    .form-field-input:not(:placeholder-shown) ~ .form-field-label {
-      top: 0;
-      transform: translateY(-50%);
-      font-size: var(--text-sm);
-      color: var(--color-text-primary);
-      font-weight: var(--font-medium);
-    }
-    
-    // Enhanced focused state styling
-    .form-field-input:focus ~ .form-field-label {
-      color: var(--color-interactive-primary);
-      text-shadow: 0 0 0 var(--color-background-primary);
-    }
-    
-    // Legacy JavaScript-managed classes for backwards compatibility
-    &.form-field-floating .form-field-label,
-    &.form-field-has-value .form-field-label {
-      top: 0;
-      transform: translateY(-50%);
-      font-size: var(--text-sm);
-      color: var(--color-text-primary);
-      font-weight: var(--font-medium);
-    }
-    
-    &.form-field-floating .form-field-label {
-      color: var(--color-interactive-primary);
-    }
-    
-    // Icon positioning adjustments for different field sizes
-    .form-field-input.form-field-input-with-start-icon ~ .form-field-label {
-      left: var(--space-12); // Match input padding for standard size
-    }
-    
-    // Size-specific icon adjustments - use RR.Blazor semantic variables
-    &[data-field-size="small"] {
-      .form-field-input.form-field-input-with-start-icon ~ .form-field-label {
-        left: var(--space-10);
+      
+      // Legacy JavaScript-managed classes for backwards compatibility
+      &.form-field-floating .form-field-label,
+      &.form-field-has-value .form-field-label {
+        top: -0.75rem;
+        transform: translateY(0) scale(0.75);
+        color: var(--color-text-primary);
+        font-weight: var(--font-medium);
+        background: var(--color-background-primary);
+        padding: 0 var(--space-1);
+        border-radius: var(--radius-sm);
       }
-    }
-    
-    &[data-field-size="large"] {
-      .form-field-input.form-field-input-with-start-icon ~ .form-field-label {
-        left: var(--space-14);
+      
+      &.form-field-floating .form-field-label {
+        color: var(--color-interactive-primary);
+      }
+      
+      // Icon positioning adjustments for different field sizes
+      .form-field-input.form-field-input-with-start-icon {
+        ~ .form-field-label {
+          left: var(--space-12); // Match input padding for standard size
+        }
+        
+        &:focus ~ .form-field-label,
+        &:not(:placeholder-shown) ~ .form-field-label,
+        &[value]:not([value=""]) ~ .form-field-label {
+          left: var(--space-12); // Keep same left position when floating
+        }
+      }
+      
+      // Fix icon positioning for floating label fields
+      .form-field-icon {
+        // Position icons appropriately in floating label context
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 15; // Above floating label
+        
+        // Ensure start icons don't interfere with floating labels
+        &:first-child {
+          left: var(--space-3);
+        }
+        
+        // Ensure end icons don't interfere with floating labels  
+        &:last-child {
+          right: var(--space-3);
+        }
+      }
+      
+      // Size-specific adjustments - use RR.Blazor semantic variables
+      &[data-field-size="small"] {
+        .form-field-input {
+          padding-top: var(--space-4); // Adjust for smaller field
+          padding-bottom: var(--space-2);
+          min-height: 2.5rem;
+          
+          &.form-field-input-with-start-icon ~ .form-field-label {
+            left: var(--space-10);
+          }
+          
+          &:focus ~ .form-field-label,
+          &:not(:placeholder-shown) ~ .form-field-label,
+          &[value]:not([value=""]) ~ .form-field-label {
+            top: -0.625rem; // Adjust for smaller field - float above border
+          }
+        }
+        
+        .form-field-icon {
+          font-size: var(--text-sm);
+          
+          &:first-child {
+            left: var(--space-2-5); // Adjust for smaller field
+          }
+          
+          &:last-child {
+            right: var(--space-2-5);
+          }
+        }
+      }
+      
+      &[data-field-size="medium"] {
+        .form-field-input {
+          padding-top: var(--space-5); // Medium field spacing
+          padding-bottom: var(--space-2);
+          min-height: 3rem; // Smaller than default
+          
+          &.form-field-input-with-start-icon ~ .form-field-label {
+            left: var(--space-12);
+          }
+          
+          &:focus ~ .form-field-label,
+          &:not(:placeholder-shown) ~ .form-field-label,
+          &[value]:not([value=""]) ~ .form-field-label {
+            top: -0.7rem; // Adjust for medium field
+          }
+        }
+      }
+      
+      &[data-field-size="large"] {
+        .form-field-input {
+          padding-top: var(--space-7); // Adjust for larger field
+          
+          &.form-field-input-with-start-icon ~ .form-field-label {
+            left: var(--space-14);
+          }
+          
+          &:focus ~ .form-field-label,
+          &:not(:placeholder-shown) ~ .form-field-label,
+          &[value]:not([value=""]) ~ .form-field-label {
+            top: -0.875rem; // Adjust for larger field - float above border
+          }
+        }
+        
+        .form-field-icon {
+          font-size: var(--text-lg);
+          
+          &:first-child {
+            left: var(--space-4); // Adjust for larger field  
+          }
+          
+          &:last-child {
+            right: var(--space-4);
+          }
+        }
       }
     }
   }
   
-  // Form field wrapper - use the definition from _inputs.scss
-  // Removed duplicate definition to prevent conflicts
-  
-  // Form field icon - use RR.Blazor utility-first system
-  .form-field-icon {
+  // Form field icon - use RR.Blazor utility-first system (global positioning)
+  &-icon {
     @extend %icon-base;
     position: absolute;
     top: 50%;
@@ -153,6 +278,12 @@
     z-index: 2;
     color: var(--color-text-secondary);
     pointer-events: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--icon-base);
+    width: var(--icon-base);
+    height: var(--icon-base);
     
     &.icon-interactive {
       &.clickable {
@@ -173,35 +304,88 @@
     &:last-child {
       right: var(--space-3);
     }
+    
+    // Ensure Material Symbols are centered
+    .material-symbols-rounded {
+      line-height: 1;
+      vertical-align: middle;
+    }
+    
+    // Loading icon styling
+    &-loading {
+      position: absolute;
+      top: 50%;
+      right: var(--space-3);
+      transform: translateY(-50%);
+      z-index: 15;
+      color: var(--color-text-secondary);
+      pointer-events: none;
+    }
   }
   
   // Size variants - use RR.Blazor semantic variables
-  &.form-field-sm .form-field-input {
-    height: 2.5rem;
-    padding: var(--space-2) var(--space-3);
-    font-size: var(--text-sm);
+  &-sm {
+    .form-field-input {
+      min-height: 2.5rem;
+      padding: var(--space-2) var(--space-3);
+      font-size: var(--text-sm);
+      line-height: 1.4;
+    }
+    
+    .form-field-icon {
+      font-size: var(--text-sm);
+      width: var(--text-sm);
+      height: var(--text-sm);
+      
+      &:first-child {
+        left: var(--space-2-5);
+      }
+      
+      &:last-child {
+        right: var(--space-2-5);
+      }
+    }
   }
   
-  &.form-field-lg .form-field-input {
-    height: 3.5rem;
-    padding: var(--space-4) var(--space-5);
-    font-size: var(--text-lg);
+  &-lg {
+    .form-field-input {
+      min-height: 3.5rem;
+      padding: var(--space-4) var(--space-5);
+      font-size: var(--text-lg);
+      line-height: 1.6;
+    }
+    
+    .form-field-icon {
+      font-size: var(--text-lg);
+      width: var(--text-lg);
+      height: var(--text-lg);
+      
+      &:first-child {
+        left: var(--space-4);
+      }
+      
+      &:last-child {
+        right: var(--space-4);
+      }
+    }
   }
   
   // Valid state styling
-  &.form-field-valid .form-field-input {
-    border-color: var(--color-success);
+  &-valid {
+    .form-field-input {
+      border-color: var(--color-success);
+    }
   }
   
   // Help text
   &-help {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    margin-top: var(--space-1);
     font-size: var(--text-xs);
     color: var(--color-text-secondary);
-    margin-top: var(--space-1);
-    padding: var(--space-2) var(--space-3);
-    background: var(--color-background-secondary);
-    border-radius: var(--radius-sm);
-    border: var(--border-1) solid var(--color-border-light);
     
     &-error {
       color: var(--color-error);
@@ -210,60 +394,72 @@
     &-warning {
       color: var(--color-warning);
     }
-  }
-}
-
-// Form label
-.form-field-label {
-  display: block;
-  font-size: var(--text-sm);
-  font-weight: var(--font-medium);
-  color: var(--color-text-primary);
-  margin-bottom: var(--space-2);
-  
-  &.form-field-label-required::after {
-    content: '*';
-    color: var(--color-error);
-    margin-left: var(--space-1);
-  }
-  
-  &.form-field-label-optional::after {
-    content: ' (optional)';
-    color: var(--color-text-secondary);
-    font-weight: var(--font-normal);
+    
+    // Help text content
+    &-text {
+      flex: 1;
+      color: var(--color-text-tertiary);
+      font-size: var(--text-xs);
+    }
+    
+    // Character counter
+    &-counter {
+      flex-shrink: 0;
+      font-size: var(--text-xs);
+      color: var(--color-text-tertiary);
+      text-align: right;
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+    }
   }
   
-  // Size variants
-  &.form-field-label-sm {
-    font-size: var(--text-xs);
+  // Form label
+  &-label {
+    display: block;
+    font-size: var(--text-sm);
+    font-weight: var(--font-medium);
+    color: var(--color-text-primary);
+    margin-bottom: var(--space-2);
+    
+    &-required::after {
+      content: '*';
+      color: var(--color-error);
+      margin-left: var(--space-1);
+    }
+    
+    &-optional::after {
+      content: ' (optional)';
+      color: var(--color-text-secondary);
+      font-weight: var(--font-normal);
+    }
+    
+    // Size variants
+    &-sm {
+      font-size: var(--text-xs);
+    }
+    
+    &-lg {
+      font-size: var(--text-base);
+    }
   }
   
-  &.form-field-label-lg {
+  // Form input
+  &-input {
+    @extend %input-base-style;
+    display: block;
+    width: 100%;
+    min-height: 3rem; // Reduced from 3.5rem to 3rem for more compact default
+    padding: var(--space-3) var(--space-4); // Reduced vertical padding
     font-size: var(--text-base);
-  }
-}
-
-// Standalone form-label utility for compatibility
-.form-label {
-  @extend .form-field-label;
-}
-
-// Form input
-.form-field-input {
-  @extend %input-base-style;
-  display: block;
-  width: 100%;
-  min-height: 3.5rem;
-  padding: var(--space-4) var(--space-4);
-  font-size: var(--text-base);
-  font-weight: var(--font-normal);
-  color: var(--color-text-primary);
-  background: var(--color-background-elevated);
-  border: var(--border-1) solid var(--color-border-medium);
-  border-radius: var(--radius-lg);
-  outline: none;
-  transition: all var(--duration-normal) var(--ease-out);
-  line-height: 1.5;
+    font-weight: var(--font-normal);
+    color: var(--color-text-primary);
+    background: var(--color-background-elevated);
+    border: var(--border-1) solid var(--color-border-medium);
+    border-radius: var(--radius-lg);
+    outline: none;
+    transition: all var(--duration-normal) var(--ease-out);
+    line-height: 1.5;
+    vertical-align: middle;
   
   // Mobile-first responsive design
   @include responsive-max(md) {
@@ -305,7 +501,6 @@
   }
   
   // Error states with improved visual feedback
-  &.form-field-input-error,
   &:invalid {
     border-color: var(--color-error);
     background: var(--color-error-bg);
@@ -323,7 +518,7 @@
   }
   
   // Valid state styling with improved feedback
-  &:valid:not(:placeholder-shown):not(.form-field-input-error) {
+  &:valid:not(:placeholder-shown):not(:invalid) {
     border-color: var(--color-success);
     
     &:focus {
@@ -342,54 +537,104 @@
   
   // Size variants
   &.form-field-input-sm {
-    height: 2.5rem;
+    min-height: 2.5rem;
     padding: var(--space-2) var(--space-3);
     font-size: var(--text-sm);
+    line-height: 1.4;
+    
+    &.form-field-input-with-start-icon {
+      padding-left: var(--space-10);
+    }
+    
+    &.form-field-input-with-end-icon {
+      padding-right: var(--space-10);
+    }
   }
   
   &.form-field-input-lg {
-    height: 3.5rem;
+    min-height: 3.5rem;
     padding: var(--space-4) var(--space-5);
     font-size: var(--text-lg);
+    line-height: 1.6;
+    
+    &.form-field-input-with-start-icon {
+      padding-left: var(--space-14);
+    }
+    
+    &.form-field-input-with-end-icon {
+      padding-right: var(--space-14);
+    }
   }
   
   // Icon spacing - use RR.Blazor semantic variables
   &.form-field-input-with-start-icon {
     padding-left: var(--space-12);
+    text-align: left;
   }
   
   &.form-field-input-with-end-icon {
     padding-right: var(--space-12);
   }
   
-  // Autofill styling
-  &:-webkit-autofill,
-  &:-webkit-autofill:hover,
-  &:-webkit-autofill:focus {
-    -webkit-box-shadow: 0 0 0 30px var(--color-background-elevated) inset;
-    -webkit-text-fill-color: var(--color-text-primary);
-    border-color: var(--color-border-light);
-    transition: background-color 5000s ease-in-out 0s;
+    // Autofill styling
+    &:-webkit-autofill,
+    &:-webkit-autofill:hover,
+    &:-webkit-autofill:focus {
+      -webkit-box-shadow: 0 0 0 30px var(--color-background-elevated) inset;
+      -webkit-text-fill-color: var(--color-text-primary);
+      border-color: var(--color-border-light);
+      transition: background-color 5000s ease-in-out 0s;
+    }
+  }
+  
+  // Error display
+  &-error {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-1);
+    margin-top: var(--space-1);
+    font-size: var(--text-xs);
+    color: var(--color-error);
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    max-width: 100%;
+    
+    i {
+      font-size: var(--text-sm);
+      flex-shrink: 0;
+      margin-top: 0.1em;
+    }
+  }
+
+
+  // Icon loading state
+  &-icon-loading {
+    .material-symbols-rounded {
+      animation: spin 1s linear infinite;
+    }
+  }
+
+  // Error state for field container
+  &-error-state {
+    .form-field-input {
+      border-color: var(--color-error);
+      background: var(--color-error-bg);
+      
+      &:focus {
+        border-color: var(--color-error);
+        box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+      }
+    }
+    
+    .form-field-label {
+      color: var(--color-error);
+    }
   }
 }
 
-// Error display
-.form-field-input-error {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-1);
-  margin-top: var(--space-1);
-  font-size: var(--text-xs);
-  color: var(--color-error);
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-  max-width: 100%;
-  
-  i {
-    font-size: var(--text-sm);
-    flex-shrink: 0;
-    margin-top: 0.1em;
-  }
+// Standalone form-label utility for compatibility
+.form-label {
+  @extend .form-field-label;
 }
 
 // Form layout utilities
@@ -436,4 +681,55 @@
     flex-direction: column;
     gap: var(--space-3);
   }
+}
+
+// Standalone form-field classes for direct usage
+.form-field-error {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--color-error);
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  max-width: 100%;
+  
+  i {
+    font-size: var(--text-sm);
+    flex-shrink: 0;
+    margin-top: 0.1em;
+  }
+}
+
+.form-field-help-text {
+  flex: 1;
+  color: var(--color-text-tertiary);
+  font-size: var(--text-xs);
+}
+
+.form-field-help-counter {
+  flex-shrink: 0;
+  color: var(--color-text-tertiary);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--text-xs);
+}
+
+.form-field-icon-loading {
+  position: absolute;
+  top: 50%;
+  right: var(--space-3);
+  transform: translateY(-50%);
+  z-index: 15;
+  color: var(--color-text-secondary);
+  pointer-events: none;
+  
+  .material-symbols-rounded {
+    animation: spin 1s linear infinite;
+  }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }

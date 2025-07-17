@@ -298,6 +298,7 @@ $tab-variants: (
     @extend %button-base;
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: var(--space-2);
     border-radius: var(--radius-2xl);
     color: var(--color-text-secondary);
@@ -311,6 +312,7 @@ $tab-variants: (
     min-width: fit-content;
     overflow: hidden;
     text-overflow: ellipsis;
+    text-align: center;
     
     // Mobile-first default (medium) size
     height: map.get($tab-sizes, 'medium', 'height');
@@ -358,6 +360,13 @@ $tab-variants: (
       z-index: 1;
     }
     
+    // Text content alignment
+    & > span {
+      display: flex;
+      align-items: center;
+      line-height: 1;
+    }
+    
     // Icon positioning with consistent spacing
     &-icon {
       font-size: var(--icon-base);
@@ -365,37 +374,50 @@ $tab-variants: (
       flex-shrink: 0;
       color: inherit;
       transition: color var(--duration-fast) var(--ease-out);
+      display: flex;
+      align-items: center;
+      justify-content: center;
       
-      &-start { margin-right: var(--space-1); }
-      &-end { margin-left: var(--space-1); }
+      &-start { 
+        margin-right: var(--space-1); 
+      }
+      &-end { 
+        margin-left: var(--space-1); 
+      }
     }
     
     // Badge system with semantic variants
     &-badge {
       @extend %badge-base;
       margin-left: var(--space-2);
-      padding: var(--space-1) var(--space-2);
-      font-size: var(--text-xs);
+      padding: var(--space-0-5) var(--space-2);
+      font-size: var(--text-2xs);
       font-weight: var(--font-medium);
       background: var(--color-background-secondary);
       color: var(--color-text-secondary);
       border-radius: var(--radius-full);
       line-height: 1;
       min-width: 1.25rem;
+      height: 1.25rem;
       text-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      align-self: center;
       
       // Semantic variant colors
       &-danger {
-        background: var(--color-danger);
-        color: var(--color-text-on-primary);
+        background: var(--color-error);
+        color: var(--color-text-inverse);
       }
       &-warning {
         background: var(--color-warning);
-        color: var(--color-text-on-primary);
+        color: var(--color-text-inverse);
       }
       &-success {
         background: var(--color-success);
-        color: var(--color-text-on-primary);
+        color: var(--color-text-inverse);
       }
     }
     
@@ -459,10 +481,11 @@ $tab-variants: (
     // Active/Selected state with theme awareness
     &-active,
     &.active {
-      color: var(--color-interactive-primary);
+      color: var(--color-text-primary);
       background: transparent;
       box-shadow: none;
       position: relative;
+      font-weight: var(--font-medium);
       
       // Enhanced active underline
       &::after {
@@ -545,14 +568,17 @@ $tab-variants: (
     color: var(--color-text-primary);
     position: relative;
     overflow: visible;
+    min-height: 200px; // Ensure space for animations
     
     // Mobile-first responsive padding
     @include responsive-max(md) {
       padding: var(--space-4);
+      min-height: 150px;
     }
     
     @include responsive-max(sm) {
       padding: var(--space-3);
+      min-height: 100px;
     }
     
     &-no-padding {
@@ -561,24 +587,31 @@ $tab-variants: (
   }
   
   &-panel {
-    display: none;
+    position: absolute;
+    top: 0;
+    left: 0;
     width: 100%;
     opacity: 0;
     transform: translateY(8px);
-    transition: all var(--duration-fast) var(--ease-out);
+    transition: all var(--duration-normal) var(--ease-out);
     height: auto;
     overflow: visible;
     box-sizing: border-box;
+    pointer-events: none;
+    visibility: hidden;
     
     // Mobile-first optimized transitions
     @include responsive-max(md) {
       transform: translateY(4px);
+      transition: all var(--duration-fast) var(--ease-out);
     }
     
     &-active {
-      display: block;
+      position: relative;
       opacity: 1;
       transform: translateY(0);
+      pointer-events: auto;
+      visibility: visible;
     }
     
     &-fade-only {
@@ -601,6 +634,23 @@ $tab-variants: (
         background: var(--glass-bg-medium);
         backdrop-filter: blur(var(--blur-lg));
         border: var(--border-1) solid var(--glass-border-light);
+        
+        // Ensure proper contrast for glass variant
+        .tabs-tab {
+          &-active {
+            color: var(--color-text-primary);
+            background: var(--glass-bg-light);
+            backdrop-filter: blur(var(--blur-md));
+            border: var(--border-1) solid var(--glass-border-medium);
+            font-weight: var(--font-medium);
+            
+            &::after {
+              height: 2px;
+              background: var(--color-interactive-primary);
+              box-shadow: 0 0 6px color-mix(in srgb, var(--color-interactive-primary) 40%, transparent);
+            }
+          }
+        }
       }
       @if $variant-name == 'pills' {
         .tabs-nav {
@@ -615,9 +665,20 @@ $tab-variants: (
           border-radius: var(--radius-full);
           
           &-active {
-            background: var(--color-background-elevated);
-            color: var(--color-text-primary);
+            background: var(--color-interactive-primary);
+            color: var(--color-text-inverse);
             box-shadow: var(--shadow-md);
+            font-weight: var(--font-medium);
+            
+            // Remove the underline for pills variant
+            &::after {
+              display: none;
+            }
+            
+            &:hover {
+              background: var(--color-interactive-primary-hover);
+              color: var(--color-text-inverse);
+            }
           }
         }
         
@@ -637,6 +698,23 @@ $tab-variants: (
           border-radius: 0;
           padding: 0;
           gap: var(--space-6);
+        }
+        
+        // Ensure proper contrast for underline variant
+        @if $variant-name == 'underline' {
+          .tabs-tab {
+            &-active {
+              color: var(--color-text-primary);
+              background: transparent;
+              font-weight: var(--font-semibold);
+              
+              &::after {
+                height: 2px;
+                background: var(--color-interactive-primary);
+                box-shadow: 0 0 4px color-mix(in srgb, var(--color-interactive-primary) 30%, transparent);
+              }
+            }
+          }
         }
       }
       

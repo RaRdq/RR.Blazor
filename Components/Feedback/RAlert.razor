@@ -1,0 +1,332 @@
+@** 
+<summary>
+Alert component for displaying important messages with different severity levels.
+Supports info, success, warning, and error states with consistent styling.
+</summary>
+<category>Feedback</category>
+<complexity>Simple</complexity>
+<ai-prompt>Create alert for important messages</ai-prompt>
+<ai-common-use>notifications, status messages, validation feedback</ai-common-use>
+<ai-avoid>Don't use for regular content - use RCard instead</ai-avoid>
+<ai-pattern name="info-alert">Type="AlertType.Info" for informational messages</ai-pattern>
+<ai-pattern name="success-alert">Type="AlertType.Success" for success messages</ai-pattern>
+<ai-pattern name="warning-alert">Type="AlertType.Warning" for warning messages</ai-pattern>
+<ai-pattern name="error-alert">Type="AlertType.Error" for error messages</ai-pattern>
+**@
+@using RR.Blazor.Enums
+@using RR.Blazor.Attributes
+
+@attribute [Component("RAlert", Category = "Feedback", Complexity = ComponentComplexity.Simple)]
+@attribute [AIOptimized(Prompt = "Create alert for important messages", 
+                       CommonUse = "notifications, status messages, validation feedback", 
+                       AvoidUsage = "Don't use for regular content - use RCard instead")]
+
+@if (isVisible)
+{
+    <div class="alert @GetAlertClasses()" 
+         role="alert"
+         aria-live="@(Type == AlertType.Error ? "assertive" : "polite")"
+         @onclick="HandleClick"
+         @onclick:stopPropagation="StopPropagation">
+        
+        @if (ShowIcon)
+        {
+            <div class="alert-icon flex-shrink-0">
+                <i class="material-symbols-rounded @GetIconClasses()">@GetIcon()</i>
+            </div>
+        }
+        
+        <div class="alert-content flex-1">
+            @if (!string.IsNullOrEmpty(Title))
+            {
+                <div class="alert-title font-semibold @GetTitleClasses()">@Title</div>
+            }
+            
+            @if (!string.IsNullOrEmpty(Message))
+            {
+                <div class="alert-message @GetMessageClasses()">@Message</div>
+            }
+            
+            @if (!string.IsNullOrEmpty(Text))
+            {
+                <div class="alert-text @GetMessageClasses()">@Text</div>
+            }
+            
+            @if (ChildContent != null)
+            {
+                <div class="alert-content-custom">
+                    @ChildContent
+                </div>
+            }
+            
+            @if (Actions != null)
+            {
+                <div class="alert-actions mt-3 flex gap-2">
+                    @Actions
+                </div>
+            }
+        </div>
+        
+        @if (Dismissible)
+        {
+            <RButton Variant="ButtonVariant.Ghost" 
+                     Size="@GetCloseButtonSize()"
+                     Icon="close"
+                     OnClick="@(_ => Dismiss())"
+                     StopPropagation="true"
+                     AriaLabel="Close alert"
+                     Class="@GetCloseButtonClasses()" />
+        }
+    </div>
+}
+
+@code {
+    private bool isVisible = true;
+    private Timer? autoCloseTimer;
+    
+    /// <summary>Alert type</summary>
+    [Parameter, AIParameter("Alert severity level", "AlertType.Info, AlertType.Success, AlertType.Warning, AlertType.Error")] 
+    public AlertType Type { get; set; } = AlertType.Info;
+    
+    /// <summary>Alert variant style</summary>
+    [Parameter, AIParameter("Alert visual variant", "AlertVariant.Default, AlertVariant.Filled, AlertVariant.Outline, AlertVariant.Subtle")] 
+    public AlertVariant Variant { get; set; } = AlertVariant.Default;
+    
+    /// <summary>Alert size</summary>
+    [Parameter, AIParameter("Alert size", "AlertSize.Small, AlertSize.Medium, AlertSize.Large")] 
+    public AlertSize Size { get; set; } = AlertSize.Medium;
+    
+    /// <summary>Alert title</summary>
+    [Parameter, AIParameter("Alert title text", "Main heading for the alert")] 
+    public string Title { get; set; }
+    
+    /// <summary>Alert text</summary>
+    [Parameter, AIParameter("Alert message text", "Main message content")] 
+    public string Text { get; set; }
+    
+    /// <summary>Alert message (alias for Text)</summary>
+    [Parameter, AIParameter("Alert message content", "Clear, actionable message explaining the alert")] 
+    public string Message { get; set; }
+    
+    /// <summary>Custom icon override</summary>
+    [Parameter, AIParameter("Custom icon", "Material icon name to override default")] 
+    public string Icon { get; set; }
+    
+    /// <summary>Whether to show icon</summary>
+    [Parameter] public bool ShowIcon { get; set; } = true;
+    
+    /// <summary>Whether alert can be dismissed</summary>
+    [Parameter, AIParameter("Show close button", "true to allow dismissing the alert")] 
+    public bool Dismissible { get; set; }
+    
+    /// <summary>Auto-close timeout in milliseconds (0 = disabled)</summary>
+    [Parameter] public int AutoCloseTimeout { get; set; } = 0;
+    
+    /// <summary>Whether alert should animate</summary>
+    [Parameter] public bool Animated { get; set; } = true;
+    
+    /// <summary>Whether alert spans full width</summary>
+    [Parameter] public bool FullWidth { get; set; } = false;
+    
+    /// <summary>Whether alert should be elevated</summary>
+    [Parameter] public bool Elevated { get; set; } = false;
+    
+    /// <summary>Stop click propagation</summary>
+    [Parameter] public bool StopPropagation { get; set; } = false;
+    
+    /// <summary>Additional CSS classes</summary>
+    [Parameter] public string Class { get; set; }
+    
+    /// <summary>Child content</summary>
+    [Parameter] public RenderFragment ChildContent { get; set; }
+    
+    /// <summary>Action buttons content</summary>
+    [Parameter] public RenderFragment Actions { get; set; }
+    
+    /// <summary>Dismiss event</summary>
+    [Parameter] public EventCallback OnDismiss { get; set; }
+    
+    /// <summary>Click event handler</summary>
+    [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
+    
+    protected override void OnInitialized()
+    {
+        if (AutoCloseTimeout > 0)
+        {
+            autoCloseTimer = new Timer(async _ =>
+            {
+                await Dismiss();
+            }, null, AutoCloseTimeout, Timeout.Infinite);
+        }
+    }
+    
+    private string GetAlertClasses()
+    {
+        var classes = new List<string>
+        {
+            "flex",
+            "items-start",
+            "gap-3",
+            "border",
+            "rounded-lg",
+            "transition-all",
+            "duration-200"
+        };
+        
+        // Size classes
+        classes.Add(Size switch
+        {
+            AlertSize.Small => "pa-3 text-sm",
+            AlertSize.Medium => "pa-4 text-base",
+            AlertSize.Large => "pa-6 text-lg",
+            _ => "pa-4 text-base"
+        });
+        
+        // Type and variant classes using existing utilities
+        var typeClass = Type switch
+        {
+            AlertType.Success => "bg-success-light text-success border-success",
+            AlertType.Warning => "bg-warning-light text-warning border-warning", 
+            AlertType.Error => "bg-error-light text-error border-error",
+            _ => "bg-info-light text-info border-info"
+        };
+        
+        var variantClass = Variant switch
+        {
+            AlertVariant.Filled => typeClass.Replace("-light", ""),
+            AlertVariant.Outline => typeClass.Replace("bg-", "border-").Replace("-light", ""),
+            AlertVariant.Subtle => typeClass,
+            _ => typeClass
+        };
+        
+        classes.Add(variantClass);
+        
+        // Modifier classes
+        if (FullWidth)
+        {
+            classes.Add("w-full");
+        }
+        
+        if (Elevated)
+        {
+            classes.Add("shadow-lg");
+        }
+        
+        if (Animated)
+        {
+            classes.Add("animate-fade-in");
+        }
+        
+        if (Dismissible)
+        {
+            classes.Add("alert-dismissible");
+        }
+        
+        if (!string.IsNullOrEmpty(Class))
+        {
+            classes.Add(Class);
+        }
+        
+        return string.Join(" ", classes);
+    }
+    
+    private string GetIcon()
+    {
+        if (!string.IsNullOrEmpty(Icon))
+        {
+            return Icon;
+        }
+        
+        return Type switch
+        {
+            AlertType.Success => "check_circle",
+            AlertType.Warning => "warning",
+            AlertType.Error => "error",
+            _ => "info"
+        };
+    }
+    
+    private string GetIconClasses()
+    {
+        var classes = new List<string>();
+        
+        classes.Add(Size switch
+        {
+            AlertSize.Small => "text-lg",
+            AlertSize.Medium => "text-xl",
+            AlertSize.Large => "text-2xl",
+            _ => "text-xl"
+        });
+        
+        return string.Join(" ", classes);
+    }
+    
+    private string GetTitleClasses()
+    {
+        var classes = new List<string>();
+        
+        classes.Add(Size switch
+        {
+            AlertSize.Small => "text-sm mb-1",
+            AlertSize.Medium => "text-base mb-1",
+            AlertSize.Large => "text-lg mb-2",
+            _ => "text-base mb-1"
+        });
+        
+        return string.Join(" ", classes);
+    }
+    
+    private string GetMessageClasses()
+    {
+        var classes = new List<string>();
+        
+        classes.Add(Size switch
+        {
+            AlertSize.Small => "text-xs",
+            AlertSize.Medium => "text-sm",
+            AlertSize.Large => "text-base",
+            _ => "text-sm"
+        });
+        
+        return string.Join(" ", classes);
+    }
+    
+    private ButtonSize GetCloseButtonSize()
+    {
+        return Size switch
+        {
+            AlertSize.Small => ButtonSize.Small,
+            AlertSize.Medium => ButtonSize.Medium,
+            AlertSize.Large => ButtonSize.Large,
+            _ => ButtonSize.Medium
+        };
+    }
+    
+    private string GetCloseButtonClasses()
+    {
+        return "flex-shrink-0 opacity-70 hover:opacity-100";
+    }
+    
+    private async Task Dismiss()
+    {
+        isVisible = false;
+        await OnDismiss.InvokeAsync();
+        StateHasChanged();
+    }
+    
+    private async Task HandleClick(MouseEventArgs e)
+    {
+        await OnClick.InvokeAsync(e);
+    }
+    
+    private async Task HandleDismiss()
+    {
+        await Dismiss();
+    }
+    
+    public void Dispose()
+    {
+        autoCloseTimer?.Dispose();
+    }
+}
+

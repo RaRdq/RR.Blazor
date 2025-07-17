@@ -54,10 +54,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-Write-Host "🔍 CSS Class Usage Validation" -ForegroundColor Cyan
-Write-Host "📁 Solution Path: $SolutionPath" -ForegroundColor Yellow
 Write-Host "🎯 Project Paths: $(if ($ProjectPaths.Count -gt 0) { $ProjectPaths -join ', ' } else { 'Auto-detect client projects' })" -ForegroundColor Yellow
-Write-Host "🎨 Styles Path: $StylesPath" -ForegroundColor Yellow
 Write-Host "📄 Styles Doc: $StylesDocPath" -ForegroundColor Yellow
 
 # Load available classes from AI documentation
@@ -88,7 +85,6 @@ if (Test-Path $StylesDocPath) {
         }
     }
     
-    # Extract utility patterns and expand bracket notation
     if ($stylesDoc.PSObject.Properties.Name -contains "utility_patterns") {
         foreach ($category in $stylesDoc.utility_patterns.PSObject.Properties) {
             foreach ($pattern in $category.Value) {
@@ -99,8 +95,6 @@ if (Test-Path $StylesDocPath) {
             }
         }
     }
-    
-    # CLAUDE.md compliance: Only use what's explicitly documented in AI styles (no SCSS fallback)
     
     Write-Host "📚 Loaded $($availableClasses.Count) utility classes from AI documentation (single source of truth)" -ForegroundColor Green
     
@@ -123,7 +117,6 @@ $availableClasses.Keys | ForEach-Object { $allClasses[$_] = "utility" }
 # Find all Razor files based on project paths or auto-detection
 if ($ProjectPaths.Count -gt 0) {
     # Use specific project paths provided by user
-    Write-Host "🎯 Using specific project paths provided" -ForegroundColor Green
     $razorFiles = @()
     foreach ($projectPath in $ProjectPaths) {
         $fullProjectPath = if ([System.IO.Path]::IsPathRooted($projectPath)) {
@@ -148,7 +141,6 @@ if ($ProjectPaths.Count -gt 0) {
     }
 } else {
     # Auto-detect client projects - exclude server and RR modules except RR.Blazor
-    Write-Host "🔍 Auto-detecting client projects (excluding Server and RR.* except RR.Blazor)" -ForegroundColor Green
     $razorFiles = Get-ChildItem -Path $SolutionPath -Recurse -Filter "*.razor" | Where-Object { 
         $_.FullName -notlike "*node_modules*" -and 
         $_.FullName -notlike "*bin*" -and 
@@ -303,10 +295,10 @@ foreach ($file in $razorFiles) {
 }
 
 # Generate report
-Write-Host "📊 Validation Results:" -ForegroundColor Green
+Write-Host "  Total issues found: $($issues.Count)" -ForegroundColor White
+
 Write-Host "  Total Razor files: $($razorFiles.Count)" -ForegroundColor White
 Write-Host "  Total class usages: $totalClassUsages" -ForegroundColor White
-Write-Host "  Total issues found: $($issues.Count)" -ForegroundColor White
 
 if ($ShowInlineStyles) {
     Write-Host "  Inline styles found: $inlineStyleCount" -ForegroundColor White
