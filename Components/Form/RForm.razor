@@ -33,7 +33,7 @@ This is the primary form component for RR.Blazor - use this instead of RFormGene
     
     // Core form parameters
     [Parameter] public object Model { get; set; }
-    [Parameter] public EventCallback<object> ModelChanged { get; set; }
+    [Parameter] public object ModelChanged { get; set; }
     
     // Form configuration
     [Parameter] public ValidationMode ValidationMode { get; set; } = ValidationMode.DataAnnotations;
@@ -53,10 +53,10 @@ This is the primary form component for RR.Blazor - use this instead of RFormGene
     [Parameter] public bool RequireValidation { get; set; } = true;
     [Parameter] public ButtonSize SubmitButtonSize { get; set; } = ButtonSize.Medium;
     
-    // Event callbacks
-    [Parameter] public EventCallback<object> OnValidSubmit { get; set; }
-    [Parameter] public EventCallback<object> OnInvalidSubmit { get; set; }
-    [Parameter] public EventCallback<object> OnStateChanged { get; set; }
+    // Event callbacks - use object to accept any typed callback
+    [Parameter] public object OnValidSubmit { get; set; }
+    [Parameter] public object OnInvalidSubmit { get; set; }
+    [Parameter] public object OnStateChanged { get; set; }
     
     // Content
     [Parameter] public RenderFragment ChildContent { get; set; }
@@ -129,29 +129,25 @@ This is the primary form component for RR.Blazor - use this instead of RFormGene
             }
 
             // Convert and forward ModelChanged
-            if (ModelChanged.HasDelegate)
+            if (ModelChanged != null)
             {
-                var convertedCallback = CreateTypedCallback(_detectedType);
-                builder.AddAttribute(parameterIndex++, "ModelChanged", convertedCallback);
+                builder.AddAttribute(parameterIndex++, "ModelChanged", ModelChanged);
             }
 
             // Convert and forward event callbacks
-            if (OnValidSubmit.HasDelegate)
+            if (OnValidSubmit != null)
             {
-                var convertedCallback = CreateTypedSubmitCallback(_detectedType);
-                builder.AddAttribute(parameterIndex++, "OnValidSubmit", convertedCallback);
+                builder.AddAttribute(parameterIndex++, "OnValidSubmit", OnValidSubmit);
             }
 
-            if (OnInvalidSubmit.HasDelegate)
+            if (OnInvalidSubmit != null)
             {
-                var convertedCallback = CreateTypedSubmitCallback(_detectedType);
-                builder.AddAttribute(parameterIndex++, "OnInvalidSubmit", convertedCallback);
+                builder.AddAttribute(parameterIndex++, "OnInvalidSubmit", OnInvalidSubmit);
             }
 
-            if (OnStateChanged.HasDelegate)
+            if (OnStateChanged != null)
             {
-                var convertedCallback = CreateTypedStateChangedCallback(_detectedType);
-                builder.AddAttribute(parameterIndex++, "OnStateChanged", convertedCallback);
+                builder.AddAttribute(parameterIndex++, "OnStateChanged", OnStateChanged);
             }
 
             // Forward configuration parameters directly
@@ -209,71 +205,6 @@ This is the primary form component for RR.Blazor - use this instead of RFormGene
         }
     }
 
-    private object CreateTypedCallback(Type valueType)
-    {
-        var method = GetType().GetMethod(nameof(CreateTypedCallbackGeneric), BindingFlags.NonPublic | BindingFlags.Instance);
-        var genericMethod = method?.MakeGenericMethod(valueType);
-        return genericMethod?.Invoke(this, null);
-    }
-
-    private EventCallback<T> CreateTypedCallbackGeneric<T>()
-    {
-        return EventCallback.Factory.Create<T>(this, async (T value) =>
-        {
-            var convertedValue = ConvertValue(value, typeof(object));
-            await ModelChanged.InvokeAsync(convertedValue);
-        });
-    }
-
-    private object CreateTypedSubmitCallback(Type valueType)
-    {
-        // Handle reference type constraint
-        if (valueType.IsValueType)
-        {
-            valueType = typeof(object);
-        }
-        
-        var method = GetType().GetMethod(nameof(CreateTypedSubmitCallbackGeneric), BindingFlags.NonPublic | BindingFlags.Instance);
-        var genericMethod = method?.MakeGenericMethod(valueType);
-        return genericMethod?.Invoke(this, null);
-    }
-
-    private EventCallback<FormSubmissionEventArgs<T>> CreateTypedSubmitCallbackGeneric<T>()
-        where T : class
-    {
-        return EventCallback.Factory.Create<FormSubmissionEventArgs<T>>(this, async (FormSubmissionEventArgs<T> args) =>
-        {
-            var convertedModel = ConvertValue(args.Model, typeof(object));
-            var convertedArgs = new FormSubmissionEventArgs<object>(
-                convertedModel,
-                args.ValidationResult,
-                args.CancellationToken);
-            
-            if (args.ValidationResult.IsValid)
-            {
-                await OnValidSubmit.InvokeAsync(convertedArgs);
-            }
-            else
-            {
-                await OnInvalidSubmit.InvokeAsync(convertedArgs);
-            }
-        });
-    }
-
-    private object CreateTypedStateChangedCallback(Type valueType)
-    {
-        var method = GetType().GetMethod(nameof(CreateTypedStateChangedCallbackGeneric), BindingFlags.NonPublic | BindingFlags.Instance);
-        var genericMethod = method?.MakeGenericMethod(valueType);
-        return genericMethod?.Invoke(this, null);
-    }
-
-    private EventCallback<FormStateChangedEventArgs> CreateTypedStateChangedCallbackGeneric<T>()
-    {
-        return EventCallback.Factory.Create<FormStateChangedEventArgs>(this, async (FormStateChangedEventArgs args) =>
-        {
-            await OnStateChanged.InvokeAsync(args);
-        });
-    }
 
     public void Dispose()
     {
