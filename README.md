@@ -1,6 +1,6 @@
 # RR.Blazor - Universal Design System for Blazor
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: Dual](https://img.shields.io/badge/License-MIT%20%7C%20Commercial-blue.svg)](LICENSE)
 [![Blazor](https://img.shields.io/badge/Blazor-.NET%209-512BD4?logo=.net)](https://dotnet.microsoft.com/apps/aspnet/web-apps/blazor)
 [![AI-First](https://img.shields.io/badge/AI-First%20Design-00D2FF)](https://github.com/RaRdq/RR.Blazor)
 
@@ -823,11 +823,23 @@ Component structure:
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) file for details.
+RR.Blazor is available under a **dual licensing model**:
+
+- **🆓 MIT License**: Free for individuals, non-profits, and organizations with annual revenue < $5M USD
+- **💼 Commercial License**: $3,999 USD (lifetime) for organizations with annual revenue ≥ $5M USD
+
+This approach ensures RR.Blazor remains accessible to developers and startups while providing sustainable funding for continued development.
+
+**Quick License Check:**
+- Individual developer? → **MIT License** (Free)
+- Startup/small business < $5M revenue? → **MIT License** (Free)  
+- Enterprise ≥ $5M revenue? → **Commercial License** ($3,999 lifetime)
+
+See [LICENSE](LICENSE) file for complete details and purchase information.
 
 ## Author
 
-Created and maintained by RaRdq (rardqq@gmail.com)
+Created and maintained by RaRdq
 
 ---
 
