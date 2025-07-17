@@ -14,4 +14,15 @@ namespace RR.Blazor.Enums
         Vertical,
         Horizontal
     }
+    
+    public enum TimelineItemType
+    {
+        Default,
+        Success,
+        Warning,
+        Error,
+        Info,
+        Primary,
+        Secondary
+    }
 }

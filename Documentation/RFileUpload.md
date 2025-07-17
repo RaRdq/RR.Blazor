@@ -75,7 +75,6 @@ RFileUpload is a comprehensive, zero-configuration file upload component designe
              GenerateThumbnails="true"
              ShowProgress="true"
              AllowRemove="true"
-             CustomValidator="ValidateFile"
              OnFilesSelected="HandleFilesSelected"
              OnUploadComplete="HandleUploadComplete"
              OnProgressChanged="HandleProgressChanged"
@@ -300,7 +299,6 @@ private async Task<string?> ValidateDocument(IBrowserFile file)
 ### With Validation
 ```html
 <RFileUpload @bind-Files="files"
-             CustomValidator="ValidateFile"
              OnFilesSelected="HandleValidation" />
 
 @if (validationErrors.Any())

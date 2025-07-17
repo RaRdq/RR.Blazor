@@ -1,0 +1,234 @@
+@** 
+<summary>Professional toggle switch component for boolean states</summary>
+<category>Form</category>
+<complexity>Simple</complexity>
+<ai-prompt>Create a modern toggle switch for on/off states</ai-prompt>
+<ai-common-use>settings toggles, feature flags, enable/disable options</ai-common-use>
+<ai-avoid>Don't use for multi-option selection (use RSwitcher) or required selections (use RCheckbox)</ai-avoid>
+<ai-pattern name="basic-toggle">Text="Enable Notifications" @bind-Value="notificationsEnabled"</ai-pattern>
+<ai-pattern name="with-description">Text="Dark Mode" Description="Switch to dark theme" @bind-Value="darkMode"</ai-pattern>
+<ai-pattern name="disabled-state">Text="Premium Feature" Disabled="true" Description="Upgrade required"</ai-pattern>
+<ai-pattern name="with-icon">Text="WiFi" Icon="wifi" @bind-Value="wifiEnabled"</ai-pattern>
+**@
+
+@typeparam TValue
+@attribute [Component("RToggle", Category = "Form")]
+@attribute [AIOptimized(Prompt = "Create professional toggle switch")]
+
+@using RR.Blazor.Enums
+
+<div class="flex items-center gap-3 @GetContainerClasses()">
+    @if (LabelPosition == IconPosition.Start && !string.IsNullOrEmpty(Text))
+    {
+        <div class="flex flex-col">
+            <label for="@Id" class="@GetLabelClasses()">
+                <div class="flex items-center gap-2">
+                    @if (!string.IsNullOrEmpty(Icon))
+                    {
+                        <i class="material-symbols-rounded @GetIconClasses()">@Icon</i>
+                    }
+                    <span class="@GetTextClasses()">@Text</span>
+                </div>
+            </label>
+            @if (!string.IsNullOrEmpty(Description))
+            {
+                <span class="@GetDescriptionClasses()">@Description</span>
+            }
+        </div>
+    }
+    
+    <div class="relative flex items-center">
+        <input type="checkbox" 
+               id="@Id"
+               name="@Name"
+               @bind="Checked"
+               @bind:after="OnCheckedChanged"
+               disabled="@Disabled"
+               class="peer absolute opacity-0 w-full h-full cursor-pointer disabled:cursor-not-allowed z-10" />
+        
+        <div class="@GetToggleTrackClasses()">
+            <div class="@GetToggleThumbClasses()">
+                @if (ShowStateIcons)
+                {
+                    <i class="material-symbols-rounded @GetStateIconClasses()">
+                        @(Checked ? "check" : "close")
+                    </i>
+                }
+            </div>
+        </div>
+    </div>
+    
+    @if (LabelPosition == IconPosition.End && !string.IsNullOrEmpty(Text))
+    {
+        <div class="flex flex-col">
+            <label for="@Id" class="@GetLabelClasses()">
+                <div class="flex items-center gap-2">
+                    @if (!string.IsNullOrEmpty(Icon))
+                    {
+                        <i class="material-symbols-rounded @GetIconClasses()">@Icon</i>
+                    }
+                    <span class="@GetTextClasses()">@Text</span>
+                </div>
+            </label>
+            @if (!string.IsNullOrEmpty(Description))
+            {
+                <span class="@GetDescriptionClasses()">@Description</span>
+            }
+        </div>
+    }
+</div>
+
+@if (!string.IsNullOrEmpty(ValidationMessage))
+{
+    <div class="@GetValidationClasses()">
+        <i class="material-symbols-rounded">error</i>
+        @ValidationMessage
+    </div>
+}
+
+@code {
+    [Parameter] public bool Checked { get; set; }
+    [Parameter] public EventCallback<bool> CheckedChanged { get; set; }
+    [Parameter] public string? Text { get; set; }
+    [Parameter] public string? Description { get; set; }
+    [Parameter] public string? Icon { get; set; }
+    [Parameter] public string Id { get; set; } = Guid.NewGuid().ToString("N")[..8];
+    [Parameter] public string? Name { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public ToggleVariant Variant { get; set; } = ToggleVariant.Standard;
+    [Parameter] public ToggleSize Size { get; set; } = ToggleSize.Medium;
+    [Parameter] public IconPosition LabelPosition { get; set; } = IconPosition.End;
+    [Parameter] public bool ShowStateIcons { get; set; } = false;
+    [Parameter] public string? ValidationMessage { get; set; }
+    [Parameter] public string? Class { get; set; }
+
+    private string GetContainerClasses()
+    {
+        var classes = new List<string> { "toggle-container" };
+        
+        if (Disabled)
+            classes.Add("toggle-disabled");
+        
+        if (!string.IsNullOrEmpty(ValidationMessage))
+            classes.Add("toggle-error");
+        
+        if (!string.IsNullOrEmpty(Class))
+            classes.Add(Class);
+        
+        return string.Join(" ", classes);
+    }
+
+    private string GetToggleTrackClasses()
+    {
+        var classes = new List<string> { "toggle-track" };
+        
+        classes.Add($"toggle-track-{Size.ToString().ToLower()}");
+        classes.Add($"toggle-track-{Variant.ToString().ToLower()}");
+        
+        if (Checked)
+            classes.Add("toggle-track-checked");
+        else
+            classes.Add("toggle-track-unchecked");
+        
+        if (Disabled)
+            classes.Add("toggle-track-disabled");
+        
+        return string.Join(" ", classes);
+    }
+
+    private string GetToggleThumbClasses()
+    {
+        var classes = new List<string> { "toggle-thumb" };
+        
+        classes.Add($"toggle-thumb-{Size.ToString().ToLower()}");
+        
+        if (Checked)
+            classes.Add("toggle-thumb-checked");
+        else
+            classes.Add("toggle-thumb-unchecked");
+        
+        if (ShowStateIcons)
+            classes.Add("toggle-thumb-with-icon");
+        
+        return string.Join(" ", classes);
+    }
+
+    private string GetLabelClasses()
+    {
+        var classes = new List<string> 
+        { 
+            "text-sm", 
+            "font-medium", 
+            "cursor-pointer" 
+        };
+        
+        if (Disabled)
+            classes.Add("text-muted cursor-not-allowed");
+        else
+            classes.Add("text-primary");
+        
+        return string.Join(" ", classes);
+    }
+
+    private string GetTextClasses()
+    {
+        return Size switch
+        {
+            ToggleSize.Small => "text-sm",
+            ToggleSize.Large => "text-base",
+            _ => "text-sm"
+        };
+    }
+
+    private string GetIconClasses()
+    {
+        var iconSize = Size switch
+        {
+            ToggleSize.Small => "text-sm",
+            ToggleSize.Large => "text-lg",
+            _ => "text-base"
+        };
+        
+        return $"{iconSize} {(Disabled ? "text-muted" : "text-secondary")}";
+    }
+
+    private string GetDescriptionClasses()
+    {
+        return $"text-xs text-secondary mt-1 {(Disabled ? "text-muted" : "")}";
+    }
+
+    private string GetStateIconClasses()
+    {
+        return Size switch
+        {
+            ToggleSize.Small => "text-xs",
+            ToggleSize.Large => "text-sm",
+            _ => "text-xs"
+        };
+    }
+
+    private string GetValidationClasses()
+    {
+        return "flex items-center text-xs text-error mt-1 gap-1";
+    }
+
+    private async Task OnCheckedChanged()
+    {
+        await CheckedChanged.InvokeAsync(Checked);
+    }
+
+    public enum ToggleVariant
+    {
+        Standard,
+        Rounded,
+        Square
+    }
+
+    public enum ToggleSize
+    {
+        Small,
+        Medium,
+        Large
+    }
+
+}

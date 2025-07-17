@@ -234,12 +234,25 @@ export const RRFileUpload = {
     showErrors: function(errors, element) {
         const errorContainer = element.querySelector('.file-upload-errors');
         if (errorContainer) {
-            errorContainer.innerHTML = errors.map(error => 
-                `<div class="d-flex align-center text-xs text-error mb-1">
-                    <i class="material-symbols-rounded text-xs mr-1">error</i>
-                    ${this.escapeHtml(error)}
-                </div>`
-            ).join('');
+            // Clear existing content
+            errorContainer.innerHTML = '';
+            
+            // Create error elements safely
+            errors.forEach(error => {
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'd-flex align-center text-xs text-error mb-1';
+                
+                const icon = document.createElement('i');
+                icon.className = 'material-symbols-rounded text-xs mr-1';
+                icon.textContent = 'error';
+                
+                const errorText = document.createTextNode(error);
+                
+                errorDiv.appendChild(icon);
+                errorDiv.appendChild(errorText);
+                errorContainer.appendChild(errorDiv);
+            });
+            
             errorContainer.style.display = 'block';
         }
     },

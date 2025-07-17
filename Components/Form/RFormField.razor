@@ -34,10 +34,10 @@
     }
     
     @* Input Field *@
-    <div @ref="wrapperElement" id="wrapper-@InputId" class="form-field-wrapper @GetInputWrapperClasses()">
+    <div @ref="wrapperElement" id="wrapper-@InputId" class="form-field @GetInputWrapperClasses()">
         @if (!string.IsNullOrEmpty(StartIcon))
         {
-            <div class="form-field-icon-container form-field-icon-container-start @(OnStartIconClick.HasDelegate ? "clickable" : "")" 
+            <div class="form-field-input icon-interactive @(OnStartIconClick.HasDelegate ? "clickable" : "")" 
                  @onclick="HandleStartIconClick">
                 <i class="material-symbols-rounded @GetIconSizeClass()">@StartIcon</i>
             </div>
@@ -74,7 +74,7 @@
         {
             <textarea @ref="inputElement"
                       id="@InputId" 
-                      class="form-field-textarea @GetTextareaClasses()"
+                      class="form-field-input @GetTextareaClasses()"
                       placeholder="@GetPlaceholderText()"
                       disabled="@Disabled"
                       readonly="@ReadOnly"
@@ -92,7 +92,7 @@
         {
             <select @ref="inputElement"
                     id="@InputId" 
-                    class="form-field-select @GetSelectClasses()"
+                    class="form-field-input @GetSelectClasses()"
                     disabled="@Disabled"
                     required="@Required"
                     @onchange="HandleValueChange"
@@ -110,7 +110,7 @@
             <div class="flex items-center gap-2">
                 <input id="@InputId" 
                        type="checkbox" 
-                       class="form-field-checkbox @GetCheckboxClasses()"
+                       class="form-field-input @GetCheckboxClasses()"
                        checked="@Checked"
                        disabled="@Disabled"
                        required="@Required"
@@ -134,7 +134,7 @@
             <div class="w-full">
                 <input id="@InputId" 
                        type="range" 
-                       class="form-field-range @GetRangeClasses()"
+                       class="form-field-input @GetRangeClasses()"
                        value="@Value" 
                        min="@MinValue"
                        max="@MaxValue"
@@ -174,7 +174,7 @@
         
         @if (!string.IsNullOrEmpty(EndIcon) && Type != FieldType.Select)
         {
-            <div class="form-field-icon-container form-field-icon-container-end @(OnEndIconClick.HasDelegate ? "clickable" : "")" 
+            <div class="form-field-input icon-interactive @(OnEndIconClick.HasDelegate ? "clickable" : "")" 
                  @onclick="HandleEndIconClick">
                 <i class="material-symbols-rounded @GetIconSizeClass()">@EndIcon</i>
             </div>
@@ -183,7 +183,7 @@
         @* Loading spinner *@
         @if (Loading)
         {
-            <div class="form-field-icon-container form-field-icon-container-end">
+            <div class="form-field-input icon-muted">
                 <i class="material-symbols-rounded @GetIconSizeClass() animate-spin">progress_activity</i>
             </div>
         }
@@ -192,7 +192,7 @@
     @* Error Message *@
     @if (IsInErrorState && !string.IsNullOrEmpty(GetEffectiveErrorMessage()))
     {
-        <div class="form-field-error">
+        <div class="form-field-input-error">
             <i class="material-symbols-rounded">error</i>
             @GetEffectiveErrorMessage()
         </div>
@@ -201,14 +201,14 @@
     @* Help Text and Character Count *@
     @if (!string.IsNullOrEmpty(HelpText) || (ShowCharacterCount && MaxLength > 0))
     {
-        <div class="form-field-help">
+        <div class="form-field-help @GetHelpClasses()">
             @if (!string.IsNullOrEmpty(HelpText))
             {
-                <span>@HelpText</span>
+                <span class="form-field-help">@HelpText</span>
             }
             @if (ShowCharacterCount && MaxLength > 0)
             {
-                <span class="form-field-character-count @GetCharacterCountClasses()">
+                <span class="form-field-help @GetCharacterCountClasses()">
                     @(Value?.Length ?? 0) / @MaxLength
                 </span>
             }
@@ -502,16 +502,21 @@
     
     private string GetFieldGroupClasses()
     {
-        var classes = new List<string> { "flex", "flex-col", "gap-1" };
+        var classes = new List<string> { "form-field" };
         
         if (!FullWidth)
         {
             classes.Add("d-inline-flex");
         }
         
+        // State classes
         if (IsInErrorState)
         {
-            classes.Add("form-field-error");
+            classes.Add("form-field-input-error");
+        }
+        else if (!string.IsNullOrEmpty(Value) && !IsInErrorState)
+        {
+            classes.Add("form-field-valid");
         }
         
         if (!string.IsNullOrEmpty(Class))
@@ -551,7 +556,7 @@
     
     private string GetInputWrapperClasses()
     {
-        var classes = new List<string>();
+        var classes = new List<string> { "form-field" };
         
         if (FullWidth)
         {
@@ -560,26 +565,16 @@
         
         if (Variant == FieldVariant.FloatingLabel)
         {
-            classes.Add("form-field-wrapper-floating-label");
+            classes.Add("form-field-floating-label");
             
             if (!string.IsNullOrEmpty(Value) || hasValue)
             {
-                classes.Add("form-field-wrapper-has-value");
+                classes.Add("form-field-has-value");
             }
             
             if (isFocused)
             {
-                classes.Add("form-field-wrapper-floating");
-            }
-            
-            if (IsInErrorState)
-            {
-                classes.Add("form-field-wrapper-error");
-            }
-            
-            if (Disabled)
-            {
-                classes.Add("form-field-wrapper-disabled");
+                classes.Add("form-field-floating");
             }
         }
         
@@ -623,14 +618,21 @@
         var classes = new List<string> { "form-field-input" };
         
         // Variant modifiers
-        classes.Add(Variant switch
+        if (Variant == FieldVariant.FloatingLabel)
         {
-            FieldVariant.Clean => "form-field-input-clean",
-            FieldVariant.Outlined => "form-field-input-outlined",
-            FieldVariant.Filled => "form-field-input-filled",
-            FieldVariant.FloatingLabel => "form-field-input-floating-label",
-            _ => "form-field-input-default"
-        });
+            classes.Add("form-field-input-floating-label");
+        }
+        
+        // Size modifiers
+        switch (Size)
+        {
+            case FieldSize.Small:
+                classes.Add("form-field-input-sm");
+                break;
+            case FieldSize.Large:
+                classes.Add("form-field-input-lg");
+                break;
+        }
         
         // Icon modifiers
         if (!string.IsNullOrEmpty(StartIcon))
@@ -642,14 +644,6 @@
         {
             classes.Add("form-field-input-with-end-icon");
         }
-        
-        // Size modifiers
-        classes.Add(Size switch
-        {
-            FieldSize.Small => "form-field-input-sm",
-            FieldSize.Large => "form-field-input-lg",
-            _ => ""
-        });
         
         if (!string.IsNullOrEmpty(InputClass))
         {
@@ -811,11 +805,12 @@
     
     private string GetHelpClasses()
     {
-        var classes = new List<string> { "flex", "justify-between", "items-center", "text-xs", "mt-1" };
+        var classes = new List<string>();
         
-        if (!string.IsNullOrEmpty(HelpText) && ShowCharacterCount)
+        // When both help text and character count are present, use flexbox layout
+        if (!string.IsNullOrEmpty(HelpText) && ShowCharacterCount && MaxLength > 0)
         {
-            classes.Add("gap-2");
+            classes.AddRange(new[] { "flex", "justify-between", "items-start", "gap-2" });
         }
         
         return string.Join(" ", classes);
@@ -830,8 +825,8 @@
             
             return percentage switch
             {
-                >= 1.0 => "form-field-character-count-error",
-                >= 0.8 => "form-field-character-count-warning",
+                >= 1.0 => "form-field-help-error",
+                >= 0.8 => "form-field-help-warning",
                 _ => ""
             };
         }

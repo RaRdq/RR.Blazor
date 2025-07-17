@@ -231,7 +231,7 @@ Existing `RFormField` date inputs can be easily migrated:
 <!-- Old RFormField approach -->
 <RFormField Type="FieldType.Date" 
             @bind-Value="dateString" 
-            Label="Select Date" />
+            Text="Select Date" />
 
 <!-- New RDatePicker approach -->
 <RDatePicker @bind-Value="dateValue" 

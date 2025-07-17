@@ -142,45 +142,74 @@ $shadow-colors: (
   }
 }
 
+
+// Elevation System (0-24) - Unified utility approach
+$elevation-levels: (0, 1, 2, 3, 4, 5, 6, 8, 12, 16, 20, 24);
 $elevation-shadows: (
   0: none,
-  1: var(--shadow-sm), 2: var(--shadow-sm),
-  3: var(--shadow-md), 4: var(--shadow-md),
-  5: var(--shadow-lg), 6: var(--shadow-lg), 7: var(--shadow-lg),
-  8: var(--shadow-xl), 9: var(--shadow-xl), 10: var(--shadow-xl), 11: var(--shadow-xl)
+  1: var(--shadow-sm),
+  2: var(--shadow-sm),
+  3: var(--shadow-md),
+  4: var(--shadow-md),
+  5: var(--shadow-lg),
+  6: var(--shadow-lg),
+  8: var(--shadow-lg),
+  12: var(--shadow-xl),
+  16: var(--shadow-xl),
+  20: var(--shadow-2xl),
+  24: var(--shadow-2xl)
 );
 
-@each $level, $shadow in $elevation-shadows {
-  .elevation-#{$level} { box-shadow: #{$shadow} !important; }
-}
-
-@for $i from 12 through 24 {
-  .elevation-#{$i} { box-shadow: var(--shadow-2xl) !important; }
-}
-
-$elevation-variants: (
-  interactive: (transition: var(--transition-fast)),
-  lift: (transition: var(--transition-fast)),
-  lift-sm: (transition: var(--transition-fast)),
-  lift-lg: (transition: var(--transition-fast))
-);
-
-$elevation-hovers: (
-  lift: translateY(-2px),
-  lift-sm: translateY(-1px),
-  lift-lg: translateY(-4px)
-);
-
-@each $name, $props in $elevation-variants {
-  .elevation-#{$name} {
-    @each $prop, $value in $props {
-      #{$prop}: #{$value} !important;
+@each $level in $elevation-levels {
+  .elevation-#{$level} {
+    box-shadow: #{map.get($elevation-shadows, $level)} !important;
+    transition: var(--transition-fast) !important;
+  }
+  
+  .hover\:elevation-#{$level}:hover {
+    box-shadow: #{map.get($elevation-shadows, $level)} !important;
+    @if $level > 0 {
+      transform: translateY(-1px) !important;
+    }
+  }
+  
+  // Shadow aliases for semantic naming (preferred)
+  .shadow-#{$level} {
+    box-shadow: #{map.get($elevation-shadows, $level)} !important;
+    transition: var(--transition-fast) !important;
+  }
+  
+  .hover\:shadow-#{$level}:hover {
+    box-shadow: #{map.get($elevation-shadows, $level)} !important;
+    @if $level > 0 {
+      transform: translateY(-1px) !important;
     }
   }
 }
 
-@each $name, $transform in $elevation-hovers {
-  .elevation-#{$name}:hover { transform: #{$transform} !important; }
+// Interactive elevation utilities
+.elevation-lift {
+  transition: var(--transition-fast) !important;
+  &:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: var(--shadow-lg) !important;
+  }
+}
+
+.elevation-lift-sm {
+  transition: var(--transition-fast) !important;
+  &:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: var(--shadow-md) !important;
+  }
+}
+
+.elevation-lift-lg {
+  transition: var(--transition-fast) !important;
+  &:hover {
+    transform: translateY(-4px) !important;
+    box-shadow: var(--shadow-xl) !important;
+  }
 }
 
 $glass-variants: (
@@ -188,25 +217,25 @@ $glass-variants: (
     background: var(--glass-bg-light),
     backdrop-filter: var(--glass-blur-sm) var(--glass-saturate),
     border: var(--border-1) solid var(--glass-border-light),
-    box-shadow: var(--glass-shadow-light)
+    box-shadow: var(--shadow-sm)
   ),
   medium: (
     background: var(--glass-bg-medium),
     backdrop-filter: var(--glass-blur-md) var(--glass-saturate),
     border: var(--border-1) solid var(--glass-border-medium),
-    box-shadow: var(--glass-shadow-medium)
+    box-shadow: var(--shadow-md)
   ),
   heavy: (
     background: var(--glass-bg-heavy),
     backdrop-filter: var(--glass-blur-lg) var(--glass-saturate),
     border: var(--border-1) solid var(--glass-border-heavy),
-    box-shadow: var(--glass-shadow-heavy)
+    box-shadow: var(--shadow-lg)
   ),
   frost: (
     background: var(--glass-bg-frost),
-    backdrop-filter: var(--glass-blur-xl) var(--glass-saturate),
+    backdrop-filter: var(--glass-blur-lg) var(--glass-saturate),
     border: var(--border-1) solid var(--glass-border-light),
-    box-shadow: var(--glass-shadow-frost)
+    box-shadow: var(--shadow-xl)
   )
 );
 
@@ -218,15 +247,125 @@ $glass-variants: (
   }
 }
 
+// Interactive glass utility
 .glass-interactive {
-  @each $prop, $value in map.get($glass-variants, medium) {
-    #{$prop}: #{$value} !important;
-  }
+  background: var(--glass-bg-medium) !important;
+  backdrop-filter: var(--glass-blur-md) var(--glass-saturate) !important;
+  border: var(--border-1) solid var(--glass-border-medium) !important;
+  box-shadow: var(--shadow-md) !important;
   transition: var(--transition-fast) !important;
   
   &:hover {
     background: var(--glass-hover-bg) !important;
-    backdrop-filter: var(--glass-hover-blur) var(--glass-saturate) !important;
+    backdrop-filter: var(--glass-blur-sm) var(--glass-saturate) !important;
+  }
+}
+
+// Hover glass utilities
+.hover\:glass-light:hover {
+  background: var(--glass-bg-light) !important;
+  backdrop-filter: var(--glass-blur-sm) var(--glass-saturate) !important;
+  border: var(--border-1) solid var(--glass-border-light) !important;
+  box-shadow: var(--shadow-sm) !important;
+}
+
+.hover\:glass-medium:hover {
+  background: var(--glass-bg-medium) !important;
+  backdrop-filter: var(--glass-blur-md) var(--glass-saturate) !important;
+  border: var(--border-1) solid var(--glass-border-medium) !important;
+  box-shadow: var(--shadow-md) !important;
+}
+
+.hover\:glass-heavy:hover {
+  background: var(--glass-bg-heavy) !important;
+  backdrop-filter: var(--glass-blur-lg) var(--glass-saturate) !important;
+  border: var(--border-1) solid var(--glass-border-heavy) !important;
+  box-shadow: var(--shadow-lg) !important;
+}
+
+.hover\:glass-frost:hover {
+  background: var(--glass-bg-frost) !important;
+  backdrop-filter: var(--glass-blur-lg) var(--glass-saturate) !important;
+  border: var(--border-1) solid var(--glass-border-light) !important;
+  box-shadow: var(--shadow-xl) !important;
+}
+
+// ===== RESPONSIVE VISUAL EFFECTS UTILITIES =====
+// Mobile-first responsive visual effects with consistent breakpoint prefixes
+
+@each $breakpoint in (sm, md, lg, xl) {
+  @include responsive-min($breakpoint) {
+    
+    // Responsive opacity utilities
+    @each $scale in $opacity-scales {
+      .#{$breakpoint}\:opacity-#{$scale} { 
+        opacity: var(--opacity-#{$scale}) !important; 
+      }
+    }
+    
+    // Responsive shadow utilities
+    @each $name, $shadow in $shadow-sizes {
+      .#{$breakpoint}\:shadow-#{$name} { 
+        box-shadow: #{$shadow} !important; 
+      }
+    }
+    
+    // Responsive colored shadows
+    @each $name, $color in $shadow-colors {
+      .#{$breakpoint}\:shadow-#{$name} { 
+        box-shadow: 0 4px 16px color-mix(in srgb, #{$color} 25%, transparent) !important; 
+      }
+    }
+    
+    // Responsive elevation utilities
+    @each $level in $elevation-levels {
+      .#{$breakpoint}\:elevation-#{$level} {
+        box-shadow: #{map.get($elevation-shadows, $level)} !important;
+        transition: var(--transition-fast) !important;
+      }
+    }
+    
+    // Responsive glass utilities
+    @each $name, $props in $glass-variants {
+      .#{$breakpoint}\:glass-#{$name} {
+        @each $prop, $value in $props {
+          #{$prop}: #{$value} !important;
+        }
+      }
+    }
+    
+    // Responsive backdrop filter utilities
+    .#{$breakpoint}\:backdrop-blur-none { backdrop-filter: none !important; }
+    .#{$breakpoint}\:backdrop-blur-sm { backdrop-filter: blur(4px) !important; }
+    .#{$breakpoint}\:backdrop-blur { backdrop-filter: blur(8px) !important; }
+    .#{$breakpoint}\:backdrop-blur-md { backdrop-filter: blur(12px) !important; }
+    .#{$breakpoint}\:backdrop-blur-lg { backdrop-filter: blur(16px) !important; }
+    .#{$breakpoint}\:backdrop-blur-xl { backdrop-filter: blur(24px) !important; }
+    .#{$breakpoint}\:backdrop-blur-2xl { backdrop-filter: blur(40px) !important; }
+    .#{$breakpoint}\:backdrop-blur-3xl { backdrop-filter: blur(64px) !important; }
+    
+    // Responsive focus ring utilities
+    @each $name, $size in $ring-sizes {
+      .#{$breakpoint}\:ring-#{$name} { 
+        box-shadow: if($size == 0, none, 0 0 0 #{$size} var(--color-interactive-focus)) !important; 
+      }
+    }
+    
+    @each $name, $color in $ring-colors {
+      @if $name != default {
+        .#{$breakpoint}\:ring-#{$name} { 
+          box-shadow: 0 0 0 2px #{$color} !important; 
+        }
+      }
+    }
+    
+    // Responsive drop shadow utilities
+    .#{$breakpoint}\:drop-shadow-none { filter: drop-shadow(0 0 transparent) !important; }
+    .#{$breakpoint}\:drop-shadow-sm { filter: drop-shadow(0 1px 1px color-mix(in srgb, var(--color-text-primary) var(--opacity-5), transparent)) !important; }
+    .#{$breakpoint}\:drop-shadow-md { filter: drop-shadow(0 2px 4px color-mix(in srgb, var(--color-text-primary) var(--opacity-10), transparent)) !important; }
+    .#{$breakpoint}\:drop-shadow-lg { filter: drop-shadow(0 4px 8px color-mix(in srgb, var(--color-text-primary) var(--opacity-20), transparent)) !important; }
+    .#{$breakpoint}\:drop-shadow-xl { filter: drop-shadow(0 8px 16px color-mix(in srgb, var(--color-text-primary) var(--opacity-25), transparent)) !important; }
+    .#{$breakpoint}\:drop-shadow-2xl { filter: drop-shadow(0 16px 32px color-mix(in srgb, var(--color-text-primary) var(--opacity-30), transparent)) !important; }
   }
 }
 

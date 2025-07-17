@@ -1,83 +1,29 @@
 @use '../abstracts' as *;
 
-// ============================================================================
-// APP SHELL COMPONENT - Structural Layout + Interactive Features
-// ============================================================================
-
-// Layout-specific CSS custom properties
-:root {
-  --header-height: 4rem;
-  --sidebar-width-expanded: 16rem;
-  --sidebar-width-collapsed: 4rem;
-  --footer-height: 0;
+// App shell content max width support
+[style*="--content-max-width"] {
+  max-width: var(--content-max-width);
 }
 
-// Primary app shell layout structure
-.app-shell {
-  display: flex;
-  min-height: 100vh;
-  position: relative;
-  background: var(--color-background-primary);
-  
-  // Touch-friendly minimum targets (44px)
-  * {
-    min-height: var(--touch-target-min, 44px);
-  }
-  
-  // Mobile-first responsive foundation
-  @include responsive-max(md) {
-    flex-direction: column;
-  }
+// Mobile sidebar support
+.main-content.mobile-sidebar {
+  margin-left: 0;
 }
 
-.layout {
-  @extend .app-shell;
+// App header dimensions
+.app-header {
+  height: var(--header-height);
+  z-index: var(--z-header);
 }
 
-.layout-main {
-  flex: 1;
-  overflow: auto;
-  position: relative;
-  padding-top: 4rem;
-  min-height: calc(100vh - 4rem);
+// App shell specific dropdown extensions (dropdown core in _dropdowns.scss)
+.app-shell .dropdown-menu {
+  min-width: 16rem;
+  z-index: var(--z-dropdown);
 }
 
-// Main content area
-.main-content {
-  flex: 1;
-  min-height: 100vh;
-  padding-top: var(--header-height, 4rem);
-  transition: all var(--duration-normal) var(--ease-out);
-  
-  &-expanded {
-    margin-left: var(--sidebar-width-expanded, 16rem);
-  }
-  
-  &-collapsed {
-    margin-left: var(--sidebar-width-collapsed, 4rem);
-  }
-  
-  &-centered {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    max-width: 100%;
-  }
-  
-  @include responsive-max(md) {
-    &-expanded,
-    &-collapsed {
-      margin-left: 0;
-    }
-  }
-}
-
-.main {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-}
+// Layout structure is defined in layout/_app-shell.scss
+// This file contains only interactive enhancements
 
 // App shell interactive enhancements
 .app-shell {
@@ -261,10 +207,63 @@
 }
 
 // ============================================================================
+// PERFORMANCE OPTIMIZATIONS
+// ============================================================================
+
+// Optimized scrolling for app shell areas
+.app-shell {
+  .main-content,
+  .sidebar-content {
+    // Hardware acceleration for smooth scrolling
+    will-change: scroll-position;
+    transform: translateZ(0);
+    
+    // Optimized scrolling behavior
+    overscroll-behavior: contain;
+    scroll-behavior: smooth;
+    
+    @media (prefers-reduced-motion: reduce) {
+      scroll-behavior: auto;
+    }
+  }
+  
+  // Optimized reflow for dynamic content
+  .dynamic-content {
+    contain: layout style paint;
+  }
+  
+  // Virtual scrolling support
+  .virtualized-list {
+    height: 100%;
+    overflow: auto;
+    contain: strict;
+  }
+}
+
+// Enhanced focus management for large content areas
+.content-area {
+  // Optimize for layout shifts
+  contain: layout;
+  
+  &:focus-within {
+    contain: none; // Allow focus ring to show properly
+  }
+}
+
+// ============================================================================
 // ANIMATIONS - Interactive Features
 // ============================================================================
 
-
+@keyframes searchDropIn {
+  0% {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
 
 .search-results {
   animation: searchDropIn var(--duration-normal) var(--ease-out);
@@ -276,6 +275,52 @@
 // ============================================================================
 // ACCESSIBILITY ENHANCEMENTS
 // ============================================================================
+
+// Skip link positioning within app shell
+.app-shell .skip-link {
+  position: fixed;
+  top: var(--space-2);
+  left: var(--space-2);
+  z-index: var(--z-max);
+  transform: translateY(-100%);
+  transition: transform var(--duration-fast);
+  
+  &:focus {
+    transform: translateY(0);
+  }
+}
+
+// Landmark regions
+.app-shell {
+  [role="banner"],
+  [role="navigation"],
+  [role="main"],
+  [role="complementary"] {
+    outline: none;
+    
+    &:focus {
+      outline: 2px solid var(--color-interactive-focus);
+      outline-offset: -2px;
+    }
+  }
+}
+
+// Enhanced touch targets for mobile
+@media (pointer: coarse) {
+  .app-shell {
+    .search-result-item,
+    .nav-item,
+    .quick-actions-floating .button,
+    .quick-actions-floating .rbutton {
+      min-height: 48px;
+      min-width: 48px;
+    }
+    
+    .breadcrumb-item {
+      padding: var(--space-3);
+    }
+  }
+}
 
 // High contrast mode
 [data-high-contrast="true"] {
@@ -298,6 +343,30 @@
   }
 }
 
+// Voice control support
+[data-voice-control="true"] {
+  .app-shell {
+    // Larger targets for voice activation
+    .button,
+    .nav-item,
+    .search-result-item {
+      position: relative;
+      
+      &::after {
+        content: '';
+        position: absolute;
+        inset: -8px;
+        pointer-events: none;
+        border: 2px dashed transparent;
+      }
+      
+      &:focus::after {
+        border-color: var(--color-interactive-focus);
+      }
+    }
+  }
+}
+
 // Reduced motion preferences
 @media (prefers-reduced-motion: reduce) {
   .search-container,
@@ -313,37 +382,79 @@
 }
 
 // ============================================================================
-// THEME OPTIMIZATIONS
+// THEME SYSTEM INTEGRATION - Fully Theme-Aware App Shell
 // ============================================================================
 
-// Dark theme enhancements
-[data-theme="dark"] {
+// All theme variants for complete theme awareness
+[data-theme="light"] {
   .app-shell {
-    &-enhanced {
-      background: linear-gradient(135deg, 
-        var(--color-background-primary) 0%, 
-        color-mix(in srgb, var(--color-background-primary) 90%, var(--color-interactive-primary) 10%) 100%);
-    }
+    --shell-bg: var(--color-background-primary);
+    --shell-surface: var(--color-background-elevated);
+    --shell-border: var(--color-border-light);
+    --shell-text: var(--color-text-primary);
+    --shell-text-secondary: var(--color-text-secondary);
+    --shell-backdrop: var(--color-background-primary);
+    --shell-shadow: var(--shadow-sm);
+    --shell-glass-opacity: 0.8;
     
     .search-results {
-      background: var(--color-background-elevated);
-      backdrop-filter: blur(8px);
+      backdrop-filter: blur(4px) saturate(180%);
     }
     
     .quick-actions-floating .button,
     .quick-actions-floating .rbutton {
-      background: var(--color-background-elevated);
-      border: var(--border-1) solid var(--color-border-light);
+      background: var(--shell-surface);
+      border: var(--border-1) solid var(--shell-border);
+    }
+  }
+}
+
+[data-theme="dark"] {
+  .app-shell {
+    --shell-bg: var(--color-background-primary);
+    --shell-surface: var(--color-background-elevated);
+    --shell-border: var(--color-border-medium);
+    --shell-text: var(--color-text-primary);
+    --shell-text-secondary: var(--color-text-secondary);
+    --shell-backdrop: var(--color-background-primary);
+    --shell-shadow: var(--shadow-lg);
+    --shell-glass-opacity: 0.9;
+    
+    &-enhanced {
+      background: linear-gradient(135deg, 
+        var(--shell-bg) 0%, 
+        color-mix(in srgb, var(--shell-bg) 90%, var(--color-interactive-primary) 10%) 100%);
+    }
+    
+    .search-results {
+      background: var(--shell-surface);
+      backdrop-filter: blur(8px) saturate(150%);
+    }
+    
+    .quick-actions-floating .button,
+    .quick-actions-floating .rbutton {
+      background: var(--shell-surface);
+      border: var(--border-1) solid var(--shell-border);
       backdrop-filter: blur(8px);
     }
   }
 }
 
-// Light theme enhancements
-[data-theme="light"] {
+[data-theme="system"] {
   .app-shell {
-    .search-results {
-      backdrop-filter: blur(4px);
+    --shell-bg: var(--color-background-primary);
+    --shell-surface: var(--color-background-elevated);
+    --shell-border: var(--color-border-light);
+    --shell-text: var(--color-text-primary);
+    --shell-text-secondary: var(--color-text-secondary);
+    --shell-backdrop: var(--color-background-primary);
+    --shell-shadow: var(--shadow-md);
+    --shell-glass-opacity: 0.85;
+    
+    @media (prefers-color-scheme: dark) {
+      --shell-border: var(--color-border-medium);
+      --shell-shadow: var(--shadow-lg);
+      --shell-glass-opacity: 0.9;
     }
   }
 }

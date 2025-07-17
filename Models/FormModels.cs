@@ -10,7 +10,7 @@ public class FormValidationResult
     public bool IsValid { get; set; } = true;
     public Dictionary<string, List<string>> FieldErrors { get; set; } = new();
     public List<string> FormErrors { get; set; } = new();
-    public string? GeneralError { get; set; }
+    public string GeneralError { get; set; }
     
     public void AddFieldError(string fieldName, string error)
     {
@@ -68,20 +68,20 @@ public class FormSubmissionEventArgs<T>(
 /// <summary>
 /// Form state change event arguments
 /// </summary>
-public class FormStateChangedEventArgs(FormState previousState, FormState currentState, string? message = null)
+public class FormStateChangedEventArgs(FormState previousState, FormState currentState, string message = null)
 {
     public FormState PreviousState { get; set; } = previousState;
     public FormState CurrentState { get; set; } = currentState;
-    public string? Message { get; set; } = message;
+    public string Message { get; set; } = message;
 }
 
 /// <summary>
 /// Form field validation event arguments
 /// </summary>
-public class FieldValidationEventArgs(string fieldName, object? value)
+public class FieldValidationEventArgs(string fieldName, object value)
 {
     public string FieldName { get; set; } = fieldName;
-    public object? Value { get; set; } = value;
+    public object Value { get; set; } = value;
     public List<string> Errors { get; set; } = new();
     public bool IsValid => !Errors.Any();
 
@@ -139,7 +139,7 @@ public class FormOptions
     /// <summary>
     /// Success message to show after successful submission
     /// </summary>
-    public string? SuccessMessage { get; set; }
+    public string SuccessMessage { get; set; }
     
     /// <summary>
     /// Duration in milliseconds to show success message
@@ -152,7 +152,7 @@ public class FormOptions
 /// </summary>
 public class FormValidationContext
 {
-    public FormValidationResult? ValidationResult { get; set; }
+    public FormValidationResult ValidationResult { get; set; }
     public FormState State { get; set; } = FormState.Ready;
     public FormOptions Options { get; set; } = new();
     public bool HasAttemptedSubmit { get; set; } = false;
@@ -176,7 +176,7 @@ public class FormValidationContext
     /// <summary>
     /// Gets the first error message for a field (for simple error display)
     /// </summary>
-    public string? GetFieldErrorMessage(string fieldName)
+    public string GetFieldErrorMessage(string fieldName)
     {
         var errors = GetFieldErrors(fieldName);
         return errors.FirstOrDefault();
@@ -197,11 +197,11 @@ public class FormValidationContext
 /// </summary>
 public class FormSectionConfig
 {
-    public string? Title { get; set; }
-    public string? Description { get; set; }
-    public string? Icon { get; set; }
+    public string Title { get; set; }
+    public string Description { get; set; }
+    public string Icon { get; set; }
     public SectionElevation Elevation { get; set; } = SectionElevation.None;
     public bool IsCollapsible { get; set; } = false;
     public bool IsExpanded { get; set; } = true;
-    public string? CssClass { get; set; }
+    public string CssClass { get; set; }
 }

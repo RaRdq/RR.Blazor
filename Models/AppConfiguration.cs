@@ -1,3 +1,5 @@
+using RR.Blazor.Enums;
+
 namespace RR.Blazor.Models;
 
 /// <summary>
@@ -20,4 +22,24 @@ public class AppConfiguration
     public bool RememberSidebarState { get; set; } = true;
     public string DefaultRoute { get; set; } = "/";
     public Dictionary<string, object> CustomSettings { get; set; } = new();
+    
+    /// <summary>
+    /// Gets the default features based on configuration settings
+    /// </summary>
+    public AppShellFeatures GetDefaultFeatures()
+    {
+        var features = AppShellFeatures.Header | AppShellFeatures.Sidebar | AppShellFeatures.SidebarToggle | AppShellFeatures.Toasts;
+        
+        if (ShowSearch) features |= AppShellFeatures.Search;
+        if (ShowNotifications) features |= AppShellFeatures.Notifications;
+        if (ShowUserMenu) features |= AppShellFeatures.UserMenu;
+        if (ShowBreadcrumbs) features |= AppShellFeatures.Breadcrumbs;
+        if (ShowStatusBar) features |= AppShellFeatures.StatusBar;
+        if (ShowQuickActions) features |= AppShellFeatures.QuickActions;
+        
+        // Theme toggle is typically always available
+        features |= AppShellFeatures.ThemeToggle;
+        
+        return features;
+    }
 }

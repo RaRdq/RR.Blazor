@@ -360,7 +360,7 @@ public class ModalService() : IModalService, IDisposable
         {
             Title = title,
             Size = ModalSize.Medium,
-            ComponentType = typeof(RSelectModal<>).MakeGenericType(typeof(T)),
+            ComponentType = typeof(RSelectModalGeneric<>).MakeGenericType(typeof(T)),
             Parameters = new Dictionary<string, object>
             {
                 { "Items", items },
@@ -384,7 +384,7 @@ public class ModalService() : IModalService, IDisposable
         {
             Title = title,
             Size = ModalSize.Medium,
-            ComponentType = typeof(RSelectModal<>).MakeGenericType(typeof(T)),
+            ComponentType = typeof(RSelectModalGeneric<>).MakeGenericType(typeof(T)),
             Parameters = new Dictionary<string, object>
             {
                 { "Items", items },

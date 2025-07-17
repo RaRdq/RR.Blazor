@@ -34,7 +34,7 @@ Zero-config setup for enterprise Blazor applications with professional styling a
                        AvoidUsage = "Don't use for simple pages without navigation")]
 
 <RThemeProvider>
-<div class="app-shell min-h-screen flex" data-theme="@GetEffectiveTheme()">
+<div class="app-shell app-shell-container min-h-screen flex" data-theme="@GetEffectiveTheme()">
     <!-- Sidebar -->
     @if (ShowSidebar)
     {
@@ -83,34 +83,36 @@ Zero-config setup for enterprise Blazor applications with professional styling a
     }
 
     <!-- Main Content -->
-    <div class="main-content @(ShowSidebar ? (sidebarCollapsed ? "main-content-collapsed" : "main-content-expanded") : "")" style="@(IsMobile && ShowSidebar ?"margin-left: 0;" : "")">
+    <div class="main-content @(ShowSidebar ? (sidebarCollapsed ? "main-content-collapsed" : "main-content-expanded") : "") @(IsMobile && ShowSidebar ? "mobile-sidebar" : "")">
         <!-- Header -->
         @if (ShowHeader)
         {
-            <header class="header">
-                <div class="header-left">
+            <header class="fixed top-0 left-0 right-0 bg-surface-elevated border-b d-flex items-center pl-4 pr-4 shadow-sm backdrop-blur-sm app-header">
+                <!-- Left Section: Sidebar Toggle + Logo + Title/Subtitle + Breadcrumbs -->
+                <div class="d-flex items-center gap-3 flex-1 min-w-0">
                     @if (ShowSidebar && ShowSidebarToggle)
                     {
                         <RButton Icon="@(IsMobile ? "menu" : (sidebarCollapsed ? "menu_open" : "menu"))" IconPosition="IconPosition.Start"
                                  Variant="ButtonVariant.Ghost"
                                  Size="ButtonSize.Small"
                                  OnClick="ToggleSidebar"
-                                 AriaLabel="Toggle sidebar" />
+                                 AriaLabel="Toggle sidebar"
+                                 class="shrink-0" />
                     }
                     
                     <!-- Logo Area -->
-                    <div class="header-logo">
+                    <div class="d-flex items-center gap-2 shrink-0">
                         @if (LogoContent != null)
                         {
                             @LogoContent
                         }
                         else if (!string.IsNullOrEmpty(Logo))
                         {
-                            <img src="@Logo" alt="@(Title)" class="header-logo-img" />
+                            <img src="@Logo" alt="@(Title)" class="h-6 w-auto" />
                         }
                         else
                         {
-                            <span class="header-brand">@Title</span>
+                            <span class="text-sm font-semibold text-primary">@Title</span>
                         }
                     </div>
                     
@@ -120,190 +122,173 @@ Zero-config setup for enterprise Blazor applications with professional styling a
                     }
                     else
                     {
-                        <div class="header-title-group">
-                            <h1 class="header-title">@PageTitle</h1>
+                        <!-- Title & Subtitle Group with Breadcrumbs -->
+                        <div class="min-w-0 flex-1">
+                            <div class="d-flex items-center gap-2 flex-wrap">
+                                <h1 class="text-sm font-semibold text-primary ma-0 leading-tight">@PageTitle</h1>
+                                @if (ShowBreadcrumbs && Breadcrumbs?.Any() == true)
+                                {
+                                    <nav class="d-flex items-center gap-1 shrink-0" aria-label="Breadcrumb">
+                                        <i class="material-symbols-rounded text-xs text-secondary">chevron_right</i>
+                                        @foreach (var (item, index) in Breadcrumbs.Select((item, index) => (item, index)))
+                                        {
+                                            @if (index > 0)
+                                            {
+                                                <i class="material-symbols-rounded text-xs text-secondary">chevron_right</i>
+                                            }
+                                            @if (index == Breadcrumbs.Count - 1)
+                                            {
+                                                <span class="text-xs text-secondary text-truncate">@item.Text</span>
+                                            }
+                                            else
+                                            {
+                                                <a href="@item.Href" class="text-xs text-interactive hover:text-interactive text-truncate">@item.Text</a>
+                                            }
+                                        }
+                                    </nav>
+                                }
+                            </div>
                             @if (!string.IsNullOrEmpty(PageSubtitle))
                             {
-                                <p class="header-subtitle">@PageSubtitle</p>
+                                <p class="text-xs text-secondary ma-0 leading-tight">@PageSubtitle</p>
                             }
                         </div>
                     }
-                    
-                    @if (ShowBreadcrumbs && Breadcrumbs?.Any() == true)
-                    {
-                        <nav class="breadcrumbs ml-4" aria-label="Breadcrumb">
-                            @foreach (var (item, index) in Breadcrumbs.Select((item, index) => (item, index)))
-                            {
-                                @if (index > 0)
-                                {
-                                    <i class="material-symbols-rounded text-sm text-secondary ml-1 mr-1">chevron_right</i>
-                                }
-                                @if (index == Breadcrumbs.Count - 1)
-                                {
-                                    <span class="text-sm text-secondary">@item.Text</span>
-                                }
-                                else
-                                {
-                                    <a href="@item.Href" class="text-sm text-primary hover:text-primary">@item.Text</a>
-                                }
-                            }
-                        </nav>
-                    }
                 </div>
                 
-                <div class="header-right">
+                <!-- Right Section: Search + Notifications + Quick Actions + Theme + User Menu -->
+                <div class="d-flex items-center gap-1 shrink-0">
                     @if (ShowSearch)
                     {
-                        <div class="search-wrapper flex items-center gap-2 mr-3">
+                        <!-- Single Row Search with Toggle -->
+                        <div class="relative mr-2">
                             @if (SearchCollapsible)
                             {
-                                <div class="search-container relative @(searchExpanded ? "search-expanded" : "search-collapsed")">
-                                    @if (searchExpanded)
-                                    {
-                                        <RFormField Type="FieldType.Search"
-                                                   Placeholder="Search..."
-                                                   @bind-Value="searchQuery"
-                                                   @bind-Value:after="HandleSearchChange"
-                                                   class="w-64 animate-fade-in" />
+                                @if (searchExpanded)
+                                {
+                                    <!-- Expanded Search: X button + Input Field -->
+                                    <div class="d-flex items-center gap-1">
                                         <RButton Icon="close" IconPosition="IconPosition.Start"
                                                  Variant="ButtonVariant.Ghost"
                                                  Size="ButtonSize.Small"
                                                  OnClick="CollapseSearch"
-                                                 class="ml-2" />
-                                    }
-                                    else
-                                    {
-                                        <RButton Icon="search" IconPosition="IconPosition.Start"
-                                                 Variant="ButtonVariant.Ghost"
-                                                 Size="ButtonSize.Small"
-                                                 OnClick="ExpandSearch" />
-                                    }
-                                    
-                                    @if (showSearchResults && searchResults.Any() && searchExpanded)
-                                    {
-                                        <div class="search-results absolute top-100 left-0 right-0 bg-surface-elevated shadow-lg rounded-md mt-1 pt-2 pb-2 z-50">
-                                            @foreach (var result in searchResults.Take(8))
-                                            {
-                                                <button class="search-result-item w-full text-left pl-3 pr-3 pt-2 pb-2 hover:bg-surface-secondary flex items-center gap-3"
-                                                        @onclick="() => HandleSearchResultClick(result)">
-                                                    @if (!string.IsNullOrEmpty(result.Icon))
-                                                    {
-                                                        <i class="material-symbols-rounded text-sm">@result.Icon</i>
-                                                    }
-                                                    <div class="grow min-w-0">
-                                                        <div class="text-sm font-medium text-truncate">@result.Title</div>
-                                                        @if (!string.IsNullOrEmpty(result.Description))
-                                                        {
-                                                            <div class="text-xs text-secondary text-truncate">@result.Description</div>
-                                                        }
-                                                    </div>
-                                                    <span class="text-xs text-tertiary">@result.Category</span>
-                                                </button>
-                                            }
-                                        </div>
-                                    }
-                                </div>
+                                                 AriaLabel="Close search" />
+                                        <RFormField Type="FieldType.Search"
+                                                   Placeholder="Search..."
+                                                   @bind-Value="searchQuery"
+                                                   @bind-Value:after="HandleSearchChange"
+                                                   class="w-48" />
+                                    </div>
+                                }
+                                else
+                                {
+                                    <!-- Collapsed Search: Search Icon Only -->
+                                    <RButton Icon="search" IconPosition="IconPosition.Start"
+                                             Variant="ButtonVariant.Ghost"
+                                             Size="ButtonSize.Small"
+                                             OnClick="ExpandSearch"
+                                             AriaLabel="Open search" />
+                                }
                             }
                             else
                             {
-                                <div class="search-container relative">
-                                    <RFormField Type="FieldType.Search"
-                                               Placeholder="Search..."
-                                               @bind-Value="searchQuery"
-                                               @bind-Value:after="HandleSearchChange"
-                                               class="w-64" />
-                                    @if (showSearchResults && searchResults.Any())
+                                <!-- Always Visible Search -->
+                                <RFormField Type="FieldType.Search"
+                                           Placeholder="Search..."
+                                           @bind-Value="searchQuery"
+                                           @bind-Value:after="HandleSearchChange"
+                                           class="w-48" />
+                            }
+                            
+                            <!-- Search Results Dropdown -->
+                            @if (showSearchResults && searchResults.Any() && (!SearchCollapsible || searchExpanded))
+                            {
+                                <div class="absolute top-100 left-0 right-0 bg-surface-elevated shadow-lg rounded-md mt-1 pt-2 pb-2 z-50">
+                                    @foreach (var result in searchResults.Take(8))
                                     {
-                                        <div class="search-results absolute top-100 left-0 right-0 bg-surface-elevated shadow-lg rounded-md mt-1 pt-2 pb-2 z-50">
-                                            @foreach (var result in searchResults.Take(8))
+                                        <button class="w-full text-left pl-3 pr-3 pt-2 pb-2 hover:bg-surface d-flex items-center gap-3"
+                                                @onclick="() => HandleSearchResultClick(result)">
+                                            @if (!string.IsNullOrEmpty(result.Icon))
                                             {
-                                                <button class="search-result-item w-full text-left pl-3 pr-3 pt-2 pb-2 hover:bg-surface-secondary flex items-center gap-3"
-                                                        @onclick="() => HandleSearchResultClick(result)">
-                                                    @if (!string.IsNullOrEmpty(result.Icon))
-                                                    {
-                                                        <i class="material-symbols-rounded text-sm">@result.Icon</i>
-                                                    }
-                                                    <div class="grow min-w-0">
-                                                        <div class="text-sm font-medium text-truncate">@result.Title</div>
-                                                        @if (!string.IsNullOrEmpty(result.Description))
-                                                        {
-                                                            <div class="text-xs text-secondary text-truncate">@result.Description</div>
-                                                        }
-                                                    </div>
-                                                    <span class="text-xs text-tertiary">@result.Category</span>
-                                                </button>
+                                                <i class="material-symbols-rounded text-sm">@result.Icon</i>
                                             }
-                                        </div>
+                                            <div class="flex-1 min-w-0">
+                                                <div class="text-sm font-medium text-truncate">@result.Title</div>
+                                                @if (!string.IsNullOrEmpty(result.Description))
+                                                {
+                                                    <div class="text-xs text-secondary text-truncate">@result.Description</div>
+                                                }
+                                            </div>
+                                            <span class="text-xs text-tertiary">@result.Category</span>
+                                        </button>
                                     }
                                 </div>
                             }
                         </div>
                     }
                     
-                    @if (ShowNotifications)
-                    {
-                        <RButton Icon="notifications" IconPosition="IconPosition.Start"
-                                 Variant="ButtonVariant.Ghost"
-                                 Size="ButtonSize.Small"
-                                 ShowBadge="@(NotificationCount > 0)"
-                                 BadgeCount="@NotificationCount"
-                                 OnClick="HandleNotificationsClick"
-                                 class="mr-2" />
-                    }
-                    
-                    @if (QuickActions != null)
-                    {
-                        @QuickActions
-                    }
-                    
-                    @if (HeaderRight != null)
-                    {
-                        @HeaderRight
-                    }
-                    
-                    @if (ShowThemeToggle)
-                    {
-                        <RThemeSwitcher class="mr-2" />
-                    }
-                    
-                    @if (CurrentUser != null && ShowUserMenu && UserMenu != null)
-                    {
-                        <div class="user-menu-dropdown relative" @onclick="ToggleUserMenu">
-                            <RButton Variant="ButtonVariant.Ghost" Size="ButtonSize.Small">
-                                <div class="flex items-center gap-2">
-                                    <RAvatar Text="@CurrentUser.GetInitials()" 
-                                             ImageSrc="@CurrentUser.Avatar"
-                                             Size="AvatarSize.Small"
-                                             ShowStatus="true"
-                                             Status="@(CurrentUser.IsOnline ? AvatarStatus.Online : AvatarStatus.Offline)" />
-                                    <span class="text-sm font-medium hidden d-md-inline">@CurrentUser.GetDisplayName()</span>
-                                    <i class="material-symbols-rounded text-sm">expand_more</i>
-                                </div>
-                            </RButton>
-                            @if (showUserMenu)
-                            {
-                                <div class="user-menu-content absolute top-100 right-0 bg-surface-elevated shadow-lg rounded-md mt-1 pt-2 pb-2 z-50 min-w-64">
-                                    @UserMenu
-                                </div>
-                            }
-                        </div>
-                    }
+                    <!-- Action Buttons Group -->
+                    <div class="d-flex items-center gap-1">
+                        @if (ShowNotifications)
+                        {
+                            <RButton Icon="notifications" IconPosition="IconPosition.Start"
+                                     Variant="ButtonVariant.Ghost"
+                                     Size="ButtonSize.Small"
+                                     ShowBadge="@(NotificationCount > 0)"
+                                     BadgeCount="@NotificationCount"
+                                     OnClick="HandleNotificationsClick"
+                                     AriaLabel="Notifications" />
+                        }
+                        
+                        @if (QuickActions != null)
+                        {
+                            <div class="d-flex items-center gap-1">
+                                @QuickActions
+                            </div>
+                        }
+                        
+                        @if (HeaderRight != null)
+                        {
+                            @HeaderRight
+                        }
+                        
+                        @if (ShowThemeToggle)
+                        {
+                            <RThemeSwitcher />
+                        }
+                        
+                        @if (CurrentUser != null && ShowUserMenu && UserMenu != null)
+                        {
+                            <div class="relative ml-2" @onclick="ToggleUserMenu">
+                                <RButton Variant="ButtonVariant.Ghost" Size="ButtonSize.Small">
+                                    <div class="d-flex items-center gap-2">
+                                        <RAvatar Text="@CurrentUser.GetInitials()" 
+                                                 ImageSrc="@CurrentUser.Avatar"
+                                                 Size="AvatarSize.Small"
+                                                 ShowStatus="true"
+                                                 Status="@(CurrentUser.IsOnline ? AvatarStatus.Online : AvatarStatus.Offline)" />
+                                        <span class="text-sm font-medium hidden md:d-inline">@CurrentUser.GetDisplayName()</span>
+                                        <i class="material-symbols-rounded text-sm">expand_more</i>
+                                    </div>
+                                </RButton>
+                                @if (showUserMenu)
+                                {
+                                    <div class="absolute top-100 right-0 bg-surface-elevated shadow-lg rounded-md mt-1 pt-2 pb-2 z-50 dropdown-menu">
+                                        @UserMenu
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
                 </div>
             </header>
         }
         
         <!-- Main Content Area -->
         <main class="main">
-            <div class="main-content @(ContentCentered && !string.IsNullOrEmpty(ContentMaxWidth) ? "main-content-centered" : "")" 
+            <div class="main-content @GetContentClasses()" 
                  style="@GetContentStyle()">
-                @if (ChildContent != null)
-                {
-                    @ChildContent
-                }
-                else
-                {
-                    @Body
-                }
+                @ChildContent
             </div>
         </main>
         
@@ -387,43 +372,29 @@ Zero-config setup for enterprise Blazor applications with professional styling a
     
     // === LAYOUT CONTROL ===
     
-    /// <summary>Show/hide sidebar</summary>
-    [Parameter, AIParameter("Display left navigation sidebar", "true for apps with navigation menus")] 
-    public bool ShowSidebar { get; set; } = true;
-    
-    /// <summary>Show/hide header</summary>
-    [Parameter] public bool ShowHeader { get; set; } = true;
-    
-    /// <summary>Show/hide toast container</summary>
-    [Parameter] public bool ShowToasts { get; set; } = true;
-    
-    /// <summary>Show/hide search functionality</summary>
-    [Parameter, AIParameter("Enable global search in header", "true for content-rich applications")] 
-    public bool ShowSearch { get; set; } = true;
+    /// <summary>Layout features configuration</summary>
+    [Parameter, AIParameter("Control app shell features", "AppShellFeatures.All for full features, AppShellFeatures.Minimal for basic layout")] 
+    public AppShellFeatures Features { get; set; } = AppShellFeatures.All;
     
     /// <summary>Make search collapsible on the right side</summary>
     [Parameter] public bool SearchCollapsible { get; set; } = false;
     
-    /// <summary>Show/hide notifications button</summary>
-    [Parameter] public bool ShowNotifications { get; set; } = true;
+    /// <summary>Notification count for badge</summary>
+    [Parameter] public int NotificationCount { get; set; }
     
-    /// <summary>Show/hide theme toggle</summary>
-    [Parameter] public bool ShowThemeToggle { get; set; } = true;
+    // === COMPUTED LAYOUT PROPERTIES ===
     
-    /// <summary>Show/hide user menu</summary>
-    [Parameter] public bool ShowUserMenu { get; set; } = true;
-    
-    /// <summary>Show/hide sidebar toggle button</summary>
-    [Parameter] public bool ShowSidebarToggle { get; set; } = true;
-    
-    /// <summary>Show/hide breadcrumbs</summary>
-    [Parameter] public bool ShowBreadcrumbs { get; set; } = false;
-    
-    /// <summary>Show/hide status bar</summary>
-    [Parameter] public bool ShowStatusBar { get; set; } = false;
-    
-    /// <summary>Show/hide quick actions</summary>
-    [Parameter] public bool ShowQuickActions { get; set; } = false;
+    private bool ShowSidebar => Features.HasFlag(AppShellFeatures.Sidebar);
+    private bool ShowHeader => Features.HasFlag(AppShellFeatures.Header);
+    private bool ShowToasts => Features.HasFlag(AppShellFeatures.Toasts);
+    private bool ShowSearch => Features.HasFlag(AppShellFeatures.Search);
+    private bool ShowNotifications => Features.HasFlag(AppShellFeatures.Notifications);
+    private bool ShowThemeToggle => Features.HasFlag(AppShellFeatures.ThemeToggle);
+    private bool ShowUserMenu => Features.HasFlag(AppShellFeatures.UserMenu);
+    private bool ShowSidebarToggle => Features.HasFlag(AppShellFeatures.SidebarToggle);
+    private bool ShowBreadcrumbs => Features.HasFlag(AppShellFeatures.Breadcrumbs);
+    private bool ShowStatusBar => Features.HasFlag(AppShellFeatures.StatusBar);
+    private bool ShowQuickActions => Features.HasFlag(AppShellFeatures.QuickActions);
     
     // === CONTENT PARAMETERS ===
     
@@ -439,9 +410,6 @@ Zero-config setup for enterprise Blazor applications with professional styling a
     
     /// <summary>Breadcrumb items</summary>
     [Parameter] public List<AppNavItem> Breadcrumbs { get; set; }
-    
-    /// <summary>Notification count for badge</summary>
-    [Parameter] public int NotificationCount { get; set; }
     
     /// <summary>User permissions for nav filtering</summary>
     [Parameter] public string[] UserPermissions { get; set; }
@@ -507,22 +475,21 @@ Zero-config setup for enterprise Blazor applications with professional styling a
     
     protected override async Task OnInitializedAsync()
     {
-        // Load configuration
+        // Load configuration (only for defaults, don't override user parameters)
         await ConfigService.LoadAsync();
         
-        // Apply configuration defaults
+        // Apply configuration defaults only if user hasn't provided values
         if (ConfigService.Current != null)
         {
             var config = ConfigService.Current;
+            
+            // Only set defaults if user hasn't provided values
             if (string.IsNullOrEmpty(PageTitle) && !string.IsNullOrEmpty(config.Title))
                 PageTitle = config.Title;
-                
-            ShowSearch = config.ShowSearch;
-            ShowNotifications = config.ShowNotifications;
-            ShowUserMenu = config.ShowUserMenu;
-            ShowBreadcrumbs = config.ShowBreadcrumbs;
-            ShowStatusBar = config.ShowStatusBar;
-            ShowQuickActions = config.ShowQuickActions;
+            
+            // Features are user-controlled, config provides intelligent defaults only
+            if (Features == AppShellFeatures.All && config.GetDefaultFeatures() != AppShellFeatures.All)
+                Features = config.GetDefaultFeatures();
         }
         
         // Set up navigation search provider
@@ -532,16 +499,8 @@ Zero-config setup for enterprise Blazor applications with professional styling a
             SearchService.RegisterSearchProvider(navProvider);
         }
         
-        // Set up default navigation if none provided
-        if (NavigationItems == null)
-        {
-            NavigationItems = new List<AppNavItem>
-            {
-                AppNavItems.Dashboard(),
-                AppNavItems.Settings(),
-                AppNavItems.Profile()
-            };
-        }
+        // Only set up default navigation if none provided and sidebar is enabled
+        NavigationItems ??= ShowSidebar ? GetDefaultNavigation() : null;
     }
     
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -602,27 +561,45 @@ Zero-config setup for enterprise Blazor applications with professional styling a
     
     private async Task HandleSearchChange()
     {
-        searchDebounceTimer?.Dispose();
-        
-        if (string.IsNullOrWhiteSpace(searchQuery))
+        try
         {
-            showSearchResults = false;
-            searchResults.Clear();
-            StateHasChanged();
-            return;
-        }
-        
-        searchDebounceTimer = new Timer(async _ =>
-        {
-            await InvokeAsync(async () =>
+            searchDebounceTimer?.Dispose();
+            
+            if (string.IsNullOrWhiteSpace(searchQuery))
             {
-                searchResults = await SearchService.SearchAsync(searchQuery);
-                showSearchResults = searchResults.Any();
+                showSearchResults = false;
+                searchResults.Clear();
                 StateHasChanged();
-            });
-        }, null, 300, Timeout.Infinite);
-        
-        await SearchChanged.InvokeAsync(searchQuery);
+                return;
+            }
+            
+            searchDebounceTimer = new Timer(async _ =>
+            {
+                try
+                {
+                    if (!disposed)
+                    {
+                        await InvokeAsync(async () =>
+                        {
+                            if (!disposed)
+                            {
+                                searchResults = await SearchService.SearchAsync(searchQuery);
+                                showSearchResults = searchResults.Any();
+                                StateHasChanged();
+                            }
+                        });
+                    }
+                }
+                catch (ObjectDisposedException) { }
+                catch (Exception ex)
+                {
+                    Console.Error.WriteLine($"Search error: {ex.Message}");
+                }
+            }, null, 300, Timeout.Infinite);
+            
+            await SearchChanged.InvokeAsync(searchQuery);
+        }
+        catch (ObjectDisposedException) { }
     }
     
     private async Task HandleSearchResultClick(AppSearchResult result)
@@ -636,7 +613,7 @@ Zero-config setup for enterprise Blazor applications with professional styling a
         {
             await result.OnClick();
         }
-        else if (!string.IsNullOrEmpty(result.Url))
+        else if (!string.IsNullOrEmpty(result.Url) && IsValidUrl(result.Url))
         {
             await JS.InvokeVoidAsync("window.location.href", result.Url);
         }
@@ -657,7 +634,6 @@ Zero-config setup for enterprise Blazor applications with professional styling a
     private void ExpandSearch()
     {
         searchExpanded = true;
-        StateHasChanged();
     }
     
     private void CollapseSearch()
@@ -665,15 +641,42 @@ Zero-config setup for enterprise Blazor applications with professional styling a
         searchExpanded = false;
         searchQuery = string.Empty;
         showSearchResults = false;
-        StateHasChanged();
+        try
+        {
+            searchDebounceTimer?.Dispose();
+            searchDebounceTimer = null;
+        }
+        catch { }
     }
     
     private string GetContentStyle()
     {
-        if (string.IsNullOrEmpty(ContentMaxWidth))
-            return "";
-        
-        return $"max-width: {ContentMaxWidth};";
+        return string.IsNullOrEmpty(ContentMaxWidth) ? "" : $"--content-max-width: {ContentMaxWidth};";
+    }
+    
+    private string GetContentClasses()
+    {
+        return ContentCentered && !string.IsNullOrEmpty(ContentMaxWidth) ? "main-content-centered" : "";
+    }
+    
+    private static List<AppNavItem> GetDefaultNavigation()
+    {
+        return new List<AppNavItem>
+        {
+            AppNavItems.Dashboard(),
+            AppNavItems.Settings(),
+            AppNavItems.Profile()
+        };
+    }
+    
+    private static bool IsValidUrl(string url)
+    {
+        return !string.IsNullOrEmpty(url) && 
+               (url.StartsWith('/') || 
+                url.StartsWith("./") || 
+                url.StartsWith("../") ||
+                (Uri.TryCreate(url, UriKind.Absolute, out var uri) && 
+                 (uri.Scheme == "http" || uri.Scheme == "https")));
     }
     
     public async ValueTask DisposeAsync()
@@ -682,7 +685,12 @@ Zero-config setup for enterprise Blazor applications with professional styling a
         {
             disposed = true;
             
-            searchDebounceTimer?.Dispose();
+            try
+            {
+                searchDebounceTimer?.Dispose();
+                searchDebounceTimer = null;
+            }
+            catch { }
             
             if (jsModule != null)
             {
@@ -691,6 +699,10 @@ Zero-config setup for enterprise Blazor applications with professional styling a
                     await jsModule.DisposeAsync();
                 }
                 catch { }
+                finally
+                {
+                    jsModule = null;
+                }
             }
         }
     }

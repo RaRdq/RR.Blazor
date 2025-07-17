@@ -13,19 +13,60 @@ AI agents consistently hallucinate component APIs, mix framework versions, and g
 ## Key Features
 
 - **Everything ON by Default**: Full functionality works out-of-the-box with zero configuration
+- **Unified Smart Components**: Intelligent type detection eliminates explicit generic parameters
 - **Fluent Configuration API**: Clean, chainable configuration with `.WithTheme()`, `.WithToasts()`, etc.
 - **100% Theme-aware**: Dynamic light/dark/high-contrast modes with CSS variables
 - **Complete Toast System**: Auto-dismissing notifications with manual close, positioning, and animations
 - **Accessibility First**: WCAG 2.1 AA compliant with screen reader support  
 - **Zero Dependencies**: Pure Blazor components, no external UI libraries
 - **Fully Responsive**: Mobile-first design with 44px touch targets
-- **Type-Safe**: Full C# type safety with generic components
+- **Type-Safe**: Full C# type safety with smart reflection-based type inference
 - **Performance**: Optimized rendering with minimal re-renders
-- **Customizable**: 800+ CSS utility classes
+- **Customizable**: 2,953+ CSS utility classes
 - **Tree-Shakeable**: Use only what you need
 - **High Contrast Mode**: Built-in support for accessibility preferences
 - **Motion Preferences**: Respects prefers-reduced-motion
 - **AI-First Documentation**: Auto-generated JSON schema optimized for AI consumption
+
+## Unified Smart Components
+
+RR.Blazor features breakthrough unified smart components that eliminate the need for explicit generic type parameters through intelligent runtime type detection.
+
+### 🎯 **RDropdown** - Universal Dropdown
+```razor
+<!-- Old way: Multiple components, explicit types -->
+<RDropdownGeneric<User> Items="users" />
+<RDropdownObject Items="departments" />
+<RDropdownString Items="roles" />
+
+<!-- New way: One component, smart detection -->
+<RDropdown Items="users" />          <!-- Detects User[] automatically -->
+<RDropdown Items="departments" />    <!-- Detects Department[] automatically -->
+<RDropdown Items="roles" />          <!-- Detects string[] automatically -->
+```
+
+### 📝 **RForm** - Universal Form
+```razor
+<!-- Old way: Explicit model type -->
+<RFormGeneric<UserModel> Model="user" OnValidSubmit="SaveUser" />
+
+<!-- New way: Smart type inference -->
+<RForm Model="user" OnValidSubmit="SaveUser" />  <!-- Detects UserModel automatically -->
+```
+
+### ✨ **Smart Type Detection Features**
+- **Runtime Type Analysis**: Automatically extracts `T` from `IEnumerable<T>` interfaces
+- **Reflection-Based Parameter Forwarding**: Preserves full type safety while eliminating boilerplate
+- **Intelligent Callback Conversion**: Maintains strongly-typed event handlers
+- **Zero Performance Impact**: Type detection cached after first render
+- **Backward Compatibility**: Explicit generic components still available when needed
+
+### 🚀 **Benefits for Developers**
+- **Cleaner Code**: Remove `TValue="..."` and `TModel="..."` parameters
+- **Faster Development**: Write components without thinking about generics
+- **AI-Friendly**: Simplified API perfect for AI code generation
+- **Type Safety**: Full compile-time checking with runtime flexibility
+- **Future-Proof**: Smart components evolve with your data models
 
 ## Installation
 
@@ -101,11 +142,18 @@ builder.Services.AddRRBlazor(blazor => blazor
 @using RR.Blazor.Enums
 ```
 
-### 5. Use Components
+### 5. Use Smart Components
 
 ```razor
 @using RR.Blazor.Components
 
+<!-- Unified smart components - no explicit types needed -->
+<RForm Model="userModel" OnValidSubmit="SaveUser">
+    <RDropdown Items="departments" @bind-SelectedValue="userModel.Department" />
+    <RButton Text="Save User" Variant="ButtonVariant.Primary" Type="ButtonType.Submit" />
+</RForm>
+
+<!-- Traditional usage still supported -->
 <RCard Title="Welcome" Elevation="4" Class="glass-light">
     <div class="pa-6">
         <RButton Text="Get Started" 
@@ -131,8 +179,8 @@ builder.Services.AddRRBlazor();
 - ✅ Complete theme system (follows system preferences)
 - ✅ Full toast notification system (4s auto-hide, close buttons, top-right)
 - ✅ Professional animations and transitions
-- ✅ All 49 components with consistent styling
-- ✅ 800+ utility classes available
+- ✅ All 62 components with unified smart type detection
+- ✅ 2,953+ utility classes available
 - ✅ Accessibility features enabled
 
 ### Fluent Customization
@@ -171,9 +219,9 @@ RR.Blazor features an AI-first documentation system that automatically generates
 **Styles**: `wwwroot/rr-ai-styles.json`
 
 **Contains**:
-- 51 components with structured format and essential parameters
-- 2,227 utility classes with bracket notation patterns
-- 806 CSS variables with semantic categorization
+- 62 components with structured format and essential parameters
+- 2,953 utility classes with bracket notation patterns
+- 283 CSS variables with semantic categorization
 - AI-optimized format for pattern extrapolation
 - Source of truth extraction from actual code
 
@@ -256,7 +304,7 @@ Add these to your AI assistant's context:
 - **RThemeSwitcher** - User theme toggle control
 
 ### Form Components (7)
-- **RForm** - Form container with validation
+- **RForm** - Unified smart form with intelligent model type detection
 - **RFormField** - Universal input component supporting 15+ field types
 - **RFormSection** - Organized form layout sections
 - **RDatePicker** - Date and time selection with calendar
@@ -265,12 +313,29 @@ Add these to your AI assistant's context:
 - **RSwitcher** - Toggle switch control
 
 ### Data Components (6)
-- **RDataTable** - Full-featured data grid with sorting and pagination
+- **RDataTable** - Full-featured data grid with auto-generated columns and smart formatting
 - **RDataTableColumn** - Table column configuration
 - **RList** - List container with items
 - **RListItem** - Individual list entries
 - **RVirtualList** - Performance-optimized virtual scrolling
 - **RFilterBar** - Data filtering interface
+
+#### ✨ **Auto-Generated Columns** (New Feature)
+RDataTable now automatically generates columns from your model properties with zero configuration:
+
+```razor
+<!-- No column definitions needed! -->
+<RDataTable TItem="Product" Items="@products" />
+```
+
+**Smart Features:**
+- **Type-Aware Formatting**: Currency, dates, booleans, emails, phone numbers
+- **Attribute Support**: Respects `[Display]`, `[DisplayFormat]`, `[NotMapped]`
+- **Automatic Sizing**: Columns sized based on content type
+- **Sortable Detection**: Primitives and dates become sortable
+- **Property Filtering**: Excludes complex types and collections
+
+📖 **[Complete Auto-Generated Columns Documentation](Documentation/RDataTable-AutoGeneratedColumns.md)**
 
 ### Display Components (10)
 - **RAccordion** - Collapsible content panels
@@ -298,7 +363,7 @@ Add these to your AI assistant's context:
 
 ### Navigation Components (5)
 - **RBreadcrumbs** - Breadcrumb trail navigation
-- **RDropdown** - Dropdown menu system
+- **RDropdown** - Unified smart dropdown with intelligent type detection
 - **RNavMenu** - Main navigation menus
 - **RTabItem** - Individual tab components
 - **RTabs** - Tab navigation system
@@ -427,16 +492,39 @@ RR.Blazor includes 800+ utility classes inspired by modern CSS frameworks:
              IconPosition="IconPosition.Start" />
 </div>
 
-<RDataTable Items="@users" 
+<!-- Auto-generated columns with smart formatting -->
+<RDataTable TItem="User" 
+            Items="@users" 
             Class="elevation-2" 
+            Title="User Management"
+            ShowFilters="true"
             Striped="true" 
-            Hoverable="true">
-    <Columns>
-        <RDataTableColumn Field="Name" Title="User" />
-        <RDataTableColumn Field="Department" Title="Department" />
-        <RDataTableColumn Field="Role" Title="Role" />
-    </Columns>
-</RDataTable>
+            Hoverable="true" />
+
+<!-- Model with attributes for customization -->
+@code {
+    public class User
+    {
+        [Display(Name = "Employee ID", Order = 1)]
+        public string Id { get; set; }
+        
+        [Display(Name = "Full Name", Order = 2)]
+        public string Name { get; set; }
+        
+        [Display(Name = "Email Address", Order = 3)]
+        public string Email { get; set; }  // Auto-detects as email link
+        
+        [Display(Name = "Department", Order = 4)]
+        public Department Department { get; set; }  // Enum formatting
+        
+        [Display(Name = "Salary", Order = 5)]
+        [DisplayFormat(DataFormatString = "{0:C}")]
+        public decimal Salary { get; set; }  // Currency formatting
+        
+        [Display(Name = "Active", Order = 6)]
+        public bool IsActive { get; set; }  // Checkbox (✓/✗)
+    }
+}
 ```
 
 ### Form with Validation
@@ -698,7 +786,7 @@ git clone https://github.com/RaRdq/RR.Blazor.git
 cd RR.Blazor
 
 # Generate AI documentation
-pwsh ./Scripts/GenerateDocumentation.ps1 -ProjectPath .
+pwsh ./Scripts/GenerateDocumentation.ps1_ -ProjectPath .
 
 # Build project with tools
 dotnet build

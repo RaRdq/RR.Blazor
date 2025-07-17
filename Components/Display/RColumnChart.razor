@@ -1,0 +1,533 @@
+@* RColumnChart - Specialized column/bar chart component for categorical data visualization *@
+@using RR.Blazor.Enums
+@using RR.Blazor.Models
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.JSInterop
+@inject IJSRuntime JSRuntime
+
+<RChart Title="@Title" 
+        Subtitle="@Subtitle"
+        Icon="@Icon"
+        Type="@(IsHorizontal ? ChartType.Bar : ChartType.Column)"
+        Size="@Size"
+        Variant="@Variant"
+        Theme="@Theme"
+        Loading="@Loading"
+        HasError="@HasError"
+        IsEmpty="@IsEmpty"
+        ShowLegend="@ShowLegend"
+        LegendPosition="@LegendPosition"
+        Class="@Class"
+        OnClick="@OnClick"
+        OnChartInit="@HandleChartInit"
+        Configuration="@Configuration">
+    
+    <HeaderContent>
+        @HeaderContent
+    </HeaderContent>
+    
+    <ChildContent>
+        <div class="column-chart-container @(IsHorizontal ? "column-chart-horizontal" : "")" @ref="chartContainer">
+            @if (Data != null && Data.Any())
+            {
+                <div class="column-chart-bars">
+                    @{
+                        var maxValue = Data.Max(d => d.Value);
+                        var minValue = ShowZeroLine ? 0 : Data.Min(d => d.Value);
+                        var range = maxValue - minValue;
+                        if (range == 0) range = 1; // Prevent division by zero
+                    }
+                    
+                    @foreach (var (dataPoint, index) in Data.Select((d, i) => (d, i)))
+                    {
+                        var percentage = range > 0 ? (dataPoint.Value - minValue) / range : 0;
+                        var height = Math.Max(percentage * 100, 2); // Minimum 2% height
+                        var color = GetBarColor(dataPoint, index);
+                        
+                        <div class="column-chart-bar @(selectedIndex == index ? "active" : "")"
+                             @onclick="@(async () => await HandleBarClick(dataPoint, index))"
+                             @onmouseover="@(async () => await HandleBarHover(dataPoint, index))"
+                             @onmouseout="@(async () => await HandleBarLeave())"
+                             role="button"
+                             tabindex="0"
+                             aria-label="@GetBarAriaLabel(dataPoint)">
+                            
+                            <div class="column-chart-bar-fill column-chart-bar-fill-@GetColorVariant(dataPoint, index)"
+                                 style="@GetBarStyle(height, color)">
+                            </div>
+                            
+                            @if (ShowValues)
+                            {
+                                <div class="column-chart-bar-value">
+                                    @GetFormattedValue(dataPoint.Value)
+                                </div>
+                            }
+                            
+                            @if (ShowLabels)
+                            {
+                                <div class="column-chart-bar-label">
+                                    @dataPoint.Label
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+                
+                @if (ShowAxis)
+                {
+                    <div class="column-chart-axis column-chart-axis-x"></div>
+                    <div class="column-chart-axis column-chart-axis-y"></div>
+                }
+                
+                @if (ShowGridLines)
+                {
+                    <div class="column-chart-grid">
+                        @for (int i = 0; i <= GridLineCount; i++)
+                        {
+                            var gridValue = minValue + (range * i / GridLineCount);
+                            var gridPosition = i * (100.0 / GridLineCount);
+                            
+                            <div class="column-chart-grid-line"
+                                 style="@GetGridLineStyle(gridPosition, IsHorizontal)">
+                                @if (ShowGridLabels)
+                                {
+                                    <span class="column-chart-grid-label">
+                                        @GetFormattedValue(gridValue)
+                                    </span>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+            }
+        </div>
+    </ChildContent>
+    
+    <LegendContent>
+        @if (ShowLegend && Data != null && Data.Any())
+        {
+            @foreach (var (dataPoint, index) in Data.Select((d, i) => (d, i)))
+            {
+                var color = GetBarColor(dataPoint, index);
+                
+                <div class="chart-legend-item @(selectedIndex == index ? "active" : "")"
+                     @onclick="@(async () => await HandleLegendClick(dataPoint, index))"
+                     role="button"
+                     tabindex="0"
+                     aria-label="@GetLegendAriaLabel(dataPoint)">
+                    <div class="chart-legend-indicator chart-legend-indicator-square" 
+                         style="background-color: @color;"></div>
+                    <span class="chart-legend-label">@dataPoint.Label</span>
+                    @if (ShowLegendValues)
+                    {
+                        <span class="chart-legend-label ml-auto">
+                            @GetFormattedValue(dataPoint.Value)
+                        </span>
+                    }
+                </div>
+            }
+        }
+        @LegendContent
+    </LegendContent>
+    
+    <FooterContent>
+        @FooterContent
+    </FooterContent>
+    
+    <AccessibilityContent>
+        @if (Configuration.EnableAccessibility)
+        {
+            <table class="w-full">
+                <thead>
+                    <tr>
+                        <th class="text-left">Category</th>
+                        <th class="text-right">Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Data != null)
+                    {
+                        @foreach (var dataPoint in Data)
+                        {
+                            <tr>
+                                <td>@dataPoint.Label</td>
+                                <td class="text-right">@GetFormattedValue(dataPoint.Value)</td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        }
+        @AccessibilityContent
+    </AccessibilityContent>
+</RChart>
+
+@code {
+    /// <summary>Column chart data points</summary>
+    [Parameter] 
+    [AIParameter("Array of data points for column chart", Example = "new[] { new ChartDataPoint { Label = \"Q1\", Value = 150 } }")] 
+    public IEnumerable<ChartDataPoint> Data { get; set; } = new List<ChartDataPoint>();
+    
+    /// <summary>Chart title</summary>
+    [Parameter] public string Title { get; set; }
+    
+    /// <summary>Chart subtitle</summary>
+    [Parameter] public string Subtitle { get; set; }
+    
+    /// <summary>Chart icon</summary>
+    [Parameter] public string Icon { get; set; } = "bar_chart";
+    
+    /// <summary>Chart size</summary>
+    [Parameter] public ChartSize Size { get; set; } = ChartSize.Medium;
+    
+    /// <summary>Chart variant</summary>
+    [Parameter] public ChartVariant Variant { get; set; } = ChartVariant.Default;
+    
+    /// <summary>Chart theme</summary>
+    [Parameter] public ChartTheme Theme { get; set; } = ChartTheme.Auto;
+    
+    /// <summary>Whether to render as horizontal bar chart</summary>
+    [Parameter] public bool IsHorizontal { get; set; }
+    
+    /// <summary>Whether to show bar values</summary>
+    [Parameter] public bool ShowValues { get; set; } = true;
+    
+    /// <summary>Whether to show bar labels</summary>
+    [Parameter] public bool ShowLabels { get; set; } = true;
+    
+    /// <summary>Whether to show axis lines</summary>
+    [Parameter] public bool ShowAxis { get; set; } = true;
+    
+    /// <summary>Whether to show grid lines</summary>
+    [Parameter] public bool ShowGridLines { get; set; } = true;
+    
+    /// <summary>Whether to show grid labels</summary>
+    [Parameter] public bool ShowGridLabels { get; set; } = true;
+    
+    /// <summary>Number of grid lines</summary>
+    [Parameter] public int GridLineCount { get; set; } = 5;
+    
+    /// <summary>Whether to show zero line</summary>
+    [Parameter] public bool ShowZeroLine { get; set; } = true;
+    
+    /// <summary>Whether to show legend</summary>
+    [Parameter] public bool ShowLegend { get; set; } = true;
+    
+    /// <summary>Legend position</summary>
+    [Parameter] public ChartLegendPosition LegendPosition { get; set; } = ChartLegendPosition.Bottom;
+    
+    /// <summary>Whether to show values in legend</summary>
+    [Parameter] public bool ShowLegendValues { get; set; } = true;
+    
+    /// <summary>Color palette for bars</summary>
+    [Parameter] public string[] ColorPalette { get; set; } = DefaultColorPalette;
+    
+    /// <summary>Value format string</summary>
+    [Parameter] public string ValueFormat { get; set; } = "N0";
+    
+    /// <summary>Bar spacing (0-1)</summary>
+    [Parameter] public double BarSpacing { get; set; } = 0.1;
+    
+    /// <summary>Whether chart is loading</summary>
+    [Parameter] public bool Loading { get; set; }
+    
+    /// <summary>Whether chart has error</summary>
+    [Parameter] public bool HasError { get; set; }
+    
+    /// <summary>Whether chart is empty</summary>
+    [Parameter] public bool IsEmpty { get; set; }
+    
+    /// <summary>Chart configuration</summary>
+    [Parameter] public ChartConfiguration Configuration { get; set; } = new();
+    
+    /// <summary>Header content</summary>
+    [Parameter] public RenderFragment HeaderContent { get; set; }
+    
+    /// <summary>Footer content</summary>
+    [Parameter] public RenderFragment FooterContent { get; set; }
+    
+    /// <summary>Legend content</summary>
+    [Parameter] public RenderFragment LegendContent { get; set; }
+    
+    /// <summary>Accessibility content</summary>
+    [Parameter] public RenderFragment AccessibilityContent { get; set; }
+    
+    /// <summary>Additional CSS classes</summary>
+    [Parameter] public string Class { get; set; }
+    
+    /// <summary>Chart click handler</summary>
+    [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
+    
+    /// <summary>Bar click handler</summary>
+    [Parameter] public EventCallback<ChartEventArgs> OnBarClick { get; set; }
+    
+    /// <summary>Bar hover handler</summary>
+    [Parameter] public EventCallback<ChartEventArgs> OnBarHover { get; set; }
+
+    private static readonly string[] DefaultColorPalette = {
+        "var(--color-interactive-primary)",
+        "var(--color-success)",
+        "var(--color-warning)",
+        "var(--color-error)",
+        "var(--color-info)",
+        "var(--theme-accent-cyan)",
+        "var(--theme-accent-purple)",
+        "var(--color-text-secondary)"
+    };
+
+    private ElementReference chartContainer;
+    private int selectedIndex = -1;
+
+    private async Task HandleChartInit(ElementReference element)
+    {
+        chartContainer = element;
+        if (Configuration.EnableAnimation)
+        {
+            await JSRuntime.InvokeVoidAsync("RChart.animateColumnChart", element);
+        }
+    }
+
+    private async Task HandleBarClick(ChartDataPoint dataPoint, int index)
+    {
+        selectedIndex = selectedIndex == index ? -1 : index;
+        
+        if (OnBarClick.HasDelegate)
+        {
+            await OnBarClick.InvokeAsync(new ChartEventArgs
+            {
+                DataPoint = dataPoint,
+                Index = index,
+                EventType = "click"
+            });
+        }
+        
+        StateHasChanged();
+    }
+
+    private async Task HandleBarHover(ChartDataPoint dataPoint, int index)
+    {
+        if (OnBarHover.HasDelegate)
+        {
+            await OnBarHover.InvokeAsync(new ChartEventArgs
+            {
+                DataPoint = dataPoint,
+                Index = index,
+                EventType = "hover"
+            });
+        }
+    }
+
+    private async Task HandleBarLeave()
+    {
+        if (OnBarHover.HasDelegate)
+        {
+            await OnBarHover.InvokeAsync(new ChartEventArgs
+            {
+                EventType = "leave"
+            });
+        }
+    }
+
+    private async Task HandleLegendClick(ChartDataPoint dataPoint, int index)
+    {
+        await HandleBarClick(dataPoint, index);
+    }
+
+    private string GetBarColor(ChartDataPoint dataPoint, int index)
+    {
+        if (!string.IsNullOrEmpty(dataPoint.Color))
+        {
+            return dataPoint.Color;
+        }
+        
+        return ColorPalette[index % ColorPalette.Length];
+    }
+
+    private string GetColorVariant(ChartDataPoint dataPoint, int index)
+    {
+        if (!string.IsNullOrEmpty(dataPoint.Color))
+        {
+            return "custom";
+        }
+        
+        return (index % ColorPalette.Length) switch
+        {
+            0 => "primary",
+            1 => "success",
+            2 => "warning",
+            3 => "error",
+            4 => "info",
+            _ => "primary"
+        };
+    }
+
+    private string GetBarStyle(double height, string color)
+    {
+        var heightProperty = IsHorizontal ? "width" : "height";
+        var customColor = !color.StartsWith("var(") ? $"background-color: {color};" : "";
+        
+        return $"{heightProperty}: {height}%; {customColor}";
+    }
+
+    private string GetGridLineStyle(double position, bool isHorizontal)
+    {
+        if (isHorizontal)
+        {
+            return $"left: {position}%; top: 0; bottom: 0; width: 1px; border-left: 1px solid var(--color-border-light);";
+        }
+        else
+        {
+            return $"bottom: {position}%; left: 0; right: 0; height: 1px; border-bottom: 1px solid var(--color-border-light);";
+        }
+    }
+
+    private string GetFormattedValue(double value)
+    {
+        return value.ToString(ValueFormat);
+    }
+
+    private string GetBarAriaLabel(ChartDataPoint dataPoint)
+    {
+        return $"{dataPoint.Label}: {GetFormattedValue(dataPoint.Value)}";
+    }
+
+    private string GetLegendAriaLabel(ChartDataPoint dataPoint)
+    {
+        return $"Toggle {dataPoint.Label} bar: {GetFormattedValue(dataPoint.Value)}";
+    }
+}
+
+@*
+Usage Examples:
+
+<!-- Basic column chart -->
+<RColumnChart Title="Monthly Sales" 
+              Data="@salesData" 
+              Icon="bar_chart" />
+
+<!-- Horizontal bar chart -->
+<RColumnChart Title="Product Performance" 
+              Data="@performanceData"
+              IsHorizontal="true"
+              Icon="bar_chart_4_bars" />
+
+<!-- Column chart with custom styling -->
+<RColumnChart Title="Revenue by Quarter" 
+              Data="@revenueData"
+              Size="ChartSize.Large"
+              Variant="ChartVariant.Elevated"
+              ValueFormat="C0"
+              ShowGridLines="true"
+              ShowGridLabels="true"
+              ColorPalette="@customColors" />
+
+<!-- Interactive column chart -->
+<RColumnChart Title="User Engagement" 
+              Data="@engagementData"
+              OnBarClick="@HandleBarClick"
+              OnBarHover="@HandleBarHover"
+              ShowLegendValues="true"
+              ShowValues="true" />
+
+<!-- Minimal column chart -->
+<RColumnChart Data="@simpleData"
+              Variant="ChartVariant.Minimal"
+              ShowLegend="false"
+              ShowGridLines="false"
+              ShowAxis="false" />
+
+<!-- Column chart with header controls -->
+<RColumnChart Title="Performance Metrics" 
+              Data="@performanceData"
+              LegendPosition="ChartLegendPosition.Top">
+    
+    <HeaderContent>
+        <div class="d-flex gap-2">
+            <button class="button button-outline button-sm">
+                <i class="material-symbols-rounded mr-1">download</i>
+                Export
+            </button>
+            <select class="form-field-input form-field-sm">
+                <option>Daily</option>
+                <option>Weekly</option>
+                <option>Monthly</option>
+            </select>
+        </div>
+    </HeaderContent>
+    
+    <FooterContent>
+        <div class="d-flex justify-between text-sm text-secondary">
+            <span>Average: @GetAverage()</span>
+            <span>Total: @GetTotal()</span>
+        </div>
+    </FooterContent>
+</RColumnChart>
+
+<!-- Stacked column chart simulation -->
+<RColumnChart Title="Sales by Category" 
+              Data="@stackedData"
+              ShowValues="false"
+              ShowLabels="true"
+              BarSpacing="0.2">
+    
+    <HeaderContent>
+        <div class="chart-legend chart-legend-top">
+            <div class="chart-legend-item">
+                <div class="chart-legend-indicator bg-success"></div>
+                <span class="chart-legend-label">Category A</span>
+            </div>
+            <div class="chart-legend-item">
+                <div class="chart-legend-indicator bg-warning"></div>
+                <span class="chart-legend-label">Category B</span>
+            </div>
+        </div>
+    </HeaderContent>
+</RColumnChart>
+
+<!-- Accessible column chart -->
+<RColumnChart Title="Budget Allocation" 
+              Data="@budgetData"
+              Configuration="@(new ChartConfiguration { EnableAccessibility = true })"
+              ShowAccessibilityTable="true"
+              ShowGridLabels="true" />
+
+@code {
+    private List<ChartDataPoint> salesData = new()
+    {
+        new ChartDataPoint { Label = "Jan", Value = 150 },
+        new ChartDataPoint { Label = "Feb", Value = 230 },
+        new ChartDataPoint { Label = "Mar", Value = 180 },
+        new ChartDataPoint { Label = "Apr", Value = 270 },
+        new ChartDataPoint { Label = "May", Value = 320 }
+    };
+
+    private string[] customColors = {
+        "#3b82f6", "#ef4444", "#10b981", "#f59e0b", "#8b5cf6"
+    };
+
+    private async Task HandleBarClick(ChartEventArgs args)
+    {
+        // Handle bar click
+        Console.WriteLine($"Clicked: {args.DataPoint.Label} - {args.DataPoint.Value}");
+    }
+
+    private async Task HandleBarHover(ChartEventArgs args)
+    {
+        // Handle bar hover
+        if (args.EventType == "hover")
+        {
+            Console.WriteLine($"Hovering: {args.DataPoint.Label}");
+        }
+    }
+
+    private string GetAverage()
+    {
+        return salesData.Average(d => d.Value).ToString("N0");
+    }
+
+    private string GetTotal()
+    {
+        return salesData.Sum(d => d.Value).ToString("N0");
+    }
+}
+*@

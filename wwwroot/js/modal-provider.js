@@ -197,8 +197,40 @@ export const modalUtils = {
 
         const text = element.textContent;
         const regex = new RegExp(`(${this.escapeRegExp(searchTerm)})`, 'gi');
-        const highlightedText = text.replace(regex, '<mark>$1</mark>');
-        element.innerHTML = highlightedText;
+        
+        // Clear element first
+        element.innerHTML = '';
+        
+        // Split text and create text nodes with highlights
+        let lastIndex = 0;
+        let match;
+        regex.lastIndex = 0; // Reset regex state
+        
+        while ((match = regex.exec(text)) !== null) {
+            // Add text before match
+            if (match.index > lastIndex) {
+                const beforeText = text.substring(lastIndex, match.index);
+                element.appendChild(document.createTextNode(beforeText));
+            }
+            
+            // Add highlighted match
+            const mark = document.createElement('mark');
+            mark.textContent = match[1];
+            element.appendChild(mark);
+            
+            lastIndex = match.index + match[1].length;
+            
+            // Prevent infinite loop
+            if (regex.lastIndex === match.index) {
+                regex.lastIndex++;
+            }
+        }
+        
+        // Add remaining text
+        if (lastIndex < text.length) {
+            const remainingText = text.substring(lastIndex);
+            element.appendChild(document.createTextNode(remainingText));
+        }
     },
 
     escapeRegExp(string) {

@@ -1,5 +1,6 @@
 @using RR.Blazor.Enums
 @using RR.Blazor.Models
+@using RR.Blazor.Components.Data
 @* RDataTable - Generic data table component with sorting, filtering, and pagination *@
 @typeparam TItem
 
@@ -40,7 +41,7 @@
             </div>
         }
 
-        <div class="overflow-x-auto" style="@(!string.IsNullOrEmpty(Height) ? $"height: {Height};" : "")">
+        <div class="overflow-x-auto" style="@(!string.IsNullOrEmpty(Height) ? $"--table-height: {Height};" : "")">
             <table class="@GetTableClass()">
                 @if (ShowTableHeader)
                 {
@@ -293,6 +294,10 @@
     private int TotalPages => (int)Math.Ceiling(TotalItems / (double)PageSize);
     
     private List<RDataTableColumn<TItem>> _childColumns = new();
+    private List<RDataTableColumn<TItem>>? _cachedEffectiveColumns;
+    private Type? _lastItemType;
+    private int _lastColumnsHash;
+    private int _lastChildColumnsCount;
     
     protected override void OnInitialized()
     {
@@ -308,6 +313,7 @@
     public void AddColumn(RDataTableColumn<TItem> column)
     {
         _childColumns.Add(column);
+        InvalidateColumnCache();
         InvokeAsync(StateHasChanged);
     }
     
@@ -322,12 +328,59 @@
         {
             _childColumns.Add(column);
         }
+        InvalidateColumnCache();
         InvokeAsync(StateHasChanged);
+    }
+    
+    private void InvalidateColumnCache()
+    {
+        _cachedEffectiveColumns = null;
+        _lastItemType = null;
+        _lastColumnsHash = 0;
+        _lastChildColumnsCount = 0;
     }
     
     private List<RDataTableColumn<TItem>> GetEffectiveColumns()
     {
-        return Columns ?? _childColumns;
+        var currentItemType = typeof(TItem);
+        var currentColumnsHash = Columns?.GetHashCode() ?? 0;
+        var currentChildColumnsCount = _childColumns.Count;
+        
+        // Check if we can use cached result
+        if (_cachedEffectiveColumns != null && 
+            _lastItemType == currentItemType &&
+            _lastColumnsHash == currentColumnsHash &&
+            _lastChildColumnsCount == currentChildColumnsCount)
+        {
+            return _cachedEffectiveColumns;
+        }
+        
+        // Recalculate effective columns
+        List<RDataTableColumn<TItem>> effectiveColumns;
+        
+        // If columns are explicitly provided, use them
+        if (Columns != null && Columns.Any())
+        {
+            effectiveColumns = Columns;
+        }
+        // If manual columns are defined via ColumnsContent, use them
+        else if (_childColumns.Any())
+        {
+            effectiveColumns = _childColumns;
+        }
+        // Auto-generate columns from TItem properties
+        else
+        {
+            effectiveColumns = PropertyColumnGenerator.GenerateColumns<TItem>();
+        }
+        
+        // Cache the result
+        _cachedEffectiveColumns = effectiveColumns;
+        _lastItemType = currentItemType;
+        _lastColumnsHash = currentColumnsHash;
+        _lastChildColumnsCount = currentChildColumnsCount;
+        
+        return effectiveColumns;
     }
 
     private object GetCellValue(TItem item, string propertyName)
@@ -394,9 +447,9 @@
     {
         var styles = new List<string>();
         
-        if (!string.IsNullOrEmpty(column.Width)) styles.Add($"width: {column.Width}");
-        if (!string.IsNullOrEmpty(column.MinWidth)) styles.Add($"min-width: {column.MinWidth}");
-        if (!string.IsNullOrEmpty(column.MaxWidth)) styles.Add($"max-width: {column.MaxWidth}");
+        if (!string.IsNullOrEmpty(column.Width)) styles.Add($"--column-width: {column.Width}");
+        if (!string.IsNullOrEmpty(column.MinWidth)) styles.Add($"--column-min-width: {column.MinWidth}");
+        if (!string.IsNullOrEmpty(column.MaxWidth)) styles.Add($"--column-max-width: {column.MaxWidth}");
         
         return string.Join("; ", styles);
     }
@@ -405,9 +458,9 @@
     {
         var styles = new List<string>();
         
-        if (!string.IsNullOrEmpty(column.Width)) styles.Add($"width: {column.Width}");
-        if (!string.IsNullOrEmpty(column.MinWidth)) styles.Add($"min-width: {column.MinWidth}");
-        if (!string.IsNullOrEmpty(column.MaxWidth)) styles.Add($"max-width: {column.MaxWidth}");
+        if (!string.IsNullOrEmpty(column.Width)) styles.Add($"--column-width: {column.Width}");
+        if (!string.IsNullOrEmpty(column.MinWidth)) styles.Add($"--column-min-width: {column.MinWidth}");
+        if (!string.IsNullOrEmpty(column.MaxWidth)) styles.Add($"--column-max-width: {column.MaxWidth}");
         
         if (StickyColumns.Contains(column.Key))
         {
@@ -425,8 +478,8 @@
                     leftOffset += 120; // Default column width
                 }
             }
-            styles.Add($"left: {leftOffset}px");
-            styles.Add("z-index: 10");
+            styles.Add($"--sticky-left: {leftOffset}px");
+            styles.Add("--sticky-z-index: 10");
         }
         
         return string.Join("; ", styles);

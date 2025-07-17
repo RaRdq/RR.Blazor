@@ -5,13 +5,13 @@
 $spacing-scale: (
   0: var(--space-0),
   px: var(--space-px),
-  0-5: var(--space-0-5),
+  '0-5': var(--space-0-5),
   1: var(--space-1),
-  1-5: var(--space-1-5),
+  '1-5': var(--space-1-5),
   2: var(--space-2),
-  2-5: var(--space-2-5),
+  '2-5': var(--space-2-5),
   3: var(--space-3),
-  3-5: var(--space-3-5),
+  '3-5': var(--space-3-5),
   4: var(--space-4),
   5: var(--space-5),
   6: var(--space-6),
@@ -27,19 +27,11 @@ $spacing-scale: (
   24: var(--space-24)
 );
 
-$common-spaces: (0, 1, 2, 3, 4, 5, 6, 8, 10, 12);
+$common-spaces: (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24);
 
+$space-between-sizes: (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24);
 
-  
-$space-between-sizes: (0, 1, 2, 3, 4, 5, 6, 8);
-
-$negative-margin-sizes: (1, 2, 3, 4, 5, 6);
-
-// Legacy support
-$custom-margins: (
-  60: 60px,
-  100: -100px
-);
+$negative-margin-sizes: (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24);
 
 $margin-directions: (
   t: margin-top,
@@ -57,32 +49,29 @@ $padding-directions: (
 
 $margin-auto-directions: (t, r, b, l);
 
-
+// Space between utilities (keep - used for layout)
 @each $size in $space-between-sizes {
   .space-x-#{$size} > :not([hidden]) ~ :not([hidden]) { 
     margin-left: map.get($spacing-scale, $size); 
   }
 }
 
-  
 @each $size in $space-between-sizes {
   .space-y-#{$size} > :not([hidden]) ~ :not([hidden]) { 
     margin-top: map.get($spacing-scale, $size); 
   }
 }
 
-
+// Responsive utilities (keep - used for layout)
 @include responsive-max(md) {
   .gap-responsive { gap: var(--space-3) !important; }
-  .m-responsive { margin: var(--space-3) !important; }
 }
 
 @include responsive-max(sm) {
   .gap-responsive { gap: var(--space-2) !important; }
-  .m-responsive { margin: var(--space-2) !important; }
 }
 
-
+// Semantic spacing patterns (keep - used by components)
 .section-spacing {
   margin-bottom: var(--space-6);
   
@@ -119,69 +108,106 @@ $margin-auto-directions: (t, r, b, l);
   }
 }
 
-@each $size in $common-spaces {
-  .pa-#{$size} { padding: map.get($spacing-scale, $size) !important; }
-}
-
+// PADDING UTILITIES - Only semantic directional (40 classes instead of 70)
 @each $direction, $property in $padding-directions {
   @each $size in $common-spaces {
     .p#{$direction}-#{$size} { #{$property}: map.get($spacing-scale, $size) !important; }
   }
 }
 
+// Combined axis padding utilities (px, py for convenience)
 @each $size in $common-spaces {
   .px-#{$size} { 
-    padding-left: map.get($spacing-scale, $size) !important;
-    padding-right: map.get($spacing-scale, $size) !important;
+    padding-left: map.get($spacing-scale, $size) !important; 
+    padding-right: map.get($spacing-scale, $size) !important; 
   }
   .py-#{$size} { 
-    padding-top: map.get($spacing-scale, $size) !important;
-    padding-bottom: map.get($spacing-scale, $size) !important;
+    padding-top: map.get($spacing-scale, $size) !important; 
+    padding-bottom: map.get($spacing-scale, $size) !important; 
   }
 }
 
-@each $size in $common-spaces {
-  .ma-#{$size} { margin: map.get($spacing-scale, $size) !important; }
-}
-
+// MARGIN UTILITIES - Only semantic directional (40 classes instead of 70)
 @each $direction, $property in $margin-directions {
   @each $size in $common-spaces {
     .m#{$direction}-#{$size} { #{$property}: map.get($spacing-scale, $size) !important; }
   }
 }
 
+// Combined axis margin utilities (mx, my for convenience)
 @each $size in $common-spaces {
   .mx-#{$size} { 
-    margin-left: map.get($spacing-scale, $size) !important;
-    margin-right: map.get($spacing-scale, $size) !important;
+    margin-left: map.get($spacing-scale, $size) !important; 
+    margin-right: map.get($spacing-scale, $size) !important; 
   }
   .my-#{$size} { 
-    margin-top: map.get($spacing-scale, $size) !important;
-    margin-bottom: map.get($spacing-scale, $size) !important;
+    margin-top: map.get($spacing-scale, $size) !important; 
+    margin-bottom: map.get($spacing-scale, $size) !important; 
   }
 }
 
-.ma-auto { margin: auto !important; }
+// Semantic all-direction patterns (final implementation)
+@each $size in $common-spaces {
+  .pa-#{$size} { padding: map.get($spacing-scale, $size) !important; }
+  .ma-#{$size} { margin: map.get($spacing-scale, $size) !important; }
+}
+
+// Auto margins (keep - commonly used)
 @each $direction in $margin-auto-directions {
   .m#{$direction}-auto { margin-#{$direction}: auto !important; }
 }
-.mx-auto { 
-  margin-left: auto !important;
-  margin-right: auto !important;
-}
-.my-auto { 
-  margin-top: auto !important;
-  margin-bottom: auto !important;
-}
 
-@each $name, $value in $custom-margins {
-  .mt-#{$name} { margin-top: $value !important; }
-}
 
+// Negative margin utilities for layout adjustments
 @each $direction, $property in $margin-directions {
   @each $size in $negative-margin-sizes {
     .m#{$direction}-n#{$size} { 
       #{$property}: calc(-1 * var(--space-#{$size})) !important; 
     }
+  }
+}
+
+// ===== RESPONSIVE SPACING UTILITIES =====
+// Mobile-first responsive prefixes for commonly used spacing utilities
+
+// Generate responsive variants for core breakpoints (excluding xs as it's base)
+@each $breakpoint in (sm, md, lg, xl) {
+  @include responsive-min($breakpoint) {
+    
+    // Responsive padding utilities - directional
+    @each $direction, $property in $padding-directions {
+      @each $size in $common-spaces {
+        .#{$breakpoint}\:p#{$direction}-#{$size} { 
+          #{$property}: map.get($spacing-scale, $size) !important; 
+        }
+      }
+    }
+    
+    // Responsive margin utilities - directional
+    @each $direction, $property in $margin-directions {
+      @each $size in $common-spaces {
+        .#{$breakpoint}\:m#{$direction}-#{$size} { 
+          #{$property}: map.get($spacing-scale, $size) !important; 
+        }
+      }
+    }
+    
+    // Responsive all-direction padding/margin
+    @each $size in $common-spaces {
+      .#{$breakpoint}\:pa-#{$size} { 
+        padding: map.get($spacing-scale, $size) !important; 
+      }
+      .#{$breakpoint}\:ma-#{$size} { 
+        margin: map.get($spacing-scale, $size) !important; 
+      }
+    }
+    
+    // Responsive auto margins
+    @each $direction in $margin-auto-directions {
+      .#{$breakpoint}\:m#{$direction}-auto { 
+        margin-#{$direction}: auto !important; 
+      }
+    }
+    
   }
 }

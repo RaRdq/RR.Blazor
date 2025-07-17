@@ -4,8 +4,14 @@
 // Import and initialize theme system
 import * as ThemeModule from './theme.js';
 
+// Import and initialize chart system
+import * as ChartModule from './chart.js';
+
 // Make theme functions available globally
 window.RRTheme = ThemeModule;
+
+// Make chart functions available globally
+window.RChart = ChartModule;
 
 window.RRBlazor = {
     getTabIndicatorPosition: function(tabElementId, wrapperElement) {

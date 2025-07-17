@@ -1,9 +1,10 @@
 @use '../abstracts' as *;
+@use 'sass:map';
 
 $sizing-scale: (
   0: 0,
   px: 1px,
-  0-5: 0.125rem,
+  '0-5': 0.125rem,
   1: 0.25rem,
   2: 0.5rem,
   3: 0.75rem,
@@ -18,19 +19,26 @@ $sizing-scale: (
   40: 10rem,
   48: 12rem,
   56: 14rem,
-  64: 16rem
+  64: 16rem,
+  70: 17.5rem,
+  75: 18.75rem,
+  80: 20rem,
+  90: 22.5rem,
+  120: 30rem,
+  150: 37.5rem,
+  400: 100rem
 );
 
 $fractional-sizes: (
-  1\/2: 50%,
-  1\/3: 33.333333%,
-  2\/3: 66.666667%,
-  1\/4: 25%,
-  3\/4: 75%,
-  1\/5: 20%,
-  2\/5: 40%,
-  3\/5: 60%,
-  4\/5: 80%
+  '1\/2': 50%,
+  '1\/3': 33.333333%,
+  '2\/3': 66.666667%,
+  '1\/4': 25%,
+  '3\/4': 75%,
+  '1\/5': 20%,
+  '2\/5': 40%,
+  '3\/5': 60%,
+  '4\/5': 80%
 );
 
 $percentage-sizes: (
@@ -78,7 +86,9 @@ $sizing-keywords: (
 $min-sizes: (
   25: 25px,
   100: 6.25rem,
+  120: 7.5rem,
   150: 9.375rem,
+  180: 11.25rem,
   200: 12.5rem,
   250: 15.625rem,
   300: 18.75rem,
@@ -107,9 +117,16 @@ $square-sizes: (
   .w-#{$name} { width: $value; }
 }
 
-@each $name, $value in $fractional-sizes {
-  .w-#{$name} { width: $value; }
-}
+// Fractional width utilities (escape slashes for CSS)
+.w-1\/2 { width: 50%; }
+.w-1\/3 { width: 33.333333%; }
+.w-2\/3 { width: 66.666667%; }
+.w-1\/4 { width: 25%; }
+.w-3\/4 { width: 75%; }
+.w-1\/5 { width: 20%; }
+.w-2\/5 { width: 40%; }
+.w-3\/5 { width: 60%; }
+.w-4\/5 { width: 80%; }
 
 @each $name, $value in $percentage-sizes {
   .w-#{$name} { width: $value; }
@@ -138,66 +155,62 @@ $square-sizes: (
 .w-screen { width: 100vw !important; }
 .h-screen { height: 100vh !important; }
 
-.min-w {
-  @each $name, $value in $sizing-keywords {
-    @if $name != 'screen' and $name != 'prose' {
-      &-#{$name} { min-width: $value; }
-    }
+// Min-width utilities
+@each $name, $value in $sizing-keywords {
+  @if $name != 'screen' and $name != 'prose' {
+    .min-w-#{$name} { min-width: $value; }
   }
-  
-  @each $name, $value in $min-sizes {
-    &-#{$name} { min-width: $value; }
-  }
-  
-  @each $name, $value in $sizing-scale {
-    &-#{$name} { min-width: $value; }
-  }
-  
-  &-0 { min-width: 0; }
 }
 
-.max-w {
-  @each $name, $value in $sizing-keywords {
-    @if $name != 'screen' {
-      &-#{$name} { max-width: $value; }
-    }
-  }
-  
-  @each $name, $value in $max-widths {
-    &-#{$name} { max-width: $value; }
-  }
-  
-  &-screen { max-width: 100vw; }
+@each $name, $value in $min-sizes {
+  .min-w-#{$name} { min-width: $value; }
 }
 
-.min-h {
-  @each $name, $value in $sizing-keywords {
-    @if $name == 'screen' {
-      &-#{$name} { min-height: 100vh; }
-    } @else if $name != 'none' and $name != 'prose' {
-      &-#{$name} { min-height: $value; }
-    }
-  }
-  
-  @each $name, $value in $min-sizes {
-    &-#{$name} { min-height: $value; }
-  }
-  
-  &-0 { min-height: 0; }
+@each $name, $value in $sizing-scale {
+  .min-w-#{$name} { min-width: $value; }
 }
 
-.max-h {
-  @each $name, $value in $sizing-keywords {
-    @if $name == 'screen' {
-      &-#{$name} { max-height: 100vh; }
-    } @else if $name != 'prose' {
-      &-#{$name} { max-height: $value; }
-    }
+.min-w-0 { min-width: 0; }
+
+// Max-width utilities
+@each $name, $value in $sizing-keywords {
+  @if $name != 'screen' {
+    .max-w-#{$name} { max-width: $value; }
   }
-  
-  @each $name, $value in $max-sizes {
-    &-#{$name} { max-height: $value; }
+}
+
+@each $name, $value in $max-widths {
+  .max-w-#{$name} { max-width: $value; }
+}
+
+.max-w-screen { max-width: 100vw; }
+
+// Min-height utilities
+@each $name, $value in $sizing-keywords {
+  @if $name == 'screen' {
+    .min-h-#{$name} { min-height: 100vh; }
+  } @else if $name != 'none' and $name != 'prose' {
+    .min-h-#{$name} { min-height: $value; }
   }
+}
+
+@each $name, $value in $min-sizes {
+  .min-h-#{$name} { min-height: $value; }
+}
+
+.min-h-0 { min-height: 0; }
+
+// Max-height utilities
+@each $name, $value in $sizing-keywords {
+  @if $name == 'screen' {
+    .max-h-#{$name} { max-height: 100vh; }
+  } @else if $name != 'prose' {
+    .max-h-#{$name} { max-height: $value; }
+  }
+}
+
+@each $name, $value in $max-sizes {
+  .max-h-#{$name} { max-height: $value; }
 }
 
 @each $name, $value in $square-sizes {
@@ -207,13 +220,98 @@ $square-sizes: (
   }
 }
 
-@include responsive-max(md) {
-  .md\:w-full { width: 100%; }
-  .md\:w-auto { width: auto; }
-  .md\:max-w-full { max-width: 100%; }
-}
+// ===== RESPONSIVE SIZING UTILITIES =====
+// Mobile-first responsive sizing with consistent breakpoint prefixes
 
-@include responsive-max(sm) {
-  .sm\:w-full { width: 100%; }
-  .sm\:min-w-full { min-width: 100%; }
+$responsive-widths: (0, 1, 2, 3, 4, 5, 6, 8, 12, 20, 24, 32, 40, 48, 56, 64, auto, full, screen);
+$responsive-heights: (0, 1, 2, 3, 4, 5, 6, 8, 12, 20, 24, 32, 40, 48, 56, 64, auto, full, screen);
+$responsive-fractional: (1\/2, 1\/3, 2\/3, 1\/4, 3\/4, 1\/5, 2\/5, 3\/5, 4\/5);
+$responsive-percentage: (25, 50, 75, 100);
+
+@each $breakpoint in (sm, md, lg, xl) {
+  @include responsive-min($breakpoint) {
+    
+    // Responsive width utilities
+    @each $size in $responsive-widths {
+      @if $size == 'auto' {
+        .#{$breakpoint}\:w-auto { width: auto !important; }
+      } @else if $size == 'full' {
+        .#{$breakpoint}\:w-full { width: 100% !important; }
+      } @else if $size == 'screen' {
+        .#{$breakpoint}\:w-screen { width: 100vw !important; }
+      } @else {
+        .#{$breakpoint}\:w-#{$size} { 
+          width: var(--space-#{$size}) !important; 
+        }
+      }
+    }
+    
+    // Responsive fractional widths
+    @each $fraction in $responsive-fractional {
+      .#{$breakpoint}\:w-#{$fraction} { 
+        width: map.get($fractional-sizes, $fraction) !important; 
+      }
+    }
+    
+    // Responsive percentage widths
+    @each $percent in $responsive-percentage {
+      .#{$breakpoint}\:w-#{$percent} { 
+        width: #{$percent + '%'} !important; 
+      }
+    }
+    
+    // Responsive height utilities
+    @each $size in $responsive-heights {
+      @if $size == 'auto' {
+        .#{$breakpoint}\:h-auto { height: auto !important; }
+      } @else if $size == 'full' {
+        .#{$breakpoint}\:h-full { height: 100% !important; }
+      } @else if $size == 'screen' {
+        .#{$breakpoint}\:h-screen { height: 100vh !important; }
+      } @else {
+        .#{$breakpoint}\:h-#{$size} { 
+          height: var(--space-#{$size}) !important; 
+        }
+      }
+    }
+    
+    // Responsive max-width utilities
+    .#{$breakpoint}\:max-w-none { max-width: none !important; }
+    .#{$breakpoint}\:max-w-full { max-width: 100% !important; }
+    .#{$breakpoint}\:max-w-screen { max-width: 100vw !important; }
+    
+    @each $name, $value in $max-widths {
+      .#{$breakpoint}\:max-w-#{$name} { max-width: $value !important; }
+    }
+    
+    // Responsive min-width utilities
+    .#{$breakpoint}\:min-w-0 { min-width: 0 !important; }
+    .#{$breakpoint}\:min-w-full { min-width: 100% !important; }
+    .#{$breakpoint}\:min-w-min { min-width: min-content !important; }
+    .#{$breakpoint}\:min-w-max { min-width: max-content !important; }
+    .#{$breakpoint}\:min-w-fit { min-width: fit-content !important; }
+    
+    // Responsive min-height utilities
+    .#{$breakpoint}\:min-h-0 { min-height: 0 !important; }
+    .#{$breakpoint}\:min-h-full { min-height: 100% !important; }
+    .#{$breakpoint}\:min-h-screen { min-height: 100vh !important; }
+    .#{$breakpoint}\:min-h-fit { min-height: fit-content !important; }
+    
+    // Responsive max-height utilities
+    .#{$breakpoint}\:max-h-full { max-height: 100% !important; }
+    .#{$breakpoint}\:max-h-screen { max-height: 100vh !important; }
+    .#{$breakpoint}\:max-h-none { max-height: none !important; }
+    
+    @each $name, $value in $max-sizes {
+      .#{$breakpoint}\:max-h-#{$name} { max-height: $value !important; }
+    }
+    
+    // Responsive square utilities
+    @each $name, $value in $square-sizes {
+      .#{$breakpoint}\:square-#{$name} {
+        width: $value !important;
+        height: $value !important;
+      }
+    }
+  }
 }

@@ -1,0 +1,436 @@
+@* RChart - Universal chart component for data visualization *@
+@using RR.Blazor.Enums
+@using RR.Blazor.Models
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.JSInterop
+@inject IJSRuntime JSRuntime
+
+<div class="chart-container @GetContainerClasses()" @onclick="@HandleContainerClick">
+    @if (!string.IsNullOrEmpty(Title) || HeaderContent != null)
+    {
+        <div class="chart-container-header">
+            @if (!string.IsNullOrEmpty(Title))
+            {
+                <h3 class="chart-container-header-title">
+                    @if (!string.IsNullOrEmpty(Icon))
+                    {
+                        <i class="material-symbols-rounded mr-2 @GetIconColorClass()">@Icon</i>
+                    }
+                    @Title
+                </h3>
+            }
+            @if (!string.IsNullOrEmpty(Subtitle))
+            {
+                <p class="text-sm text-secondary mt-1">@Subtitle</p>
+            }
+            @if (HeaderContent != null)
+            {
+                <div class="chart-container-header-actions">
+                    @HeaderContent
+                </div>
+            }
+        </div>
+    }
+
+    <div class="chart-container-content @GetContentClasses()">
+        @if (Loading)
+        {
+            <div class="chart-loading">
+                <i class="material-symbols-rounded text-primary animate-spin text-4xl">progress_activity</i>
+                <p class="text-sm text-secondary mt-2">@LoadingText</p>
+            </div>
+        }
+        else if (HasError)
+        {
+            <div class="chart-error">
+                <i class="material-symbols-rounded">error</i>
+                <h4 class="text-base font-medium mt-2">@ErrorTitle</h4>
+                <p class="text-sm mt-1">@ErrorMessage</p>
+                @if (OnRetry.HasDelegate)
+                {
+                    <button class="button button-outline mt-4" @onclick="@(async () => await OnRetry.InvokeAsync())">
+                        <i class="material-symbols-rounded mr-2">refresh</i>
+                        @RetryText
+                    </button>
+                }
+            </div>
+        }
+        else if (IsEmpty)
+        {
+            <div class="chart-empty">
+                <i class="material-symbols-rounded">insert_chart</i>
+                <h4 class="text-base font-medium mt-2">@EmptyTitle</h4>
+                <p class="text-sm mt-1">@EmptyMessage</p>
+            </div>
+        }
+        else
+        {
+            <div class="chart-canvas @GetCanvasClasses()" @ref="chartContainer">
+                @ChildContent
+            </div>
+        }
+    </div>
+
+    @if (ShowLegend && LegendContent != null)
+    {
+        <div class="chart-legend chart-legend-@LegendPosition.ToString().ToLower()">
+            @LegendContent
+        </div>
+    }
+
+    @if (FooterContent != null)
+    {
+        <div class="chart-container-footer">
+            @FooterContent
+        </div>
+    }
+
+    @if (Configuration.EnableAccessibility && ShowAccessibilityTable)
+    {
+        <div class="chart-accessibility-table @(ShowAccessibilityTable ? "visible" : "")">
+            @if (AccessibilityContent != null)
+            {
+                @AccessibilityContent
+            }
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>Chart title</summary>
+    [Parameter] 
+    [AIParameter("Chart title displayed in header", Example = "Monthly Revenue")] 
+    public string Title { get; set; }
+    
+    /// <summary>Chart subtitle</summary>
+    [Parameter] public string Subtitle { get; set; }
+    
+    /// <summary>Chart description for accessibility</summary>
+    [Parameter] public string Description { get; set; }
+    
+    /// <summary>Chart icon</summary>
+    [Parameter] public string Icon { get; set; }
+    
+    /// <summary>Chart type</summary>
+    [Parameter] public ChartType Type { get; set; } = ChartType.Line;
+    
+    /// <summary>Chart variant for styling</summary>
+    [Parameter] public ChartVariant Variant { get; set; } = ChartVariant.Default;
+    
+    /// <summary>Chart size</summary>
+    [Parameter] public ChartSize Size { get; set; } = ChartSize.Medium;
+    
+    /// <summary>Chart theme</summary>
+    [Parameter] public ChartTheme Theme { get; set; } = ChartTheme.Auto;
+    
+    /// <summary>Chart responsive mode</summary>
+    [Parameter] public ChartResponsiveMode ResponsiveMode { get; set; } = ChartResponsiveMode.Auto;
+    
+    /// <summary>Chart configuration</summary>
+    [Parameter] public ChartConfiguration Configuration { get; set; } = new();
+    
+    /// <summary>Chart height</summary>
+    [Parameter] public string Height { get; set; }
+    
+    /// <summary>Chart width</summary>
+    [Parameter] public string Width { get; set; }
+    
+    /// <summary>Whether chart is loading</summary>
+    [Parameter] public bool Loading { get; set; }
+    
+    /// <summary>Loading text</summary>
+    [Parameter] public string LoadingText { get; set; } = "Loading chart...";
+    
+    /// <summary>Whether chart has error</summary>
+    [Parameter] public bool HasError { get; set; }
+    
+    /// <summary>Error title</summary>
+    [Parameter] public string ErrorTitle { get; set; } = "Chart Error";
+    
+    /// <summary>Error message</summary>
+    [Parameter] public string ErrorMessage { get; set; } = "Unable to load chart data";
+    
+    /// <summary>Retry button text</summary>
+    [Parameter] public string RetryText { get; set; } = "Retry";
+    
+    /// <summary>Whether chart is empty</summary>
+    [Parameter] public bool IsEmpty { get; set; }
+    
+    /// <summary>Empty state title</summary>
+    [Parameter] public string EmptyTitle { get; set; } = "No Data";
+    
+    /// <summary>Empty state message</summary>
+    [Parameter] public string EmptyMessage { get; set; } = "No data available to display";
+    
+    /// <summary>Whether to show legend</summary>
+    [Parameter] public bool ShowLegend { get; set; } = true;
+    
+    /// <summary>Legend position</summary>
+    [Parameter] public ChartLegendPosition LegendPosition { get; set; } = ChartLegendPosition.Bottom;
+    
+    /// <summary>Whether to show accessibility table</summary>
+    [Parameter] public bool ShowAccessibilityTable { get; set; }
+    
+    /// <summary>Chart main content</summary>
+    [Parameter] public RenderFragment ChildContent { get; set; }
+    
+    /// <summary>Chart header content</summary>
+    [Parameter] public RenderFragment HeaderContent { get; set; }
+    
+    /// <summary>Chart footer content</summary>
+    [Parameter] public RenderFragment FooterContent { get; set; }
+    
+    /// <summary>Chart legend content</summary>
+    [Parameter] public RenderFragment LegendContent { get; set; }
+    
+    /// <summary>Accessibility content</summary>
+    [Parameter] public RenderFragment AccessibilityContent { get; set; }
+    
+    /// <summary>Additional CSS classes</summary>
+    [Parameter] public string Class { get; set; }
+    
+    /// <summary>Chart click handler</summary>
+    [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
+    
+    /// <summary>Retry handler</summary>
+    [Parameter] public EventCallback OnRetry { get; set; }
+    
+    /// <summary>Chart initialization handler</summary>
+    [Parameter] public EventCallback<ElementReference> OnChartInit { get; set; }
+
+    private ElementReference chartContainer;
+    private bool isInitialized = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !isInitialized)
+        {
+            isInitialized = true;
+            if (OnChartInit.HasDelegate)
+            {
+                await OnChartInit.InvokeAsync(chartContainer);
+            }
+        }
+    }
+
+    private string GetContainerClasses()
+    {
+        var classes = new List<string> { "chart" };
+        
+        classes.Add(Size switch
+        {
+            ChartSize.Small => "chart-small",
+            ChartSize.Large => "chart-large",
+            ChartSize.Full => "chart-full",
+            _ => "chart-medium"
+        });
+        
+        classes.Add(Variant switch
+        {
+            ChartVariant.Glass => "chart-glass",
+            ChartVariant.Minimal => "chart-minimal",
+            ChartVariant.Elevated => "chart-elevated",
+            ChartVariant.Outlined => "chart-outlined",
+            ChartVariant.Filled => "chart-filled",
+            _ => "chart-default"
+        });
+        
+        if (ResponsiveMode == ChartResponsiveMode.Auto)
+        {
+            classes.Add("chart-responsive");
+        }
+        
+        if (!string.IsNullOrEmpty(Class))
+        {
+            classes.Add(Class);
+        }
+        
+        return string.Join(" ", classes);
+    }
+
+    private string GetContentClasses()
+    {
+        var classes = new List<string>();
+        
+        if (!string.IsNullOrEmpty(Height))
+        {
+            classes.Add($"h-[{Height}]");
+        }
+        
+        if (!string.IsNullOrEmpty(Width))
+        {
+            classes.Add($"w-[{Width}]");
+        }
+        
+        return string.Join(" ", classes);
+    }
+
+    private string GetCanvasClasses()
+    {
+        var classes = new List<string>();
+        
+        classes.Add(Type switch
+        {
+            ChartType.Pie => "pie-chart-container",
+            ChartType.Doughnut => "pie-chart-container pie-chart-doughnut",
+            ChartType.Column => "column-chart-container",
+            ChartType.Bar => "column-chart-container column-chart-horizontal",
+            _ => "chart-canvas"
+        });
+        
+        return string.Join(" ", classes);
+    }
+
+    private string GetIconColorClass()
+    {
+        return Type switch
+        {
+            ChartType.Pie => "text-primary",
+            ChartType.Column => "text-success",
+            ChartType.Bar => "text-info",
+            ChartType.Line => "text-warning",
+            _ => "text-secondary"
+        };
+    }
+
+    private async Task HandleContainerClick(MouseEventArgs e)
+    {
+        if (OnClick.HasDelegate && !Loading && !HasError)
+        {
+            await OnClick.InvokeAsync(e);
+        }
+    }
+}
+
+@*
+Usage Examples:
+
+<!-- Basic chart with title -->
+<RChart Title="Monthly Revenue" 
+        Type="ChartType.Column" 
+        Size="ChartSize.Medium">
+    <!-- Chart implementation content -->
+</RChart>
+
+<!-- Chart with header controls -->
+<RChart Title="Analytics Dashboard" 
+        Subtitle="Real-time performance metrics"
+        Icon="analytics"
+        Type="ChartType.Line"
+        Size="ChartSize.Large"
+        Variant="ChartVariant.Elevated">
+    
+    <HeaderContent>
+        <button class="button button-outline button-sm">
+            <i class="material-symbols-rounded mr-1">download</i>
+            Export
+        </button>
+        <button class="button button-ghost button-sm">
+            <i class="material-symbols-rounded">settings</i>
+        </button>
+    </HeaderContent>
+    
+    <ChildContent>
+        <!-- Chart visualization -->
+    </ChildContent>
+    
+    <FooterContent>
+        <div class="text-sm text-secondary text-center">
+            Data refreshed 2 minutes ago
+        </div>
+    </FooterContent>
+</RChart>
+
+<!-- Chart with legend -->
+<RChart Title="Sales Distribution" 
+        Type="ChartType.Pie"
+        ShowLegend="true"
+        LegendPosition="ChartLegendPosition.Right">
+    
+    <LegendContent>
+        <div class="chart-legend-item">
+            <div class="chart-legend-indicator bg-primary"></div>
+            <span class="chart-legend-label">Q1 Sales</span>
+        </div>
+        <div class="chart-legend-item">
+            <div class="chart-legend-indicator bg-danger"></div>
+            <span class="chart-legend-label">Q2 Sales</span>
+        </div>
+    </LegendContent>
+</RChart>
+
+<!-- Loading state -->
+<RChart Title="Processing Data" 
+        Loading="true"
+        LoadingText="Analyzing revenue trends...">
+</RChart>
+
+<!-- Error state with retry -->
+<RChart Title="Revenue Analysis" 
+        HasError="true"
+        ErrorTitle="Connection Failed"
+        ErrorMessage="Unable to fetch chart data from server"
+        OnRetry="@HandleRetry">
+</RChart>
+
+<!-- Empty state -->
+<RChart Title="User Activity" 
+        IsEmpty="true"
+        EmptyTitle="No Activity"
+        EmptyMessage="No user activity recorded for this period">
+</RChart>
+
+<!-- Responsive chart with accessibility -->
+<RChart Title="Performance Metrics" 
+        ResponsiveMode="ChartResponsiveMode.Auto"
+        ShowAccessibilityTable="true"
+        Height="400px">
+    
+    <AccessibilityContent>
+        <table>
+            <thead>
+                <tr>
+                    <th>Metric</th>
+                    <th>Value</th>
+                    <th>Change</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Revenue</td>
+                    <td>$125,000</td>
+                    <td>+12%</td>
+                </tr>
+                <tr>
+                    <td>Users</td>
+                    <td>1,247</td>
+                    <td>+8%</td>
+                </tr>
+            </tbody>
+        </table>
+    </AccessibilityContent>
+</RChart>
+
+<!-- Interactive chart with click handler -->
+<RChart Title="Interactive Chart" 
+        Type="ChartType.Bar"
+        OnClick="@HandleChartClick"
+        OnChartInit="@HandleChartInit">
+</RChart>
+
+<!-- Themed chart variants -->
+<RChart Title="Glass Effect Chart" 
+        Variant="ChartVariant.Glass"
+        Theme="ChartTheme.Dark">
+</RChart>
+
+<RChart Title="Minimal Chart" 
+        Variant="ChartVariant.Minimal"
+        ShowLegend="false">
+</RChart>
+
+<RChart Title="Elevated Chart" 
+        Variant="ChartVariant.Elevated"
+        Size="ChartSize.Full">
+</RChart>
+*@

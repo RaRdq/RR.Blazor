@@ -1,0 +1,231 @@
+@*
+    RTextInput - Lightweight, focused text input component
+    
+    A specialized text input component that extends the utility-first design system
+    with comprehensive glassmorphism effects and enterprise-grade styling.
+    
+    Key Features:
+    - Utility-first CSS composition
+    - Glassmorphism and elevation effects
+    - Comprehensive validation states
+    - Touch-friendly mobile design
+    - Icon support with flexible positioning
+    - Multiple style variants (Clean, Filled, Outlined, Glass)
+    - Size variants (Small, Medium, Large)
+    - Professional hover/focus animations
+    
+    Usage Examples:
+    <RTextInput @bind-Value="name" Placeholder="Enter your name" />
+    <RTextInput @bind-Value="email" Variant="TextInputVariant.Clean" Size="TextInputSize.Large" />
+    <RTextInput @bind-Value="search" StartIcon="search" Placeholder="Search..." />
+    <RTextInput @bind-Value="password" Type="password" HasError="true" ErrorMessage="Password required" />
+*@
+
+@using RR.Blazor.Enums
+@using Microsoft.AspNetCore.Components.Web
+@attribute [Component("RTextInput", Category = "Form", Complexity = ComponentComplexity.Simple)]
+@attribute [AIOptimized(
+    Prompt = "Use for simple text input with utility-first styling and glassmorphism effects",
+    CommonUse = "Basic text input, search fields, form inputs with validation",
+    AvoidUsage = "Complex forms (use RFormField), multi-line text (use RTextArea)"
+)]
+
+<div class="@GetContainerClasses()">
+    @if (!string.IsNullOrEmpty(Label))
+    {
+        <label class="form-field-label" for="@inputId">@Label</label>
+    }
+    
+    <div class="form-field-input">
+        @if (!string.IsNullOrEmpty(StartIcon))
+        {
+            <i class="icon-interactive @StartIcon" @onclick="@OnStartIconClick"></i>
+        }
+        
+        <input id="@inputId"
+               type="@Type"
+               class="@GetInputClasses()"
+               value="@Value"
+               placeholder="@Placeholder"
+               disabled="@Disabled"
+               readonly="@ReadOnly"
+               required="@Required"
+               @oninput="@OnInputChange"
+               @onfocus="@OnFocus"
+               @onblur="@OnBlur"
+               @onkeypress="@OnKeyPress"
+               @onkeydown="@OnKeyDown" />
+        
+        @if (!string.IsNullOrEmpty(EndIcon))
+        {
+            <i class="icon-interactive @EndIcon" @onclick="@OnEndIconClick" 
+               style="left: auto; right: var(--space-4);"></i>
+        }
+        
+        @if (Loading)
+        {
+            <div class="loading-overlay">
+                <div class="spinner-sm"></div>
+            </div>
+        }
+    </div>
+    
+    @if (HasError && !string.IsNullOrEmpty(ErrorMessage))
+    {
+        <div class="form-field-input-error">@ErrorMessage</div>
+    }
+    
+    @if (!string.IsNullOrEmpty(HelpText))
+    {
+        <div class="form-field-help">@HelpText</div>
+    }
+</div>
+
+@code {
+    private string inputId = $"text-input-{Guid.NewGuid():N}";
+    
+    #region Parameters
+    
+    [Parameter] 
+    [AIParameter("Input value", Example = "\"John Doe\"")]
+    public string? Value { get; set; }
+    
+    [Parameter] 
+    [AIParameter("Value changed callback")]
+    public EventCallback<string> ValueChanged { get; set; }
+    
+    [Parameter] 
+    [AIParameter("Input type", SuggestedValues = new[] { "text", "email", "password", "tel", "url", "search" }, Example = "\"email\"")]
+    public string Type { get; set; } = "text";
+    
+    [Parameter] 
+    [AIParameter("Placeholder text", Example = "\"Enter your email...\"")]
+    public string? Placeholder { get; set; }
+    
+    [Parameter] 
+    [AIParameter("Field label", Example = "\"Email Address\"")]
+    public string? Label { get; set; }
+    
+    [Parameter] 
+    [AIParameter("Start icon name", Example = "\"search\"")]
+    public string? StartIcon { get; set; }
+    
+    [Parameter] 
+    [AIParameter("End icon name", Example = "\"visibility\"")]
+    public string? EndIcon { get; set; }
+    
+    [Parameter] 
+    [AIParameter("Input variant", SuggestedValues = new[] { "Default", "Clean", "Filled", "Outlined", "Glass" })]
+    public TextInputVariant Variant { get; set; } = TextInputVariant.Default;
+    
+    [Parameter] 
+    [AIParameter("Input size", SuggestedValues = new[] { "Small", "Medium", "Large" })]
+    public TextInputSize Size { get; set; } = TextInputSize.Medium;
+    
+    [Parameter] 
+    [AIParameter("Disabled state")]
+    public bool Disabled { get; set; }
+    
+    [Parameter] 
+    [AIParameter("Read-only state")]
+    public bool ReadOnly { get; set; }
+    
+    [Parameter] 
+    [AIParameter("Required state")]
+    public bool Required { get; set; }
+    
+    [Parameter] 
+    [AIParameter("Loading state")]
+    public bool Loading { get; set; }
+    
+    [Parameter] 
+    [AIParameter("Has error state")]
+    public bool HasError { get; set; }
+    
+    [Parameter] 
+    [AIParameter("Error message text")]
+    public string? ErrorMessage { get; set; }
+    
+    [Parameter] 
+    [AIParameter("Help text")]
+    public string? HelpText { get; set; }
+    
+    [Parameter] 
+    [AIParameter("Additional CSS classes")]
+    public string? Class { get; set; }
+    
+    #endregion
+    
+    #region Events
+    
+    [Parameter] public EventCallback<FocusEventArgs> OnFocus { get; set; }
+    [Parameter] public EventCallback<FocusEventArgs> OnBlur { get; set; }
+    [Parameter] public EventCallback<KeyboardEventArgs> OnKeyPress { get; set; }
+    [Parameter] public EventCallback<KeyboardEventArgs> OnKeyDown { get; set; }
+    [Parameter] public EventCallback<MouseEventArgs> OnStartIconClick { get; set; }
+    [Parameter] public EventCallback<MouseEventArgs> OnEndIconClick { get; set; }
+    
+    #endregion
+    
+    #region Methods
+    
+    private async Task OnInputChange(ChangeEventArgs e)
+    {
+        Value = e.Value?.ToString();
+        await ValueChanged.InvokeAsync(Value);
+    }
+    
+    private string GetContainerClasses()
+    {
+        var classes = new List<string> { "input-group" };
+        
+        if (!string.IsNullOrEmpty(Class))
+            classes.Add(Class);
+            
+        return string.Join(" ", classes);
+    }
+    
+    private string GetInputClasses()
+    {
+        var classes = new List<string> { "input" };
+        
+        // Size variants
+        classes.Add(Size switch
+        {
+            TextInputSize.Small => "input-sm",
+            TextInputSize.Large => "input-lg",
+            _ => ""
+        });
+        
+        // Style variants
+        classes.Add(Variant switch
+        {
+            TextInputVariant.Clean => "input-clean",
+            TextInputVariant.Filled => "input-filled",
+            TextInputVariant.Outlined => "input-outlined",
+            TextInputVariant.Glass => "input-glass",
+            _ => ""
+        });
+        
+        // State classes
+        if (HasError)
+            classes.Add("input-error");
+        if (Loading)
+            classes.Add("input-loading");
+        if (!string.IsNullOrEmpty(StartIcon))
+            classes.Add("input-with-start-icon");
+        if (!string.IsNullOrEmpty(EndIcon))
+            classes.Add("input-with-end-icon");
+        
+        // Utility classes for enhanced UX
+        classes.Add("input-touch");
+        classes.Add("transition-all");
+        classes.Add("duration-300");
+        
+        return string.Join(" ", classes.Where(c => !string.IsNullOrEmpty(c)));
+    }
+    
+    #endregion
+}
+
+@* CSS removed per project conventions - styles should be in SCSS files *@

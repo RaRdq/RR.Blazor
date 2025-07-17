@@ -127,31 +127,57 @@ function Auto-DiscoverPatterns {
     
     $classNames = @($Classes.Keys)
     foreach ($className in $classNames) {
-        # Split by dash to find prefix-suffix patterns
-        $parts = $className -split '-'
-        
-        if ($parts.Count -eq 1) {
-            # Standalone class (no dashes)
-            $category = "standalone"
-            if (-not $standalone.ContainsKey($category)) { $standalone[$category] = @() }
-            $standalone[$category] += $className
-        }
-        elseif ($parts.Count -eq 2) {
-            # Standard prefix-suffix pattern
-            $prefix = $parts[0]
-            $suffix = $parts[1]
+        # Handle fractional patterns first (e.g., gap-0-5, w-1-5, min-w-0-5)
+        if ($className -match '^([a-zA-Z-]+)-(\d+-\d+)$') {
+            $prefix = $Matches[1]
+            $suffix = $Matches[2]
             
             if (-not $patterns.ContainsKey($prefix)) { $patterns[$prefix] = @() }
             $patterns[$prefix] += $suffix
         }
-        elseif ($parts.Count -ge 3) {
-            # Multi-part classes: try different combinations
-            # Try prefix-rest (e.g., "text-shadow-lg" -> "text-shadow": ["lg"])
-            $prefix = ($parts[0..($parts.Count-2)] -join '-')
-            $suffix = $parts[-1]
+        # Handle responsive patterns (e.g., sm:gap-4, md:w-full)
+        elseif ($className -match '^([a-zA-Z]+):([a-zA-Z-]+)$') {
+            $breakpoint = $Matches[1]
+            $utility = $Matches[2]
+            $responsivePrefix = "$breakpoint`:$utility"
             
-            if (-not $patterns.ContainsKey($prefix)) { $patterns[$prefix] = @() }
-            $patterns[$prefix] += $suffix
+            # Extract the base utility pattern
+            if ($utility -match '^([a-zA-Z]+)-(.+)$') {
+                $utilityPrefix = $Matches[1]
+                $utilitySuffix = $Matches[2]
+                $fullPrefix = "$breakpoint`:$utilityPrefix"
+                
+                if (-not $patterns.ContainsKey($fullPrefix)) { $patterns[$fullPrefix] = @() }
+                $patterns[$fullPrefix] += $utilitySuffix
+            }
+        }
+        else {
+            # Split by dash to find prefix-suffix patterns
+            $parts = $className -split '-'
+            
+            if ($parts.Count -eq 1) {
+                # Standalone class (no dashes)
+                $category = "standalone"
+                if (-not $standalone.ContainsKey($category)) { $standalone[$category] = @() }
+                $standalone[$category] += $className
+            }
+            elseif ($parts.Count -eq 2) {
+                # Standard prefix-suffix pattern
+                $prefix = $parts[0]
+                $suffix = $parts[1]
+                
+                if (-not $patterns.ContainsKey($prefix)) { $patterns[$prefix] = @() }
+                $patterns[$prefix] += $suffix
+            }
+            elseif ($parts.Count -ge 3) {
+                # Multi-part classes: try different combinations
+                # Try prefix-rest (e.g., "text-shadow-lg" -> "text-shadow": ["lg"])
+                $prefix = ($parts[0..($parts.Count-2)] -join '-')
+                $suffix = $parts[-1]
+                
+                if (-not $patterns.ContainsKey($prefix)) { $patterns[$prefix] = @() }
+                $patterns[$prefix] += $suffix
+            }
         }
     }
     

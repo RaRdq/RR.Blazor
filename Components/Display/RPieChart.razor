@@ -1,0 +1,503 @@
+@* RPieChart - Specialized pie chart component for proportional data visualization *@
+@using RR.Blazor.Enums
+@using RR.Blazor.Models
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.JSInterop
+@inject IJSRuntime JSRuntime
+
+<RChart Title="@Title" 
+        Subtitle="@Subtitle"
+        Icon="@Icon"
+        Type="@(IsDoughnut ? ChartType.Doughnut : ChartType.Pie)"
+        Size="@Size"
+        Variant="@Variant"
+        Theme="@Theme"
+        Loading="@Loading"
+        HasError="@HasError"
+        IsEmpty="@IsEmpty"
+        ShowLegend="@ShowLegend"
+        LegendPosition="@LegendPosition"
+        Class="@Class"
+        OnClick="@OnClick"
+        OnChartInit="@HandleChartInit"
+        Configuration="@Configuration">
+    
+    <HeaderContent>
+        @HeaderContent
+    </HeaderContent>
+    
+    <ChildContent>
+        <div class="pie-chart-svg-container" @ref="chartContainer">
+            @if (Data != null && Data.Any())
+            {
+                <svg class="pie-chart-svg w-full h-full" viewBox="0 0 @ViewBoxSize @ViewBoxSize">
+                    @{
+                        var total = Data.Sum(d => d.Value);
+                        var startAngle = 0.0;
+                        var centerX = ViewBoxSize / 2;
+                        var centerY = ViewBoxSize / 2;
+                        var radius = (ViewBoxSize / 2) - 20;
+                        var innerRadius = IsDoughnut ? radius * InnerRadiusRatio : 0;
+                    }
+                    
+                    @foreach (var (dataPoint, index) in Data.Select((d, i) => (d, i)))
+                    {
+                        var percentage = dataPoint.Value / total;
+                        var endAngle = startAngle + (percentage * 360);
+                        var color = GetSliceColor(dataPoint, index);
+                        
+                        <path class="pie-slice @(selectedIndex == index ? "active" : "")" 
+                              d="@GetSlicePath(centerX, centerY, radius, innerRadius, startAngle, endAngle)"
+                              fill="@color"
+                              stroke="@(IsDoughnut ? "var(--color-background-elevated)" : "none")"
+                              stroke-width="@(IsDoughnut ? 2 : 0)"
+                              @onclick="@(async () => await HandleSliceClick(dataPoint, index))"
+                              @onmouseover="@(async () => await HandleSliceHover(dataPoint, index))"
+                              @onmouseout="@(async () => await HandleSliceLeave())"
+                              role="button"
+                              tabindex="0"
+                              aria-label="@GetSliceAriaLabel(dataPoint, percentage)">
+                        </path>
+                        
+                        @* TODO: Add SVG text labels once Blazor text element issue is resolved *@
+                        
+                        startAngle = endAngle;
+                    }
+                </svg>
+                
+                @if (ShowCenterValue && IsDoughnut)
+                {
+                    <div class="pie-chart-center-text">
+                        <div class="value">@GetCenterValue()</div>
+                        <div class="label">@CenterLabel</div>
+                    </div>
+                }
+            }
+        </div>
+    </ChildContent>
+    
+    <LegendContent>
+        @if (ShowLegend && Data != null && Data.Any())
+        {
+            @foreach (var (dataPoint, index) in Data.Select((d, i) => (d, i)))
+            {
+                var percentage = dataPoint.Value / Data.Sum(d => d.Value);
+                var color = GetSliceColor(dataPoint, index);
+                
+                <div class="chart-legend-item @(selectedIndex == index ? "active" : "")"
+                     @onclick="@(async () => await HandleLegendClick(dataPoint, index))"
+                     role="button"
+                     tabindex="0"
+                     aria-label="@GetLegendAriaLabel(dataPoint, percentage)">
+                    <div class="chart-legend-indicator" style="background: @color;"></div>
+                    <span class="chart-legend-label">@dataPoint.Label</span>
+                    @if (ShowLegendValues)
+                    {
+                        <span class="chart-legend-label ml-auto">
+                            @GetFormattedValue(dataPoint.Value)
+                            @if (ShowLegendPercentages)
+                            {
+                                <span class="text-xs text-secondary ml-1">(@(percentage.ToString("P1")))</span>
+                            }
+                        </span>
+                    }
+                </div>
+            }
+        }
+        @LegendContent
+    </LegendContent>
+    
+    <FooterContent>
+        @FooterContent
+    </FooterContent>
+    
+    <AccessibilityContent>
+        @if (Configuration.EnableAccessibility)
+        {
+            <table class="w-full">
+                <thead>
+                    <tr>
+                        <th class="text-left">Category</th>
+                        <th class="text-right">Value</th>
+                        <th class="text-right">Percentage</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Data != null)
+                    {
+                        var total = Data.Sum(d => d.Value);
+                        @foreach (var dataPoint in Data)
+                        {
+                            <tr>
+                                <td>@dataPoint.Label</td>
+                                <td class="text-right">@GetFormattedValue(dataPoint.Value)</td>
+                                <td class="text-right">@((dataPoint.Value / total).ToString("P1"))</td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        }
+        @AccessibilityContent
+    </AccessibilityContent>
+</RChart>
+
+@code {
+    /// <summary>Pie chart data points</summary>
+    [Parameter] 
+    [AIParameter("Array of data points for pie chart", Example = "new[] { new ChartDataPoint { Label = \"Sales\", Value = 150 } }")] 
+    public IEnumerable<ChartDataPoint> Data { get; set; } = new List<ChartDataPoint>();
+    
+    /// <summary>Chart title</summary>
+    [Parameter] public string Title { get; set; }
+    
+    /// <summary>Chart subtitle</summary>
+    [Parameter] public string Subtitle { get; set; }
+    
+    /// <summary>Chart icon</summary>
+    [Parameter] public string Icon { get; set; } = "pie_chart";
+    
+    /// <summary>Chart size</summary>
+    [Parameter] public ChartSize Size { get; set; } = ChartSize.Medium;
+    
+    /// <summary>Chart variant</summary>
+    [Parameter] public ChartVariant Variant { get; set; } = ChartVariant.Default;
+    
+    /// <summary>Chart theme</summary>
+    [Parameter] public ChartTheme Theme { get; set; } = ChartTheme.Auto;
+    
+    /// <summary>Whether to render as doughnut chart</summary>
+    [Parameter] public bool IsDoughnut { get; set; }
+    
+    /// <summary>Inner radius ratio for doughnut chart (0.3 = 30%)</summary>
+    [Parameter] public double InnerRadiusRatio { get; set; } = 0.4;
+    
+    /// <summary>Whether to show data labels</summary>
+    [Parameter] public bool ShowLabels { get; set; } = true;
+    
+    /// <summary>Label position</summary>
+    [Parameter] public ChartDataLabelPosition LabelPosition { get; set; } = ChartDataLabelPosition.Inside;
+    
+    /// <summary>Minimum percentage to show label</summary>
+    [Parameter] public double MinLabelPercentage { get; set; } = 0.05; // 5%
+    
+    /// <summary>Whether to show center value in doughnut</summary>
+    [Parameter] public bool ShowCenterValue { get; set; } = true;
+    
+    /// <summary>Center label text</summary>
+    [Parameter] public string CenterLabel { get; set; } = "Total";
+    
+    /// <summary>Whether to show legend</summary>
+    [Parameter] public bool ShowLegend { get; set; } = true;
+    
+    /// <summary>Legend position</summary>
+    [Parameter] public ChartLegendPosition LegendPosition { get; set; } = ChartLegendPosition.Bottom;
+    
+    /// <summary>Whether to show values in legend</summary>
+    [Parameter] public bool ShowLegendValues { get; set; } = true;
+    
+    /// <summary>Whether to show percentages in legend</summary>
+    [Parameter] public bool ShowLegendPercentages { get; set; } = true;
+    
+    /// <summary>Color palette for slices</summary>
+    [Parameter] public string[] ColorPalette { get; set; } = DefaultColorPalette;
+    
+    /// <summary>Value format string</summary>
+    [Parameter] public string ValueFormat { get; set; } = "N0";
+    
+    /// <summary>Whether chart is loading</summary>
+    [Parameter] public bool Loading { get; set; }
+    
+    /// <summary>Whether chart has error</summary>
+    [Parameter] public bool HasError { get; set; }
+    
+    /// <summary>Whether chart is empty</summary>
+    [Parameter] public bool IsEmpty { get; set; }
+    
+    /// <summary>Chart configuration</summary>
+    [Parameter] public ChartConfiguration Configuration { get; set; } = new();
+    
+    /// <summary>Header content</summary>
+    [Parameter] public RenderFragment HeaderContent { get; set; }
+    
+    /// <summary>Footer content</summary>
+    [Parameter] public RenderFragment FooterContent { get; set; }
+    
+    /// <summary>Legend content</summary>
+    [Parameter] public RenderFragment LegendContent { get; set; }
+    
+    /// <summary>Accessibility content</summary>
+    [Parameter] public RenderFragment AccessibilityContent { get; set; }
+    
+    /// <summary>Additional CSS classes</summary>
+    [Parameter] public string Class { get; set; }
+    
+    /// <summary>Chart click handler</summary>
+    [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
+    
+    /// <summary>Slice click handler</summary>
+    [Parameter] public EventCallback<ChartEventArgs> OnSliceClick { get; set; }
+    
+    /// <summary>Slice hover handler</summary>
+    [Parameter] public EventCallback<ChartEventArgs> OnSliceHover { get; set; }
+
+    private static readonly string[] DefaultColorPalette = {
+        "var(--color-interactive-primary)",
+        "var(--color-success)",
+        "var(--color-warning)",
+        "var(--color-error)",
+        "var(--color-info)",
+        "var(--theme-accent-cyan)",
+        "var(--theme-accent-purple)",
+        "var(--color-text-secondary)"
+    };
+
+    private ElementReference chartContainer;
+    private int selectedIndex = -1;
+    private const int ViewBoxSize = 300;
+
+    private async Task HandleChartInit(ElementReference element)
+    {
+        chartContainer = element;
+        // Animations are now handled by SCSS classes
+        // JavaScript animation call removed to use SCSS animation utilities
+        if (Configuration.EnableAnimation)
+        {
+            await JSRuntime.InvokeVoidAsync("RChart.animatePieChart", element);
+        }
+    }
+
+    private async Task HandleSliceClick(ChartDataPoint dataPoint, int index)
+    {
+        selectedIndex = selectedIndex == index ? -1 : index;
+        
+        if (OnSliceClick.HasDelegate)
+        {
+            await OnSliceClick.InvokeAsync(new ChartEventArgs
+            {
+                DataPoint = dataPoint,
+                Index = index,
+                EventType = "click"
+            });
+        }
+        
+        StateHasChanged();
+    }
+
+    private async Task HandleSliceHover(ChartDataPoint dataPoint, int index)
+    {
+        if (OnSliceHover.HasDelegate)
+        {
+            await OnSliceHover.InvokeAsync(new ChartEventArgs
+            {
+                DataPoint = dataPoint,
+                Index = index,
+                EventType = "hover"
+            });
+        }
+    }
+
+    private async Task HandleSliceLeave()
+    {
+        if (OnSliceHover.HasDelegate)
+        {
+            await OnSliceHover.InvokeAsync(new ChartEventArgs
+            {
+                EventType = "leave"
+            });
+        }
+    }
+
+    private async Task HandleLegendClick(ChartDataPoint dataPoint, int index)
+    {
+        await HandleSliceClick(dataPoint, index);
+    }
+
+    private string GetSliceColor(ChartDataPoint dataPoint, int index)
+    {
+        if (!string.IsNullOrEmpty(dataPoint.Color))
+        {
+            return dataPoint.Color;
+        }
+        
+        return ColorPalette[index % ColorPalette.Length];
+    }
+
+    private string GetSlicePath(double centerX, double centerY, double radius, double innerRadius, double startAngle, double endAngle)
+    {
+        var startAngleRad = (startAngle - 90) * Math.PI / 180;
+        var endAngleRad = (endAngle - 90) * Math.PI / 180;
+        
+        var x1 = centerX + radius * Math.Cos(startAngleRad);
+        var y1 = centerY + radius * Math.Sin(startAngleRad);
+        var x2 = centerX + radius * Math.Cos(endAngleRad);
+        var y2 = centerY + radius * Math.Sin(endAngleRad);
+        
+        var largeArc = endAngle - startAngle > 180 ? 1 : 0;
+        
+        if (innerRadius > 0)
+        {
+            var x3 = centerX + innerRadius * Math.Cos(endAngleRad);
+            var y3 = centerY + innerRadius * Math.Sin(endAngleRad);
+            var x4 = centerX + innerRadius * Math.Cos(startAngleRad);
+            var y4 = centerY + innerRadius * Math.Sin(startAngleRad);
+            
+            return $"M {x1:F2} {y1:F2} A {radius:F2} {radius:F2} 0 {largeArc} 1 {x2:F2} {y2:F2} L {x3:F2} {y3:F2} A {innerRadius:F2} {innerRadius:F2} 0 {largeArc} 0 {x4:F2} {y4:F2} Z";
+        }
+        else
+        {
+            return $"M {centerX:F2} {centerY:F2} L {x1:F2} {y1:F2} A {radius:F2} {radius:F2} 0 {largeArc} 1 {x2:F2} {y2:F2} Z";
+        }
+    }
+
+    private (double X, double Y) GetLabelPosition(double centerX, double centerY, double radius, double angle)
+    {
+        var angleRad = (angle - 90) * Math.PI / 180;
+        return (
+            centerX + radius * Math.Cos(angleRad),
+            centerY + radius * Math.Sin(angleRad)
+        );
+    }
+
+    private string GetLabelText(ChartDataPoint dataPoint, double percentage)
+    {
+        return LabelPosition switch
+        {
+            ChartDataLabelPosition.Inside => percentage >= 0.1 ? $"{percentage:P0}" : "",
+            ChartDataLabelPosition.Outside => $"{dataPoint.Label} ({percentage:P0})",
+            _ => $"{percentage:P0}"
+        };
+    }
+
+    private string GetLabelColor(ChartDataPoint dataPoint, int index)
+    {
+        return LabelPosition == ChartDataLabelPosition.Inside 
+            ? "var(--color-text-inverse)" 
+            : "var(--color-text-primary)";
+    }
+
+    private string GetLabelFontSize()
+    {
+        return Size switch
+        {
+            ChartSize.Small => "10",
+            ChartSize.Large => "16",
+            ChartSize.Full => "18",
+            _ => "12"
+        };
+    }
+
+    private string GetCenterValue()
+    {
+        if (Data == null || !Data.Any()) return "0";
+        
+        var total = Data.Sum(d => d.Value);
+        return GetFormattedValue(total);
+    }
+
+    private string GetFormattedValue(double value)
+    {
+        return value.ToString(ValueFormat);
+    }
+
+    private string GetSliceAriaLabel(ChartDataPoint dataPoint, double percentage)
+    {
+        return $"{dataPoint.Label}: {GetFormattedValue(dataPoint.Value)} ({percentage:P1})";
+    }
+
+    private string GetLegendAriaLabel(ChartDataPoint dataPoint, double percentage)
+    {
+        return $"Toggle {dataPoint.Label} slice: {GetFormattedValue(dataPoint.Value)} ({percentage:P1})";
+    }
+}
+
+@*
+Usage Examples:
+
+<!-- Basic pie chart -->
+<RPieChart Title="Sales Distribution" 
+           Data="@salesData" 
+           Icon="pie_chart" />
+
+<!-- Doughnut chart with center value -->
+<RPieChart Title="Revenue by Category" 
+           Data="@revenueData"
+           IsDoughnut="true"
+           ShowCenterValue="true"
+           CenterLabel="Total Revenue"
+           ValueFormat="C0" />
+
+<!-- Pie chart with custom styling -->
+<RPieChart Title="Market Share" 
+           Data="@marketData"
+           Size="ChartSize.Large"
+           Variant="ChartVariant.Elevated"
+           ShowLabels="true"
+           LabelPosition="ChartDataLabelPosition.Outside"
+           ColorPalette="@customColors" />
+
+<!-- Interactive pie chart -->
+<RPieChart Title="User Engagement" 
+           Data="@engagementData"
+           OnSliceClick="@HandleSliceClick"
+           OnSliceHover="@HandleSliceHover"
+           ShowLegendPercentages="true"
+           ShowLegendValues="true" />
+
+<!-- Minimal pie chart -->
+<RPieChart Data="@simpleData"
+           Variant="ChartVariant.Minimal"
+           ShowLegend="false"
+           ShowLabels="false" />
+
+<!-- Pie chart with header controls -->
+<RPieChart Title="Performance Metrics" 
+           Data="@performanceData"
+           LegendPosition="ChartLegendPosition.Right">
+    
+    <HeaderContent>
+        <select class="form-field-input form-field-sm">
+            <option>Last 7 days</option>
+            <option>Last 30 days</option>
+            <option>Last 90 days</option>
+        </select>
+    </HeaderContent>
+    
+    <FooterContent>
+        <div class="text-sm text-secondary">
+            Data updated 5 minutes ago
+        </div>
+    </FooterContent>
+</RPieChart>
+
+<!-- Accessible pie chart -->
+<RPieChart Title="Budget Allocation" 
+           Data="@budgetData"
+           Configuration="@(new ChartConfiguration { EnableAccessibility = true })"
+           ShowAccessibilityTable="true" />
+
+@code {
+    private List<ChartDataPoint> salesData = new()
+    {
+        new ChartDataPoint { Label = "Product A", Value = 150 },
+        new ChartDataPoint { Label = "Product B", Value = 230 },
+        new ChartDataPoint { Label = "Product C", Value = 180 },
+        new ChartDataPoint { Label = "Product D", Value = 120 }
+    };
+
+    private async Task HandleSliceClick(ChartEventArgs args)
+    {
+        // Handle slice click
+        Console.WriteLine($"Clicked: {args.DataPoint.Label}");
+    }
+
+    private async Task HandleSliceHover(ChartEventArgs args)
+    {
+        // Handle slice hover
+        if (args.EventType == "hover")
+        {
+            Console.WriteLine($"Hovering: {args.DataPoint.Label}");
+        }
+    }
+}
+*@

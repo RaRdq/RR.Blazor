@@ -8,7 +8,9 @@ namespace RR.Blazor.Enums
         Success,
         Warning,
         Danger,
-        Info
+        Info,
+        Error,
+        Outline
     }
 
     public enum BadgeSize

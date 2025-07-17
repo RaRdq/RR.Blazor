@@ -10,6 +10,7 @@ namespace RR.Blazor.Enums
         Outline,
         Glass,
         Success,
-        Warning
+        Warning,
+        Error
     }
 }

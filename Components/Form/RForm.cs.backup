@@ -1,0 +1,155 @@
+using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Forms;
+using Microsoft.AspNetCore.Components.Rendering;
+using RR.Blazor.Enums;
+using RR.Blazor.Models;
+using System.Reflection;
+
+namespace RR.Blazor.Components.Form;
+
+/// <summary>
+/// Smart form component that automatically infers model type from Model parameter.
+/// This eliminates the need for explicit TModel specification.
+/// </summary>
+public class RForm : ComponentBase
+{
+    [Parameter] public object Model { get; set; }
+    [Parameter] public EventCallback<object> ModelChanged { get; set; }
+    
+    // Form Configuration
+    [Parameter] public ValidationMode ValidationMode { get; set; } = ValidationMode.DataAnnotations;
+    [Parameter] public FormLayout Layout { get; set; } = FormLayout.Default;
+    [Parameter] public FormDensity Density { get; set; } = FormDensity.Comfortable;
+    [Parameter] public FormOptions Options { get; set; } = new();
+    
+    // Content Areas
+    [Parameter] public RenderFragment ChildContent { get; set; }
+    [Parameter] public RenderFragment FormFields { get; set; }
+    [Parameter] public RenderFragment FormActions { get; set; }
+    
+    // Header
+    [Parameter] public string Title { get; set; }
+    [Parameter] public string Description { get; set; }
+    [Parameter] public string Icon { get; set; }
+    [Parameter] public bool ShowFormHeader { get; set; } = true;
+    
+    // Actions
+    [Parameter] public bool ShowDefaultActions { get; set; } = true;
+    [Parameter] public bool ShowCancelButton { get; set; } = false;
+    [Parameter] public string SubmitText { get; set; } = "Submit";
+    [Parameter] public string CancelText { get; set; } = "Cancel";
+    [Parameter] public bool RequireValidation { get; set; } = true;
+    [Parameter] public bool SubmitButtonFullWidth { get; set; } = false;
+    [Parameter] public ButtonSize SubmitButtonSize { get; set; } = ButtonSize.Medium;
+    
+    // Events
+    [Parameter] public EventCallback OnValidSubmit { get; set; }
+    [Parameter] public EventCallback OnInvalidSubmit { get; set; }
+    [Parameter] public EventCallback<FormStateChangedEventArgs> OnStateChanged { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+    
+    // Validation
+    [Parameter] public object CustomValidator { get; set; }
+    
+    // Styling
+    [Parameter] public string Class { get; set; }
+    [Parameter] public string AriaLabel { get; set; }
+
+    private Type _modelType;
+    private bool _modelTypeResolved = false;
+
+    protected override void OnParametersSet()
+    {
+        if (!_modelTypeResolved && Model != null)
+        {
+            _modelType = Model.GetType();
+            _modelTypeResolved = true;
+        }
+    }
+
+    protected override void BuildRenderTree(RenderTreeBuilder builder)
+    {
+        if (_modelType == null)
+        {
+            // Fallback to object type if model is null
+            _modelType = typeof(object);
+        }
+
+        // Use reflection to create the generic component
+        var genericFormType = typeof(RFormGeneric<>).MakeGenericType(_modelType);
+        
+        builder.OpenComponent(0, genericFormType);
+        
+        // Add all parameters
+        builder.AddAttribute(1, "Model", Model);
+        builder.AddAttribute(2, "ModelChanged", ModelChanged);
+        builder.AddAttribute(3, "ValidationMode", ValidationMode);
+        builder.AddAttribute(4, "Layout", Layout);
+        builder.AddAttribute(5, "Density", Density);
+        builder.AddAttribute(6, "Options", Options);
+        builder.AddAttribute(7, "ChildContent", ChildContent);
+        builder.AddAttribute(8, "FormFields", FormFields);
+        builder.AddAttribute(9, "FormActions", FormActions);
+        builder.AddAttribute(10, "Title", Title);
+        builder.AddAttribute(11, "Description", Description);
+        builder.AddAttribute(12, "Icon", Icon);
+        builder.AddAttribute(13, "ShowFormHeader", ShowFormHeader);
+        builder.AddAttribute(14, "ShowDefaultActions", ShowDefaultActions);
+        builder.AddAttribute(15, "ShowCancelButton", ShowCancelButton);
+        builder.AddAttribute(16, "SubmitText", SubmitText);
+        builder.AddAttribute(17, "CancelText", CancelText);
+        builder.AddAttribute(18, "RequireValidation", RequireValidation);
+        builder.AddAttribute(19, "SubmitButtonFullWidth", SubmitButtonFullWidth);
+        builder.AddAttribute(20, "SubmitButtonSize", SubmitButtonSize);
+        builder.AddAttribute(21, "OnValidSubmit", OnValidSubmit);
+        builder.AddAttribute(22, "OnInvalidSubmit", OnInvalidSubmit);
+        builder.AddAttribute(23, "OnStateChanged", OnStateChanged);
+        builder.AddAttribute(24, "OnCancel", OnCancel);
+        builder.AddAttribute(25, "CustomValidator", CustomValidator);
+        builder.AddAttribute(26, "Class", Class);
+        builder.AddAttribute(27, "AriaLabel", AriaLabel);
+        
+        builder.CloseComponent();
+    }
+    
+    private object CreateGenericEventCallback(string eventName)
+    {
+        if (_modelType == null) return null;
+        
+        var eventCallbackType = typeof(EventCallback<>).MakeGenericType(typeof(FormSubmissionEventArgs<>).MakeGenericType(_modelType));
+        var createMethod = typeof(EventCallback).GetMethod("Factory", 
+            new[] { typeof(object), typeof(Func<,>).MakeGenericType(typeof(FormSubmissionEventArgs<>).MakeGenericType(_modelType), typeof(Task)) });
+        
+        if (createMethod != null)
+        {
+            // Create a wrapper method that converts the generic EventArgs to the non-generic callback
+            var wrapperMethod = typeof(RForm).GetMethod($"Handle{eventName}", 
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            
+            if (wrapperMethod != null)
+            {
+                var delegateType = typeof(Func<,>).MakeGenericType(typeof(FormSubmissionEventArgs<>).MakeGenericType(_modelType), typeof(Task));
+                var delegateInstance = Delegate.CreateDelegate(delegateType, this, wrapperMethod);
+                return createMethod.Invoke(null, new object[] { this, delegateInstance });
+            }
+        }
+        
+        return null;
+    }
+    
+    private async Task HandleOnValidSubmit(object args)
+    {
+        if (OnValidSubmit.HasDelegate)
+        {
+            await OnValidSubmit.InvokeAsync();
+        }
+    }
+    
+    private async Task HandleOnInvalidSubmit(object args)
+    {
+        if (OnInvalidSubmit.HasDelegate)
+        {
+            await OnInvalidSubmit.InvokeAsync();
+        }
+    }
+}

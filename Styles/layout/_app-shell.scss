@@ -6,10 +6,26 @@
 
 // Layout-specific CSS custom properties
 :root {
-  --header-height: 4rem;
+  --header-height: 3.5rem;
   --sidebar-width-expanded: 16rem;
   --sidebar-width-collapsed: 4rem;
   --footer-height: 0;
+  
+  // App shell performance variables
+  --app-shell-transition: all var(--duration-normal) var(--ease-out);
+  --touch-target-min: 44px;
+  --touch-target-lg: 48px;
+  --content-max-width: 1200px;
+  --content-padding: var(--space-6);
+  --content-padding-mobile: var(--space-4);
+  
+  // App shell uses semantic z-index from global scale
+  // See abstracts/_variables.scss for complete z-index system
+  
+  // Performance timing
+  --shell-transition-fast: 150ms;
+  --shell-transition-normal: 300ms;
+  --shell-transition-slow: 500ms;
 }
 
 // Primary app shell layout structure
@@ -18,6 +34,11 @@
   min-height: 100vh;
   position: relative;
   background: var(--color-background-primary);
+  
+  &-container {
+    container-type: inline-size;
+    container-name: app-shell;
+  }
   
   // Touch-friendly minimum targets (44px)
   * {
@@ -28,26 +49,39 @@
   @include responsive-max(md) {
     flex-direction: column;
   }
+  
+  // Container query support for adaptive layouts
+  @container app-shell (max-width: 768px) {
+    --sidebar-width-expanded: 100vw;
+    --sidebar-width-collapsed: 0;
+    
+    .main-content {
+      &-expanded,
+      &-collapsed {
+        margin-left: 0;
+      }
+    }
+  }
 }
 
 // Layout extensions
 .layout {
-  @extend .app-shell;
+  @extend .app-shell !optional;
 }
 
 .layout-main {
   flex: 1;
   overflow: auto;
   position: relative;
-  padding-top: 4rem;
-  min-height: calc(100vh - 4rem);
+  padding-top: 3.5rem;
+  min-height: calc(100vh - 3.5rem);
 }
 
 // Main content area
 .main-content {
   flex: 1;
   min-height: 100vh;
-  padding-top: var(--header-height, 4rem);
+  padding-top: var(--header-height);
   transition: all var(--duration-normal) var(--ease-out);
   
   &-expanded {
@@ -78,4 +112,94 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
+}
+
+// ============================================================================
+// ADVANCED CONTENT LAYOUT PATTERNS
+// ============================================================================
+
+// Sticky content sections for complex layouts
+.content-sticky-header {
+  position: sticky;
+  top: var(--header-height);
+  z-index: var(--z-sticky);
+  background: var(--color-background-primary);
+  border-bottom: var(--border-1) solid var(--color-border-light);
+  backdrop-filter: blur(8px);
+  
+  @include responsive-max(md) {
+    position: relative;
+    backdrop-filter: none;
+  }
+}
+
+// Page content with optimal reading experience
+.page-content {
+  flex: 1;
+  padding: var(--space-6);
+  max-width: 100%;
+  
+  &-constrained {
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  
+  &-wide {
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+  
+  &-full {
+    max-width: none;
+    padding: var(--space-4);
+  }
+  
+  &-centered {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+  
+  @include responsive-max(lg) {
+    padding: var(--space-4);
+  }
+  
+  @include responsive-max(md) {
+    padding: var(--space-3);
+  }
+}
+
+// Split content layouts for dashboards
+.content-split {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: var(--space-6);
+  
+  &-reverse {
+    grid-template-columns: 320px 1fr;
+  }
+  
+  @include responsive-max(lg) {
+    grid-template-columns: 1fr;
+    gap: var(--space-4);
+  }
+}
+
+// Masonry-style content grid
+.content-masonry {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--space-4);
+  align-items: start;
+  
+  &-dense {
+    grid-auto-flow: dense;
+  }
+  
+  @include responsive-max(md) {
+    grid-template-columns: 1fr;
+  }
 }

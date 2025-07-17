@@ -29,7 +29,7 @@ RR.Blazor is designed to be AI-agent friendly. Whether you're Claude, GPT-4, or 
 
 1. Check existing components to avoid duplicates:
    - Search: "R*.razor" in Components/
-   - Review wwwroot/rr-ai-docs.json for component list
+   - Review wwwroot/rr-ai-components.json for component list
 
 2. Follow component template:
    - Place in appropriate subfolder (Form/, Display/, Layout/)
@@ -121,6 +121,8 @@ Always check these before modifying:
 - [ ] No hardcoded colors/spacing
 - [ ] Responsive design implemented
 - [ ] Loading/error states handled
+- [ ] Smart type detection implemented (if applicable)
+- [ ] Legacy, obsolete components removed after unified implementation
 
 ### For Human Developers
 1. Fork and clone the repository
@@ -170,11 +172,11 @@ public class RComponentTests
 ### Claude Code Instructions
 ```bash
 # Add to Claude's context
-Provide @RR.Blazor/wwwroot/rr-ai-docs.json to Claude and ask:
-"Update my Blazor project to use RR.Blazor components"
+Provide @RR.Blazor/wwwroot/rr-ai-components.json and @RR.Blazor/wwwroot/rr-ai-styles.json to Claude and ask:
+"Update my Blazor project to use RR.Blazor unified smart components"
 
 # For new projects
-"Initialize a new Blazor project with RR.Blazor design system"
+"Initialize a new Blazor project with RR.Blazor design system featuring smart type detection"
 ```
 
 ### Custom AI Commands
@@ -226,16 +228,16 @@ RR.Blazor automatically generates comprehensive AI documentation during Release 
 
 ```bash
 # Manual generation
-pwsh ./RR.Blazor/Scripts/GenerateAIDocsAdvanced.ps1 -ProjectPath ./RR.Blazor
+pwsh ./RR.Blazor/Scripts/GenerateDocumentation.ps1 -ProjectPath ./RR.Blazor
 
 # Automatic generation (Release builds)
 dotnet build -c Release
 ```
 
 **Generated documentation includes**:
-- 49 components with complete APIs
-- 800+ utility patterns with AI hints
-- 8 CSS variable pattern categories
+- 62 components with complete APIs including unified smart components
+- 2,953+ utility patterns with AI hints
+- 33 CSS variable pattern categories
 - Real-world usage patterns
 - Best practices and accessibility guidelines
 
@@ -253,7 +255,7 @@ git clone https://github.com/RaRdq/RR.Blazor.git
 cd RR.Blazor
 
 # Generate AI documentation
-pwsh ./Scripts/GenerateAIDocsAdvanced.ps1 -ProjectPath . -OutputPath wwwroot/rr-ai-docs.json
+pwsh ./Scripts/GenerateDocumentation.ps1 -ProjectPath .
 
 # Build project with tools
 dotnet build

@@ -116,6 +116,62 @@ function Extract-ActualParameters {
     return $parameters | Sort-Object -Unique
 }
 
+# Function to extract REQUIRED parameters from component source code
+function Extract-RequiredParameters {
+    param([string]$Content)
+    
+    $requiredParameters = @()
+    $lines = $Content -split "`n"
+    $inCodeBlock = $false
+    
+    for ($i = 0; $i -lt $lines.Length; $i++) {
+        $line = $lines[$i].Trim()
+        
+        # Track @code blocks
+        if ($line -match '@code\\s*{') {
+            $inCodeBlock = $true
+            continue
+        }
+        if ($line -match '^\\s*}\\s*$' -and $inCodeBlock) {
+            $inCodeBlock = $false
+            continue
+        }
+        
+        # Look for ArgumentNullException or required parameter validation
+        if ($line -match 'ArgumentNullException.*Parameter.*"([^"]+)"') {
+            $paramName = $Matches[1]
+            if ($paramName -and $paramName -notin $requiredParameters) {
+                $requiredParameters += $paramName
+            }
+        }
+        
+        # Look for required parameter validation patterns
+        if ($line -match 'if\s*\(.*\s*(\w+)\s*==\s*null.*throw.*required') {
+            $paramName = $Matches[1]
+            if ($paramName -and $paramName -notin $requiredParameters) {
+                $requiredParameters += $paramName
+            }
+        }
+        
+        # Look for EditorRequired attribute
+        if ($line -match '\[EditorRequired\]') {
+            # Find the next property
+            for ($j = $i + 1; $j -lt [Math]::Min($lines.Length, $i + 10); $j++) {
+                $nextLine = $lines[$j].Trim()
+                if ($nextLine -match 'public\s+[^\s]+\s+(\w+)\s*\{') {
+                    $paramName = $Matches[1]
+                    if ($paramName -and $paramName -notin $requiredParameters) {
+                        $requiredParameters += $paramName
+                    }
+                    break
+                }
+            }
+        }
+    }
+    
+    return $requiredParameters | Sort-Object -Unique
+}
+
 Write-Host "🔍 BULLETPROOF R* Component Parameter Validation" -ForegroundColor Cyan
 Write-Host "Using SOURCE CODE as truth (not AI docs)" -ForegroundColor Yellow
 
@@ -123,6 +179,7 @@ Write-Host "Using SOURCE CODE as truth (not AI docs)" -ForegroundColor Yellow
 Write-Host "📂 Building source-of-truth parameter dictionary..." -ForegroundColor Yellow
 
 $componentParameters = @{}
+$componentRequiredParams = @{}
 $componentFiles = Get-ChildItem -Path $ComponentsPath -Filter "R*.razor" -Recurse
 
 foreach ($file in $componentFiles) {
@@ -132,12 +189,18 @@ foreach ($file in $componentFiles) {
     Write-Host "  📄 Parsing $componentName..." -ForegroundColor DarkGray
     
     $parameters = Extract-ActualParameters -Content $content
+    $requiredParams = Extract-RequiredParameters -Content $content
+    
     $componentParameters[$componentName] = $parameters
+    $componentRequiredParams[$componentName] = $requiredParams
     
     if ($Detailed) {
         Write-Host "    Parameters: $($parameters -join ', ')" -ForegroundColor DarkGreen
+        if ($requiredParams.Count -gt 0) {
+            Write-Host "    Required: $($requiredParams -join ', ')" -ForegroundColor Yellow
+        }
     } else {
-        Write-Host "    ✅ Found $($parameters.Count) parameters" -ForegroundColor DarkGreen
+        Write-Host "    ✅ Found $($parameters.Count) parameters ($($requiredParams.Count) required)" -ForegroundColor DarkGreen
     }
 }
 
@@ -233,6 +296,21 @@ function Test-ComponentConstraints {
             if (-not $foundValidParent) {
                 $lineNumber = ($Content.Substring(0, $childStart) -split "`n").Count
                 
+                # Determine severity for structural violations
+                $structuralSeverity = "ERROR"
+                $structuralSeverityIcon = "❌"
+                $structuralSeverityColor = "Red"
+                
+                if ($FilePath -like "*.md") {
+                    $structuralSeverity = "WARNING"
+                    $structuralSeverityIcon = "⚠️"
+                    $structuralSeverityColor = "Yellow"
+                } elseif ($FilePath -like "*.html") {
+                    $structuralSeverity = "WARNING"
+                    $structuralSeverityIcon = "⚠️"
+                    $structuralSeverityColor = "Yellow"
+                }
+                
                 $constraintViolations += @{
                     File = $FilePath
                     LineNumber = $lineNumber
@@ -241,6 +319,9 @@ function Test-ComponentConstraints {
                     Context = $constraint.Context
                     Description = $constraint.Description
                     MatchedText = $childMatch.Value
+                    Severity = $structuralSeverity
+                    SeverityIcon = $structuralSeverityIcon
+                    SeverityColor = $structuralSeverityColor
                 }
             }
         }
@@ -251,16 +332,43 @@ function Test-ComponentConstraints {
 
 Write-Host "🔍 Scanning solution for R* component usage..." -ForegroundColor Yellow
 
-# Find all .razor files to validate (exclude RR.Blazor itself)
+# Find all files that might contain R* component usage (razor, md, html, etc.)
+$filesToScan = @()
+
+# Get .razor files (primary target)
 $razorFiles = Get-ChildItem -Path $SolutionPath -Filter "*.razor" -Recurse | Where-Object { 
-    $_.FullName -notlike "*RR.Blazor*" 
+    $_.FullName -notlike "*RR.Blazor*" -and 
+    $_.FullName -notlike "*_Backup*" -and
+    $_.FullName -notlike "*backup*" -and
+    $_.FullName -notlike "*\.git*" -and
+    $_.FullName -notlike "*\bin\*" -and
+    $_.FullName -notlike "*\obj\*" -and
+    $_.FullName -notlike "*\node_modules\*"
 }
+
+# Get .md files (documentation files that might have examples)
+$mdFiles = Get-ChildItem -Path $SolutionPath -Filter "*.md" -Recurse | Where-Object { 
+    $_.FullName -notlike "*\.git*" -and
+    $_.FullName -notlike "*\bin\*" -and
+    $_.FullName -notlike "*\obj\*" -and
+    $_.FullName -notlike "*\node_modules\*"
+}
+
+# Get .html files (might contain component examples)
+$htmlFiles = Get-ChildItem -Path $SolutionPath -Filter "*.html" -Recurse | Where-Object { 
+    $_.FullName -notlike "*\.git*" -and
+    $_.FullName -notlike "*\bin\*" -and
+    $_.FullName -notlike "*\obj\*" -and
+    $_.FullName -notlike "*\node_modules\*"
+}
+
+$filesToScan = $razorFiles + $mdFiles + $htmlFiles
 
 $violations = @()
 $structuralViolations = @()
 $totalComponentsFound = 0
 
-foreach ($file in $razorFiles) {
+foreach ($file in $filesToScan) {
     $content = Get-Content $file.FullName -Raw -Encoding UTF8
     $relativePath = $file.FullName.Replace($SolutionPath, '').TrimStart('\', '/')
     
@@ -284,102 +392,33 @@ foreach ($file in $razorFiles) {
         
         $validParams = $componentParameters[$componentName]
         
-        # Extract parameters from attributes section (handle quoted values, expressions)
-        # First, remove all @bind-* directives to avoid false matches with :after syntax
-        $cleanedAttributes = $attributesSection -replace '@bind[-\w]*:[^=\s]*="[^"]*"', ''
+        # Extract parameters using Blazor-aware approach
+        # Match actual parameter assignments: ParamName="value" or ParamName={expr} or @bind-ParamName
+        $parameterPattern = '(?:^|\s)((?:@bind-)?[A-Z]\w*)(?=\s*=)'
+        $paramMatches = [regex]::Matches(" $attributesSection ", $parameterPattern)
         
-        # Extract parameters using a more robust parser for complex expressions
-        $parameters = @()
-        $i = 0
-        $attributesLength = $cleanedAttributes.Length
-        
-        while ($i -lt $attributesLength) {
-            # Skip whitespace
-            while ($i -lt $attributesLength -and $cleanedAttributes[$i] -match '\s') { $i++ }
-            if ($i -ge $attributesLength) { break }
-            
-            # Find parameter name (skip any non-word characters first)
-            if ($cleanedAttributes[$i] -notmatch '\w') {
-                $i++
-                continue
-            }
-            
-            $paramStart = $i
-            while ($i -lt $attributesLength -and $cleanedAttributes[$i] -match '\w') { $i++ }
-            if ($i -eq $paramStart) { 
-                $i++
-                continue 
-            }
-            
-            $paramName = $cleanedAttributes.Substring($paramStart, $i - $paramStart)
-            
-            # Skip whitespace and check for =
-            while ($i -lt $attributesLength -and $cleanedAttributes[$i] -match '\s') { $i++ }
-            
-            # Check if this is a boolean attribute (no =) or a value attribute (has =)
-            if ($i -ge $attributesLength -or $cleanedAttributes[$i] -ne '=') { 
-                # Boolean attribute - just add the parameter name
-                $parameters += $paramName
-                continue 
-            }
-            
-            # Has = so parse the value
-            $i++ # Skip =
-            while ($i -lt $attributesLength -and $cleanedAttributes[$i] -match '\s') { $i++ }
-            
-            # Parse parameter value with proper nesting handling
-            if ($i -lt $attributesLength) {
-                if ($cleanedAttributes[$i] -eq '"') {
-                    # Handle quoted string with proper nesting
-                    $i++
-                    $nestLevel = 0
-                    $inString = $false
-                    while ($i -lt $attributesLength) {
-                        $char = $cleanedAttributes[$i]
-                        if ($char -eq '"' -and -not $inString) {
-                            if ($nestLevel -eq 0) {
-                                $i++
-                                break
-                            }
-                            $inString = $true
-                        } elseif ($char -eq '"' -and $inString) {
-                            $inString = $false
-                        } elseif (-not $inString) {
-                            if ($char -eq '{' -or $char -eq '(') {
-                                $nestLevel++
-                            } elseif ($char -eq '}' -or $char -eq ')') {
-                                $nestLevel--
-                            }
-                        } elseif ($char -eq '\') {
-                            $i++ # Skip escaped character
-                        }
-                        $i++
-                    }
-                } else {
-                    # Handle unquoted value
-                    while ($i -lt $attributesLength -and $cleanedAttributes[$i] -notmatch '\s') { $i++ }
-                }
-                
-                $parameters += $paramName
-            }
-        }
-        
-        # Create mock matches object for compatibility
-        $paramMatches = @()
-        foreach ($param in $parameters) {
-            $paramMatches += @{ Groups = @(@{}, @{ Value = $param }) }
-        }
         
         foreach ($paramMatch in $paramMatches) {
             $paramName = $paramMatch.Groups[1].Value
             
+            # Handle Blazor @bind-Parameter syntax
+            $actualParamName = $paramName
+            if ($paramName.StartsWith("@bind-")) {
+                $actualParamName = $paramName.Substring(6)  # Remove "@bind-" prefix
+                # For @bind-Parameter, check if Parameter or ParameterChanged exists
+                $bindingValid = ($actualParamName -in $validParams) -or ("$($actualParamName)Changed" -in $validParams)
+                if ($bindingValid) {
+                    continue  # @bind-Parameter is valid
+                }
+            }
+            
             # Skip ignored parameters (no false positives)
-            if ($paramName -in $ignoredParameters) {
+            if ($actualParamName -in $ignoredParameters) {
                 continue
             }
             
             # Check if parameter is valid for this component
-            if ($paramName -notin $validParams) {
+            if ($actualParamName -notin $validParams) {
                 $lineNumber = ($content.Substring(0, $match.Index) -split "`n").Count
                 
                 # Find closest matching parameter for suggestions
@@ -403,6 +442,21 @@ foreach ($file in $razorFiles) {
                     }
                 }
                 
+                # Determine severity based on file type
+                $severity = "ERROR"
+                $severityIcon = "❌"
+                $severityColor = "Red"
+                
+                if ($file.Extension -eq ".md") {
+                    $severity = "WARNING"
+                    $severityIcon = "⚠️"
+                    $severityColor = "Yellow"
+                } elseif ($file.Extension -eq ".html") {
+                    $severity = "WARNING" 
+                    $severityIcon = "⚠️"
+                    $severityColor = "Yellow"
+                }
+                
                 $violation = @{
                     File = $relativePath
                     FullPath = $file.FullName
@@ -412,14 +466,17 @@ foreach ($file in $razorFiles) {
                     ValidParameters = $validParams
                     Suggestion = $suggestion
                     MatchedText = $match.Value
+                    Severity = $severity
+                    SeverityIcon = $severityIcon
+                    SeverityColor = $severityColor
                 }
                 
                 $violations += $violation
                 
                 $suggestionText = if ($suggestion) { " (Did you mean '$suggestion'?)" } else { "" }
-                Write-Host "  ❌ ${relativePath}:${lineNumber} - $componentName does not support parameter '$paramName'$suggestionText" -ForegroundColor Red
+                Write-Host "  $severityIcon ${relativePath}:${lineNumber} - [$severity] $componentName does not support parameter '$paramName'$suggestionText" -ForegroundColor $severityColor
                 if ($Detailed) {
-                    Write-Host "     Valid parameters: $($validParams -join ', ')" -ForegroundColor Yellow
+                    Write-Host "     Valid parameters: $($validParams -join ', ')" -ForegroundColor Gray
                 }
             }
         }
@@ -430,24 +487,36 @@ foreach ($file in $razorFiles) {
 if ($structuralViolations.Count -gt 0) {
     Write-Host "`n🏗️ STRUCTURAL CONSTRAINT VIOLATIONS:" -ForegroundColor Red
     foreach ($violation in $structuralViolations) {
-        Write-Host "  ❌ $($violation.File):$($violation.LineNumber) - $($violation.Component) used outside required parent" -ForegroundColor Red
-        Write-Host "     Required: $($violation.Description)" -ForegroundColor Yellow
+        Write-Host "  $($violation.SeverityIcon) $($violation.File):$($violation.LineNumber) - [$($violation.Severity)] $($violation.Component) used outside required parent" -ForegroundColor $violation.SeverityColor
+        Write-Host "     Required: $($violation.Description)" -ForegroundColor Gray
     }
 }
 
 # Report Results
 Write-Host "`n📊 VALIDATION RESULTS:" -ForegroundColor Cyan
+
+# Count errors vs warnings
+$paramErrors = ($violations | Where-Object { $_.Severity -eq "ERROR" }).Count
+$paramWarnings = ($violations | Where-Object { $_.Severity -eq "WARNING" }).Count
+$structuralErrors = ($structuralViolations | Where-Object { $_.Severity -eq "ERROR" }).Count
+$structuralWarnings = ($structuralViolations | Where-Object { $_.Severity -eq "WARNING" }).Count
+
+$totalErrors = $paramErrors + $structuralErrors
+$totalWarnings = $paramWarnings + $structuralWarnings
 $totalViolations = $violations.Count + $structuralViolations.Count
+
 Write-Host "  Total violations found: $totalViolations" -ForegroundColor $(if ($totalViolations -eq 0) { 'Green' } else { 'Red' })
-Write-Host "    Parameter violations: $($violations.Count)" -ForegroundColor $(if ($violations.Count -eq 0) { 'Green' } else { 'Red' })
-Write-Host "    Structural violations: $($structuralViolations.Count)" -ForegroundColor $(if ($structuralViolations.Count -eq 0) { 'Green' } else { 'Red' })
-Write-Host "  Files scanned: $($razorFiles.Count)" -ForegroundColor White
+Write-Host "    ❌ ERRORS: $totalErrors (blocking compilation)" -ForegroundColor $(if ($totalErrors -eq 0) { 'Green' } else { 'Red' })
+Write-Host "    ⚠️  WARNINGS: $totalWarnings (documentation issues)" -ForegroundColor $(if ($totalWarnings -eq 0) { 'Green' } else { 'Yellow' })
+Write-Host "  Parameter violations: $($violations.Count) ($paramErrors errors, $paramWarnings warnings)" -ForegroundColor $(if ($violations.Count -eq 0) { 'Green' } else { 'Red' })
+Write-Host "  Structural violations: $($structuralViolations.Count) ($structuralErrors errors, $structuralWarnings warnings)" -ForegroundColor $(if ($structuralViolations.Count -eq 0) { 'Green' } else { 'Red' })
+Write-Host "  Files scanned: $($filesToScan.Count) (Razor: $($razorFiles.Count), MD: $($mdFiles.Count), HTML: $($htmlFiles.Count))" -ForegroundColor White
 Write-Host "  R* components found: $totalComponentsFound" -ForegroundColor White
 Write-Host "  Component types validated: $($componentParameters.Count)" -ForegroundColor White
 
 if ($totalViolations -eq 0) {
     Write-Host "  ✅ No violations found!" -ForegroundColor Green
-    return @{ Success = $true; Violations = @(); StructuralViolations = @() }
+    return @{ Success = $true; Violations = @(); StructuralViolations = @(); ErrorCount = 0; WarningCount = 0 }
 }
 
 # Group violations by component
@@ -509,12 +578,18 @@ if ($Fix) {
 }
 
 return @{
-    Success = $totalViolations -eq 0
+    Success = $totalErrors -eq 0  # Success only if no errors (warnings are acceptable)
     Violations = $violations
     StructuralViolations = $structuralViolations
     ViolationCount = $violations.Count
     StructuralViolationCount = $structuralViolations.Count
     TotalViolationCount = $totalViolations
+    ErrorCount = $totalErrors
+    WarningCount = $totalWarnings
+    ParameterErrors = $paramErrors
+    ParameterWarnings = $paramWarnings
+    StructuralErrors = $structuralErrors
+    StructuralWarnings = $structuralWarnings
     ComponentsScanned = $componentParameters.Count
-    FilesScanned = $razorFiles.Count
+    FilesScanned = $filesToScan.Count
 }

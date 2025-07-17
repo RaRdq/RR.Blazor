@@ -15,13 +15,15 @@ Supports collapsible groups, badges, icons, and responsive behavior for enterpri
 **@
 @using Microsoft.AspNetCore.Components.Routing
 @using RR.Blazor.Attributes
+@using RR.Blazor.Models
+@using RR.Blazor.Services
 
 @attribute [Component("RNavMenu", Category = "Navigation", Complexity = ComponentComplexity.Complex)]
 @attribute [AIOptimized(Prompt = "Create navigation menu for app sidebar", 
                        CommonUse = "sidebar navigation, main menu, hierarchical navigation", 
                        AvoidUsage = "Don't use for breadcrumbs - use RBreadcrumbs instead")]
 
-<nav class="nav-menu">
+<nav class="nav-menu @GetNavMenuClasses()" style="container-type: inline-size;">
     @if (Items != null)
     {
         @foreach (var item in GetVisibleItems())
@@ -32,42 +34,39 @@ Supports collapsible groups, badges, icons, and responsive behavior for enterpri
             }
             else if (item.Children?.Any() == true)
             {
-                <div class="nav-group @(IsGroupExpanded(item.Id) ? "nav-group-expanded" : "")">
-                    <button class="nav-group-toggle" @onclick="() => ToggleGroup(item.Id)">
+                <div class="nav-group @(IsGroupExpanded(item.Id) ? "nav-group-expanded" : "") @GetNavGroupClasses(item)">
+                    <button class="nav-group-toggle @GetNavGroupToggleClasses()" @onclick="() => ToggleGroup(item.Id)">
                         @if (!string.IsNullOrEmpty(item.Icon))
                         {
                             <i class="material-symbols-rounded nav-group-icon">@item.Icon</i>
                         }
-                        <span class="nav-group-text @(SidebarCollapsed ? "hidden" : "")">@item.Text</span>
-                        <i class="material-symbols-rounded nav-group-chevron @(SidebarCollapsed ? "hidden" : "")">
+                        <span class="nav-group-text @GetNavTextClasses()">@item.Text</span>
+                        <i class="material-symbols-rounded nav-group-chevron @GetNavChevronClasses()">
                             @(IsGroupExpanded(item.Id) ? "expand_less" : "expand_more")
                         </i>
                     </button>
                     
-                    @if (!SidebarCollapsed)
-                    {
-                        <div class="nav-group-items">
-                            @foreach (var child in item.Children.Where(c => c.Visible))
-                            {
-                                <NavLink class="nav-item nav-item-child" 
-                                         href="@child.Href" 
-                                         Match="@(child.MatchExact ? NavLinkMatch.All : NavLinkMatch.Prefix)"
-                                         ActiveClass="nav-item-active">
-                                    @if (!string.IsNullOrEmpty(child.Icon))
-                                    {
-                                        <i class="material-symbols-rounded nav-item-icon">@child.Icon</i>
-                                    }
-                                    <span class="nav-item-text">@child.Text</span>
-                                    @if (child.Badge != null)
-                                    {
-                                        <span class="nav-item-badge nav-item-badge-@child.Badge.Type.ToLower()">
-                                            @child.Badge.Text
-                                        </span>
-                                    }
-                                </NavLink>
-                            }
-                        </div>
-                    }
+                    <div class="nav-group-items @GetNavGroupItemsClasses()">
+                        @foreach (var child in item.Children.Where(c => c.Visible))
+                        {
+                            <NavLink class="@GetChildNavItemClasses(child)" 
+                                     href="@child.Href" 
+                                     Match="@(child.MatchExact ? NavLinkMatch.All : NavLinkMatch.Prefix)"
+                                     ActiveClass="nav-item-active">
+                                @if (!string.IsNullOrEmpty(child.Icon))
+                                {
+                                    <i class="material-symbols-rounded nav-item-icon">@child.Icon</i>
+                                }
+                                <span class="nav-item-text @GetNavTextClasses()">@child.Text</span>
+                                @if (child.Badge != null)
+                                {
+                                    <span class="nav-badge nav-badge-@child.Badge.Type.ToLower() @GetNavBadgeClasses()">
+                                        @child.Badge.Text
+                                    </span>
+                                }
+                            </NavLink>
+                        }
+                    </div>
                 </div>
             }
             else
@@ -80,10 +79,10 @@ Supports collapsible groups, badges, icons, and responsive behavior for enterpri
                     {
                         <i class="material-symbols-rounded nav-item-icon">@item.Icon</i>
                     }
-                    <span class="nav-item-text @(SidebarCollapsed ? "hidden" : "")">@item.Text</span>
-                    @if (item.Badge != null && !SidebarCollapsed)
+                    <span class="nav-item-text @GetNavTextClasses()">@item.Text</span>
+                    @if (item.Badge != null)
                     {
-                        <span class="nav-item-badge nav-item-badge-@item.Badge.Type.ToLower()">
+                        <span class="nav-badge nav-badge-@item.Badge.Type.ToLower() @GetNavBadgeClasses()">
                             @item.Badge.Text
                         </span>
                     }
@@ -149,15 +148,43 @@ Supports collapsible groups, badges, icons, and responsive behavior for enterpri
         }
     }
     
+    private string GetNavMenuClasses()
+    {
+        var classes = new List<string> { "nav-menu-container-aware" };
+        if (SidebarCollapsed) classes.Add("nav-menu-collapsed");
+        return string.Join(" ", classes);
+    }
+
     private string GetNavItemClasses(NavMenuItem item)
     {
-        var classes = new List<string> { "nav-item" };
-        if (item.IsHighlighted)
+        var classes = new List<string> { "nav-item", "nav-item-responsive" };
+        if (item.IsHighlighted) classes.Add("nav-item-highlighted");
+        return string.Join(" ", classes);
+    }
+
+    private string GetChildNavItemClasses(NavMenuItem item)
+    {
+        var classes = new List<string> { "nav-item", "nav-item-child" };
+        var itemClasses = GetNavItemClasses(item);
+        if (!string.IsNullOrEmpty(itemClasses))
         {
-            classes.Add("nav-item-highlighted");
+            classes.AddRange(itemClasses.Split(' ').Where(c => !string.IsNullOrEmpty(c) && c != "nav-item"));
         }
         return string.Join(" ", classes);
     }
+
+    private string GetNavGroupClasses(NavMenuItem item)
+    {
+        var classes = new List<string> { "nav-group-responsive" };
+        if (item.IsHighlighted) classes.Add("nav-group-highlighted");
+        return string.Join(" ", classes);
+    }
+
+    private string GetNavGroupToggleClasses() => "nav-group-toggle-responsive";
+    private string GetNavGroupItemsClasses() => "nav-group-items-responsive";
+    private string GetNavTextClasses() => "nav-text-responsive";
+    private string GetNavChevronClasses() => "nav-chevron-responsive";
+    private string GetNavBadgeClasses() => "nav-badge-responsive";
 }
 
 

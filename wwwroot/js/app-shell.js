@@ -161,7 +161,17 @@ function closeAllDropdowns() {
 }
 
 function navigateTo(url) {
-    window.location.href = url;
+    if (isValidUrl(url)) {
+        window.location.href = url;
+    }
+}
+
+function isValidUrl(url) {
+    return url && 
+           (url.startsWith('/') || 
+            url.startsWith('./') || 
+            url.startsWith('../') ||
+            (url.startsWith('http://') || url.startsWith('https://')));
 }
 
 function announce(message) {

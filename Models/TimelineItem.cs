@@ -9,7 +9,7 @@ namespace RR.Blazor.Models
         public string Title { get; set; } = "";
         public string Description { get; set; } = "";
         public string Subtitle { get; set; } = "";
-        public DateTime? Timestamp { get; set; } = DateTime.UtcNow;
+        public DateTime Timestamp { get; set; } = DateTime.UtcNow;
         public string Status { get; set; } = "default"; // default, success, warning, error, info, pending
         public string Icon { get; set; } = "";
         public string Avatar { get; set; } = "";
@@ -18,8 +18,8 @@ namespace RR.Blazor.Models
         public bool IsHighlighted { get; set; }
         public List<string> Tags { get; set; } = new();
         public List<TimelineAction> Actions { get; set; } = new();
-        public RenderFragment? CustomContent { get; set; }
-        public object? Data { get; set; }
+        public RenderFragment CustomContent { get; set; }
+        public object Data { get; set; }
     }
 
     public class TimelineAction
