@@ -1,17 +1,16 @@
 @** 
 <summary>
-Complete application shell with header, sidebar, navigation, search, and theme support.
-Zero-config setup for enterprise Blazor applications with professional styling and full responsiveness.
+Enterprise-grade application shell with zero-config setup. 
+Ultra-clean, responsive, and customizable for any business application.
 </summary>
 <category>Layout</category>
 <complexity>Complex</complexity>
-<ai-prompt>Create complete app layout with header and sidebar</ai-prompt>
-<ai-common-use>main app layout, admin dashboards, enterprise applications, SaaS platforms</ai-common-use>
+<ai-prompt>Create enterprise app layout with collapsible sidebar and full-width header</ai-prompt>
+<ai-common-use>main app layout, enterprise dashboards, business applications, SaaS platforms</ai-common-use>
 <ai-avoid>Don't use for simple pages without navigation. Use RSection for content organization instead.</ai-avoid>
 <ai-pattern name="zero-config">Title only for minimal app setup</ai-pattern>
-<ai-pattern name="full-enterprise">All parameters for complete enterprise application</ai-pattern>
-<ai-pattern name="dashboard-layout">NavigationItems + CurrentUser for admin dashboards</ai-pattern>
-<ai-pattern name="responsive-shell">Auto-responsive sidebar and mobile-friendly behavior</ai-pattern>
+<ai-pattern name="enterprise">All parameters for maximum customization</ai-pattern>
+<ai-pattern name="responsive">Auto-responsive with mobile-friendly behavior</ai-pattern>
 **@
 
 @using RR.Blazor.Models
@@ -29,18 +28,215 @@ Zero-config setup for enterprise Blazor applications with professional styling a
 @implements IAsyncDisposable
 
 @attribute [Component("RAppShell", Category = "Layout", Complexity = ComponentComplexity.Complex)]
-@attribute [AIOptimized(Prompt = "Create complete app layout with header and sidebar", 
-                       CommonUse = "main app layout, admin dashboards, enterprise applications", 
+@attribute [AIOptimized(Prompt = "Create enterprise app layout with collapsible sidebar and full-width header", 
+                       CommonUse = "enterprise dashboards, business applications, SaaS platforms", 
                        AvoidUsage = "Don't use for simple pages without navigation")]
 
 <RThemeProvider>
-<div class="app-shell app-shell-container min-h-screen flex focus-visible-enhanced" data-theme="@GetEffectiveTheme()">
-    <!-- Sidebar -->
+<div class="@GetAppShellClasses()" data-theme="@GetEffectiveTheme()">
+    <!-- Full-Width Header (Over Sidebar) -->
+    @if (ShowHeader)
+    {
+        <header class="@GetHeaderClasses()">
+            <!-- Left Section: Toggle + Logo + Title -->
+            <div class="@GetHeaderLeftClasses()">
+                @if (ShowSidebar && ShowSidebarToggle)
+                {
+                    <RButton Icon="@GetToggleIcon()" 
+                             Variant="ButtonVariant.Ghost"
+                             Size="ButtonSize.Small"
+                             OnClick="ToggleSidebar"
+                             AriaLabel="Toggle sidebar"
+                             Class="shrink-0" />
+                }
+                
+                @if (LogoContent != null)
+                {
+                    @LogoContent
+                }
+                else if (!string.IsNullOrEmpty(Logo))
+                {
+                    <div class="@GetLogoClasses()">
+                        <img src="@Logo" alt="@Title" />
+                        @if (!string.IsNullOrEmpty(Title))
+                        {
+                            <span>@Title</span>
+                        }
+                    </div>
+                }
+                else if (!string.IsNullOrEmpty(Title))
+                {
+                    <div class="@GetLogoClasses()">
+                        <span>@Title</span>
+                    </div>
+                }
+                
+                @if (HeaderLeft != null)
+                {
+                    @HeaderLeft
+                }
+                else
+                {
+                    <!-- Page Title & Breadcrumbs -->
+                    <div class="min-w-0 flex-1">
+                        @if (!string.IsNullOrEmpty(PageTitle))
+                        {
+                            <h1 class="text-lg font-semibold text-primary ma-0">@PageTitle</h1>
+                        }
+                        @if (!string.IsNullOrEmpty(PageSubtitle))
+                        {
+                            <p class="text-sm text-secondary ma-0">@PageSubtitle</p>
+                        }
+                        @if (ShowBreadcrumbs && Breadcrumbs?.Any() == true)
+                        {
+                            <nav class="flex items-center gap-1 mt-1" aria-label="Breadcrumb">
+                                @foreach (var (item, index) in Breadcrumbs.Select((item, index) => (item, index)))
+                                {
+                                    @if (index > 0)
+                                    {
+                                        <i class="material-symbols-rounded text-xs text-secondary">chevron_right</i>
+                                    }
+                                    @if (index == Breadcrumbs.Count - 1)
+                                    {
+                                        <span class="text-xs text-secondary">@item.Text</span>
+                                    }
+                                    else
+                                    {
+                                        <a href="@item.Href" class="text-xs text-interactive hover:text-interactive-hover">@item.Text</a>
+                                    }
+                                }
+                            </nav>
+                        }
+                    </div>
+                }
+            </div>
+            
+            <!-- Right Section: Search + Actions + User -->
+            <div class="@GetHeaderRightClasses()">
+                @if (ShowSearch)
+                {
+                    <div class="@GetSearchClasses()">
+                        @if (SearchCollapsible)
+                        {
+                            @if (searchExpanded)
+                            {
+                                <RButton Icon="close" 
+                                         Variant="ButtonVariant.Ghost" 
+                                         Size="ButtonSize.Small"
+                                         OnClick="CollapseSearch" 
+                                         AriaLabel="Close search" />
+                                <RTextInput Type="FieldType.Search"
+                                           Placeholder="Search..."
+                                           @bind-Value="searchQuery"
+                                           @bind-Value:after="HandleSearchChange"
+                                           Class="w-48 search-input-expanded" />
+                            }
+                            else
+                            {
+                                <RButton Icon="search" 
+                                         Variant="ButtonVariant.Ghost" 
+                                         Size="ButtonSize.Small"
+                                         OnClick="@(async () => await ExpandSearch())" 
+                                         AriaLabel="Open search" />
+                            }
+                        }
+                        else
+                        {
+                            <div class="relative">
+                                <RTextInput Type="FieldType.Search"
+                                           Placeholder="Search..."
+                                           @bind-Value="searchQuery"
+                                           @bind-Value:after="HandleSearchChange"
+                                           Class="w-64" />
+                                <i class="material-symbols-rounded absolute left-3 top-1/2 transform -translate-y-1/2 text-tertiary">search</i>
+                            </div>
+                        }
+                        
+                        <!-- Search Results -->
+                        @if (showSearchResults && searchResults.Any())
+                        {
+                            <div class="absolute top-full left-0 right-0 bg-surface-elevated shadow-lg rounded-lg mt-1 py-2 z-50 max-h-64 overflow-y-auto">
+                                @foreach (var result in searchResults.Take(8))
+                                {
+                                    <button class="w-full text-left px-3 py-2 hover:bg-surface flex items-center gap-3 group"
+                                            @onclick="() => HandleSearchResultClick(result)">
+                                        @if (!string.IsNullOrEmpty(result.Icon))
+                                        {
+                                            <i class="material-symbols-rounded text-sm text-secondary group-hover:text-primary">@result.Icon</i>
+                                        }
+                                        <div class="flex-1 min-w-0">
+                                            <div class="text-sm font-medium text-primary">@result.Title</div>
+                                            @if (!string.IsNullOrEmpty(result.Description))
+                                            {
+                                                <div class="text-xs text-secondary truncate">@result.Description</div>
+                                            }
+                                        </div>
+                                        <span class="text-xs text-tertiary">@result.Category</span>
+                                    </button>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+                
+                @if (ShowNotifications)
+                {
+                    <RButton Icon="notifications" 
+                             Variant="ButtonVariant.Ghost" 
+                             Size="ButtonSize.Small"
+                             ShowBadge="@(NotificationCount > 0)"
+                             BadgeCount="@NotificationCount"
+                             OnClick="HandleNotificationsClick"
+                             AriaLabel="Notifications" />
+                }
+                
+                @if (QuickActions != null)
+                {
+                    @QuickActions
+                }
+                
+                @if (HeaderRight != null)
+                {
+                    @HeaderRight
+                }
+                
+                @if (ShowThemeToggle)
+                {
+                    <RThemeSwitcher />
+                }
+                
+                @if (CurrentUser != null && ShowUserMenu && UserMenu != null)
+                {
+                    <div class="relative" @onclick="ToggleUserMenu">
+                        <RButton Variant="ButtonVariant.Ghost" Size="ButtonSize.Small">
+                            <div class="flex items-center gap-2">
+                                <RAvatar Text="@CurrentUser.GetInitials()" 
+                                         ImageSrc="@CurrentUser.Avatar"
+                                         Size="AvatarSize.Small"
+                                         ShowStatus="true"
+                                         Status="@(CurrentUser.IsOnline ? AvatarStatus.Online : AvatarStatus.Offline)" />
+                                <span class="text-sm font-medium hidden md:inline">@CurrentUser.GetDisplayName()</span>
+                                <i class="material-symbols-rounded text-sm">@(showUserMenu ? "expand_less" : "expand_more")</i>
+                            </div>
+                        </RButton>
+                        @if (showUserMenu)
+                        {
+                            <div class="absolute top-full right-0 mt-1 z-50">
+                                @UserMenu
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </header>
+    }
+    
+    <!-- Collapsible Sidebar -->
     @if (ShowSidebar)
     {
-        <aside class="sidebar @(sidebarCollapsed ? "sidebar-collapsed" : "") @((IsMobile && !sidebarOpen) ? "sidebar-closed" : "")">
-            <!-- Navigation -->
-            <nav class="sidebar-nav">
+        <aside class="@GetSidebarClasses()">
+            <!-- Navigation Content -->
+            <div class="flex-1 overflow-y-auto">
                 @if (Navigation != null)
                 {
                     <CascadingValue Value="sidebarCollapsed" Name="SidebarCollapsed">
@@ -51,19 +247,21 @@ Zero-config setup for enterprise Blazor applications with professional styling a
                 {
                     <RNavMenu Items="@GetVisibleNavItems()" />
                 }
-            </nav>
+            </div>
             
             <!-- Sidebar Footer -->
             @if (SidebarFooter != null)
             {
-                <div class="sidebar-footer">
-                    @SidebarFooter
+                <div class="shrink-0 border-t border-light/20 pt-4">
+                    <CascadingValue Value="sidebarCollapsed" Name="SidebarCollapsed">
+                        @SidebarFooter
+                    </CascadingValue>
                 </div>
             }
-            else if (CurrentUser != null && ShowUserMenu)
+            else if (CurrentUser != null && ShowUserMenu && !ShowHeader)
             {
-                <div class="sidebar-footer">
-                    <div class="user-menu-compact flex items-center gap-3 pa-3">
+                <div class="shrink-0 border-t border-light/20 pt-4">
+                    <div class="flex items-center gap-3 px-4 py-3">
                         <RAvatar Text="@CurrentUser.GetInitials()" 
                                  ImageSrc="@CurrentUser.Avatar"
                                  Size="AvatarSize.Small"
@@ -71,9 +269,9 @@ Zero-config setup for enterprise Blazor applications with professional styling a
                                  Status="@(CurrentUser.IsOnline ? AvatarStatus.Online : AvatarStatus.Offline)" />
                         @if (!sidebarCollapsed)
                         {
-                            <div class="grow min-w-0">
-                                <div class="text-sm font-medium text-truncate">@CurrentUser.GetDisplayName()</div>
-                                <div class="text-xs text-secondary text-truncate">@CurrentUser.Role</div>
+                            <div class="flex-1 min-w-0">
+                                <div class="text-sm font-medium text-primary truncate">@CurrentUser.GetDisplayName()</div>
+                                <div class="text-xs text-secondary truncate">@CurrentUser.Role</div>
                             </div>
                         }
                     </div>
@@ -81,240 +279,31 @@ Zero-config setup for enterprise Blazor applications with professional styling a
             }
         </aside>
     }
-
-    <!-- Main Content -->
-    <div class="main-content @(ShowSidebar ? (sidebarCollapsed ? "main-content-collapsed" : "main-content-expanded") : "") @(IsMobile && ShowSidebar ? "mobile-sidebar" : "")">
-        <!-- Header -->
-        @if (ShowHeader)
+    
+    <!-- Main Content Area -->
+    <main class="@GetMainClasses()">
+        @if (AutoWrapContent)
         {
-            <header class="fixed top-0 left-0 right-0 bg-surface-elevated border-b d-flex items-center shadow-sm backdrop-blur-sm app-header @GetHeaderClasses()">
-                <!-- Left Section: Sidebar Toggle + Logo + Title/Subtitle + Breadcrumbs -->
-                <div class="d-flex items-center gap-3 flex-1 min-w-0">
-                    @if (ShowSidebar && ShowSidebarToggle)
-                    {
-                        <RButton Icon="@(IsMobile ? "menu" : (sidebarCollapsed ? "menu_open" : "menu"))" IconPosition="IconPosition.Start"
-                                 Variant="ButtonVariant.Ghost"
-                                 Size="ButtonSize.Small"
-                                 OnClick="ToggleSidebar"
-                                 AriaLabel="Toggle sidebar"
-                                 class="shrink-0" />
-                    }
-                    
-                    <!-- Logo Area -->
-                    <div class="d-flex items-center gap-2 shrink-0">
-                        @if (LogoContent != null)
-                        {
-                            @LogoContent
-                        }
-                        else if (!string.IsNullOrEmpty(Logo))
-                        {
-                            <img src="@Logo" alt="@(Title)" class="h-6 w-auto" />
-                        }
-                        else
-                        {
-                            <span class="text-sm font-semibold text-primary">@Title</span>
-                        }
-                    </div>
-                    
-                    @if (HeaderLeft != null)
-                    {
-                        @HeaderLeft
-                    }
-                    else
-                    {
-                        <!-- Title & Subtitle Group with Breadcrumbs -->
-                        <div class="min-w-0 flex-1">
-                            <div class="d-flex items-center gap-2 flex-wrap">
-                                <h1 class="text-sm font-semibold text-primary ma-0 leading-tight">@PageTitle</h1>
-                                @if (ShowBreadcrumbs && Breadcrumbs?.Any() == true)
-                                {
-                                    <nav class="d-flex items-center gap-1 shrink-0" aria-label="Breadcrumb">
-                                        <i class="material-symbols-rounded text-xs text-secondary">chevron_right</i>
-                                        @foreach (var (item, index) in Breadcrumbs.Select((item, index) => (item, index)))
-                                        {
-                                            @if (index > 0)
-                                            {
-                                                <i class="material-symbols-rounded text-xs text-secondary">chevron_right</i>
-                                            }
-                                            @if (index == Breadcrumbs.Count - 1)
-                                            {
-                                                <span class="text-xs text-secondary text-truncate">@item.Text</span>
-                                            }
-                                            else
-                                            {
-                                                <a href="@item.Href" class="text-xs text-interactive hover:text-interactive text-truncate">@item.Text</a>
-                                            }
-                                        }
-                                    </nav>
-                                }
-                            </div>
-                            @if (!string.IsNullOrEmpty(PageSubtitle))
-                            {
-                                <p class="text-xs text-secondary ma-0 leading-tight">@PageSubtitle</p>
-                            }
-                        </div>
-                    }
-                </div>
-                
-                <!-- Right Section: Search + Notifications + Quick Actions + Theme + User Menu -->
-                <div class="d-flex items-center gap-1 shrink-0">
-                    @if (ShowSearch)
-                    {
-                        <!-- Single Row Search with Toggle -->
-                        <div class="relative mr-2">
-                            @if (SearchCollapsible)
-                            {
-                                @if (searchExpanded)
-                                {
-                                    <!-- Expanded Search: X button + Input Field -->
-                                    <div class="d-flex items-center gap-1">
-                                        <RButton Icon="close" IconPosition="IconPosition.Start"
-                                                 Variant="ButtonVariant.Ghost"
-                                                 Size="ButtonSize.Small"
-                                                 OnClick="CollapseSearch"
-                                                 AriaLabel="Close search" />
-                                        <RFormField Type="FieldType.Search"
-                                                   Placeholder="Search..."
-                                                   @bind-Value="searchQuery"
-                                                   @bind-Value:after="HandleSearchChange"
-                                                   class="w-48" />
-                                    </div>
-                                }
-                                else
-                                {
-                                    <!-- Collapsed Search: Search Icon Only -->
-                                    <RButton Icon="search" IconPosition="IconPosition.Start"
-                                             Variant="ButtonVariant.Ghost"
-                                             Size="ButtonSize.Small"
-                                             OnClick="ExpandSearch"
-                                             AriaLabel="Open search" />
-                                }
-                            }
-                            else
-                            {
-                                <!-- Always Visible Search -->
-                                <RFormField Type="FieldType.Search"
-                                           Placeholder="Search..."
-                                           @bind-Value="searchQuery"
-                                           @bind-Value:after="HandleSearchChange"
-                                           class="w-48" />
-                            }
-                            
-                            <!-- Search Results Dropdown -->
-                            @if (showSearchResults && searchResults.Any() && (!SearchCollapsible || searchExpanded))
-                            {
-                                <div class="absolute top-100 left-0 right-0 bg-surface-elevated shadow-lg rounded-md mt-1 pt-2 pb-2 z-50">
-                                    @foreach (var result in searchResults.Take(8))
-                                    {
-                                        <button class="w-full text-left pl-3 pr-3 pt-2 pb-2 hover:bg-surface d-flex items-center gap-3"
-                                                @onclick="() => HandleSearchResultClick(result)">
-                                            @if (!string.IsNullOrEmpty(result.Icon))
-                                            {
-                                                <i class="material-symbols-rounded text-sm">@result.Icon</i>
-                                            }
-                                            <div class="flex-1 min-w-0">
-                                                <div class="text-sm font-medium text-truncate">@result.Title</div>
-                                                @if (!string.IsNullOrEmpty(result.Description))
-                                                {
-                                                    <div class="text-xs text-secondary text-truncate">@result.Description</div>
-                                                }
-                                            </div>
-                                            <span class="text-xs text-tertiary">@result.Category</span>
-                                        </button>
-                                    }
-                                </div>
-                            }
-                        </div>
-                    }
-                    
-                    <!-- Action Buttons Group -->
-                    <div class="d-flex items-center gap-1">
-                        @if (ShowNotifications)
-                        {
-                            <RButton Icon="notifications" IconPosition="IconPosition.Start"
-                                     Variant="ButtonVariant.Ghost"
-                                     Size="ButtonSize.Small"
-                                     ShowBadge="@(NotificationCount > 0)"
-                                     BadgeCount="@NotificationCount"
-                                     OnClick="HandleNotificationsClick"
-                                     AriaLabel="Notifications" />
-                        }
-                        
-                        @if (QuickActions != null)
-                        {
-                            <div class="d-flex items-center gap-1">
-                                @QuickActions
-                            </div>
-                        }
-                        
-                        @if (HeaderRight != null)
-                        {
-                            @HeaderRight
-                        }
-                        
-                        @if (ShowThemeToggle)
-                        {
-                            <RThemeSwitcher />
-                        }
-                        
-                        @if (CurrentUser != null && ShowUserMenu && UserMenu != null)
-                        {
-                            <div class="relative ml-2" @onclick="ToggleUserMenu">
-                                <RButton Variant="ButtonVariant.Ghost" Size="ButtonSize.Small">
-                                    <div class="d-flex items-center gap-2">
-                                        <RAvatar Text="@CurrentUser.GetInitials()" 
-                                                 ImageSrc="@CurrentUser.Avatar"
-                                                 Size="AvatarSize.Small"
-                                                 ShowStatus="true"
-                                                 Status="@(CurrentUser.IsOnline ? AvatarStatus.Online : AvatarStatus.Offline)" />
-                                        <span class="text-sm font-medium hidden md:d-inline">@CurrentUser.GetDisplayName()</span>
-                                        <i class="material-symbols-rounded text-sm">expand_more</i>
-                                    </div>
-                                </RButton>
-                                @if (showUserMenu)
-                                {
-                                    <div class="absolute top-100 right-0 bg-surface-elevated shadow-lg rounded-md mt-1 pt-2 pb-2 z-50 dropdown-menu">
-                                        @UserMenu
-                                    </div>
-                                }
-                            </div>
-                        }
-                    </div>
-                </div>
-            </header>
-        }
-        
-        <!-- Main Content Area -->
-        <main class="main">
-            <div class="main-content @GetContentClasses()" 
-                 style="@GetContentStyle()">
+            <RContent MaxWidth="@DefaultContentMaxWidth" 
+                      Density="@DefaultContentDensity"
+                      FullWidth="@DefaultContentFullWidth"
+                      Centered="@DefaultContentCentered"
+                      Class="@DefaultContentClass">
                 @ChildContent
-            </div>
-        </main>
-        
-        <!-- Status Bar -->
-        @if (ShowStatusBar && StatusBar != null)
-        {
-            <footer class="status-bar">
-                @StatusBar
-            </footer>
+            </RContent>
         }
-    </div>
-
-    <!-- Mobile Sidebar Backdrop -->
+        else
+        {
+            @ChildContent
+        }
+    </main>
+    
+    <!-- Mobile Backdrop -->
     @if (ShowSidebar && sidebarOpen && IsMobile)
     {
-        <div class="sidebar-backdrop" @onclick="CloseSidebar"></div>
+        <div class="@GetBackdropClasses()" @onclick="CloseSidebar"></div>
     }
     
-    <!-- Quick Actions Floating -->
-    @if (ShowQuickActions && QuickActionsFloating != null)
-    {
-        <div class="quick-actions-floating">
-            @QuickActionsFloating
-        </div>
-    }
-
     <!-- Toast Container -->
     @if (ShowToasts)
     {
@@ -325,21 +314,6 @@ Zero-config setup for enterprise Blazor applications with professional styling a
     <RModalProvider />
 </div>
 </RThemeProvider>
-
-<!-- Error UI -->
-<div id="blazor-error-ui" class="blazor-error">
-    <div class="blazor-error-content">
-        <i class="material-symbols-rounded blazor-error-icon">error</i>
-        <h3 class="blazor-error-title">System Error</h3>
-        <p class="blazor-error-message">An unexpected error occurred. Please refresh to continue.</p>
-        <div class="blazor-error-actions">
-            <a href="." class="button button-primary">Reload</a>
-            <button class="button button-secondary" onclick="document.getElementById('blazor-error-ui').style.display='none'">
-                Dismiss
-            </button>
-        </div>
-    </div>
-</div>
 
 @code {
     private IJSObjectReference jsModule;
@@ -353,14 +327,14 @@ Zero-config setup for enterprise Blazor applications with professional styling a
     private bool searchExpanded = false;
     private Timer searchDebounceTimer;
     
-    // === CORE PARAMETERS ===
+    // ===== CORE PARAMETERS =====
     
     /// <summary>App title (required)</summary>
-    [Parameter, AIParameter("Application name displayed in header", "Your App Name or company brand")] 
-    public string Title { get; set; } = "RR.Blazor App";
+    [Parameter, AIParameter("Application name displayed in header", "Your App Name")] 
+    public string Title { get; set; } = string.Empty;
     
     /// <summary>Logo image source</summary>
-    [Parameter] public string Logo { get; set; }
+    [Parameter] public string Logo { get; set; } = string.Empty;
     
     /// <summary>Current user for user menu and permissions</summary>
     [Parameter, AIParameter("Current logged-in user object", "AppUser with Name, Email, Avatar, Role properties")] 
@@ -370,19 +344,22 @@ Zero-config setup for enterprise Blazor applications with professional styling a
     [Parameter, AIParameter("Theme preference", "light, dark, or system for auto-detection")] 
     public string Theme { get; set; } = "system";
     
-    // === LAYOUT CONTROL ===
+    // ===== LAYOUT CONTROL =====
     
     /// <summary>Layout features configuration</summary>
     [Parameter, AIParameter("Control app shell features", "AppShellFeatures.All for full features, AppShellFeatures.Minimal for basic layout")] 
     public AppShellFeatures Features { get; set; } = AppShellFeatures.All;
     
-    /// <summary>Make search collapsible on the right side</summary>
-    [Parameter] public bool SearchCollapsible { get; set; } = false;
+    /// <summary>Make search collapsible on mobile</summary>
+    [Parameter] public bool SearchCollapsible { get; set; } = true;
     
     /// <summary>Notification count for badge</summary>
     [Parameter] public int NotificationCount { get; set; }
     
-    // === COMPUTED LAYOUT PROPERTIES ===
+    /// <summary>Sidebar collapsed by default</summary>
+    [Parameter] public bool SidebarCollapsedDefault { get; set; } = false;
+    
+    // ===== COMPUTED LAYOUT PROPERTIES =====
     
     private bool ShowSidebar => Features.HasFlag(AppShellFeatures.Sidebar);
     private bool ShowHeader => Features.HasFlag(AppShellFeatures.Header);
@@ -393,18 +370,16 @@ Zero-config setup for enterprise Blazor applications with professional styling a
     private bool ShowUserMenu => Features.HasFlag(AppShellFeatures.UserMenu);
     private bool ShowSidebarToggle => Features.HasFlag(AppShellFeatures.SidebarToggle);
     private bool ShowBreadcrumbs => Features.HasFlag(AppShellFeatures.Breadcrumbs);
-    private bool ShowStatusBar => Features.HasFlag(AppShellFeatures.StatusBar);
-    private bool ShowQuickActions => Features.HasFlag(AppShellFeatures.QuickActions);
     
-    // === CONTENT PARAMETERS ===
+    // ===== CONTENT PARAMETERS =====
     
     /// <summary>Page title for header</summary>
-    [Parameter] public string PageTitle { get; set; } = "Dashboard";
+    [Parameter] public string PageTitle { get; set; } = string.Empty;
     
     /// <summary>Page subtitle for header</summary>
-    [Parameter] public string PageSubtitle { get; set; }
+    [Parameter] public string PageSubtitle { get; set; } = string.Empty;
     
-    /// <summary>Navigation items (smart default)</summary>
+    /// <summary>Navigation items</summary>
     [Parameter, AIParameter("Main navigation menu items", "List of AppNavItem with Text, Href, Icon properties")] 
     public List<AppNavItem> NavigationItems { get; set; }
     
@@ -414,7 +389,7 @@ Zero-config setup for enterprise Blazor applications with professional styling a
     /// <summary>User permissions for nav filtering</summary>
     [Parameter] public string[] UserPermissions { get; set; }
     
-    // === RENDER FRAGMENTS ===
+    // ===== RENDER FRAGMENTS =====
     
     /// <summary>Custom logo content</summary>
     [Parameter] public RenderFragment LogoContent { get; set; }
@@ -422,7 +397,7 @@ Zero-config setup for enterprise Blazor applications with professional styling a
     /// <summary>Custom navigation content</summary>
     [Parameter] public RenderFragment Navigation { get; set; }
     
-    /// <summary>Sidebar footer content</summary>
+    /// <summary>Sidebar footer content (perfect for role switchers)</summary>
     [Parameter] public RenderFragment SidebarFooter { get; set; }
     
     /// <summary>Left side header content</summary>
@@ -437,22 +412,52 @@ Zero-config setup for enterprise Blazor applications with professional styling a
     /// <summary>Quick actions in header</summary>
     [Parameter] public RenderFragment QuickActions { get; set; }
     
-    /// <summary>Floating quick actions</summary>
-    [Parameter] public RenderFragment QuickActionsFloating { get; set; }
-    
-    /// <summary>Status bar content</summary>
-    [Parameter] public RenderFragment StatusBar { get; set; }
-    
     /// <summary>Main content</summary>
     [Parameter] public RenderFragment ChildContent { get; set; }
     
-    /// <summary>Content maximum width (e.g., "1200px", "90%"). Default is no constraint.</summary>
-    [Parameter] public string ContentMaxWidth { get; set; } = null;
+    // ===== STYLING PARAMETERS =====
     
-    /// <summary>Whether content should be centered when max width is applied</summary>
-    [Parameter] public bool ContentCentered { get; set; } = true;
+    /// <summary>Custom CSS class for the app shell container</summary>
+    [Parameter] public string Class { get; set; } = string.Empty;
     
-    // === EVENT CALLBACKS ===
+    /// <summary>Custom CSS style for the app shell container</summary>
+    [Parameter] public string Style { get; set; } = string.Empty;
+    
+    /// <summary>Custom CSS class for the header</summary>
+    [Parameter] public string HeaderClass { get; set; } = string.Empty;
+    
+    /// <summary>Custom CSS class for the sidebar</summary>
+    [Parameter] public string SidebarClass { get; set; } = string.Empty;
+    
+    /// <summary>Custom CSS class for the main content area</summary>
+    [Parameter] public string MainClass { get; set; } = string.Empty;
+    
+    // ===== CONTENT WRAPPER PARAMETERS =====
+    
+    /// <summary>Automatically wrap content in RContent component for app-shell awareness</summary>
+    [Parameter, AIParameter("Auto-wrap page content in RContent", "true for automatic app-shell positioning, false for manual control")] 
+    public bool AutoWrapContent { get; set; } = true;
+    
+    /// <summary>Default max width for auto-wrapped content</summary>
+    [Parameter, AIParameter("Default content max width", "lg for standard content, xl for wide dashboards, none for full width")] 
+    public string DefaultContentMaxWidth { get; set; } = "lg";
+    
+    /// <summary>Default density for auto-wrapped content</summary>
+    [Parameter, AIParameter("Default content spacing density", "Normal for standard spacing, Dense for compact layouts")] 
+    public ComponentDensity DefaultContentDensity { get; set; } = ComponentDensity.Normal;
+    
+    /// <summary>Default full width setting for auto-wrapped content</summary>
+    [Parameter, AIParameter("Default content full width", "false for constrained content, true for dashboard-style layouts")] 
+    public bool DefaultContentFullWidth { get; set; } = false;
+    
+    /// <summary>Default centered setting for auto-wrapped content</summary>
+    [Parameter, AIParameter("Default content centering", "false for left-aligned content, true for centered forms/articles")] 
+    public bool DefaultContentCentered { get; set; } = false;
+    
+    /// <summary>Default CSS class for auto-wrapped content</summary>
+    [Parameter] public string DefaultContentClass { get; set; } = string.Empty;
+    
+    // ===== EVENT CALLBACKS =====
     
     /// <summary>Theme changed callback</summary>
     [Parameter] public EventCallback<string> ThemeChanged { get; set; }
@@ -469,37 +474,32 @@ Zero-config setup for enterprise Blazor applications with professional styling a
     /// <summary>User menu clicked callback</summary>
     [Parameter] public EventCallback<AppUser> UserMenuClicked { get; set; }
     
-    // === COMPUTED PROPERTIES ===
+    // ===== COMPUTED PROPERTIES =====
     
     private bool IsMobile { get; set; } = false;
     
     protected override async Task OnInitializedAsync()
     {
-        // Load configuration (only for defaults, don't override user parameters)
-        await ConfigService.LoadAsync();
+        // Initialize sidebar state
+        sidebarCollapsed = SidebarCollapsedDefault;
         
-        // Apply configuration defaults only if user hasn't provided values
+        // Load configuration defaults
+        await ConfigService.LoadAsync();
         if (ConfigService.Current != null)
         {
             var config = ConfigService.Current;
-            
-            // Only set defaults if user hasn't provided values
             if (string.IsNullOrEmpty(PageTitle) && !string.IsNullOrEmpty(config.Title))
                 PageTitle = config.Title;
-            
-            // Features are user-controlled, config provides intelligent defaults only
-            if (Features == AppShellFeatures.All && config.GetDefaultFeatures() != AppShellFeatures.All)
-                Features = config.GetDefaultFeatures();
         }
         
-        // Set up navigation search provider
+        // Set up search provider
         if (NavigationItems?.Any() == true && ShowSearch)
         {
             var navProvider = new NavigationSearchProvider(NavigationItems);
             SearchService.RegisterSearchProvider(navProvider);
         }
         
-        // Only set up default navigation if none provided and sidebar is enabled
+        // Default navigation if none provided
         NavigationItems ??= ShowSidebar ? GetDefaultNavigation() : null;
     }
     
@@ -512,10 +512,10 @@ Zero-config setup for enterprise Blazor applications with professional styling a
                 jsModule = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/RR.Blazor/js/app-shell.js");
                 await jsModule.InvokeVoidAsync("initialize");
                 
-                // Update IsMobile flag
+                // Update mobile state
                 IsMobile = await jsModule.InvokeAsync<bool>("isMobile");
                 
-                // Fix mobile responsiveness issue - sidebar should be closed by default on mobile
+                // Mobile sidebar should be closed by default
                 if (IsMobile)
                 {
                     sidebarOpen = false;
@@ -558,6 +558,11 @@ Zero-config setup for enterprise Blazor applications with professional styling a
         sidebarOpen = false;
     }
     
+    private string GetToggleIcon()
+    {
+        if (IsMobile) return sidebarOpen ? "close" : "menu";
+        return sidebarCollapsed ? "menu_open" : "menu";
+    }
     
     private string GetEffectiveTheme()
     {
@@ -620,7 +625,7 @@ Zero-config setup for enterprise Blazor applications with professional styling a
         {
             await result.OnClick();
         }
-        else if (!string.IsNullOrEmpty(result.Url) && IsValidUrl(result.Url))
+        else if (!string.IsNullOrEmpty(result.Url))
         {
             await JS.InvokeVoidAsync("window.location.href", result.Url);
         }
@@ -638,9 +643,21 @@ Zero-config setup for enterprise Blazor applications with professional styling a
         showUserMenu = !showUserMenu;
     }
     
-    private void ExpandSearch()
+    private async Task ExpandSearch()
     {
         searchExpanded = true;
+        StateHasChanged();
+        
+        // Focus the search input after it becomes visible
+        await Task.Delay(50); // Small delay to ensure DOM is updated
+        try
+        {
+            await JS.InvokeVoidAsync("focusElement", ".search-input-expanded");
+        }
+        catch
+        {
+            // Ignore focus errors
+        }
     }
     
     private void CollapseSearch()
@@ -648,29 +665,94 @@ Zero-config setup for enterprise Blazor applications with professional styling a
         searchExpanded = false;
         searchQuery = string.Empty;
         showSearchResults = false;
-        try
-        {
-            searchDebounceTimer?.Dispose();
-            searchDebounceTimer = null;
-        }
-        catch { }
+        searchDebounceTimer?.Dispose();
+        searchDebounceTimer = null;
     }
     
-    private string GetContentStyle()
-    {
-        return string.IsNullOrEmpty(ContentMaxWidth) ? "" : $"--content-max-width: {ContentMaxWidth};";
-    }
+    // ===== CSS CLASS GENERATORS =====
     
-    private string GetContentClasses()
+    private string GetAppShellClasses()
     {
-        return ContentCentered && !string.IsNullOrEmpty(ContentMaxWidth) ? "main-content-centered" : "";
+        var classes = new List<string> 
+        { 
+            "app-shell",
+            "min-h-screen"
+        };
+        
+        if (!string.IsNullOrEmpty(Class))
+            classes.Add(Class);
+        
+        // Add state classes
+        if (sidebarCollapsed) classes.Add("sidebar-collapsed");
+        if (sidebarOpen && IsMobile) classes.Add("sidebar-open");
+        if (IsMobile) classes.Add("mobile");
+        
+        classes.Add("app-shell-base");
+        
+        return string.Join(" ", classes);
     }
     
     private string GetHeaderClasses()
     {
-        if (!ShowSidebar) return "header-sidebar-hidden";
-        if (IsMobile) return "header-sidebar-hidden";
-        return sidebarCollapsed ? "header-sidebar-collapsed" : "header-sidebar-expanded";
+        var classes = new List<string> { "app-header" };
+        
+        if (!string.IsNullOrEmpty(HeaderClass))
+            classes.Add(HeaderClass);
+        
+        return string.Join(" ", classes);
+    }
+    
+    private string GetHeaderLeftClasses()
+    {
+        return "header-left";
+    }
+    
+    private string GetHeaderRightClasses()
+    {
+        return "header-right";
+    }
+    
+    private string GetLogoClasses()
+    {
+        return "app-logo";
+    }
+    
+    private string GetSearchClasses()
+    {
+        return "app-search";
+    }
+    
+    private string GetSidebarClasses()
+    {
+        var classes = new List<string> { "app-sidebar" };
+        
+        if (!string.IsNullOrEmpty(SidebarClass))
+            classes.Add(SidebarClass);
+        
+        if (sidebarCollapsed) classes.Add("collapsed");
+        if (sidebarOpen && IsMobile) classes.Add("open");
+        
+        return string.Join(" ", classes);
+    }
+    
+    private string GetMainClasses()
+    {
+        var classes = new List<string> { "app-main" };
+        
+        if (AutoWrapContent)
+            classes.Add("auto-wrap-content");
+        
+        if (!string.IsNullOrEmpty(MainClass))
+            classes.Add(MainClass);
+        
+        return string.Join(" ", classes);
+    }
+    
+    private string GetBackdropClasses()
+    {
+        var classes = new List<string> { "mobile-backdrop" };
+        if (sidebarOpen && IsMobile) classes.Add("active");
+        return string.Join(" ", classes);
     }
     
     private static List<AppNavItem> GetDefaultNavigation()
@@ -681,16 +763,6 @@ Zero-config setup for enterprise Blazor applications with professional styling a
             AppNavItems.Settings(),
             AppNavItems.Profile()
         };
-    }
-    
-    private static bool IsValidUrl(string url)
-    {
-        return !string.IsNullOrEmpty(url) && 
-               (url.StartsWith('/') || 
-                url.StartsWith("./") || 
-                url.StartsWith("../") ||
-                (Uri.TryCreate(url, UriKind.Absolute, out var uri) && 
-                 (uri.Scheme == "http" || uri.Scheme == "https")));
     }
     
     public async ValueTask DisposeAsync()
@@ -721,4 +793,3 @@ Zero-config setup for enterprise Blazor applications with professional styling a
         }
     }
 }
-

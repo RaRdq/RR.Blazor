@@ -31,10 +31,34 @@
                         if (property.CanWrite && IsSimpleType(property.PropertyType))
                         {
                             <div class="form-modal-field">
-                                <RFormField Text="@GetFieldLabel(property.Name)"
-                                          Type="@GetFieldType(property.PropertyType)"
-                                          Value="@(GetPropertyValue(property)?.ToString() ?? string.Empty)"
-                                          ValueChanged="@((string value) => SetPropertyValue(property, value))" />
+                                @{
+                                    var fieldType = GetFieldType(property.PropertyType);
+                                    var fieldValue = GetPropertyValue(property)?.ToString() ?? string.Empty;
+                                    var fieldLabel = GetFieldLabel(property.Name);
+                                }
+                                @if (fieldType == FieldType.Text || fieldType == FieldType.Email || fieldType == FieldType.Password || fieldType == FieldType.Number || fieldType == FieldType.Tel || fieldType == FieldType.Url)
+                                {
+                                    <RTextInput Label="@fieldLabel"
+                                              Type="fieldType"
+                                              Value="@fieldValue"
+                                              ValueChanged="@((string value) => { fieldValue = value; SetPropertyValue(property, value); })" />
+                                }
+                                else if (fieldType == FieldType.Checkbox)
+                                {
+                                    <RCheckbox Text="@fieldLabel"
+                                             Value="@(GetBoolPropertyValue(property))"
+                                             ValueChanged="@((bool value) => SetBoolPropertyValue(property, value))" />
+                                }
+                                else
+                                {
+                                    <div>
+                                        <label class="d-block text-sm font-medium text-primary mb-2">@fieldLabel</label>
+                                        <input type="text" 
+                                               value="@fieldValue"
+                                               @onchange="@((ChangeEventArgs e) => { fieldValue = e.Value?.ToString() ?? string.Empty; SetPropertyValue(property, fieldValue); })"
+                                               class="w-full border border-light rounded-md pa-3 text-primary bg-surface focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" />
+                                    </div>
+                                }
                             </div>
                         }
                     }
@@ -74,7 +98,7 @@
     [Parameter] [AIParameter("Custom validation function", Example = "ValidateUserModel")] public Func<T, Task<bool>> OnValidate { get; set; }
     [Parameter] [AIParameter("Save function called on form submission", Example = "SaveUserModel")] public Func<T, Task<bool>> OnSave { get; set; }
     [Parameter] [AIParameter("Callback when form data changes", Example = "OnFormDataChanged")] public EventCallback<T> OnDataChanged { get; set; }
-    [Parameter] [AIParameter("Custom form content instead of auto-generation", Example = "<RFormField />")] public RenderFragment ChildContent { get; set; }
+    [Parameter] [AIParameter("Custom form content instead of auto-generation", Example = "<RTextInput />")] public RenderFragment ChildContent { get; set; }
 
     private T _currentData;
     private List<string> ValidationErrors = new();
@@ -172,6 +196,33 @@
             || underlyingType == typeof(DateTime) 
             || underlyingType == typeof(decimal)
             || underlyingType.IsEnum;
+    }
+
+    private string GetInputType(FieldType fieldType)
+    {
+        return fieldType switch
+        {
+            FieldType.Email => "email",
+            FieldType.Password => "password",
+            FieldType.Number => "number",
+            FieldType.Tel => "tel",
+            FieldType.Url => "url",
+            _ => "text"
+        };
+    }
+
+    private bool GetBoolPropertyValue(System.Reflection.PropertyInfo property)
+    {
+        var value = property.GetValue(_currentData);
+        if (value is bool boolValue)
+            return boolValue;
+        return false;
+    }
+
+    private void SetBoolPropertyValue(System.Reflection.PropertyInfo property, bool value)
+    {
+        property.SetValue(_currentData, value);
+        OnDataChanged.InvokeAsync(_currentData);
     }
 
     private T DeepCopy(T source)

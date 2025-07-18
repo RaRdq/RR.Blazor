@@ -8,12 +8,12 @@
         @if (ShowSearch)
         {
             <div class="flex-1 min-w-64">
-                <RFormField Type="FieldType.Search"
+                <RTextInput Type="FieldType.Search"
                            Value="@SearchValue"
                            ValueChanged="OnSearchValueChanged"
                            Placeholder="@SearchPlaceholder"
                            StartIcon="search"
-                           Size="FieldSize.Small" />
+                           Size="TextInputSize.Small" />
             </div>
         }
     
@@ -22,13 +22,12 @@
         {
             @foreach (var filter in Filters)
             {
-                <RFormField Type="@GetFilterFieldType(filter)"
-                           Text="@filter.Label"
-                           Value="@filter.Value"
-                           ValueChanged="@(EventCallback.Factory.Create<string>(this, value => HandleFilterChanged(filter.Key, value)))"
-                           Size="FieldSize.Small"
-                           Class="min-w-32">
-                    <SelectOptions>
+                @if (GetFilterFieldType(filter) == FieldType.Select)
+                {
+                    <select class="rr-select"
+                            @bind="filter.Value"
+                            @bind:after="@(async () => await HandleFilterChanged(filter.Key, filter.Value))">
+                        <option value="">@filter.Label</option>
                         @if (filter.Options != null)
                         {
                             @foreach (var option in filter.Options)
@@ -36,8 +35,17 @@
                                 <option value="@option.Value">@option.Label</option>
                             }
                         }
-                    </SelectOptions>
-                </RFormField>
+                    </select>
+                }
+                else
+                {
+                    <RTextInput Type="@GetFilterFieldType(filter)"
+                               Label="@filter.Label"
+                               Value="@filter.Value"
+                               ValueChanged="@(EventCallback.Factory.Create<string>(this, value => HandleFilterChanged(filter.Key, value)))"
+                               Size="TextInputSize.Small"
+                               Class="min-w-32" />
+                }
             }
         }
 
@@ -45,18 +53,18 @@
         @if (ShowDateRange)
         {
             <div class="flex gap-2 items-center">
-                <RFormField Type="FieldType.Date"
-                           Text="From"
+                <RTextInput Type="FieldType.Date"
+                           Label="From"
                            Value="@DateFrom?.ToString("yyyy-MM-dd")"
                            ValueChanged="@(value => HandleDateFromChanged(value))"
-                           Size="FieldSize.Small"
+                           Size="TextInputSize.Small"
                            Class="w-40" />
                 <span class="text-secondary">to</span>
-                <RFormField Type="FieldType.Date"
-                           Text="To"
+                <RTextInput Type="FieldType.Date"
+                           Label="To"
                            Value="@DateTo?.ToString("yyyy-MM-dd")"
                            ValueChanged="@(value => HandleDateToChanged(value))"
-                           Size="FieldSize.Small"
+                           Size="TextInputSize.Small"
                            Class="w-40" />
             </div>
         }
@@ -80,22 +88,18 @@
         @* Status Filter *@
         @if (ShowStatus && StatusOptions?.Any() == true)
         {
-            <RFormField Type="FieldType.Select"
-                       Text="Status"
-                       Value="@StatusFilter"
-                       ValueChanged="OnStatusFilterChanged"
-                       Size="FieldSize.Small"
-                       Class="min-w-32">
-                <SelectOptions>
-                    @if (StatusOptions != null)
+            <select class="rr-select"
+                    @bind="StatusFilter"
+                    @bind:after="@(async () => await OnStatusFilterChanged(StatusFilter))">
+                <option value="">Status</option>
+                @if (StatusOptions != null)
+                {
+                    @foreach (var option in StatusOptions)
                     {
-                        @foreach (var option in StatusOptions)
-                        {
-                            <option value="@option.Key">@option.Value</option>
-                        }
+                        <option value="@option.Key">@option.Value</option>
                     }
-                </SelectOptions>
-            </RFormField>
+                }
+            </select>
         }
 
         @* Custom Filter Content *@
@@ -306,6 +310,17 @@
             _ => FieldType.Select
         };
     }
+
+    private string GetFilterInputType(FilterDefinition filter)
+    {
+        return filter.Type switch
+        {
+            "number" => "number",
+            "date" => "date",
+            "text" => "text",
+            _ => "text"
+        };
+    }
 }
 
 @*
@@ -335,20 +350,17 @@ Usage Examples:
            ShowClearButton="true"
            FiltersCleared="HandleFiltersCleared">
     <CustomFilters>
-        <RFormField Type="FieldType.Select"
-                   Text="Department"
-                   Value="@departmentFilter"
-                   Size="FieldSize.Small">
-            <SelectOptions>
-                @if (departmentOptions != null)
+        <select class="rr-select"
+                @bind="departmentFilter">
+            <option value="">Department</option>
+            @if (departmentOptions != null)
+            {
+                @foreach (var option in departmentOptions)
                 {
-                    @foreach (var option in departmentOptions)
-                    {
-                        <option value="@option.Value">@option.Text</option>
-                    }
+                    <option value="@option.Value">@option.Text</option>
                 }
-            </SelectOptions>
-        </RFormField>
+            }
+        </select>
     </CustomFilters>
 </RFilterBar>
 
