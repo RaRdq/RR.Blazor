@@ -27,15 +27,15 @@ Lightweight version using native HTML date/datetime inputs for basic scenarios.
 
 ```html
 <!-- Simple date selection -->
-<RDatePicker @bind-Value="selectedDate" />
+<RDatePicker @bind-value="selectedDate" />
 
 <!-- Date range selection -->
-<RDatePicker @bind-Value="startDate" 
+<RDatePicker @bind-value="startDate" 
              @bind-EndValue="endDate"
              Range="true" />
 
 <!-- Date and time selection -->
-<RDatePicker @bind-Value="appointmentTime"
+<RDatePicker @bind-value="appointmentTime"
              ShowTime="true" />
 ```
 
@@ -103,7 +103,7 @@ Lightweight version using native HTML date/datetime inputs for basic scenarios.
 
 ### Business Date Selector
 ```html
-<RDatePicker @bind-Value="meetingDate"
+<RDatePicker @bind-value="meetingDate"
              Label="Meeting Date"
              ShowTime="true"
              Use24HourFormat="false"
@@ -116,7 +116,7 @@ Lightweight version using native HTML date/datetime inputs for basic scenarios.
 
 ### Date Range with Validation
 ```html
-<RDatePicker @bind-Value="projectStart"
+<RDatePicker @bind-value="projectStart"
              @bind-EndValue="projectEnd"
              Range="true"
              Label="Project Timeline"
@@ -129,7 +129,7 @@ Lightweight version using native HTML date/datetime inputs for basic scenarios.
 
 ### Custom Time Intervals
 ```html
-<RDatePicker @bind-Value="appointmentTime"
+<RDatePicker @bind-value="appointmentTime"
              Label="Appointment Time"
              ShowTime="true"
              MinuteInterval="30"
@@ -163,11 +163,11 @@ RDatePicker integrates seamlessly with the RR.Blazor theme system:
 
 ```html
 <!-- Custom CSS classes -->
-<RDatePicker @bind-Value="date" 
+<RDatePicker @bind-value="date" 
              Class="my-custom-datepicker" />
 
 <!-- Size variants -->
-<RDatePicker @bind-Value="date" Size="FieldSize.Large" />
+<RDatePicker @bind-value="date" Size="FieldSize.Large" />
 ```
 
 ## Accessibility Features
@@ -213,7 +213,7 @@ RDatePicker works seamlessly with Blazor forms and validation:
 <EditForm Model="@model" OnValidSubmit="@HandleSubmit">
     <DataAnnotationsValidator />
     
-    <RDatePicker @bind-Value="model.EventDate"
+    <RDatePicker @bind-value="model.EventDate"
                  Label="Event Date"
                  Required="true" />
     
@@ -230,16 +230,16 @@ Existing `RFormField` date inputs can be easily migrated to the modern R* compon
 ```html
 <!-- Old RFormField approach -->
 <RFormField Type="FieldType.Date" 
-            @bind-Value="dateString" 
+            @bind-value="dateString" 
             Text="Select Date" />
 
 <!-- New RDatePicker approach -->
-<RDatePicker @bind-Value="dateValue" 
+<RDatePicker @bind-value="dateValue" 
              Label="Select Date" />
 
 <!-- Alternative: RTextInput for simple date inputs -->
 <RTextInput Type="date" 
-            @bind-Value="dateString" 
+            @bind-value="dateString" 
             Label="Select Date" />
 ```
 
@@ -248,14 +248,14 @@ Existing `RFormField` date inputs can be easily migrated to the modern R* compon
 ### Meeting Scheduler
 ```html
 <div class="meeting-scheduler">
-    <RDatePicker @bind-Value="meetingStart"
+    <RDatePicker @bind-value="meetingStart"
                  Label="Meeting Start"
                  ShowTime="true"
                  Use24HourFormat="false"
                  MinDate="@DateTime.Today"
                  DisabledDaysOfWeek="@weekends" />
     
-    <RDatePicker @bind-Value="meetingEnd"
+    <RDatePicker @bind-value="meetingEnd"
                  Label="Meeting End"
                  ShowTime="true"
                  Use24HourFormat="false"
@@ -266,7 +266,7 @@ Existing `RFormField` date inputs can be easily migrated to the modern R* compon
 ### Travel Booking
 ```html
 <div class="travel-dates">
-    <RDatePicker @bind-Value="checkIn"
+    <RDatePicker @bind-value="checkIn"
                  @bind-EndValue="checkOut"
                  Range="true"
                  Label="Stay Dates"

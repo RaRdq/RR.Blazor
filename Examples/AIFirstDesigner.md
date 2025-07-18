@@ -114,11 +114,11 @@ Create a dense, professional customer onboarding form with:
 ```razor
 <RForm @bind-Model="customer" OnValidSubmit="HandleSubmit">
   <RFormSection Title="Personal Information" Icon="person">
-    <RTextInput @bind-Value="customer.FirstName" Label="First Name" Required />
-    <RTextInput @bind-Value="customer.LastName" Label="Last Name" Required />
-    <RTextInput @bind-Value="customer.Email" Type="email" Label="Email Address" 
+    <RTextInput @bind-value="customer.FirstName" Label="First Name" Required />
+    <RTextInput @bind-value="customer.LastName" Label="Last Name" Required />
+    <RTextInput @bind-value="customer.Email" Type="email" Label="Email Address" 
                 StartIcon="email" Required />
-    <RTextInput @bind-Value="customer.Phone" Type="tel" Label="Phone Number" 
+    <RTextInput @bind-value="customer.Phone" Type="tel" Label="Phone Number" 
                 StartIcon="phone" />
   </RFormSection>
   
@@ -126,9 +126,9 @@ Create a dense, professional customer onboarding form with:
     <RCheckbox @bind-Checked="customer.NewsletterOptIn" 
                Text="Subscribe to Newsletter" 
                Description="Receive updates about new features and promotions" />
-    <RRadio @bind-Value="customer.PreferredContact" Value="email" Text="Email" />
-    <RRadio @bind-Value="customer.PreferredContact" Value="phone" Text="Phone" />
-    <RRadio @bind-Value="customer.PreferredContact" Value="sms" Text="SMS" />
+    <RRadio @bind-value="customer.PreferredContact" Value="email" Text="Email" />
+    <RRadio @bind-value="customer.PreferredContact" Value="phone" Text="Phone" />
+    <RRadio @bind-value="customer.PreferredContact" Value="sms" Text="SMS" />
   </RFormSection>
 </RForm>
 ```

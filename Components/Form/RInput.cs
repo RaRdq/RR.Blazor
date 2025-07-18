@@ -16,7 +16,7 @@ namespace RR.Blazor.Components.Form
         CommonUse = "Forms with mixed data types, automatic type conversion, payroll data entry",
         AvoidUsage = "When you need specific input behavior, use specialized components instead"
     )]
-    public class RInput : ComponentBase
+    public class RInput : RR.Blazor.Components.Base.RComponentBase
     {
         #region Core Parameters
         

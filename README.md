@@ -40,7 +40,7 @@ The R* form components replace the legacy RFormField pattern with specialized, p
 <!-- Modern R* approach -->
 <RTextInput Label="Email Address" 
             Type="email" 
-            @bind-Value="model.Email" 
+            @bind-value="model.Email" 
             StartIcon="email" 
             Required />
 
@@ -49,7 +49,7 @@ The R* form components replace the legacy RFormField pattern with specialized, p
            Description="I agree to the terms and conditions" />
 
 <RRadio Text="Option 1" 
-        @bind-Value="model.Choice" 
+        @bind-value="model.Choice" 
         Value="option1" />
 ```
 
@@ -570,7 +570,7 @@ RR.Blazor includes 800+ utility classes inspired by modern CSS frameworks:
     <FormFields>
         <RTextInput Label="Email Address"
                     Type="email"
-                    @bind-Value="model.Email"
+                    @bind-value="model.Email"
                     Size="TextInputSize.Large"
                     Variant="TextInputVariant.Outlined"
                     StartIcon="email"
@@ -578,7 +578,7 @@ RR.Blazor includes 800+ utility classes inspired by modern CSS frameworks:
                     
         <RTextInput Label="Password"
                     Type="password"
-                    @bind-Value="model.Password"
+                    @bind-value="model.Password"
                     StartIcon="lock"
                     ShowPasswordToggle="true"
                     Required />

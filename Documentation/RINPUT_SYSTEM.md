@@ -57,41 +57,41 @@ Custom struct for handling time ranges with smart conversion capabilities.
 
 ```razor
 @* String input (automatically detected) *@
-<RInput @bind-Value="userName" Label="User Name" />
+<RInput @bind-value="userName" Label="User Name" />
 
 @* Numeric input (automatically detected) *@
-<RInput @bind-Value="age" Label="Age" />
+<RInput @bind-value="age" Label="Age" />
 
 @* DateTime input (automatically detected) *@
-<RInput @bind-Value="birthDate" Label="Birth Date" />
+<RInput @bind-value="birthDate" Label="Birth Date" />
 
 @* TimeRange input (automatically detected) *@
-<RInput @bind-Value="workingHours" Label="Working Hours" />
+<RInput @bind-value="workingHours" Label="Working Hours" />
 ```
 
 ### Advanced Usage
 
 ```razor
 @* Force specific input type *@
-<RInput @bind-Value="phoneNumber" 
+<RInput @bind-value="phoneNumber" 
         InputType="FieldType.Tel" 
         Label="Phone Number" />
 
 @* Numeric with constraints *@
-<RInput @bind-Value="salary" 
+<RInput @bind-value="salary" 
         Label="Salary" 
         Min="0" 
         Max="1000000" 
         Step="0.01m" />
 
 @* DateTime with time picker *@
-<RInput @bind-Value="appointmentTime" 
+<RInput @bind-value="appointmentTime" 
         Label="Appointment" 
         ShowTime="true" 
         MinDate="DateTime.Today" />
 
 @* Custom formatting *@
-<RInput @bind-Value="amount" 
+<RInput @bind-value="amount" 
         Label="Amount" 
         NumberFormat="C2" 
         Culture="CultureInfo.GetCultureInfo(\"en-US\")" />
@@ -102,30 +102,30 @@ Custom struct for handling time ranges with smart conversion capabilities.
 ```razor
 <RForm Model="formModel" OnValidSubmit="HandleSubmit">
     <RFormSection Title="Personal Information">
-        <RInput @bind-Value="formModel.FirstName" 
+        <RInput @bind-value="formModel.FirstName" 
                 Label="First Name" 
                 Required="true" />
         
-        <RInput @bind-Value="formModel.LastName" 
+        <RInput @bind-value="formModel.LastName" 
                 Label="Last Name" 
                 Required="true" />
         
-        <RInput @bind-Value="formModel.Email" 
+        <RInput @bind-value="formModel.Email" 
                 Label="Email" 
                 Required="true" />
         
-        <RInput @bind-Value="formModel.Age" 
+        <RInput @bind-value="formModel.Age" 
                 Label="Age" 
                 Min="18" 
                 Max="120" />
     </RFormSection>
     
     <RFormSection Title="Work Details">
-        <RInput @bind-Value="formModel.StartDate" 
+        <RInput @bind-value="formModel.StartDate" 
                 Label="Start Date" 
                 Required="true" />
         
-        <RInput @bind-Value="formModel.WorkingHours" 
+        <RInput @bind-value="formModel.WorkingHours" 
                 Label="Working Hours" 
                 Placeholder="09:00-17:00" />
     </RFormSection>
@@ -181,7 +181,7 @@ When `AutoConvert="true"` (default), RInput automatically converts between relat
 
 ### Custom Conversion
 ```csharp
-<RInput @bind-Value="unixTimestamp" 
+<RInput @bind-value="unixTimestamp" 
         AutoConvert="true" 
         DateFormat="yyyy-MM-dd HH:mm" />
 ```
@@ -250,11 +250,11 @@ var hasOverlap = workHours.Overlaps(otherRange);
 
 ### Before (RTextInput)
 ```razor
-<RTextInput @bind-Value="name" 
+<RTextInput @bind-value="name" 
             Type="FieldType.Text" 
             Label="Name" />
 
-<RTextInput @bind-Value="ageString" 
+<RTextInput @bind-value="ageString" 
             Type="FieldType.Number" 
             Label="Age" 
             Min="0" 
@@ -263,10 +263,10 @@ var hasOverlap = workHours.Overlaps(otherRange);
 
 ### After (RInput)
 ```razor
-<RInput @bind-Value="name" 
+<RInput @bind-value="name" 
         Label="Name" />
 
-<RInput @bind-Value="age" 
+<RInput @bind-value="age" 
         Label="Age" 
         Min="0" 
         Max="120" />
@@ -283,21 +283,21 @@ var hasOverlap = workHours.Overlaps(otherRange);
 ### 1. Use Smart Detection
 ```razor
 @* ✅ GOOD: Let RInput detect type automatically *@
-<RInput @bind-Value="model.Email" Label="Email" />
+<RInput @bind-value="model.Email" Label="Email" />
 
 @* ❌ AVOID: Explicit type unless necessary *@
-<RInput @bind-Value="model.Email" InputType="FieldType.Email" Label="Email" />
+<RInput @bind-value="model.Email" InputType="FieldType.Email" Label="Email" />
 ```
 
 ### 2. Leverage Auto-Conversion
 ```razor
 @* ✅ GOOD: Auto-convert between formats *@
-<RInput @bind-Value="unixTimestamp" 
+<RInput @bind-value="unixTimestamp" 
         AutoConvert="true" 
         DateFormat="yyyy-MM-dd" />
 
 @* ❌ AVOID: Manual conversion *@
-<RInput @bind-Value="dateString" 
+<RInput @bind-value="dateString" 
         AutoConvert="false" 
         ValueChanged="ManuallyConvertDate" />
 ```
@@ -305,14 +305,14 @@ var hasOverlap = workHours.Overlaps(otherRange);
 ### 3. Use Appropriate Constraints
 ```razor
 @* ✅ GOOD: Meaningful constraints *@
-<RInput @bind-Value="age" 
+<RInput @bind-value="age" 
         Label="Age" 
         Min="0" 
         Max="150" 
         Required="true" />
 
 @* ❌ AVOID: Overly restrictive constraints *@
-<RInput @bind-Value="age" 
+<RInput @bind-value="age" 
         Label="Age" 
         Min="18" 
         Max="65" 
@@ -322,7 +322,7 @@ var hasOverlap = workHours.Overlaps(otherRange);
 ### 4. Provide Clear Labels and Help Text
 ```razor
 @* ✅ GOOD: Clear guidance *@
-<RInput @bind-Value="workingHours" 
+<RInput @bind-value="workingHours" 
         Label="Working Hours" 
         HelpText="Enter time range in HH:mm-HH:mm format" 
         Placeholder="09:00-17:00" />
@@ -332,7 +332,7 @@ var hasOverlap = workHours.Overlaps(otherRange);
 
 ### Validation Integration
 ```razor
-<RInput @bind-Value="model.Email" 
+<RInput @bind-value="model.Email" 
         Label="Email" 
         HasError="@(!IsValidEmail(model.Email))" 
         ErrorMessage="Please enter a valid email address" />

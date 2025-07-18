@@ -15,7 +15,9 @@ Professional button component with enterprise variants, AI-optimized for rapid d
 **@
 @using RR.Blazor.Enums
 @using RR.Blazor.Attributes
+@using RR.Blazor.Components.Base
 @using Microsoft.AspNetCore.Components
+@inherits RVariantComponentBase<ButtonSize, ButtonVariant>
 @inject IJSRuntime JSRuntime
 @inject NavigationManager Navigation
 
@@ -83,27 +85,8 @@ Professional button component with enterprise variants, AI-optimized for rapid d
 </button>
 
 @code {
-    /// <summary>Button variant style - determines visual appearance and behavior</summary>
-    /// <ai-hint>Primary for main actions, Secondary for supporting actions, Danger for destructive actions</ai-hint>
-    [Parameter] 
-    [AIParameter(Hint = "Primary for main actions, Secondary for supporting, Danger for destructive", 
-                 SuggestedValues = new[] { "Primary", "Secondary", "Danger", "Ghost", "Outline", "Glass", "Success", "Warning", "Info" }, 
-                 IsRequired = false)]
-    public ButtonVariant Variant { get; set; } = ButtonVariant.Primary;
     
-    /// <summary>Button size - affects padding, text size, and overall dimensions</summary>
-    /// <ai-hint>Medium is default, Large for prominent actions, Small for compact layouts</ai-hint>
-    [Parameter]
-    [AIParameter(Hint = "Medium is default, Large for prominent actions, Small for compact", 
-                 SuggestedValues = new[] { "Small", "Medium", "Large" })]
-    public ButtonSize Size { get; set; } = ButtonSize.Medium;
     
-    /// <summary>Component density level for ultra-dense layouts</summary>
-    /// <ai-hint>Normal is default, Compact for dense interfaces, Dense for data-heavy layouts</ai-hint>
-    [Parameter]
-    [AIParameter(Hint = "Normal is default, Compact for ultra-dense, Dense for data-heavy", 
-                 SuggestedValues = new[] { "Normal", "Dense", "Compact", "Spacious" })]
-    public ComponentDensity Density { get; set; } = ComponentDensity.Normal;
     
     /// <summary>Button type attribute for form interaction</summary>
     /// <ai-hint>Use Submit for form submission buttons, Button for regular actions</ai-hint>
@@ -112,18 +95,7 @@ Professional button component with enterprise variants, AI-optimized for rapid d
                  SuggestedValues = new[] { "Button", "Submit", "Reset" })]
     public ButtonType Type { get; set; } = ButtonType.Button;
     
-    /// <summary>Button text content - the main label displayed on the button</summary>
-    /// <ai-hint>Use action verbs like Save, Delete, Create, Cancel. Keep concise.</ai-hint>
-    [Parameter]
-    [AIParameter(Hint = "Use action verbs like Save, Delete, Create. Keep concise.", IsRequired = false)]
-    public string Text { get; set; }
     
-    /// <summary>Material icon name to display alongside text</summary>
-    /// <ai-hint>Common icons: save, delete, edit, add, search, settings, home, arrow_forward</ai-hint>
-    [Parameter]
-    [AIParameter(Hint = "Common icons: save, delete, edit, add, search, settings", 
-                 SuggestedValues = new[] { "save", "delete", "edit", "add", "search", "settings" })]
-    public string Icon { get; set; }
     
     /// <summary>Position of icon relative to text content</summary>
     /// <ai-hint>Start is most common, End for arrows/navigation, Top for stacked layouts</ai-hint>
@@ -132,20 +104,12 @@ Professional button component with enterprise variants, AI-optimized for rapid d
                  SuggestedValues = new[] { "Start", "End", "Top", "Bottom" })]
     public IconPosition IconPosition { get; set; } = IconPosition.Start;
     
-    /// <summary>Whether button is disabled</summary>
-    [Parameter] public bool Disabled { get; set; }
     
-    /// <summary>Whether button is in loading state</summary>
-    [Parameter] public bool Loading { get; set; }
     
     /// <summary>Whether button spans full width</summary>
     [Parameter] public bool FullWidth { get; set; }
     
-    /// <summary>Additional CSS classes</summary>
-    [Parameter] public string Class { get; set; }
     
-    /// <summary>Click event handler</summary>
-    [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
     
     /// <summary>Mouse down event handler</summary>
     [Parameter] public EventCallback<MouseEventArgs> OnMouseDown { get; set; }
@@ -330,7 +294,7 @@ Professional button component with enterprise variants, AI-optimized for rapid d
         return string.Join(" ", classes);
     }
     
-    private string GetSizeClasses()
+    protected override string GetSizeClasses()
     {
         var sizeClass = Size switch
         {
@@ -478,4 +442,53 @@ Professional button component with enterprise variants, AI-optimized for rapid d
             await OnBlur.InvokeAsync(e);
         }
     }
+    
+    #region Abstract Method Implementations
+    
+    /// <summary>
+    /// Provides button-specific variant classes
+    /// </summary>
+    protected override string GetVariantClasses()
+    {
+        // Use existing GetButtonClasses logic for variant styling
+        return GetCompleteVariantClasses();
+    }
+    
+    /// <summary>
+    /// Gets default size for buttons
+    /// </summary>
+    protected override ButtonSize GetDefaultSize()
+    {
+        return ButtonSize.Medium;
+    }
+    
+    /// <summary>
+    /// Gets default variant for buttons
+    /// </summary>
+    protected override ButtonVariant GetDefaultVariant()
+    {
+        return ButtonVariant.Primary;
+    }
+    
+    /// <summary>
+    /// Gets complete variant classes with theming
+    /// </summary>
+    private string GetCompleteVariantClasses()
+    {
+        return Variant switch
+        {
+            ButtonVariant.Primary => "button-primary",
+            ButtonVariant.Secondary => "button-secondary", 
+            ButtonVariant.Success => "button-success",
+            ButtonVariant.Warning => "button-warning",
+            ButtonVariant.Danger => "button-danger",
+            ButtonVariant.Info => "button-info",
+            ButtonVariant.Ghost => "button-ghost",
+            ButtonVariant.Outline => "button-outline",
+            ButtonVariant.Glass => "button-glass",
+            _ => "button-primary"
+        };
+    }
+    
+    #endregion
 }
