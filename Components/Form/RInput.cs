@@ -1,205 +1,201 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
+using Microsoft.AspNetCore.Components.Web;
 using RR.Blazor.Attributes;
 using RR.Blazor.Enums;
 using RR.Blazor.Models;
-using System;
-using System.Collections.Generic;
-using System.Globalization;
 
 namespace RR.Blazor.Components.Form
 {
     /// <summary>
-    /// Smart input component with automatic type detection and conversion.
-    /// Supports string, numeric, DateTime, TimeRange, and other value types.
+    /// Smart input component with automatic type detection and conversion
     /// </summary>
     [Component("RInput", Category = "Form", Complexity = ComponentComplexity.Advanced)]
     [AIOptimized(
-        Prompt = "Use for any input field with automatic type detection and conversion",
-        CommonUse = "Form inputs with automatic type inference, mixed-type forms, dynamic forms",
-        AvoidUsage = "When you need explicit control over input type (use RTextInput, RDatePicker, etc.)"
+        Prompt = "Smart input that automatically detects type and renders appropriate component",
+        CommonUse = "Forms with mixed data types, automatic type conversion, payroll data entry",
+        AvoidUsage = "When you need specific input behavior, use specialized components instead"
     )]
-    public class RInput : RInputBase
+    public class RInput : ComponentBase
     {
-        #region Smart Parameters
+        #region Core Parameters
         
         [Parameter]
-        [AIParameter("Input value of any supported type (string, int, decimal, DateTime, TimeRange, etc.)", Example = "\"Hello World\" or 42 or DateTime.Now")]
+        [AIParameter("Input value of any supported type", Example = "\"Hello World\" or 42 or DateTime.Now")]
         public object? Value { get; set; }
         
         [Parameter]
-        [AIParameter("Callback when value changes")]
+        [AIParameter("Value changed callback")]
         public EventCallback<object> ValueChanged { get; set; }
         
         [Parameter]
-        [AIParameter("Force specific input type instead of auto-detection")]
+        [AIParameter("Explicit field type override", Example = "FieldType.Email")]
         public FieldType? InputType { get; set; }
         
         [Parameter]
-        [AIParameter("Auto-convert between related formats (e.g., DateTime ↔ Unix ↔ String)")]
+        [AIParameter("Enable automatic type conversion")]
         public bool AutoConvert { get; set; } = true;
-        
-        [Parameter]
-        [AIParameter("Date format for DateTime conversion", Example = "\"yyyy-MM-dd\"")]
-        public string? DateFormat { get; set; } = "yyyy-MM-dd";
-        
-        [Parameter]
-        [AIParameter("Number format for numeric conversion", Example = "\"F2\"")]
-        public string? NumberFormat { get; set; }
-        
-        [Parameter]
-        [AIParameter("Culture for formatting conversions")]
-        public CultureInfo? Culture { get; set; }
         
         #endregion
         
-        #region Numeric-Specific Parameters
+        #region Numeric Parameters
         
         [Parameter]
-        [AIParameter("Minimum value for numeric inputs")]
+        [AIParameter("Minimum value for numeric inputs", Example = "0")]
         public decimal? Min { get; set; }
         
         [Parameter]
-        [AIParameter("Maximum value for numeric inputs")]
+        [AIParameter("Maximum value for numeric inputs", Example = "100")]
         public decimal? Max { get; set; }
         
         [Parameter]
-        [AIParameter("Step value for numeric inputs")]
+        [AIParameter("Step value for numeric inputs", Example = "0.01")]
         public decimal? Step { get; set; }
         
-        #endregion
-        
-        #region DateTime-Specific Parameters
-        
         [Parameter]
-        [AIParameter("Minimum date for DateTime inputs")]
-        public DateTime? MinDate { get; set; }
-        
-        [Parameter]
-        [AIParameter("Maximum date for DateTime inputs")]
-        public DateTime? MaxDate { get; set; }
-        
-        [Parameter]
-        [AIParameter("Show time picker for DateTime inputs")]
-        public bool ShowTime { get; set; }
-        
-        [Parameter]
-        [AIParameter("Use 24-hour format for time display")]
-        public bool Use24HourFormat { get; set; } = true;
+        [AIParameter("Number format for display", Example = "\"C2\" or \"P2\"")]
+        public string? NumberFormat { get; set; }
         
         #endregion
         
-        protected override void BuildRenderTree(RenderTreeBuilder builder)
-        {
-            var detectedType = DetectInputType();
-            
-            switch (detectedType)
-            {
-                case FieldType.Text:
-                case FieldType.Email:
-                case FieldType.Password:
-                case FieldType.Tel:
-                case FieldType.Url:
-                case FieldType.Search:
-                    RenderStringInput(builder, detectedType);
-                    break;
-                    
-                case FieldType.Number:
-                    RenderNumericInput(builder);
-                    break;
-                    
-                case FieldType.Date:
-                case FieldType.DateTime:
-                case FieldType.Time:
-                    RenderDateTimeInput(builder, detectedType);
-                    break;
-                    
-                case FieldType.Custom:
-                    RenderCustomInput(builder);
-                    break;
-                    
-                default:
-                    RenderStringInput(builder, FieldType.Text);
-                    break;
-            }
-        }
+        #region DateTime Parameters
         
-        private FieldType DetectInputType()
+        [Parameter]
+        [AIParameter("Date format for display", Example = "\"yyyy-MM-dd\"")]
+        public string? DateFormat { get; set; }
+        
+        [Parameter]
+        [AIParameter("Show time picker for date inputs")]
+        public bool ShowTime { get; set; } = false;
+        
+        #endregion
+        
+        #region Inherited Parameters from RInputBase
+        
+        [Parameter] public string? Label { get; set; }
+        [Parameter] public string? Placeholder { get; set; }
+        [Parameter] public string? HelpText { get; set; }
+        [Parameter] public string? FieldName { get; set; }
+        [Parameter] public bool Required { get; set; }
+        [Parameter] public bool Disabled { get; set; }
+        [Parameter] public bool ReadOnly { get; set; }
+        [Parameter] public bool Loading { get; set; }
+        [Parameter] public TextInputVariant Variant { get; set; } = TextInputVariant.Default;
+        [Parameter] public TextInputSize Size { get; set; } = TextInputSize.Medium;
+        [Parameter] public ComponentDensity Density { get; set; } = ComponentDensity.Normal;
+        [Parameter] public string? StartIcon { get; set; }
+        [Parameter] public string? EndIcon { get; set; }
+        [Parameter] public string? Class { get; set; }
+        [Parameter] public string? Style { get; set; }
+        [Parameter] public bool HasError { get; set; }
+        [Parameter] public string? ErrorMessage { get; set; }
+        [Parameter] public int? MaxLength { get; set; }
+        [Parameter] public EventCallback<FocusEventArgs> OnFocus { get; set; }
+        [Parameter] public EventCallback<FocusEventArgs> OnBlur { get; set; }
+        [Parameter] public EventCallback<KeyboardEventArgs> OnKeyPress { get; set; }
+        [Parameter] public EventCallback<KeyboardEventArgs> OnKeyDown { get; set; }
+        [Parameter] public EventCallback<MouseEventArgs> OnStartIconClick { get; set; }
+        [Parameter] public EventCallback<MouseEventArgs> OnEndIconClick { get; set; }
+        
+        #endregion
+        
+        #region Type Detection
+        
+        /// <summary>
+        /// Detect the appropriate field type based on value and parameters
+        /// </summary>
+        private FieldType DetectFieldType()
         {
-            // Explicit type override
+            // Use explicit type if provided
             if (InputType.HasValue)
                 return InputType.Value;
-                
-            // Auto-detect from value type
+            
+            // Detect from value type
             if (Value != null)
             {
-                var valueType = Value.GetType();
-                
-                // Handle nullable types
-                if (valueType.IsGenericType && valueType.GetGenericTypeDefinition() == typeof(Nullable<>))
+                return Value switch
                 {
-                    valueType = Nullable.GetUnderlyingType(valueType) ?? valueType;
-                }
-                
-                return valueType switch
-                {
-                    Type t when t == typeof(string) => DetectStringType((string)Value),
-                    Type t when t == typeof(int) || t == typeof(long) || t == typeof(short) || t == typeof(byte) => FieldType.Number,
-                    Type t when t == typeof(decimal) || t == typeof(double) || t == typeof(float) => FieldType.Number,
-                    Type t when t == typeof(DateTime) => ShowTime ? FieldType.DateTime : FieldType.Date,
-                    Type t when t == typeof(TimeSpan) => FieldType.Time,
-                    Type t when t == typeof(TimeRange) => FieldType.Custom,
+                    DateTime => FieldType.DateTime,
+                    DateTimeOffset => FieldType.DateTime,
+                    TimeRange => FieldType.TimeRange,
+                    int => FieldType.Number,
+                    long => FieldType.Number,
+                    decimal => FieldType.Number,
+                    double => FieldType.Number,
+                    float => FieldType.Number,
+                    bool => FieldType.Boolean,
+                    string str when IsEmailFormat(str) => FieldType.Email,
+                    string str when IsUrlFormat(str) => FieldType.Url,
+                    string str when IsTelFormat(str) => FieldType.Tel,
                     _ => FieldType.Text
                 };
             }
             
-            // Default to text for null values
+            // Detect from label hints
+            if (!string.IsNullOrEmpty(Label))
+            {
+                var labelLower = Label.ToLower();
+                if (labelLower.Contains("email")) return FieldType.Email;
+                if (labelLower.Contains("password")) return FieldType.Password;
+                if (labelLower.Contains("phone") || labelLower.Contains("tel")) return FieldType.Tel;
+                if (labelLower.Contains("url") || labelLower.Contains("website")) return FieldType.Url;
+                if (labelLower.Contains("search")) return FieldType.Search;
+                if (labelLower.Contains("date") || labelLower.Contains("time")) return FieldType.DateTime;
+                if (labelLower.Contains("number") || labelLower.Contains("amount") || labelLower.Contains("price")) return FieldType.Number;
+            }
+            
             return FieldType.Text;
         }
         
-        private FieldType DetectStringType(string value)
+        private bool IsEmailFormat(string str) => str.Contains("@") && str.Contains(".");
+        private bool IsUrlFormat(string str) => str.StartsWith("http://") || str.StartsWith("https://");
+        private bool IsTelFormat(string str) => str.All(c => char.IsDigit(c) || c == '-' || c == '(' || c == ')' || c == ' ' || c == '+');
+        
+        #endregion
+        
+        #region Rendering
+        
+        protected override void BuildRenderTree(RenderTreeBuilder builder)
         {
-            if (string.IsNullOrEmpty(value))
-                return FieldType.Text;
-                
-            // Email detection
-            if (value.Contains('@') && value.Contains('.'))
-                return FieldType.Email;
-                
-            // URL detection
-            if (value.StartsWith("http://") || value.StartsWith("https://"))
-                return FieldType.Url;
-                
-            // Phone number detection (basic)
-            if (value.Replace(" ", "").Replace("-", "").Replace("(", "").Replace(")", "").All(char.IsDigit))
-                return FieldType.Tel;
-                
-            // Date detection
-            if (DateTime.TryParse(value, out _))
-                return FieldType.Date;
-                
-            // Number detection
-            if (decimal.TryParse(value, out _))
-                return FieldType.Number;
-                
-            return FieldType.Text;
+            var fieldType = DetectFieldType();
+            
+            switch (fieldType)
+            {
+                case FieldType.Number:
+                    RenderNumericInput(builder);
+                    break;
+                case FieldType.DateTime:
+                    RenderDateTimeInput(builder);
+                    break;
+                case FieldType.TimeRange:
+                    RenderTimeRangeInput(builder);
+                    break;
+                case FieldType.Boolean:
+                    RenderBooleanInput(builder);
+                    break;
+                default:
+                    RenderTextInput(builder, fieldType);
+                    break;
+            }
         }
         
-        private void RenderStringInput(RenderTreeBuilder builder, FieldType fieldType)
+        private void RenderTextInput(RenderTreeBuilder builder, FieldType fieldType)
         {
             builder.OpenComponent<RTextInput>(0);
             
-            // Forward all base parameters
-            ForwardBaseParameters(builder);
-            
-            // String-specific parameters
+            // Value binding
             builder.AddAttribute(1, "Value", ConvertToString(Value));
-            builder.AddAttribute(2, "ValueChanged", EventCallback.Factory.Create<string>(this, HandleStringValueChanged));
-            builder.AddAttribute(3, "Type", fieldType);
+            builder.AddAttribute(2, "ValueChanged", EventCallback.Factory.Create<string>(this, OnTextValueChanged));
             
-            if (MaxLength.HasValue)
-                builder.AddAttribute(4, "maxlength", MaxLength.Value);
-                
+            // Type and validation
+            builder.AddAttribute(3, "Type", fieldType);
+            if (Min.HasValue) builder.AddAttribute(4, "Min", Min.Value);
+            if (Max.HasValue) builder.AddAttribute(5, "Max", Max.Value);
+            if (Step.HasValue) builder.AddAttribute(6, "Step", Step.Value);
+            
+            // Add all inherited parameters
+            AddInheritedParameters(builder, 10);
+            
             builder.CloseComponent();
         }
         
@@ -207,269 +203,240 @@ namespace RR.Blazor.Components.Form
         {
             builder.OpenComponent<RTextInput>(0);
             
-            // Forward all base parameters
-            ForwardBaseParameters(builder);
-            
-            // Numeric-specific parameters
+            // Value binding with numeric conversion
             builder.AddAttribute(1, "Value", ConvertToString(Value));
-            builder.AddAttribute(2, "ValueChanged", EventCallback.Factory.Create<string>(this, HandleNumericValueChanged));
+            builder.AddAttribute(2, "ValueChanged", EventCallback.Factory.Create<string>(this, OnNumericValueChanged));
+            
+            // Numeric parameters
             builder.AddAttribute(3, "Type", FieldType.Number);
+            if (Min.HasValue) builder.AddAttribute(4, "Min", Min.Value);
+            if (Max.HasValue) builder.AddAttribute(5, "Max", Max.Value);
+            if (Step.HasValue) builder.AddAttribute(6, "Step", Step.Value);
             
-            if (Min.HasValue)
-                builder.AddAttribute(4, "Min", Min.Value);
-            if (Max.HasValue)
-                builder.AddAttribute(5, "Max", Max.Value);
-            if (Step.HasValue)
-                builder.AddAttribute(6, "Step", Step.Value);
-                
+            // Add all inherited parameters
+            AddInheritedParameters(builder, 10);
+            
             builder.CloseComponent();
         }
         
-        private void RenderDateTimeInput(RenderTreeBuilder builder, FieldType fieldType)
+        private void RenderDateTimeInput(RenderTreeBuilder builder)
         {
-            builder.OpenComponent<RDatePicker>(0);
-            
-            // Forward all base parameters
-            ForwardBaseParameters(builder);
-            
-            // DateTime-specific parameters
-            builder.AddAttribute(1, "Value", ConvertToDateTime(Value));
-            builder.AddAttribute(2, "ValueChanged", EventCallback.Factory.Create<DateTime?>(this, HandleDateTimeValueChanged));
-            builder.AddAttribute(3, "ShowTime", ShowTime || fieldType == FieldType.DateTime);
-            builder.AddAttribute(4, "Use24HourFormat", Use24HourFormat);
-            
-            if (MinDate.HasValue)
-                builder.AddAttribute(5, "MinDate", MinDate.Value);
-            if (MaxDate.HasValue)
-                builder.AddAttribute(6, "MaxDate", MaxDate.Value);
-            if (!string.IsNullOrEmpty(DateFormat))
-                builder.AddAttribute(7, "Format", DateFormat);
-                
-            builder.CloseComponent();
-        }
-        
-        private void RenderCustomInput(RenderTreeBuilder builder)
-        {
-            // Handle TimeRange and other custom types
-            if (Value is TimeRange timeRange)
-            {
-                RenderTimeRangeInput(builder, timeRange);
-            }
-            else
-            {
-                // Fallback to string input for unknown custom types
-                RenderStringInput(builder, FieldType.Text);
-            }
-        }
-        
-        private void RenderTimeRangeInput(RenderTreeBuilder builder, TimeRange timeRange)
-        {
-            // For now, render as text input with time range format
             builder.OpenComponent<RTextInput>(0);
             
-            ForwardBaseParameters(builder);
+            // Value binding with date conversion
+            builder.AddAttribute(1, "Value", ConvertDateTimeToString(Value));
+            builder.AddAttribute(2, "ValueChanged", EventCallback.Factory.Create<string>(this, OnDateTimeValueChanged));
             
-            builder.AddAttribute(1, "Value", timeRange.ToTimeString());
-            builder.AddAttribute(2, "ValueChanged", EventCallback.Factory.Create<string>(this, HandleTimeRangeValueChanged));
+            // Date parameters
+            builder.AddAttribute(3, "Type", ShowTime ? FieldType.DateTimeLocal : FieldType.Date);
+            
+            // Add all inherited parameters
+            AddInheritedParameters(builder, 10);
+            
+            builder.CloseComponent();
+        }
+        
+        private void RenderTimeRangeInput(RenderTreeBuilder builder)
+        {
+            builder.OpenComponent<RTextInput>(0);
+            
+            // Value binding with time range conversion
+            builder.AddAttribute(1, "Value", ConvertTimeRangeToString(Value));
+            builder.AddAttribute(2, "ValueChanged", EventCallback.Factory.Create<string>(this, OnTimeRangeValueChanged));
+            
+            // Time range parameters
             builder.AddAttribute(3, "Type", FieldType.Text);
             builder.AddAttribute(4, "Placeholder", Placeholder ?? "HH:mm-HH:mm");
             
+            // Add all inherited parameters
+            AddInheritedParameters(builder, 10);
+            
             builder.CloseComponent();
         }
         
-        private void ForwardBaseParameters(RenderTreeBuilder builder)
+        private void RenderBooleanInput(RenderTreeBuilder builder)
         {
-            var sequence = 100;
+            builder.OpenComponent<RCheckbox>(0);
             
-            if (!string.IsNullOrEmpty(Label))
-                builder.AddAttribute(sequence++, "Label", Label);
-            if (!string.IsNullOrEmpty(Placeholder))
-                builder.AddAttribute(sequence++, "Placeholder", Placeholder);
-            if (!string.IsNullOrEmpty(HelpText))
-                builder.AddAttribute(sequence++, "HelpText", HelpText);
-            if (!string.IsNullOrEmpty(FieldName))
-                builder.AddAttribute(sequence++, "FieldName", FieldName);
-            if (Required)
-                builder.AddAttribute(sequence++, "Required", Required);
-            if (Disabled)
-                builder.AddAttribute(sequence++, "Disabled", Disabled);
-            if (ReadOnly)
-                builder.AddAttribute(sequence++, "ReadOnly", ReadOnly);
-            if (Loading)
-                builder.AddAttribute(sequence++, "Loading", Loading);
-            if (HasError)
-                builder.AddAttribute(sequence++, "HasError", HasError);
-            if (!string.IsNullOrEmpty(ErrorMessage))
-                builder.AddAttribute(sequence++, "ErrorMessage", ErrorMessage);
-            if (!string.IsNullOrEmpty(StartIcon))
-                builder.AddAttribute(sequence++, "StartIcon", StartIcon);
-            if (!string.IsNullOrEmpty(EndIcon))
-                builder.AddAttribute(sequence++, "EndIcon", EndIcon);
-            if (Variant != TextInputVariant.Default)
-                builder.AddAttribute(sequence++, "Variant", Variant);
-            if (Size != TextInputSize.Medium)
-                builder.AddAttribute(sequence++, "Size", Size);
-            if (Density != ComponentDensity.Normal)
-                builder.AddAttribute(sequence++, "Density", Density);
-            if (!string.IsNullOrEmpty(Class))
-                builder.AddAttribute(sequence++, "Class", Class);
-            if (!string.IsNullOrEmpty(Style))
-                builder.AddAttribute(sequence++, "Style", Style);
-                
-            // Forward events
-            if (OnFocus.HasDelegate)
-                builder.AddAttribute(sequence++, "OnFocus", OnFocus);
-            if (OnBlur.HasDelegate)
-                builder.AddAttribute(sequence++, "OnBlur", OnBlur);
-            if (OnKeyPress.HasDelegate)
-                builder.AddAttribute(sequence++, "OnKeyPress", OnKeyPress);
-            if (OnKeyDown.HasDelegate)
-                builder.AddAttribute(sequence++, "OnKeyDown", OnKeyDown);
-            if (OnStartIconClick.HasDelegate)
-                builder.AddAttribute(sequence++, "OnStartIconClick", OnStartIconClick);
-            if (OnEndIconClick.HasDelegate)
-                builder.AddAttribute(sequence++, "OnEndIconClick", OnEndIconClick);
+            // Value binding
+            builder.AddAttribute(1, "Checked", ConvertToBool(Value));
+            builder.AddAttribute(2, "CheckedChanged", EventCallback.Factory.Create<bool>(this, OnBooleanValueChanged));
+            
+            // Add common parameters
+            if (!string.IsNullOrEmpty(Label)) builder.AddAttribute(3, "Label", Label);
+            if (Disabled) builder.AddAttribute(4, "Disabled", Disabled);
+            if (Required) builder.AddAttribute(5, "Required", Required);
+            if (HasError) builder.AddAttribute(6, "HasError", HasError);
+            if (!string.IsNullOrEmpty(ErrorMessage)) builder.AddAttribute(7, "ErrorMessage", ErrorMessage);
+            
+            builder.CloseComponent();
         }
         
-        #region Value Conversion Methods
-        
-        private string ConvertToString(object? value)
+        private void AddInheritedParameters(RenderTreeBuilder builder, int startSequence)
         {
-            if (value == null)
-                return "";
-                
-            var culture = Culture ?? CultureInfo.CurrentCulture;
+            var seq = startSequence;
+            
+            if (!string.IsNullOrEmpty(Label)) builder.AddAttribute(seq++, "Label", Label);
+            if (!string.IsNullOrEmpty(Placeholder)) builder.AddAttribute(seq++, "Placeholder", Placeholder);
+            if (!string.IsNullOrEmpty(HelpText)) builder.AddAttribute(seq++, "HelpText", HelpText);
+            if (!string.IsNullOrEmpty(FieldName)) builder.AddAttribute(seq++, "FieldName", FieldName);
+            if (Required) builder.AddAttribute(seq++, "Required", Required);
+            if (Disabled) builder.AddAttribute(seq++, "Disabled", Disabled);
+            if (ReadOnly) builder.AddAttribute(seq++, "ReadOnly", ReadOnly);
+            if (Loading) builder.AddAttribute(seq++, "Loading", Loading);
+            if (Variant != TextInputVariant.Default) builder.AddAttribute(seq++, "Variant", Variant);
+            if (Size != TextInputSize.Medium) builder.AddAttribute(seq++, "Size", Size);
+            if (Density != ComponentDensity.Normal) builder.AddAttribute(seq++, "Density", Density);
+            if (!string.IsNullOrEmpty(StartIcon)) builder.AddAttribute(seq++, "StartIcon", StartIcon);
+            if (!string.IsNullOrEmpty(EndIcon)) builder.AddAttribute(seq++, "EndIcon", EndIcon);
+            if (!string.IsNullOrEmpty(Class)) builder.AddAttribute(seq++, "Class", Class);
+            if (!string.IsNullOrEmpty(Style)) builder.AddAttribute(seq++, "Style", Style);
+            if (HasError) builder.AddAttribute(seq++, "HasError", HasError);
+            if (!string.IsNullOrEmpty(ErrorMessage)) builder.AddAttribute(seq++, "ErrorMessage", ErrorMessage);
+            if (MaxLength.HasValue) builder.AddAttribute(seq++, "MaxLength", MaxLength.Value);
+            if (OnFocus.HasDelegate) builder.AddAttribute(seq++, "OnFocus", OnFocus);
+            if (OnBlur.HasDelegate) builder.AddAttribute(seq++, "OnBlur", OnBlur);
+            if (OnKeyPress.HasDelegate) builder.AddAttribute(seq++, "OnKeyPress", OnKeyPress);
+            if (OnKeyDown.HasDelegate) builder.AddAttribute(seq++, "OnKeyDown", OnKeyDown);
+            if (OnStartIconClick.HasDelegate) builder.AddAttribute(seq++, "OnStartIconClick", OnStartIconClick);
+            if (OnEndIconClick.HasDelegate) builder.AddAttribute(seq++, "OnEndIconClick", OnEndIconClick);
+        }
+        
+        #endregion
+        
+        #region Value Conversion
+        
+        private string? ConvertToString(object? value)
+        {
+            if (value == null) return null;
             
             return value switch
             {
-                string s => s,
-                DateTime dt => dt.ToString(DateFormat ?? "yyyy-MM-dd", culture),
-                decimal d => d.ToString(NumberFormat ?? "F2", culture),
-                double d => d.ToString(NumberFormat ?? "F2", culture),
-                float f => f.ToString(NumberFormat ?? "F2", culture),
-                int i => i.ToString(culture),
-                long l => l.ToString(culture),
-                TimeRange tr => tr.ToTimeString(),
-                _ => value.ToString() ?? ""
+                string str => str,
+                DateTime dt => ConvertDateTimeToString(dt),
+                DateTimeOffset dto => ConvertDateTimeToString(dto.DateTime),
+                TimeRange tr => ConvertTimeRangeToString(tr),
+                decimal dec => NumberFormat != null ? dec.ToString(NumberFormat) : dec.ToString(),
+                double dbl => NumberFormat != null ? dbl.ToString(NumberFormat) : dbl.ToString(),
+                float flt => NumberFormat != null ? flt.ToString(NumberFormat) : flt.ToString(),
+                bool bl => bl.ToString(),
+                _ => value.ToString()
             };
         }
         
-        private DateTime? ConvertToDateTime(object? value)
+        private string? ConvertDateTimeToString(object? value)
         {
-            if (value == null)
-                return null;
-                
+            if (value == null) return null;
+            
             return value switch
             {
-                DateTime dt => dt,
-                string s when DateTime.TryParse(s, out var parsed) => parsed,
-                long unix => DateTimeOffset.FromUnixTimeSeconds(unix).DateTime,
-                _ => null
+                DateTime dt => DateFormat != null ? dt.ToString(DateFormat) : 
+                              ShowTime ? dt.ToString("yyyy-MM-ddTHH:mm") : dt.ToString("yyyy-MM-dd"),
+                DateTimeOffset dto => DateFormat != null ? dto.ToString(DateFormat) : 
+                                     ShowTime ? dto.ToString("yyyy-MM-ddTHH:mm") : dto.ToString("yyyy-MM-dd"),
+                _ => value.ToString()
             };
         }
         
-        private object? ConvertFromString(string value, Type targetType)
+        private string? ConvertTimeRangeToString(object? value)
         {
-            if (string.IsNullOrEmpty(value))
-                return null;
-                
-            var culture = Culture ?? CultureInfo.CurrentCulture;
-            
-            try
+            if (value is TimeRange tr)
             {
-                if (targetType == typeof(string))
-                    return value;
-                    
-                if (targetType == typeof(int) || targetType == typeof(int?))
-                    return int.Parse(value, culture);
-                    
-                if (targetType == typeof(long) || targetType == typeof(long?))
-                    return long.Parse(value, culture);
-                    
-                if (targetType == typeof(decimal) || targetType == typeof(decimal?))
-                    return decimal.Parse(value, culture);
-                    
-                if (targetType == typeof(double) || targetType == typeof(double?))
-                    return double.Parse(value, culture);
-                    
-                if (targetType == typeof(float) || targetType == typeof(float?))
-                    return float.Parse(value, culture);
-                    
-                if (targetType == typeof(DateTime) || targetType == typeof(DateTime?))
-                    return DateTime.Parse(value, culture);
-                    
-                if (targetType == typeof(TimeRange))
-                {
-                    if (TimeRange.TryParse(value, out var timeRange))
-                        return timeRange;
-                }
-                
-                return value;
+                return tr.ToString();
             }
-            catch
+            return value?.ToString();
+        }
+        
+        private bool ConvertToBool(object? value)
+        {
+            return value switch
             {
-                return value;
-            }
+                bool b => b,
+                string str => bool.TryParse(str, out var result) && result,
+                _ => false
+            };
         }
         
         #endregion
         
         #region Event Handlers
         
-        private async Task HandleStringValueChanged(string newValue)
+        private async Task OnTextValueChanged(string? newValue)
         {
-            var convertedValue = AutoConvert && Value != null 
-                ? ConvertFromString(newValue, Value.GetType()) 
-                : newValue;
-                
-            Value = convertedValue;
-            await ValueChanged.InvokeAsync(convertedValue);
+            Value = newValue;
+            await ValueChanged.InvokeAsync(Value);
         }
         
-        private async Task HandleNumericValueChanged(string newValue)
+        private async Task OnNumericValueChanged(string? newValue)
         {
-            var targetType = Value?.GetType() ?? typeof(decimal);
-            var convertedValue = ConvertFromString(newValue, targetType);
-            
-            Value = convertedValue;
-            await ValueChanged.InvokeAsync(convertedValue);
-        }
-        
-        private async Task HandleDateTimeValueChanged(DateTime? newValue)
-        {
-            object? convertedValue = newValue;
-            
-            if (AutoConvert && Value != null)
+            if (string.IsNullOrEmpty(newValue))
             {
-                var originalType = Value.GetType();
-                if (originalType == typeof(long) || originalType == typeof(long?))
-                {
-                    convertedValue = newValue.HasValue 
-                        ? ((DateTimeOffset)newValue.Value).ToUnixTimeSeconds() 
-                        : (long?)null;
-                }
-                else if (originalType == typeof(string))
-                {
-                    convertedValue = newValue?.ToString(DateFormat ?? "yyyy-MM-dd");
-                }
+                Value = null;
             }
-            
-            Value = convertedValue;
-            await ValueChanged.InvokeAsync(convertedValue);
-        }
-        
-        private async Task HandleTimeRangeValueChanged(string newValue)
-        {
-            if (TimeRange.TryParse(newValue, out var timeRange))
+            else if (decimal.TryParse(newValue, out var decimalValue))
             {
-                Value = timeRange;
-                await ValueChanged.InvokeAsync(timeRange);
+                // Convert to original type if possible
+                Value = Value switch
+                {
+                    int => (int)decimalValue,
+                    long => (long)decimalValue,
+                    double => (double)decimalValue,
+                    float => (float)decimalValue,
+                    _ => decimalValue
+                };
             }
             else
             {
-                Value = newValue;
-                await ValueChanged.InvokeAsync(newValue);
+                Value = newValue; // Keep as string if conversion fails
             }
+            
+            await ValueChanged.InvokeAsync(Value);
+        }
+        
+        private async Task OnDateTimeValueChanged(string? newValue)
+        {
+            if (string.IsNullOrEmpty(newValue))
+            {
+                Value = null;
+            }
+            else if (DateTime.TryParse(newValue, out var dateValue))
+            {
+                Value = Value switch
+                {
+                    DateTimeOffset => new DateTimeOffset(dateValue),
+                    _ => dateValue
+                };
+            }
+            else
+            {
+                Value = newValue; // Keep as string if conversion fails
+            }
+            
+            await ValueChanged.InvokeAsync(Value);
+        }
+        
+        private async Task OnTimeRangeValueChanged(string? newValue)
+        {
+            if (string.IsNullOrEmpty(newValue))
+            {
+                Value = null;
+            }
+            else if (TimeRange.TryParse(newValue, out var timeRange))
+            {
+                Value = timeRange;
+            }
+            else
+            {
+                Value = newValue; // Keep as string if conversion fails
+            }
+            
+            await ValueChanged.InvokeAsync(Value);
+        }
+        
+        private async Task OnBooleanValueChanged(bool newValue)
+        {
+            Value = newValue;
+            await ValueChanged.InvokeAsync(Value);
         }
         
         #endregion

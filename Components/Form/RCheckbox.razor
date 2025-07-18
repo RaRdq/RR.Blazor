@@ -17,7 +17,7 @@
 
 @using RR.Blazor.Enums
 @using RR.Blazor.Models
-@inherits RInputBase
+@inherits ComponentBase
 
 <div class="@GetContainerClasses()">
     <div class="relative d-flex items-center justify-center">
@@ -28,7 +28,7 @@
                @bind:after="OnCheckedChanged"
                disabled="@Disabled"
                required="@Required"
-               data-field="@GetEffectiveFieldName()"
+               data-field="@Name"
                class="@GetInputClasses()" />
         
         <div class="@GetCheckboxClasses()">
@@ -71,11 +71,11 @@
     }
 </div>
 
-@if (IsInErrorState && !string.IsNullOrEmpty(GetEffectiveErrorMessage()))
+@if (HasError && !string.IsNullOrEmpty(ErrorMessage))
 {
     <div class="@GetValidationClasses()">
         <i class="material-symbols-rounded text-error mr-1">error</i>
-        @GetEffectiveErrorMessage()
+        @ErrorMessage
     </div>
 }
 
@@ -112,31 +112,33 @@
     
     /// <summary>Callback when checkbox is clicked</summary>
     [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
+    
+    /// <summary>Whether the checkbox is disabled</summary>
+    [Parameter] public bool Disabled { get; set; }
+    
+    /// <summary>Whether the checkbox is required</summary>
+    [Parameter] public bool Required { get; set; }
+    
+    /// <summary>Whether the checkbox has an error</summary>
+    [Parameter] public bool HasError { get; set; }
+    
+    /// <summary>Error message to display</summary>
+    [Parameter] public string? ErrorMessage { get; set; }
+    
+    /// <summary>Additional CSS classes</summary>
+    [Parameter] public string? Class { get; set; }
+    
+    /// <summary>Component density</summary>
+    [Parameter] public ComponentDensity Density { get; set; } = ComponentDensity.Normal;
 
     private async Task OnCheckedChanged()
     {
         await CheckedChanged.InvokeAsync(Checked);
         await OnClick.InvokeAsync();
-        await HandleUserInteraction(true);
+        StateHasChanged();
     }
     
-    protected override string GetEffectiveFieldName()
-    {
-        if (!string.IsNullOrEmpty(FieldName))
-            return FieldName;
-            
-        // Auto-derive field name from Text by removing spaces and making camelCase
-        if (!string.IsNullOrEmpty(Text))
-        {
-            var fieldName = Text.Replace(" ", "").Replace(":", "");
-            if (!string.IsNullOrEmpty(fieldName))
-            {
-                return char.ToLowerInvariant(fieldName[0]) + fieldName[1..];
-            }
-        }
-        
-        return "";
-    }
+    // Field name functionality removed - use explicit naming if needed
 
     private string GetContainerClasses()
     {
@@ -148,8 +150,7 @@
         if (Disabled)
             classes.Add("opacity-50");
             
-        if (!string.IsNullOrEmpty(ValidationMessage))
-            classes.Add("border-error");
+        // Validation styling would be handled by form validation context
             
         if (!string.IsNullOrEmpty(Class))
             classes.Add(Class);

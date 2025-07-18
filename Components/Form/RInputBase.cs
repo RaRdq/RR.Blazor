@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 using RR.Blazor.Attributes;
 using RR.Blazor.Enums;
 
@@ -7,7 +8,7 @@ namespace RR.Blazor.Components.Form
     /// <summary>
     /// Abstract base class for all RInput components providing shared parameters and functionality
     /// </summary>
-    public abstract class RInputBase : RComponentBase
+    public abstract class RInputBase : ComponentBase
     {
         #region Core Parameters
         
@@ -66,6 +67,14 @@ namespace RR.Blazor.Components.Form
         [Parameter]
         [AIParameter("End icon name", Example = "\"visibility\"")]
         public string? EndIcon { get; set; }
+        
+        [Parameter]
+        [AIParameter("Additional CSS classes to apply")]
+        public string? Class { get; set; }
+        
+        [Parameter]
+        [AIParameter("Additional CSS styles to apply")]
+        public string? Style { get; set; }
         
         #endregion
         
