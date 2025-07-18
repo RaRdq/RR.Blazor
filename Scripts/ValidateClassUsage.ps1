@@ -270,13 +270,7 @@ foreach ($file in $razorFiles) {
     
     # Check for deprecated utility patterns
     $deprecatedPatterns = @{
-        '\bp-(\d+)\b' = 'Use pa-$1 for padding-all'
-        '\bpx-(\d+)\b' = 'Use pl-$1 pr-$1 for explicit padding'
-        '\bpy-(\d+)\b' = 'Use pt-$1 pb-$1 for explicit padding'
-        '\bm-(\d+)\b' = 'Use ma-$1 for margin-all'
-        '\bmx-(\d+)\b' = 'Use ml-$1 mr-$1 for explicit margin'
-        '\bmy-(\d+)\b' = 'Use mt-$1 mb-$1 for explicit margin'
-        '\belevation-(\d+)\b' = 'Use shadow-$1 (renamed per SOW)'
+        '\belevation-(\d+)\b' = 'Use shadow-$1'
     }
     
     foreach ($pattern in $deprecatedPatterns.Keys) {

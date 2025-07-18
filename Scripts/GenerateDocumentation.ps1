@@ -125,6 +125,64 @@ function Auto-DiscoverPatterns {
     $patterns = @{}
     $standalone = @{}
     
+    # ===============================
+    # VALIDATION RULES TO PREVENT BAD PATTERNS
+    # ===============================
+    function Test-ValidPattern {
+        param([string]$Prefix, [string[]]$Values)
+        
+        # Rule 1: Prevent double-prefixed patterns (e.g., border-warning-border)
+        $doublePrefix = $Values | Where-Object { $_ -eq $Prefix }
+        if ($doublePrefix) {
+            Write-Host "    ⚠️  Skipped redundant pattern: ${Prefix}-[$($Values -join ', ')] (double prefix detected)" -ForegroundColor Yellow
+            return $false
+        }
+        
+        # Rule 2: If only one value, don't use bracket notation
+        if ($Values.Count -eq 1) {
+            Write-Host "    ✅ Simplified single-value pattern: ${Prefix} -> ${Prefix}-$($Values[0])" -ForegroundColor Green
+            return @{ IsSingle = $true; Pattern = "$Prefix-$($Values[0])" }
+        }
+        
+        # Rule 3: Prevent patterns where suffix repeats prefix concept
+        $redundantSuffixes = $Values | Where-Object { 
+            $_ -match "^$($Prefix -replace '^border-', '')" -or
+            $_ -match "border$" -and $Prefix -match "^border-"
+        }
+        if ($redundantSuffixes) {
+            $filteredValues = $Values | Where-Object { $_ -notin $redundantSuffixes }
+            if ($filteredValues.Count -gt 0) {
+                Write-Host "    🔧 Filtered redundant suffixes from ${Prefix}: [$($redundantSuffixes -join ', ')] -> [$($filteredValues -join ', ')]" -ForegroundColor Cyan
+                return @{ IsFiltered = $true; Values = $filteredValues }
+            } else {
+                Write-Host "    ⚠️  Skipped completely redundant pattern: ${Prefix}-[$($Values -join ', ')]" -ForegroundColor Yellow
+                return $false
+            }
+        }
+        
+        # Rule 4: Consolidate related patterns (form vs form-modal)
+        $consolidationMap = @{
+            'form' = @('form-modal')
+            'border' = @('border-primary', 'border-success', 'border-warning', 'border-error', 'border-info')
+        }
+        
+        foreach ($base in $consolidationMap.Keys) {
+            if ($Prefix -eq $base) {
+                $relatedPatterns = $consolidationMap[$base]
+                foreach ($related in $relatedPatterns) {
+                    if ($patterns.ContainsKey($related)) {
+                        Write-Host "    🔗 Consolidating ${related} into ${base} pattern" -ForegroundColor Cyan
+                        $Values += $patterns[$related]
+                        $patterns.Remove($related)
+                    }
+                }
+                return @{ IsConsolidated = $true; Values = ($Values | Sort-Object -Unique) }
+            }
+        }
+        
+        return $true
+    }
+    
     $classNames = @($Classes.Keys)
     foreach ($className in $classNames) {
         # Handle fractional patterns first (e.g., gap-0-5, w-1-5, min-w-0-5)
@@ -181,12 +239,34 @@ function Auto-DiscoverPatterns {
         }
     }
     
-    # Convert to bracket notation
+    # Apply validation rules and convert to bracket notation
     $bracketPatterns = @{}
     $prefixes = @($patterns.Keys)
     foreach ($prefix in $prefixes) {
         $values = $patterns[$prefix] | Sort-Object -Unique
-        $bracketPatterns[$prefix] = "$prefix-[" + ($values -join ', ') + "]"
+        $validationResult = Test-ValidPattern -Prefix $prefix -Values $values
+        
+        if ($validationResult -eq $false) {
+            # Skip invalid patterns
+            continue
+        }
+        elseif ($validationResult.IsSingle) {
+            # Use direct pattern for single values
+            $bracketPatterns[$prefix] = $validationResult.Pattern
+        }
+        elseif ($validationResult.IsFiltered -or $validationResult.IsConsolidated) {
+            # Use filtered/consolidated values
+            $finalValues = $validationResult.Values | Sort-Object -Unique
+            if ($finalValues.Count -eq 1) {
+                $bracketPatterns[$prefix] = "$prefix-$($finalValues[0])"
+            } else {
+                $bracketPatterns[$prefix] = "$prefix-[" + ($finalValues -join ', ') + "]"
+            }
+        }
+        else {
+            # Standard bracket notation
+            $bracketPatterns[$prefix] = "$prefix-[" + ($values -join ', ') + "]"
+        }
     }
     
     # Add standalone classes
@@ -196,7 +276,7 @@ function Auto-DiscoverPatterns {
         $bracketPatterns[$category] = "[" + ($values -join ', ') + "]"
     }
     
-    Write-Host "  Auto-discovered $($bracketPatterns.Count) utility patterns" -ForegroundColor DarkGray
+    Write-Host "  Auto-discovered $($bracketPatterns.Count) validated utility patterns" -ForegroundColor DarkGray
     
     return $bracketPatterns
 }
@@ -248,13 +328,12 @@ $variableGroups = Auto-GroupVariables -Variables $extracted.variables
 # GENERATE STYLES DOCUMENTATION
 # ===============================
 $stylesDoc = [ordered]@{
-    "_ai_instructions" = @{
+    "ai_instructions" = @{
         "CRITICAL" = "Use bracket notation for extrapolation. pattern-[value1, value2] means pattern-value1, pattern-value2"
-        "EXTRACTION_METHOD" = "Fully generic extraction from compiled CSS - no hardcoded patterns"
         "NAVIGATION" = @{
-            "ai_instructions" = "Lines 1-15: Read AI instructions and bracket notation rules"
-            "utility_patterns" = "Lines 16-80: Auto-discovered utility patterns in bracket notation"
-            "css_variables" = "Lines 81+: Auto-grouped CSS custom properties"
+            "use_grep" = "Use grep to find specific classes: grep -E 'pattern-[a-zA-Z0-9_-]+' wwwroot/rr-ai-styles.json"
+            "instructions" = "Lines 1-14: Read AI instructions and bracket notation rules"
+            "utility_patterns" = "Lines 15-79: Auto-discovered utility patterns in bracket notation"
         }
         "BRACKET_NOTATION" = @{
             "FORMAT" = "prefix-[value1, value2, value3] means prefix-value1, prefix-value2, prefix-value3"
@@ -274,7 +353,6 @@ $stylesDoc = [ordered]@{
             "total_classes" = $extracted.classes.Count
             "total_variables" = $extracted.variables.Count
             "total_patterns" = $utilityPatterns.Count
-            "extraction_method" = "Generic CSS parsing"
         }
     }
     
