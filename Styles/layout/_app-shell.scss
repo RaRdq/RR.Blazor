@@ -1,26 +1,20 @@
 @use '../abstracts' as *;
 
-// ============================================================================
-// CORE APP SHELL LAYOUT - Single Source of Truth
-// ============================================================================
+// Core app shell layout
 
 // Layout-specific CSS custom properties
 :root {
-  --header-height: 3.5rem;
+  --header-height: 4rem;
+  --sidebar-width: 16rem;
   --sidebar-width-expanded: 16rem;
   --sidebar-width-collapsed: 4rem;
   --footer-height: 0;
   
-  // App shell performance variables
+  // App shell variables
   --app-shell-transition: all var(--duration-normal) var(--ease-out);
   --touch-target-min: 44px;
   --touch-target-lg: 48px;
-  --content-max-width: 1200px;
-  --content-padding: var(--space-6);
-  --content-padding-mobile: var(--space-4);
-  
-  // App shell uses semantic z-index from global scale
-  // See abstracts/_variables.scss for complete z-index system
+  // Content variables moved to abstracts/_content-architecture.scss to avoid duplication
   
   // Performance timing
   --shell-transition-fast: 150ms;
@@ -40,9 +34,17 @@
     container-name: app-shell;
   }
   
-  // Touch-friendly minimum targets (44px)
-  * {
+  // Touch-friendly minimum targets (44px) - only for interactive elements
+  button,
+  [role="button"],
+  .btn,
+  .button,
+  input[type="button"],
+  input[type="submit"],
+  input[type="reset"],
+  a.button {
     min-height: var(--touch-target-min, 44px);
+    min-width: var(--touch-target-min, 44px);
   }
   
   // Mobile-first responsive foundation
@@ -66,15 +68,18 @@
 
 // Layout extensions
 .layout {
-  @extend .app-shell !optional;
+  display: flex;
+  min-height: 100vh;
+  position: relative;
+  background: var(--color-background-primary);
 }
 
 .layout-main {
   flex: 1;
   overflow: auto;
   position: relative;
-  padding-top: 3.5rem;
-  min-height: calc(100vh - 3.5rem);
+  padding-top: var(--header-height);
+  min-height: calc(100vh - var(--header-height));
 }
 
 // App header specific styles
@@ -147,8 +152,8 @@
 // ADVANCED CONTENT LAYOUT PATTERNS
 // ============================================================================
 
-// Sticky content sections for complex layouts
-.content-sticky-header {
+// App-shell specific sticky header pattern
+.shell-sticky-header {
   position: sticky;
   top: var(--header-height);
   z-index: var(--z-sticky);
@@ -201,28 +206,38 @@
   }
 }
 
-// Split content layouts for dashboards
-.content-split {
+// App-shell enhanced split layout with sidebar integration
+.shell-split {
   display: grid;
-  grid-template-columns: 1fr 320px;
+  grid-template-columns: 1fr 1fr;
   gap: var(--space-6);
-  
-  &-reverse {
-    grid-template-columns: 320px 1fr;
-  }
   
   @include responsive-max(lg) {
     grid-template-columns: 1fr;
     gap: var(--space-4);
   }
+  
+  // App-shell specific enhancements
+  &-with-sidebar {
+    margin-left: calc(var(--sidebar-width) * -1);
+    padding-left: var(--sidebar-width);
+    
+    @include responsive-max(lg) {
+      margin-left: 0;
+      padding-left: 0;
+    }
+  }
 }
 
-// Masonry-style content grid
-.content-masonry {
+// App-shell enhanced masonry with header compensation
+.shell-masonry {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
   gap: var(--space-4);
-  align-items: start;
+  grid-auto-rows: masonry;
+  
+  // Account for app shell header
+  padding-top: var(--space-4);
   
   &-dense {
     grid-auto-flow: dense;

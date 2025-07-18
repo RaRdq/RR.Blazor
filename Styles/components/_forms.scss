@@ -1,495 +1,105 @@
 @use '../abstracts' as *;
 
-// ============================================
-// RFormField Styles - Utility-First with Extends
-// ============================================
 
-// Form container
-.form {
-  @extend %form-base;
+// Base foundation for all form components
+%component-foundation {
+  @extend %touch-target;
+  position: relative;
+  width: 100%;
+  transition: all var(--duration-normal) var(--ease-out);
   
-  // Density variants using extends
-  &.form-comfortable {
-    @extend %form-container-comfortable;
+  // Focus management
+  &:focus-within {
+    @include focus-ring();
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
   }
   
-  &.form-dense {
-    @extend %form-container-dense;
-  }
-  
-  &.form-ultra-dense {
-    @extend %form-container-ultra-dense;
-  }
-  
-  &.form-glass {
-    .form-field {
-      background: var(--glass-bg-light);
-      backdrop-filter: blur(var(--glass-blur-md));
-      
-      &:hover {
-        background: var(--glass-bg-medium);
-      }
-      
-      &:focus-within {
-        background: var(--glass-bg-heavy);
-        backdrop-filter: blur(var(--glass-blur-lg));
-      }
-    }
+  // Hover effects
+  &:hover:not(:focus-within) {
+    @include hover-lift();
   }
 }
 
-// Form field container
-.form-field {
-  @extend %form-group-base;
+// Input foundation for text inputs, textareas, selects
+%input-foundation {
+  @extend %input-base-style;
+  @extend %touch-target;
   
-  // Density variants using extends
-  &-comfortable {
-    @extend %form-field-comfortable;
-  }
+  // Base styling
+  border: var(--border-1) solid var(--color-border-medium);
+  border-radius: var(--radius-xl);
+  background: var(--color-background-elevated);
+  color: var(--color-text-primary);
+  font-size: var(--text-base);
+  font-weight: var(--font-medium);
+  line-height: 1.5;
+  padding: var(--space-4) var(--space-5);
+  min-height: 3.5rem;
+  width: 100%;
   
-  &-dense {
-    @extend %form-field-dense;
-  }
+  // Superior micro-interactions
+  transition: all var(--duration-normal) var(--ease-out),
+              box-shadow var(--duration-fast) var(--ease-out),
+              transform var(--duration-fast) var(--ease-out);
   
-  &-ultra-dense {
-    @extend %form-field-ultra-dense;
-  }
-  
-  // Floating label wrapper styles - Professional Material Design 3 implementation
-  &-wrapper {
-    position: relative;
-    display: flex;
-    align-items: center;
-    
-    &.form-field-floating-label {
-      position: relative;
-      
-      .form-field-input {
-        padding-top: var(--space-6); // 24px - space for floating label (improved)
-        padding-bottom: var(--space-3); // 12px - consistent with non-floating (improved)
-        
-        // Floating label specific placeholder handling
-        &::placeholder {
-          opacity: 0; // Hide placeholder until label floats
-          transition: opacity 300ms var(--ease-out);
-        }
-        
-        // Show placeholder when focused and label is floating
-        &:focus::placeholder {
-          opacity: 0.6;
-          transition-delay: 150ms;
-        }
-        
-        // Material Design 3 floating label positioning and animation
-        &:focus,
-        &:not(:placeholder-shown) {
-          ~ .form-field-label {
-            top: -0.75rem; // Position OUTSIDE input field border - float above border
-            left: var(--space-3);
-            transform: translateY(0) scale(0.75); // Scale down to 75%
-            color: var(--color-interactive-primary);
-            font-weight: var(--font-medium);
-            background: linear-gradient(to bottom, transparent 40%, var(--color-background-primary) 40%, var(--color-background-primary) 60%, transparent 60%);
-            padding: 0 var(--space-1);
-            z-index: 10; // Ensure label is above input border
-            border-radius: 0;
-          }
-        }
-        
-        // Also trigger floating when input has value attribute or is not empty
-        &[value]:not([value=""]) {
-          ~ .form-field-label {
-            top: -0.75rem;
-            left: var(--space-3);
-            transform: translateY(0) scale(0.75);
-            color: var(--color-text-primary);
-            font-weight: var(--font-medium);
-            background: var(--color-background-primary);
-            padding: 0 var(--space-1);
-            z-index: 10;
-            border-radius: var(--radius-sm);
-          }
-        }
-        
-        // Enhanced focus state with proper Material Design 3 colors
-        &:focus ~ .form-field-label {
-          color: var(--color-interactive-primary);
-        }
-        
-        // Error state floating label
-        &:invalid ~ .form-field-label {
-          color: var(--color-error);
-        }
-      }
-      
-      .form-field-label {
-        position: absolute;
-        left: var(--space-4); // Start inside input field
-        top: 50%;
-        transform: translateY(-50%) scale(1); // Start at full size
-        color: var(--color-text-secondary);
-        font-size: var(--text-base);
-        font-weight: var(--font-normal);
-        pointer-events: none;
-        transition: all 300ms var(--ease-out); // Smooth Material Design 3 transition
-        z-index: 10;
-        transform-origin: top left; // Scale from top-left corner
-        line-height: 1.2; // Consistent line height
-        white-space: nowrap; // Prevent text wrapping
-        max-width: calc(100% - var(--space-8)); // Prevent overflow
-        overflow: hidden;
-        text-overflow: ellipsis;
-        background: transparent; // No background by default
-        padding: 0; // No padding by default
-      }
-      
-      // Legacy JavaScript-managed classes for backwards compatibility
-      &.form-field-floating .form-field-label,
-      &.form-field-has-value .form-field-label {
-        top: -0.75rem;
-        transform: translateY(0) scale(0.75);
-        color: var(--color-text-primary);
-        font-weight: var(--font-medium);
-        background: var(--color-background-primary);
-        padding: 0 var(--space-1);
-        border-radius: var(--radius-sm);
-      }
-      
-      &.form-field-floating .form-field-label {
-        color: var(--color-interactive-primary);
-      }
-      
-      // Icon positioning adjustments for different field sizes
-      .form-field-input.form-field-input-with-start-icon {
-        ~ .form-field-label {
-          left: var(--space-12); // Match input padding for standard size
-        }
-        
-        &:focus ~ .form-field-label,
-        &:not(:placeholder-shown) ~ .form-field-label,
-        &[value]:not([value=""]) ~ .form-field-label {
-          left: var(--space-12); // Keep same left position when floating
-        }
-      }
-      
-      // Fix icon positioning for floating label fields
-      .form-field-icon {
-        // Position icons appropriately in floating label context
-        top: 50%;
-        transform: translateY(-50%);
-        z-index: 15; // Above floating label
-        
-        // Ensure start icons don't interfere with floating labels
-        &:first-child {
-          left: var(--space-3);
-        }
-        
-        // Ensure end icons don't interfere with floating labels  
-        &:last-child {
-          right: var(--space-3);
-        }
-      }
-      
-      // Size-specific adjustments - use RR.Blazor semantic variables
-      &[data-field-size="small"] {
-        .form-field-input {
-          padding-top: var(--space-4); // Adjust for smaller field
-          padding-bottom: var(--space-2);
-          min-height: 2.5rem;
-          
-          &.form-field-input-with-start-icon ~ .form-field-label {
-            left: var(--space-10);
-          }
-          
-          &:focus ~ .form-field-label,
-          &:not(:placeholder-shown) ~ .form-field-label,
-          &[value]:not([value=""]) ~ .form-field-label {
-            top: -0.625rem; // Adjust for smaller field - float above border
-          }
-        }
-        
-        .form-field-icon {
-          font-size: var(--text-sm);
-          
-          &:first-child {
-            left: var(--space-2-5); // Adjust for smaller field
-          }
-          
-          &:last-child {
-            right: var(--space-2-5);
-          }
-        }
-      }
-      
-      &[data-field-size="medium"] {
-        .form-field-input {
-          padding-top: var(--space-5); // Medium field spacing
-          padding-bottom: var(--space-2);
-          min-height: 3rem; // Smaller than default
-          
-          &.form-field-input-with-start-icon ~ .form-field-label {
-            left: var(--space-12);
-          }
-          
-          &:focus ~ .form-field-label,
-          &:not(:placeholder-shown) ~ .form-field-label,
-          &[value]:not([value=""]) ~ .form-field-label {
-            top: -0.7rem; // Adjust for medium field
-          }
-        }
-      }
-      
-      &[data-field-size="large"] {
-        .form-field-input {
-          padding-top: var(--space-7); // Adjust for larger field
-          
-          &.form-field-input-with-start-icon ~ .form-field-label {
-            left: var(--space-14);
-          }
-          
-          &:focus ~ .form-field-label,
-          &:not(:placeholder-shown) ~ .form-field-label,
-          &[value]:not([value=""]) ~ .form-field-label {
-            top: -0.875rem; // Adjust for larger field - float above border
-          }
-        }
-        
-        .form-field-icon {
-          font-size: var(--text-lg);
-          
-          &:first-child {
-            left: var(--space-4); // Adjust for larger field  
-          }
-          
-          &:last-child {
-            right: var(--space-4);
-          }
-        }
-      }
-    }
-  }
-  
-  // Form field icon - use RR.Blazor utility-first system (global positioning)
-  &-icon {
-    @extend %icon-base;
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    z-index: 2;
-    color: var(--color-text-secondary);
-    pointer-events: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: var(--icon-base);
-    width: var(--icon-base);
-    height: var(--icon-base);
-    
-    &.icon-interactive {
-      &.clickable {
-        @extend %icon-interactive;
-      }
-    }
-    
-    &.icon-muted {
-      color: var(--color-text-muted);
-    }
-    
-    // Position for start icon
-    &:first-child {
-      left: var(--space-3);
-    }
-    
-    // Position for end icon
-    &:last-child {
-      right: var(--space-3);
-    }
-    
-    // Ensure Material Symbols are centered
-    .material-symbols-rounded {
-      line-height: 1;
-      vertical-align: middle;
-    }
-    
-    // Loading icon styling
-    &-loading {
-      position: absolute;
-      top: 50%;
-      right: var(--space-3);
-      transform: translateY(-50%);
-      z-index: 15;
-      color: var(--color-text-secondary);
-      pointer-events: none;
-    }
-  }
-  
-  // Size variants - use RR.Blazor semantic variables
-  &-sm {
-    .form-field-input {
-      min-height: 2.5rem;
-      padding: var(--space-2) var(--space-3);
-      font-size: var(--text-sm);
-      line-height: 1.4;
-    }
-    
-    .form-field-icon {
-      font-size: var(--text-sm);
-      width: var(--text-sm);
-      height: var(--text-sm);
-      
-      &:first-child {
-        left: var(--space-2-5);
-      }
-      
-      &:last-child {
-        right: var(--space-2-5);
-      }
-    }
-  }
-  
-  &-lg {
-    .form-field-input {
-      min-height: 3.5rem;
-      padding: var(--space-4) var(--space-5);
-      font-size: var(--text-lg);
-      line-height: 1.6;
-    }
-    
-    .form-field-icon {
-      font-size: var(--text-lg);
-      width: var(--text-lg);
-      height: var(--text-lg);
-      
-      &:first-child {
-        left: var(--space-4);
-      }
-      
-      &:last-child {
-        right: var(--space-4);
-      }
-    }
-  }
-  
-  // Valid state styling
-  &-valid {
-    .form-field-input {
-      border-color: var(--color-success);
-    }
-  }
-  
-  // Help text
-  &-help {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-2);
-    margin-top: var(--space-1);
-    font-size: var(--text-xs);
-    color: var(--color-text-secondary);
-    
-    &-error {
-      color: var(--color-error);
-    }
-    
-    &-warning {
-      color: var(--color-warning);
-    }
-    
-    // Help text content
-    &-text {
-      flex: 1;
-      color: var(--color-text-tertiary);
-      font-size: var(--text-xs);
-    }
-    
-    // Character counter
-    &-counter {
-      flex-shrink: 0;
-      font-size: var(--text-xs);
-      color: var(--color-text-tertiary);
-      text-align: right;
-      white-space: nowrap;
-      font-variant-numeric: tabular-nums;
-    }
-  }
-  
-  // Form label
-  &-label {
-    display: block;
-    font-size: var(--text-sm);
-    font-weight: var(--font-medium);
-    color: var(--color-text-primary);
-    margin-bottom: var(--space-2);
-    
-    &-required::after {
-      content: '*';
-      color: var(--color-error);
-      margin-left: var(--space-1);
-    }
-    
-    &-optional::after {
-      content: ' (optional)';
-      color: var(--color-text-secondary);
-      font-weight: var(--font-normal);
-    }
-    
-    // Size variants
-    &-sm {
-      font-size: var(--text-xs);
-    }
-    
-    &-lg {
-      font-size: var(--text-base);
-    }
-  }
-  
-  // Form input
-  &-input {
-    @extend %input-base-style;
-    display: block;
-    width: 100%;
-    min-height: 3.25rem; // Increased for better touch targets and visual balance
-    padding: var(--space-4) var(--space-4); // Consistent padding for better modern design
-    font-size: var(--text-base);
-    font-weight: var(--font-normal);
-    color: var(--color-text-primary);
-    background: var(--color-background-elevated);
-    border: var(--border-1) solid var(--color-border-medium);
-    border-radius: var(--radius-lg);
-    outline: none;
-    transition: all var(--duration-normal) var(--ease-out);
-    line-height: 1.5;
-    vertical-align: middle;
-  
-  // Mobile-first responsive design
-  @include responsive-max(md) {
-    min-height: 3rem; // 48px WCAG touch target (improved)
-    font-size: var(--text-base); // Prevent iOS zoom
-    padding: var(--space-4) var(--space-4); // Consistent padding
-  }
-  
-  // Placeholder styling
+  // Enhanced placeholder styling
   &::placeholder {
     color: var(--color-text-tertiary);
-    opacity: 1;
+    opacity: 0.8;
+    font-weight: var(--font-normal);
+    transition: opacity var(--duration-fast) var(--ease-out);
   }
   
-  // Enhanced focus state
-  &:focus {
-    border-color: var(--color-interactive-primary);
-    background: var(--color-background-elevated);
-    box-shadow: 0 0 0 3px var(--color-interactive-focus);
-    transform: translateY(-1px);
-  }
-  
-  // Enhanced hover state
+  // PRO hover state with elevation
   &:hover:not(:focus):not(:disabled) {
     border-color: var(--color-border-strong);
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-sm);
+    background: var(--color-background-hover);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+    
+    &::placeholder {
+      opacity: 0.9;
+    }
   }
   
-  // Enhanced disabled state
+  // Superior focus state
+  &:focus {
+    outline: none;
+    border-color: var(--color-interactive-primary);
+    background: var(--color-background-elevated);
+    transform: translateY(-1px);
+    box-shadow: 
+      var(--shadow-xl),
+      0 0 0 4px var(--color-interactive-focus);
+    
+    &::placeholder {
+      opacity: 0.6;
+      transform: translateY(-1px);
+    }
+  }
+  
+  // Enhanced validation states
+  &:invalid:not(:focus):not(:placeholder-shown) {
+    border-color: var(--color-error);
+    background: var(--color-error-bg);
+    animation: shake var(--duration-normal) var(--ease-in-out);
+    box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.1);
+  }
+  
+  &:valid:not(:placeholder-shown):not(:focus) {
+    border-color: var(--color-success);
+    box-shadow: 0 0 0 1px var(--color-success);
+  }
+  
+  // Mobile optimization
+  @include responsive-max(md) {
+    font-size: 16px; // Prevent iOS zoom
+    min-height: 3.25rem;
+    padding: var(--space-4);
+  }
+  
+  // Disabled state
   &:disabled {
     background: var(--color-background-secondary);
     color: var(--color-text-disabled);
@@ -499,180 +109,132 @@
     transform: none;
     box-shadow: none;
   }
-  
-  // Error states with improved visual feedback
-  &:invalid {
-    border-color: var(--color-error);
-    background: var(--color-error-bg);
-    
-    &:focus {
-      border-color: var(--color-error);
-      background: var(--color-background-elevated);
-      box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
-    }
-    
-    &:hover:not(:focus) {
-      border-color: var(--color-error);
-      background: var(--color-error-bg);
-    }
-  }
-  
-  // Valid state styling with improved feedback
-  &:valid:not(:placeholder-shown):not(:invalid) {
-    border-color: var(--color-success);
-    
-    &:focus {
-      border-color: var(--color-success);
-      box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
-    }
-  }
-  
-  // Floating label variant
-  &.form-field-input-floating-label {
-    // Use placeholder for CSS selector detection
-    &::placeholder {
-      opacity: 0;
-    }
-  }
-  
-  // Size variants
-  &.form-field-input-sm {
-    min-height: 2.5rem;
-    padding: var(--space-2) var(--space-3);
-    font-size: var(--text-sm);
-    line-height: 1.4;
-    
-    &.form-field-input-with-start-icon {
-      padding-left: var(--space-10);
-    }
-    
-    &.form-field-input-with-end-icon {
-      padding-right: var(--space-10);
-    }
-  }
-  
-  &.form-field-input-lg {
-    min-height: 3.5rem;
-    padding: var(--space-4) var(--space-5);
-    font-size: var(--text-lg);
-    line-height: 1.6;
-    
-    &.form-field-input-with-start-icon {
-      padding-left: var(--space-14);
-    }
-    
-    &.form-field-input-with-end-icon {
-      padding-right: var(--space-14);
-    }
-  }
-  
-  // Icon spacing - use RR.Blazor semantic variables
-  &.form-field-input-with-start-icon {
-    padding-left: var(--space-12);
-    text-align: left;
-  }
-  
-  &.form-field-input-with-end-icon {
-    padding-right: var(--space-12);
-  }
-  
-    // Autofill styling
-    &:-webkit-autofill,
-    &:-webkit-autofill:hover,
-    &:-webkit-autofill:focus {
-      -webkit-box-shadow: 0 0 0 30px var(--color-background-elevated) inset;
-      -webkit-text-fill-color: var(--color-text-primary);
-      border-color: var(--color-border-light);
-      transition: background-color 5000s ease-in-out 0s;
-    }
-  }
-  
-  // Error display
-  &-error {
-    display: flex;
-    align-items: flex-start;
-    gap: var(--space-2);
-    margin-top: var(--space-2);
-    padding: var(--space-2) var(--space-3);
-    background: var(--color-error-bg);
-    border-radius: var(--radius-md);
-    font-size: var(--text-sm);
-    color: var(--color-error);
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-    max-width: 100%;
-    border-left: 3px solid var(--color-error);
-    
-    i {
-      font-size: var(--text-base);
-      flex-shrink: 0;
-      margin-top: 0.1em;
-    }
-  }
+}
 
-
-  // Icon loading state
-  &-icon-loading {
-    .material-symbols-rounded {
-      animation: spin 1s linear infinite;
-    }
+// Checkbox/radio foundation
+%checkbox-foundation {
+  flex-shrink: 0;
+  width: 1.25rem;
+  height: 1.25rem;
+  border: var(--border-2) solid var(--color-border-medium);
+  background: var(--color-background-elevated);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--duration-fast) var(--ease-out);
+  position: relative;
+  cursor: pointer;
+  
+  // Ripple effect
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--color-interactive-primary);
+    border-radius: inherit;
+    transform: scale(0);
+    opacity: 0;
+    transition: all var(--duration-normal) var(--ease-out);
   }
+  
+  &:hover {
+    @include hover-lift();
+    border-color: var(--color-border-strong);
+  }
+  
+  &:focus {
+    @include focus-ring();
+  }
+}
 
-  // Error state for field container
-  &-error-state {
-    .form-field-input {
-      border-color: var(--color-error);
-      background: var(--color-error-bg);
-      
-      &:focus {
-        border-color: var(--color-error);
-        box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
-      }
-    }
+// Glass variants for components
+%glass-light-variant {
+  @include glass-morphism(light);
+  border: var(--border-1) solid var(--glass-border-light);
+  
+  &:hover {
+    @include glass-morphism(medium);
+    border-color: var(--glass-border-medium);
+  }
+  
+  &:focus {
+    @include glass-morphism(heavy);
+    border-color: var(--color-interactive-primary);
+  }
+}
+
+%glass-medium-variant {
+  @include glass-morphism(medium);
+  border: var(--border-1) solid var(--glass-border-medium);
+  
+  &:hover {
+    @include glass-morphism(heavy);
+    border-color: var(--glass-border-heavy);
+  }
+  
+  &:focus {
+    @include glass-morphism(frost);
+    border-color: var(--color-interactive-primary);
+  }
+}
+
+%glass-heavy-variant {
+  @include glass-morphism(heavy);
+  border: var(--border-1) solid var(--glass-border-heavy);
+  
+  &:hover {
+    @include glass-morphism(frost);
+    border-color: var(--glass-border-frost);
+  }
+  
+  &:focus {
+    backdrop-filter: blur(var(--glass-blur-xl)) saturate(180%);
+    border-color: var(--color-interactive-primary);
+  }
+}
+
+// ============================================
+// Form Layout Utilities
+// ============================================
+
+.form {
+  @extend %form-base;
+  
+  // Glass enhanced forms
+  &.glass-enhanced {
+    background: var(--glass-bg-frost);
+    backdrop-filter: blur(var(--glass-blur-lg)) saturate(120%);
+    border: var(--border-1) solid var(--glass-border-frost);
+    box-shadow: var(--shadow-lg), inset 0 1px 0 var(--glass-border-light);
+    transition: all var(--duration-normal) var(--ease-out);
     
-    .form-field-label {
-      color: var(--color-error);
+    &:hover {
+      backdrop-filter: blur(var(--glass-blur-xl)) saturate(140%);
+      box-shadow: var(--shadow-xl), inset 0 1px 0 var(--glass-border-light);
     }
   }
 }
 
-// Standalone form-label utility for compatibility
-.form-label {
-  @extend .form-field-label;
-}
-
-// Form layout utilities
 .form-grid {
   @extend %responsive-grid-base;
   
-  &-3 {
-    @extend %responsive-grid-base;
-    grid-template-columns: repeat(3, 1fr);
+  &.grid-2 {
+    grid-template-columns: repeat(2, 1fr);
     
     @include responsive-max(md) {
       grid-template-columns: 1fr;
     }
   }
   
-  &-4 {
-    @extend %responsive-grid-base;
-    grid-template-columns: repeat(4, 1fr);
-    
-    @include responsive-max(lg) {
-      grid-template-columns: repeat(2, 1fr);
-    }
-    
-    @include responsive-max(md) {
-      grid-template-columns: 1fr;
-    }
-  }
-  
-  &-auto {
+  &.grid-auto {
     @extend %responsive-grid-auto-fit;
   }
 }
 
-// Form actions
+.form-row {
+  @extend %form-row-base;
+}
+
 .form-actions {
   display: flex;
   justify-content: flex-end;
@@ -687,151 +249,132 @@
   }
 }
 
-// Standalone form-field classes for direct usage
-.form-field-error {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-2);
-  margin-top: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  background: var(--color-error-bg);
-  border-radius: var(--radius-md);
-  font-size: var(--text-sm);
-  color: var(--color-error);
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-  max-width: 100%;
-  border-left: 3px solid var(--color-error);
+.form-header {
+  margin-bottom: var(--space-6);
   
-  i {
-    font-size: var(--text-base);
-    flex-shrink: 0;
-    margin-top: 0.1em;
-  }
-}
-
-.form-field-help-text {
-  flex: 1;
-  color: var(--color-text-tertiary);
-  font-size: var(--text-xs);
-}
-
-.form-field-help-counter {
-  flex-shrink: 0;
-  color: var(--color-text-tertiary);
-  font-variant-numeric: tabular-nums;
-  font-size: var(--text-xs);
-}
-
-.form-field-icon-loading {
-  position: absolute;
-  top: 50%;
-  right: var(--space-3);
-  transform: translateY(-50%);
-  z-index: 15;
-  color: var(--color-text-secondary);
-  pointer-events: none;
-  
-  .material-symbols-rounded {
-    animation: spin 1s linear infinite;
-  }
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-// Form field input error styling
-.form-field-input-error {
-  color: var(--color-error);
-  font-size: var(--text-xs);
-  margin-top: var(--space-1);
-  padding-left: var(--space-2);
-  border-left: 2px solid var(--color-error);
-  background-color: rgba(var(--color-error-rgb), 0.05);
-  padding: var(--space-1) var(--space-2);
-  border-radius: var(--radius-sm);
-}
-
-// RFormSection component utilities
-.r-form-section {
-  margin-bottom: var(--space-4);
-  
-  &-none {
-    background: transparent;
-    border: none;
-    box-shadow: none;
+  .form-title {
+    @extend %section-title;
   }
   
-  &-subtle {
-    background-color: var(--color-background-secondary);
-    border: 1px solid var(--color-border-light);
-    border-radius: var(--radius-md);
-    padding: var(--space-4);
-  }
-  
-  &-medium {
-    background-color: var(--color-background-elevated);
-    border: 1px solid var(--color-border-medium);
-    border-radius: var(--radius-md);
-    padding: var(--space-4);
-    box-shadow: var(--shadow-sm);
-  }
-  
-  &-high {
-    background-color: var(--color-background-elevated);
-    border: 1px solid var(--color-border-medium);
-    border-radius: var(--radius-lg);
-    padding: var(--space-6);
-    box-shadow: var(--shadow-md);
-  }
-  
-  &-header {
-    display: flex;
-    align-items: center;
-    margin-bottom: var(--space-3);
-    
-    &.clickable {
-      cursor: pointer;
-      transition: all var(--duration-fast) var(--ease-out);
-      
-      &:hover {
-        opacity: 0.8;
-      }
-    }
-  }
-  
-  &-icon {
-    margin-right: var(--space-2);
+  .form-description {
+    @include text-body;
     color: var(--color-text-secondary);
-  }
-  
-  &-title {
-    color: var(--color-text-primary);
-    font-weight: var(--font-semibold);
     margin: 0;
   }
+}
+
+// Form Validation & States
+
+.field-help {
+  @include text-caption;
+  color: var(--color-text-secondary);
+  margin-top: var(--space-2);
+}
+
+.field-error {
+  @include text-caption;
+  color: var(--color-error);
+  background: var(--color-error-bg);
+  border-left: 3px solid var(--color-error);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  margin-top: var(--space-2);
+  animation: shake var(--duration-normal) var(--ease-in-out);
+}
+
+.form-success {
+  @extend %status-indicator-base;
+  background: var(--color-success-bg);
+  color: var(--color-success);
+  border: var(--border-1) solid var(--color-success);
+  margin-top: var(--space-4);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  animation: fadeIn var(--duration-normal) var(--ease-out);
+}
+
+.form-error {
+  @extend %status-indicator-base;
+  background: var(--color-error-bg);
+  color: var(--color-error);
+  border: var(--border-1) solid var(--color-error);
+  margin-top: var(--space-4);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  animation: shake var(--duration-normal) var(--ease-in-out), fadeIn var(--duration-normal) var(--ease-out);
+}
+
+// Form States
+
+.form-field-success {
+  @include interactive-states(var(--color-success));
+  animation: successFadeIn var(--duration-normal) var(--ease-out);
+}
+
+.form-field-error {
+  @include interactive-states(var(--color-error));
+  animation: shake var(--duration-normal) var(--ease-in-out);
+}
+
+.form-field-warning {
+  @include interactive-states(var(--color-warning));
+}
+
+// Loading States
+
+.form-loading {
+  position: relative;
   
-  &-description {
-    color: var(--color-text-secondary);
-    margin: var(--space-1) 0 0 0;
-    font-size: var(--text-sm);
+  &::before {
+    content: '';
+    @extend %fixed-full;
+    background: var(--color-background-elevated);
+    opacity: 0.8;
+    z-index: 10;
+    border-radius: inherit;
   }
   
-  &-content {
-    transition: all var(--duration-normal) var(--ease-out);
+  &::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 1.5rem;
+    height: 1.5rem;
+    border: 2px solid var(--color-border-light);
+    border-top: 2px solid var(--color-interactive-primary);
+    border-radius: var(--radius-full);
+    animation: spin var(--duration-very-slow) linear infinite;
+    z-index: var(--z-floating);
   }
-  
-  &-toggle {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--color-text-secondary);
-    transition: all var(--duration-fast) var(--ease-out);
-    
-    &:hover {
-      color: var(--color-text-primary);
+}
+
+// Accessibility & Mobile
+
+.form-field-group {
+  &:focus-within {
+    .field-label {
+      color: var(--color-interactive-primary);
     }
   }
+}
+
+.form-navigation {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  
+  .nav-button {
+    @include focus-ring();
+  }
+}
+
+.sr-only {
+  @extend %sr-only;
+}
+
+.form-announcements {
+  @extend %sr-only;
+  left: -10000px;
 }

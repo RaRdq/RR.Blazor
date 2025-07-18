@@ -5,17 +5,13 @@
   max-width: var(--content-max-width);
 }
 
-// ============================================================================
-// MOBILE RESPONSIVENESS CRITICAL FIXES
-// ============================================================================
-
-// Mobile sidebar support - Fix for Agent 28 critical mobile failure
+// Mobile sidebar support
 .main-content.mobile-sidebar {
   margin-left: 0;
 }
 
-// Critical mobile navigation fixes to resolve 375px width issues
-@media (max-width: 768px) {
+// Mobile navigation fixes
+@include responsive-max(md) {
   .app-shell {
     .sidebar {
       position: fixed;
@@ -92,7 +88,7 @@
         min-width: 0;
         
         // Hide non-essential elements on very small screens
-        @media (max-width: 480px) {
+        @include responsive-max(xs) {
           .text-sm.font-semibold.text-primary {
             display: none;
           }
@@ -104,7 +100,7 @@
         flex-shrink: 0;
         min-width: auto;
         
-        @media (max-width: 480px) {
+        @include responsive-max(xs) {
           gap: var(--space-1);
         }
       }
@@ -118,7 +114,7 @@
 }
 
 // Fix for very small mobile screens (Agent 28 375px width issue)
-@media (max-width: 480px) {
+@include responsive-max(xs) {
   .app-shell {
     .app-header {
       .d-flex.items-center.gap-2.shrink-0 {
@@ -129,7 +125,8 @@
       .d-flex.items-center.gap-1.shrink-0 {
         gap: var(--space-1);
         
-        .rbutton {
+        button {
+          @include button-base;
           padding: var(--space-1);
           min-width: 32px;
           min-height: 32px;
@@ -147,6 +144,23 @@
   }
 }
 
+// Search expansion animation
+.app-search {
+  .search-input-expanded {
+    width: 0;
+    opacity: 0;
+    animation: slideRight var(--duration-normal) var(--ease-out) forwards;
+    overflow: hidden;
+  }
+  
+  .search-input-collapsed {
+    width: 12rem;
+    opacity: 1;
+    animation: slideLeft var(--duration-normal) var(--ease-out) forwards;
+    overflow: hidden;
+  }
+}
+
 // App header dimensions and enhanced z-index stacking
 .app-header {
   height: var(--header-height);
@@ -156,27 +170,14 @@
   left: 0;
   right: 0;
   
-  // Properly extend over sidebar with responsive padding
-  padding-left: var(--sidebar-width-expanded, 16rem);
+  // Header spans full width without sidebar offset
+  padding-left: var(--space-4);
   padding-right: var(--space-4);
   
   // Responsive padding adjustments
-  @media (max-width: 768px) {
-    padding-left: var(--space-4);
-    padding-right: var(--space-4);
-  }
-  
-  // Dynamic padding classes for different sidebar states
-  &.header-sidebar-expanded {
-    padding-left: var(--sidebar-width-expanded, 16rem);
-  }
-  
-  &.header-sidebar-collapsed {
-    padding-left: var(--sidebar-width-collapsed, 4rem);
-  }
-  
-  &.header-sidebar-hidden {
-    padding-left: var(--space-4);
+  @include responsive-max(md) {
+    padding-left: var(--space-3);
+    padding-right: var(--space-3);
   }
   
   // Ensure header buttons and interactions are always accessible
@@ -188,7 +189,6 @@
   // Specific fix for action buttons and interactive elements
   .d-flex.items-center.gap-1,
   .action-group,
-  .rbutton,
   button {
     position: relative;
     z-index: calc(var(--z-header) + 5);
@@ -206,7 +206,6 @@
     position: relative;
     z-index: calc(var(--z-header) + 15);
     
-    .rbutton,
     button {
       position: relative;
       z-index: inherit;
@@ -291,8 +290,9 @@
   flex-direction: column;
   gap: var(--space-3);
   
-  .button,
-  .rbutton {
+  button {
+    @extend %interactive-base;
+    @extend %touch-target;
     box-shadow: var(--shadow-xl);
     border-radius: var(--radius-full);
     width: 3.5rem;
@@ -300,6 +300,7 @@
     transition: all var(--duration-normal) var(--ease-out);
     
     &:hover {
+      @include hover-lift(-2px);
       transform: translateY(-2px) scale(1.05);
       box-shadow: var(--shadow-2xl);
     }
@@ -468,30 +469,25 @@
   }
 }
 
-// Enhanced focus management for large content areas
-.content-area {
-  // Optimize for layout shifts
+// Enhanced focus management for app-shell content areas
+.shell-focus {
   contain: layout;
   
   &:focus-within {
     contain: none; // Allow focus ring to show properly
   }
+  
+  // App-shell specific focus enhancements
+  &-highlight {
+    &:focus-within {
+      box-shadow: inset 0 0 0 2px var(--color-primary-500);
+    }
+  }
 }
 
 // ============================================================================
-// ANIMATIONS - Interactive Features
+// ANIMATIONS - Uses existing keyframes from abstracts/_animations.scss
 // ============================================================================
-
-@keyframes searchDropIn {
-  0% {
-    opacity: 0;
-    transform: translateY(-8px) scale(0.95);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
 
 .search-results {
   animation: searchDropIn var(--duration-normal) var(--ease-out);
@@ -538,8 +534,7 @@
   .app-shell {
     .search-result-item,
     .nav-item,
-    .quick-actions-floating .button,
-    .quick-actions-floating .rbutton {
+    .quick-actions-floating button {
       min-height: 48px;
       min-width: 48px;
     }
@@ -564,8 +559,7 @@
       border-left-color: var(--color-text-inverted);
     }
     
-    .quick-actions-floating .button,
-    .quick-actions-floating .rbutton {
+    .quick-actions-floating button {
       border: 2px solid var(--color-text-primary);
     }
   }
@@ -601,8 +595,7 @@
   .search-results,
   .search-result-item,
   .user-menu-compact,
-  .quick-actions-floating .button,
-  .quick-actions-floating .rbutton {
+  .quick-actions-floating button {
     transition: none;
     animation: none;
     transform: none;
@@ -629,8 +622,8 @@
       backdrop-filter: blur(4px) saturate(180%);
     }
     
-    .quick-actions-floating .button,
-    .quick-actions-floating .rbutton {
+    .quick-actions-floating button {
+      @include app-glass(light);
       background: var(--shell-surface);
       border: var(--border-1) solid var(--shell-border);
     }
@@ -659,11 +652,10 @@
       backdrop-filter: blur(8px) saturate(150%);
     }
     
-    .quick-actions-floating .button,
-    .quick-actions-floating .rbutton {
+    .quick-actions-floating button {
+      @include app-glass(heavy);
       background: var(--shell-surface);
       border: var(--border-1) solid var(--shell-border);
-      backdrop-filter: blur(8px);
     }
   }
 }

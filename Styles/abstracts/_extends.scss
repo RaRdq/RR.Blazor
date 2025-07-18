@@ -120,7 +120,7 @@
   align-items: center;
   justify-content: center;
   border-radius: var(--radius-lg);
-  background: var(--color-background-secondary);
+  background: linear-gradient(135deg, var(--color-background-secondary) 0%, var(--color-background-elevated) 100%);
   color: var(--color-interactive-primary);
   flex-shrink: 0;
   transition: var(--transition-normal);
@@ -166,8 +166,6 @@
 }
 
 %button-base {
-  @include button-reset;
-  @include flex-center;
   gap: var(--space-2);
   font-weight: var(--font-medium);
   text-align: center;
@@ -183,11 +181,6 @@
   padding: var(--space-3) var(--space-6);
   font-size: var(--text-sm);
   
-  @include responsive-max(md) {
-    min-height: 2.75rem;
-    font-size: var(--text-base);
-  }
-  
   &:focus {
     outline: 0.125rem solid var(--color-interactive-primary);
     outline-offset: 0.125rem;
@@ -197,6 +190,15 @@
     opacity: 0.6;
     cursor: not-allowed;
     pointer-events: none;
+  }
+  
+  // Mixins with nested rules last
+  @include button-reset;
+  @include flex-center;
+  
+  @include responsive-max(md) {
+    min-height: 2.75rem;
+    font-size: var(--text-base);
   }
 }
 
@@ -906,5 +908,325 @@
   bottom: 0;
   width: 100%;
   height: 100%;
+}
+
+// ===== APP SHELL EXTENDS - ENTERPRISE 2030 =====
+// Ultra-clean, generic foundational extends for enterprise app shell architecture
+
+// Core app shell foundationES
+.app-shell-base {
+  // Properties first
+  position: relative;
+  overflow: hidden;
+  contain: layout style;
+  will-change: auto;
+  transform: translateZ(0);
+  
+  // Mixins with nested rules after all properties
+  @include app-shell-layout(full-width-header);
+}
+
+// Enterprise header foundation
+.app-header {
+  grid-area: header;
+  @include app-glass(heavy, 20px);
+  @include app-spacing(normal);
+  @include app-focus();
+  
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--header-height, 4rem);
+  z-index: var(--z-header, 100);
+  
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  
+  // Perfect element heights auto-alignment
+  > * {
+    display: flex;
+    align-items: center;
+    height: 100%;
+  }
+}
+
+// Enterprise sidebar foundation
+.app-sidebar {
+  grid-area: sidebar;
+  @include app-glass(medium, 16px);
+  @include app-spacing(normal);
+  @include app-scrollbar();
+  
+  position: fixed;
+  top: var(--header-height, 4rem);
+  left: 0;
+  bottom: 0;
+  width: var(--sidebar-width, 16rem);
+  z-index: var(--z-sidebar, 90);
+  
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+  
+  // Collapsible animation
+  transition: all var(--duration-normal) var(--ease-out);
+  
+  // Collapsed state  
+  &.collapsed {
+    width: var(--sidebar-width-collapsed, 4rem);
+    min-width: var(--sidebar-width-collapsed, 4rem);
+    overflow: hidden;
+  }
+  
+  // Mobile responsive
+  @include responsive-max(lg) {
+    transform: translateX(-100%);
+    
+    &.open {
+      transform: translateX(0);
+    }
+  }
+}
+
+// Enterprise main content foundation
+.app-main {
+  // Base properties first
+  grid-area: main;
+  padding-top: var(--header-height, 4rem);
+  padding-left: 0;
+  min-height: calc(100vh - var(--header-height, 4rem));
+  position: relative;
+  contain: layout style;
+  overflow-x: hidden; // Prevent horizontal overflow while allowing vertical scroll
+  // Remove overflow-y: auto to prevent double scrollbar - page should scroll
+  
+  // Mixins and nested rules after properties
+  @include app-spacing(comfortable);
+  
+  @include responsive-min(lg) {
+    padding-left: var(--sidebar-width, 16rem);
+    padding-right: var(--space-6);
+    padding-top: var(--space-6);
+    
+    .app-shell.sidebar-collapsed & {
+      padding-left: var(--sidebar-width-collapsed, 4rem);
+    }
+  }
+  
+  // Mobile padding
+  @include responsive-max(lg) {
+    padding-left: var(--space-4);
+    padding-right: var(--space-4);
+    padding-top: var(--space-4);
+  }
+  
+  @media (prefers-reduced-motion: reduce) {
+    scroll-behavior: auto;
+  }
+}
+
+// Navigation item foundation
+%nav-item {
+  @include app-interaction(subtle);
+  @include app-focus();
+  
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  margin: var(--space-1) var(--space-2);
+  border-radius: var(--radius-lg);
+  
+  color: var(--color-text-primary);
+  text-decoration: none;
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  border: var(--border-1) solid transparent;
+  
+  // Active state
+  &.active {
+    @include app-glass(light);
+    color: var(--color-interactive-primary);
+    background: var(--color-interactive-light);
+    border-color: var(--color-interactive-primary);
+  }
+  
+  // Hover state
+  &:hover:not(.active) {
+    background: var(--color-background-secondary);
+    color: var(--color-text-primary);
+  }
+  
+  // Icon styling
+  i {
+    font-size: var(--text-lg);
+    flex-shrink: 0;
+  }
+}
+
+// Header sectionsES
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+}
+
+.header-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 2;
+  height: 100%;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 1;
+  justify-content: flex-end;
+  height: 100%;
+}
+
+// Logo foundation
+.app-logo {
+  @include app-interaction(scale);
+  
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--color-text-primary);
+  text-decoration: none;
+  font-size: var(--text-lg);
+  font-weight: var(--font-bold);
+  
+  img {
+    height: var(--logo-height, 2rem);
+    width: auto;
+    object-fit: contain;
+  }
+}
+
+// Search foundation
+.app-search {
+  @include app-glass(light, 12px);
+  @include app-interaction(subtle);
+  
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  max-width: 24rem;
+  
+  input {
+    @extend %input-base-style;
+    background: transparent;
+    border: none;
+    padding-left: var(--space-10);
+    
+    &:focus {
+      background: var(--color-background-elevated);
+      box-shadow: var(--shadow-md);
+    }
+  }
+  
+  .search-icon {
+    position: absolute;
+    left: var(--space-3);
+    color: var(--color-text-tertiary);
+    pointer-events: none;
+  }
+}
+
+// Action button foundation
+%action-button {
+  @include app-interaction(subtle);
+  @include app-focus();
+  
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--space-10);
+  height: var(--space-10);
+  border-radius: var(--radius-lg);
+  border: var(--border-1) solid transparent;
+  background: transparent;
+  color: var(--color-text-primary);
+  cursor: pointer;
+  position: relative;
+  
+  // Badge support
+  &[data-badge]::after {
+    content: attr(data-badge);
+    position: absolute;
+    top: -0.25rem;
+    right: -0.25rem;
+    background: var(--color-error);
+    color: var(--color-text-inverse);
+    border-radius: var(--radius-full);
+    font-size: var(--text-xs);
+    font-weight: var(--font-bold);
+    padding: 2px 6px;
+    min-width: 1.25rem;
+    height: 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+// Mobile backdrop
+.mobile-backdrop {
+  @include responsive-max(lg) {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    z-index: var(--z-backdrop, 80);
+    opacity: 0;
+    visibility: hidden;
+    transition: all var(--duration-normal) var(--ease-out);
+    
+    &.active {
+      opacity: 1;
+      visibility: visible;
+    }
+  }
+}
+
+// Unified active state system
+%active-state-base {
+  &.active {
+    @include app-glass(light);
+    color: var(--color-interactive-primary);
+    background: var(--color-interactive-light);
+    border-color: var(--color-interactive-primary);
+  }
+  
+  &:hover:not(.active) {
+    background: var(--color-background-secondary);
+    color: var(--color-text-primary);
+  }
+}
+
+// Interactive base for app shell elements
+%interactive-base {
+  @include app-interaction(subtle);
+  @include app-focus();
+  cursor: pointer;
+  position: relative;
+  
+  &:disabled {
+    opacity: var(--opacity-disabled);
+    cursor: not-allowed;
+    pointer-events: none;
+    transform: none !important;
+  }
 }
 

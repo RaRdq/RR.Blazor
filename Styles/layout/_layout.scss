@@ -1,301 +1,76 @@
 @use '../abstracts' as *;
 
 // ============================================================================
-// GENERIC LAYOUT PATTERNS - User Menus, Sidebars, Headers, Search, etc.
+// LAYOUT MIXINS - Theme-Aware Building Blocks
 // ============================================================================
 
-.user-menu {
-  position: relative;
-}
-
-.user-menu-trigger {
+// Container pattern mixin
+@mixin layout-container($max-width: 100%, $padding: var(--space-4)) {
   width: 100%;
+  max-width: $max-width;
+  margin: 0 auto;
+  padding-left: $padding;
+  padding-right: $padding;
+}
+
+// Positioning pattern mixin
+@mixin layout-position($position, $inset: null) {
+  position: $position;
+  @if $inset {
+    @if $inset == 'full' {
+      inset: 0;
+    } @else if $inset == 'top' {
+      top: 0;
+    } @else if $inset == 'bottom' {
+      bottom: 0;
+    } @else if $inset == 'left' {
+      left: 0;
+    } @else if $inset == 'right' {
+      right: 0;
+    } @else if $inset == 'center' {
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+  }
+}
+
+// Flex pattern mixin
+@mixin layout-flex($direction: row, $align: stretch, $justify: flex-start, $gap: 0) {
   display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  border: none;
-  background: none;
-  border-radius: var(--radius-md);
-  text-decoration: none;
-  transition: background 0.2s ease;
+  flex-direction: $direction;
+  align-items: $align;
+  justify-content: $justify;
+  @if $gap != 0 {
+    gap: $gap;
+  }
+}
+
+// Grid pattern mixin
+@mixin layout-grid($columns: 1, $gap: var(--space-4), $align: stretch) {
+  display: grid;
+  @if $columns == 'auto-fit' {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+  } @else if $columns == 'auto-fill' {
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
+  } @else {
+    grid-template-columns: repeat($columns, minmax(0, 1fr));
+  }
+  gap: $gap;
+  align-items: $align;
+}
+
+// Interactive pattern mixin
+@mixin layout-interactive($hover-transform: translateY(-1px), $active-transform: translateY(0) scale(0.98)) {
   cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
   
-  &:hover {
-    background: var(--color-interactive-light);
+  &:hover:not(:disabled) {
+    transform: $hover-transform;
   }
   
-  &:focus-visible {
-    outline: 2px solid var(--color-interactive-primary);
-    outline-offset: 2px;
-  }
-}
-
-.user-avatar {
-  width: 2rem;
-  height: 2rem;
-  border-radius: 50%;
-  background: var(--color-interactive-primary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-background-elevated);
-  font-weight: var(--font-semibold);
-  font-size: var(--text-sm);
-  flex-shrink: 0;
-  position: relative;
-  overflow: hidden;
-}
-
-.user-avatar-image {
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  object-fit: cover;
-}
-
-.user-avatar-text {
-  font-size: var(--text-xs);
-  font-weight: var(--font-semibold);
-}
-
-.user-info {
-  flex: 1;
-  text-align: left;
-  min-width: 0;
-  transition: opacity 0.3s ease, width 0.3s ease;
-}
-
-.user-info-name {
-  font-weight: var(--font-medium);
-  font-size: var(--text-sm);
-  color: var(--color-text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  line-height: 1.2;
-  margin: 0;
-}
-
-.user-info-role {
-  font-size: var(--text-xs);
-  color: var(--color-text-secondary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  line-height: 1.2;
-  margin: 0;
-}
-
-.user-menu-icon {
-  font-size: var(--icon-sm);
-  color: var(--color-text-secondary);
-  flex-shrink: 0;
-  transition: transform 0.2s ease, opacity 0.3s ease, width 0.3s ease;
-}
-
-.user-menu-dropdown {
-  position: absolute;
-  bottom: 100%;
-  left: 0;
-  right: 0;
-  background: var(--color-background-elevated);
-  border: 1px solid var(--color-border-light);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
-  margin-bottom: var(--space-2);
-  z-index: var(--z-dropdown);
-  overflow: hidden;
-  max-height: 80vh;
-  overflow-y: auto;
-  
-  // Animation
-  animation: slideUp 0.2s ease-out;
-}
-
-.user-menu-item {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-3);
-  border: none;
-  background: none;
-  text-align: left;
-  text-decoration: none;
-  color: var(--color-text-primary);
-  font-size: var(--text-sm);
-  transition: background 0.2s ease;
-  cursor: pointer;
-  
-  &:hover {
-    background: var(--color-interactive-light);
-  }
-  
-  &-action {
-    font-weight: var(--font-medium);
-  }
-  
-  &-danger {
-    color: var(--color-error);
-    
-    &:hover {
-      background: var(--color-error-light);
-    }
-  }
-  
-  &:focus-visible {
-    outline: 2px solid var(--color-interactive-primary);
-    outline-offset: -2px;
-  }
-}
-
-.user-menu-divider {
-  height: 1px;
-  background: var(--color-border-light);
-  margin: var(--space-1) 0;
-}
-
-// User menu dropdown patterns
-.user-menu-compact {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-3);
-}
-
-.user-menu-dropdown {
-  position: relative;
-}
-
-.user-menu-content {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  background: var(--color-background-elevated);
-  border: var(--border-1) solid var(--color-border-light);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-lg);
-  margin-top: var(--space-1);
-  padding: var(--space-2) 0;
-  z-index: var(--z-dropdown);
-  min-width: 250px;
-  
-  @include responsive-max(md) {
-    right: var(--space-2);
-    left: var(--space-2);
-    min-width: auto;
-  }
-}
-
-
-// ============================================================================
-// SIDEBAR SYSTEM - Single Source of Truth
-// ============================================================================
-
-.sidebar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  height: 100vh;
-  width: var(--sidebar-width-expanded, 16rem);
-  background: var(--color-background-elevated);
-  border-right: var(--border-1) solid var(--color-border-light);
-  transition: all var(--duration-normal) var(--ease-out);
-  z-index: var(--z-sidebar);
-  display: flex;
-  flex-direction: column;
-  
-  &-logo {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: var(--space-4);
-    margin-bottom: var(--space-2);
-    
-    .sidebar-collapsed & {
-      padding: var(--space-2);
-    }
-  }
-  
-  &-brand {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    padding: var(--space-4);
-    border-bottom: var(--border-1) solid var(--color-border-light);
-    
-    .sidebar-collapsed & {
-      justify-content: center;
-      
-      .brand-text {
-        display: none;
-      }
-    }
-  }
-  
-  &-collapsed {
-    width: var(--sidebar-width-collapsed, 4rem);
-  }
-  
-  &-closed {
-    transform: translateX(-100%);
-  }
-  
-  @include responsive-max(md) {
-    transform: translateX(-100%);
-    z-index: calc(var(--z-sidebar) + 10); // Ensure sidebar appears above content on mobile
-    
-    &:not(.sidebar-closed) {
-      transform: translateX(0);
-    }
-    
-    // Ensure sidebar doesn't interfere with main content on mobile
-    &.sidebar-closed {
-      pointer-events: none;
-    }
-    
-    &:not(.sidebar-closed) {
-      pointer-events: auto;
-    }
-  }
-  
-  @media (prefers-contrast: high) {
-    border-right-width: 2px;
-  }
-}
-
-.sidebar-nav {
-  flex: 1;
-  overflow-y: auto;
-  padding: var(--space-4) 0;
-  padding-top: calc(var(--header-height, 4rem) + var(--space-4));
-}
-
-.sidebar-footer {
-  padding: var(--space-4);
-  border-top: var(--border-1) solid var(--color-border-light);
-  margin-top: auto;
-  flex-shrink: 0;
-}
-
-.sidebar-toggle {
-  padding: var(--space-2);
-  border: none;
-  background: none;
-  border-radius: var(--radius-md);
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  transition: all var(--duration-normal) var(--ease-out);
-  display: none;
-  align-items: center;
-  justify-content: center;
-  min-height: 44px;
-  min-width: 44px;
-  
-  &:hover {
-    background: var(--color-interactive-light);
-    color: var(--color-interactive-primary);
+  &:active:not(:disabled) {
+    transform: $active-transform;
   }
   
   &:focus-visible {
@@ -303,206 +78,221 @@
     outline-offset: 2px;
   }
   
-  &-mobile {
-    display: flex;
-    
-    @include responsive-min(md) {
-      display: none;
-    }
-  }
-  
-  @include responsive-min(md) {
-    display: flex;
-    
-    &-mobile {
-      display: none;
-    }
+  &:disabled {
+    opacity: var(--opacity-disabled);
+    cursor: not-allowed;
+    pointer-events: none;
+    transform: none !important;
   }
 }
 
-.sidebar-backdrop {
-  position: fixed;
-  inset: 0;
-  background: var(--color-overlay-dark);
-  z-index: calc(var(--z-sidebar) - 1);
-  opacity: 0;
-  visibility: hidden;
-  transition: all 0.3s ease;
+// Surface pattern mixin
+@mixin layout-surface($variant: 'elevated', $radius: var(--radius-md)) {
+  border-radius: $radius;
+  
+  @if $variant == 'flat' {
+    background: var(--color-background-primary);
+    border: var(--border-1) solid var(--color-border-light);
+  } @else if $variant == 'elevated' {
+    background: var(--color-background-elevated);
+    box-shadow: var(--shadow-md);
+  } @else if $variant == 'raised' {
+    background: var(--color-background-elevated);
+    box-shadow: var(--shadow-lg);
+  } @else if $variant == 'floating' {
+    background: var(--color-background-elevated);
+    box-shadow: var(--shadow-xl);
+  } @else if $variant == 'glass' {
+    background: var(--color-background-glass);
+    backdrop-filter: blur(16px) saturate(120%);
+    border: var(--border-1) solid var(--color-border-subtle);
+  }
+}
+
+// Backdrop pattern mixin
+@mixin layout-backdrop($opacity: 0.6, $blur: false) {
+  & {
+    @include layout-position(fixed, 'full');
+    background: var(--color-background-overlay);
+    opacity: 0;
+    visibility: hidden;
+    transition: all var(--duration-normal) var(--ease-out);
+    @if $blur {
+      backdrop-filter: blur(4px);
+    }
+  }
   
   &-active {
-    opacity: 1;
+    opacity: $opacity;
     visibility: visible;
   }
 }
 
 // ============================================================================
-// HEADER SYSTEM - Utility-First Approach
+// LAYOUT FOUNDATIONS - Semantic Variable Powered
 // ============================================================================
 
-// Header uses utility classes only - no custom styles needed
-// All styling handled via utility classes in RAppShell.razor
-// backdrop-blur utilities available in utilities/_visual-effects.scss
-
-.header {
-  &-toggle {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: var(--space-2);
-    border: none;
-    background: none;
-    border-radius: var(--radius-md);
-    color: var(--color-text-secondary);
-    cursor: pointer;
-    transition: all var(--duration-fast) var(--ease-out);
-    min-width: 44px;
-    min-height: 44px;
-    
-    &:hover {
-      background: var(--color-interactive-light);
-      color: var(--color-text-primary);
-    }
-    
-    &:focus-visible {
-      outline: 2px solid var(--color-interactive-primary);
-      outline-offset: 2px;
-    }
-  }
+// Container utilities using semantic variables
+.layout-container {
+  @include layout-container;
   
-  &-action {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: var(--space-2);
-    border: none;
-    background: none;
-    border-radius: var(--radius-md);
-    color: var(--color-text-secondary);
-    cursor: pointer;
-    transition: all var(--duration-fast) var(--ease-out);
-    min-width: 44px;
-    min-height: 44px;
-    position: relative;
-    
-    &:hover {
-      background: var(--color-interactive-light);
-      color: var(--color-text-primary);
-    }
-    
-    &:focus-visible {
-      outline: 2px solid var(--color-interactive-primary);
-      outline-offset: 2px;
-    }
-    
-    &:active {
-      transform: scale(0.95);
-    }
-  }
-  
-  &-left {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-  }
-  
-  &-right {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    margin-left: auto;
-  }
-  
-  &-title-group {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-  }
-  
-  &-title {
-    font-size: var(--text-lg);
-    font-weight: var(--font-semibold);
-    color: var(--color-text-primary);
-    margin: 0;
-    line-height: var(--leading-tight);
-  }
-  
-  &-subtitle {
-    font-size: var(--text-sm);
-    color: var(--color-text-secondary);
-    margin: 0;
-    line-height: var(--leading-tight);
-  }
+  @include modifier(sm) { @include layout-container(640px); }
+  @include modifier(md) { @include layout-container(768px); }
+  @include modifier(lg) { @include layout-container(1024px); }
+  @include modifier(xl) { @include layout-container(1280px); }
+  @include modifier(2xl) { @include layout-container(1536px); }
+  @include modifier(fluid) { @include layout-container(none, 0); }
 }
 
-.quick-actions-floating {
-  position: fixed;
-  bottom: var(--space-6);
-  right: var(--space-6);
-  z-index: var(--z-floating);
+// Positioning utilities
+.layout-fixed {
+  @include layout-position(fixed);
   
-  > * {
-    min-width: 44px;
-    min-height: 44px;
-  }
+  @include modifier(top) { @include layout-position(fixed, 'top'); }
+  @include modifier(bottom) { @include layout-position(fixed, 'bottom'); }
+  @include modifier(left) { @include layout-position(fixed, 'left'); }
+  @include modifier(right) { @include layout-position(fixed, 'right'); }
+  @include modifier(inset) { @include layout-position(fixed, 'full'); }
+}
+
+.layout-sticky {
+  @include layout-position(sticky);
   
-  // Mobile-first responsive positioning
-  @include responsive-max(md) {
-    bottom: var(--space-4);
-    right: var(--space-4);
-  }
+  @include modifier(top) { @include layout-position(sticky, 'top'); }
+  @include modifier(bottom) { @include layout-position(sticky, 'bottom'); }
+}
+
+.layout-relative {
+  @include layout-position(relative);
+}
+
+.layout-absolute {
+  @include layout-position(absolute);
   
-  @include responsive-max(sm) {
-    bottom: var(--space-3);
-    right: var(--space-3);
-  }
+  @include modifier(top) { @include layout-position(absolute, 'top'); }
+  @include modifier(bottom) { @include layout-position(absolute, 'bottom'); }
+  @include modifier(left) { @include layout-position(absolute, 'left'); }
+  @include modifier(right) { @include layout-position(absolute, 'right'); }
+  @include modifier(inset) { @include layout-position(absolute, 'full'); }
+  @include modifier(center) { @include layout-position(absolute, 'center'); }
 }
 
-// Error UI patterns
-
-.blazor-error {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: var(--color-overlay-dark);
-  z-index: var(--z-modal);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-4);
+// Flex utilities using semantic variables
+.layout-flex {
+  @include layout-flex;
+  
+  @include modifier(col) { @include layout-flex(column); }
+  @include modifier(row) { @include layout-flex(row); }
+  @include modifier(wrap) { flex-wrap: wrap; }
+  @include modifier(nowrap) { flex-wrap: nowrap; }
+  
+  @include modifier(center) { @include layout-flex(row, center, center); }
+  @include modifier(between) { @include layout-flex(row, center, space-between); }
+  @include modifier(around) { @include layout-flex(row, center, space-around); }
+  @include modifier(end) { @include layout-flex(row, center, flex-end); }
+  @include modifier(start) { @include layout-flex(row, center, flex-start); }
 }
 
-.blazor-error-content {
-  background: var(--color-background-elevated);
-  padding: var(--space-8);
-  border-radius: var(--radius-lg);
-  text-align: center;
-  max-width: 32rem;
-  box-shadow: var(--shadow-xl);
+// Grid utilities using semantic variables
+.layout-grid {
+  @include layout-grid;
+  
+  @include modifier(cols-1) { @include layout-grid(1); }
+  @include modifier(cols-2) { @include layout-grid(2); }
+  @include modifier(cols-3) { @include layout-grid(3); }
+  @include modifier(cols-4) { @include layout-grid(4); }
+  @include modifier(cols-12) { @include layout-grid(12); }
+  
+  @include modifier(auto-fit) { @include layout-grid('auto-fit'); }
+  @include modifier(auto-fill) { @include layout-grid('auto-fill'); }
 }
 
-.blazor-error-icon {
-  font-size: 3rem;
-  color: var(--color-error);
-  margin-bottom: var(--space-4);
+// Spacing utilities using semantic variables
+.layout-gap {
+  @include modifier(0) { gap: 0; }
+  @include modifier(1) { gap: var(--space-1); }
+  @include modifier(2) { gap: var(--space-2); }
+  @include modifier(3) { gap: var(--space-3); }
+  @include modifier(4) { gap: var(--space-4); }
+  @include modifier(6) { gap: var(--space-6); }
+  @include modifier(8) { gap: var(--space-8); }
 }
 
-.blazor-error-title {
-  font-size: var(--text-xl);
-  font-weight: var(--font-semibold);
-  color: var(--color-text-primary);
-  margin-bottom: var(--space-2);
+// Overflow utilities
+.layout-overflow {
+  @include modifier(hidden) { overflow: hidden; }
+  @include modifier(auto) { overflow: auto; }
+  @include modifier(scroll) { overflow: scroll; }
+  @include modifier(x-auto) { overflow-x: auto; }
+  @include modifier(y-auto) { overflow-y: auto; }
+  @include modifier(x-hidden) { overflow-x: hidden; }
+  @include modifier(y-hidden) { overflow-y: hidden; }
 }
 
-.blazor-error-message {
-  color: var(--color-text-secondary);
-  margin-bottom: var(--space-6);
+// Z-index utilities using semantic variables
+.layout-z {
+  @include modifier(0) { z-index: 0; }
+  @include modifier(10) { z-index: 10; }
+  @include modifier(20) { z-index: 20; }
+  @include modifier(30) { z-index: 30; }
+  @include modifier(40) { z-index: 40; }
+  @include modifier(50) { z-index: 50; }
+  @include modifier(dropdown) { z-index: var(--z-dropdown); }
+  @include modifier(modal) { z-index: var(--z-modal); }
+  @include modifier(floating) { z-index: var(--z-floating); }
 }
 
-.blazor-error-actions {
-  display: flex;
-  gap: var(--space-3);
-  justify-content: center;
+// ============================================================================
+// RESPONSIVE LAYOUT HELPERS - Theme Aware
+// ============================================================================
+
+@include responsive-max(sm) {
+  .layout-sm\:flex-col { @include layout-flex(column); }
+  .layout-sm\:grid-cols-1 { @include layout-grid(1); }
+  .layout-sm\:gap-2 { gap: var(--space-2); }
+  .layout-sm\:hidden { display: none; }
+}
+
+@include responsive-max(md) {
+  .layout-md\:flex-col { @include layout-flex(column); }
+  .layout-md\:grid-cols-2 { @include layout-grid(2); }
+  .layout-md\:gap-3 { gap: var(--space-3); }
+  .layout-md\:hidden { display: none; }
+}
+
+@include responsive-max(lg) {
+  .layout-lg\:flex-col { @include layout-flex(column); }
+  .layout-lg\:grid-cols-3 { @include layout-grid(3); }
+  .layout-lg\:gap-4 { gap: var(--space-4); }
+  .layout-lg\:hidden { display: none; }
+}
+
+// ============================================================================
+// SEMANTIC INTERACTION PATTERNS
+// ============================================================================
+
+.layout-interactive {
+  @include layout-interactive;
+  
+  @include modifier(subtle) { @include layout-interactive(translateY(-0.5px), scale(0.99)); }
+  @include modifier(strong) { @include layout-interactive(translateY(-2px), scale(0.97)); }
+  @include modifier(none) { @include layout-interactive(none, none); }
+}
+
+.layout-backdrop {
+  @include layout-backdrop;
+  
+  @include modifier(blur) { @include layout-backdrop(0.6, true); }
+  @include modifier(light) { @include layout-backdrop(0.4); }
+  @include modifier(heavy) { @include layout-backdrop(0.8); }
+}
+
+.layout-surface {
+  @include layout-surface;
+  
+  @include modifier(flat) { @include layout-surface('flat'); }
+  @include modifier(raised) { @include layout-surface('raised'); }
+  @include modifier(floating) { @include layout-surface('floating'); }
+  @include modifier(glass) { @include layout-surface('glass'); }
 }
 
