@@ -29,11 +29,9 @@ class ModalProvider {
         const observer = new MutationObserver((mutations) => {
             const hasModal = document.querySelector('.r-modal-provider .modal');
             if (hasModal) {
-                document.body.style.overflow = 'hidden';
-                document.body.style.paddingRight = this.getScrollbarWidth() + 'px';
+                this.lockBodyScroll();
             } else {
-                document.body.style.overflow = '';
-                document.body.style.paddingRight = '';
+                this.unlockBodyScroll();
             }
         });
 
@@ -43,6 +41,52 @@ class ModalProvider {
         });
 
         this.scrollObserver = observer;
+    }
+
+    lockBodyScroll() {
+        if (document.body.style.overflow !== 'hidden') {
+            // Store original scroll position
+            this.originalScrollTop = window.pageYOffset || document.documentElement.scrollTop;
+            
+            // Calculate scrollbar width to prevent layout shift
+            const scrollbarWidth = this.getScrollbarWidth();
+            
+            // Apply scroll lock
+            document.body.style.overflow = 'hidden';
+            document.body.style.position = 'fixed';
+            document.body.style.top = `-${this.originalScrollTop}px`;
+            document.body.style.width = '100%';
+            document.body.style.paddingRight = scrollbarWidth + 'px';
+            
+            // Also lock html element for better browser compatibility
+            document.documentElement.style.overflow = 'hidden';
+            
+            // Add body class for additional styling hooks
+            document.body.classList.add('modal-open');
+        }
+    }
+
+    unlockBodyScroll() {
+        if (document.body.style.overflow === 'hidden') {
+            // Remove scroll lock
+            document.body.style.overflow = '';
+            document.body.style.position = '';
+            document.body.style.top = '';
+            document.body.style.width = '';
+            document.body.style.paddingRight = '';
+            
+            // Unlock html element
+            document.documentElement.style.overflow = '';
+            
+            // Remove body class
+            document.body.classList.remove('modal-open');
+            
+            // Restore scroll position
+            if (this.originalScrollTop) {
+                window.scrollTo(0, this.originalScrollTop);
+                this.originalScrollTop = 0;
+            }
+        }
     }
 
     setupFocusManagement() {
@@ -88,9 +132,8 @@ class ModalProvider {
             this.scrollObserver.disconnect();
         }
 
-        // Restore body scroll
-        document.body.style.overflow = '';
-        document.body.style.paddingRight = '';
+        // Restore body scroll completely
+        this.unlockBodyScroll();
     }
 }
 

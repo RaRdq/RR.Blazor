@@ -697,3 +697,17 @@ window.downloadFile = function(url, fileName) {
     link.click();
     document.body.removeChild(link);
 };
+
+// ===== DEVELOPMENT DEBUG UTILITIES =====
+// Load debug utilities in development environments only
+if (debugLogger.isDebugMode) {
+    // Import and initialize debug module
+    import('./page-debug.js')
+        .then(debugModule => {
+            // The debug module should export its functionality as window.RRDebug
+            debugLogger.log('🔧 Debug utilities loaded from module for development environment');
+        })
+        .catch(error => {
+            debugLogger.warn('Failed to load debug utilities:', error);
+        });
+}
