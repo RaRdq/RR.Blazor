@@ -24,7 +24,7 @@ namespace RR.Blazor.Analyzers
             Category,
             DiagnosticSeverity.Error,
             isEnabledByDefault: true,
-            helpLinkUri: "https://docs.rr-blazor.dev/components");
+            helpLinkUri: "https://docs.rrblazor.dev/components");
 
         private static readonly DiagnosticDescriptor UnknownComponentRule = new DiagnosticDescriptor(
             "RR1002",
@@ -33,7 +33,7 @@ namespace RR.Blazor.Analyzers
             Category,
             DiagnosticSeverity.Warning,
             isEnabledByDefault: true,
-            helpLinkUri: "https://docs.rr-blazor.dev/components");
+            helpLinkUri: "https://docs.rrblazor.dev/components");
 
         private static readonly DiagnosticDescriptor DeprecatedParameterRule = new DiagnosticDescriptor(
             "RR1003",
@@ -42,7 +42,7 @@ namespace RR.Blazor.Analyzers
             Category,
             DiagnosticSeverity.Warning,
             isEnabledByDefault: true,
-            helpLinkUri: "https://docs.rr-blazor.dev/migration");
+            helpLinkUri: "https://docs.rrblazor.dev/migration");
 
         private static readonly DiagnosticDescriptor InlineStyleRule = new DiagnosticDescriptor(
             "RR1004",
@@ -51,7 +51,7 @@ namespace RR.Blazor.Analyzers
             Category,
             DiagnosticSeverity.Error,
             isEnabledByDefault: true,
-            helpLinkUri: "https://docs.rr-blazor.dev/styling");
+            helpLinkUri: "https://docs.rrblazor.dev/styling");
 
         private static readonly DiagnosticDescriptor MalformedIconRule = new DiagnosticDescriptor(
             "RR1005",
@@ -60,7 +60,7 @@ namespace RR.Blazor.Analyzers
             Category,
             DiagnosticSeverity.Error,
             isEnabledByDefault: true,
-            helpLinkUri: "https://docs.rr-blazor.dev/icons");
+            helpLinkUri: "https://docs.rrblazor.dev/icons");
 
         public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
             ImmutableArray.Create(InvalidComponentParameterRule, UnknownComponentRule, DeprecatedParameterRule, InlineStyleRule, MalformedIconRule);

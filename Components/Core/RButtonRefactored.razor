@@ -1,0 +1,240 @@
+@*
+    RButtonRefactored - Demonstration of how RButton could be refactored using base classes
+    
+    This is a demonstration component showing how the new base class architecture
+    could dramatically reduce code duplication and improve maintainability.
+    
+    Benefits of this approach:
+    - Reduces 80+ lines of duplicated property definitions
+    - Centralizes density and size calculations
+    - Provides consistent behavior across all components
+    - Makes it easy to add new components following the same patterns
+*@
+
+@using RR.Blazor.Enums
+@using RR.Blazor.Attributes
+@using RR.Blazor.Components.Base
+@using RR.Blazor.Utilities
+@inherits RVariantComponentBase<ButtonSize, ButtonVariant>
+
+@attribute [Component("RButtonRefactored", Category = "Core", Complexity = ComponentComplexity.Simple)]
+@attribute [AIOptimized(Prompt = "Create a professional button for user actions", 
+                       CommonUse = "forms, navigation, actions, toolbars", 
+                       AvoidUsage = "Don't use for navigation links - use RLink instead")]
+
+<button type="@Type.ToString().ToLower()" 
+        class="@GetButtonClasses()" 
+        disabled="@(Disabled || Loading)"
+        @onclick="HandleClick"
+        @onclick:stopPropagation="StopPropagation"
+        @onclick:preventDefault="PreventDefault"
+        @attributes="GetAdditionalAttributes()">
+    
+    @if (HasIcon && (IconPosition == IconPosition.Start || IconPosition == IconPosition.Top))
+    {
+        <i class="@GetIconClasses()">@Icon</i>
+    }
+    
+    @if (HasText)
+    {
+        <span class="@GetTextClasses()">@Text</span>
+    }
+    
+    @if (ChildContent != null)
+    {
+        @ChildContent
+    }
+    
+    @if (HasIcon && (IconPosition == IconPosition.End || IconPosition == IconPosition.Bottom))
+    {
+        <i class="@GetIconClasses()">@Icon</i>
+    }
+    
+    @if (Loading)
+    {
+        <i class="material-symbols-rounded animate-spin">progress_activity</i>
+        @if (!string.IsNullOrEmpty(LoadingText))
+        {
+            <span class="ml-2">@LoadingText</span>
+        }
+    }
+</button>
+
+@code {
+    #region Button-Specific Properties
+    
+    /// <summary>
+    /// Button type attribute for form interaction
+    /// </summary>
+    [Parameter] 
+    [AIParameter("Button type", SuggestedValues = new[] { "Button", "Submit", "Reset" })]
+    public ButtonType Type { get; set; } = ButtonType.Button;
+    
+    /// <summary>
+    /// Icon position relative to text
+    /// </summary>
+    [Parameter] 
+    [AIParameter("Icon position", SuggestedValues = new[] { "Start", "End", "Top", "Bottom" })]
+    public IconPosition IconPosition { get; set; } = IconPosition.Start;
+    
+    /// <summary>
+    /// Loading text to show when Loading is true
+    /// </summary>
+    [Parameter] 
+    [AIParameter("Loading text", Example = "\"Processing...\"")]
+    public string? LoadingText { get; set; }
+    
+    /// <summary>
+    /// Stop propagation of click events
+    /// </summary>
+    [Parameter] 
+    [AIParameter("Stop event propagation")]
+    public bool StopPropagation { get; set; }
+    
+    /// <summary>
+    /// Prevent default click behavior
+    /// </summary>
+    [Parameter] 
+    [AIParameter("Prevent default behavior")]
+    public bool PreventDefault { get; set; }
+    
+    #endregion
+    
+    #region Abstract Method Implementations
+    
+    /// <summary>
+    /// Provides button-specific size classes
+    /// </summary>
+    protected override string GetSizeClasses()
+    {
+        return SizeHelper.GetButtonSize(Size, Density);
+    }
+    
+    /// <summary>
+    /// Provides button-specific variant classes
+    /// </summary>
+    protected override string GetVariantClasses()
+    {
+        return GetCompleteVariantClasses();
+    }
+    
+    /// <summary>
+    /// Gets default size for buttons
+    /// </summary>
+    protected override ButtonSize GetDefaultSize()
+    {
+        return ButtonSize.Medium;
+    }
+    
+    /// <summary>
+    /// Gets default variant for buttons
+    /// </summary>
+    protected override ButtonVariant GetDefaultVariant()
+    {
+        return ButtonVariant.Primary;
+    }
+    
+    /// <summary>
+    /// Gets text size classes for button text
+    /// </summary>
+    protected override string GetTextSizeClasses()
+    {
+        return SizeHelper.GetTextSize(Size, Density);
+    }
+    
+    /// <summary>
+    /// Gets icon size classes for button icons
+    /// </summary>
+    protected override string GetIconSizeClasses()
+    {
+        return SizeHelper.GetButtonIconSize(Size, Density);
+    }
+    
+    #endregion
+    
+    #region Styling Methods
+    
+    /// <summary>
+    /// Gets comprehensive button CSS classes
+    /// </summary>
+    private string GetButtonClasses()
+    {
+        var classes = new List<string>
+        {
+            "button",
+            "inline-flex",
+            "items-center",
+            "justify-center",
+            "rounded-md",
+            "transition-all",
+            "duration-200",
+            "font-medium",
+            "focus:outline-none",
+            "focus:ring-2",
+            "focus:ring-offset-2"
+        };
+        
+        // Add base classes (includes size, variant, density)
+        var baseClasses = GetBaseClasses();
+        if (!string.IsNullOrEmpty(baseClasses))
+        {
+            classes.AddRange(baseClasses.Split(' ').Where(c => !string.IsNullOrEmpty(c)));
+        }
+        
+        // Add cursor classes
+        classes.Add(GetCursorClasses());
+        
+        // Add gap classes for icon/text spacing
+        classes.Add(DensityHelper.GetGap(Density));
+        
+        return string.Join(" ", classes.Where(c => !string.IsNullOrEmpty(c)));
+    }
+    
+    #endregion
+    
+    #region Demonstration Comments
+    
+    /*
+    COMPARISON: Traditional vs Base Class Approach
+    
+    TRADITIONAL APPROACH (what RButton currently has):
+    - 80+ lines of property definitions
+    - Duplicate density calculations across multiple methods
+    - Variant color logic repeated in multiple places
+    - Size calculations duplicated
+    - Same styling patterns repeated across components
+    
+    BASE CLASS APPROACH (this component):
+    - 20 lines of button-specific properties
+    - Automatic density/size/variant handling from base classes
+    - Consistent behavior across all components
+    - Shared utility functions for calculations
+    - Easy to extend and maintain
+    
+    BENEFITS OF BASE CLASS APPROACH:
+    1. Code Reduction: ~70% less code per component
+    2. Consistency: All components behave identically
+    3. Maintainability: Changes to base classes affect all components
+    4. Developer Experience: Predictable API across all components
+    5. Performance: Shared methods reduce memory usage
+    6. Extensibility: Easy to add new components following established patterns
+    
+    PROPERTIES ELIMINATED BY BASE CLASSES:
+    - Class, Style, Disabled (from RComponentBase)
+    - OnClick, Loading, AriaLabel, TabIndex (from RInteractiveComponentBase)
+    - Text, Icon, Subtitle, Title (from RTextComponentBase)
+    - Size + size calculations (from RSizedComponentBase)
+    - Variant + variant calculations (from RVariantComponentBase)
+    - Density + density calculations (from all base classes)
+    
+    SHARED UTILITIES USED:
+    - SizeHelper.GetButtonSize() for size calculations
+    - SizeHelper.GetButtonIconSize() for icon sizing
+    - DensityHelper.GetGap() for spacing
+    - GetCompleteVariantClasses() for variant styling
+    - GetCursorClasses() for cursor states
+    - GetBaseClasses() for combining all base class styles
+    */
+    
+    #endregion
+}

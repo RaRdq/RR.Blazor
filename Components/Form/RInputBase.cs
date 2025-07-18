@@ -2,13 +2,14 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using RR.Blazor.Attributes;
 using RR.Blazor.Enums;
+using RR.Blazor.Components.Base;
 
 namespace RR.Blazor.Components.Form
 {
     /// <summary>
     /// Abstract base class for all RInput components providing shared parameters and functionality
     /// </summary>
-    public abstract class RInputBase : ComponentBase
+    public abstract class RInputBase : RComponentBase
     {
         #region Core Parameters
         
@@ -33,10 +34,6 @@ namespace RR.Blazor.Components.Form
         public bool Required { get; set; }
         
         [Parameter]
-        [AIParameter("Whether the field is disabled")]
-        public bool Disabled { get; set; }
-        
-        [Parameter]
         [AIParameter("Whether the field is read-only")]
         public bool ReadOnly { get; set; }
         
@@ -56,9 +53,6 @@ namespace RR.Blazor.Components.Form
         [AIParameter("Input size", SuggestedValues = new[] { "Small", "Medium", "Large" })]
         public TextInputSize Size { get; set; } = TextInputSize.Medium;
         
-        [Parameter]
-        [AIParameter("Component density", SuggestedValues = new[] { "Normal", "Dense", "Compact", "Spacious" })]
-        public ComponentDensity Density { get; set; } = ComponentDensity.Normal;
         
         [Parameter]
         [AIParameter("Start icon name", Example = "\"search\"")]
@@ -68,13 +62,6 @@ namespace RR.Blazor.Components.Form
         [AIParameter("End icon name", Example = "\"visibility\"")]
         public string? EndIcon { get; set; }
         
-        [Parameter]
-        [AIParameter("Additional CSS classes to apply")]
-        public string? Class { get; set; }
-        
-        [Parameter]
-        [AIParameter("Additional CSS styles to apply")]
-        public string? Style { get; set; }
         
         #endregion
         

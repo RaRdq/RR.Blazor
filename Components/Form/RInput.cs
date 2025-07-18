@@ -26,7 +26,7 @@ namespace RR.Blazor.Components.Form
         
         [Parameter]
         [AIParameter("Value changed callback")]
-        public EventCallback<object> ValueChanged { get; set; }
+        public EventCallback ValueChanged { get; set; }
         
         [Parameter]
         [AIParameter("Explicit field type override", Example = "FieldType.Email")]
@@ -117,13 +117,13 @@ namespace RR.Blazor.Components.Form
                 {
                     DateTime => FieldType.DateTime,
                     DateTimeOffset => FieldType.DateTime,
-                    TimeRange => FieldType.TimeRange,
+                    TimeRange => FieldType.Time,
                     int => FieldType.Number,
                     long => FieldType.Number,
                     decimal => FieldType.Number,
                     double => FieldType.Number,
                     float => FieldType.Number,
-                    bool => FieldType.Boolean,
+                    bool => FieldType.Checkbox,
                     string str when IsEmailFormat(str) => FieldType.Email,
                     string str when IsUrlFormat(str) => FieldType.Url,
                     string str when IsTelFormat(str) => FieldType.Tel,
@@ -167,10 +167,10 @@ namespace RR.Blazor.Components.Form
                 case FieldType.DateTime:
                     RenderDateTimeInput(builder);
                     break;
-                case FieldType.TimeRange:
+                case FieldType.Time:
                     RenderTimeRangeInput(builder);
                     break;
-                case FieldType.Boolean:
+                case FieldType.Checkbox:
                     RenderBooleanInput(builder);
                     break;
                 default:
@@ -228,7 +228,7 @@ namespace RR.Blazor.Components.Form
             builder.AddAttribute(2, "ValueChanged", EventCallback.Factory.Create<string>(this, OnDateTimeValueChanged));
             
             // Date parameters
-            builder.AddAttribute(3, "Type", ShowTime ? FieldType.DateTimeLocal : FieldType.Date);
+            builder.AddAttribute(3, "Type", ShowTime ? FieldType.DateTime : FieldType.Date);
             
             // Add all inherited parameters
             AddInheritedParameters(builder, 10);
@@ -364,7 +364,7 @@ namespace RR.Blazor.Components.Form
         private async Task OnTextValueChanged(string? newValue)
         {
             Value = newValue;
-            await ValueChanged.InvokeAsync(Value);
+            await ValueChanged.InvokeAsync();
         }
         
         private async Task OnNumericValueChanged(string? newValue)
@@ -390,7 +390,7 @@ namespace RR.Blazor.Components.Form
                 Value = newValue; // Keep as string if conversion fails
             }
             
-            await ValueChanged.InvokeAsync(Value);
+            await ValueChanged.InvokeAsync();
         }
         
         private async Task OnDateTimeValueChanged(string? newValue)
@@ -412,7 +412,7 @@ namespace RR.Blazor.Components.Form
                 Value = newValue; // Keep as string if conversion fails
             }
             
-            await ValueChanged.InvokeAsync(Value);
+            await ValueChanged.InvokeAsync();
         }
         
         private async Task OnTimeRangeValueChanged(string? newValue)
@@ -430,13 +430,13 @@ namespace RR.Blazor.Components.Form
                 Value = newValue; // Keep as string if conversion fails
             }
             
-            await ValueChanged.InvokeAsync(Value);
+            await ValueChanged.InvokeAsync();
         }
         
         private async Task OnBooleanValueChanged(bool newValue)
         {
             Value = newValue;
-            await ValueChanged.InvokeAsync(Value);
+            await ValueChanged.InvokeAsync();
         }
         
         #endregion
