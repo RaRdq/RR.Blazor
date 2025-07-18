@@ -22,12 +22,14 @@
 *@
 
 @using RR.Blazor.Enums
+@using RR.Blazor.Models
 @using Microsoft.AspNetCore.Components.Web
+@inherits RInputBase
 @attribute [Component("RTextInput", Category = "Form", Complexity = ComponentComplexity.Simple)]
 @attribute [AIOptimized(
-    Prompt = "Use for simple text input with utility-first styling and glassmorphism effects",
-    CommonUse = "Basic text input, search fields, form inputs with validation",
-    AvoidUsage = "Complex forms (use RFormField), multi-line text (use RTextArea)"
+    Prompt = "Use for text input with validation, utility-first styling and professional form integration",
+    CommonUse = "Form inputs with validation, search fields, email/password inputs, real-time validation",
+    AvoidUsage = "Multi-line text (use RTextArea), complex multi-field forms (use RFormGeneric)"
 )]
 
 <div class="@GetContainerClasses()">
@@ -45,20 +47,39 @@
         }
         
         <input id="@inputId"
-               type="@Type"
+               type="@GetEffectiveInputType()"
+               min="@(Min?.ToString())"
+               max="@(Max?.ToString())"
+               step="@(Step?.ToString())"
                class="@GetInputClasses()"
                value="@Value"
                placeholder="@Placeholder"
                disabled="@Disabled"
                readonly="@ReadOnly"
                required="@Required"
-               @oninput="@OnInputChange"
-               @onfocus="@OnFocus"
-               @onblur="@OnBlur"
+               autocomplete="@AutoComplete"
+               data-field="@GetEffectiveFieldName()"
+               @oninput="@HandleInput"
+               @onchange="@HandleValueChange"
+               @onfocus="@HandleFocus"
+               @onblur="@HandleBlur"
                @onkeypress="@OnKeyPress"
                @onkeydown="@OnKeyDown" />
         
-        @if (!string.IsNullOrEmpty(EndIcon))
+        @if (IsPasswordField && ShowPasswordToggle)
+        {
+            <div class="@GetEndIconContainerClasses()">
+                <button type="button" 
+                        class="@GetPasswordToggleButtonClasses()"
+                        @onclick="TogglePasswordVisibility"
+                        title="@(showPassword ? "Hide password" : "Show password")"
+                        aria-label="@(showPassword ? "Hide password" : "Show password")"
+                        tabindex="-1">
+                    <i class="material-symbols-rounded @GetIconClasses()">@(showPassword ? "visibility_off" : "visibility")</i>
+                </button>
+            </div>
+        }
+        else if (!string.IsNullOrEmpty(EndIcon))
         {
             <div class="@GetEndIconContainerClasses()">
                 <i class="material-symbols-rounded @GetIconClasses()" @onclick="@OnEndIconClick">@EndIcon</i>
@@ -73,9 +94,12 @@
         }
     </div>
     
-    @if (HasError && !string.IsNullOrEmpty(ErrorMessage))
+    @if (IsInErrorState && !string.IsNullOrEmpty(GetEffectiveErrorMessage()))
     {
-        <div class="@GetErrorMessageClasses()">@ErrorMessage</div>
+        <div class="@GetErrorMessageClasses()">
+            <i class="material-symbols-rounded text-error mr-1">error</i>
+            @GetEffectiveErrorMessage()
+        </div>
     }
     
     @if (!string.IsNullOrEmpty(HelpText))
@@ -98,8 +122,20 @@
     public EventCallback<string> ValueChanged { get; set; }
     
     [Parameter] 
-    [AIParameter("Input type", SuggestedValues = new[] { "text", "email", "password", "tel", "url", "search" }, Example = "\"email\"")]
-    public string Type { get; set; } = "text";
+    [AIParameter("Input type", SuggestedValues = new[] { "Text", "Email", "Password", "Number", "Tel", "Url", "Search" }, Example = "FieldType.Email")]
+    public FieldType Type { get; set; } = FieldType.Text;
+    
+    [Parameter]
+    [AIParameter("Minimum value for number inputs", Example = "0")]
+    public decimal? Min { get; set; }
+    
+    [Parameter]
+    [AIParameter("Maximum value for number inputs", Example = "100")]
+    public decimal? Max { get; set; }
+    
+    [Parameter]
+    [AIParameter("Step value for number inputs", Example = "0.01")]
+    public decimal? Step { get; set; }
     
     [Parameter] 
     [AIParameter("Placeholder text", Example = "\"Enter your email...\"")]
@@ -117,6 +153,10 @@
     [AIParameter("End icon name", Example = "\"visibility\"")]
     public string? EndIcon { get; set; }
     
+    [Parameter]
+    [AIParameter("Show password toggle for password fields")]
+    public bool ShowPasswordToggle { get; set; } = true;
+    
     [Parameter] 
     [AIParameter("Input variant", SuggestedValues = new[] { "Default", "Clean", "Filled", "Outlined", "Glass" })]
     public TextInputVariant Variant { get; set; } = TextInputVariant.Default;
@@ -125,41 +165,10 @@
     [AIParameter("Input size", SuggestedValues = new[] { "Small", "Medium", "Large" })]
     public TextInputSize Size { get; set; } = TextInputSize.Medium;
     
+    
     [Parameter]
-    [AIParameter("Component density level", SuggestedValues = new[] { "Normal", "Dense", "Compact", "Spacious" })]
-    public ComponentDensity Density { get; set; } = ComponentDensity.Normal;
-    
-    [Parameter] 
-    [AIParameter("Disabled state")]
-    public bool Disabled { get; set; }
-    
-    [Parameter] 
-    [AIParameter("Read-only state")]
-    public bool ReadOnly { get; set; }
-    
-    [Parameter] 
-    [AIParameter("Required state")]
-    public bool Required { get; set; }
-    
-    [Parameter] 
-    [AIParameter("Loading state")]
-    public bool Loading { get; set; }
-    
-    [Parameter] 
-    [AIParameter("Has error state")]
-    public bool HasError { get; set; }
-    
-    [Parameter] 
-    [AIParameter("Error message text")]
-    public string? ErrorMessage { get; set; }
-    
-    [Parameter] 
-    [AIParameter("Help text")]
-    public string? HelpText { get; set; }
-    
-    [Parameter] 
-    [AIParameter("Additional CSS classes")]
-    public string? Class { get; set; }
+    [AIParameter("Auto-complete attribute for forms")]
+    public string? AutoComplete { get; set; }
     
     #endregion
     
@@ -174,6 +183,45 @@
     
     #endregion
     
+    #region Password State
+    
+    private bool showPassword = false;
+    
+    private bool IsPasswordField => Type == FieldType.Password;
+    
+    private string GetEffectiveInputType()
+    {
+        if (IsPasswordField && showPassword)
+            return "text";
+        return Type.ToString().ToLower();
+    }
+    
+    private void TogglePasswordVisibility()
+    {
+        showPassword = !showPassword;
+        StateHasChanged();
+    }
+    
+    protected override string GetEffectiveFieldName()
+    {
+        if (!string.IsNullOrEmpty(FieldName))
+            return FieldName;
+            
+        // Auto-derive field name from Label by removing spaces and making camelCase
+        if (!string.IsNullOrEmpty(Label))
+        {
+            var fieldName = Label.Replace(" ", "").Replace(":", "");
+            if (!string.IsNullOrEmpty(fieldName))
+            {
+                return char.ToLowerInvariant(fieldName[0]) + fieldName[1..];
+            }
+        }
+        
+        return "";
+    }
+    
+    #endregion
+    
     #region Methods
     
     private async Task OnInputChange(ChangeEventArgs e)
@@ -181,6 +229,36 @@
         Value = e.Value?.ToString();
         await ValueChanged.InvokeAsync(Value);
     }
+    
+    private async Task HandleInput(ChangeEventArgs e)
+    {
+        var newValue = e.Value?.ToString() ?? "";
+        Value = newValue;
+        
+        await ValueChanged.InvokeAsync(Value);
+        
+        // Use base class method for user interaction handling
+        await HandleUserInteraction(!string.IsNullOrEmpty(newValue));
+    }
+    
+    private async Task HandleValueChange(ChangeEventArgs e)
+    {
+        var newValue = e.Value?.ToString() ?? "";
+        Value = newValue;
+        await ValueChanged.InvokeAsync(newValue);
+        await HandleUserInteraction();
+    }
+    
+    private async Task HandleFocus(FocusEventArgs e)
+    {
+        await HandleFocusEvent(e, OnFocus);
+    }
+    
+    private async Task HandleBlur(FocusEventArgs e)
+    {
+        await HandleBlurEvent(e, OnBlur);
+    }
+    
     
     private string GetContainerClasses()
     {
@@ -390,6 +468,18 @@
             ComponentDensity.Normal => "text-sm text-secondary mt-2",
             ComponentDensity.Spacious => "text-base text-secondary mt-3",
             _ => "text-sm text-secondary mt-2"
+        };
+    }
+    
+    private string GetPasswordToggleButtonClasses()
+    {
+        return Density switch
+        {
+            ComponentDensity.Compact => "pa-1 rounded hover:bg-surface-variant transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50",
+            ComponentDensity.Dense => "pa-1 rounded hover:bg-surface-variant transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50", 
+            ComponentDensity.Normal => "pa-2 rounded hover:bg-surface-variant transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50",
+            ComponentDensity.Spacious => "pa-3 rounded hover:bg-surface-variant transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50",
+            _ => "pa-2 rounded hover:bg-surface-variant transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50"
         };
     }
     

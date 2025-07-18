@@ -16,6 +16,8 @@
 @attribute [AIOptimized(Prompt = "Create professional checkbox with validation")]
 
 @using RR.Blazor.Enums
+@using RR.Blazor.Models
+@inherits RInputBase
 
 <div class="@GetContainerClasses()">
     <div class="relative d-flex items-center justify-center">
@@ -25,6 +27,8 @@
                @bind="Checked"
                @bind:after="OnCheckedChanged"
                disabled="@Disabled"
+               required="@Required"
+               data-field="@GetEffectiveFieldName()"
                class="@GetInputClasses()" />
         
         <div class="@GetCheckboxClasses()">
@@ -67,9 +71,12 @@
     }
 </div>
 
-@if (!string.IsNullOrEmpty(ValidationMessage))
+@if (IsInErrorState && !string.IsNullOrEmpty(GetEffectiveErrorMessage()))
 {
-    <div class="@GetValidationClasses()">@ValidationMessage</div>
+    <div class="@GetValidationClasses()">
+        <i class="material-symbols-rounded text-error mr-1">error</i>
+        @GetEffectiveErrorMessage()
+    </div>
 }
 
 @code {
@@ -100,21 +107,6 @@
     /// <summary>Size of the checkbox</summary>
     [Parameter] public CheckboxSize Size { get; set; } = CheckboxSize.Medium;
     
-    /// <summary>Component density level for ultra-dense layouts</summary>
-    [Parameter] public ComponentDensity Density { get; set; } = ComponentDensity.Normal;
-    
-    /// <summary>Whether the checkbox is disabled</summary>
-    [Parameter] public bool Disabled { get; set; }
-    
-    /// <summary>Whether the field is required</summary>
-    [Parameter] public bool Required { get; set; }
-    
-    /// <summary>Validation error message to display</summary>
-    [Parameter] public string? ValidationMessage { get; set; }
-    
-    /// <summary>Additional CSS classes to apply</summary>
-    [Parameter] public string? Class { get; set; }
-    
     /// <summary>Custom content to render alongside the checkbox</summary>
     [Parameter] public RenderFragment? ChildContent { get; set; }
     
@@ -125,6 +117,25 @@
     {
         await CheckedChanged.InvokeAsync(Checked);
         await OnClick.InvokeAsync();
+        await HandleUserInteraction(true);
+    }
+    
+    protected override string GetEffectiveFieldName()
+    {
+        if (!string.IsNullOrEmpty(FieldName))
+            return FieldName;
+            
+        // Auto-derive field name from Text by removing spaces and making camelCase
+        if (!string.IsNullOrEmpty(Text))
+        {
+            var fieldName = Text.Replace(" ", "").Replace(":", "");
+            if (!string.IsNullOrEmpty(fieldName))
+            {
+                return char.ToLowerInvariant(fieldName[0]) + fieldName[1..];
+            }
+        }
+        
+        return "";
     }
 
     private string GetContainerClasses()
