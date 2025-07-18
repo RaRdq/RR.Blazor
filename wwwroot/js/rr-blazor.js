@@ -1,6 +1,93 @@
 // RR.Blazor JavaScript Helpers
 // Supporting functions for component interactions
 
+// Unified Debug Logger - Reused across all RR.Blazor JavaScript files
+class DebugLogger {
+    constructor(prefix = '[RR.Blazor]') {
+        this.isDebugMode = this.detectDebugMode();
+        this.logPrefix = prefix;
+    }
+
+    detectDebugMode() {
+        return (
+            window.location.hostname === 'localhost' ||
+            window.location.hostname === '127.0.0.1' ||
+            window.location.hostname.includes('localhost') ||
+            window.location.port === '5001' ||
+            window.location.port === '7049' ||
+            window.location.href.includes('localhost') ||
+            window.location.href.includes('development') ||
+            window.location.href.includes('stage') ||
+            new URLSearchParams(window.location.search).has('debug') ||
+            localStorage.getItem('debug') === 'true' ||
+            document.body.classList.contains('debug-mode') ||
+            window.location.search.includes('debug') ||
+            !(window.location.hostname === 'payrollai.co' || 
+              window.location.hostname === 'www.payrollai.co' ||
+              window.location.hostname.endsWith('.payrollai.co'))
+        );
+    }
+
+    log(...args) {
+        if (this.isDebugMode) {
+            console.log(this.logPrefix, ...args);
+        }
+    }
+
+    info(...args) {
+        if (this.isDebugMode) {
+            console.info(this.logPrefix, ...args);
+        }
+    }
+
+    warn(...args) {
+        if (this.isDebugMode) {
+            console.warn(this.logPrefix, ...args);
+        }
+    }
+
+    error(...args) {
+        console.error(this.logPrefix, ...args);
+    }
+
+    debug(...args) {
+        if (this.isDebugMode) {
+            console.debug(this.logPrefix, ...args);
+        }
+    }
+
+    group(label) {
+        if (this.isDebugMode) {
+            console.group(this.logPrefix + ' ' + label);
+        }
+    }
+
+    groupEnd() {
+        if (this.isDebugMode) {
+            console.groupEnd();
+        }
+    }
+
+    time(label) {
+        if (this.isDebugMode) {
+            console.time(this.logPrefix + ' ' + label);
+        }
+    }
+
+    timeEnd(label) {
+        if (this.isDebugMode) {
+            console.timeEnd(this.logPrefix + ' ' + label);
+        }
+    }
+}
+
+// Create global debug logger instance
+const debugLogger = new DebugLogger();
+
+// Export debugLogger for other modules
+window.RRDebugLogger = DebugLogger;
+window.debugLogger = debugLogger;
+
 // Import and initialize theme system
 import * as ThemeModule from './theme.js';
 
@@ -39,10 +126,14 @@ window.RRBlazor = {
         const scrollWidth = wrapperElement.scrollWidth;
         const clientWidth = wrapperElement.clientWidth;
         
+        // Add 5px threshold to avoid false positives from rounding errors
+        const scrollThreshold = 5;
+        const isScrollable = scrollWidth > clientWidth + scrollThreshold;
+        
         return {
-            isScrollable: scrollWidth > clientWidth,
-            canScrollLeft: scrollLeft > 0,
-            canScrollRight: scrollLeft < scrollWidth - clientWidth
+            isScrollable: isScrollable,
+            canScrollLeft: isScrollable && scrollLeft > scrollThreshold,
+            canScrollRight: isScrollable && scrollLeft < scrollWidth - clientWidth - scrollThreshold
         };
     },
     
@@ -188,7 +279,7 @@ window.RRBlazor = {
                 document.execCommand('copy');
                 return Promise.resolve();
             } catch (err) {
-                console.error('Failed to copy to clipboard:', err);
+                debugLogger.error('Failed to copy to clipboard:', err);
                 return Promise.reject(err);
             } finally {
                 document.body.removeChild(textArea);
@@ -591,7 +682,7 @@ window.downloadFileFromStream = async function(fileName, contentStream) {
         URL.revokeObjectURL(url);
         return true;
     } catch (error) {
-        console.error('Download failed:', error);
+        debugLogger.error('Download failed:', error);
         return false;
     }
 };

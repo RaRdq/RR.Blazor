@@ -1,7 +1,14 @@
 // RAppShell JavaScript module for enhanced functionality
 
+// Use shared debug logger from RR.Blazor main file
+const debugLogger = window.debugLogger || new (window.RRDebugLogger || class {
+    constructor() { this.logPrefix = '[RAppShell]'; }
+    log(...args) { console.log(this.logPrefix, ...args); }
+    error(...args) { console.error(this.logPrefix, ...args); }
+})();
+
 export function initialize() {
-    console.log('RAppShell initialized');
+        debugLogger.log('RAppShell initialized');
     
     setupKeyboardShortcuts();
     
@@ -77,28 +84,69 @@ function setupClickOutside() {
 function setupResponsive() {
     let resizeTimeout;
     
-    window.addEventListener('resize', () => {
-        clearTimeout(resizeTimeout);
-        resizeTimeout = setTimeout(() => {
-            // Update mobile state
-            document.documentElement.style.setProperty('--is-mobile', isMobile() ? '1' : '0');
-            document.documentElement.style.setProperty('--is-tablet', isTablet() ? '1' : '0');
-            document.documentElement.style.setProperty('--is-desktop', isDesktop() ? '1' : '0');
+    const handleMobileCollapse = () => {
+        // Update mobile state
+        document.documentElement.style.setProperty('--is-mobile', isMobile() ? '1' : '0');
+        document.documentElement.style.setProperty('--is-tablet', isTablet() ? '1' : '0');
+        document.documentElement.style.setProperty('--is-desktop', isDesktop() ? '1' : '0');
+        
+        // Force mobile sidebar behavior - try multiple selector patterns
+        if (isMobile()) {
+            // Multiple selector patterns to ensure we catch the sidebar
+            const sidebarSelectors = ['.sidebar', '[class*="sidebar"]', '.app-shell .sidebar', 'aside[role="navigation"]'];
+            let sidebar = null;
             
-            // Auto-collapse sidebar on mobile
-            if (isMobile()) {
-                const sidebar = document.querySelector('.sidebar');
-                if (sidebar && !sidebar.classList.contains('sidebar--closed')) {
-                    sidebar.classList.add('sidebar--closed');
+            for (const selector of sidebarSelectors) {
+                sidebar = document.querySelector(selector);
+                if (sidebar) break;
+            }
+            
+            if (sidebar) {
+                // Use CSS classes instead of direct style manipulation
+                sidebar.classList.add('sidebar-closed', 'mobile-hidden');
+                
+                // Add mobile classes to body/html for CSS targeting
+                document.body.classList.add('mobile-layout');
+                document.documentElement.classList.add('mobile-layout');
+                
+                // Ensure main content gets proper mobile class
+                const mainContent = document.querySelector('.main-content');
+                if (mainContent) {
+                    mainContent.classList.add('mobile-sidebar');
                 }
             }
-        }, 150);
+        } else {
+            // Desktop behavior - restore sidebar
+            const sidebarSelectors = ['.sidebar', '[class*="sidebar"]', '.app-shell .sidebar', 'aside[role="navigation"]'];
+            let sidebar = null;
+            
+            for (const selector of sidebarSelectors) {
+                sidebar = document.querySelector(selector);
+                if (sidebar) break;
+            }
+            
+            if (sidebar) {
+                sidebar.classList.remove('mobile-hidden', 'sidebar-closed');
+                
+                document.body.classList.remove('mobile-layout');
+                document.documentElement.classList.remove('mobile-layout');
+                
+                // Remove mobile class from main content
+                const mainContent = document.querySelector('.main-content');
+                if (mainContent) {
+                    mainContent.classList.remove('mobile-sidebar');
+                }
+            }
+        }
+    };
+    
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(handleMobileCollapse, 150);
     });
     
-    // Initial setup
-    document.documentElement.style.setProperty('--is-mobile', isMobile() ? '1' : '0');
-    document.documentElement.style.setProperty('--is-tablet', isTablet() ? '1' : '0');
-    document.documentElement.style.setProperty('--is-desktop', isDesktop() ? '1' : '0');
+    // Initial setup - use setTimeout to ensure DOM is ready
+    setTimeout(handleMobileCollapse, 100);
 }
 
 function setupAccessibility() {

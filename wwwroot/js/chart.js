@@ -12,11 +12,6 @@ export function animatePieChart(element) {
     const slices = element.querySelectorAll('.pie-slice');
     if (!slices.length) return;
     
-    // Animations are now handled by SCSS classes
-    // This function is kept for backward compatibility
-    console.log('Pie chart animation initialized via SCSS');
-    
-    // Add interactive CSS classes for SCSS animations
     slices.forEach(slice => {
         slice.classList.add('hover-lift');
         
@@ -32,11 +27,7 @@ export function animateColumnChart(element) {
     const bars = element.querySelectorAll('.column-chart-bar');
     if (!bars.length) return;
     
-    // Animations are now handled by SCSS classes
-    // This function is kept for backward compatibility
-    console.log('Column chart animation initialized via SCSS');
     
-    // Add interactive CSS classes for SCSS animations
     bars.forEach(bar => {
         bar.classList.add('hover-lift');
         
@@ -298,33 +289,24 @@ export function applyChartTheme(element, themeData) {
     
     const isDark = themeData.mode === 'dark';
     
-    // Theme-specific styles are now handled by CSS custom properties
-    // This function is kept for backward compatibility
     element.setAttribute('data-theme', isDark ? 'dark' : 'light');
     
-    console.log(`Chart theme updated to: ${isDark ? 'dark' : 'light'}`);
 }
 
-// Chart Performance Optimization (simplified)
 export function optimizeChartPerformance(element) {
     if (!element) return;
     
-    // Enable hardware acceleration
     element.style.willChange = 'transform';
     element.style.transform = 'translateZ(0)';
     
-    // Optimize SVG rendering
     const svg = element.querySelector('svg');
     if (svg) {
         svg.style.shapeRendering = 'geometricPrecision';
         svg.style.textRendering = 'geometricPrecision';
     }
     
-    // Performance optimizations are now handled by SCSS
-    console.log('Chart performance optimizations applied');
 }
 
-// Chart Initialization
 export function initializeChart(element, options = {}) {
     if (!element) return null;
     
@@ -495,5 +477,3 @@ window.addEventListener('beforeunload', () => {
         chartObserver.disconnect();
     }
 });
-
-console.log('RR.Blazor Chart System initialized with SCSS animations');

@@ -31,7 +31,7 @@ Supports info, success, warning, and error states with consistent styling.
         
         @if (ShowIcon)
         {
-            <div class="alert-icon flex-shrink-0">
+            <div class="alert-icon shrink-0">
                 <i class="material-symbols-rounded @GetIconClasses()">@GetIcon()</i>
             </div>
         }
@@ -61,7 +61,7 @@ Supports info, success, warning, and error states with consistent styling.
             
             @if (Actions != null)
             {
-                <div class="alert-actions mt-3 flex gap-2">
+                <div class="alert-actions mt-3 d-flex gap-2">
                     @Actions
                 </div>
             }
@@ -95,6 +95,9 @@ Supports info, success, warning, and error states with consistent styling.
     /// <summary>Alert size</summary>
     [Parameter, AIParameter("Alert size", "AlertSize.Small, AlertSize.Medium, AlertSize.Large")] 
     public AlertSize Size { get; set; } = AlertSize.Medium;
+    
+    /// <summary>Component density for ultra-dense layouts</summary>
+    [Parameter] public ComponentDensity Density { get; set; } = ComponentDensity.Normal;
     
     /// <summary>Alert title</summary>
     [Parameter, AIParameter("Alert title text", "Main heading for the alert")] 
@@ -164,14 +167,16 @@ Supports info, success, warning, and error states with consistent styling.
     {
         var classes = new List<string>
         {
-            "flex",
+            "d-flex",
             "items-start",
-            "gap-3",
             "border",
             "rounded-lg",
             "transition-all",
             "duration-200"
         };
+        
+        // Add density-specific gap and padding
+        classes.Add(GetDensityClasses());
         
         // Size classes
         classes.Add(Size switch
@@ -228,6 +233,18 @@ Supports info, success, warning, and error states with consistent styling.
         }
         
         return string.Join(" ", classes);
+    }
+    
+    private string GetDensityClasses()
+    {
+        return Density switch
+        {
+            ComponentDensity.Compact => "gap-1 pa-2",
+            ComponentDensity.Dense => "gap-2 pa-3",
+            ComponentDensity.Normal => "gap-3 pa-4",
+            ComponentDensity.Spacious => "gap-4 pa-5",
+            _ => "gap-3 pa-4"
+        };
     }
     
     private string GetIcon()
@@ -304,7 +321,7 @@ Supports info, success, warning, and error states with consistent styling.
     
     private string GetCloseButtonClasses()
     {
-        return "flex-shrink-0 opacity-70 hover:opacity-100";
+        return "shrink-0 opacity-70 hover:opacity-100";
     }
     
     private async Task Dismiss()

@@ -50,7 +50,7 @@ Supports custom triggers, loading states, search filtering, and flexible item re
             <div class="dropdown-content" @onclick:stopPropagation="true">
                 @if (!string.IsNullOrEmpty(Header))
                 {
-                    <div class="dropdown-header">@Header</div>
+                    <div class="dropdown-header @GetHeaderDensityClasses()">@Header</div>
                 }
                 
                 @if (IsLoading)
@@ -64,7 +64,7 @@ Supports custom triggers, loading states, search filtering, and flexible item re
                 {
                     @foreach (var item in Items)
                     {
-                        <button class="dropdown-item @GetItemClass(item)"
+                        <button class="dropdown-item @GetItemClass(item) @GetItemDensityClasses()"
                                 @onclick="() => OnItemSelected(item)"
                                 disabled="@IsItemDisabled(item)">
                             @if (!string.IsNullOrEmpty(GetItemIcon(item)))
@@ -97,7 +97,7 @@ Supports custom triggers, loading states, search filtering, and flexible item re
                 
                 @if (!string.IsNullOrEmpty(Footer))
                 {
-                    <div class="dropdown-footer">@Footer</div>
+                    <div class="dropdown-footer @GetFooterDensityClasses()">@Footer</div>
                 }
             </div>
         </div>
@@ -134,6 +134,7 @@ Supports custom triggers, loading states, search filtering, and flexible item re
     [Parameter] public string AriaLabel { get; set; }
     [Parameter] public string Class { get; set; }
     [Parameter] public string AdditionalClass { get; set; }
+    [Parameter] public ComponentDensity Density { get; set; } = ComponentDensity.Normal;
     [Parameter] public EventCallback OnOpened { get; set; }
     [Parameter] public EventCallback OnClosed { get; set; }
 
@@ -215,6 +216,42 @@ Supports custom triggers, loading states, search filtering, and flexible item re
     private string GetItemIcon(TValue item)
     {
         return ItemIconSelector?.Invoke(item) ?? "";
+    }
+
+    private string GetItemDensityClasses()
+    {
+        return Density switch
+        {
+            ComponentDensity.Compact => "pt-1 pb-1 pl-2 pr-2 text-sm",
+            ComponentDensity.Dense => "pt-2 pb-2 pl-3 pr-3 text-sm",
+            ComponentDensity.Normal => "pt-3 pb-3 pl-4 pr-4 text-base",
+            ComponentDensity.Spacious => "pt-4 pb-4 pl-5 pr-5 text-base",
+            _ => "pt-3 pb-3 pl-4 pr-4 text-base"
+        };
+    }
+
+    private string GetHeaderDensityClasses()
+    {
+        return Density switch
+        {
+            ComponentDensity.Compact => "pt-1 pb-1 pl-2 pr-2 text-xs",
+            ComponentDensity.Dense => "pt-2 pb-2 pl-3 pr-3 text-sm",
+            ComponentDensity.Normal => "pt-3 pb-3 pl-4 pr-4 text-base",
+            ComponentDensity.Spacious => "pt-4 pb-4 pl-5 pr-5 text-lg",
+            _ => "pt-3 pb-3 pl-4 pr-4 text-base"
+        };
+    }
+
+    private string GetFooterDensityClasses()
+    {
+        return Density switch
+        {
+            ComponentDensity.Compact => "pt-1 pb-1 pl-2 pr-2 text-xs",
+            ComponentDensity.Dense => "pt-2 pb-2 pl-3 pr-3 text-sm",
+            ComponentDensity.Normal => "pt-3 pb-3 pl-4 pr-4 text-base",
+            ComponentDensity.Spacious => "pt-4 pb-4 pl-5 pr-5 text-lg",
+            _ => "pt-3 pb-3 pl-4 pr-4 text-base"
+        };
     }
 
     private async Task ToggleDropdown()

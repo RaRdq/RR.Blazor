@@ -4,13 +4,21 @@
 let dotNetHelper = null;
 let systemThemeListener = null;
 
+// Use shared debug logger from RR.Blazor main file
+const debugLogger = window.debugLogger || new (window.RRDebugLogger || class {
+    constructor() { this.logPrefix = '[RR.Blazor Theme]'; }
+    log(...args) { console.log(this.logPrefix, ...args); }
+    warn(...args) { console.warn(this.logPrefix, ...args); }
+    error(...args) { console.error(this.logPrefix, ...args); }
+})();
+
 export function applyTheme(themeData) {
     const root = document.documentElement;
     
     try {
         // Set theme mode as data attribute
         root.setAttribute('data-theme', themeData.mode);
-        console.log('RR.Blazor Theme: Set data-theme attribute to', themeData.mode);
+        debugLogger.log('Set data-theme attribute to', themeData.mode);
         
         // Apply color variables
         if (themeData.colors) {
@@ -73,7 +81,7 @@ export function applyTheme(themeData) {
         
         return true;
     } catch (error) {
-        console.error('Error applying theme:', error);
+        debugLogger.error('Error applying theme:', error);
         return false;
     }
 }
@@ -210,13 +218,13 @@ export function validateTheme(themeData) {
     
     for (const prop of requiredProperties) {
         if (!themeData.hasOwnProperty(prop)) {
-            console.warn(`Theme validation failed: missing property '${prop}'`);
+            debugLogger.warn(`Theme validation failed: missing property '${prop}'`);
             return false;
         }
     }
     
     if (!validModes.includes(themeData.mode)) {
-        console.warn(`Theme validation failed: invalid mode '${themeData.mode}'`);
+        debugLogger.warn(`Theme validation failed: invalid mode '${themeData.mode}'`);
         return false;
     }
     
@@ -268,17 +276,17 @@ window.RRTheme = {
             }
         }
     } catch (e) {
-        console.warn('Failed to load theme from localStorage:', e);
+        debugLogger.warn('Failed to load theme from localStorage:', e);
     }
     
     // Apply system preference if mode is system
     if (themeMode === 'system' || themeMode === 0) {
         const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
         themeMode = prefersDark ? 'dark' : 'light';
-        console.log('System theme detected:', themeMode);
+        debugLogger.log('System theme detected:', themeMode);
     }
     
     // Apply theme immediately
     document.documentElement.setAttribute('data-theme', themeMode);
-    console.log('Initial theme applied:', themeMode);
+    debugLogger.log('Initial theme applied:', themeMode);
 })();

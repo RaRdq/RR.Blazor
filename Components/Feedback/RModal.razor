@@ -8,21 +8,21 @@
     <div class="modal-content @GetSizeClass() shadow-xl glass-light" @onclick:stopPropagation="true">
         @if (ShowHeader)
         {
-            <div class="modal-header">
-                <div class="flex items-center gap-3">
+            <div class="modal-header @GetModalHeaderClasses()">
+                <div class="d-flex items-center @GetModalHeaderClasses()">
                     @if (!string.IsNullOrEmpty(Icon))
                     {
-                        <i class="material-symbols-rounded text-primary text-xl">@Icon</i>
+                        <i class="material-symbols-rounded text-primary @GetIconSizeClass()">@Icon</i>
                     }
-                    <div class="flex flex-col">
-                        <h3 class="modal-title ma-0">@Text</h3>
+                    <div class="d-flex flex-col">
+                        <h3 class="modal-title ma-0 @GetTitleClasses()">@Text</h3>
                         @if (!string.IsNullOrEmpty(Subtitle))
                         {
                             <p class="modal-subtitle ma-0 text-sm text-secondary">@Subtitle</p>
                         }
                     </div>
                 </div>
-                <div class="header-actions flex items-center gap-2">
+                <div class="header-actions d-flex items-center gap-2">
                     @HeaderContent
                     @if (ShowCloseButton)
                     {
@@ -34,11 +34,11 @@
             </div>
         }
         
-        <div class="modal-body">
+        <div class="modal-body @GetModalBodyClasses()">
             @if (Processing && ShowProcessingOverlay)
             {
                 <div class="overlay-full overlay-light d-flex items-center justify-center">
-                    <div class="d-flex flex-col items-center gap-3 pa-6 bg-surface-elevated rounded-lg shadow-lg">
+                    <div class="d-flex flex-col items-center @GetProcessingOverlayClasses() bg-surface-elevated rounded-lg shadow-lg">
                         <div class="spinner-lg"></div>
                         <p class="text-body-2 text-secondary ma-0">@ProcessingMessage</p>
                     </div>
@@ -49,7 +49,7 @@
         
         @if (ShowFooter)
         {
-            <div class="modal-footer">
+            <div class="modal-footer @GetModalFooterClasses()">
                 @if (FooterContent != null)
                 {
                     @FooterContent
@@ -58,7 +58,8 @@
                 {
                     <RActionGroup Direction="ActionGroupDirection.Horizontal" 
                                   Alignment="ActionGroupAlignment.End" 
-                                  Spacing="ActionGroupSpacing.Medium">
+                                  Spacing="ActionGroupSpacing.Medium"
+                                  Density="@Density">
                         @if (ShowCancelButton)
                         {
                             <RButton Variant="ButtonVariant.Ghost" 
@@ -102,6 +103,7 @@
     [Parameter] public EventCallback<bool> VisibleChanged { get; set; }
     [Parameter] public ModalSize Size { get; set; } = ModalSize.Medium;
     [Parameter] public ModalVariant Variant { get; set; } = ModalVariant.Default;
+    [Parameter] public ComponentDensity Density { get; set; } = ComponentDensity.Normal;
     [Parameter] public string Class { get; set; }
     
     // Header Configuration
@@ -207,4 +209,76 @@
         ModalSize.Full => "modal-content-full",
         _ => "" // default size
     };
+
+    private string GetModalHeaderClasses()
+    {
+        return Density switch
+        {
+            ComponentDensity.Compact => "pa-2 gap-2",
+            ComponentDensity.Dense => "pa-3 gap-3",
+            ComponentDensity.Normal => "pa-4 gap-3",
+            ComponentDensity.Spacious => "pa-6 gap-4",
+            _ => "pa-4 gap-3"
+        };
+    }
+
+    private string GetModalBodyClasses()
+    {
+        return Density switch
+        {
+            ComponentDensity.Compact => "pa-2",
+            ComponentDensity.Dense => "pa-3",
+            ComponentDensity.Normal => "pa-4",
+            ComponentDensity.Spacious => "pa-6",
+            _ => "pa-4"
+        };
+    }
+
+    private string GetModalFooterClasses()
+    {
+        return Density switch
+        {
+            ComponentDensity.Compact => "pa-2 gap-2",
+            ComponentDensity.Dense => "pa-3 gap-3",
+            ComponentDensity.Normal => "pa-4 gap-3",
+            ComponentDensity.Spacious => "pa-6 gap-4",
+            _ => "pa-4 gap-3"
+        };
+    }
+
+    private string GetIconSizeClass()
+    {
+        return Density switch
+        {
+            ComponentDensity.Compact => "text-lg",
+            ComponentDensity.Dense => "text-xl",
+            ComponentDensity.Normal => "text-xl",
+            ComponentDensity.Spacious => "text-2xl",
+            _ => "text-xl"
+        };
+    }
+
+    private string GetTitleClasses()
+    {
+        return Density switch
+        {
+            ComponentDensity.Compact => "text-base",
+            ComponentDensity.Dense => "text-lg",
+            ComponentDensity.Normal => "text-lg",
+            ComponentDensity.Spacious => "text-xl",
+            _ => "text-lg"
+        };
+    }
+
+    private string GetProcessingOverlayClasses()
+    {
+        return Density switch
+        {
+            ComponentDensity.Compact => "pa-3 gap-2",
+            ComponentDensity.Dense => "pa-4 gap-3",
+            ComponentDensity.Normal => "pa-6 gap-3",
+            ComponentDensity.Spacious => "pa-8 gap-4",
+            _ => "pa-6 gap-3"
+        };
+    }
 }

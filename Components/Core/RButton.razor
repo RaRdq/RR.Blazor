@@ -57,7 +57,7 @@ Professional button component with enterprise variants, AI-optimized for rapid d
     
     @if (ShowBadge && BadgeCount > 0)
     {
-        <span class="button-badge bg-error-light text-inverse text-xs rounded-full pl-1 pr-1 pt-0 pb-0 min-w-4 h-4 flex items-center justify-center">
+        <span class="button-badge bg-error-light text-inverse text-xs rounded-full pl-1 pr-1 pt-0 pb-0 min-w-4 h-4 d-flex items-center justify-center">
             @(BadgeCount > 99 ? "99+" : BadgeCount.ToString())
         </span>
     }
@@ -97,6 +97,13 @@ Professional button component with enterprise variants, AI-optimized for rapid d
     [AIParameter(Hint = "Medium is default, Large for prominent actions, Small for compact", 
                  SuggestedValues = new[] { "Small", "Medium", "Large" })]
     public ButtonSize Size { get; set; } = ButtonSize.Medium;
+    
+    /// <summary>Component density level for ultra-dense layouts</summary>
+    /// <ai-hint>Normal is default, Compact for dense interfaces, Dense for data-heavy layouts</ai-hint>
+    [Parameter]
+    [AIParameter(Hint = "Normal is default, Compact for ultra-dense, Dense for data-heavy", 
+                 SuggestedValues = new[] { "Normal", "Dense", "Compact", "Spacious" })]
+    public ComponentDensity Density { get; set; } = ComponentDensity.Normal;
     
     /// <summary>Button type attribute for form interaction</summary>
     /// <ai-hint>Use Submit for form submission buttons, Button for regular actions</ai-hint>
@@ -232,7 +239,6 @@ Professional button component with enterprise variants, AI-optimized for rapid d
             "d-inline-flex",
             "items-center",
             "justify-center",
-            "gap-2",
             "border",
             "font-medium",
             "cursor-pointer",
@@ -241,15 +247,17 @@ Professional button component with enterprise variants, AI-optimized for rapid d
             "text-nowrap"
         };
         
-        // Size classes
-        classes.Add(Size switch
+        // Size classes with density modifiers
+        classes.Add(GetSizeClasses());
+        
+        // Density-specific gap adjustments
+        classes.Add(Density switch
         {
-            ButtonSize.ExtraSmall => "pl-2 pr-2 pt-1 pb-1 text-xs h-6",
-            ButtonSize.Small => "pl-3 pr-3 pt-1 pb-1 text-sm h-8",
-            ButtonSize.Medium => "pl-4 pr-4 pt-2 pb-2 text-base h-10",
-            ButtonSize.Large => "pl-6 pr-6 pt-3 pb-3 text-lg h-12",
-            ButtonSize.ExtraLarge => "pl-8 pr-8 pt-4 pb-4 text-xl h-20",
-            _ => "pl-4 pr-4 pt-2 pb-2 text-base h-10"
+            ComponentDensity.Compact => "gap-1",
+            ComponentDensity.Dense => "gap-1",
+            ComponentDensity.Normal => "gap-2",
+            ComponentDensity.Spacious => "gap-3",
+            _ => "gap-2"
         });
         
         // Border radius
@@ -356,6 +364,68 @@ Professional button component with enterprise variants, AI-optimized for rapid d
         }
         
         return string.Join(" ", classes);
+    }
+    
+    private string GetSizeClasses()
+    {
+        var baseSizeClasses = Size switch
+        {
+            ButtonSize.ExtraSmall => "pl-2 pr-2 pt-1 pb-1 text-xs h-6",
+            ButtonSize.Small => "pl-3 pr-3 pt-1 pb-1 text-sm h-8",
+            ButtonSize.Medium => "pl-4 pr-4 pt-2 pb-2 text-base h-10",
+            ButtonSize.Large => "pl-6 pr-6 pt-3 pb-3 text-lg h-12",
+            ButtonSize.ExtraLarge => "pl-8 pr-8 pt-4 pb-4 text-xl h-20",
+            _ => "pl-4 pr-4 pt-2 pb-2 text-base h-10"
+        };
+        
+        // Apply density modifiers
+        return Density switch
+        {
+            ComponentDensity.Compact => ApplyCompactDensity(baseSizeClasses),
+            ComponentDensity.Dense => ApplyDenseDensity(baseSizeClasses),
+            ComponentDensity.Normal => baseSizeClasses,
+            ComponentDensity.Spacious => ApplySpacious(baseSizeClasses),
+            _ => baseSizeClasses
+        };
+    }
+    
+    private string ApplyCompactDensity(string baseSizeClasses)
+    {
+        return Size switch
+        {
+            ButtonSize.ExtraSmall => "pl-1 pr-1 pt-0 pb-0 text-xs h-5",
+            ButtonSize.Small => "pl-2 pr-2 pt-0 pb-0 text-xs h-6",
+            ButtonSize.Medium => "pl-3 pr-3 pt-1 pb-1 text-sm h-8",
+            ButtonSize.Large => "pl-4 pr-4 pt-2 pb-2 text-base h-10",
+            ButtonSize.ExtraLarge => "pl-6 pr-6 pt-3 pb-3 text-lg h-14",
+            _ => "pl-3 pr-3 pt-1 pb-1 text-sm h-8"
+        };
+    }
+    
+    private string ApplyDenseDensity(string baseSizeClasses)
+    {
+        return Size switch
+        {
+            ButtonSize.ExtraSmall => "pl-1 pr-1 pt-0 pb-0 text-xs h-5",
+            ButtonSize.Small => "pl-2 pr-2 pt-1 pb-1 text-sm h-7",
+            ButtonSize.Medium => "pl-3 pr-3 pt-1 pb-1 text-base h-9",
+            ButtonSize.Large => "pl-5 pr-5 pt-2 pb-2 text-lg h-11",
+            ButtonSize.ExtraLarge => "pl-7 pr-7 pt-3 pb-3 text-xl h-18",
+            _ => "pl-3 pr-3 pt-1 pb-1 text-base h-9"
+        };
+    }
+    
+    private string ApplySpacious(string baseSizeClasses)
+    {
+        return Size switch
+        {
+            ButtonSize.ExtraSmall => "pl-3 pr-3 pt-2 pb-2 text-xs h-8",
+            ButtonSize.Small => "pl-4 pr-4 pt-2 pb-2 text-sm h-10",
+            ButtonSize.Medium => "pl-6 pr-6 pt-3 pb-3 text-base h-12",
+            ButtonSize.Large => "pl-8 pr-8 pt-4 pb-4 text-lg h-16",
+            ButtonSize.ExtraLarge => "pl-10 pr-10 pt-5 pb-5 text-xl h-24",
+            _ => "pl-6 pr-6 pt-3 pb-3 text-base h-12"
+        };
     }
     
     private string GetIconClasses()

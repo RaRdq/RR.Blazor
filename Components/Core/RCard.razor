@@ -230,6 +230,13 @@ Supports header, media, content areas, loading states, elevation effects, and co
                  SuggestedValues = new[] { "0", "2", "4", "8", "16" })]
     public int Elevation { get; set; } = -1;
     
+    /// <summary>Component density level for ultra-dense layouts</summary>
+    /// <ai-hint>Normal is default, Compact for ultra-dense, Dense for data-heavy interfaces</ai-hint>
+    [Parameter]
+    [AIParameter(Hint = "Normal is default, Compact for ultra-dense, Dense for data-heavy", 
+                 SuggestedValues = new[] { "Normal", "Dense", "Compact", "Spacious" })]
+    public ComponentDensity Density { get; set; } = ComponentDensity.Normal;
+    
     
     
     
@@ -323,13 +330,15 @@ Supports header, media, content areas, loading states, elevation effects, and co
     {
         var classes = new List<string>
         {
-            "flex",
+            "d-flex",
             "items-center",
             "justify-between",
-            "pa-4",
             "border-b",
             "border-light"
         };
+        
+        // Add density-aware padding
+        classes.Add(GetDensityPaddingClasses());
         
         return string.Join(" ", classes);
     }
@@ -341,12 +350,26 @@ Supports header, media, content areas, loading states, elevation effects, and co
     
     private string GetTitleClasses()
     {
-        return "text-lg font-semibold text-primary mb-0";
+        return Density switch
+        {
+            ComponentDensity.Compact => "text-base font-semibold text-primary mb-0",
+            ComponentDensity.Dense => "text-lg font-semibold text-primary mb-0",
+            ComponentDensity.Normal => "text-lg font-semibold text-primary mb-0",
+            ComponentDensity.Spacious => "text-xl font-semibold text-primary mb-0",
+            _ => "text-lg font-semibold text-primary mb-0"
+        };
     }
     
     private string GetSubtitleClasses()
     {
-        return "text-sm text-secondary mt-1 mb-0";
+        return Density switch
+        {
+            ComponentDensity.Compact => "text-xs text-secondary mt-0 mb-0",
+            ComponentDensity.Dense => "text-sm text-secondary mt-0 mb-0",
+            ComponentDensity.Normal => "text-sm text-secondary mt-1 mb-0",
+            ComponentDensity.Spacious => "text-base text-secondary mt-2 mb-0",
+            _ => "text-sm text-secondary mt-1 mb-0"
+        };
     }
     
     
@@ -388,7 +411,7 @@ Supports header, media, content areas, loading states, elevation effects, and co
         }
         else
         {
-            classes.Add("pa-4");
+            classes.Add(GetDensityPaddingClasses());
         }
         
         if (HasHeader && !FullBleedImage)
@@ -406,7 +429,31 @@ Supports header, media, content areas, loading states, elevation effects, and co
     
     private string GetFooterClasses()
     {
-        return "pa-4 pt-0 border-t border-light mt-4";
+        return $"{GetDensityPaddingClasses()} pt-0 border-t border-light {GetDensityMarginClasses()}";
+    }
+    
+    private string GetDensityPaddingClasses()
+    {
+        return Density switch
+        {
+            ComponentDensity.Compact => "pa-2",
+            ComponentDensity.Dense => "pa-3",
+            ComponentDensity.Normal => "pa-4",
+            ComponentDensity.Spacious => "pa-6",
+            _ => "pa-4"
+        };
+    }
+    
+    private string GetDensityMarginClasses()
+    {
+        return Density switch
+        {
+            ComponentDensity.Compact => "mt-2",
+            ComponentDensity.Dense => "mt-3",
+            ComponentDensity.Normal => "mt-4",
+            ComponentDensity.Spacious => "mt-6",
+            _ => "mt-4"
+        };
     }
     
     

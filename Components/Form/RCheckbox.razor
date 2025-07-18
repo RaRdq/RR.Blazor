@@ -17,20 +17,20 @@
 
 @using RR.Blazor.Enums
 
-<div class="flex items-start gap-3 @GetContainerClasses()">
-    <div class="relative flex items-center justify-center">
+<div class="@GetContainerClasses()">
+    <div class="relative d-flex items-center justify-center">
         <input type="checkbox" 
                id="@Id"
                name="@Name"
                @bind="Checked"
                @bind:after="OnCheckedChanged"
                disabled="@Disabled"
-               class="peer absolute opacity-0 w-6 h-6 cursor-pointer disabled:cursor-not-allowed" />
+               class="@GetInputClasses()" />
         
         <div class="@GetCheckboxClasses()">
             @if (Checked)
             {
-                <i class="material-symbols-rounded text-inverse text-base font-bold leading-none">check</i>
+                <i class="material-symbols-rounded @GetCheckIconClasses()">check</i>
             }
         </div>
     </div>
@@ -38,7 +38,7 @@
     @if (!string.IsNullOrEmpty(Text) || !string.IsNullOrEmpty(Description) || !string.IsNullOrEmpty(Icon))
     {
         <label for="@Id" class="@GetLabelClasses()">
-            <div class="flex items-center gap-2">
+            <div class="@GetTextContainerClasses()">
                 @if (!string.IsNullOrEmpty(Icon))
                 {
                     <i class="material-symbols-rounded @GetIconClasses()">@Icon</i>
@@ -49,7 +49,7 @@
                 }
                 @if (Required)
                 {
-                    <span class="text-error ml-1">*</span>
+                    <span class="@GetRequiredClasses()">*</span>
                 }
             </div>
             @if (!string.IsNullOrEmpty(Description))
@@ -69,7 +69,7 @@
 
 @if (!string.IsNullOrEmpty(ValidationMessage))
 {
-    <div class="text-error text-sm mt-1 ml-8">@ValidationMessage</div>
+    <div class="@GetValidationClasses()">@ValidationMessage</div>
 }
 
 @code {
@@ -100,6 +100,9 @@
     /// <summary>Size of the checkbox</summary>
     [Parameter] public CheckboxSize Size { get; set; } = CheckboxSize.Medium;
     
+    /// <summary>Component density level for ultra-dense layouts</summary>
+    [Parameter] public ComponentDensity Density { get; set; } = ComponentDensity.Normal;
+    
     /// <summary>Whether the checkbox is disabled</summary>
     [Parameter] public bool Disabled { get; set; }
     
@@ -126,30 +129,45 @@
 
     private string GetContainerClasses()
     {
-        var classes = new List<string> { "r-checkbox" };
+        var classes = new List<string> { "d-flex", "items-center" };
+        
+        // Add density-specific gap
+        classes.Add(GetDensityGapClasses());
         
         if (Disabled)
-            classes.Add("is-disabled");
+            classes.Add("opacity-50");
             
         if (!string.IsNullOrEmpty(ValidationMessage))
-            classes.Add("is-error");
+            classes.Add("border-error");
             
-        if (Checked)
-            classes.Add("is-selected");
-
         if (!string.IsNullOrEmpty(Class))
             classes.Add(Class);
 
         return string.Join(" ", classes);
     }
 
+    private string GetDensityGapClasses()
+    {
+        return Density switch
+        {
+            ComponentDensity.Compact => "gap-1",
+            ComponentDensity.Dense => "gap-2",
+            ComponentDensity.Normal => "gap-3",
+            ComponentDensity.Spacious => "gap-4",
+            _ => "gap-3"
+        };
+    }
+
     private string GetCheckboxClasses()
     {
         var classes = new List<string> 
         { 
-            "w-6 h-6 rounded border-2 transition-all duration-200 flex items-center justify-center",
-            "peer-focus:ring-2 peer-focus:ring-primary peer-focus:ring-opacity-50"
+            "rounded", "border-2", "transition-all", "duration-200", "d-flex", "items-center", "justify-center",
+            "peer-focus:ring-2", "peer-focus:ring-primary", "peer-focus:ring-opacity-50"
         };
+
+        // Add size classes with density modifications
+        classes.Add(GetSizeClasses());
 
         // Base styles
         if (Checked)
@@ -178,20 +196,62 @@
             classes.Add("cursor-pointer hover:shadow-sm");
         }
 
-        // Size variants
-        classes.Add(Size switch
+        return string.Join(" ", classes);
+    }
+
+    private string GetSizeClasses()
+    {
+        var baseSizeClasses = Size switch
         {
             CheckboxSize.Small => "w-5 h-5",
             CheckboxSize.Large => "w-7 h-7",
             _ => "w-6 h-6"
-        });
+        };
 
-        return string.Join(" ", classes);
+        // Apply density modifiers
+        return Density switch
+        {
+            ComponentDensity.Compact => ApplyCompactSizing(),
+            ComponentDensity.Dense => ApplyDenseSizing(),
+            ComponentDensity.Normal => baseSizeClasses,
+            ComponentDensity.Spacious => ApplySpacious(),
+            _ => baseSizeClasses
+        };
+    }
+
+    private string ApplyCompactSizing()
+    {
+        return Size switch
+        {
+            CheckboxSize.Small => "w-4 h-4",
+            CheckboxSize.Large => "w-6 h-6",
+            _ => "w-5 h-5"
+        };
+    }
+
+    private string ApplyDenseSizing()
+    {
+        return Size switch
+        {
+            CheckboxSize.Small => "w-4 h-4",
+            CheckboxSize.Large => "w-6 h-6",
+            _ => "w-5 h-5"
+        };
+    }
+
+    private string ApplySpacious()
+    {
+        return Size switch
+        {
+            CheckboxSize.Small => "w-6 h-6",
+            CheckboxSize.Large => "w-8 h-8",
+            _ => "w-7 h-7"
+        };
     }
 
     private string GetLabelClasses()
     {
-        var classes = new List<string> { "cursor-pointer select-none grow" };
+        var classes = new List<string> { "cursor-pointer", "select-none", "grow" };
         
         if (Disabled)
             classes.Add("cursor-not-allowed opacity-60");
@@ -201,43 +261,302 @@
 
     private string GetTextClasses()
     {
-        var classes = new List<string> { "text-primary font-medium" };
+        var classes = new List<string> { "text-primary", "font-medium" };
 
-        classes.Add(Size switch
-        {
-            CheckboxSize.Small => "text-sm",
-            CheckboxSize.Large => "text-lg",
-            _ => "text-base"
-        });
+        classes.Add(GetTextSizeClasses());
 
         return string.Join(" ", classes);
     }
 
-    private string GetDescriptionClasses()
+    private string GetTextSizeClasses()
     {
-        var classes = new List<string> { "text-secondary mt-1" };
+        var baseSizeClasses = Size switch
+        {
+            CheckboxSize.Small => "text-sm",
+            CheckboxSize.Large => "text-lg",
+            _ => "text-base"
+        };
 
-        classes.Add(Size switch
+        return Density switch
+        {
+            ComponentDensity.Compact => ApplyCompactTextSizing(),
+            ComponentDensity.Dense => ApplyDenseTextSizing(),
+            ComponentDensity.Normal => baseSizeClasses,
+            ComponentDensity.Spacious => ApplySpacious​TextSizing(),
+            _ => baseSizeClasses
+        };
+    }
+
+    private string ApplyCompactTextSizing()
+    {
+        return Size switch
         {
             CheckboxSize.Small => "text-xs",
             CheckboxSize.Large => "text-base",
             _ => "text-sm"
-        });
+        };
+    }
+
+    private string ApplyDenseTextSizing()
+    {
+        return Size switch
+        {
+            CheckboxSize.Small => "text-xs",
+            CheckboxSize.Large => "text-base",
+            _ => "text-sm"
+        };
+    }
+
+    private string ApplySpacious​TextSizing()
+    {
+        return Size switch
+        {
+            CheckboxSize.Small => "text-base",
+            CheckboxSize.Large => "text-xl",
+            _ => "text-lg"
+        };
+    }
+
+    private string GetDescriptionClasses()
+    {
+        var classes = new List<string> { "text-secondary" };
+
+        classes.Add(GetDescriptionMarginClasses());
+        classes.Add(GetDescriptionSizeClasses());
 
         return string.Join(" ", classes);
+    }
+
+    private string GetDescriptionMarginClasses()
+    {
+        return Density switch
+        {
+            ComponentDensity.Compact => "mt-0",
+            ComponentDensity.Dense => "mt-1",
+            ComponentDensity.Normal => "mt-1",
+            ComponentDensity.Spacious => "mt-2",
+            _ => "mt-1"
+        };
+    }
+
+    private string GetDescriptionSizeClasses()
+    {
+        var baseSizeClasses = Size switch
+        {
+            CheckboxSize.Small => "text-xs",
+            CheckboxSize.Large => "text-base",
+            _ => "text-sm"
+        };
+
+        return Density switch
+        {
+            ComponentDensity.Compact => ApplyCompactDescriptionSizing(),
+            ComponentDensity.Dense => ApplyDenseDescriptionSizing(),
+            ComponentDensity.Normal => baseSizeClasses,
+            ComponentDensity.Spacious => ApplySpacious(),
+            _ => baseSizeClasses
+        };
+    }
+
+    private string ApplyCompactDescriptionSizing()
+    {
+        return Size switch
+        {
+            CheckboxSize.Small => "text-xs",
+            CheckboxSize.Large => "text-sm",
+            _ => "text-xs"
+        };
+    }
+
+    private string ApplyDenseDescriptionSizing()
+    {
+        return Size switch
+        {
+            CheckboxSize.Small => "text-xs",
+            CheckboxSize.Large => "text-sm",
+            _ => "text-xs"
+        };
     }
 
     private string GetIconClasses()
     {
         var classes = new List<string> { "text-primary" };
 
-        classes.Add(Size switch
+        classes.Add(GetIconSizeClasses());
+
+        return string.Join(" ", classes);
+    }
+
+    private string GetIconSizeClasses()
+    {
+        var baseSizeClasses = Size switch
         {
             CheckboxSize.Small => "text-base",
             CheckboxSize.Large => "text-xl",
             _ => "text-lg"
-        });
+        };
+
+        return Density switch
+        {
+            ComponentDensity.Compact => ApplyCompactIconSizing(),
+            ComponentDensity.Dense => ApplyDenseIconSizing(),
+            ComponentDensity.Normal => baseSizeClasses,
+            ComponentDensity.Spacious => ApplySpacious(),
+            _ => baseSizeClasses
+        };
+    }
+
+    private string ApplyCompactIconSizing()
+    {
+        return Size switch
+        {
+            CheckboxSize.Small => "text-sm",
+            CheckboxSize.Large => "text-lg",
+            _ => "text-base"
+        };
+    }
+
+    private string ApplyDenseIconSizing()
+    {
+        return Size switch
+        {
+            CheckboxSize.Small => "text-sm",
+            CheckboxSize.Large => "text-lg",
+            _ => "text-base"
+        };
+    }
+
+    private string GetInputClasses()
+    {
+        var classes = new List<string> { "peer", "absolute", "opacity-0", "w-full", "h-full", "cursor-pointer" };
+        
+        if (Disabled)
+            classes.Add("cursor-not-allowed");
 
         return string.Join(" ", classes);
+    }
+
+    private string GetCheckIconClasses()
+    {
+        var classes = new List<string> { "text-white" };
+
+        classes.Add(GetCheckIconSizeClasses());
+
+        return string.Join(" ", classes);
+    }
+
+    private string GetCheckIconSizeClasses()
+    {
+        var baseSizeClasses = Size switch
+        {
+            CheckboxSize.Small => "text-sm",
+            CheckboxSize.Large => "text-lg",
+            _ => "text-base"
+        };
+
+        return Density switch
+        {
+            ComponentDensity.Compact => ApplyCompactCheckIconSizing(),
+            ComponentDensity.Dense => ApplyDenseCheckIconSizing(),
+            ComponentDensity.Normal => baseSizeClasses,
+            ComponentDensity.Spacious => ApplySpacious(),
+            _ => baseSizeClasses
+        };
+    }
+
+    private string ApplyCompactCheckIconSizing()
+    {
+        return Size switch
+        {
+            CheckboxSize.Small => "text-xs",
+            CheckboxSize.Large => "text-base",
+            _ => "text-sm"
+        };
+    }
+
+    private string ApplyDenseCheckIconSizing()
+    {
+        return Size switch
+        {
+            CheckboxSize.Small => "text-xs",
+            CheckboxSize.Large => "text-base",
+            _ => "text-sm"
+        };
+    }
+
+    private string GetTextContainerClasses()
+    {
+        var classes = new List<string> { "d-flex", "items-center" };
+        
+        classes.Add(GetTextContainerGapClasses());
+        
+        return string.Join(" ", classes);
+    }
+
+    private string GetTextContainerGapClasses()
+    {
+        return Density switch
+        {
+            ComponentDensity.Compact => "gap-1",
+            ComponentDensity.Dense => "gap-2",
+            ComponentDensity.Normal => "gap-2",
+            ComponentDensity.Spacious => "gap-3",
+            _ => "gap-2"
+        };
+    }
+
+    private string GetRequiredClasses()
+    {
+        var classes = new List<string> { "text-error", "font-medium" };
+        
+        classes.Add(GetRequiredMarginClasses());
+        
+        return string.Join(" ", classes);
+    }
+
+    private string GetRequiredMarginClasses()
+    {
+        return Density switch
+        {
+            ComponentDensity.Compact => "ml-0",
+            ComponentDensity.Dense => "ml-1",
+            ComponentDensity.Normal => "ml-1",
+            ComponentDensity.Spacious => "ml-2",
+            _ => "ml-1"
+        };
+    }
+
+    private string GetValidationClasses()
+    {
+        var classes = new List<string> { "text-error" };
+        
+        classes.Add(GetValidationSizeClasses());
+        classes.Add(GetValidationMarginClasses());
+        
+        return string.Join(" ", classes);
+    }
+
+    private string GetValidationSizeClasses()
+    {
+        return Density switch
+        {
+            ComponentDensity.Compact => "text-xs",
+            ComponentDensity.Dense => "text-xs",
+            ComponentDensity.Normal => "text-sm",
+            ComponentDensity.Spacious => "text-base",
+            _ => "text-sm"
+        };
+    }
+
+    private string GetValidationMarginClasses()
+    {
+        return Density switch
+        {
+            ComponentDensity.Compact => "mt-0 ml-6",
+            ComponentDensity.Dense => "mt-1 ml-7",
+            ComponentDensity.Normal => "mt-1 ml-8",
+            ComponentDensity.Spacious => "mt-2 ml-10",
+            _ => "mt-1 ml-8"
+        };
     }
 }

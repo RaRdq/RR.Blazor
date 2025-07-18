@@ -34,11 +34,11 @@ Zero-config setup for enterprise Blazor applications with professional styling a
                        AvoidUsage = "Don't use for simple pages without navigation")]
 
 <RThemeProvider>
-<div class="app-shell app-shell-container min-h-screen flex" data-theme="@GetEffectiveTheme()">
+<div class="app-shell app-shell-container min-h-screen flex focus-visible-enhanced" data-theme="@GetEffectiveTheme()">
     <!-- Sidebar -->
     @if (ShowSidebar)
     {
-        <aside class="sidebar @(sidebarCollapsed ? "sidebar-collapsed" : "") @(sidebarOpen || !IsMobile ? "" : "sidebar-closed")">
+        <aside class="sidebar @(sidebarCollapsed ? "sidebar-collapsed" : "") @((IsMobile && !sidebarOpen) ? "sidebar-closed" : "")">
             <!-- Navigation -->
             <nav class="sidebar-nav">
                 @if (Navigation != null)
@@ -87,7 +87,7 @@ Zero-config setup for enterprise Blazor applications with professional styling a
         <!-- Header -->
         @if (ShowHeader)
         {
-            <header class="fixed top-0 left-0 right-0 bg-surface-elevated border-b d-flex items-center pl-4 pr-4 shadow-sm backdrop-blur-sm app-header">
+            <header class="fixed top-0 left-0 right-0 bg-surface-elevated border-b d-flex items-center shadow-sm backdrop-blur-sm app-header @GetHeaderClasses()">
                 <!-- Left Section: Sidebar Toggle + Logo + Title/Subtitle + Breadcrumbs -->
                 <div class="d-flex items-center gap-3 flex-1 min-w-0">
                     @if (ShowSidebar && ShowSidebarToggle)
@@ -514,6 +514,13 @@ Zero-config setup for enterprise Blazor applications with professional styling a
                 
                 // Update IsMobile flag
                 IsMobile = await jsModule.InvokeAsync<bool>("isMobile");
+                
+                // Fix mobile responsiveness issue - sidebar should be closed by default on mobile
+                if (IsMobile)
+                {
+                    sidebarOpen = false;
+                }
+                
                 StateHasChanged();
             }
             catch (Exception ex)
@@ -657,6 +664,13 @@ Zero-config setup for enterprise Blazor applications with professional styling a
     private string GetContentClasses()
     {
         return ContentCentered && !string.IsNullOrEmpty(ContentMaxWidth) ? "main-content-centered" : "";
+    }
+    
+    private string GetHeaderClasses()
+    {
+        if (!ShowSidebar) return "header-sidebar-hidden";
+        if (IsMobile) return "header-sidebar-hidden";
+        return sidebarCollapsed ? "header-sidebar-collapsed" : "header-sidebar-expanded";
     }
     
     private static List<AppNavItem> GetDefaultNavigation()

@@ -41,7 +41,7 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
         <nav class="tabs-nav tabs-nav-@Variant.ToString().ToLower() @(isScrollable ? "tabs-nav-scrollable" : "")" role="tablist">
         <!-- Left Scroll Arrow -->
         <button type="button" 
-                class="tabs-nav-arrow tabs-nav-arrow-left @(canScrollLeft ? "tabs-nav-arrow-visible" : "")"
+                class="tabs-nav-arrow tabs-nav-arrow-left @(canScrollLeft && isScrollable ? "tabs-nav-arrow-visible" : "")"
                 @onclick="ScrollLeft"
                 aria-label="Scroll tabs left">
             <i class="material-symbols-rounded">chevron_left</i>
@@ -118,7 +118,7 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
         
         <!-- Right Scroll Arrow -->
         <button type="button" 
-                class="tabs-nav-arrow tabs-nav-arrow-right @(canScrollRight ? "tabs-nav-arrow-visible" : "")"
+                class="tabs-nav-arrow tabs-nav-arrow-right @(canScrollRight && isScrollable ? "tabs-nav-arrow-visible" : "")"
                 @onclick="ScrollRight"
                 aria-label="Scroll tabs right">
             <i class="material-symbols-rounded">chevron_right</i>
@@ -150,6 +150,9 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
     /// <summary>Size of tabs</summary>
     [Parameter, AIParameter("Size of tab items", "ButtonSize.Small, ButtonSize.Medium, ButtonSize.Large")] 
     public ButtonSize Size { get; set; } = ButtonSize.Medium;
+    
+    /// <summary>Component density for ultra-dense layouts</summary>
+    [Parameter] public ComponentDensity Density { get; set; } = ComponentDensity.Normal;
     
     /// <summary>Active tab ID</summary>
     [Parameter, AIParameter("ID of currently active tab", "Use with @bind-ActiveTabId for two-way binding")] 
@@ -207,6 +210,8 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
                 if (tabs.Count > 0)
                 {
                     await UpdateIndicatorPosition();
+                    // Small delay to ensure DOM is fully rendered before scroll detection
+                    await Task.Delay(50);
                     await UpdateScrollState();
                 }
             }
@@ -214,6 +219,22 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
             {
                 // JavaScript initialization failed, continue without it
             }
+        }
+        else if (tabs.Count > 0)
+        {
+            // Update scroll state on subsequent renders to handle dynamic content changes
+            _ = InvokeAsync(async () =>
+            {
+                try
+                {
+                    await Task.Delay(10); // Small delay for DOM updates
+                    await UpdateScrollState();
+                }
+                catch
+                {
+                    // Continue if JavaScript fails
+                }
+            });
         }
     }
     
@@ -253,6 +274,8 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
             try
             {
                 await UpdateIndicatorPosition();
+                // Delay scroll state update to ensure DOM is fully updated
+                await Task.Delay(100);
                 await UpdateScrollState();
             }
             catch
@@ -409,6 +432,19 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
     {
         try
         {
+            // Only check scroll state if we have tabs to scroll
+            if (tabs.Count <= 1)
+            {
+                if (isScrollable || canScrollLeft || canScrollRight)
+                {
+                    isScrollable = false;
+                    canScrollLeft = false;
+                    canScrollRight = false;
+                    StateHasChanged();
+                }
+                return;
+            }
+            
             var scrollInfo = await JSRuntime.InvokeAsync<ScrollInfo>("RRBlazor.getTabScrollInfo", navWrapper);
             
             // Only update state if values actually changed
@@ -424,7 +460,14 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
         }
         catch
         {
-            // Fallback if JS fails
+            // Fallback if JS fails - ensure arrows are hidden
+            if (isScrollable || canScrollLeft || canScrollRight)
+            {
+                isScrollable = false;
+                canScrollLeft = false;
+                canScrollRight = false;
+                StateHasChanged();
+            }
         }
     }
     
@@ -471,13 +514,11 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
     {
         var classes = new List<string>();
         
-        // Size classes
-        classes.Add(Size switch
-        {
-            ButtonSize.Small => "tabs-tab-small",
-            ButtonSize.Large => "tabs-tab-large",
-            _ => ""
-        });
+        // Size classes with density modifications
+        classes.Add(GetTabSizeClasses());
+        
+        // Density-specific padding
+        classes.Add(GetTabDensityClasses());
         
         // State classes
         if (tab.Id == ActiveTabId)
@@ -492,13 +533,116 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
         
         return string.Join(" ", classes.Where(c => !string.IsNullOrEmpty(c)));
     }
-    
-    private string GetTabIconSize() => Size switch
+
+    private string GetTabSizeClasses()
     {
-        ButtonSize.Small => "text-sm",
-        ButtonSize.Large => "text-lg",
-        _ => "text-base"
-    };
+        var baseSizeClasses = Size switch
+        {
+            ButtonSize.Small => "tabs-tab-small",
+            ButtonSize.Large => "tabs-tab-large",
+            _ => ""
+        };
+
+        return Density switch
+        {
+            ComponentDensity.Compact => ApplyCompactTabSizing(),
+            ComponentDensity.Dense => ApplyDenseTabSizing(),
+            ComponentDensity.Normal => baseSizeClasses,
+            ComponentDensity.Spacious => ApplySpacious​TabSizing(),
+            _ => baseSizeClasses
+        };
+    }
+
+    private string ApplyCompactTabSizing()
+    {
+        return Size switch
+        {
+            ButtonSize.Small => "tabs-tab-xs",
+            ButtonSize.Large => "tabs-tab-small",
+            _ => "tabs-tab-compact"
+        };
+    }
+
+    private string ApplyDenseTabSizing()
+    {
+        return Size switch
+        {
+            ButtonSize.Small => "tabs-tab-xs",
+            ButtonSize.Large => "tabs-tab-medium",
+            _ => "tabs-tab-dense"
+        };
+    }
+
+    private string ApplySpacious​TabSizing()
+    {
+        return Size switch
+        {
+            ButtonSize.Small => "tabs-tab-medium",
+            ButtonSize.Large => "tabs-tab-xl",
+            _ => "tabs-tab-spacious"
+        };
+    }
+
+    private string GetTabDensityClasses()
+    {
+        return Density switch
+        {
+            ComponentDensity.Compact => "pt-1 pb-1 pl-2 pr-2",
+            ComponentDensity.Dense => "pt-2 pb-2 pl-3 pr-3",
+            ComponentDensity.Normal => "pt-3 pb-3 pl-4 pr-4",
+            ComponentDensity.Spacious => "pt-4 pb-4 pl-6 pr-6",
+            _ => "pt-3 pb-3 pl-4 pr-4"
+        };
+    }
+    
+    private string GetTabIconSize()
+    {
+        var baseSizeClasses = Size switch
+        {
+            ButtonSize.Small => "text-sm",
+            ButtonSize.Large => "text-lg",
+            _ => "text-base"
+        };
+
+        return Density switch
+        {
+            ComponentDensity.Compact => ApplyCompactIconSizing(),
+            ComponentDensity.Dense => ApplyDenseIconSizing(),
+            ComponentDensity.Normal => baseSizeClasses,
+            ComponentDensity.Spacious => ApplySpacious​IconSizing(),
+            _ => baseSizeClasses
+        };
+    }
+
+    private string ApplyCompactIconSizing()
+    {
+        return Size switch
+        {
+            ButtonSize.Small => "text-xs",
+            ButtonSize.Large => "text-base",
+            _ => "text-sm"
+        };
+    }
+
+    private string ApplyDenseIconSizing()
+    {
+        return Size switch
+        {
+            ButtonSize.Small => "text-xs",
+            ButtonSize.Large => "text-base",
+            _ => "text-sm"
+        };
+    }
+
+    private string ApplySpacious​IconSizing()
+    {
+        return Size switch
+        {
+            ButtonSize.Small => "text-base",
+            ButtonSize.Large => "text-xl",
+            _ => "text-lg"
+        };
+    }
     
     private string GetBadgeVariant(string variant) => variant switch
     {

@@ -125,17 +125,22 @@ public enum SectionElevation
 public enum FormDensity
 {
     /// <summary>
-    /// Standard comfortable spacing (default)
+    /// Ultra-compact for mobile and dense interfaces
     /// </summary>
-    Comfortable = 0,
+    Compact = 0,
     
     /// <summary>
-    /// Reduced spacing for denser forms
+    /// Dense layout for data-heavy interfaces
     /// </summary>
     Dense = 1,
     
     /// <summary>
-    /// Minimal spacing for ultra-dense forms
+    /// Standard spacing for general use
     /// </summary>
-    UltraDense = 2
+    Normal = 2,
+    
+    /// <summary>
+    /// Spacious layout for accessibility and comfort
+    /// </summary>
+    Spacious = 3
 }

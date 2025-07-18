@@ -3,29 +3,45 @@
 @implements IDisposable
 @inject IThemeService ThemeService
 
-<button class="d-inline-flex items-center justify-center pa-3 rounded-lg glass-frost border-0 shadow-sm hover:shadow-md transition-all @Class"
+<button class="d-inline-flex items-center justify-center pa-3 rounded-lg glass-frost border-0 shadow-sm hover:shadow-md transition-all focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50 @Class"
         @onclick="ToggleTheme" 
         title="@GetTooltip()"
         aria-label="@GetTooltip()">
     <i class="material-symbols-rounded text-primary text-lg">@GetThemeIcon()</i>
+    @if (isInitialized)
+    {
+        <span class="sr-only">@GetTooltip()</span>
+    }
 </button>
 
 @code {
     [Parameter] public string Class { get; set; } = "";
     
-    private ThemeMode currentMode = ThemeMode.Light;
+    private ThemeMode currentMode = ThemeMode.System;
+    private bool isInitialized = false;
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
-            currentMode = await ThemeService.GetThemeModeAsync();
+            // Subscribe to theme changes first
             ThemeService.ThemeChanged += OnThemeChanged;
+            
+            // Initialize theme service if not already initialized
+            await ThemeService.InitializeAsync();
+            
+            // Get current theme mode
+            currentMode = await ThemeService.GetThemeModeAsync();
+            isInitialized = true;
+            
+            // Force a state refresh to ensure UI is in sync
+            StateHasChanged();
         }
         catch (Exception ex)
         {
             Console.Error.WriteLine($"Failed to initialize theme switcher: {ex.Message}");
-            currentMode = ThemeMode.Light;
+            currentMode = ThemeMode.System;
+            isInitialized = true;
         }
     }
 
@@ -73,11 +89,14 @@
 
     private string GetTooltip()
     {
+        if (!isInitialized)
+            return "Loading theme...";
+            
         return currentMode switch
         {
-            ThemeMode.Light => "Switch to dark theme",
-            ThemeMode.Dark => "Switch to system theme",
-            ThemeMode.System => "Switch to light theme", 
+            ThemeMode.Light => "Switch to dark mode",
+            ThemeMode.Dark => "Switch to system mode",
+            ThemeMode.System => "Switch to light mode", 
             _ => "Switch theme"
         };
     }

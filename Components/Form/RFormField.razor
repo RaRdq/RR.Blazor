@@ -107,10 +107,10 @@
         }
         else if (Type == FieldType.Checkbox)
         {
-            <div class="flex items-center gap-2">
+            <div class="@GetCheckboxContainerClasses()">
                 <input id="@InputId" 
                        type="checkbox" 
-                       class="form-field-input @GetCheckboxClasses()"
+                       class="@GetCheckboxClasses()"
                        checked="@Checked"
                        disabled="@Disabled"
                        required="@Required"
@@ -125,7 +125,7 @@
         }
         else if (Type == FieldType.Radio)
         {
-            <div class="flex flex-col gap-2">
+            <div class="@GetRadioContainerClasses()">
                 @RadioOptions
             </div>
         }
@@ -168,7 +168,7 @@
         @if (!string.IsNullOrEmpty(Text) && Variant == FieldVariant.FloatingLabel)
         {
             <label class="form-field-label @GetFloatingLabelClasses()" for="@InputId">
-                @Text@if (Required && ShowRequiredIndicator){<span class="text-error">*</span>}
+                @Text
             </label>
         }
         
@@ -231,7 +231,7 @@
     [Parameter] [AIParameter("Visual style variant of the field", Example = "FieldVariant.FloatingLabel")] public FieldVariant Variant { get; set; } = FieldVariant.Default;
     
     /// <summary>Field density for spacing control</summary>
-    [Parameter] public FormDensity Density { get; set; } = FormDensity.Comfortable;
+    [Parameter] public ComponentDensity Density { get; set; } = ComponentDensity.Normal;
     
     /// <summary>Field label text</summary>
     [Parameter] [AIParameter("Label text displayed above the field", Example = "Email Address")] public string Text { get; set; }
@@ -286,8 +286,8 @@
                 return ValidationContext.ShouldShowFieldErrors(GetEffectiveFieldName(), hasUserInteracted);
             }
             
-            // Fallback: only show explicit ErrorMessage after user interaction
-            return !string.IsNullOrEmpty(ErrorMessage) && hasUserInteracted;
+            // Fallback: show explicit ErrorMessage after user interaction OR if form has been submitted
+            return !string.IsNullOrEmpty(ErrorMessage) && (hasUserInteracted || ValidationContext?.HasAttemptedSubmit == true);
         }
     }
     
@@ -557,8 +557,10 @@
     {
         return Density switch
         {
-            FormDensity.Dense => "form-field-dense",
-            FormDensity.UltraDense => "form-field-ultra-dense",
+            ComponentDensity.Compact => "form-field-ultra-dense",
+            ComponentDensity.Dense => "form-field-dense",
+            ComponentDensity.Normal => "form-field-comfortable",
+            ComponentDensity.Spacious => "form-field-spacious",
             _ => "form-field-comfortable"
         };
     }
@@ -709,25 +711,23 @@
     {
         var classes = new List<string>
         {
+            "form-checkbox",
             "rounded",
             "border-2",
             "border-medium",
             "text-primary",
             "focus:border-primary",
-            "focus:shadow-primary"
+            "focus:ring-primary",
+            "focus:ring-2",
+            "focus:ring-opacity-50",
+            "transition-colors"
         };
         
-        classes.Add(Size switch
-        {
-            FieldSize.Small => "w-4 h-4",
-            FieldSize.Medium => "w-5 h-5",
-            FieldSize.Large => "w-6 h-6",
-            _ => "w-5 h-5"
-        });
+        classes.Add(GetCheckboxSizeClasses());
         
         if (IsInErrorState)
         {
-            classes.AddRange(new[] { "border-error", "focus:border-error" });
+            classes.AddRange(new[] { "border-error", "focus:border-error", "focus:ring-error" });
         }
         
         if (Disabled)
@@ -741,22 +741,71 @@
         
         return string.Join(" ", classes);
     }
+
+    private string GetCheckboxSizeClasses()
+    {
+        var baseSizeClasses = Size switch
+        {
+            FieldSize.Small => "w-4 h-4",
+            FieldSize.Medium => "w-5 h-5",
+            FieldSize.Large => "w-6 h-6",
+            _ => "w-5 h-5"
+        };
+
+        return Density switch
+        {
+            ComponentDensity.Compact => ApplyCompactCheckboxSizing(),
+            ComponentDensity.Dense => ApplyDenseCheckboxSizing(),
+            ComponentDensity.Normal => baseSizeClasses,
+            ComponentDensity.Spacious => ApplySpacious​CheckboxSizing(),
+            _ => baseSizeClasses
+        };
+    }
+
+    private string ApplyCompactCheckboxSizing()
+    {
+        return Size switch
+        {
+            FieldSize.Small => "w-3 h-3",
+            FieldSize.Medium => "w-4 h-4",
+            FieldSize.Large => "w-5 h-5",
+            _ => "w-4 h-4"
+        };
+    }
+
+    private string ApplyDenseCheckboxSizing()
+    {
+        return Size switch
+        {
+            FieldSize.Small => "w-3 h-3",
+            FieldSize.Medium => "w-4 h-4",
+            FieldSize.Large => "w-5 h-5",
+            _ => "w-4 h-4"
+        };
+    }
+
+    private string ApplySpacious​CheckboxSizing()
+    {
+        return Size switch
+        {
+            FieldSize.Small => "w-5 h-5",
+            FieldSize.Medium => "w-6 h-6",
+            FieldSize.Large => "w-7 h-7",
+            _ => "w-6 h-6"
+        };
+    }
     
     private string GetCheckboxLabelClasses()
     {
         var classes = new List<string>
         {
             "text-primary",
-            "cursor-pointer"
+            "cursor-pointer",
+            "select-none",
+            "font-medium"
         };
         
-        classes.Add(Size switch
-        {
-            FieldSize.Small => "text-sm",
-            FieldSize.Medium => "text-base",
-            FieldSize.Large => "text-lg",
-            _ => "text-base"
-        });
+        classes.Add(GetCheckboxLabelSizeClasses());
         
         if (Disabled)
         {
@@ -764,6 +813,59 @@
         }
         
         return string.Join(" ", classes);
+    }
+
+    private string GetCheckboxLabelSizeClasses()
+    {
+        var baseSizeClasses = Size switch
+        {
+            FieldSize.Small => "text-sm",
+            FieldSize.Medium => "text-base",
+            FieldSize.Large => "text-lg",
+            _ => "text-base"
+        };
+
+        return Density switch
+        {
+            ComponentDensity.Compact => ApplyCompactLabelSizing(),
+            ComponentDensity.Dense => ApplyDenseLabelSizing(),
+            ComponentDensity.Normal => baseSizeClasses,
+            ComponentDensity.Spacious => ApplySpacious​LabelSizing(),
+            _ => baseSizeClasses
+        };
+    }
+
+    private string ApplyCompactLabelSizing()
+    {
+        return Size switch
+        {
+            FieldSize.Small => "text-xs",
+            FieldSize.Medium => "text-sm",
+            FieldSize.Large => "text-base",
+            _ => "text-sm"
+        };
+    }
+
+    private string ApplyDenseLabelSizing()
+    {
+        return Size switch
+        {
+            FieldSize.Small => "text-xs",
+            FieldSize.Medium => "text-sm",
+            FieldSize.Large => "text-base",
+            _ => "text-sm"
+        };
+    }
+
+    private string ApplySpacious​LabelSizing()
+    {
+        return Size switch
+        {
+            FieldSize.Small => "text-base",
+            FieldSize.Medium => "text-lg",
+            FieldSize.Large => "text-xl",
+            _ => "text-lg"
+        };
     }
     
     private string GetRangeClasses()
@@ -836,7 +938,7 @@
         // When both help text and character count are present, use flexbox layout
         if (!string.IsNullOrEmpty(HelpText) && ShowCharacterCount && MaxLength > 0)
         {
-            classes.AddRange(new[] { "flex", "justify-between", "items-start", "gap-2" });
+            classes.AddRange(new[] { "d-flex", "justify-between", "items-start", "gap-2" });
         }
         
         return string.Join(" ", classes);
@@ -858,6 +960,38 @@
         }
         
         return "";
+    }
+
+    private string GetCheckboxContainerClasses()
+    {
+        var classes = new List<string> { "d-flex", "items-center", "justify-start", "w-full" };
+        
+        // Add density-specific gap
+        classes.Add(GetDensityGapClasses());
+        
+        return string.Join(" ", classes);
+    }
+
+    private string GetRadioContainerClasses()
+    {
+        var classes = new List<string> { "d-flex", "flex-col" };
+        
+        // Add density-specific gap
+        classes.Add(GetDensityGapClasses());
+        
+        return string.Join(" ", classes);
+    }
+
+    private string GetDensityGapClasses()
+    {
+        return Density switch
+        {
+            ComponentDensity.Compact => "gap-1",
+            ComponentDensity.Dense => "gap-2",
+            ComponentDensity.Normal => "gap-3",
+            ComponentDensity.Spacious => "gap-4",
+            _ => "gap-3"
+        };
     }
     
     private string GetHtmlInputType() => Type switch

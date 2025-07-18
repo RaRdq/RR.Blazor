@@ -4,10 +4,10 @@
 <div class="progress-container w-full @Class">
     @if (ShowLabel && !string.IsNullOrEmpty(Text))
     {
-        <div class="progress-label mb-2 text-sm font-medium text-secondary">@Text</div>
+        <div class="progress-label @GetLabelSpacingClasses() @GetLabelSizeClasses() font-medium text-secondary">@Text</div>
     }
     <div class="progress relative @GetProgressClasses() bg-surface-secondary rounded-full overflow-hidden">
-        <div class="progress-bar @GetProgressBarClasses() h-full transition-all duration-300 flex items-center justify-center text-inverse text-xs font-medium" 
+        <div class="progress-bar @GetProgressBarClasses() h-full transition-all duration-300 d-flex items-center justify-center text-inverse @GetProgressBarTextClasses() font-medium" 
              role="progressbar" 
              style="@GetProgressBarStyle()"
              aria-valuenow="@Value" 
@@ -15,13 +15,13 @@
              aria-valuemax="100">
             @if (ShowLabel && LabelInside)
             {
-                <span class="progress-bar-label pl-2 pr-2 text-truncate">@GetFormattedValue()</span>
+                <span class="progress-bar-label @GetInnerLabelPaddingClasses() text-truncate">@GetFormattedValue()</span>
             }
         </div>
     </div>
     @if (ShowLabel && !LabelInside && string.IsNullOrEmpty(Text))
     {
-        <div class="progress-value mt-1 text-sm text-secondary text-right">@GetFormattedValue()</div>
+        <div class="progress-value @GetValueSpacingClasses() @GetValueSizeClasses() text-secondary text-right">@GetFormattedValue()</div>
     }
 </div>
 
@@ -39,19 +39,108 @@
     [Parameter] public bool Striped { get; set; }
     [Parameter] public bool Animated { get; set; }
     [Parameter] public string Class { get; set; } = string.Empty;
+    [Parameter] public ComponentDensity Density { get; set; } = ComponentDensity.Normal;
 
     private string GetProgressClasses()
     {
         var classes = new List<string>();
         
-        classes.Add(Size switch
+        // Base size with density modifiers
+        var baseHeight = Size switch
         {
             ProgressSize.Small => "h-2",
             ProgressSize.Large => "h-6",
             _ => "h-4"
+        };
+        
+        // Apply density modifiers
+        classes.Add(Density switch
+        {
+            ComponentDensity.Compact when Size == ProgressSize.Small => "h-1",
+            ComponentDensity.Compact when Size == ProgressSize.Large => "h-5",
+            ComponentDensity.Compact => "h-3",
+            ComponentDensity.Dense when Size == ProgressSize.Small => "h-2",
+            ComponentDensity.Dense when Size == ProgressSize.Large => "h-6",
+            ComponentDensity.Dense => "h-4",
+            ComponentDensity.Spacious when Size == ProgressSize.Small => "h-3",
+            ComponentDensity.Spacious when Size == ProgressSize.Large => "h-8",
+            ComponentDensity.Spacious => "h-5",
+            _ => baseHeight
         });
         
         return string.Join(" ", classes.Where(c => !string.IsNullOrEmpty(c)));
+    }
+
+    private string GetLabelSpacingClasses()
+    {
+        return Density switch
+        {
+            ComponentDensity.Compact => "mb-1",
+            ComponentDensity.Dense => "mb-2",
+            ComponentDensity.Normal => "mb-2",
+            ComponentDensity.Spacious => "mb-3",
+            _ => "mb-2"
+        };
+    }
+
+    private string GetLabelSizeClasses()
+    {
+        return Density switch
+        {
+            ComponentDensity.Compact => "text-xs",
+            ComponentDensity.Dense => "text-sm",
+            ComponentDensity.Normal => "text-sm",
+            ComponentDensity.Spacious => "text-base",
+            _ => "text-sm"
+        };
+    }
+
+    private string GetProgressBarTextClasses()
+    {
+        return Density switch
+        {
+            ComponentDensity.Compact => "text-xs",
+            ComponentDensity.Dense => "text-xs",
+            ComponentDensity.Normal => "text-xs",
+            ComponentDensity.Spacious => "text-sm",
+            _ => "text-xs"
+        };
+    }
+
+    private string GetInnerLabelPaddingClasses()
+    {
+        return Density switch
+        {
+            ComponentDensity.Compact => "pl-1 pr-1",
+            ComponentDensity.Dense => "pl-2 pr-2",
+            ComponentDensity.Normal => "pl-2 pr-2",
+            ComponentDensity.Spacious => "pl-3 pr-3",
+            _ => "pl-2 pr-2"
+        };
+    }
+
+    private string GetValueSpacingClasses()
+    {
+        return Density switch
+        {
+            ComponentDensity.Compact => "mt-1",
+            ComponentDensity.Dense => "mt-1",
+            ComponentDensity.Normal => "mt-1",
+            ComponentDensity.Spacious => "mt-2",
+            _ => "mt-1"
+        };
+    }
+
+    private string GetValueSizeClasses()
+    {
+        return Density switch
+        {
+            ComponentDensity.Compact => "text-xs",
+            ComponentDensity.Dense => "text-sm",
+            ComponentDensity.Normal => "text-sm",
+            ComponentDensity.Spacious => "text-base",
+            _ => "text-sm"
+        };
     }
 
     private string GetProgressBarClasses()

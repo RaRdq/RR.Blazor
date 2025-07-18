@@ -130,12 +130,30 @@ public class ToastService(ToastServiceOptions options = null) : IToastService
     
     public void ShowError(string message, string title = null)
     {
-        Show(message, ToastType.Error, title);
+        var toast = new ToastMessage
+        {
+            Message = message,
+            Title = title,
+            Type = ToastType.Error,
+            Duration = 8000, // Longer duration for errors to give users time to read
+            ShowCloseButton = true
+        };
+        
+        Show(toast);
     }
     
     public void ShowWarning(string message, string title = null)
     {
-        Show(message, ToastType.Warning, title);
+        var toast = new ToastMessage
+        {
+            Message = message,
+            Title = title,
+            Type = ToastType.Warning,
+            Duration = 6000, // Slightly longer duration for warnings
+            ShowCloseButton = true
+        };
+        
+        Show(toast);
     }
     
     public void ShowInfo(string message, string title = null)

@@ -1,6 +1,12 @@
 // Simple Intersection Observer for load-more functionality
 // Replaces complex virtualization logic with native browser API
 
+// Use shared debug logger from RR.Blazor main file
+const debugLogger = window.debugLogger || new (window.RRDebugLogger || class {
+    constructor() { this.logPrefix = '[IntersectionObserver]'; }
+    warn(...args) { console.warn(this.logPrefix, ...args); }
+})();
+
 let observers = new Map();
 
 export function observe(element, dotNetRef, options = {}) {
@@ -54,7 +60,7 @@ export function disconnectAll() {
 
 // Fallback for older browsers without IntersectionObserver
 if (typeof window !== 'undefined' && !window.IntersectionObserver) {
-    console.warn('IntersectionObserver not supported, falling back to scroll events');
+    debugLogger.warn('IntersectionObserver not supported, falling back to scroll events');
     
     // Simple polyfill using scroll events
     window.IntersectionObserver = class FallbackObserver {

@@ -1,6 +1,12 @@
 // RFileUpload JavaScript Module
 // Advanced file upload functionality with drag/drop, previews, and validation
 
+// Use shared debug logger from RR.Blazor main file
+const debugLogger = window.debugLogger || new (window.RRDebugLogger || class {
+    constructor() { this.logPrefix = '[RFileUpload]'; }
+    warn(...args) { console.warn(this.logPrefix, ...args); }
+})();
+
 export const RRFileUpload = {
     // Initialize file upload component
     initialize: function(elementId, options = {}) {
@@ -180,7 +186,7 @@ export const RRFileUpload = {
                 try {
                     fileInfo.thumbnailUrl = await this.generateThumbnail(file);
                 } catch (error) {
-                    console.warn('Failed to generate thumbnail:', error);
+                    debugLogger.warn('Failed to generate thumbnail:', error);
                 }
             }
 

@@ -5,21 +5,249 @@
   max-width: var(--content-max-width);
 }
 
-// Mobile sidebar support
+// ============================================================================
+// MOBILE RESPONSIVENESS CRITICAL FIXES
+// ============================================================================
+
+// Mobile sidebar support - Fix for Agent 28 critical mobile failure
 .main-content.mobile-sidebar {
   margin-left: 0;
 }
 
-// App header dimensions
+// Critical mobile navigation fixes to resolve 375px width issues
+@media (max-width: 768px) {
+  .app-shell {
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 100vh;
+      width: 280px;
+      z-index: var(--z-sidebar);
+      background: var(--shell-surface);
+      border-right: var(--border-1) solid var(--shell-border);
+      
+      // Default state: hidden off-screen
+      transform: translateX(-100%);
+      transition: transform var(--duration-normal) var(--ease-out);
+      
+      // When sidebar is not closed (explicitly opened on mobile)
+      &:not(.sidebar-closed) {
+        transform: translateX(0);
+      }
+      
+      // Additional mobile-specific hiding
+      &.mobile-hidden,
+      &.sidebar-closed {
+        transform: translateX(-100%);
+      }
+      
+      // Mobile backdrop when sidebar is open
+      &::before {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 280px;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.4);
+        z-index: -1;
+        opacity: 0;
+        transition: opacity var(--duration-normal) var(--ease-out);
+      }
+      
+      &:not(.sidebar-closed)::before {
+        opacity: 1;
+      }
+    }
+    
+    .main-content {
+      margin-left: 0 !important;
+      width: 100%;
+      
+      &.mobile-sidebar {
+        margin-left: 0 !important;
+      }
+    }
+    
+    // Fix header at mobile widths to prevent overlay
+    .app-header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      width: 100%;
+      z-index: var(--z-header);
+      background: var(--shell-surface);
+      backdrop-filter: blur(8px);
+      
+      // Ensure proper spacing for mobile
+      padding-left: var(--space-3);
+      padding-right: var(--space-3);
+      height: var(--header-height, 64px);
+      
+      // Prevent content overflow on mobile
+      .d-flex.items-center.gap-3.flex-1.min-w-0 {
+        overflow: hidden;
+        min-width: 0;
+        
+        // Hide non-essential elements on very small screens
+        @media (max-width: 480px) {
+          .text-sm.font-semibold.text-primary {
+            display: none;
+          }
+        }
+      }
+      
+      // Fix user dropdown truncation on mobile
+      .d-flex.items-center.gap-1.shrink-0 {
+        flex-shrink: 0;
+        min-width: auto;
+        
+        @media (max-width: 480px) {
+          gap: var(--space-1);
+        }
+      }
+    }
+    
+    // Fix main content top spacing for fixed header
+    .main-content {
+      padding-top: var(--header-height, 64px);
+    }
+  }
+}
+
+// Fix for very small mobile screens (Agent 28 375px width issue)
+@media (max-width: 480px) {
+  .app-shell {
+    .app-header {
+      .d-flex.items-center.gap-2.shrink-0 {
+        display: none; // Hide logo/title on very small screens
+      }
+      
+      // Compact header layout
+      .d-flex.items-center.gap-1.shrink-0 {
+        gap: var(--space-1);
+        
+        .rbutton {
+          padding: var(--space-1);
+          min-width: 32px;
+          min-height: 32px;
+        }
+      }
+    }
+    
+    .sidebar {
+      width: 260px; // Slightly narrower sidebar on very small screens
+      
+      &::before {
+        left: 260px;
+      }
+    }
+  }
+}
+
+// App header dimensions and enhanced z-index stacking
 .app-header {
   height: var(--header-height);
   z-index: var(--z-header);
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  
+  // Properly extend over sidebar with responsive padding
+  padding-left: var(--sidebar-width-expanded, 16rem);
+  padding-right: var(--space-4);
+  
+  // Responsive padding adjustments
+  @media (max-width: 768px) {
+    padding-left: var(--space-4);
+    padding-right: var(--space-4);
+  }
+  
+  // Dynamic padding classes for different sidebar states
+  &.header-sidebar-expanded {
+    padding-left: var(--sidebar-width-expanded, 16rem);
+  }
+  
+  &.header-sidebar-collapsed {
+    padding-left: var(--sidebar-width-collapsed, 4rem);
+  }
+  
+  &.header-sidebar-hidden {
+    padding-left: var(--space-4);
+  }
+  
+  // Ensure header buttons and interactions are always accessible
+  * {
+    position: relative;
+    z-index: inherit;
+  }
+  
+  // Specific fix for action buttons and interactive elements
+  .d-flex.items-center.gap-1,
+  .action-group,
+  .rbutton,
+  button {
+    position: relative;
+    z-index: calc(var(--z-header) + 5);
+    pointer-events: auto;
+  }
+  
+  // Fix for QuickActions area specifically
+  .shrink-0:last-child {
+    position: relative;
+    z-index: calc(var(--z-header) + 10);
+  }
+  
+  // Ensure RActionGroup components in header are always interactive
+  .action-group {
+    position: relative;
+    z-index: calc(var(--z-header) + 15);
+    
+    .rbutton,
+    button {
+      position: relative;
+      z-index: inherit;
+      // Force pointer events to be active
+      pointer-events: auto !important;
+    }
+  }
 }
 
 // App shell specific dropdown extensions (dropdown core in _dropdowns.scss)
 .app-shell .dropdown-menu {
   min-width: 16rem;
   z-index: var(--z-dropdown);
+}
+
+// Fix for section overlays interfering with header
+.app-shell {
+  .section {
+    // Ensure sections don't interfere with header interactions
+    &.shadow-2xl,
+    &.shadow-xl,
+    &.shadow-lg {
+      position: relative;
+      z-index: var(--z-base);
+      
+      // Backdrop and glass effects should not block header
+      &.glass-heavy,
+      &.glass-medium,
+      &.backdrop-blur-xl,
+      &.backdrop-blur-lg {
+        // Reduce z-index for glass sections to prevent header blocking
+        z-index: calc(var(--z-base) - 1);
+      }
+    }
+  }
+  
+  // Ensure main content area doesn't interfere with header
+  .main-content {
+    position: relative;
+    z-index: var(--z-base);
+  }
 }
 
 // Layout structure is defined in layout/_app-shell.scss

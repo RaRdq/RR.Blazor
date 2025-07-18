@@ -69,16 +69,23 @@ Project-specific components combine R* components with business logic:
 Projects achieve custom styling through utility composition and CSS custom properties:
 
 ```scss
-// ✅ CORRECT: Utility-first custom styling
+// ✅ CORRECT: Using RR.Blazor extends and mixins
 .dashboard-metric {
-  @apply pa-4 bg-gradient-primary shadow-lg rounded-xl;
-  @apply hover:shadow-xl hover:scale-105;
-  @apply transition-all duration-300;
+  @extend %card-base-enhanced;
+  @extend %touch-target;
+  @include glass-effect();
+  
+  &:hover {
+    @include shadow-elevated();
+    transform: scale(1.05);
+  }
 }
 
 .status-approved {
-  @apply bg-success text-white pa-2 rounded-lg shadow-sm;
-  @apply border-success border-2;
+  @extend %badge-base;
+  background: var(--color-success);
+  color: var(--color-text-inverse);
+  border: 2px solid var(--color-success);
 }
 
 // ❌ WRONG: Modifying framework components
@@ -238,16 +245,21 @@ Projects achieve custom styling through utility composition and CSS custom prope
 ### **Utility-First Implementation Strategy**
 
 ```scss
-// ✅ CORRECT: Utility-first approach
+// ✅ CORRECT: Using RR.Blazor extends and mixins
 .component {
-  @apply pa-4 bg-elevated shadow-md rounded-lg;
-  @apply hover:shadow-lg hover:scale-105;
-  @apply transition-all duration-300;
+  @extend %card-base-enhanced;
+  @extend %touch-target;
+  @include glass-effect();
+  
+  &:hover {
+    @include shadow-elevated();
+    transform: scale(1.05);
+  }
 }
 
-// ✅ CORRECT: Minimal custom CSS with utilities
+// ✅ CORRECT: Minimal custom CSS with RR.Blazor patterns
 .component {
-  @apply pa-4 bg-elevated rounded-lg;
+  @extend %card-base-enhanced;
   
   // Only add custom CSS for unique behavior
   &::before {
@@ -465,23 +477,32 @@ Use semantic CSS custom properties for component customization:
 ### **Custom Styling with Utility Composition**
 
 ```scss
-// Project-specific styles using utility composition
+// Project-specific styles using RR.Blazor extends and mixins
 .analytics-card {
-  @apply pa-6 bg-gradient-primary shadow-lg rounded-xl;
-  @apply hover:shadow-xl hover:scale-105;
-  @apply transition-all duration-300;
+  @extend %card-base-enhanced;
+  @extend %interactive-base;
+  @include glass-effect();
+  background: var(--gradient-primary);
   
   // Minimal custom CSS for unique behavior
   &::before {
     content: '';
-    @apply absolute inset-0 bg-gradient-subtle rounded-xl opacity-50;
+    position: absolute;
+    inset: 0;
+    background: var(--gradient-subtle);
+    border-radius: var(--radius-xl);
+    opacity: 0.5;
   }
 }
 
 .metric-highlight {
-  @apply bg-success text-white pa-3 rounded-lg shadow-sm;
-  @apply border-success border-2;
-  @apply hover:shadow-md hover:scale-105;
+  @extend %badge-base;
+  @extend %interactive-base;
+  background: var(--color-success);
+  color: var(--color-text-inverse);
+  border: 2px solid var(--color-success);
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
 }
 ```
 

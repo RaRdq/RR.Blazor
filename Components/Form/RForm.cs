@@ -15,8 +15,8 @@ public abstract class RFormBase : ComponentBase
     // Core form parameters - shared by all variants
     [Parameter] public ValidationMode ValidationMode { get; set; } = ValidationMode.DataAnnotations;
     [Parameter] public FormLayout Layout { get; set; } = FormLayout.Default;
-    [Parameter] public FormDensity Density { get; set; } = FormDensity.Comfortable;
-    [Parameter] public FormOptions Options { get; set; }
+    [Parameter] public FormDensity Density { get; set; } = FormDensity.Normal;
+    [Parameter] public FormOptions? Options { get; set; }
     
     // UI parameters
     [Parameter] public string Title { get; set; }
@@ -25,6 +25,7 @@ public abstract class RFormBase : ComponentBase
     [Parameter] public bool ShowFormHeader { get; set; } = true;
     [Parameter] public bool ShowDefaultActions { get; set; } = true;
     [Parameter] public bool ShowCancelButton { get; set; } = true;
+    [Parameter] public bool ShowValidationSummary { get; set; } = true;
     [Parameter] public string SubmitText { get; set; } = "Submit";
     [Parameter] public string CancelText { get; set; } = "Cancel";
     [Parameter] public bool RequireValidation { get; set; } = true;
@@ -110,6 +111,7 @@ public class RForm : RFormBase
         builder.AddAttribute(index++, nameof(ShowFormHeader), ShowFormHeader);
         builder.AddAttribute(index++, nameof(ShowDefaultActions), ShowDefaultActions);
         builder.AddAttribute(index++, nameof(ShowCancelButton), ShowCancelButton);
+        builder.AddAttribute(index++, nameof(ShowValidationSummary), ShowValidationSummary);
         builder.AddAttribute(index++, nameof(SubmitText), SubmitText);
         builder.AddAttribute(index++, nameof(CancelText), CancelText);
         builder.AddAttribute(index++, nameof(RequireValidation), RequireValidation);

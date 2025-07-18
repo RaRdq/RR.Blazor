@@ -5,26 +5,26 @@
 <RCard Clickable="@Clickable" 
        OnClick="@OnClick"
        Elevation="@Elevation"
-       Class="@($"flex items-center {Class}")">
-    <div class="flex items-center gap-3">
+       Class="@($"d-flex items-center {GetDensityClasses()} {Class}")">
+    <div class="@GetContentClasses()">
         @if (!string.IsNullOrEmpty(Icon))
         {
-            <div class="rounded-lg flex items-center justify-center" style="--icon-size: @(IconSize)px; --icon-color: var(--color-@IconColor); --icon-font-size: @(IconSize * 0.6)px;">
+            <div class="@GetIconContainerClasses()" style="--icon-size: @(GetIconSize())px; --icon-color: var(--color-@IconColor); --icon-font-size: @(GetIconSize() * 0.6)px;">
                 <i class="material-symbols-rounded">@Icon</i>
             </div>
         }
         <div class="grow">
-            <div class="text-xs font-medium uppercase mb-1 text-secondary tracking-wide">@Text</div>
-            <div class="flex items-center gap-2">
-                <span class="text-lg font-bold" style="--value-color: var(--color-@ValueColor);">@Value</span>
+            <div class="@GetTextClasses()">@Text</div>
+            <div class="@GetValueContainerClasses()">
+                <span class="@GetValueClasses()" style="--value-color: var(--color-@ValueColor);">@Value</span>
                 @if (!string.IsNullOrEmpty(BadgeText))
                 {
-                    <RBadge Text="@BadgeText" Variant="@BadgeVariant" Size="@BadgeSize" />
+                    <RBadge Text="@BadgeText" Variant="@BadgeVariant" Size="@GetBadgeSize()" />
                 }
             </div>
             @if (!string.IsNullOrEmpty(Subtitle))
             {
-                <div class="text-xs text-tertiary mt-0.5">@Subtitle</div>
+                <div class="@GetSubtitleClasses()">@Subtitle</div>
             }
         </div>
     </div>
@@ -102,5 +102,91 @@
     /// Additional CSS classes
     /// </summary>
     [Parameter] public string Class { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// Component density level for ultra-dense layouts
+    /// </summary>
+    [Parameter] public ComponentDensity Density { get; set; } = ComponentDensity.Normal;
+    
+    private string GetDensityClasses() => Density switch
+    {
+        ComponentDensity.Compact => "pa-2",
+        ComponentDensity.Dense => "pa-3",
+        ComponentDensity.Normal => "pa-4",
+        ComponentDensity.Spacious => "pa-6",
+        _ => "pa-4"
+    };
+    
+    private string GetContentClasses() => Density switch
+    {
+        ComponentDensity.Compact => "d-flex items-center gap-2",
+        ComponentDensity.Dense => "d-flex items-center gap-2",
+        ComponentDensity.Normal => "d-flex items-center gap-3",
+        ComponentDensity.Spacious => "d-flex items-center gap-4",
+        _ => "d-flex items-center gap-3"
+    };
+    
+    private string GetIconContainerClasses() => Density switch
+    {
+        ComponentDensity.Compact => "rounded d-flex items-center justify-center",
+        ComponentDensity.Dense => "rounded-md d-flex items-center justify-center",
+        ComponentDensity.Normal => "rounded-lg d-flex items-center justify-center",
+        ComponentDensity.Spacious => "rounded-xl d-flex items-center justify-center",
+        _ => "rounded-lg d-flex items-center justify-center"
+    };
+    
+    private int GetIconSize() => Density switch
+    {
+        ComponentDensity.Compact => 20,
+        ComponentDensity.Dense => 24,
+        ComponentDensity.Normal => 32,
+        ComponentDensity.Spacious => 40,
+        _ => 32
+    };
+    
+    private string GetTextClasses() => Density switch
+    {
+        ComponentDensity.Compact => "text-xs font-medium uppercase mb-0 text-secondary tracking-wide",
+        ComponentDensity.Dense => "text-xs font-medium uppercase mb-0 text-secondary tracking-wide",
+        ComponentDensity.Normal => "text-xs font-medium uppercase mb-1 text-secondary tracking-wide",
+        ComponentDensity.Spacious => "text-sm font-medium uppercase mb-2 text-secondary tracking-wide",
+        _ => "text-xs font-medium uppercase mb-1 text-secondary tracking-wide"
+    };
+    
+    private string GetValueContainerClasses() => Density switch
+    {
+        ComponentDensity.Compact => "d-flex items-center gap-1",
+        ComponentDensity.Dense => "d-flex items-center gap-1",
+        ComponentDensity.Normal => "d-flex items-center gap-2",
+        ComponentDensity.Spacious => "d-flex items-center gap-3",
+        _ => "d-flex items-center gap-2"
+    };
+    
+    private string GetValueClasses() => Density switch
+    {
+        ComponentDensity.Compact => "text-sm font-bold",
+        ComponentDensity.Dense => "text-base font-bold",
+        ComponentDensity.Normal => "text-lg font-bold",
+        ComponentDensity.Spacious => "text-xl font-bold",
+        _ => "text-lg font-bold"
+    };
+    
+    private string GetSubtitleClasses() => Density switch
+    {
+        ComponentDensity.Compact => "text-xs text-tertiary mt-0",
+        ComponentDensity.Dense => "text-xs text-tertiary mt-0",
+        ComponentDensity.Normal => "text-xs text-tertiary mt-0.5",
+        ComponentDensity.Spacious => "text-sm text-tertiary mt-1",
+        _ => "text-xs text-tertiary mt-0.5"
+    };
+    
+    private BadgeSize GetBadgeSize() => Density switch
+    {
+        ComponentDensity.Compact => BadgeSize.Small,
+        ComponentDensity.Dense => BadgeSize.Small,
+        ComponentDensity.Normal => BadgeSize.Medium,
+        ComponentDensity.Spacious => BadgeSize.Large,
+        _ => BadgeSize.Medium
+    };
 
 }

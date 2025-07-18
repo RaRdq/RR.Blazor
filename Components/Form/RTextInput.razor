@@ -33,14 +33,14 @@
 <div class="@GetContainerClasses()">
     @if (!string.IsNullOrEmpty(Label))
     {
-        <label class="form-field-label" for="@inputId">@Label</label>
+        <label class="@GetLabelClasses()" for="@inputId">@Label</label>
     }
     
-    <div class="form-field-wrapper">
+    <div class="relative">
         @if (!string.IsNullOrEmpty(StartIcon))
         {
-            <div class="form-field-icon">
-                <i class="material-symbols-rounded @StartIcon" @onclick="@OnStartIconClick"></i>
+            <div class="@GetStartIconContainerClasses()">
+                <i class="material-symbols-rounded @GetIconClasses()" @onclick="@OnStartIconClick">@StartIcon</i>
             </div>
         }
         
@@ -60,27 +60,27 @@
         
         @if (!string.IsNullOrEmpty(EndIcon))
         {
-            <div class="form-field-icon">
-                <i class="material-symbols-rounded @EndIcon" @onclick="@OnEndIconClick"></i>
+            <div class="@GetEndIconContainerClasses()">
+                <i class="material-symbols-rounded @GetIconClasses()" @onclick="@OnEndIconClick">@EndIcon</i>
             </div>
         }
         
         @if (Loading)
         {
-            <div class="loading-overlay">
-                <div class="spinner-sm"></div>
+            <div class="absolute inset-0 d-flex items-center justify-center bg-surface bg-opacity-75">
+                <i class="material-symbols-rounded text-primary animate-spin">progress_activity</i>
             </div>
         }
     </div>
     
     @if (HasError && !string.IsNullOrEmpty(ErrorMessage))
     {
-        <div class="form-field-input-error">@ErrorMessage</div>
+        <div class="@GetErrorMessageClasses()">@ErrorMessage</div>
     }
     
     @if (!string.IsNullOrEmpty(HelpText))
     {
-        <div class="form-field-help">@HelpText</div>
+        <div class="@GetHelpTextClasses()">@HelpText</div>
     }
 </div>
 
@@ -124,6 +124,10 @@
     [Parameter] 
     [AIParameter("Input size", SuggestedValues = new[] { "Small", "Medium", "Large" })]
     public TextInputSize Size { get; set; } = TextInputSize.Medium;
+    
+    [Parameter]
+    [AIParameter("Component density level", SuggestedValues = new[] { "Normal", "Dense", "Compact", "Spacious" })]
+    public ComponentDensity Density { get; set; } = ComponentDensity.Normal;
     
     [Parameter] 
     [AIParameter("Disabled state")]
@@ -190,27 +194,203 @@
     
     private string GetInputClasses()
     {
-        var classes = new List<string> { "form-field-input" };
-        
-        // Size variants
-        classes.Add(Size switch
+        var classes = new List<string>
         {
-            TextInputSize.Small => "form-field-input-sm",
-            TextInputSize.Large => "form-field-input-lg",
-            _ => ""
-        });
+            "w-full",
+            "border",
+            "rounded-md",
+            "text-primary",
+            "bg-surface",
+            "transition",
+            "focus:outline-none",
+            "focus:ring-2",
+            "focus:ring-primary",
+            "focus:border-transparent"
+        };
+        
+        // Size and density classes
+        classes.Add(GetSizeClasses());
+        
+        // Icon padding adjustments
+        if (!string.IsNullOrEmpty(StartIcon))
+            classes.Add(GetStartIconPadding());
+        if (!string.IsNullOrEmpty(EndIcon))
+            classes.Add(GetEndIconPadding());
         
         // State classes
         if (HasError)
-            classes.Add("form-field-input-error");
-        if (Loading)
-            classes.Add("form-field-input-loading");
-        if (!string.IsNullOrEmpty(StartIcon))
-            classes.Add("form-field-input-with-start-icon");
-        if (!string.IsNullOrEmpty(EndIcon))
-            classes.Add("form-field-input-with-end-icon");
+        {
+            classes.Add("border-error");
+            classes.Add("focus:ring-error");
+        }
+        else
+        {
+            classes.Add("border-light");
+        }
+        
+        if (Disabled)
+        {
+            classes.Add("opacity-50");
+            classes.Add("cursor-not-allowed");
+        }
+        
+        if (ReadOnly)
+        {
+            classes.Add("bg-surface-elevated");
+            classes.Add("cursor-default");
+        }
         
         return string.Join(" ", classes.Where(c => !string.IsNullOrEmpty(c)));
+    }
+    
+    private string GetSizeClasses()
+    {
+        var baseSizeClasses = Size switch
+        {
+            TextInputSize.Small => "pl-3 pr-3 pt-2 pb-2 text-sm h-8",
+            TextInputSize.Medium => "pl-4 pr-4 pt-3 pb-3 text-base h-10",
+            TextInputSize.Large => "pl-5 pr-5 pt-4 pb-4 text-lg h-12",
+            _ => "pl-4 pr-4 pt-3 pb-3 text-base h-10"
+        };
+        
+        // Apply density modifiers
+        return Density switch
+        {
+            ComponentDensity.Compact => ApplyCompactDensity(),
+            ComponentDensity.Dense => ApplyDenseDensity(),
+            ComponentDensity.Normal => baseSizeClasses,
+            ComponentDensity.Spacious => ApplySpacious(),
+            _ => baseSizeClasses
+        };
+    }
+    
+    private string ApplyCompactDensity()
+    {
+        return Size switch
+        {
+            TextInputSize.Small => "pl-2 pr-2 pt-1 pb-1 text-xs h-6",
+            TextInputSize.Medium => "pl-3 pr-3 pt-2 pb-2 text-sm h-8",
+            TextInputSize.Large => "pl-4 pr-4 pt-3 pb-3 text-base h-10",
+            _ => "pl-3 pr-3 pt-2 pb-2 text-sm h-8"
+        };
+    }
+    
+    private string ApplyDenseDensity()
+    {
+        return Size switch
+        {
+            TextInputSize.Small => "pl-2 pr-2 pt-1 pb-1 text-sm h-7",
+            TextInputSize.Medium => "pl-3 pr-3 pt-2 pb-2 text-base h-9",
+            TextInputSize.Large => "pl-4 pr-4 pt-3 pb-3 text-lg h-11",
+            _ => "pl-3 pr-3 pt-2 pb-2 text-base h-9"
+        };
+    }
+    
+    private string ApplySpacious()
+    {
+        return Size switch
+        {
+            TextInputSize.Small => "pl-4 pr-4 pt-3 pb-3 text-sm h-10",
+            TextInputSize.Medium => "pl-6 pr-6 pt-4 pb-4 text-base h-12",
+            TextInputSize.Large => "pl-8 pr-8 pt-5 pb-5 text-lg h-16",
+            _ => "pl-6 pr-6 pt-4 pb-4 text-base h-12"
+        };
+    }
+    
+    private string GetStartIconPadding()
+    {
+        return Density switch
+        {
+            ComponentDensity.Compact => "pl-8",
+            ComponentDensity.Dense => "pl-10",
+            ComponentDensity.Normal => "pl-12",
+            ComponentDensity.Spacious => "pl-16",
+            _ => "pl-12"
+        };
+    }
+    
+    private string GetEndIconPadding()
+    {
+        return Density switch
+        {
+            ComponentDensity.Compact => "pr-8",
+            ComponentDensity.Dense => "pr-10",
+            ComponentDensity.Normal => "pr-12",
+            ComponentDensity.Spacious => "pr-16",
+            _ => "pr-12"
+        };
+    }
+    
+    private string GetStartIconContainerClasses()
+    {
+        return Density switch
+        {
+            ComponentDensity.Compact => "absolute left-2 top-1/2 transform -translate-y-1/2 pointer-events-none",
+            ComponentDensity.Dense => "absolute left-3 top-1/2 transform -translate-y-1/2 pointer-events-none",
+            ComponentDensity.Normal => "absolute left-4 top-1/2 transform -translate-y-1/2 pointer-events-none",
+            ComponentDensity.Spacious => "absolute left-5 top-1/2 transform -translate-y-1/2 pointer-events-none",
+            _ => "absolute left-4 top-1/2 transform -translate-y-1/2 pointer-events-none"
+        };
+    }
+    
+    private string GetEndIconContainerClasses()
+    {
+        return Density switch
+        {
+            ComponentDensity.Compact => "absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none",
+            ComponentDensity.Dense => "absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none",
+            ComponentDensity.Normal => "absolute right-4 top-1/2 transform -translate-y-1/2 pointer-events-none",
+            ComponentDensity.Spacious => "absolute right-5 top-1/2 transform -translate-y-1/2 pointer-events-none",
+            _ => "absolute right-4 top-1/2 transform -translate-y-1/2 pointer-events-none"
+        };
+    }
+    
+    private string GetIconClasses()
+    {
+        return Density switch
+        {
+            ComponentDensity.Compact => "text-sm text-secondary",
+            ComponentDensity.Dense => "text-base text-secondary",
+            ComponentDensity.Normal => "text-lg text-secondary",
+            ComponentDensity.Spacious => "text-xl text-secondary",
+            _ => "text-lg text-secondary"
+        };
+    }
+    
+    private string GetLabelClasses()
+    {
+        return Density switch
+        {
+            ComponentDensity.Compact => "d-block text-xs font-medium text-primary mb-1",
+            ComponentDensity.Dense => "d-block text-sm font-medium text-primary mb-1",
+            ComponentDensity.Normal => "d-block text-sm font-medium text-primary mb-2",
+            ComponentDensity.Spacious => "d-block text-base font-medium text-primary mb-3",
+            _ => "d-block text-sm font-medium text-primary mb-2"
+        };
+    }
+    
+    private string GetErrorMessageClasses()
+    {
+        return Density switch
+        {
+            ComponentDensity.Compact => "text-xs text-error mt-1",
+            ComponentDensity.Dense => "text-xs text-error mt-1",
+            ComponentDensity.Normal => "text-sm text-error mt-2",
+            ComponentDensity.Spacious => "text-base text-error mt-3",
+            _ => "text-sm text-error mt-2"
+        };
+    }
+    
+    private string GetHelpTextClasses()
+    {
+        return Density switch
+        {
+            ComponentDensity.Compact => "text-xs text-secondary mt-1",
+            ComponentDensity.Dense => "text-xs text-secondary mt-1",
+            ComponentDensity.Normal => "text-sm text-secondary mt-2",
+            ComponentDensity.Spacious => "text-base text-secondary mt-3",
+            _ => "text-sm text-secondary mt-2"
+        };
     }
     
     #endregion

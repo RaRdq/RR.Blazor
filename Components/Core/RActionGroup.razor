@@ -62,6 +62,9 @@ Supports horizontal/vertical layouts, responsive behavior, and flexible alignmen
     [AIParameter(Hint = "True for responsive mobile layouts, false for fixed layouts")]
     public bool Responsive { get; set; } = true;
     
+    /// <summary>Component density for ultra-dense layouts</summary>
+    [Parameter] public ComponentDensity Density { get; set; } = ComponentDensity.Normal;
+    
     /// <summary>Additional CSS classes</summary>
     [Parameter] public string Class { get; set; }
     
@@ -70,7 +73,7 @@ Supports horizontal/vertical layouts, responsive behavior, and flexible alignmen
     
     private string GetActionGroupClasses()
     {
-        var classes = new List<string> { "flex" };
+        var classes = new List<string> { "d-flex" };
         
         // Direction
         if (Direction == ActionGroupDirection.Vertical)
@@ -86,16 +89,8 @@ Supports horizontal/vertical layouts, responsive behavior, and flexible alignmen
             }
         }
         
-        // Spacing
-        classes.Add(Spacing switch
-        {
-            ActionGroupSpacing.None => "gap-0",
-            ActionGroupSpacing.Small => "gap-2",
-            ActionGroupSpacing.Medium => "gap-3",
-            ActionGroupSpacing.Large => "gap-4",
-            ActionGroupSpacing.ExtraLarge => "gap-6",
-            _ => "gap-3"
-        });
+        // Spacing with density modifiers
+        classes.Add(GetSpacingClasses());
         
         // Alignment
         if (Direction == ActionGroupDirection.Horizontal)
@@ -134,6 +129,67 @@ Supports horizontal/vertical layouts, responsive behavior, and flexible alignmen
         }
         
         return string.Join(" ", classes);
+    }
+
+    private string GetSpacingClasses()
+    {
+        var baseSpacing = Spacing switch
+        {
+            ActionGroupSpacing.None => "gap-0",
+            ActionGroupSpacing.Small => "gap-2",
+            ActionGroupSpacing.Medium => "gap-3",
+            ActionGroupSpacing.Large => "gap-4",
+            ActionGroupSpacing.ExtraLarge => "gap-6",
+            _ => "gap-3"
+        };
+
+        return Density switch
+        {
+            ComponentDensity.Compact => ApplyCompactSpacing(),
+            ComponentDensity.Dense => ApplyDenseSpacing(),
+            ComponentDensity.Normal => baseSpacing,
+            ComponentDensity.Spacious => ApplySpacious​Spacing(),
+            _ => baseSpacing
+        };
+    }
+
+    private string ApplyCompactSpacing()
+    {
+        return Spacing switch
+        {
+            ActionGroupSpacing.None => "gap-0",
+            ActionGroupSpacing.Small => "gap-1",
+            ActionGroupSpacing.Medium => "gap-2",
+            ActionGroupSpacing.Large => "gap-3",
+            ActionGroupSpacing.ExtraLarge => "gap-4",
+            _ => "gap-2"
+        };
+    }
+
+    private string ApplyDenseSpacing()
+    {
+        return Spacing switch
+        {
+            ActionGroupSpacing.None => "gap-0",
+            ActionGroupSpacing.Small => "gap-1",
+            ActionGroupSpacing.Medium => "gap-2",
+            ActionGroupSpacing.Large => "gap-3",
+            ActionGroupSpacing.ExtraLarge => "gap-5",
+            _ => "gap-2"
+        };
+    }
+
+    private string ApplySpacious​Spacing()
+    {
+        return Spacing switch
+        {
+            ActionGroupSpacing.None => "gap-0",
+            ActionGroupSpacing.Small => "gap-3",
+            ActionGroupSpacing.Medium => "gap-4",
+            ActionGroupSpacing.Large => "gap-6",
+            ActionGroupSpacing.ExtraLarge => "gap-8",
+            _ => "gap-4"
+        };
     }
 }
 
