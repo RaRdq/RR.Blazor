@@ -64,14 +64,68 @@ function Get-LevenshteinDistance {
     return $matrix[$len1, $len2]
 }
 
-# Function to extract ACTUAL parameters from component source code (Define first!)
-function Extract-ActualParameters {
+# Function to extract parameters from C# base class files
+function Extract-ParametersFromCsFile {
     param([string]$Content)
+    
+    $parameters = @()
+    $lines = $Content -split "`n"
+    
+    for ($i = 0; $i -lt $lines.Length; $i++) {
+        $line = $lines[$i].Trim()
+        
+        # Look for [Parameter] attributes
+        if ($line -match '\[Parameter(?:[\],]|$)') {
+            # Look ahead for the property declaration
+            for ($j = $i + 1; $j -lt [Math]::Min($lines.Length, $i + 10); $j++) {
+                $propLine = $lines[$j].Trim()
+                if ([string]::IsNullOrWhiteSpace($propLine)) { continue }
+                
+                # Match property declaration: public Type PropertyName { get; set; }
+                if ($propLine -match 'public\s+(?:virtual\s+)?(?:override\s+)?(?:static\s+)?[^\s]+(?:<[^>]*>)?(?:\?)?\s+(\w+)\s*\{') {
+                    $paramName = $Matches[1].Trim()
+                    if ($paramName -and $paramName -notmatch '^(get|set)$') {
+                        $parameters += $paramName
+                    }
+                    break
+                }
+            }
+        }
+    }
+    
+    return $parameters | Sort-Object -Unique
+}
+
+# Function to extract ACTUAL parameters from component source code with inheritance support
+function Extract-ActualParameters {
+    param(
+        [string]$Content,
+        [string]$ComponentPath,
+        [hashtable]$BaseClassParameters = @{}
+    )
+    
+    if ([string]::IsNullOrEmpty($Content)) {
+        Write-Warning "Content is null or empty for component at path: $ComponentPath"
+        return @()
+    }
     
     $parameters = @()
     $lines = $Content -split "`n"
     $inCodeBlock = $false
     
+    # First, check for @inherits directive to find base class
+    $inheritedParameters = @()
+    foreach ($line in $lines) {
+        if ($line -match '@inherits\s+(\w+(?:<[^>]+>)?)') {
+            $baseClassName = $Matches[1] -replace '<.*>', ''  # Remove generic type parameters
+            if ($BaseClassParameters.ContainsKey($baseClassName)) {
+                $inheritedParameters += $BaseClassParameters[$baseClassName]
+                Write-Host "    📎 Inherited $($BaseClassParameters[$baseClassName].Count) parameters from $baseClassName (including full inheritance chain)" -ForegroundColor DarkCyan
+            }
+        }
+    }
+    
+    # Then extract parameters from the component itself
     for ($i = 0; $i -lt $lines.Length; $i++) {
         $line = $lines[$i].Trim()
         
@@ -113,7 +167,9 @@ function Extract-ActualParameters {
         }
     }
     
-    return $parameters | Sort-Object -Unique
+    # Combine inherited and component-specific parameters
+    $allParameters = @($inheritedParameters + $parameters) | Sort-Object -Unique
+    return $allParameters
 }
 
 # Function to extract REQUIRED parameters from component source code
@@ -173,10 +229,93 @@ function Extract-RequiredParameters {
 }
 
 Write-Host "🔍 BULLETPROOF R* Component Parameter Validation" -ForegroundColor Cyan
-Write-Host "Using SOURCE CODE as truth (not AI docs)" -ForegroundColor Yellow
+Write-Host "Using SOURCE CODE as truth (.razor + .cs inheritance)" -ForegroundColor Yellow
 
-# Build SOURCE OF TRUTH parameter dictionary from actual .razor files
-Write-Host "📂 Building source-of-truth parameter dictionary..." -ForegroundColor Yellow
+# Function to resolve inheritance chain recursively
+function Resolve-InheritanceChain {
+    param(
+        [string]$ClassName,
+        [hashtable]$BaseClassParameters,
+        [hashtable]$BaseClassInheritance,
+        [System.Collections.Generic.HashSet[string]]$VisitedClasses = [System.Collections.Generic.HashSet[string]]::new()
+    )
+    
+    # Prevent infinite recursion
+    if ($VisitedClasses.Contains($ClassName)) {
+        return @()
+    }
+    $VisitedClasses.Add($ClassName) | Out-Null
+    
+    $allParameters = @()
+    
+    # Add parameters from current class
+    if ($BaseClassParameters.ContainsKey($ClassName)) {
+        $allParameters += $BaseClassParameters[$ClassName]
+    }
+    
+    # Add parameters from parent class
+    if ($BaseClassInheritance.ContainsKey($ClassName)) {
+        $parentClass = $BaseClassInheritance[$ClassName]
+        $parentParameters = Resolve-InheritanceChain -ClassName $parentClass -BaseClassParameters $BaseClassParameters -BaseClassInheritance $BaseClassInheritance -VisitedClasses $VisitedClasses
+        $allParameters += $parentParameters
+    }
+    
+    return $allParameters | Sort-Object -Unique
+}
+
+# Build BASE CLASS parameter dictionary and inheritance chain from .cs files first
+Write-Host "📂 Building base class parameter dictionary with inheritance..." -ForegroundColor Yellow
+
+$baseClassParameters = @{}
+$baseClassInheritance = @{}
+$baseClassPath = Join-Path $ComponentsPath "Base"
+
+if (Test-Path $baseClassPath) {
+    $baseClassFiles = Get-ChildItem -Path $baseClassPath -Filter "*.cs" -Recurse
+    
+    # First pass: collect parameters and inheritance info
+    foreach ($file in $baseClassFiles) {
+        $className = [System.IO.Path]::GetFileNameWithoutExtension($file.Name)
+        try {
+            $content = Get-Content $file.FullName -Raw -Encoding UTF8 -ErrorAction Stop
+            if (-not [string]::IsNullOrEmpty($content)) {
+                # Extract parameters
+                $parameters = Extract-ParametersFromCsFile -Content $content
+                if ($parameters.Count -gt 0) {
+                    $baseClassParameters[$className] = $parameters
+                }
+                
+                # Extract inheritance information
+                if ($content -match "class\s+$className(?:<[^>]+>)?\s*:\s*(\w+)(?:<[^>]+>)?") {
+                    $parentClass = $Matches[1]
+                    # Skip Microsoft base classes
+                    if ($parentClass -notmatch "^(ComponentBase|Object|Enum)$") {
+                        $baseClassInheritance[$className] = $parentClass
+                        Write-Host "  🔗 $className -> $parentClass" -ForegroundColor DarkBlue
+                    }
+                }
+                
+                Write-Host "  📄 Base class ${className}: $($parameters.Count) parameters" -ForegroundColor DarkCyan
+            }
+        }
+        catch {
+            Write-Warning "Failed to read base class file: $($file.FullName) - $($_.Exception.Message)"
+        }
+    }
+    
+    # Second pass: resolve full inheritance chains
+    $resolvedBaseClassParameters = @{}
+    foreach ($className in $baseClassParameters.Keys) {
+        $allParams = Resolve-InheritanceChain -ClassName $className -BaseClassParameters $baseClassParameters -BaseClassInheritance $baseClassInheritance
+        $resolvedBaseClassParameters[$className] = $allParams
+        Write-Host "  ✅ $className total: $($allParams.Count) parameters (including inherited)" -ForegroundColor Green
+    }
+    
+    $baseClassParameters = $resolvedBaseClassParameters
+}
+
+# Build SOURCE OF TRUTH parameter dictionary from actual .razor files with inheritance
+Write-Host "📂 Building component parameter dictionary with inheritance..." -ForegroundColor Yellow
 
 $componentParameters = @{}
 $componentRequiredParams = @{}
@@ -184,23 +323,34 @@ $componentFiles = Get-ChildItem -Path $ComponentsPath -Filter "R*.razor" -Recurs
 
 foreach ($file in $componentFiles) {
     $componentName = [System.IO.Path]::GetFileNameWithoutExtension($file.Name)
-    $content = Get-Content $file.FullName -Raw -Encoding UTF8
     
-    Write-Host "  📄 Parsing $componentName..." -ForegroundColor DarkGray
-    
-    $parameters = Extract-ActualParameters -Content $content
-    $requiredParams = Extract-RequiredParameters -Content $content
-    
-    $componentParameters[$componentName] = $parameters
-    $componentRequiredParams[$componentName] = $requiredParams
-    
-    if ($Detailed) {
-        Write-Host "    Parameters: $($parameters -join ', ')" -ForegroundColor DarkGreen
-        if ($requiredParams.Count -gt 0) {
-            Write-Host "    Required: $($requiredParams -join ', ')" -ForegroundColor Yellow
+    try {
+        $content = Get-Content $file.FullName -Raw -Encoding UTF8 -ErrorAction Stop
+        
+        Write-Host "  📄 Parsing $componentName..." -ForegroundColor DarkGray
+        
+        if ([string]::IsNullOrEmpty($content)) {
+            Write-Warning "Content is empty for: $($file.FullName)"
+            continue
         }
-    } else {
-        Write-Host "    ✅ Found $($parameters.Count) parameters ($($requiredParams.Count) required)" -ForegroundColor DarkGreen
+        
+        $parameters = Extract-ActualParameters -Content $content -ComponentPath $file.FullName -BaseClassParameters $baseClassParameters
+        $requiredParams = Extract-RequiredParameters -Content $content
+        
+        $componentParameters[$componentName] = $parameters
+        $componentRequiredParams[$componentName] = $requiredParams
+        
+        if ($Detailed) {
+            Write-Host "    Parameters: $($parameters -join ', ')" -ForegroundColor DarkGreen
+            if ($requiredParams.Count -gt 0) {
+                Write-Host "    Required: $($requiredParams -join ', ')" -ForegroundColor Yellow
+            }
+        } else {
+            Write-Host "    ✅ Found $($parameters.Count) parameters ($($requiredParams.Count) required)" -ForegroundColor DarkGreen
+        }
+    }
+    catch {
+        Write-Warning "Failed to process component: $($file.FullName) - $($_.Exception.Message)"
     }
 }
 
@@ -382,8 +532,21 @@ $structuralViolations = @()
 $totalComponentsFound = 0
 
 foreach ($file in $filesToScan) {
-    $content = Get-Content $file.FullName -Raw -Encoding UTF8
-    $relativePath = $file.FullName.Replace($SolutionPath, '').TrimStart('\', '/')
+    try {
+        $content = Get-Content $file.FullName -Raw -Encoding UTF8 -ErrorAction Stop
+        
+        # Handle null content gracefully
+        if ([string]::IsNullOrEmpty($content)) {
+            Write-Warning "File content is null or empty: $($file.FullName)"
+            continue
+        }
+        
+        $relativePath = $file.FullName.Replace($SolutionPath, '').TrimStart('\', '/')
+    }
+    catch {
+        Write-Warning "Failed to read file: $($file.FullName) - $($_.Exception.Message)"
+        continue
+    }
     
     # Check structural constraints first
     $constraintViolations = Test-ComponentConstraints -Content $content -FilePath $relativePath

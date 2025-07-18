@@ -107,14 +107,9 @@
     /// <summary>Size of the checkbox</summary>
     [Parameter] public CheckboxSize Size { get; set; } = CheckboxSize.Medium;
     
-    /// <summary>Custom content to render alongside the checkbox</summary>
-    [Parameter] public RenderFragment? ChildContent { get; set; }
     
-    /// <summary>Callback when checkbox is clicked</summary>
-    [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
     
     /// <summary>Whether the checkbox is disabled</summary>
-    [Parameter] public bool Disabled { get; set; }
     
     /// <summary>Whether the checkbox is required</summary>
     [Parameter] public bool Required { get; set; }
@@ -125,16 +120,15 @@
     /// <summary>Error message to display</summary>
     [Parameter] public string? ErrorMessage { get; set; }
     
-    /// <summary>Additional CSS classes</summary>
-    [Parameter] public string? Class { get; set; }
     
-    /// <summary>Component density</summary>
-    [Parameter] public ComponentDensity Density { get; set; } = ComponentDensity.Normal;
 
     private async Task OnCheckedChanged()
     {
         await CheckedChanged.InvokeAsync(Checked);
-        await OnClick.InvokeAsync();
+        if (OnClick.HasDelegate)
+        {
+            await OnClick.InvokeAsync(new MouseEventArgs());
+        }
         StateHasChanged();
     }
     
@@ -195,7 +189,7 @@
         }
         else
         {
-            classes.Add("bg-surface-elevated border-border-medium hover:border-primary");
+            classes.Add("bg-surface-elevated border-medium hover:border-primary");
         }
 
         // Disabled state

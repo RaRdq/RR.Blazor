@@ -33,7 +33,7 @@
 )]
 
 <div class="@GetContainerClasses()">
-    @if (!string.IsNullOrEmpty(Label))
+    @if (!string.IsNullOrEmpty(Label) && !IsFloatingLabel())
     {
         <label class="@GetLabelClasses()" for="@inputId">@Label</label>
     }
@@ -65,6 +65,11 @@
                @onblur="@HandleBlur"
                @onkeypress="@OnKeyPress"
                @onkeydown="@OnKeyDown" />
+        
+        @if (!string.IsNullOrEmpty(Label) && IsFloatingLabel())
+        {
+            <label class="@GetFloatingLabelClasses()" for="@inputId">@Label</label>
+        }
         
         @if (IsPasswordField && ShowPasswordToggle)
         {
@@ -137,33 +142,9 @@
     [AIParameter("Step value for number inputs", Example = "0.01")]
     public decimal? Step { get; set; }
     
-    [Parameter] 
-    [AIParameter("Placeholder text", Example = "\"Enter your email...\"")]
-    public string? Placeholder { get; set; }
-    
-    [Parameter] 
-    [AIParameter("Field label", Example = "\"Email Address\"")]
-    public string? Label { get; set; }
-    
-    [Parameter] 
-    [AIParameter("Start icon name", Example = "\"search\"")]
-    public string? StartIcon { get; set; }
-    
-    [Parameter] 
-    [AIParameter("End icon name", Example = "\"visibility\"")]
-    public string? EndIcon { get; set; }
-    
     [Parameter]
     [AIParameter("Show password toggle for password fields")]
     public bool ShowPasswordToggle { get; set; } = true;
-    
-    [Parameter] 
-    [AIParameter("Input variant", SuggestedValues = new[] { "Default", "Clean", "Filled", "Outlined", "Glass" })]
-    public TextInputVariant Variant { get; set; } = TextInputVariant.Default;
-    
-    [Parameter] 
-    [AIParameter("Input size", SuggestedValues = new[] { "Small", "Medium", "Large" })]
-    public TextInputSize Size { get; set; } = TextInputSize.Medium;
     
     
     [Parameter]
@@ -173,17 +154,6 @@
     [Parameter]
     [AIParameter("Field name for form submission")]
     public string? Name { get; set; }
-    
-    #endregion
-    
-    #region Events
-    
-    [Parameter] public EventCallback<FocusEventArgs> OnFocus { get; set; }
-    [Parameter] public EventCallback<FocusEventArgs> OnBlur { get; set; }
-    [Parameter] public EventCallback<KeyboardEventArgs> OnKeyPress { get; set; }
-    [Parameter] public EventCallback<KeyboardEventArgs> OnKeyDown { get; set; }
-    [Parameter] public EventCallback<MouseEventArgs> OnStartIconClick { get; set; }
-    [Parameter] public EventCallback<MouseEventArgs> OnEndIconClick { get; set; }
     
     #endregion
     
@@ -263,16 +233,14 @@
         var classes = new List<string>
         {
             "w-full",
-            "border",
-            "rounded-md",
+            "transition-all",
+            "duration-200",
             "text-primary",
-            "bg-surface",
-            "transition",
-            "focus:outline-none",
-            "focus:ring-2",
-            "focus:ring-primary",
-            "focus:border-transparent"
+            "focus:outline-none"
         };
+        
+        // Add variant-specific styling
+        classes.AddRange(GetVariantClasses());
         
         // Size and density classes
         classes.Add(GetSizeClasses());
@@ -289,10 +257,6 @@
             classes.Add("border-error");
             classes.Add("focus:ring-error");
         }
-        else
-        {
-            classes.Add("border-light");
-        }
         
         if (Disabled)
         {
@@ -307,6 +271,72 @@
         }
         
         return string.Join(" ", classes.Where(c => !string.IsNullOrEmpty(c)));
+    }
+    
+    private List<string> GetVariantClasses()
+    {
+        return Variant switch
+        {
+            TextInputVariant.Outlined => new List<string>
+            {
+                "border-2",
+                "border-medium",
+                "rounded-lg",
+                "bg-surface",
+                "focus:border-primary",
+                "focus:ring-2",
+                "focus:ring-primary",
+                "focus:ring-opacity-20",
+                "hover:border-primary"
+            },
+            TextInputVariant.Filled => new List<string>
+            {
+                "border-0",
+                "border-b-2",
+                "border-medium",
+                "rounded-t-lg",
+                "bg-surface-elevated",
+                "focus:border-primary",
+                "focus:ring-0",
+                "hover:border-primary"
+            },
+            TextInputVariant.Clean => new List<string>
+            {
+                "border-0",
+                "border-b",
+                "border-light",
+                "rounded-none",
+                "bg-transparent",
+                "focus:border-primary",
+                "focus:ring-0",
+                "hover:border-medium"
+            },
+            TextInputVariant.Glass => new List<string>
+            {
+                "border",
+                "border-medium",
+                "rounded-lg",
+                "bg-surface",
+                "bg-opacity-50",
+                "backdrop-blur-md",
+                "focus:border-primary",
+                "focus:ring-2",
+                "focus:ring-primary",
+                "focus:ring-opacity-20",
+                "hover:border-primary"
+            },
+            _ => new List<string>
+            {
+                "border",
+                "border-light",
+                "rounded-md",
+                "bg-surface",
+                "focus:border-primary",
+                "focus:ring-2",
+                "focus:ring-primary",
+                "focus:ring-opacity-20"
+            }
+        };
     }
     
     private string GetSizeClasses()
@@ -469,6 +499,46 @@
             ComponentDensity.Spacious => "pa-3 rounded hover:bg-surface-variant transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50",
             _ => "pa-2 rounded hover:bg-surface-variant transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50"
         };
+    }
+    
+    private bool IsFloatingLabel()
+    {
+        return Variant == TextInputVariant.Outlined || Variant == TextInputVariant.Filled;
+    }
+    
+    private string GetFloatingLabelClasses()
+    {
+        var classes = new List<string>
+        {
+            "absolute",
+            "left-3",
+            "text-secondary",
+            "transition-all",
+            "duration-200",
+            "pointer-events-none",
+            "transform",
+            "origin-left"
+        };
+        
+        // Add positioning based on whether input has value or is focused
+        var hasValue = !string.IsNullOrEmpty(Value);
+        if (hasValue)
+        {
+            classes.AddRange(new[] { "top-1", "text-xs", "text-primary", "scale-75", "-translate-y-1" });
+        }
+        else
+        {
+            var topPosition = Size switch
+            {
+                TextInputSize.Small => "top-2",
+                TextInputSize.Large => "top-4",
+                _ => "top-3"
+            };
+            classes.Add(topPosition);
+            classes.Add("text-base");
+        }
+        
+        return string.Join(" ", classes);
     }
     
     #endregion

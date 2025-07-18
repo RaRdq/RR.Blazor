@@ -26,7 +26,7 @@ namespace RR.Blazor.Components.Form
         
         [Parameter]
         [AIParameter("Value changed callback")]
-        public EventCallback ValueChanged { get; set; }
+        public EventCallback<object> ValueChanged { get; set; }
         
         [Parameter]
         [AIParameter("Explicit field type override", Example = "FieldType.Email")]
@@ -77,16 +77,12 @@ namespace RR.Blazor.Components.Form
         [Parameter] public string? HelpText { get; set; }
         [Parameter] public string? FieldName { get; set; }
         [Parameter] public bool Required { get; set; }
-        [Parameter] public bool Disabled { get; set; }
         [Parameter] public bool ReadOnly { get; set; }
         [Parameter] public bool Loading { get; set; }
         [Parameter] public TextInputVariant Variant { get; set; } = TextInputVariant.Default;
         [Parameter] public TextInputSize Size { get; set; } = TextInputSize.Medium;
-        [Parameter] public ComponentDensity Density { get; set; } = ComponentDensity.Normal;
         [Parameter] public string? StartIcon { get; set; }
         [Parameter] public string? EndIcon { get; set; }
-        [Parameter] public string? Class { get; set; }
-        [Parameter] public string? Style { get; set; }
         [Parameter] public bool HasError { get; set; }
         [Parameter] public string? ErrorMessage { get; set; }
         [Parameter] public int? MaxLength { get; set; }
@@ -364,7 +360,7 @@ namespace RR.Blazor.Components.Form
         private async Task OnTextValueChanged(string? newValue)
         {
             Value = newValue;
-            await ValueChanged.InvokeAsync();
+            await ValueChanged.InvokeAsync(Value);
         }
         
         private async Task OnNumericValueChanged(string? newValue)
@@ -390,7 +386,7 @@ namespace RR.Blazor.Components.Form
                 Value = newValue; // Keep as string if conversion fails
             }
             
-            await ValueChanged.InvokeAsync();
+            await ValueChanged.InvokeAsync(Value);
         }
         
         private async Task OnDateTimeValueChanged(string? newValue)
@@ -412,7 +408,7 @@ namespace RR.Blazor.Components.Form
                 Value = newValue; // Keep as string if conversion fails
             }
             
-            await ValueChanged.InvokeAsync();
+            await ValueChanged.InvokeAsync(Value);
         }
         
         private async Task OnTimeRangeValueChanged(string? newValue)
@@ -430,13 +426,13 @@ namespace RR.Blazor.Components.Form
                 Value = newValue; // Keep as string if conversion fails
             }
             
-            await ValueChanged.InvokeAsync();
+            await ValueChanged.InvokeAsync(Value);
         }
         
         private async Task OnBooleanValueChanged(bool newValue)
         {
             Value = newValue;
-            await ValueChanged.InvokeAsync();
+            await ValueChanged.InvokeAsync(Value);
         }
         
         #endregion
