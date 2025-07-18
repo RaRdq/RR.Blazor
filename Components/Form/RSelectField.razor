@@ -1,0 +1,353 @@
+@*
+    RSelectField - Professional select dropdown component with enterprise styling
+    
+    A specialized select component that extends the utility-first design system
+    with comprehensive glassmorphism effects and enterprise-grade styling.
+    
+    Key Features:
+    - Utility-first CSS composition
+    - Glassmorphism and elevation effects
+    - Comprehensive validation states
+    - Touch-friendly mobile design
+    - Multiple style variants (Clean, Filled, Outlined, Glass)
+    - Size variants (Small, Medium, Large)
+    - Professional hover/focus animations
+    - Support for options and option groups
+    
+    Usage Examples:
+    <RSelectField @bind-Value="selectedValue" Label="Select Option">
+        <option value="">Select...</option>
+        <option value="1">Option 1</option>
+        <option value="2">Option 2</option>
+    </RSelectField>
+    <RSelectField @bind-Value="category" Variant="TextInputVariant.Clean" Size="TextInputSize.Large">
+        <option value="">Select Category...</option>
+        <option value="A">Category A</option>
+        <option value="B">Category B</option>
+    </RSelectField>
+*@
+
+@using RR.Blazor.Enums
+@using RR.Blazor.Models
+@using Microsoft.AspNetCore.Components.Web
+@inherits RInputBase
+@attribute [Component("RSelectField", Category = "Form", Complexity = ComponentComplexity.Simple)]
+@attribute [AIOptimized(
+    Prompt = "Use for dropdown selection with validation, utility-first styling and professional form integration",
+    CommonUse = "Dropdown selection, category selection, status selection, enum selection",
+    AvoidUsage = "Complex multi-select (use dedicated multi-select component), searchable dropdowns (use RDropdown)"
+)]
+
+<div class="@GetContainerClasses()">
+    @if (!string.IsNullOrEmpty(Label))
+    {
+        <label class="@GetLabelClasses()" for="@inputId">@Label</label>
+    }
+    
+    <div class="relative">
+        <select id="@inputId"
+                class="@GetSelectClasses()"
+                value="@Value"
+                disabled="@Disabled"
+                required="@Required"
+                data-field="@GetEffectiveFieldName()"
+                @onchange="@HandleValueChange"
+                @onfocus="@HandleFocus"
+                @onblur="@HandleBlur">
+            @if (!string.IsNullOrEmpty(Placeholder))
+            {
+                <option value="" disabled selected>@Placeholder</option>
+            }
+            @ChildContent
+        </select>
+        
+        <div class="@GetDropdownIconContainerClasses()">
+            <i class="material-symbols-rounded @GetDropdownIconClasses()">expand_more</i>
+        </div>
+        
+        @if (Loading)
+        {
+            <div class="absolute inset-0 d-flex items-center justify-center bg-surface bg-opacity-75">
+                <i class="material-symbols-rounded text-primary animate-spin">progress_activity</i>
+            </div>
+        }
+    </div>
+    
+    @if (IsInErrorState && !string.IsNullOrEmpty(GetEffectiveErrorMessage()))
+    {
+        <div class="@GetErrorMessageClasses()">
+            <i class="material-symbols-rounded text-error mr-1">error</i>
+            @GetEffectiveErrorMessage()
+        </div>
+    }
+    
+    @if (!string.IsNullOrEmpty(HelpText))
+    {
+        <div class="@GetHelpTextClasses()">@HelpText</div>
+    }
+</div>
+
+@code {
+    private string inputId = $"select-{Guid.NewGuid():N}";
+    
+    #region Parameters
+    
+    [Parameter] 
+    [AIParameter("Select value", Example = "\"option1\"")]
+    public string? Value { get; set; }
+    
+    [Parameter] 
+    [AIParameter("Value changed callback")]
+    public EventCallback<string> ValueChanged { get; set; }
+    
+    [Parameter] 
+    [AIParameter("Placeholder text", Example = "\"Select an option...\"")]
+    public string? Placeholder { get; set; }
+    
+    [Parameter] 
+    [AIParameter("Field label", Example = "\"Category\"")]
+    public string? Label { get; set; }
+    
+    [Parameter] 
+    [AIParameter("Select field variant", SuggestedValues = new[] { "Default", "Clean", "Filled", "Outlined", "Glass" })]
+    public TextInputVariant Variant { get; set; } = TextInputVariant.Default;
+    
+    [Parameter] 
+    [AIParameter("Select field size", SuggestedValues = new[] { "Small", "Medium", "Large" })]
+    public TextInputSize Size { get; set; } = TextInputSize.Medium;
+    
+    [Parameter] 
+    [AIParameter("Options content")]
+    public RenderFragment? ChildContent { get; set; }
+    
+    #endregion
+    
+    #region Events
+    
+    [Parameter] public EventCallback<FocusEventArgs> OnFocus { get; set; }
+    [Parameter] public EventCallback<FocusEventArgs> OnBlur { get; set; }
+    [Parameter] public EventCallback<ChangeEventArgs> OnChange { get; set; }
+    
+    #endregion
+    
+    #region Methods
+    
+    private async Task HandleValueChange(ChangeEventArgs e)
+    {
+        var newValue = e.Value?.ToString() ?? "";
+        Value = newValue;
+        await ValueChanged.InvokeAsync(newValue);
+        await OnChange.InvokeAsync(e);
+        await HandleUserInteraction();
+    }
+    
+    private async Task HandleFocus(FocusEventArgs e)
+    {
+        await HandleFocusEvent(e, OnFocus);
+    }
+    
+    private async Task HandleBlur(FocusEventArgs e)
+    {
+        await HandleBlurEvent(e, OnBlur);
+    }
+    
+    protected override string GetEffectiveFieldName()
+    {
+        if (!string.IsNullOrEmpty(FieldName))
+            return FieldName;
+            
+        // Auto-derive field name from Label by removing spaces and making camelCase
+        if (!string.IsNullOrEmpty(Label))
+        {
+            var fieldName = Label.Replace(" ", "").Replace(":", "");
+            if (!string.IsNullOrEmpty(fieldName))
+            {
+                return char.ToLowerInvariant(fieldName[0]) + fieldName[1..];
+            }
+        }
+        
+        return "";
+    }
+    
+    private string GetContainerClasses()
+    {
+        var classes = new List<string> { "input-group" };
+        
+        if (!string.IsNullOrEmpty(Class))
+            classes.Add(Class);
+            
+        return string.Join(" ", classes);
+    }
+    
+    private string GetSelectClasses()
+    {
+        var classes = new List<string>
+        {
+            "w-full",
+            "border",
+            "rounded-md",
+            "text-primary",
+            "bg-surface",
+            "transition",
+            "focus:outline-none",
+            "focus:ring-2",
+            "focus:ring-primary",
+            "focus:border-transparent",
+            "appearance-none",
+            "cursor-pointer"
+        };
+        
+        // Size and density classes
+        classes.Add(GetSizeClasses());
+        
+        // Add padding for dropdown icon
+        classes.Add(GetDropdownIconPadding());
+        
+        // State classes
+        if (HasError)
+        {
+            classes.Add("border-error");
+            classes.Add("focus:ring-error");
+        }
+        else
+        {
+            classes.Add("border-light");
+        }
+        
+        if (Disabled)
+        {
+            classes.Add("opacity-50");
+            classes.Add("cursor-not-allowed");
+        }
+        
+        return string.Join(" ", classes.Where(c => !string.IsNullOrEmpty(c)));
+    }
+    
+    private string GetSizeClasses()
+    {
+        var baseSizeClasses = Size switch
+        {
+            TextInputSize.Small => "px-3 py-2 text-sm h-8",
+            TextInputSize.Medium => "px-4 py-3 text-base h-10",
+            TextInputSize.Large => "px-5 py-4 text-lg h-12",
+            _ => "px-4 py-3 text-base h-10"
+        };
+        
+        // Apply density modifiers
+        return Density switch
+        {
+            ComponentDensity.Compact => ApplyCompactDensity(),
+            ComponentDensity.Dense => ApplyDenseDensity(),
+            ComponentDensity.Normal => baseSizeClasses,
+            ComponentDensity.Spacious => ApplySpacious(),
+            _ => baseSizeClasses
+        };
+    }
+    
+    private string ApplyCompactDensity()
+    {
+        return Size switch
+        {
+            TextInputSize.Small => "px-2 py-1 text-xs h-6",
+            TextInputSize.Medium => "px-3 py-2 text-sm h-8",
+            TextInputSize.Large => "px-4 py-3 text-base h-10",
+            _ => "px-3 py-2 text-sm h-8"
+        };
+    }
+    
+    private string ApplyDenseDensity()
+    {
+        return Size switch
+        {
+            TextInputSize.Small => "px-2 py-1 text-sm h-7",
+            TextInputSize.Medium => "px-3 py-2 text-base h-9",
+            TextInputSize.Large => "px-4 py-3 text-lg h-11",
+            _ => "px-3 py-2 text-base h-9"
+        };
+    }
+    
+    private string ApplySpacious()
+    {
+        return Size switch
+        {
+            TextInputSize.Small => "px-4 py-3 text-sm h-10",
+            TextInputSize.Medium => "px-6 py-4 text-base h-12",
+            TextInputSize.Large => "px-8 py-5 text-lg h-16",
+            _ => "px-6 py-4 text-base h-12"
+        };
+    }
+    
+    private string GetDropdownIconPadding()
+    {
+        return Density switch
+        {
+            ComponentDensity.Compact => "pr-8",
+            ComponentDensity.Dense => "pr-10",
+            ComponentDensity.Normal => "pr-12",
+            ComponentDensity.Spacious => "pr-16",
+            _ => "pr-12"
+        };
+    }
+    
+    private string GetDropdownIconContainerClasses()
+    {
+        return Density switch
+        {
+            ComponentDensity.Compact => "absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none",
+            ComponentDensity.Dense => "absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none",
+            ComponentDensity.Normal => "absolute right-4 top-1/2 transform -translate-y-1/2 pointer-events-none",
+            ComponentDensity.Spacious => "absolute right-5 top-1/2 transform -translate-y-1/2 pointer-events-none",
+            _ => "absolute right-4 top-1/2 transform -translate-y-1/2 pointer-events-none"
+        };
+    }
+    
+    private string GetDropdownIconClasses()
+    {
+        return Density switch
+        {
+            ComponentDensity.Compact => "text-sm text-secondary",
+            ComponentDensity.Dense => "text-base text-secondary",
+            ComponentDensity.Normal => "text-lg text-secondary",
+            ComponentDensity.Spacious => "text-xl text-secondary",
+            _ => "text-lg text-secondary"
+        };
+    }
+    
+    private string GetLabelClasses()
+    {
+        return Density switch
+        {
+            ComponentDensity.Compact => "d-block text-xs font-medium text-primary mb-1",
+            ComponentDensity.Dense => "d-block text-sm font-medium text-primary mb-1",
+            ComponentDensity.Normal => "d-block text-sm font-medium text-primary mb-2",
+            ComponentDensity.Spacious => "d-block text-base font-medium text-primary mb-3",
+            _ => "d-block text-sm font-medium text-primary mb-2"
+        };
+    }
+    
+    private string GetErrorMessageClasses()
+    {
+        return Density switch
+        {
+            ComponentDensity.Compact => "text-xs text-error mt-1",
+            ComponentDensity.Dense => "text-xs text-error mt-1",
+            ComponentDensity.Normal => "text-sm text-error mt-2",
+            ComponentDensity.Spacious => "text-base text-error mt-3",
+            _ => "text-sm text-error mt-2"
+        };
+    }
+    
+    private string GetHelpTextClasses()
+    {
+        return Density switch
+        {
+            ComponentDensity.Compact => "text-xs text-secondary mt-1",
+            ComponentDensity.Dense => "text-xs text-secondary mt-1",
+            ComponentDensity.Normal => "text-sm text-secondary mt-2",
+            ComponentDensity.Spacious => "text-base text-secondary mt-3",
+            _ => "text-sm text-secondary mt-2"
+        };
+    }
+    
+    #endregion
+}

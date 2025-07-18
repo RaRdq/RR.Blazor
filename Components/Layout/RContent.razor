@@ -1,0 +1,121 @@
+@** 
+<summary>
+Automatic content wrapper for app shell layouts with smart positioning and responsive behavior.
+Similar to MudContent but optimized for RR.Blazor patterns.
+</summary>
+<category>Layout</category>
+<complexity>Simple</complexity>
+<ai-prompt>Create content wrapper that automatically handles app shell positioning</ai-prompt>
+<ai-common-use>page content wrapper, automatic spacing, responsive content areas</ai-common-use>
+<ai-avoid>Don't use for components that need custom positioning. Use for main page content only.</ai-avoid>
+<ai-pattern name="automatic">Zero configuration for standard content positioning</ai-pattern>
+<ai-pattern name="constrained">MaxWidth parameter for reading-optimized content</ai-pattern>
+<ai-pattern name="full-width">FullWidth parameter for dashboard and data-heavy pages</ai-pattern>
+**@
+
+@using RR.Blazor.Enums
+@using RR.Blazor.Attributes
+
+@attribute [Component("RContent", Category = "Layout", Complexity = ComponentComplexity.Simple)]
+@attribute [AIOptimized(Prompt = "Create content wrapper that automatically handles app shell positioning", 
+                       CommonUse = "page content wrapper, automatic spacing, responsive content areas", 
+                       AvoidUsage = "Don't use for components that need custom positioning")]
+
+<div class="@GetContentClasses()" style="@GetContentStyles()">
+    @ChildContent
+</div>
+
+@code {
+    /// <summary>Main content to render</summary>
+    [Parameter, AIParameter("Main content", "Any content that needs automatic app shell positioning")]
+    public RenderFragment ChildContent { get; set; }
+    
+    /// <summary>Maximum width constraint for content</summary>
+    [Parameter, AIParameter("Content max width", "none, sm, md, lg, xl, 2xl, or custom CSS value")]
+    public string MaxWidth { get; set; } = "none";
+    
+    /// <summary>Content spacing density</summary>
+    [Parameter, AIParameter("Content spacing", "Normal for standard spacing, Dense for compact, Spacious for comfortable")]
+    public ComponentDensity Density { get; set; } = ComponentDensity.Normal;
+    
+    /// <summary>Remove horizontal padding for full-width content</summary>
+    [Parameter, AIParameter("Full width content", "true for dashboards and data tables, false for reading content")]
+    public bool FullWidth { get; set; } = false;
+    
+    /// <summary>Center content horizontally</summary>
+    [Parameter, AIParameter("Center content", "true for forms and reading content, false for dashboards")]
+    public bool Centered { get; set; } = false;
+    
+    /// <summary>Custom CSS class</summary>
+    [Parameter] public string Class { get; set; } = string.Empty;
+    
+    /// <summary>Custom CSS style</summary>
+    [Parameter] public string Style { get; set; } = string.Empty;
+    
+    private string GetContentClasses()
+    {
+        var classes = new List<string> { "content" };
+        
+        // Add density classes
+        classes.Add(Density switch
+        {
+            ComponentDensity.Dense => "content-dense",
+            ComponentDensity.Compact => "content-compact", 
+            ComponentDensity.Spacious => "content-spacious",
+            _ => "content-normal"
+        });
+        
+        // Add width classes
+        if (FullWidth)
+        {
+            classes.Add("content-full-width");
+        }
+        else
+        {
+            classes.Add("content-padded");
+        }
+        
+        // Add centering
+        if (Centered)
+        {
+            classes.Add("content-centered");
+        }
+        
+        // Add max-width classes
+        if (MaxWidth != "none")
+        {
+            classes.Add($"content-max-{MaxWidth}");
+        }
+        
+        if (!string.IsNullOrEmpty(Class))
+        {
+            classes.Add(Class);
+        }
+        
+        return string.Join(" ", classes);
+    }
+    
+    private string GetContentStyles()
+    {
+        var styles = new List<string>();
+        
+        // Handle custom max-width values
+        if (!string.IsNullOrEmpty(MaxWidth) && 
+            MaxWidth != "none" && 
+            !MaxWidth.StartsWith("sm") && 
+            !MaxWidth.StartsWith("md") && 
+            !MaxWidth.StartsWith("lg") && 
+            !MaxWidth.StartsWith("xl") && 
+            !MaxWidth.StartsWith("2xl"))
+        {
+            styles.Add($"max-width: {MaxWidth}");
+        }
+        
+        if (!string.IsNullOrEmpty(Style))
+        {
+            styles.Add(Style);
+        }
+        
+        return string.Join("; ", styles);
+    }
+}
