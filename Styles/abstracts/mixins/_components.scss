@@ -1,0 +1,254 @@
+@use '../variables' as *;
+@use 'core' as *;
+@use 'layout' as *;
+@use 'interactions' as *;
+
+// ============================================================================
+// COMPONENT MIXINS - Buttons, Forms, Cards, Common Components
+// ============================================================================
+
+// Button reset
+@mixin button-reset {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  outline: none;
+}
+
+// Button base styles
+@mixin button-base {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  font-weight: var(--font-medium);
+  text-align: center;
+  border-radius: var(--radius-lg);
+  border: var(--border-1) solid transparent;
+  cursor: pointer;
+  transition: all var(--duration-normal) var(--ease-out);
+  position: relative;
+  outline: none;
+  user-select: none;
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  text-decoration: none;
+  min-height: 2.75rem;
+  min-width: 2.75rem;
+  padding: var(--space-3);
+  
+  @include responsive-min(md) {
+    min-height: 2.5rem;
+    font-size: var(--text-sm);
+    padding: var(--space-2);
+  }
+  
+  *, i, span {
+    color: inherit;
+  }
+  
+  [class*="icon"],
+  [class*="material"],
+  [class*="fa"],
+  [class*="feather"],
+  .material-symbols-rounded {
+    color: inherit;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    vertical-align: middle;
+    line-height: 1;
+  }
+  
+  span {
+    display: inline-flex;
+    align-items: center;
+    vertical-align: middle;
+    line-height: 1.5;
+  }
+  
+  @media (hover: none) and (pointer: coarse) {
+    min-height: 48px;
+    min-width: 48px;
+    font-size: var(--text-base);
+    padding: var(--space-3) var(--space-4);
+    
+    &:hover {
+      transform: none;
+    }
+  }
+  
+  &:disabled,
+  &[disabled] {
+    opacity: var(--opacity-disabled);
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+  
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--color-focus-primary);
+    outline-offset: 2px;
+  }
+}
+
+// Button variants with proper theme-aware hover states
+@mixin button-variant($bg-color, $text-color, $border-color: transparent, $hover-bg: null, $active-bg: null) {
+  background: $bg-color;
+  color: $text-color;
+  border-color: $border-color;
+  
+  @if $hover-bg {
+    &:hover {
+      background: $hover-bg;
+    }
+  } @else {
+    &:hover {
+      // Subtle theme-aware hover - much lighter effect
+      background: color-mix(in srgb, $bg-color 96%, var(--color-text-primary));
+      border-color: color-mix(in srgb, $border-color 85%, var(--color-text-primary));
+    }
+  }
+  
+  @if $active-bg {
+    &:active {
+      background: $active-bg;
+    }
+  } @else {
+    &:active {
+      // Subtle theme-aware active state
+      background: color-mix(in srgb, $bg-color 92%, var(--color-text-primary));
+      transform: scale(0.98);
+    }
+  }
+}
+
+// Button sizes
+@mixin button-size($padding-y, $padding-x, $font-size, $min-height, $min-width, $gap: var(--space-2)) {
+  padding: $padding-y $padding-x;
+  font-size: $font-size;
+  min-height: $min-height;
+  min-width: $min-width;
+  gap: $gap;
+  
+  @include responsive-min(md) {
+    padding: calc($padding-y * 0.75) calc($padding-x * 0.75);
+    font-size: calc($font-size * 0.875);
+    min-height: calc($min-height * 0.9);
+    min-width: calc($min-width * 0.9);
+  }
+}
+
+// Button loading state
+@mixin button-loading {
+  position: relative;
+  pointer-events: none;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: inherit;
+    border-radius: inherit;
+    opacity: var(--opacity-disabled);
+  }
+  
+  &::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 16px;
+    height: 16px;
+    margin: -8px 0 0 -8px;
+    border: 2px solid transparent;
+    border-top-color: currentColor;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  
+  > * {
+    opacity: 0;
+  }
+}
+
+// Button progress bar
+@mixin button-progress($progress-color: var(--color-interactive-light)) {
+  &::before {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 2px;
+    background: $progress-color;
+    transition: all var(--duration-normal) var(--ease-out);
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+    width: var(--progress-width, 0%);
+  }
+}
+
+// Form control styles
+@mixin form-control {
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border: var(--border-1) solid var(--color-border-light);
+  border-radius: var(--radius-md);
+  background: var(--color-background-primary);
+  color: var(--color-text-primary);
+  font-size: var(--text-sm);
+  transition: var(--transition-normal);
+  appearance: none;
+  
+  &:focus {
+    outline: 2px solid var(--color-interactive-primary);
+    outline-offset: 2px;
+    border-color: var(--color-interactive-primary);
+  }
+  
+  &:disabled {
+    background: var(--color-background-disabled);
+    color: var(--color-text-disabled);
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+  
+  @include responsive-max(md) {
+    min-height: 44px;
+    font-size: var(--text-base);
+  }
+}
+
+// Close button
+@mixin close-button {
+  & {
+    @include button-reset;
+    @include flex-center;
+    padding: var(--space-2);
+    border-radius: var(--radius-sm);
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    flex-shrink: 0;
+    min-height: 44px;
+    min-width: 44px;
+    transition: var(--transition-normal);
+  }
+
+  &:hover {
+    background: var(--color-background-secondary);
+    color: var(--color-text-primary);
+  }
+
+  &:focus {
+    outline: 2px solid var(--color-interactive-primary);
+    outline-offset: 2px;
+  }
+
+  i {
+    font-size: var(--text-base);
+  }
+}

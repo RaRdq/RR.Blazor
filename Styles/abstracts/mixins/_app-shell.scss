@@ -1,0 +1,145 @@
+@use '../variables' as *;
+@use 'core' as *;
+
+// ============================================================================
+// APP SHELL MIXINS - Glassmorphism, Layout, Shell Architecture
+// ============================================================================
+
+// Glassmorphism system
+@mixin app-glass($intensity: medium, $blur: 16px) {
+  backdrop-filter: blur($blur) saturate(150%);
+  border: var(--border-1) solid rgba(255, 255, 255, 0.1);
+  
+  @if $intensity == light {
+    background: rgba(255, 255, 255, 0.05);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  } @else if $intensity == medium {
+    background: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  } @else if $intensity == heavy {
+    background: rgba(255, 255, 255, 0.12);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+  }
+  
+  [data-theme="dark"] & {
+    border-color: rgba(255, 255, 255, 0.08);
+    
+    @if $intensity == light {
+      background: rgba(0, 0, 0, 0.2);
+    } @else if $intensity == medium {
+      background: rgba(0, 0, 0, 0.3);
+    } @else if $intensity == heavy {
+      background: rgba(0, 0, 0, 0.4);
+    }
+  }
+}
+
+// Legacy glass-morphism (backward compatibility)
+@mixin glass-morphism($variant: medium) {
+  @include app-glass($variant);
+}
+
+// App shell layout system
+@mixin app-shell-layout($type: full-width-header) {
+  display: grid;
+  min-height: 100vh;
+  position: relative;
+  
+  @if $type == full-width-header {
+    grid-template-areas: 
+      "header header"
+      "sidebar main";
+    grid-template-columns: var(--sidebar-width, 16rem) 1fr;
+    grid-template-rows: var(--header-height, 4rem) 1fr;
+  } @else if $type == overlay-sidebar {
+    grid-template-areas: 
+      "header"
+      "main";
+    grid-template-columns: 1fr;
+    grid-template-rows: var(--header-height, 4rem) 1fr;
+  }
+  
+  // Mobile-first responsive
+  @include responsive-max(lg) {
+    grid-template-areas: 
+      "header"
+      "main";
+    grid-template-columns: 1fr;
+  }
+}
+
+// App spacing system
+@mixin app-spacing($density: normal) {
+  @if $density == compact {
+    gap: var(--space-2);
+    padding: var(--space-3);
+  } @else if $density == normal {
+    gap: var(--space-4);
+    padding: var(--space-4);
+  } @else if $density == comfortable {
+    gap: var(--space-6);
+    padding: var(--space-6);
+  }
+}
+
+// App interaction system
+@mixin app-interaction($type: subtle) {
+  transition: all var(--duration-normal) var(--ease-out);
+  
+  @if $type == subtle {
+    &:hover {
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-md);
+    }
+  } @else if $type == lift {
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-lg);
+    }
+  } @else if $type == scale {
+    &:hover {
+      transform: scale(1.02);
+    }
+  }
+  
+  &:active {
+    transform: translateY(0) scale(0.98);
+  }
+}
+
+// App focus system
+@mixin app-focus() {
+  &:focus-visible {
+    outline: 2px solid var(--color-interactive-primary);
+    outline-offset: 2px;
+    border-radius: var(--radius-md);
+  }
+  
+  &:focus:not(:focus-visible) {
+    outline: none;
+  }
+}
+
+// App scrollbar styling
+@mixin app-scrollbar() {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-medium) transparent;
+  
+  &::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: var(--color-border-medium);
+    border-radius: var(--radius-full);
+    
+    &:hover {
+      background: var(--color-border-strong);
+    }
+  }
+}

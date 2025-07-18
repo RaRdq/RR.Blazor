@@ -1,0 +1,202 @@
+@use '../variables' as *;
+@use 'core' as *;
+
+// ============================================================================
+// LAYOUT MIXINS - Positioning, Flexbox, Grid, Containers
+// ============================================================================
+
+// Container pattern mixin
+@mixin layout-container($max-width: 100%, $padding: var(--space-4)) {
+  width: 100%;
+  max-width: $max-width;
+  margin: 0 auto;
+  padding-left: $padding;
+  padding-right: $padding;
+}
+
+// Positioning pattern mixin
+@mixin layout-position($position, $inset: null) {
+  position: $position;
+  @if $inset {
+    @if $inset == 'full' {
+      inset: 0;
+    } @else if $inset == 'top' {
+      top: 0;
+    } @else if $inset == 'bottom' {
+      bottom: 0;
+    } @else if $inset == 'left' {
+      left: 0;
+    } @else if $inset == 'right' {
+      right: 0;
+    } @else if $inset == 'center' {
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+  }
+}
+
+// Flex pattern mixin
+@mixin layout-flex($direction: row, $align: stretch, $justify: flex-start, $gap: 0) {
+  display: flex;
+  flex-direction: $direction;
+  align-items: $align;
+  justify-content: $justify;
+  @if $gap != 0 {
+    gap: $gap;
+  }
+}
+
+// Grid pattern mixin
+@mixin layout-grid($columns: 1, $gap: var(--space-4), $align: stretch) {
+  display: grid;
+  @if $columns == 'auto-fit' {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+  } @else if $columns == 'auto-fill' {
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
+  } @else {
+    grid-template-columns: repeat($columns, minmax(0, 1fr));
+  }
+  gap: $gap;
+  align-items: $align;
+}
+
+// Surface pattern mixin
+@mixin layout-surface($variant: 'elevated', $radius: var(--radius-md)) {
+  border-radius: $radius;
+  
+  @if $variant == 'flat' {
+    background: var(--color-background-primary);
+    border: var(--border-1) solid var(--color-border-light);
+  } @else if $variant == 'elevated' {
+    background: var(--color-background-elevated);
+    box-shadow: var(--shadow-md);
+  } @else if $variant == 'raised' {
+    background: var(--color-background-elevated);
+    box-shadow: var(--shadow-lg);
+  } @else if $variant == 'floating' {
+    background: var(--color-background-elevated);
+    box-shadow: var(--shadow-xl);
+  } @else if $variant == 'glass' {
+    background: var(--color-background-glass);
+    backdrop-filter: blur(16px) saturate(120%);
+    border: var(--border-1) solid var(--color-border-subtle);
+  }
+}
+
+// Backdrop pattern mixin
+@mixin layout-backdrop($opacity: 0.6, $blur: false) {
+  & {
+    @include layout-position(fixed, 'full');
+    background: var(--color-background-overlay);
+    opacity: 0;
+    visibility: hidden;
+    transition: all var(--duration-normal) var(--ease-out);
+    @if $blur {
+      backdrop-filter: blur(4px);
+    }
+  }
+  
+  &-active {
+    opacity: $opacity;
+    visibility: visible;
+  }
+}
+
+// Legacy mixins for backward compatibility
+@mixin flex-center {
+  @include layout-flex(row, center, center);
+}
+
+@mixin flex-between {
+  @include layout-flex(row, center, space-between);
+}
+
+@mixin flex-end {
+  @include layout-flex(row, center, flex-end);
+}
+
+@mixin flex-start {
+  @include layout-flex(row, center, flex-start);
+}
+
+@mixin flex-column {
+  @include layout-flex(column);
+}
+
+@mixin inline-flex-center {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@mixin fixed-full {
+  @include layout-position(fixed, 'full');
+}
+
+@mixin absolute-fill {
+  @include layout-position(absolute, 'full');
+}
+
+@mixin grid-auto-fit($min-width: 24rem) {
+  & {
+    @include layout-grid('auto-fit', var(--space-6));
+    grid-template-columns: repeat(auto-fit, minmax($min-width, 1fr));
+  }
+}
+
+@mixin grid-auto-fill($min-width: 24rem) {
+  & {
+    @include layout-grid('auto-fill', var(--space-6));
+    grid-template-columns: repeat(auto-fill, minmax($min-width, 1fr));
+  }
+}
+
+@mixin container($max-width: 80rem) {
+  @include layout-container($max-width, var(--space-4));
+  
+  @include responsive-min(md) {
+    padding-left: var(--space-6);
+    padding-right: var(--space-6);
+  }
+  
+  @include responsive-min(lg) {
+    padding-left: var(--space-8);
+    padding-right: var(--space-8);
+  }
+}
+
+@mixin responsive-grid($columns, $gap: var(--space-4)) {
+  @include layout-grid($columns, $gap);
+  
+  @include responsive-max(lg) { 
+    grid-template-columns: repeat(2, 1fr); 
+  }
+  
+  @include responsive-max(md) { 
+    grid-template-columns: 1fr;
+    gap: calc($gap * 0.75);
+  }
+}
+
+@mixin grid-cards {
+  & {
+    @include layout-grid('auto-fit', var(--space-6));
+    grid-template-columns: repeat(auto-fit, minmax(18.75rem, 1fr));
+  }
+  
+  @include responsive-max(sm) {
+    grid-template-columns: 1fr;
+    gap: var(--space-3);
+  }
+}
+
+@mixin empty-container-styles {
+  & {
+    @include layout-flex(column, center, center);
+    min-height: var(--space-8);
+    padding: var(--space-8) var(--space-6);
+    text-align: center;
+    color: var(--color-text-tertiary);
+  }
+}
