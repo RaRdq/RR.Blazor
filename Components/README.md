@@ -2,6 +2,27 @@
 
 This directory contains all RR.Blazor components organized by category and structural relationships for better maintainability and discoverability.
 
+## R* Component Architecture
+
+RR.Blazor features a modern R* component architecture that provides:
+
+- **Unified API**: All R* components share common patterns and parameters
+- **Built-in Validation**: Integrated with RInputBase for seamless form validation
+- **Enterprise Styling**: Professional appearance with density and variant support
+- **Accessibility First**: WCAG 2.1 AA compliant with screen reader support
+- **Type Safety**: Strongly-typed parameters prevent runtime errors
+
+### Modern Form Components
+
+The R* form components replace the legacy RFormField pattern with specialized, purpose-built components:
+
+- **RTextInput**: Universal text input supporting multiple types (text, email, password, number, tel, url, search, date, time)
+- **RCheckbox**: Professional checkbox with validation and description support
+- **RRadio**: Radio button component with enterprise styling
+- **RTextArea**: Multi-line text input with auto-resize functionality
+
+All R* components inherit from `RInputBase`, providing consistent validation behavior and styling patterns.
+
 ## Component Architecture
 
 ### Standalone Components
@@ -28,7 +49,10 @@ Components that work independently without requiring other components:
 - **RTimeline** - Event timeline visualization
 
 #### Form (`/Form`)
-- **RFormField** - Universal form input component
+- **RTextInput** - Universal text input with multiple types (text, email, password, etc.)
+- **RCheckbox** - Professional checkbox with validation
+- **RRadio** - Radio button component with enterprise styling
+- **RTextArea** - Multi-line text input with auto-resize
 - **RDatePicker** - Date selection component
 - **RDatePickerBasic** - Simplified date picker
 - **RFileUpload** - File upload with drag-and-drop
@@ -153,6 +177,7 @@ When adding new components:
 3. **Use semantic variables** - Leverage the RR.Blazor design system
 4. **Document thoroughly** - Include XML docs and usage examples
 5. **Add to imports** - Ensure namespace is included in `_Imports.razor`
+6. **Inherit from RInputBase** - For form components, inherit from RInputBase for consistency
 
 ## Component Dependencies
 

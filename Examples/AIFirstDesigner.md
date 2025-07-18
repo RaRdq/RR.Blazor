@@ -5,7 +5,8 @@ This document demonstrates how to use the `/designer` command with RR.Blazor's A
 ## Quick Start
 
 The `/designer` command automatically loads `@RR.Blazor/wwwroot/rr-ai-components.json` + `@RR.Blazor/wwwroot/rr-ai-styles.json` to access:
-- **52 Components**: Complete R* component library with AI metadata and structured parameters
+- **65+ Components**: Complete R* component library with AI metadata and structured parameters
+- **Modern R* Architecture**: RTextInput, RCheckbox, RRadio, RTextArea with RInputBase inheritance
 - **2,100+ Utility Classes**: Comprehensive spacing, typography, layout, and visual effects with bracket notation
 - **562 CSS Variables**: Semantic design tokens with pattern documentation and theme support
 - **AI Patterns**: Pre-built executive dashboard and form patterns
@@ -39,7 +40,7 @@ Generate production-ready code using optimal component selection:
   <div class="d-flex justify-between align-center mb-6">
     <h1 class="text-h4 font-semibold ma-0">Business Analytics</h1>
     <div class="d-flex gap-3">
-      <RFormField Type="FieldType.Search" Placeholder="Search..." class="w-64" />
+      <RTextInput Type="search" Placeholder="Search..." StartIcon="search" class="w-64" />
       <RButton Text="Export Data" Icon="download" IconPosition="IconPosition.Start" 
                Variant="ButtonVariant.Secondary" Elevation="2" />
     </div>
@@ -102,17 +103,41 @@ Plan and implement a multi-tenant business dashboard featuring:
 ```
 /designer
 Create a dense, professional customer onboarding form with:
-- Multi-step wizard interface
-- Real-time validation feedback
-- File upload capabilities
-- Signature capture
-- Progress tracking
+- Multi-step wizard interface using modern R* components
+- Real-time validation feedback with RTextInput, RCheckbox, RRadio
+- File upload capabilities with RFileUpload
+- Signature capture with touch support
+- Progress tracking with RProgressBar
+```
+
+### Modern R* Form Example
+```razor
+<RForm @bind-Model="customer" OnValidSubmit="HandleSubmit">
+  <RFormSection Title="Personal Information" Icon="person">
+    <RTextInput @bind-Value="customer.FirstName" Label="First Name" Required />
+    <RTextInput @bind-Value="customer.LastName" Label="Last Name" Required />
+    <RTextInput @bind-Value="customer.Email" Type="email" Label="Email Address" 
+                StartIcon="email" Required />
+    <RTextInput @bind-Value="customer.Phone" Type="tel" Label="Phone Number" 
+                StartIcon="phone" />
+  </RFormSection>
+  
+  <RFormSection Title="Preferences" Icon="settings">
+    <RCheckbox @bind-Checked="customer.NewsletterOptIn" 
+               Text="Subscribe to Newsletter" 
+               Description="Receive updates about new features and promotions" />
+    <RRadio @bind-Value="customer.PreferredContact" Value="email" Text="Email" />
+    <RRadio @bind-Value="customer.PreferredContact" Value="phone" Text="Phone" />
+    <RRadio @bind-Value="customer.PreferredContact" Value="sms" Text="SMS" />
+  </RFormSection>
+</RForm>
 ```
 
 ## Recent Consolidation Achievements
 
 ### Design System Enhancement (2025)
-- **Component Library Growth**: Expanded from 49+ to 52 components with enhanced AI metadata
+- **Component Library Growth**: Expanded from 49+ to 65+ components with enhanced AI metadata
+- **R* Architecture Migration**: Replaced RFormField with specialized R* components (RTextInput, RCheckbox, RRadio, RTextArea)
 - **Utility Class Expansion**: Increased from 800+ to 2,100+ utility classes with bracket notation patterns
 - **CSS Variables**: Enhanced from 200+ to 562 semantic variables with theme-aware design
 - **Documentation Split**: Optimized AI documentation into two specialized files for better performance

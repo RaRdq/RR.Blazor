@@ -112,7 +112,7 @@ private async Task HandleFormSubmit(object args)
 
 **Smart Usage (Type Detection)**:
 ```razor
-<RForm Model="loginModel" OnValidSubmit="HandleFormSubmit">
+<RForm Model="loginModel">
     <FormFields>
         <!-- form fields -->
     </FormFields>
@@ -130,11 +130,11 @@ private async Task HandleFormSubmit(object args)
 
 ### ✅ Working Examples
 1. **LoginComponent.razor** (`C:\Projects\PayrollAI\PayrollAI.Client\Pages\Identity\LoginComponent.razor:35`)
-   - Uses smart `<RForm Model="loginModel" OnValidSubmit="HandleFormSubmit" />`
+   - Uses smart `<RForm Model="loginModel" />`
    - Successfully handles object-based callback
 
 2. **RegisterComponent.razor** (`C:\Projects\PayrollAI\PayrollAI.Client\Pages\Identity\RegisterComponent.razor:78`)
-   - Uses explicit `<RFormGeneric TModel="RegisterFormModel" OnValidSubmit="HandleFormSubmit" />`
+   - Uses explicit `<RFormGeneric TModel="RegisterFormModel" />`
    - Works with strongly-typed callback
 
 ### 🧪 Test Cases Needed

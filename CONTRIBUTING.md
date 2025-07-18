@@ -124,6 +124,13 @@ Always check these before modifying:
 - [ ] Smart type detection implemented (if applicable)
 - [ ] Legacy, obsolete components removed after unified implementation
 
+#### QA Debug Verification (Required for AI Agents)
+- [ ] `window.RRDebug.analyze()` shows 85%+ health score
+- [ ] `window.RRDebug.component('.your-component')` reports zero critical issues
+- [ ] `window.RRDebug.scan('interactive-elements')` shows proper accessibility
+- [ ] All responsive breakpoints tested with debug tools
+- [ ] Debug output included in PR/commit description
+
 ### For Human Developers
 1. Fork and clone the repository
 2. Create feature branch: `feature/component-name`
@@ -132,6 +139,7 @@ Always check these before modifying:
 
 ## Testing Requirements
 
+### Unit Testing
 ```csharp
 // Minimum test coverage for new components
 [TestClass]
@@ -149,6 +157,146 @@ public class RComponentTests
     [TestMethod]
     public void Should_Apply_Custom_CSS_Classes() { }
 }
+```
+
+### JavaScript Debug Utilities for QA Testing
+
+RR.Blazor includes enterprise-grade debug utilities that automatically load in development environments. These tools are essential for component validation and QA automation.
+
+#### Accessing Debug Tools
+The debug utilities are available in development environments (localhost, dev ports, debug URLs):
+```javascript
+// Tools are available on the global window object
+window.RRDebug.analyze()        // Full page analysis
+window.RRDebug.component()      // Component-specific analysis  
+window.RRDebug.scan()          // Element scanning
+window.RRDebug.checkComponent() // Quick health checks
+```
+
+#### Core Debug Commands
+
+**1. Full Page Analysis**
+```javascript
+// Complete page health analysis with scoring
+window.RRDebug.analyze()
+// Output: Health score, element statistics, issue recommendations
+
+// Quick page overview
+window.RRDebug.analyze({depth: 'summary'})
+```
+
+**2. Component-Specific Analysis**
+```javascript
+// Analyze specific component and all children
+window.RRDebug.component('.modal')
+window.RRDebug.component('#sidebar')
+window.RRDebug.component('.rr-card')
+
+// Quick component health check
+window.RRDebug.checkComponent('.nav-menu')
+// Output: Health score, issue count, element count
+```
+
+**3. Element Scanning**
+```javascript
+// Scan all buttons on page
+window.RRDebug.scan('button')
+
+// Scan first 5 cards with detailed analysis
+window.RRDebug.scan('.card', {limit: 5, detail: 'full'})
+
+// Quick scan of form inputs
+window.RRDebug.scan('input, textarea, select', {limit: 10})
+```
+
+**4. QA Automation Reports**
+```javascript
+// Generate automation-friendly report
+const report = window.RRDebug.getQAReport()
+// Returns: {url, timestamp, score, status, issueCount, recommendations}
+
+// Check if page meets quality standards
+window.RRDebug.isHealthy() // returns true/false (70%+ score)
+```
+
+#### Common QA Testing Workflow
+
+**For Component Development:**
+```javascript
+// 1. Test component rendering
+window.RRDebug.component('.your-component')
+
+// 2. Check accessibility compliance
+window.RRDebug.scan('[role="button"]', {detail: 'full'})
+
+// 3. Validate responsive behavior
+window.RRDebug.analyze({scope: 'component', target: '.responsive-element'})
+
+// 4. Generate final report
+window.RRDebug.getQAReport()
+```
+
+**For Page-Level Testing:**
+```javascript
+// 1. Overall page health
+window.RRDebug.analyze()
+
+// 2. Check critical components
+window.RRDebug.checkComponent('.header')
+window.RRDebug.checkComponent('.sidebar') 
+window.RRDebug.checkComponent('.main-content')
+
+// 3. Scan interactive elements
+window.RRDebug.scan('button, [role="button"], .btn', {limit: 20})
+```
+
+#### Issue Detection Patterns
+
+The debug tools automatically detect:
+- **Layout Issues**: Zero-size elements, broken flex/grid, invalid positioning
+- **Accessibility Issues**: Missing alt text, poor contrast, missing focus indicators
+- **CSS Issues**: Invalid class names, missing variables, forced height corruption
+- **Performance Issues**: Excessive inline styles, DOM complexity
+- **Responsive Issues**: Broken responsive utilities, display conflicts
+
+#### Auto-Testing Integration
+
+Add `?debug=true` or `?qa=true` to any URL for automatic analysis:
+```
+https://localhost:5001/dashboard?debug=true
+```
+This will auto-run page analysis and log results to console.
+
+#### Best Practices for QA Testing
+
+1. **Always test in development environment** - Debug tools only load in dev mode
+2. **Test component isolation** - Use `component()` method for focused testing
+3. **Check responsive behavior** - Test at different viewport sizes
+4. **Validate accessibility** - Pay attention to ARIA warnings and focus indicators
+5. **Monitor health scores** - Aim for 85%+ on critical pages, 70%+ minimum
+6. **Document issues systematically** - Use debug output for bug reports
+
+#### Example QA Session
+```javascript
+// Start QA session
+console.log('🧪 Starting QA Analysis...')
+
+// 1. Page overview
+const pageHealth = window.RRDebug.analyze()
+console.log(`Page Score: ${pageHealth.score}%`)
+
+// 2. Check key components  
+const headerHealth = window.RRDebug.checkComponent('.app-header')
+const sidebarHealth = window.RRDebug.checkComponent('.app-sidebar')
+
+// 3. Scan problematic elements
+if (pageHealth.score < 85) {
+    window.RRDebug.scan('*', {limit: 20}) // Find problem elements
+}
+
+// 4. Generate final report
+const qaReport = window.RRDebug.getQAReport()
+console.log('📋 QA Report Generated:', qaReport)
 ```
 
 ## Documentation Standards
@@ -187,6 +335,23 @@ Provide @RR.Blazor/wwwroot/rr-ai-components.json and @RR.Blazor/wwwroot/rr-ai-st
 /rr-blazor-theme - Configure theme and styling
 /rr-blazor-component - Generate new component following patterns
 ```
+
+### AI Agent QA Integration
+
+**For Claude Code and other AI agents performing QA testing:**
+
+1. **Always use debug tools** when analyzing UI components or pages:
+```javascript
+// Mandatory QA commands for AI agents
+window.RRDebug.analyze()                    // Page health overview
+window.RRDebug.component('.target-component') // Component analysis
+window.RRDebug.getQAReport()               // Automation report
+```
+
+2. **Include debug output in reports** - Copy console output to provide specific issue details
+3. **Use health scores for decision making** - Only approve components with 85%+ scores
+4. **Focus on pattern violations** - Invalid CSS classes, broken responsive utilities, accessibility issues
+5. **Test responsive behavior** - Verify mobile-first design and breakpoint behavior
 
 ## Common Patterns to Follow
 

@@ -6,9 +6,9 @@
 
 ## Overview
 
-RR.Blazor is an ultra-generic, lightweight, and project-agnostic design system with enterprise-grade components and utilities for professional Blazor applications. Built primarily for AI coding agents working with Blazor, it provides a comprehensive set of components that work out of the box with zero configuration.
+RR.Blazor is an ultra-generic, lightweight, and project-agnostic design system with enterprise-grade components and utilities for professional Blazor applications. Built primarily for AI coding agents working with Blazor, it provides a comprehensive set of modern R* components that work out of the box with zero configuration.
 
-AI agents consistently hallucinate component APIs, mix framework versions, and generate inconsistent CSS. RR.Blazor eliminates this by providing predictable patterns and comprehensive machine-readable documentation.
+AI agents consistently hallucinate component APIs, mix framework versions, and generate inconsistent CSS. RR.Blazor eliminates this by providing predictable patterns, unified R* component architecture, and comprehensive machine-readable documentation.
 
 ## Key Features
 
@@ -27,6 +27,38 @@ AI agents consistently hallucinate component APIs, mix framework versions, and g
 - **High Contrast Mode**: Built-in support for accessibility preferences
 - **Motion Preferences**: Respects prefers-reduced-motion
 - **AI-First Documentation**: Auto-generated JSON schema optimized for AI consumption
+
+## R* Component Architecture
+
+RR.Blazor features a modern R* component architecture that provides unified, intelligent components with consistent APIs and enterprise-grade functionality.
+
+### Modern Form Components
+
+The R* form components replace the legacy RFormField pattern with specialized, purpose-built components:
+
+```razor
+<!-- Modern R* approach -->
+<RTextInput Label="Email Address" 
+            Type="email" 
+            @bind-Value="model.Email" 
+            StartIcon="email" 
+            Required />
+
+<RCheckbox Text="Accept Terms" 
+           @bind-Checked="model.AcceptTerms" 
+           Description="I agree to the terms and conditions" />
+
+<RRadio Text="Option 1" 
+        @bind-Value="model.Choice" 
+        Value="option1" />
+```
+
+### Key R* Features
+- **Specialized Components**: Each component optimized for its specific purpose
+- **Consistent API**: All R* components share common patterns and parameters
+- **Built-in Validation**: Integrated with RInputBase for seamless form validation
+- **Enterprise Styling**: Professional appearance with density and variant support
+- **Accessibility First**: WCAG 2.1 AA compliant with screen reader support
 
 ## Unified Smart Components
 
@@ -179,7 +211,8 @@ builder.Services.AddRRBlazor();
 - ✅ Complete theme system (follows system preferences)
 - ✅ Full toast notification system (4s auto-hide, close buttons, top-right)
 - ✅ Professional animations and transitions
-- ✅ All 62 components with unified smart type detection
+- ✅ All 65+ components with unified smart type detection
+- ✅ Modern R* form components (RTextInput, RCheckbox, RRadio, etc.)
 - ✅ 2,953+ utility classes available
 - ✅ Accessibility features enabled
 
@@ -303,9 +336,12 @@ Add these to your AI assistant's context:
 - **RThemeProvider** - Theme management wrapper
 - **RThemeSwitcher** - User theme toggle control
 
-### Form Components (7)
+### Form Components (10)
 - **RForm** - Unified smart form with intelligent model type detection
-- **RFormField** - Universal input component supporting 15+ field types
+- **RTextInput** - Universal text input with types (text, email, password, number, tel, url, search, date, time)
+- **RCheckbox** - Professional checkbox with validation
+- **RRadio** - Radio button component with enterprise styling
+- **RTextArea** - Multi-line text input with auto-resize
 - **RFormSection** - Organized form layout sections
 - **RDatePicker** - Date and time selection with calendar
 - **RDatePickerBasic** - Simplified date picker
@@ -483,8 +519,9 @@ RR.Blazor includes 800+ utility classes inspired by modern CSS frameworks:
 ### Data Management Interface
 ```razor
 <div class="d-flex justify-between align-center mb-4">
-    <RFormField Type="FieldType.Search" 
+    <RTextInput Type="search" 
                 Placeholder="Search users..." 
+                StartIcon="search"
                 Class="flex-grow-1 mr-4" />
     <RButton Text="Add User" 
              Variant="ButtonVariant.Primary" 
@@ -529,22 +566,21 @@ RR.Blazor includes 800+ utility classes inspired by modern CSS frameworks:
 
 ### Form with Validation
 ```razor
-<RForm TModel="UserModel" @bind-Model="model" OnValidSubmit="@HandleSubmit">
+<RForm @bind-Model="model" OnValidSubmit="@HandleSubmit">
     <FormFields>
-        <RFormField Text="Email Address"
-                    Type="FieldType.Email"
+        <RTextInput Label="Email Address"
+                    Type="email"
                     @bind-Value="model.Email"
-                    Size="FieldSize.Large"
-                    Variant="FieldVariant.FloatingLabel"
+                    Size="TextInputSize.Large"
+                    Variant="TextInputVariant.Outlined"
                     StartIcon="email"
                     Required />
                     
-        <RFormField Text="Password"
-                    Type="@(showPassword ? FieldType.Text : FieldType.Password)"
+        <RTextInput Label="Password"
+                    Type="password"
                     @bind-Value="model.Password"
                     StartIcon="lock"
-                    EndIcon="@(showPassword ? "visibility_off" : "visibility")"
-                    OnEndIconClick="TogglePasswordVisibility"
+                    ShowPasswordToggle="true"
                     Required />
     </FormFields>
 </RForm>

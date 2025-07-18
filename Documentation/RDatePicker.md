@@ -225,7 +225,7 @@ RDatePicker works seamlessly with Blazor forms and validation:
 
 ## Migration from RFormField
 
-Existing `RFormField` date inputs can be easily migrated:
+Existing `RFormField` date inputs can be easily migrated to the modern R* component architecture:
 
 ```html
 <!-- Old RFormField approach -->
@@ -236,6 +236,11 @@ Existing `RFormField` date inputs can be easily migrated:
 <!-- New RDatePicker approach -->
 <RDatePicker @bind-Value="dateValue" 
              Label="Select Date" />
+
+<!-- Alternative: RTextInput for simple date inputs -->
+<RTextInput Type="date" 
+            @bind-Value="dateString" 
+            Label="Select Date" />
 ```
 
 ## Common Patterns
