@@ -3,8 +3,6 @@
 @use 'sass:map';
 @use 'sass:list';
 
-// ===== RING UTILITIES =====
-// Optimized ring system with consistent generation
 
 $ring-sizes: (0: 0, 1: 1px, 2: 2px, 3: 3px, 4: 4px);
 $ring-colors: (
@@ -15,22 +13,18 @@ $ring-colors: (
   error: color-mix(in srgb, var(--color-error) 40%, transparent)
 );
 
-// Generate ring size utilities
 @each $name, $size in $ring-sizes {
   .ring-#{$name} { 
     box-shadow: if($size == 0, none, 0 0 0 #{$size} var(--color-focus)); 
   }
 }
 
-// Generate ring color utilities
 @each $name, $color in $ring-colors {
   @if $name != default {
     .ring-#{$name} { box-shadow: 0 0 0 2px #{$color}; }
   }
 }
 
-// ===== OPACITY UTILITIES =====
-// Optimized opacity scale generation
 
 $opacity-scales: (0, 5, 10, 20, 25, 30, 40, 50, 60, 70, 75, 80, 90, 95, 100);
 
@@ -38,8 +32,6 @@ $opacity-scales: (0, 5, 10, 20, 25, 30, 40, 50, 60, 70, 75, 80, 90, 95, 100);
   .opacity-#{$scale} { opacity: var(--opacity-#{$scale}); }
 }
 
-// ===== BACKDROP FILTER UTILITIES =====
-// Optimized backdrop filter system with consolidated generation
 
 $backdrop-filters: (
   blur: (
@@ -69,7 +61,6 @@ $backdrop-filters: (
   sepia: (0: sepia(0), '': sepia(1))
 );
 
-// Generate backdrop filter utilities
 @each $filter-name, $variants in $backdrop-filters {
   @each $variant, $value in $variants {
     $class-name: if($variant == '', '.backdrop-#{$filter-name}', '.backdrop-#{$filter-name}-#{$variant}');
@@ -77,8 +68,6 @@ $backdrop-filters: (
   }
 }
 
-// ===== DROP SHADOW UTILITIES =====
-// Optimized drop shadow system
 
 $drop-shadows: (
   none: drop-shadow(0 0 transparent),
@@ -93,8 +82,6 @@ $drop-shadows: (
   .drop-shadow-#{$name} { filter: #{$shadow}; }
 }
 
-// ===== SHADOW UTILITIES =====
-// Optimized shadow system with size and color variants
 
 $shadow-sizes: (
   none: none,
@@ -115,20 +102,17 @@ $shadow-colors: (
   info: var(--color-info)
 );
 
-// Generate shadow size utilities
 @each $name, $shadow in $shadow-sizes {
   .shadow-#{$name} { box-shadow: #{$shadow}; }
 }
 
-// Generate colored shadow utilities
 @each $name, $color in $shadow-colors {
   .shadow-#{$name} { 
-    box-shadow: 0 4px 16px color-mix(in srgb, #{$color} 25%, transparent); 
+    @include colored-shadow(#{$color}, 25%, "0 4px 16px");
   }
 }
 
 
-// Elevation System (0-24) - Unified utility approach
 $elevation-levels: (0, 1, 2, 3, 4, 5, 6, 8, 12, 16, 20, 24);
 $elevation-shadows: (
   0: none,
@@ -159,7 +143,6 @@ $elevation-shadows: (
   }
 }
 
-// Interactive elevation utilities
 .elevation-lift {
   transition: var(--transition-fast);
   &:hover {
@@ -219,7 +202,6 @@ $glass-variants: (
   }
 }
 
-// Interactive glass utility
 .glass-interactive {
   background: var(--glass-bg-medium);
   backdrop-filter: var(--glass-blur-md) var(--glass-saturate);
@@ -233,7 +215,6 @@ $glass-variants: (
   }
 }
 
-// Hover glass utilities
 .hover\:glass-light:hover {
   background: var(--glass-bg-light);
   backdrop-filter: var(--glass-blur-sm) var(--glass-saturate);
@@ -262,31 +243,23 @@ $glass-variants: (
   box-shadow: var(--shadow-xl);
 }
 
-// ===== RESPONSIVE VISUAL EFFECTS UTILITIES =====
-// Optimized responsive utilities using unified generation pattern
-
-// Utility generation mixin for visual effects
 @mixin generate-visual-utilities($prefix: '') {
   $class-prefix: if($prefix == '', '', '#{$prefix}\:');
   
-  // Opacity utilities
   @each $scale in $opacity-scales {
     .#{$class-prefix}opacity-#{$scale} { opacity: var(--opacity-#{$scale}); }
   }
   
-  // Shadow utilities
   @each $name, $shadow in $shadow-sizes {
     .#{$class-prefix}shadow-#{$name} { box-shadow: #{$shadow}; }
   }
   
-  // Colored shadows
   @each $name, $color in $shadow-colors {
     .#{$class-prefix}shadow-#{$name} { 
       box-shadow: 0 4px 16px color-mix(in srgb, #{$color} 25%, transparent); 
     }
   }
   
-  // Elevation utilities
   @each $level in $elevation-levels {
     .#{$class-prefix}elevation-#{$level} {
       box-shadow: #{map.get($elevation-shadows, $level)};
@@ -294,7 +267,6 @@ $glass-variants: (
     }
   }
   
-  // Glass utilities
   @each $name, $props in $glass-variants {
     .#{$class-prefix}glass-#{$name} {
       @each $prop, $value in $props {
@@ -303,13 +275,11 @@ $glass-variants: (
     }
   }
   
-  // Key backdrop filters
   @each $variant, $value in map.get($backdrop-filters, blur) {
     $blur-class: if($variant == '', '#{$class-prefix}backdrop-blur', '#{$class-prefix}backdrop-blur-#{$variant}');
     #{$blur-class} { backdrop-filter: #{$value}; }
   }
   
-  // Ring utilities
   @each $name, $size in $ring-sizes {
     .#{$class-prefix}ring-#{$name} { 
       box-shadow: if($size == 0, none, 0 0 0 #{$size} var(--color-focus)); 
@@ -322,13 +292,11 @@ $glass-variants: (
     }
   }
   
-  // Drop shadow utilities
   @each $name, $shadow in $drop-shadows {
     .#{$class-prefix}drop-shadow-#{$name} { filter: #{$shadow}; }
   }
 }
 
-// Generate responsive utilities
 @each $breakpoint in (sm, md, lg, xl) {
   @include responsive-min($breakpoint) {
     @include generate-visual-utilities($breakpoint);

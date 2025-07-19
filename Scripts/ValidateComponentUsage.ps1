@@ -268,10 +268,10 @@ Write-Host "📂 Building base class parameter dictionary with inheritance..." -
 
 $baseClassParameters = @{}
 $baseClassInheritance = @{}
-$baseClassPath = Join-Path $ComponentsPath "Base"
+# Search for all *Base.cs files in any subdirectory, not just /Base folder
+$baseClassFiles = Get-ChildItem -Path $ComponentsPath -Filter "*Base.cs" -Recurse
 
-if (Test-Path $baseClassPath) {
-    $baseClassFiles = Get-ChildItem -Path $baseClassPath -Filter "*.cs" -Recurse
+if ($baseClassFiles) {
     
     # First pass: collect parameters and inheritance info
     foreach ($file in $baseClassFiles) {
