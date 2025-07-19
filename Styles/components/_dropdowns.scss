@@ -76,6 +76,10 @@
     left: 0;
     right: 0;
     z-index: var(--z-dropdown);
+    
+    // Ensure dropdown viewport creates new stacking context
+    transform: translateZ(0);
+    will-change: transform;
   }
   
   &-content {
@@ -91,6 +95,12 @@
     width: max-content;
     animation: dropdownSlideIn var(--duration-normal) var(--ease-out);
     padding: var(--space-2) 0;
+    position: relative;
+    z-index: var(--z-dropdown);
+    
+    // Force proper stacking context
+    transform: translateZ(0);
+    isolation: isolate;
     
     // Ultra PRO glassmorphism effect with enhanced transparency
     @supports (backdrop-filter: blur(var(--blur-xl))) {
@@ -317,4 +327,40 @@
   z-index: calc(var(--z-dropdown) - 1);
   background: transparent;
   cursor: default;
+}
+
+// Global dropdown container fix - ensure all dropdowns appear above content
+.dropdown {
+  // Force new stacking context for dropdown containers
+  &:has(.dropdown-viewport) {
+    position: relative;
+    z-index: var(--z-dropdown);
+  }
+  
+  // Alternative selector for browsers without :has() support
+  &.open,
+  &[aria-expanded="true"] {
+    position: relative;
+    z-index: var(--z-dropdown);
+  }
+}
+
+// Special handling for dropdowns in sidebar footer/constrained spaces
+.app-sidebar {
+  .dropdown {
+    // Ensure sidebar dropdowns have higher z-index than main content
+    &:has(.dropdown-viewport),
+    &.open,
+    &[aria-expanded="true"] {
+      z-index: calc(var(--z-dropdown) + 10);
+    }
+    
+    .dropdown-viewport {
+      z-index: calc(var(--z-dropdown) + 10);
+    }
+    
+    .dropdown-content {
+      z-index: calc(var(--z-dropdown) + 10);
+    }
+  }
 }

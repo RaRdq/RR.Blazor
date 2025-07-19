@@ -41,8 +41,8 @@
         <input type="checkbox" 
                id="@Id"
                name="@Name"
-               @bind="Checked"
-               @bind:after="OnCheckedChanged"
+               @bind="InternalValue"
+               @bind:after="OnValueChanged"
                disabled="@Disabled"
                class="peer absolute opacity-0 w-full h-full cursor-pointer disabled:cursor-not-allowed z-10" />
         
@@ -51,7 +51,7 @@
                 @if (ShowStateIcons)
                 {
                     <i class="material-symbols-rounded @GetStateIconClasses()">
-                        @(Checked ? "check" : "close")
+                        @(InternalValue ? "check" : "close")
                     </i>
                 }
             </div>
@@ -89,6 +89,11 @@
 @code {
     [Parameter] public bool Checked { get; set; }
     [Parameter] public EventCallback<bool> CheckedChanged { get; set; }
+    
+    [Parameter] public bool Value { get; set; }
+    [Parameter] public EventCallback<bool> ValueChanged { get; set; }
+    [Parameter] public EventCallback<bool> OnClick { get; set; }
+    
     [Parameter] public string? Text { get; set; }
     [Parameter] public string? Description { get; set; }
     [Parameter] public string? Icon { get; set; }
@@ -101,6 +106,22 @@
     [Parameter] public bool ShowStateIcons { get; set; } = false;
     [Parameter] public string? ValidationMessage { get; set; }
     [Parameter] public string? Class { get; set; }
+    
+    private bool InternalValue
+    {
+        get => ValueChanged.HasDelegate ? Value : Checked;
+        set
+        {
+            if (ValueChanged.HasDelegate)
+            {
+                Value = value;
+            }
+            else
+            {
+                Checked = value;
+            }
+        }
+    }
 
     private string GetContainerClasses()
     {
@@ -125,7 +146,7 @@
         classes.Add($"toggle-track-{Size.ToString().ToLower()}");
         classes.Add($"toggle-track-{Variant.ToString().ToLower()}");
         
-        if (Checked)
+        if (InternalValue)
             classes.Add("toggle-track-checked");
         else
             classes.Add("toggle-track-unchecked");
@@ -142,7 +163,7 @@
         
         classes.Add($"toggle-thumb-{Size.ToString().ToLower()}");
         
-        if (Checked)
+        if (InternalValue)
             classes.Add("toggle-thumb-checked");
         else
             classes.Add("toggle-thumb-unchecked");
@@ -212,9 +233,22 @@
         return "flex items-center text-xs text-error mt-1 gap-1";
     }
 
-    private async Task OnCheckedChanged()
+    private async Task OnValueChanged()
     {
-        await CheckedChanged.InvokeAsync(Checked);
+        if (ValueChanged.HasDelegate)
+        {
+            await ValueChanged.InvokeAsync(InternalValue);
+        }
+        
+        if (CheckedChanged.HasDelegate)
+        {
+            await CheckedChanged.InvokeAsync(InternalValue);
+        }
+        
+        if (OnClick.HasDelegate)
+        {
+            await OnClick.InvokeAsync(InternalValue);
+        }
     }
 
     public enum ToggleVariant

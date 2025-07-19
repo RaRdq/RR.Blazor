@@ -1,47 +1,7 @@
 @use '../abstracts' as *;
 
 .input {
-  all: unset;
-  box-sizing: border-box;
-  display: block;
-  width: 100%;
-  max-width: none;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
-  
-  &.input {
-    display: block;
-    width: 100%;
-  }
-  
-  font-size: max(16px, 1rem);
-  font-weight: 400;
-  line-height: 1.5;
-  letter-spacing: 0.01em;
-  
-  color: var(--color-text);
-  background: var(--color-surface-elevated);
-  
-  border: 2px solid var(--color-border);
-  border-radius: var(--radius-xl); // Modern rounded corners
-  
-  // Perfect spacing - Mathematical golden ratio inspired
-  padding: var(--space-5) var(--space-7);
-  min-height: var(--space-15); // Optimal touch target
-  
-  // Advanced transitions with hardware acceleration
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-              transform 0.15s cubic-bezier(0.4, 0, 0.2, 1),
-              box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  will-change: border-color, box-shadow, transform;
-  
-  // Remove ALL browser defaults
-  outline: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  appearance: none;
-  -webkit-tap-highlight-color: transparent;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  @include input-base-styles;
   
   // ULTRA MODERN HOVER - Subtle lift effect with filter
   &:hover:not(:focus):not(:disabled) {
@@ -111,8 +71,8 @@
     }
     
     &:focus {
-      border-color: var(--color-primary);
       background: var(--color-surface-elevated);
+      @include focus-shadow(var(--color-primary), 15%);
     }
   }
   
@@ -140,11 +100,11 @@
     border-radius: var(--radius-md);
     
     &.input-with-start-icon {
-      padding-left: 50px; // Icon(16px) + Position(12px) + Gap(16px) + Padding(6px)
+      padding-left: calc(var(--space-5) + var(--space-3) + var(--space-2)); // 20px + 12px + 8px = 40px
     }
     
     &.input-with-end-icon {
-      padding-right: 44px; // Icon(20px) + Position(12px) + Gap(12px)
+      padding-right: calc(var(--space-5) + var(--space-3) + var(--space-2)); // 20px + 12px + 8px = 40px
     }
   }
   
@@ -155,21 +115,22 @@
     border-radius: var(--radius-xl);
     
     &.input-with-start-icon {
-      padding-left: 60px;
+      // Large needs more space: icon(28px) + position(20px) + gap(20px) = 68px
+      padding-left: calc(var(--space-7) + var(--space-5) + var(--space-5)); // 24px + 20px + 20px = 64px
     }
     
     &.input-with-end-icon {
-      padding-right: 60px;
+      padding-right: calc(var(--space-7) + var(--space-5) + var(--space-5)); // 24px + 20px + 20px = 64px
     }
   }
   
-  // Default size icon spacing
+  // Default size icon spacing - Mathematical precision
   &.input-with-start-icon {
-    padding-left: 64px; // Icon(24px) + Position(20px) + Gap(16px) + Padding(4px)
+    padding-left: 52px; // Icon(24px) + Position(16px) + Gap(12px) = optimal text clearance
   }
   
   &.input-with-end-icon {
-    padding-right: 52px; // Icon(24px) + Position(12px) + Gap(16px)
+    padding-right: 52px; // Match start icon spacing for perfect symmetry
   }
   
   // State modifiers using &- pattern
@@ -180,17 +141,31 @@
   
   &-error {
     border-color: var(--color-error);
-    background: var(--color-surface-elevated);
+    border-width: 2px; // Thicker border for better visibility
+    background: color-mix(in srgb, var(--color-error) 3%, var(--color-surface-elevated));
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-error) 20%, transparent);
     
     &:focus {
       border-color: var(--color-error);
-      @include focus-shadow(var(--color-error), 15%);
+      border-width: 2px;
+      @include focus-shadow(var(--color-error), 25%);
+      background: var(--color-surface-elevated);
+      box-shadow: 
+        0 0 0 3px color-mix(in srgb, var(--color-error) 20%, transparent),
+        0 4px 12px color-mix(in srgb, var(--color-error) 15%, transparent);
     }
     
     &:hover:not(:focus) {
       border-color: var(--color-error);
-      box-shadow: 0 2px 8px rgba(220, 38, 38, 0.1);
+      background: color-mix(in srgb, var(--color-error) 5%, var(--color-surface-elevated));
+      box-shadow: 
+        0 0 0 1px color-mix(in srgb, var(--color-error) 25%, transparent),
+        0 2px 8px color-mix(in srgb, var(--color-error) 12%, transparent);
+      transform: translateY(-1px);
     }
+    
+    // Animate error state entrance
+    animation: errorStateIn 0.3s ease-out;
   }
   
   &-success {
@@ -275,6 +250,7 @@
   margin-bottom: 0;
   width: 100%;
   max-width: none;
+  position: relative; // For absolute positioning of icons
   
   &-label {
     @extend %section-title;
@@ -288,69 +264,101 @@
     @extend %icon-base;
     position: absolute;
     top: 50%;
-    left: 20px; // Default positioning
+    left: var(--space-4); // 16px - Perfect centering for default size
     transform: translateY(-50%);
     pointer-events: none;
-    z-index: calc(var(--z-base) + 2);
-    width: var(--space-6);
-    height: var(--space-6);
+    z-index: calc(var(--z-base) + 10); // Higher z-index to appear above input
+    width: var(--space-6); // 24px
+    height: var(--space-6); // 24px
     color: var(--color-text-muted);
-    font-size: var(--space-6);
+    font-size: var(--space-6); // 24px
     display: flex;
     align-items: center;
     justify-content: center;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     
-    // Size-specific positioning
-    .input-sm ~ & {
-      left: 12px;
-      width: var(--space-5);
-      height: var(--space-5);
-      font-size: var(--space-5);
-    }
-    
-    .input-lg ~ & {
-      left: 16px; // Consistent positioning for better alignment
-      width: 24px;
-      height: 24px;
-      font-size: 20px; // Slightly smaller for better proportion
-    }
-    
-    // Clean focus state
-    .input:focus ~ & {
+    // Focus state with proper transform centering
+    .input:focus + & {
       color: var(--color-primary);
+      transform: translateY(-50%) scale(1.05);
     }
+  }
+  
+  // Size-specific icon positioning - target icon before input with specific size
+  .input-group-icon + .input-sm {
+    ~ .floating-label {
+      left: calc(var(--space-5) + var(--space-3) + var(--space-2)); // Match small input padding
+    }
+  }
+  
+  .input-group-icon + .input-lg {
+    ~ .floating-label {
+      left: calc(var(--space-7) + var(--space-5) + var(--space-5)); // Match large input padding
+    }
+  }
+  
+  // Icon positioning based on following input size
+  .input-sm ~ .input-group-icon,
+  .input-group-icon:has(+ .input-sm) {
+    left: var(--space-3); // 12px for small inputs
+    width: var(--space-5); // 20px
+    height: var(--space-5); // 20px
+    font-size: var(--space-5); // 20px
+  }
+  
+  .input-lg ~ .input-group-icon,
+  .input-group-icon:has(+ .input-lg) {
+    left: var(--space-5); // 20px for large inputs  
+    width: var(--space-7); // 28px
+    height: var(--space-7); // 28px
+    font-size: var(--space-7); // 28px
   }
   
   &-icon-end {
     @extend %icon-base;
     position: absolute;
     top: 50%;
-    right: var(--space-3);
+    right: var(--space-4); // 16px from right edge - inside input boundary
     transform: translateY(-50%);
-    z-index: calc(var(--z-base) + 1);
-    width: var(--space-6);
-    height: var(--space-6);
+    z-index: calc(var(--z-base) + 10); // Higher z-index to appear above input
+    width: var(--space-6); // 24px touch target width
+    height: var(--space-6); // 24px touch target height
     pointer-events: auto;
     color: var(--color-text-muted);
-    font-size: var(--text-base);
+    font-size: var(--space-6); // 24px - Keep icon size reasonable
     display: flex;
     align-items: center;
     justify-content: center;
     
+    // Size-specific positioning - targeting based on parent container size class
+    .input-sm & {
+      right: var(--space-5); // 20px from right edge for small
+      width: var(--space-5); // 20px touch target
+      height: var(--space-5);
+      font-size: var(--space-5); // 20px
+    }
+    
+    .input-lg & {
+      right: var(--space-7); // 28px from right edge for large
+      width: var(--space-7); // 28px touch target
+      height: var(--space-7);
+      font-size: var(--space-7); // 28px
+    }
+    
     & button {
       @extend %interactive-base;
-      padding: var(--space-2);
-      border-radius: var(--radius-md);
+      padding: 0; // No padding needed - container provides the size
+      border-radius: var(--radius-sm);
       transition: all var(--duration-normal) var(--ease-out);
       border: none;
       background: transparent;
       color: inherit;
-      width: 100%;
-      height: 100%;
+      width: 100%; // Use full container 
+      height: 100%; // Use full container
       display: flex;
       align-items: center;
       justify-content: center;
+      cursor: pointer;
       
       &:hover {
         background: var(--color-surface-elevated);
@@ -360,6 +368,11 @@
       &:focus {
         outline: 2px solid var(--color-primary);
         outline-offset: 1px;
+        background: var(--color-surface-elevated);
+      }
+      
+      &:active {
+        transform: scale(0.95);
       }
     }
   }
@@ -367,22 +380,30 @@
   &-error {
     color: var(--color-error);
     font-size: var(--text-sm);
-    font-weight: 500;
-    margin-top: var(--space-1-5);
-    padding-left: var(--space-1);
+    font-weight: 600; // Bolder for better visibility
+    margin-top: var(--space-2); // More space from input
+    padding: var(--space-2) var(--space-3); // Better padding
     line-height: 1.4;
     display: flex;
     align-items: flex-start;
-    gap: var(--space-1);
-    animation: slideInUp 0.2s ease-out;
+    gap: var(--space-2); // More gap between icon and text
+    animation: slideInUp 0.3s ease-out;
+    background: color-mix(in srgb, var(--color-error) 8%, var(--color-surface));
+    border-radius: var(--radius-md);
+    border-left: 3px solid var(--color-error);
+    box-shadow: 0 1px 3px color-mix(in srgb, var(--color-error) 10%, transparent);
     
-    // Error icon for better UX
-    &::before {
-      content: "⚠";
+    // Better icon integration
+    i {
       color: var(--color-error);
-      font-size: var(--text-xs);
+      font-size: var(--text-base);
       margin-top: 1px;
       flex-shrink: 0;
+    }
+    
+    // Remove the pseudo-element since we use proper icon
+    &::before {
+      display: none;
     }
   }
   
@@ -394,7 +415,7 @@
     line-height: 1.4;
   }
   
-  // Error animation
+  // Error animations
   @keyframes slideInUp {
     from {
       opacity: 0;
@@ -403,6 +424,24 @@
     to {
       opacity: 1;
       transform: translateY(0);
+    }
+  }
+  
+  @keyframes errorStateIn {
+    0% {
+      border-color: var(--color-border);
+      background: var(--color-surface-elevated);
+      box-shadow: none;
+    }
+    50% {
+      border-color: var(--color-error);
+      background: color-mix(in srgb, var(--color-error) 5%, var(--color-surface-elevated));
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-error) 30%, transparent);
+    }
+    100% {
+      border-color: var(--color-error);
+      background: color-mix(in srgb, var(--color-error) 3%, var(--color-surface-elevated));
+      box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-error) 20%, transparent);
     }
   }
   
@@ -419,7 +458,7 @@
 
 // REVOLUTIONARY TEXTAREA SYSTEM - UNIFIED WITH INPUT
 .textarea {
-  @extend .input;
+  @include input-base-styles;
   min-height: 120px; // PERFECT HEIGHT for comfort
   resize: vertical;
   line-height: 1.6; // OPTIMAL readability
@@ -471,7 +510,7 @@
 
 // Select System - Extending input base with dropdown styling
 .select {
-  @extend .input;
+  @include input-base-styles;
   cursor: pointer;
   -webkit-appearance: none;
   -moz-appearance: none;
@@ -534,6 +573,8 @@
     @extend %icon-base;
     width: var(--space-5);
     height: var(--space-5);
+    min-width: var(--space-5);
+    min-height: var(--space-5);
     border: 2px solid var(--color-border);
     border-radius: var(--radius-sm);
     background: var(--color-surface-elevated);
@@ -737,29 +778,34 @@
   }
 }
 
-// REVOLUTIONARY ICON SYSTEM - PERFECT POSITIONING
+// REVOLUTIONARY ICON SYSTEM - MATHEMATICAL PRECISION
 .input {
+  // Smart icon spacing calculations using CSS variables
   &-with-start-icon {
-    padding-left: 60px; // MASSIVE SPACE for perfect icon clearance
+    // Default: icon-size + icon-position + gap
+    padding-left: calc(var(--space-6) + var(--space-4) + var(--space-3)); // 24px + 16px + 12px = 52px
     
     &.input-sm {
-      padding-left: 48px;
+      // Small: smaller icon + tighter positioning
+      padding-left: calc(var(--space-5) + var(--space-3) + var(--space-2)); // 20px + 12px + 8px = 40px
     }
     
     &.input-lg {
-      padding-left: 72px;
+      // Large: larger icon + more generous spacing
+      padding-left: calc(var(--space-7) + var(--space-5) + var(--space-4)); // 28px + 20px + 16px = 64px
     }
   }
   
   &-with-end-icon {
-    padding-right: 48px;
+    // Mirror start icon spacing for consistency
+    padding-right: calc(var(--space-6) + var(--space-4) + var(--space-3)); // 24px + 16px + 12px = 52px
     
     &.input-sm {
-      padding-right: 40px;
+      padding-right: calc(var(--space-5) + var(--space-3) + var(--space-2)); // 20px + 12px + 8px = 40px
     }
     
     &.input-lg {
-      padding-right: 56px;
+      padding-right: calc(var(--space-7) + var(--space-5) + var(--space-4)); // 28px + 20px + 16px = 64px
     }
   }
   
@@ -818,13 +864,35 @@
   }
 }
 
-// REVOLUTIONARY FLOATING LABEL SYSTEM - PERFECTION ACHIEVED!
+// SIMPLE FLOATING LABEL SYSTEM
 .input-floating {
   position: relative;
+  width: 100%;
+  padding: 0;
+  
+  // Ensure the input inside takes full width
+  > input,
+  > textarea {
+    width: 100%;
+  }
+  
+  // Position icons properly based on input size
+  &:has(.input-sm) .input-group-icon {
+    left: var(--space-3); // 12px
+    width: var(--space-5); // 20px
+    height: var(--space-5); // 20px
+    font-size: var(--space-5); // 20px
+  }
+  
+  &:has(.input-lg) .input-group-icon {
+    left: var(--space-5); // 20px
+    width: var(--space-7); // 28px  
+    height: var(--space-7); // 28px
+    font-size: var(--space-7); // 28px
+  }
   
   .floating-label {
     position: absolute;
-    left: 24px; // PERFECT POSITIONING
     top: 50%;
     transform: translateY(-50%);
     color: var(--color-text-subtle);
@@ -832,18 +900,28 @@
     font-weight: 400;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     pointer-events: none;
-    z-index: calc(var(--z-base) + 3);
+    z-index: calc(var(--z-base) + 11);
     white-space: nowrap;
     transform-origin: left center;
-    // Clean transparent background
     background: transparent;
     padding: 0;
     line-height: 1.2;
-    opacity: 1;
-    user-select: none;
-    // CRISP text always
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
+    
+    // Default left position - no icon
+    left: var(--space-4); // 16px
+    
+    // Position when there's an icon - matches input padding
+    .input-group-icon ~ input ~ & {
+      left: calc(var(--space-6) + var(--space-4) + var(--space-3)); // Default: 52px
+    }
+    
+    .input-group-icon ~ input.input-sm ~ & {
+      left: calc(var(--space-5) + var(--space-3) + var(--space-2)); // Small: 40px  
+    }
+    
+    .input-group-icon ~ input.input-lg ~ & {
+      left: calc(var(--space-7) + var(--space-5) + var(--space-5)); // Large: 64px
+    }
   }
   
   input, textarea {
@@ -853,87 +931,90 @@
       color: transparent;
     }
     
-    // MODERN floating animation - Completely transparent background
+    // Floating state - only apply when actually floating
     &:focus ~ .floating-label,
     &:not(:placeholder-shown) ~ .floating-label,
     &[data-has-value="true"] ~ .floating-label {
+      top: 0;
+      transform: translateY(-50%) scale(0.75);
+      color: var(--color-primary);
+      font-weight: 500;
+      z-index: calc(var(--z-base) + 20);
+      // Border cutout effect
+      background: var(--color-surface-elevated);
+      padding: 0 var(--space-2);
+      border-radius: var(--radius-sm);
+    }
+    
+    // Error state - Clean and professional with cutout effect
+    &.input-error ~ .floating-label {
+      color: var(--color-error);
+      font-weight: 600; // Bolder for error emphasis
+      
+      // Only apply background when floating
+      &[style*="top: 0"] {
+        background: var(--color-surface-elevated);
+        padding: 0 8px;
+        margin: 0 -4px;
+        border-radius: 4px;
+        box-shadow: 0 0 0 2px var(--color-surface-elevated);
+      }
+    }
+    
+    // Success state - Clean and professional with cutout effect
+    &.input-success ~ .floating-label {
+      color: var(--color-success);
+      
+      // Only apply background when floating
+      &[style*="top: 0"] {
+        background: var(--color-surface-elevated);
+        padding: 0 8px;
+        margin: 0 -4px;
+        border-radius: 4px;
+        box-shadow: 0 0 0 2px var(--color-surface-elevated);
+      }
+    }
+
+    // AUTOFILL SUPPORT - CRITICAL FIX FOR ISSUE #9
+    &:-webkit-autofill ~ .floating-label,
+    &:-webkit-autofill:hover ~ .floating-label,
+    &:-webkit-autofill:focus ~ .floating-label,
+    &:-webkit-autofill:active ~ .floating-label {
       top: 0;
       left: 20px;
       transform: translateY(-50%) scale(0.8);
       color: var(--color-primary);
       font-weight: 500;
       z-index: calc(var(--z-base) + 4);
-      // Clean transparent background
-      background: transparent;
-      padding: 0 4px;
-      border-radius: 0;
-      // Clean shadow without background clash
-      box-shadow: none;
+      background: var(--color-surface-elevated);
+      padding: 0 8px;
+      margin: 0 -4px;
+      border-radius: 4px;
+      box-shadow: 0 0 0 2px var(--color-surface-elevated);
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
     }
     
-    // Error state - Clean and professional
-    &.input-error ~ .floating-label {
-      color: var(--color-error);
-      background: transparent;
-    }
-    
-    // Success state - Clean and professional  
-    &.input-success ~ .floating-label {
-      color: var(--color-success);
-      background: transparent;
-    }
-    
-    // Active state - Clean and professional
+    // Active state - Clean and professional with cutout effect
     &:focus ~ .floating-label {
       color: var(--color-primary);
-      background: transparent;
     }
     
-    // Filled but not focused - SUBTLE GRAY
+    // Filled but not focused - SUBTLE GRAY with cutout effect
     &:not(:focus):not(:placeholder-shown) ~ .floating-label,
     &:not(:focus)[data-has-value="true"] ~ .floating-label {
       color: var(--color-text-muted);
-      background: transparent;
-      box-shadow: none;
+      // Keep background for cutout effect even when not focused
+      background: var(--color-surface-elevated);
+      padding: 0 8px;
+      margin: 0 -4px;
+      border-radius: 4px;
+      box-shadow: 0 0 0 2px var(--color-surface-elevated);
     }
   }
   
-  // Icon spacing adjustments - Calculated clearance
-  &.input-with-start-icon .floating-label {
-    left: 52px; // Icon(24px) + Position(20px) + Gap(8px)
-  }
   
-  &.input-with-start-icon.input-sm .floating-label {
-    left: 40px; // Icon(20px) + Position(12px) + Gap(8px)
-  }
-  
-  &.input-with-start-icon.input-lg .floating-label {
-    left: 60px; // Icon(28px) + Position(24px) + Gap(8px)
-  }
-  
-  // When floating, maintain same positioning
-  &.input-with-start-icon input:focus ~ .floating-label,
-  &.input-with-start-icon input:not(:placeholder-shown) ~ .floating-label,
-  &.input-with-start-icon input[data-has-value="true"] ~ .floating-label {
-    left: 52px; // Consistent with static position
-  }
-  
-  // Size-specific floating positions  
-  &.input-with-start-icon.input-sm input:focus ~ .floating-label,
-  &.input-with-start-icon.input-sm input:not(:placeholder-shown) ~ .floating-label,
-  &.input-with-start-icon.input-sm input[data-has-value="true"] ~ .floating-label {
-    left: 40px;
-  }
-  
-  &.input-with-start-icon.input-lg input:focus ~ .floating-label,
-  &.input-with-start-icon.input-lg input:not(:placeholder-shown) ~ .floating-label,
-  &.input-with-start-icon.input-lg input[data-has-value="true"] ~ .floating-label {
-    left: 60px;
-  }
-  
-  // Size variants with proper scaling
+  // Size variants with proper scaling and cutout effect
   &.input-sm {
     .floating-label {
       font-size: var(--text-sm);
@@ -945,6 +1026,11 @@
       &:not(:placeholder-shown) ~ .floating-label,
       &[data-has-value="true"] ~ .floating-label {
         transform: translateY(-50%) scale(0.7);
+        background: var(--color-surface-elevated);
+        padding: 0 6px;
+        margin: 0 -3px;
+        border-radius: 3px;
+        box-shadow: 0 0 0 2px var(--color-surface-elevated);
       }
     }
   }
@@ -960,6 +1046,11 @@
       &:not(:placeholder-shown) ~ .floating-label,
       &[data-has-value="true"] ~ .floating-label {
         transform: translateY(-50%) scale(0.8);
+        background: var(--color-surface-elevated);
+        padding: 0 10px;
+        margin: 0 -5px;
+        border-radius: 5px;
+        box-shadow: 0 0 0 2px var(--color-surface-elevated);
       }
     }
   }

@@ -27,24 +27,46 @@ class ModalProvider {
 
     setupScrollLock() {
         const observer = new MutationObserver((mutations) => {
-            const hasModal = document.querySelector('.r-modal-provider .modal');
-            if (hasModal) {
-                this.lockBodyScroll();
-            } else {
-                this.unlockBodyScroll();
-            }
+            // Use requestAnimationFrame to ensure DOM is fully updated
+            requestAnimationFrame(() => {
+                // Look for any modal elements in the DOM, not just inside modal-provider
+                const hasModal = document.querySelector('.modal[role="dialog"]');
+                
+                if (hasModal) {
+                    this.lockBodyScroll();
+                } else {
+                    this.unlockBodyScroll();
+                }
+            });
         });
 
+        // Observe the document body for any modal additions/removals
         observer.observe(document.body, { 
             childList: true, 
-            subtree: true 
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['class', 'style']
         });
 
         this.scrollObserver = observer;
+        
+        // Initial check
+        this.checkModalState();
+    }
+
+    checkModalState() {
+        // Look for any modal elements in the DOM, not just inside modal-provider
+        const hasModal = document.querySelector('.modal[role="dialog"]');
+        
+        if (hasModal) {
+            this.lockBodyScroll();
+        } else {
+            this.unlockBodyScroll();
+        }
     }
 
     lockBodyScroll() {
-        if (document.body.style.overflow !== 'hidden') {
+        if (!document.body.classList.contains('modal-open')) {
             // Store original scroll position
             this.originalScrollTop = window.pageYOffset || document.documentElement.scrollTop;
             
@@ -67,7 +89,10 @@ class ModalProvider {
     }
 
     unlockBodyScroll() {
-        if (document.body.style.overflow === 'hidden') {
+        // Double-check no modals exist before unlocking
+        const hasModal = document.querySelector('.modal[role="dialog"]');
+        
+        if (!hasModal && document.body.classList.contains('modal-open')) {
             // Remove scroll lock
             document.body.style.overflow = '';
             document.body.style.position = '';
@@ -91,7 +116,7 @@ class ModalProvider {
 
     setupFocusManagement() {
         document.addEventListener('focusin', (event) => {
-            const modals = document.querySelectorAll('.r-modal-provider .modal');
+            const modals = document.querySelectorAll('.modal[role="dialog"]');
             if (modals.length === 0) return;
 
             const topModal = Array.from(modals).pop();

@@ -103,14 +103,13 @@
         
         @if (IsPasswordField && ShowPasswordToggle)
         {
-            <div class="@(GetEndIconContainerClasses().Replace("pointer-events-none", ""))">
+            <div class="input-group-icon-end">
                 <button type="button" 
-                        class="@GetPasswordToggleButtonClasses()"
                         @onclick="TogglePasswordVisibility"
                         title="@(showPassword ? "Hide password" : "Show password")"
                         aria-label="@(showPassword ? "Hide password" : "Show password")"
                         tabindex="-1">
-                    <i class="material-symbols-rounded @GetIconClasses()">@(showPassword ? "visibility_off" : "visibility")</i>
+                    <i class="material-symbols-rounded">@(showPassword ? "visibility_off" : "visibility")</i>
                 </button>
             </div>
         }
@@ -289,6 +288,9 @@
             classes.Add("input-floating");
         }
         
+        // Don't add input-specific classes to the wrapper - they belong on the input element
+        // The wrapper should only have structural classes
+        
         return string.Join(" ", classes);
     }
     
@@ -303,10 +305,29 @@
         // Add variant-specific styling
         classes.AddRange(GetVariantClasses());
         
-        // Size and density classes
-        classes.Add(GetSizeClasses());
+        // Size and density classes - only for input element
+        var sizeClass = Size switch
+        {
+            TextInputSize.Small => "input-sm",
+            TextInputSize.Large => "input-lg",
+            _ => ""
+        };
         
-        // Icon padding adjustments
+        var densityClass = Density switch
+        {
+            ComponentDensity.Compact => "input-compact",
+            ComponentDensity.Dense => "input-dense", 
+            ComponentDensity.Spacious => "input-spacious",
+            ComponentDensity.Normal => "input-normal",
+            _ => "input-normal"
+        };
+        
+        if (!string.IsNullOrEmpty(sizeClass))
+            classes.Add(sizeClass);
+        if (!string.IsNullOrEmpty(densityClass))
+            classes.Add(densityClass);
+        
+        // Icon classes - MUST be added to input for proper padding
         if (!string.IsNullOrEmpty(StartIcon))
         {
             classes.Add("input-with-start-icon");
@@ -353,26 +374,6 @@
         };
     }
     
-    private string GetSizeClasses()
-    {
-        var sizeClass = Size switch
-        {
-            TextInputSize.Small => "input-sm",
-            TextInputSize.Large => "input-lg",
-            _ => ""
-        };
-        
-        var densityClass = Density switch
-        {
-            ComponentDensity.Compact => "input-compact",
-            ComponentDensity.Dense => "input-dense",
-            ComponentDensity.Spacious => "input-spacious",
-            ComponentDensity.Normal => "input-normal",
-            _ => "input-normal"
-        };
-        
-        return string.Join(" ", new[] { sizeClass, densityClass }.Where(c => !string.IsNullOrEmpty(c)));
-    }
     
     
     private string GetStartIconContainerClasses()
@@ -407,7 +408,7 @@
     
     private string GetPasswordToggleButtonClasses()
     {
-        return "border-0 bg-transparent cursor-pointer min-w-12 min-h-12 w-12 h-12 flex items-center justify-center rounded hover:bg-surface-elevated";
+        return ""; // Styling handled in SCSS for better consistency
     }
     
     private bool IsFloatingLabel()
