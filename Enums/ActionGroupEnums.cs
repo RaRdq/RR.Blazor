@@ -33,3 +33,18 @@ public enum ActionGroupSpacing
     Large,
     ExtraLarge
 }
+
+/// <summary>
+/// Standard action patterns for common button combinations
+/// </summary>
+public enum ActionGroupPattern
+{
+    /// <summary>No pattern - use custom child content</summary>
+    None,
+    /// <summary>Cancel and Save buttons for forms</summary>
+    CancelSave,
+    /// <summary>Back and Next buttons for wizards</summary>
+    BackNext,
+    /// <summary>Approve and Reject buttons for approval workflows</summary>
+    ApproveReject
+}

@@ -84,33 +84,19 @@ Supports multiple variants, sizes, and interactive states with enterprise-grade 
     {
         var classes = new List<string>
         {
-            "d-inline-flex",
-            "items-center",
-            "rounded-full",
-            "font-medium",
-            "whitespace-nowrap",
-            "border"
+            "badge"
         };
         
-        // Size and density classes
-        classes.Add(GetSizeClasses());
-        
-        // Density-specific gap adjustments
-        classes.Add(GetDensityGapClasses());
-        
-        // Variant classes - using utility classes instead of CSS
+        // Variant classes - using proper badge CSS classes from _badges.scss
         classes.Add(GetVariantClasses());
+        
+        // Size classes - using proper badge size classes  
+        classes.Add(GetSizeClasses());
         
         // Clickable
         if (Clickable || OnClick.HasDelegate)
         {
-            classes.AddRange(new[]
-            {
-                "cursor-pointer",
-                "hover:shadow-sm",
-                "transition",
-                "hover:scale-105"
-            });
+            classes.Add("badge-clickable");
         }
         
         // Custom CSS
@@ -124,80 +110,38 @@ Supports multiple variants, sizes, and interactive states with enterprise-grade 
     
     private string GetSizeClasses()
     {
-        var baseSizeClasses = Size switch
+        var sizeClass = Size switch
         {
-            BadgeSize.Small => "pl-2 pr-2 pt-0 pb-0 text-xs h-5",
-            BadgeSize.Medium => "pl-3 pr-3 pt-1 pb-1 text-sm h-6",
-            BadgeSize.Large => "pl-4 pr-4 pt-2 pb-2 text-base h-8",
-            _ => "pl-3 pr-3 pt-1 pb-1 text-sm h-6"
+            BadgeSize.Small => "badge-small",
+            BadgeSize.Large => "badge-large",
+            _ => "" // Medium is default, no extra class needed
         };
         
-        // Apply density modifiers
-        return Density switch
+        // Apply density modifiers if needed
+        var densityClass = Density switch
         {
-            ComponentDensity.Compact => ApplyCompactDensity(),
-            ComponentDensity.Dense => ApplyDenseDensity(),
-            ComponentDensity.Normal => baseSizeClasses,
-            ComponentDensity.Spacious => ApplySpacious(),
-            _ => baseSizeClasses
+            ComponentDensity.Compact => "badge-compact",
+            ComponentDensity.Dense => "badge-dense", 
+            ComponentDensity.Spacious => "badge-spacious",
+            _ => ""
         };
+        
+        return $"{sizeClass} {densityClass}".Trim();
     }
     
-    private string ApplyCompactDensity()
-    {
-        return Size switch
-        {
-            BadgeSize.Small => "pl-1 pr-1 pt-0 pb-0 text-xs h-4",
-            BadgeSize.Medium => "pl-2 pr-2 pt-0 pb-0 text-xs h-5",
-            BadgeSize.Large => "pl-3 pr-3 pt-1 pb-1 text-sm h-6",
-            _ => "pl-2 pr-2 pt-0 pb-0 text-xs h-5"
-        };
-    }
-    
-    private string ApplyDenseDensity()
-    {
-        return Size switch
-        {
-            BadgeSize.Small => "pl-1 pr-1 pt-0 pb-0 text-xs h-4",
-            BadgeSize.Medium => "pl-2 pr-2 pt-0 pb-0 text-sm h-5",
-            BadgeSize.Large => "pl-3 pr-3 pt-1 pb-1 text-base h-7",
-            _ => "pl-2 pr-2 pt-0 pb-0 text-sm h-5"
-        };
-    }
-    
-    private string ApplySpacious()
-    {
-        return Size switch
-        {
-            BadgeSize.Small => "pl-3 pr-3 pt-1 pb-1 text-sm h-7",
-            BadgeSize.Medium => "pl-4 pr-4 pt-2 pb-2 text-base h-8",
-            BadgeSize.Large => "pl-6 pr-6 pt-3 pb-3 text-lg h-10",
-            _ => "pl-4 pr-4 pt-2 pb-2 text-base h-8"
-        };
-    }
-    
-    private string GetDensityGapClasses()
-    {
-        return Density switch
-        {
-            ComponentDensity.Compact => "gap-1",
-            ComponentDensity.Dense => "gap-1",
-            ComponentDensity.Normal => "gap-2",
-            ComponentDensity.Spacious => "gap-2",
-            _ => "gap-2"
-        };
-    }
     
     private string GetVariantClasses()
     {
         return Variant switch
         {
-            BadgeVariant.Primary => "bg-primary text-white border-primary",
-            BadgeVariant.Success => "bg-success text-white border-success",
-            BadgeVariant.Warning => "bg-warning text-white border-warning",
-            BadgeVariant.Danger => "bg-error text-white border-error",
-            BadgeVariant.Info => "bg-info text-white border-info",
-            _ => "bg-secondary text-white border-secondary"
+            BadgeVariant.Primary => "badge-primary",
+            BadgeVariant.Success => "badge-success", 
+            BadgeVariant.Warning => "badge-warning",
+            BadgeVariant.Danger => "badge-error",
+            BadgeVariant.Error => "badge-error",
+            BadgeVariant.Info => "badge-info",
+            BadgeVariant.Outline => "badge-outline",
+            _ => "badge-secondary"
         };
     }
 

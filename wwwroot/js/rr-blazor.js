@@ -464,8 +464,8 @@ window.RRBlazor = {
     adjustDropdownPosition: function(dropdownElement) {
         if (!dropdownElement) return;
         
-        const viewport = dropdownElement.querySelector('.dropdown__viewport');
-        const content = dropdownElement.querySelector('.dropdown__content');
+        const viewport = dropdownElement.querySelector('.dropdown-viewport');
+        const content = dropdownElement.querySelector('.dropdown-content');
         
         if (!viewport || !content) return;
         

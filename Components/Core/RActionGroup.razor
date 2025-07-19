@@ -1,20 +1,24 @@
 @** 
 <summary>
 Professional action group component for organizing multiple buttons with consistent spacing and alignment.
-Supports horizontal/vertical layouts, responsive behavior, and flexible alignment options.
+Supports horizontal/vertical layouts, responsive behavior, flexible alignment options, and standard button patterns.
 </summary>
 <category>Core</category>
 <complexity>Simple</complexity>
-<ai-prompt>Create a professional action group for organizing buttons</ai-prompt>
-<ai-common-use>form actions, toolbar buttons, navigation controls, modal actions</ai-common-use>
+<ai-prompt>Create a professional action group for organizing buttons with optional standard patterns</ai-prompt>
+<ai-common-use>form actions, toolbar buttons, navigation controls, modal actions, standard patterns (Cancel/Save, Back/Next, Approve/Reject)</ai-common-use>
 <ai-avoid>Don't use for single buttons - use RButton directly. Avoid for non-action content.</ai-avoid>
 <ai-pattern name="form-actions">Alignment="ActionGroupAlignment.End" for form Save/Cancel buttons</ai-pattern>
 <ai-pattern name="toolbar-actions">Direction="ActionGroupDirection.Horizontal" Spacing="ActionGroupSpacing.Small" for compact toolbars</ai-pattern>
 <ai-pattern name="vertical-menu">Direction="ActionGroupDirection.Vertical" FullWidth="true" for dropdown menus</ai-pattern>
 <ai-pattern name="space-between">Alignment="ActionGroupAlignment.SpaceBetween" for opposing actions</ai-pattern>
+<ai-pattern name="cancel-save">Pattern="ActionGroupPattern.CancelSave" for standard form actions</ai-pattern>
+<ai-pattern name="back-next">Pattern="ActionGroupPattern.BackNext" for wizard navigation</ai-pattern>
+<ai-pattern name="approve-reject">Pattern="ActionGroupPattern.ApproveReject" for approval workflows</ai-pattern>
 **@
 @using RR.Blazor.Enums
 @using RR.Blazor.Attributes
+@using RR.Blazor.Components.Core
 
 @attribute [Component("RActionGroup", Category = "Core", Complexity = ComponentComplexity.Simple)]
 @attribute [AIOptimized(Prompt = "Create a professional action group for organizing buttons", 
@@ -22,7 +26,14 @@ Supports horizontal/vertical layouts, responsive behavior, and flexible alignmen
                        AvoidUsage = "Don't use for single buttons - use RButton directly")]
 
 <div class="action-group @GetActionGroupClasses()">
-    @ChildContent
+    @if (Pattern != ActionGroupPattern.None)
+    {
+        @RenderStandardPattern()
+    }
+    else
+    {
+        @ChildContent
+    }
 </div>
 
 @code {
@@ -70,6 +81,58 @@ Supports horizontal/vertical layouts, responsive behavior, and flexible alignmen
     
     /// <summary>Child content (buttons/actions)</summary>
     [Parameter] public RenderFragment ChildContent { get; set; }
+    
+    /// <summary>Standard action pattern for common button combinations</summary>
+    /// <ai-hint>Use CancelSave for forms, BackNext for wizards, ApproveReject for approvals, None for custom content</ai-hint>
+    [Parameter]
+    [AIParameter(Hint = "CancelSave for forms, BackNext for wizards, ApproveReject for approvals, None for custom", 
+                 SuggestedValues = new[] { "None", "CancelSave", "BackNext", "ApproveReject" }, 
+                 IsRequired = false)]
+    public ActionGroupPattern Pattern { get; set; } = ActionGroupPattern.None;
+    
+    // Standard Pattern Configuration
+    [Parameter] public bool Processing { get; set; }
+    [Parameter] public string ProcessingText { get; set; }
+    [Parameter] public ButtonSize ButtonSize { get; set; } = ButtonSize.Medium;
+    
+    // Cancel/Save Pattern
+    [Parameter] public string CancelText { get; set; } = "Cancel";
+    [Parameter] public string CancelIcon { get; set; }
+    [Parameter] public ButtonVariant CancelVariant { get; set; } = ButtonVariant.Ghost;
+    [Parameter] public bool CancelDisabled { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+    
+    [Parameter] public string SaveText { get; set; } = "Save";
+    [Parameter] public string SaveIcon { get; set; }
+    [Parameter] public ButtonVariant SaveVariant { get; set; } = ButtonVariant.Primary;
+    [Parameter] public bool SaveDisabled { get; set; }
+    [Parameter] public EventCallback OnSave { get; set; }
+    
+    // Back/Next Pattern
+    [Parameter] public string BackText { get; set; } = "Back";
+    [Parameter] public string BackIcon { get; set; } = "arrow_back";
+    [Parameter] public ButtonVariant BackVariant { get; set; } = ButtonVariant.Secondary;
+    [Parameter] public bool BackDisabled { get; set; }
+    [Parameter] public EventCallback OnBack { get; set; }
+    
+    [Parameter] public string NextText { get; set; } = "Next";
+    [Parameter] public string NextIcon { get; set; } = "arrow_forward";
+    [Parameter] public ButtonVariant NextVariant { get; set; } = ButtonVariant.Primary;
+    [Parameter] public bool NextDisabled { get; set; }
+    [Parameter] public EventCallback OnNext { get; set; }
+    
+    // Approve/Reject Pattern
+    [Parameter] public string ApproveText { get; set; } = "Approve";
+    [Parameter] public string ApproveIcon { get; set; } = "check_circle";
+    [Parameter] public ButtonVariant ApproveVariant { get; set; } = ButtonVariant.Success;
+    [Parameter] public bool ApproveDisabled { get; set; }
+    [Parameter] public EventCallback OnApprove { get; set; }
+    
+    [Parameter] public string RejectText { get; set; } = "Reject";
+    [Parameter] public string RejectIcon { get; set; } = "cancel";
+    [Parameter] public ButtonVariant RejectVariant { get; set; } = ButtonVariant.Error;
+    [Parameter] public bool RejectDisabled { get; set; }
+    [Parameter] public EventCallback OnReject { get; set; }
     
     private string GetActionGroupClasses()
     {
@@ -191,5 +254,73 @@ Supports horizontal/vertical layouts, responsive behavior, and flexible alignmen
             _ => "gap-4"
         };
     }
+    
+    private RenderFragment RenderStandardPattern() => Pattern switch
+    {
+        ActionGroupPattern.CancelSave => RenderCancelSavePattern(),
+        ActionGroupPattern.BackNext => RenderBackNextPattern(),
+        ActionGroupPattern.ApproveReject => RenderApproveRejectPattern(),
+        _ => ChildContent
+    };
+    
+    private RenderFragment RenderCancelSavePattern() => __builder =>
+    {
+        <RButton Text="@CancelText" 
+                 Icon="@CancelIcon" 
+                 IconPosition="IconPosition.Start"
+                 Variant="@CancelVariant" 
+                 Size="@ButtonSize" 
+                 OnClick="@OnCancel"
+                 Disabled="@(Processing || CancelDisabled)" />
+        
+        <RButton Text="@(Processing && !string.IsNullOrEmpty(ProcessingText) ? ProcessingText : SaveText)" 
+                 Icon="@SaveIcon" 
+                 IconPosition="IconPosition.Start"
+                 Variant="@SaveVariant" 
+                 Size="@ButtonSize" 
+                 OnClick="@OnSave"
+                 Disabled="@(Processing || SaveDisabled)"
+                 Loading="@Processing" />
+    };
+    
+    private RenderFragment RenderBackNextPattern() => __builder =>
+    {
+        <RButton Text="@BackText" 
+                 Icon="@BackIcon" 
+                 IconPosition="IconPosition.Start"
+                 Variant="@BackVariant" 
+                 Size="@ButtonSize" 
+                 OnClick="@OnBack"
+                 Disabled="@(Processing || BackDisabled)" />
+        
+        <RButton Text="@NextText" 
+                 Icon="@NextIcon" 
+                 IconPosition="IconPosition.End"
+                 Variant="@NextVariant" 
+                 Size="@ButtonSize" 
+                 OnClick="@OnNext"
+                 Disabled="@(Processing || NextDisabled)"
+                 Loading="@Processing" />
+    };
+    
+    private RenderFragment RenderApproveRejectPattern() => __builder =>
+    {
+        <RButton Text="@RejectText" 
+                 Icon="@RejectIcon" 
+                 IconPosition="IconPosition.Start"
+                 Variant="@RejectVariant" 
+                 Size="@ButtonSize" 
+                 OnClick="@OnReject"
+                 Disabled="@(Processing || RejectDisabled)" />
+        
+        <RButton Text="@ApproveText" 
+                 Icon="@ApproveIcon" 
+                 IconPosition="IconPosition.Start"
+                 Variant="@ApproveVariant" 
+                 Size="@ButtonSize" 
+                 OnClick="@OnApprove"
+                 Disabled="@(Processing || ApproveDisabled)"
+                 Loading="@Processing" />
+    };
 }
 

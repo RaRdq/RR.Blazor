@@ -1,0 +1,286 @@
+@using RR.Blazor.Enums
+@using Microsoft.JSInterop
+@using RR.Blazor.Components.Base
+@inherits RInteractiveComponentBase
+
+@* RBaseModal - Enhanced modal component with standardized patterns and glass effects *@
+
+<RModal Visible="@Visible" 
+        VisibleChanged="@VisibleChanged"
+        Text="@Title" 
+        Subtitle="@Subtitle"
+        Icon="@Icon"
+        Size="@Size"
+        Variant="@Variant"
+        Density="@Density"
+        OnClose="@OnClose"
+        OnCancel="@OnCancel"
+        OnPrimaryAction="@OnPrimaryAction"
+        PrimaryText="@PrimaryText"
+        CancelText="@CancelText"
+        PrimaryButtonDisabled="@PrimaryButtonDisabled"
+        ShowPrimaryButton="@ShowPrimaryButton"
+        ShowCancelButton="@ShowCancelButton"
+        ShowHeader="@ShowHeader"
+        ShowFooter="@ShowFooter"
+        Processing="@Processing"
+        ProcessingMessage="@ProcessingMessage"
+        CloseOnBackdrop="@CloseOnBackdrop"
+        CloseOnEscape="@CloseOnEscape"
+        Class="@GetModalClasses()">
+    
+    <HeaderContent>
+        @HeaderContent
+    </HeaderContent>
+    
+    <ChildContent>
+        @if (ShowAlert && !string.IsNullOrEmpty(AlertMessage))
+        {
+            <div class="@GetAlertClasses()" role="alert" aria-live="@(AlertType == AlertType.Error ? "assertive" : "polite")">
+                <i class="material-symbols-rounded @GetAlertIconClasses()" aria-hidden="true">@GetAlertIcon()</i>
+                <div>
+                    <div class="text-sm font-semibold">@AlertMessage</div>
+                    @if (!string.IsNullOrEmpty(AlertDescription))
+                    {
+                        <div class="text-xs text-secondary">@AlertDescription</div>
+                    }
+                </div>
+            </div>
+        }
+        
+        @if (ShowGlassContent)
+        {
+            <div class="@GetContentClasses()">
+                @ChildContent
+            </div>
+        }
+        else
+        {
+            @ChildContent
+        }
+        
+        @if (ShowQuickActions && QuickActions != null)
+        {
+            <div class="@GetQuickActionsClasses()">
+                <div class="text-h6 font-bold mb-3">@QuickActionsTitle</div>
+                <div class="@GetActionGroupClasses()" role="group" aria-label="@QuickActionsAriaLabel">
+                    @QuickActions
+                </div>
+            </div>
+        }
+    </ChildContent>
+    
+    <FooterContent>
+        @FooterContent
+    </FooterContent>
+</RModal>
+
+@code {
+    // Modal Configuration
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public EventCallback<bool> VisibleChanged { get; set; }
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public string Subtitle { get; set; }
+    [Parameter] public string Icon { get; set; }
+    [Parameter] public ModalSize Size { get; set; } = ModalSize.Medium;
+    [Parameter] public ModalVariant Variant { get; set; } = ModalVariant.Default;
+    [Parameter] public ComponentDensity Density { get; set; } = ComponentDensity.Normal;
+    
+    // Glass Effect Configuration
+    [Parameter] public BaseModalGlassVariant GlassVariant { get; set; } = BaseModalGlassVariant.Medium;
+    [Parameter] public bool ShowGlassContent { get; set; } = true;
+    [Parameter] public bool InteractiveGlass { get; set; } = false;
+    
+    // Content Organization
+    [Parameter] public RenderFragment HeaderContent { get; set; }
+    [Parameter] public RenderFragment ChildContent { get; set; }
+    [Parameter] public RenderFragment FooterContent { get; set; }
+    [Parameter] public RenderFragment QuickActions { get; set; }
+    
+    // Alert System
+    [Parameter] public bool ShowAlert { get; set; }
+    [Parameter] public string AlertMessage { get; set; }
+    [Parameter] public string AlertDescription { get; set; }
+    [Parameter] public AlertType AlertType { get; set; } = AlertType.Info;
+    
+    // Quick Actions
+    [Parameter] public bool ShowQuickActions { get; set; }
+    [Parameter] public string QuickActionsTitle { get; set; } = "Quick Actions";
+    [Parameter] public string QuickActionsAriaLabel { get; set; } = "Quick action buttons";
+    
+    // Header/Footer Control
+    [Parameter] public bool ShowHeader { get; set; } = true;
+    [Parameter] public bool ShowFooter { get; set; } = true;
+    
+    // Button Configuration
+    [Parameter] public bool ShowPrimaryButton { get; set; } = true;
+    [Parameter] public bool ShowCancelButton { get; set; } = true;
+    [Parameter] public string PrimaryText { get; set; } = "Save";
+    [Parameter] public string CancelText { get; set; } = "Cancel";
+    [Parameter] public bool PrimaryButtonDisabled { get; set; }
+    
+    // Processing State
+    [Parameter] public bool Processing { get; set; }
+    [Parameter] public string ProcessingMessage { get; set; } = "Processing...";
+    
+    // Behavior Configuration
+    [Parameter] public bool CloseOnBackdrop { get; set; } = true;
+    [Parameter] public bool CloseOnEscape { get; set; } = true;
+    
+    // Event Callbacks
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+    [Parameter] public EventCallback OnPrimaryAction { get; set; }
+    
+    private string GetModalClasses()
+    {
+        var classes = new List<string>();
+        
+        switch (GlassVariant)
+        {
+            case BaseModalGlassVariant.Light:
+                classes.Add("glass-light");
+                break;
+            case BaseModalGlassVariant.Medium:
+                classes.Add("glass-medium");
+                break;
+            case BaseModalGlassVariant.Heavy:
+                classes.Add("glass-heavy");
+                break;
+            case BaseModalGlassVariant.Frost:
+                classes.Add("glass-frost");
+                break;
+            case BaseModalGlassVariant.Interactive:
+                classes.Add("glass-interactive");
+                break;
+        }
+        
+        classes.Add("backdrop-blur-xl");
+        classes.Add("shadow-2xl");
+        
+        if (InteractiveGlass)
+        {
+            classes.Add("hover-lift-sm");
+            classes.Add("focus-ring-animate");
+        }
+        
+        classes.Add(Class);
+        
+        return string.Join(" ", classes.Where(c => !string.IsNullOrEmpty(c)));
+    }
+    
+    private string GetContentClasses()
+    {
+        var classes = new List<string>();
+        
+        if (ShowGlassContent)
+        {
+            classes.Add("pa-6");
+            classes.Add("rounded-lg");
+            classes.Add("glass-light");
+            classes.Add("backdrop-blur-sm");
+            
+            if (InteractiveGlass)
+            {
+                classes.Add("hover-lift-sm");
+                classes.Add("transition-all");
+            }
+        }
+        
+        return string.Join(" ", classes);
+    }
+    
+    private string GetAlertClasses()
+    {
+        var classes = new List<string>
+        {
+            "flex", "items-center", "gap-3", "mb-4", "pa-4", "glass-medium", "rounded-lg", "border-l-4", "backdrop-blur-sm"
+        };
+        
+        switch (AlertType)
+        {
+            case AlertType.Success:
+                classes.Add("bg-success-light");
+                classes.Add("border-success");
+                break;
+            case AlertType.Warning:
+                classes.Add("bg-warning-light");
+                classes.Add("border-warning");
+                break;
+            case AlertType.Error:
+                classes.Add("bg-error-light");
+                classes.Add("border-error");
+                break;
+            case AlertType.Info:
+            default:
+                classes.Add("bg-info-light");
+                classes.Add("border-info");
+                break;
+        }
+        
+        return string.Join(" ", classes);
+    }
+    
+    private string GetAlertIconClasses()
+    {
+        var classes = new List<string>();
+        
+        switch (AlertType)
+        {
+            case AlertType.Success:
+                classes.Add("text-success");
+                break;
+            case AlertType.Warning:
+                classes.Add("text-warning");
+                classes.Add("animate-pulse");
+                break;
+            case AlertType.Error:
+                classes.Add("text-error");
+                classes.Add("animate-pulse");
+                break;
+            case AlertType.Info:
+            default:
+                classes.Add("text-info");
+                break;
+        }
+        
+        return string.Join(" ", classes);
+    }
+    
+    private string GetAlertIcon() => AlertType switch
+    {
+        AlertType.Success => "check_circle",
+        AlertType.Warning => "priority_high",
+        AlertType.Error => "error",
+        AlertType.Info => "info",
+        _ => "info"
+    };
+    
+    private string GetQuickActionsClasses()
+    {
+        return Density switch
+        {
+            ComponentDensity.Compact => "mt-4 pt-3 border-t border-light",
+            ComponentDensity.Dense => "mt-5 pt-3 border-t border-light",
+            ComponentDensity.Normal => "mt-6 pt-4 border-t border-light",
+            ComponentDensity.Spacious => "mt-8 pt-6 border-t border-light",
+            _ => "mt-6 pt-4 border-t border-light"
+        };
+    }
+    
+    private string GetActionGroupClasses()
+    {
+        var classes = new List<string>
+        {
+            "flex", "gap-3", "flex-wrap", "pa-4", "rounded-lg", "glass-medium", "backdrop-blur-sm"
+        };
+        
+        if (InteractiveGlass)
+        {
+            classes.Add("hover-lift-sm");
+            classes.Add("transition-all");
+        }
+        
+        return string.Join(" ", classes);
+    }
+}

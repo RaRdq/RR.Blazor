@@ -253,36 +253,202 @@
   }
 }
 
-// Glass effect mixin for modern components
-@mixin glass-effect($variant: light) {
+// Enhanced Glass Effect System with Interactive States
+@mixin glass-enhanced($variant: light, $interactive: false, $shadow: true) {
   @if $variant == light {
     background: var(--glass-bg-light);
     backdrop-filter: var(--glass-blur-sm) var(--glass-saturate);
     border: 1px solid var(--glass-border-light);
+    @if $shadow { box-shadow: var(--shadow-sm); }
   } @else if $variant == medium {
     background: var(--glass-bg-medium);
     backdrop-filter: var(--glass-blur-md) var(--glass-saturate);
     border: 1px solid var(--glass-border-medium);
+    @if $shadow { box-shadow: var(--shadow-md); }
   } @else if $variant == heavy {
     background: var(--glass-bg-heavy);
     backdrop-filter: var(--glass-blur-lg) var(--glass-saturate);
     border: 1px solid var(--glass-border-heavy);
-  } @else if $variant == none {
-    background: transparent;
-    backdrop-filter: none;
-    border: 1px solid transparent;
+    @if $shadow { box-shadow: var(--shadow-lg); }
+  } @else if $variant == frost {
+    background: var(--glass-bg-frost);
+    backdrop-filter: var(--glass-blur-xl) var(--glass-saturate);
+    border: 1px solid var(--glass-border-light);
+    @if $shadow { box-shadow: var(--shadow-xl); }
+  } @else if $variant == modal {
+    background: var(--glass-bg-medium);
+    backdrop-filter: var(--glass-blur-lg) var(--glass-saturate);
+    border: 1px solid var(--glass-border-medium);
+    @if $shadow { box-shadow: var(--shadow-2xl); }
+  } @else if $variant == interactive {
+    background: var(--glass-bg-light);
+    backdrop-filter: var(--glass-blur-sm) var(--glass-saturate);
+    border: 1px solid var(--glass-border-light);
+    @if $shadow { box-shadow: var(--shadow-sm); }
+    transition: var(--transition-fast);
   } @else if $variant == error {
     background: var(--glass-error-bg);
     backdrop-filter: var(--glass-blur-sm) var(--glass-saturate);
     border: 1px solid var(--color-error);
+    @if $shadow { box-shadow: 0 4px 16px color-mix(in srgb, var(--color-error) 25%, transparent); }
   } @else if $variant == success {
     background: var(--glass-success-bg);
     backdrop-filter: var(--glass-blur-sm) var(--glass-saturate);
     border: 1px solid var(--color-success);
-  } @else if $variant == frost {
-    background: var(--glass-bg-frost);
-    backdrop-filter: var(--glass-blur-xl) var(--glass-saturate);
-    border: 1px solid var(--glass-border-frost);
+    @if $shadow { box-shadow: 0 4px 16px color-mix(in srgb, var(--color-success) 25%, transparent); }
+  } @else if $variant == none {
+    background: transparent;
+    backdrop-filter: none;
+    border: 1px solid transparent;
+    box-shadow: none;
+  }
+  
+  @if $interactive {
+    transition: var(--transition-fast);
+    
+    &:hover {
+      backdrop-filter: var(--glass-blur-md) var(--glass-saturate);
+      border-color: color-mix(in srgb, var(--glass-border-medium) 80%, var(--color-interactive-primary));
+      @if $shadow { box-shadow: var(--shadow-lg); }
+      transform: translateY(-1px);
+    }
+    
+    &:active {
+      transform: translateY(0);
+      backdrop-filter: var(--glass-blur-sm) var(--glass-saturate);
+    }
+  }
+}
+
+// Legacy alias for backward compatibility
+@mixin glass-effect($variant: light) {
+  @include glass-enhanced($variant);
+}
+
+// Density-Aware Spacing Mixins
+@mixin spacing-density($density: normal, $type: padding) {
+  @if $type == padding {
+    @if $density == compact {
+      padding: var(--space-2) var(--space-3);
+    } @else if $density == dense {
+      padding: var(--space-3) var(--space-4);
+    } @else if $density == normal {
+      padding: var(--space-4) var(--space-6);
+    } @else if $density == comfortable {
+      padding: var(--space-6) var(--space-8);
+    } @else if $density == spacious {
+      padding: var(--space-8) var(--space-12);
+    }
+  } @else if $type == margin {
+    @if $density == compact {
+      margin: var(--space-1) var(--space-2);
+    } @else if $density == dense {
+      margin: var(--space-2) var(--space-3);
+    } @else if $density == normal {
+      margin: var(--space-3) var(--space-4);
+    } @else if $density == comfortable {
+      margin: var(--space-4) var(--space-6);
+    } @else if $density == spacious {
+      margin: var(--space-6) var(--space-8);
+    }
+  } @else if $type == gap {
+    @if $density == compact {
+      gap: var(--space-2);
+    } @else if $density == dense {
+      gap: var(--space-3);
+    } @else if $density == normal {
+      gap: var(--space-4);
+    } @else if $density == comfortable {
+      gap: var(--space-6);
+    } @else if $density == spacious {
+      gap: var(--space-8);
+    }
+  }
+}
+
+// Form Density Patterns
+@mixin form-density($density: normal) {
+  @if $density == compact {
+    @include spacing-density(compact, padding);
+    .form-section { @include spacing-density(compact, margin); }
+    .form-group { @include spacing-density(compact, gap); }
+  } @else if $density == dense {
+    @include spacing-density(dense, padding);
+    .form-section { @include spacing-density(dense, margin); }
+    .form-group { @include spacing-density(dense, gap); }
+  } @else if $density == normal {
+    @include spacing-density(normal, padding);
+    .form-section { @include spacing-density(normal, margin); }
+    .form-group { @include spacing-density(normal, gap); }
+  } @else if $density == comfortable {
+    @include spacing-density(comfortable, padding);
+    .form-section { @include spacing-density(comfortable, margin); }
+    .form-group { @include spacing-density(comfortable, gap); }
+  } @else if $density == spacious {
+    @include spacing-density(spacious, padding);
+    .form-section { @include spacing-density(spacious, margin); }
+    .form-group { @include spacing-density(spacious, gap); }
+  }
+}
+
+// Touch Interaction Mixin with WCAG AA Compliance
+@mixin touch-interaction($variant: default, $feedback: visual) {
+  min-height: var(--touch-target-min, 44px);
+  min-width: var(--touch-target-min, 44px);
+  transition: var(--transition-fast);
+  position: relative;
+  outline: none;
+  
+  @if $variant == glass {
+    @include glass-enhanced(interactive, true);
+  } @else if $variant == elevated {
+    box-shadow: var(--shadow-sm);
+    
+    &:hover {
+      box-shadow: var(--shadow-md);
+      transform: translateY(-1px);
+    }
+    
+    &:active {
+      transform: translateY(0);
+      box-shadow: var(--shadow-sm);
+    }
+  } @else {
+    &:hover {
+      background: color-mix(in srgb, var(--color-background-elevated) 80%, transparent);
+    }
+    
+    &:active {
+      background: color-mix(in srgb, var(--color-background-elevated) 60%, transparent);
+    }
+  }
+  
+  @if $feedback == visual {
+    &:focus-visible {
+      outline: 3px solid var(--color-interactive-focus);
+      outline-offset: 2px;
+    }
+  } @else if $feedback == glass {
+    &:focus-visible {
+      @include glass-enhanced(interactive, false, true);
+      outline: 2px solid var(--color-interactive-focus);
+      outline-offset: 2px;
+    }
+  } @else if $feedback == accessibility {
+    &:focus-visible {
+      outline: 3px solid var(--color-interactive-focus);
+      outline-offset: 3px;
+      box-shadow: 0 0 0 6px color-mix(in srgb, var(--color-interactive-focus) 20%, transparent);
+    }
+  }
+  
+  @media (hover: none) and (pointer: coarse) {
+    min-height: 48px;
+    min-width: 48px;
+    
+    &:hover {
+      transform: none;
+    }
   }
 }
 
