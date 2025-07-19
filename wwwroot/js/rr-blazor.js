@@ -287,6 +287,7 @@ window.RRBlazor = {
         }
     },
     
+    
     // Get element dimensions
     getElementDimensions: function(elementId) {
         const element = document.getElementById(elementId);
@@ -438,99 +439,10 @@ window.RRBlazor = {
             updateCount(); // Initial update
         }
         
-        // Floating label support
-        if (options.isFloatingLabel || element.classList.contains('form-field__wrapper--floating-label')) {
-            this.initializeFloatingLabel(input, element);
-        }
+        // Floating label support removed - using pure CSS approach
     },
     
-    // Floating label functionality
-    updateFloatingLabelClasses: function(wrapperElement, classString) {
-        if (!wrapperElement) return;
-        
-        // Get the base classes (everything except state classes)
-        const existingClasses = wrapperElement.className.split(' ');
-        const newClasses = classString ? classString.split(' ') : [];
-        
-        // Remove all floating-label state classes
-        const filteredClasses = existingClasses.filter(cls => 
-            !cls.startsWith('form-field__wrapper--has-value') &&
-            !cls.startsWith('form-field__wrapper--floating') &&
-            !cls.startsWith('form-field__wrapper--error') &&
-            !cls.startsWith('form-field__wrapper--disabled')
-        );
-        
-        // Combine with new state classes
-        const finalClasses = [...filteredClasses, ...newClasses].filter(cls => cls.length > 0);
-        
-        // Apply classes atomically
-        wrapperElement.className = finalClasses.join(' ');
-    },
-    
-    initializeFloatingLabel: function(inputElement, wrapperElement) {
-        if (!inputElement || !wrapperElement) return;
-        
-        const updateState = () => {
-            const hasValue = inputElement.value && inputElement.value.trim().length > 0;
-            const isFocused = document.activeElement === inputElement;
-            
-            // Remove all state classes first
-            wrapperElement.classList.remove('form-field__wrapper--has-value', 'form-field__wrapper--floating');
-            
-            // Add appropriate classes
-            if (hasValue) {
-                wrapperElement.classList.add('form-field__wrapper--has-value');
-            }
-            if (isFocused || hasValue) {
-                wrapperElement.classList.add('form-field__wrapper--floating');
-            }
-        };
-        
-        // Initialize state immediately
-        setTimeout(updateState, 0);
-        
-        // Event handlers with debouncing for input
-        let inputTimeout;
-        const debouncedInputHandler = () => {
-            clearTimeout(inputTimeout);
-            inputTimeout = setTimeout(updateState, 10);
-        };
-        
-        const focusHandler = () => {
-            clearTimeout(inputTimeout);
-            wrapperElement.classList.add('form-field__wrapper--floating');
-            updateState();
-        };
-        
-        const blurHandler = () => {
-            clearTimeout(inputTimeout);
-            setTimeout(() => {
-                if (!inputElement.value || inputElement.value.trim().length === 0) {
-                    wrapperElement.classList.remove('form-field__wrapper--floating');
-                }
-                updateState();
-            }, 50);
-        };
-        
-        // Attach event listeners
-        inputElement.addEventListener('focus', focusHandler);
-        inputElement.addEventListener('blur', blurHandler);
-        inputElement.addEventListener('input', debouncedInputHandler);
-        inputElement.addEventListener('change', updateState);
-        
-        // Store cleanup function
-        const existingCleanup = wrapperElement._rrCleanup;
-        wrapperElement._rrCleanup = () => {
-            if (existingCleanup) existingCleanup();
-            clearTimeout(inputTimeout);
-            inputElement.removeEventListener('focus', focusHandler);
-            inputElement.removeEventListener('blur', blurHandler);
-            inputElement.removeEventListener('input', debouncedInputHandler);
-            inputElement.removeEventListener('change', updateState);
-        };
-        
-        return updateState;
-    },
+    // Floating label functionality removed - using pure CSS approach
     
     // Cleanup component
     cleanupComponent: function(elementId) {
@@ -609,7 +521,19 @@ window.addEventListener = function(elementId, eventName, dotNetRef, methodName) 
     if (!element || !dotNetRef) return;
 
     const handler = function(e) {
-        dotNetRef.invokeMethodAsync(methodName, e.detail);
+        try {
+            if (dotNetRef && typeof dotNetRef.invokeMethodAsync === 'function') {
+                dotNetRef.invokeMethodAsync(methodName, e.detail).catch(err => {
+                    if (!err.message?.includes('disposed')) {
+                        console.error('JSInterop error:', err);
+                    }
+                });
+            }
+        } catch (error) {
+            if (!error.message?.includes('disposed')) {
+                console.error('Event handler error:', error);
+            }
+        }
     };
 
     element.addEventListener(eventName, handler);
@@ -624,13 +548,7 @@ window.addEventListener = function(elementId, eventName, dotNetRef, methodName) 
 };
 
 // Global functions for Blazor interop
-window.updateFloatingLabelClasses = function(wrapperElement, classString) {
-    return RRBlazor.updateFloatingLabelClasses(wrapperElement, classString);
-};
-
-window.initializeFloatingLabel = function(inputElement, wrapperElement) {
-    return RRBlazor.initializeFloatingLabel(inputElement, wrapperElement);
-};
+// Floating label functions removed - using pure CSS approach
 
 window.updateUrlWithoutScroll = function(newUrl) {
     return RRBlazor.updateUrlWithoutScroll(newUrl);
@@ -645,14 +563,7 @@ document.addEventListener('DOMContentLoaded', function() {
         RRBlazor.initializeComponent(componentType, element.id, options ? JSON.parse(options) : {});
     });
     
-    // Auto-initialize floating labels
-    document.querySelectorAll('.form-field__wrapper--floating-label').forEach(wrapper => {
-        const input = wrapper.querySelector('input, textarea, select');
-        if (input && !input.dataset.floatingLabelInitialized) {
-            RRBlazor.initializeFloatingLabel(input, wrapper);
-            input.dataset.floatingLabelInitialized = 'true';
-        }
-    });
+    // Auto-initialization for floating labels removed - using pure CSS approach
 });
 
 window.RRBlazor.downloadContent = function(content, fileName, contentType = 'text/plain') {
@@ -711,3 +622,4 @@ if (debugLogger.isDebugMode) {
             debugLogger.warn('Failed to load debug utilities:', error);
         });
 }
+

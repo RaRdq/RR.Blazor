@@ -79,33 +79,55 @@ Ultra-clean, responsive, and customizable for any business application.
                 {
                     <!-- Page Title & Breadcrumbs -->
                     <div class="min-w-0 flex-1">
-                        @if (!string.IsNullOrEmpty(PageTitle))
-                        {
-                            <h1 class="text-lg font-semibold text-primary ma-0">@PageTitle</h1>
-                        }
+                        <div class="d-flex items-center gap-2 flex-wrap">
+                            @if (!string.IsNullOrEmpty(PageTitle))
+                            {
+                                <h1 class="text-lg font-semibold text-primary ma-0">@PageTitle</h1>
+                            }
+                            @if (ShowBreadcrumbs && Breadcrumbs?.Any() == true)
+                            {
+                                <nav class="d-flex items-center gap-2" aria-label="Breadcrumb">
+                                    <ol class="d-flex items-center flex-wrap list-spacious ma-0 pa-0 gap-2">
+                                    @foreach (var (item, index) in Breadcrumbs.Select((item, index) => (item, index)))
+                                    {
+                                        var isLast = index == Breadcrumbs.Count - 1;
+                                        
+                                        <li class="d-flex items-center gap-1">
+                                            @if (!string.IsNullOrEmpty(item.Icon) && index == 0)
+                                            {
+                                                <i class="material-symbols-rounded text-lg text-secondary shrink-0">@item.Icon</i>
+                                            }
+                                            
+                                            @if (isLast || string.IsNullOrEmpty(item.Href))
+                                            {
+                                                <span class="text-body-2 text-primary font-medium leading-none shrink-0" 
+                                                      aria-current="@(isLast ? "page" : null)">
+                                                    @item.Text
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <a href="@item.Href" 
+                                                   class="text-body-2 text-secondary font-normal leading-none shrink-0 text-decoration-none transition-colors hover:text-primary hover:text-decoration-underline focus:outline focus:outline-2 focus:outline-primary focus:outline-offset-2">
+                                                    @item.Text
+                                                </a>
+                                            }
+                                            
+                                            @if (!isLast)
+                                            {
+                                                <span class="d-flex items-center text-tertiary text-lg shrink-0 select-none" aria-hidden="true">
+                                                    <i class="material-symbols-rounded">chevron_right</i>
+                                                </span>
+                                            }
+                                        </li>
+                                    }
+                                    </ol>
+                                </nav>
+                            }
+                        </div>
                         @if (!string.IsNullOrEmpty(PageSubtitle))
                         {
-                            <p class="text-sm text-secondary ma-0">@PageSubtitle</p>
-                        }
-                        @if (ShowBreadcrumbs && Breadcrumbs?.Any() == true)
-                        {
-                            <nav class="flex items-center gap-1 mt-1" aria-label="Breadcrumb">
-                                @foreach (var (item, index) in Breadcrumbs.Select((item, index) => (item, index)))
-                                {
-                                    @if (index > 0)
-                                    {
-                                        <i class="material-symbols-rounded text-xs text-secondary">chevron_right</i>
-                                    }
-                                    @if (index == Breadcrumbs.Count - 1)
-                                    {
-                                        <span class="text-xs text-secondary">@item.Text</span>
-                                    }
-                                    else
-                                    {
-                                        <a href="@item.Href" class="text-xs text-interactive hover:text-interactive-hover">@item.Text</a>
-                                    }
-                                }
-                            </nav>
+                            <p class="text-sm text-secondary ma-0 leading-tight">@PageSubtitle</p>
                         }
                     </div>
                 }
@@ -125,10 +147,10 @@ Ultra-clean, responsive, and customizable for any business application.
                                          Size="ButtonSize.Small"
                                          OnClick="CollapseSearch" 
                                          AriaLabel="Close search" />
-                                <RTextInput Type="FieldType.Search"
+                                <RInput Type="FieldType.Search"
                                            Placeholder="Search..."
                                            Value="@searchQuery"
-                                           ValueChanged="@(value => { searchQuery = value; HandleSearchChange(); })"
+                                           ValueChanged="@(value => { searchQuery = value?.ToString(); HandleSearchChange(); })"
                                            Class="w-48 search-input-expanded" />
                             }
                             else
@@ -143,10 +165,10 @@ Ultra-clean, responsive, and customizable for any business application.
                         else
                         {
                             <div class="relative">
-                                <RTextInput Type="FieldType.Search"
+                                <RInput Type="FieldType.Search"
                                            Placeholder="Search..."
                                            Value="@searchQuery"
-                                           ValueChanged="@(value => { searchQuery = value; HandleSearchChange(); })"
+                                           ValueChanged="@(value => { searchQuery = value?.ToString(); HandleSearchChange(); })"
                                            Class="w-64" />
                                 <i class="material-symbols-rounded absolute left-3 top-1/2 transform -translate-y-1/2 text-tertiary">search</i>
                             </div>
@@ -673,21 +695,14 @@ Ultra-clean, responsive, and customizable for any business application.
     
     private string GetAppShellClasses()
     {
-        var classes = new List<string> 
-        { 
-            "app-shell",
-            "min-h-screen"
-        };
+        var classes = new List<string> { "app-shell", "min-h-screen" };
         
         if (!string.IsNullOrEmpty(Class))
             classes.Add(Class);
         
-        // Add state classes
         if (sidebarCollapsed) classes.Add("sidebar-collapsed");
         if (sidebarOpen && IsMobile) classes.Add("sidebar-open");
         if (IsMobile) classes.Add("mobile");
-        
-        classes.Add("app-shell-base");
         
         return string.Join(" ", classes);
     }

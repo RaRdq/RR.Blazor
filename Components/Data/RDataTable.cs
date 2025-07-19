@@ -50,8 +50,8 @@ public class RDataTable<TItem> : ComponentBase
     // Selection
     [Parameter] public bool MultiSelection { get; set; }
     [Parameter] public bool SingleSelection { get; set; }
-    [Parameter] public IList<TItem> SelectedItems { get; set; } = new List<TItem>();
-    [Parameter] public EventCallback<IList<TItem>> SelectedItemsChanged { get; set; }
+    [Parameter] public List<TItem> SelectedItems { get; set; } = new List<TItem>();
+    [Parameter] public EventCallback<List<TItem>> SelectedItemsChanged { get; set; }
     [Parameter] public TItem SelectedItem { get; set; }
     [Parameter] public EventCallback<TItem> SelectedItemChanged { get; set; }
 
@@ -144,7 +144,7 @@ public class RDataTable<TItem> : ComponentBase
             // Selection
             builder2.AddAttribute(24, "MultiSelection", MultiSelection);
             builder2.AddAttribute(25, "SingleSelection", SingleSelection);
-            builder2.AddAttribute(26, "SelectedItems", ConvertSelectedItems());
+            builder2.AddAttribute(26, "SelectedItems", SelectedItems);
             builder2.AddAttribute(27, "SelectedItemsChanged", SelectedItemsChanged);
             builder2.AddAttribute(28, "SelectedItem", SelectedItem);
             builder2.AddAttribute(29, "SelectedItemChanged", SelectedItemChanged);

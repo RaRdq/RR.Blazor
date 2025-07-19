@@ -6,6 +6,7 @@ using System.Reflection;
 using System.Text.Encodings.Web;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Rendering;
 using RR.Blazor.Enums;
 
 namespace RR.Blazor.Components.Data;
@@ -121,13 +122,32 @@ public static class PropertyColumnGenerator
                 Sortable = meta.Sortable,
                 Filterable = meta.Filterable,
                 Width = meta.Width,
-                CellTemplate = CreateOptimizedCellTemplate<TItem>(meta)
+                CellTemplate = CreateOptimizedCellTemplate<TItem>(meta),
+                ValueFunc = CreatePropertyValueFunc<TItem>(meta.PropertyName)
             };
             
             columns.Add(column);
         }
         
         return columns;
+    }
+
+    /// <summary>
+    /// Create property value function using compiled accessors
+    /// </summary>
+    private static Func<TItem, object> CreatePropertyValueFunc<TItem>(string propertyName)
+    {
+        var itemType = typeof(TItem);
+        var accessors = _propertyAccessors.GetOrAdd(itemType, _ => GeneratePropertyAccessors<TItem>());
+        
+        if (accessors.TryGetValue(propertyName, out var accessor))
+        {
+            return item => accessor(item);
+        }
+        
+        // Fallback to reflection
+        var property = itemType.GetProperty(propertyName);
+        return item => property?.GetValue(item);
     }
 
     /// <summary>
@@ -139,12 +159,43 @@ public static class PropertyColumnGenerator
         
         return item => builder =>
         {
-            var accessors = _propertyAccessors[itemType];
-            var value = accessors[metadata.PropertyName](item);
+            var accessors = _propertyAccessors.GetOrAdd(itemType, _ => GeneratePropertyAccessors<TItem>());
+            var value = accessors.TryGetValue(metadata.PropertyName, out var accessor) 
+                ? accessor(item) 
+                : GetCellValueFallback(item, metadata.PropertyName);
             var formattedValue = FormatValueOptimized(value, metadata);
             
-            builder.AddContent(0, formattedValue);
+            if (metadata.IsEmail && !string.IsNullOrEmpty(formattedValue) && IsValidEmail(formattedValue))
+            {
+                builder.AddMarkupContent(0, CreateSecureEmailLink(formattedValue));
+            }
+            else if (metadata.IsUrl && !string.IsNullOrEmpty(formattedValue) && IsValidUrl(formattedValue))
+            {
+                builder.AddMarkupContent(0, CreateSecureUrlLink(formattedValue));
+            }
+            else
+            {
+                builder.AddContent(0, formattedValue);
+            }
         };
+    }
+
+    /// <summary>
+    /// Fallback method to get cell value using reflection
+    /// </summary>
+    private static object GetCellValueFallback<TItem>(TItem item, string propertyName)
+    {
+        if (item == null) return null;
+        
+        try
+        {
+            var property = typeof(TItem).GetProperty(propertyName);
+            return property?.GetValue(item);
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     /// <summary>

@@ -185,6 +185,59 @@ private async Task HandleFormSubmit(object args)
 
 ## Related Components
 
+### RInput Smart Architecture (IMPLEMENTED)
+
+**Goal**: Unified input component that supports all input types with smart detection
+
+**Architecture**: 
+```csharp
+// Unified RInput.razor - no inheritance layers needed
+public partial class RInput : RInputBase
+{
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public FieldType Type { get; set; } = FieldType.Text;
+    [Parameter] public bool IsMultiLine { get; set; } = false;
+    
+    // Smart type detection without reflection
+    private FieldType GetEffectiveType()
+    {
+        if (Type != FieldType.Text) return Type; // Explicit override
+        
+        // Auto-detect from value content
+        if (!string.IsNullOrEmpty(Value))
+        {
+            if (Value.Contains("@")) return FieldType.Email;
+            if (DateTime.TryParse(Value, out _)) return FieldType.Date;
+            if (decimal.TryParse(Value, out _)) return FieldType.Number;
+        }
+        
+        // Auto-detect from label hints
+        if (!string.IsNullOrEmpty(Label))
+        {
+            var lower = Label.ToLower();
+            if (lower.Contains("email")) return FieldType.Email;
+            if (lower.Contains("password")) return FieldType.Password;
+            if (lower.Contains("phone")) return FieldType.Tel;
+            if (lower.Contains("date")) return FieldType.Date;
+        }
+        
+        return FieldType.Text;
+    }
+}
+```
+
+**Usage Examples**:
+```razor
+@* Smart detection *@
+<RInput @bind-Value="user.Email" Label="Email" />        @* Auto-detects email *@
+<RInput @bind-Value="user.Phone" Label="Phone Number" /> @* Auto-detects tel *@
+<RInput @bind-Value="notes" IsMultiLine="true" />        @* Textarea mode *@
+
+@* Explicit types when needed *@
+<RInput @bind-Value="password" Type="FieldType.Password" Label="Password" />
+<RInput @bind-Value="amount" Type="FieldType.Number" Min="0" Max="1000" />
+```
+
 ### RDropdown Architecture
 - Similar smart detection pattern needed
 - Multiple legacy variants to consolidate
@@ -196,6 +249,16 @@ This architecture pattern can be applied to:
 - `RDropdown<T>` → `RDropdown`  
 - `RAutocomplete<T>` → `RAutocomplete`
 - Any generic component that can infer type from parameters
+
+### Future Input Components (Phase 2)
+For advanced use cases, specific components can be added later:
+- `REmailInput` - Domain validation, suggestions
+- `RPasswordInput` - Strength meter, security features  
+- `RNumberInput` - Advanced numeric formatting
+- `RDateInput` - Advanced date picker features
+- `RCurrencyInput` - Multi-currency support
+
+These would be used for specialized features while `RInput` handles 90% of use cases.
 
 ## Lessons Learned
 

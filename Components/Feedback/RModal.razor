@@ -1,10 +1,17 @@
 @using RR.Blazor.Enums
+@using Microsoft.JSInterop
 @* RModal - Generic modal component with comprehensive configuration *@
 
 @if (Visible)
 {
-<div class="modal @Class" @onclick="HandleBackdropClick">
-    <div class="modal-backdrop backdrop-blur-sm overlay-dark opacity-50"></div>
+<div class="modal @Class" @onclick="HandleBackdropClick" 
+     role="dialog" 
+     aria-modal="true" 
+     aria-labelledby="@ModalTitleId" 
+     aria-describedby="@(!string.IsNullOrEmpty(Subtitle) ? ModalDescriptionId : null)"
+     @ref="modalElement"
+     tabindex="-1">
+    <div class="modal-backdrop backdrop-blur-sm overlay-dark opacity-50" aria-hidden="true"></div>
     <div class="modal-content @GetSizeClass() shadow-xl glass-light" @onclick:stopPropagation="true">
         @if (ShowHeader)
         {
@@ -12,13 +19,13 @@
                 <div class="d-flex items-center @GetModalHeaderClasses()">
                     @if (!string.IsNullOrEmpty(Icon))
                     {
-                        <i class="material-symbols-rounded text-primary @GetIconSizeClass()">@Icon</i>
+                        <i class="material-symbols-rounded text-primary @GetIconSizeClass()" aria-hidden="true">@Icon</i>
                     }
                     <div class="d-flex flex-col">
-                        <h3 class="modal-title ma-0 @GetTitleClasses()">@Text</h3>
+                        <h3 id="@ModalTitleId" class="modal-title ma-0 @GetTitleClasses()">@Text</h3>
                         @if (!string.IsNullOrEmpty(Subtitle))
                         {
-                            <p class="modal-subtitle ma-0 text-sm text-secondary">@Subtitle</p>
+                            <p id="@ModalDescriptionId" class="modal-subtitle ma-0 text-sm text-secondary">@Subtitle</p>
                         }
                     </div>
                 </div>
@@ -26,8 +33,12 @@
                     @HeaderContent
                     @if (ShowCloseButton)
                     {
-                        <button type="button" class="modal-close" @onclick="HandleClose" disabled="@Processing">
-                            <i class="material-symbols-rounded">close</i>
+                        <button type="button" 
+                                class="modal-close" 
+                                @onclick="HandleClose" 
+                                disabled="@Processing"
+                                aria-label="Close dialog">
+                            <i class="material-symbols-rounded" aria-hidden="true">close</i>
                         </button>
                     }
                 </div>
@@ -106,6 +117,14 @@
     [Parameter] public ComponentDensity Density { get; set; } = ComponentDensity.Normal;
     [Parameter] public string Class { get; set; }
     
+    // Accessibility properties
+    private ElementReference modalElement;
+    private ElementReference? previouslyFocusedElement;
+    private string ModalTitleId { get; set; } = $"modal-title-{Guid.NewGuid():N}";
+    private string ModalDescriptionId { get; set; } = $"modal-desc-{Guid.NewGuid():N}";
+
+    [Inject] private IJSRuntime JSRuntime { get; set; } = default!;
+    
     // Header Configuration
     [Parameter] public bool ShowHeader { get; set; } = true;
     
@@ -171,9 +190,85 @@
     {
         if (!Processing)
         {
+            // Restore focus to previously focused element before closing
+            await RestoreFocus();
+            
             Visible = false;
             await VisibleChanged.InvokeAsync(false);
             await OnClose.InvokeAsync();
+        }
+    }
+    
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Visible)
+        {
+            await SetupModalFocus();
+        }
+    }
+    
+    private async Task SetupModalFocus()
+    {
+        try
+        {
+            // Store reference to currently focused element
+            await JSRuntime.InvokeVoidAsync("eval", "window._previouslyFocusedElement = document.activeElement");
+            
+            // Focus the modal after a brief delay to ensure it's rendered
+            await Task.Delay(100);
+            await modalElement.FocusAsync();
+            
+            // Set up keyboard event listener for escape key
+            await JSRuntime.InvokeVoidAsync("eval", @"
+                window._modalKeyHandler = function(e) {
+                    if (e.key === 'Escape' && window._modalInstance) {
+                        window._modalInstance.invokeMethodAsync('HandleEscapeKey');
+                    }
+                };
+                document.addEventListener('keydown', window._modalKeyHandler);
+            ");
+            
+            await JSRuntime.InvokeVoidAsync("eval", "window._modalInstance = arguments[0]", DotNetObjectReference.Create(this));
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error setting up modal focus: {ex.Message}");
+        }
+    }
+    
+    [JSInvokable]
+    public async Task HandleEscapeKey()
+    {
+        if (CloseOnEscape && !Processing)
+        {
+            await HandleClose();
+        }
+    }
+    
+    private async Task RestoreFocus()
+    {
+        try
+        {
+            // Remove keyboard event listener
+            await JSRuntime.InvokeVoidAsync("eval", @"
+                if (window._modalKeyHandler) {
+                    document.removeEventListener('keydown', window._modalKeyHandler);
+                    window._modalKeyHandler = null;
+                }
+                window._modalInstance = null;
+            ");
+            
+            // Restore focus to previously focused element
+            await JSRuntime.InvokeVoidAsync("eval", @"
+                if (window._previouslyFocusedElement && window._previouslyFocusedElement.focus) {
+                    window._previouslyFocusedElement.focus();
+                }
+                window._previouslyFocusedElement = null;
+            ");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error restoring focus: {ex.Message}");
         }
     }
     

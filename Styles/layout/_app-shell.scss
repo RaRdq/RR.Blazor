@@ -24,10 +24,19 @@
 
 // Primary app shell layout structure
 .app-shell {
-  display: flex;
+  display: grid;
   min-height: 100vh;
   position: relative;
   background: var(--color-background-primary);
+  grid-template-areas: 
+    "header header"
+    "sidebar main";
+  grid-template-columns: var(--sidebar-width, 16rem) 1fr;
+  grid-template-rows: var(--header-height, 4rem) 1fr;
+  
+  &.sidebar-collapsed {
+    grid-template-columns: var(--sidebar-width-collapsed, 4rem) 1fr;
+  }
   
   &-container {
     container-type: inline-size;
@@ -49,7 +58,11 @@
   
   // Mobile-first responsive foundation
   @include responsive-max(md) {
-    flex-direction: column;
+    grid-template-areas: 
+      "header"
+      "main";
+    grid-template-columns: 1fr;
+    grid-template-rows: var(--header-height, 4rem) 1fr;
   }
   
   // Container query support for adaptive layouts
@@ -84,8 +97,19 @@
 
 // App header specific styles
 .app-header {
+  grid-area: header;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
   z-index: var(--z-header);
   height: var(--header-height);
+  background: var(--color-background-primary);
+  border-bottom: var(--border-1) solid var(--color-border-light);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-4);
   
   // Ensure header doesn't interfere with clickable elements below
   &-height {
@@ -103,49 +127,142 @@
   }
 }
 
-// Main content area
-.main-content {
+// Header layout sections
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
   flex: 1;
-  min-height: 100vh;
-  padding-top: var(--header-height);
+  min-width: 0;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+// App logo styling
+.app-logo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  
+  img {
+    height: 2rem;
+    width: auto;
+  }
+  
+  span {
+    font-weight: 600;
+    color: var(--color-text-primary);
+    white-space: nowrap;
+  }
+}
+
+// Search component with animations
+.app-search {
+  position: relative;
+  
+  .search-input-expanded {
+    animation: searchExpandLeft 0.3s var(--ease-out) forwards;
+    transform-origin: right center;
+  }
+  
+  // Search expand animation
+  @keyframes searchExpandLeft {
+    0% {
+      width: 0;
+      opacity: 0;
+      transform: scaleX(0);
+    }
+    100% {
+      width: 12rem;
+      opacity: 1;
+      transform: scaleX(1);
+    }
+  }
+  
+  // Collapsible search states
+  .search-collapsed {
+    opacity: 0;
+    width: 0;
+    overflow: hidden;
+    transition: all 0.3s var(--ease-out);
+  }
+  
+  .search-expanded {
+    opacity: 1;
+    width: 12rem;
+    transition: all 0.3s var(--ease-out);
+  }
+}
+
+// App sidebar
+.app-sidebar {
+  grid-area: sidebar;
+  position: fixed;
+  top: var(--header-height);
+  left: 0;
+  bottom: 0;
+  width: var(--sidebar-width, 16rem);
+  background: var(--color-background-elevated);
+  border-right: var(--border-1) solid var(--color-border-light);
+  z-index: var(--z-sidebar);
+  display: flex;
+  flex-direction: column;
   transition: all var(--duration-normal) var(--ease-out);
   
-  &-expanded {
-    margin-left: var(--sidebar-width-expanded, 16rem);
-  }
-  
-  &-collapsed {
-    margin-left: var(--sidebar-width-collapsed, 4rem);
-  }
-  
-  &-centered {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    max-width: 100%;
+  &.collapsed {
+    width: var(--sidebar-width-collapsed, 4rem);
   }
   
   @include responsive-max(md) {
-    &-expanded,
-    &-collapsed {
-      margin-left: 0;
-      width: 100%;
-    }
+    transform: translateX(-100%);
     
-    // Ensure main content takes full width on mobile
-    &.mobile-sidebar {
-      margin-left: 0 !important;
-      width: 100% !important;
-      overflow-x: hidden;
+    &.open {
+      transform: translateX(0);
     }
   }
 }
 
-.main {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
+// Main content area
+.app-main {
+  grid-area: main;
+  position: relative;
+  min-height: calc(100vh - var(--header-height));
+  padding-top: var(--header-height);
+  overflow-x: hidden;
+  
+  &.auto-wrap-content {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  @include responsive-max(md) {
+    margin-left: 0;
+    width: 100%;
+  }
+}
+
+// Mobile backdrop for sidebar overlay
+.mobile-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: calc(var(--z-sidebar) - 1);
+  opacity: 0;
+  visibility: hidden;
+  transition: all var(--duration-normal) var(--ease-out);
+  
+  &.active {
+    opacity: 1;
+    visibility: visible;
+  }
 }
 
 // ============================================================================

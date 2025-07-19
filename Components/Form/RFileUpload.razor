@@ -23,7 +23,13 @@
     @* Main Upload Area *@
     @if (DisplayMode == RFileUploadDisplayMode.DropZone)
     {
-        <div class="@GetUploadZoneClasses()" @onclick="@(() => TriggerFileSelect())">
+        <div class="@GetUploadZoneClasses()" 
+             tabindex="0"
+             role="button"
+             aria-label="@GetDropZoneAriaLabel()"
+             aria-describedby="@($"{ComponentId}-hint")"
+             @onclick="@(() => TriggerFileSelect())"
+             @onkeydown="@HandleDropZoneKeyDown">
             <InputFile id="@InputId"
                        class="upload-area-input"
                        accept="@GetAcceptString()"
@@ -34,7 +40,8 @@
             <label for="@InputId" class="upload-area-label">
                 <i class="material-symbols-rounded">@GetUploadIcon()</i>
                 <h5 class="upload-area-text">@GetUploadText()</h5>
-                <p class="upload-area-hint">@GetUploadHint()</p>
+                <p id="@($"{ComponentId}-hint")" class="upload-area-hint">@GetUploadHint()</p>
+                <p class="sr-only">Press Enter or Space to select files, or drag and drop files here</p>
                 @if (ShowBrowseButton)
                 {
                     <RButton Text="@BrowseButtonText" 
@@ -108,10 +115,15 @@
     @* File Preview/List *@
     @if (ShowPreview && SelectedFiles.Any())
     {
-        <div class="file-attachments">
-            @foreach (var file in SelectedFiles)
+        <div class="file-attachments" role="list" aria-label="Selected files">
+            @foreach (var (file, index) in SelectedFiles.Select((f, i) => (f, i)))
             {
-                <div class="file-preview" data-file-id="@file.Id">
+                <div class="file-preview" 
+                     data-file-id="@file.Id"
+                     tabindex="0"
+                     role="listitem"
+                     aria-label="@GetFilePreviewAriaLabel(file)"
+                     @onkeydown="@((e) => HandleFilePreviewKeyDown(e, file.Id))">
                     <div class="file-preview-info">
                         @if (file.IsImage && !string.IsNullOrEmpty(file.ThumbnailUrl))
                         {
@@ -138,7 +150,11 @@
                     <div class="flex items-center gap-2">
                         @if (ShowProgress && file.Status == RFileUploadStatus.Uploading)
                         {
-                            <div class="upload-progress w-24">
+                            <div class="upload-progress w-24" role="progressbar" 
+                                 aria-valuenow="@((int)file.UploadProgress)" 
+                                 aria-valuemin="0" 
+                                 aria-valuemax="100"
+                                 aria-label="Upload progress">
                                 <div class="upload-progress-bar">
                                     <div class="upload-progress-bar-fill" style="--progress-width: @(file.UploadProgress)%;"></div>
                                 </div>
@@ -147,11 +163,11 @@
                         }
                         else if (file.Status == RFileUploadStatus.Completed)
                         {
-                            <i class="material-symbols-rounded text-success">check_circle</i>
+                            <i class="material-symbols-rounded text-success" aria-label="Upload completed">check_circle</i>
                         }
                         else if (file.Status == RFileUploadStatus.Failed)
                         {
-                            <i class="material-symbols-rounded text-error">error</i>
+                            <i class="material-symbols-rounded text-error" aria-label="Upload failed">error</i>
                         }
 
                         @if (AllowRemove && file.Status != RFileUploadStatus.Uploading)
@@ -159,6 +175,7 @@
                             <RButton Variant="ButtonVariant.Ghost" 
                                      Size="ButtonSize.Small" 
                                      Icon="close"
+                                     AriaLabel="@($"Remove {file.Name}")"
                                      OnClick="@(() => RemoveFile(file.Id))" />
                         }
                     </div>
@@ -450,6 +467,78 @@
         {
             await jsModule.InvokeVoidAsync("document.getElementById", InputId, "click");
         }
+    }
+
+    private async Task HandleDropZoneKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" || e.Key == " " || e.Key == "Spacebar")
+        {
+            await TriggerFileSelect();
+        }
+        else if (e.Key == "Escape")
+        {
+            // Clear focus from drop zone
+            await JSRuntime.InvokeVoidAsync("eval", "document.activeElement.blur()");
+        }
+    }
+
+    private string GetDropZoneAriaLabel()
+    {
+        var label = Multiple ? "Select files" : "Select file";
+        if (AllowedTypes?.Length > 0)
+        {
+            label += $". Accepted file types: {string.Join(", ", AllowedTypes)}";
+        }
+        if (MaxSize > 0)
+        {
+            label += $". Maximum file size: {FormatFileSize(MaxSize)}";
+        }
+        return label;
+    }
+
+    private async Task HandleFilePreviewKeyDown(KeyboardEventArgs e, string fileId)
+    {
+        if (e.Key == "Delete" || e.Key == "Backspace")
+        {
+            if (AllowRemove)
+            {
+                await RemoveFile(fileId);
+            }
+        }
+        else if (e.Key == "ArrowDown" || e.Key == "ArrowUp")
+        {
+            // Navigate between file items using arrow keys
+            var currentIndex = SelectedFiles.FindIndex(f => f.Id == fileId);
+            if (currentIndex >= 0)
+            {
+                var nextIndex = e.Key == "ArrowDown" 
+                    ? Math.Min(currentIndex + 1, SelectedFiles.Count - 1)
+                    : Math.Max(currentIndex - 1, 0);
+                
+                if (nextIndex != currentIndex)
+                {
+                    var nextFileId = SelectedFiles[nextIndex].Id;
+                    await JSRuntime.InvokeVoidAsync("eval", $"document.querySelector('[data-file-id=\"{nextFileId}\"]')?.focus()");
+                }
+            }
+        }
+    }
+
+    private string GetFilePreviewAriaLabel(RFileInfo file)
+    {
+        var status = file.Status switch
+        {
+            RFileUploadStatus.Uploading => $"uploading {Math.Round(file.UploadProgress)}% complete",
+            RFileUploadStatus.Completed => "upload completed",
+            RFileUploadStatus.Failed => $"upload failed: {file.ErrorMessage}",
+            _ => "ready for upload"
+        };
+        
+        var removeHint = AllowRemove && file.Status != RFileUploadStatus.Uploading 
+            ? ". Press Delete or Backspace to remove" 
+            : "";
+            
+        return $"{file.Name}, {FormatFileSize(file.Size)}, {status}{removeHint}";
     }
 
     // JavaScript Callbacks

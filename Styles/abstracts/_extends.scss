@@ -27,6 +27,7 @@
 %badge-base {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: var(--space-1);
   padding: var(--space-1) var(--space-3);
   border-radius: var(--radius-full);
@@ -34,11 +35,38 @@
   font-weight: var(--font-bold);
   text-transform: uppercase;
   letter-spacing: var(--tracking-wide);
-  background: linear-gradient(135deg, var(--color-background-elevated) 0%, var(--color-background-secondary) 100%);
-  border: var(--border-1) solid var(--color-border-light);
-  box-shadow: var(--shadow-sm);
-  transition: all var(--duration-fast) var(--ease-out);
+  border: var(--border-1) solid;
   white-space: nowrap;
+  line-height: 1;
+  vertical-align: middle;
+  position: relative;
+  overflow: hidden;
+  
+  // 2030 Glass Enhancement
+  backdrop-filter: var(--glass-blur-md) var(--glass-saturate) var(--glass-brightness);
+  -webkit-backdrop-filter: var(--glass-blur-md) var(--glass-saturate) var(--glass-brightness);
+  transition: all var(--duration-normal) var(--ease-out);
+  
+  // Glass shimmer effect
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.3),
+      transparent
+    );
+    transition: left var(--duration-slow) var(--ease-out);
+  }
+  
+  &:hover::before {
+    left: 100%;
+  }
 }
 
 %status-indicator-base {
@@ -166,6 +194,10 @@
 }
 
 %button-base {
+  // Mixins with declarations first
+  @include button-reset;
+  @include flex-center;
+  
   gap: var(--space-2);
   font-weight: var(--font-medium);
   text-align: center;
@@ -191,10 +223,6 @@
     cursor: not-allowed;
     pointer-events: none;
   }
-  
-  // Mixins with nested rules last
-  @include button-reset;
-  @include flex-center;
   
   @include responsive-max(md) {
     min-height: 2.75rem;
@@ -913,38 +941,49 @@
 // ===== APP SHELL EXTENDS - ENTERPRISE 2030 =====
 // Ultra-clean, generic foundational extends for enterprise app shell architecture
 
-// Core app shell foundationES
-.app-shell-base {
-  // Properties first
+// App shell foundation - clean grid layout
+.app-shell {
+  display: grid;
+  min-height: 100vh;
   position: relative;
-  overflow: hidden;
   contain: layout style;
-  will-change: auto;
-  transform: translateZ(0);
+  overflow: hidden;
   
-  // Mixins with nested rules after all properties
-  @include app-shell-layout(full-width-header);
+  // Desktop: full-width header layout  
+  grid-template-areas: 
+    "header header"
+    "sidebar main";
+  grid-template-columns: var(--sidebar-width) 1fr;
+  grid-template-rows: var(--header-height) 1fr;
+  
+  // Mobile: stacked layout
+  @include responsive-max(lg) {
+    grid-template-areas: 
+      "header"
+      "main";
+    grid-template-columns: 1fr;
+    grid-template-rows: var(--header-height) 1fr;
+  }
 }
 
-// Enterprise header foundation
+// Header foundation - fixed at top
 .app-header {
   grid-area: header;
-  @include app-glass(heavy, 20px);
-  @include app-spacing(normal);
-  @include app-focus();
-  
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
-  height: var(--header-height, 4rem);
-  z-index: var(--z-header, 100);
+  height: var(--header-height);
+  z-index: var(--z-header);
   
   display: flex;
   align-items: center;
   justify-content: space-between;
   
-  // Perfect element heights auto-alignment
+  background: var(--color-background-elevated);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--color-border-light);
+  
   > * {
     display: flex;
     align-items: center;
@@ -952,36 +991,31 @@
   }
 }
 
-// Enterprise sidebar foundation
+// Sidebar foundation - fixed at left
 .app-sidebar {
   grid-area: sidebar;
-  @include app-glass(medium, 16px);
-  @include app-spacing(normal);
-  @include app-scrollbar();
-  
   position: fixed;
-  top: var(--header-height, 4rem);
+  top: var(--header-height);
   left: 0;
   bottom: 0;
-  width: var(--sidebar-width, 16rem);
-  z-index: var(--z-sidebar, 90);
+  width: var(--sidebar-width);
+  z-index: var(--z-sidebar);
   
   display: flex;
   flex-direction: column;
   overflow-y: auto;
   overflow-x: hidden;
   
-  // Collapsible animation
+  background: var(--color-background-elevated);
+  backdrop-filter: blur(12px);
+  border-right: 1px solid var(--color-border-light);
+  
   transition: all var(--duration-normal) var(--ease-out);
   
-  // Collapsed state  
   &.collapsed {
-    width: var(--sidebar-width-collapsed, 4rem);
-    min-width: var(--sidebar-width-collapsed, 4rem);
-    overflow: hidden;
+    width: var(--sidebar-width-collapsed);
   }
   
-  // Mobile responsive
   @include responsive-max(lg) {
     transform: translateX(-100%);
     
@@ -991,40 +1025,30 @@
   }
 }
 
-// Enterprise main content foundation
+// Main content foundation - offset from fixed header/sidebar
 .app-main {
-  // Base properties first
   grid-area: main;
-  padding-top: var(--header-height, 4rem);
-  padding-left: 0;
-  min-height: calc(100vh - var(--header-height, 4rem));
   position: relative;
   contain: layout style;
-  overflow-x: hidden; // Prevent horizontal overflow while allowing vertical scroll
-  // Remove overflow-y: auto to prevent double scrollbar - page should scroll
+  overflow-x: hidden;
   
-  // Mixins and nested rules after properties
-  @include app-spacing(comfortable);
+  padding-top: var(--header-height);
+  min-height: calc(100vh - var(--header-height));
   
   @include responsive-min(lg) {
-    padding-left: var(--sidebar-width, 16rem);
+    padding-left: var(--sidebar-width);
     padding-right: var(--space-6);
-    padding-top: var(--space-6);
+    padding-top: calc(var(--header-height) + var(--space-6));
     
     .app-shell.sidebar-collapsed & {
-      padding-left: var(--sidebar-width-collapsed, 4rem);
+      padding-left: var(--sidebar-width-collapsed);
     }
   }
   
-  // Mobile padding
   @include responsive-max(lg) {
     padding-left: var(--space-4);
     padding-right: var(--space-4);
-    padding-top: var(--space-4);
-  }
-  
-  @media (prefers-reduced-motion: reduce) {
-    scroll-behavior: auto;
+    padding-top: calc(var(--header-height) + var(--space-4));
   }
 }
 

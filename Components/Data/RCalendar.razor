@@ -1,0 +1,519 @@
+@** 
+<summary>
+Ultra-professional, customizable calendar component with modern glassmorphism design. 
+Supports events, custom rendering, responsive layouts, and advanced navigation patterns.
+</summary>
+<category>Data</category>
+<complexity>Complex</complexity>
+<ai-prompt>Create modern calendar with events and custom day rendering</ai-prompt>
+<ai-common-use>event calendars, booking systems, scheduling, date selection</ai-common-use>
+<ai-avoid>Don't use for simple date pickers - use RDatePicker instead. Avoid for non-visual date operations.</ai-avoid>
+<ai-pattern name="basic-calendar">CurrentDate with DateChanged for simple calendar</ai-pattern>
+<ai-pattern name="event-calendar">Events list with custom EventTemplate for rich event display</ai-pattern>
+<ai-pattern name="custom-rendering">DayTemplate for complete day cell customization</ai-pattern>
+<ai-pattern name="navigation-calendar">ShowNavigation with CustomHeader for advanced navigation</ai-pattern>
+**@
+
+@using RR.Blazor.Models
+@using RR.Blazor.Enums
+@using RR.Blazor.Attributes
+@using Microsoft.AspNetCore.Components
+
+@namespace RR.Blazor.Components
+@attribute [Component("RCalendar", Category = "Data", Complexity = ComponentComplexity.Complex)]
+@attribute [AIOptimized(Prompt = "Create modern calendar with events and custom day rendering", 
+                       CommonUse = "event calendars, booking systems, scheduling, date selection", 
+                       AvoidUsage = "Don't use for simple date pickers - use RDatePicker instead")]
+
+<div class="@GetCalendarClasses()" style="@Style">
+    @if (ShowHeader)
+    {
+        <div class="@GetHeaderClasses()">
+            @if (HeaderTemplate != null)
+            {
+                @HeaderTemplate(GetHeaderContext())
+            }
+            else
+            {
+                <div class="d-flex items-center justify-between">
+                    <div class="d-flex items-center gap-2">
+                        @if (ShowNavigation)
+                        {
+                            <RButton Icon="@GetPreviousIcon()" 
+                                     Variant="ButtonVariant.Ghost"
+                                     Size="ButtonSize.Small"
+                                     OnClick="NavigatePrevious"
+                                     AriaLabel="Previous" />
+                        }
+                        
+                        <div class="d-flex items-center gap-3">
+                            <h3 class="@GetTitleClasses()">@GetCurrentTitle()</h3>
+                            @if (ShowQuickNavigation)
+                            {
+                                <RButton Icon="today" 
+                                         Text="Today"
+                                         Variant="ButtonVariant.Ghost"
+                                         Size="ButtonSize.Small"
+                                         OnClick="GoToToday" />
+                            }
+                        </div>
+                        
+                        @if (ShowNavigation)
+                        {
+                            <RButton Icon="@GetNextIcon()" 
+                                     Variant="ButtonVariant.Ghost"
+                                     Size="ButtonSize.Small"
+                                     OnClick="NavigateNext"
+                                     AriaLabel="Next" />
+                        }
+                    </div>
+                    
+                    @if (ShowViewToggle)
+                    {
+                        <div class="d-flex items-center gap-1">
+                            <RButton Text="Month" 
+                                     Variant="@(View == CalendarView.Month ? ButtonVariant.Primary : ButtonVariant.Ghost)"
+                                     Size="ButtonSize.Small"
+                                     OnClick="() => ChangeView(CalendarView.Month)" />
+                            <RButton Text="Week" 
+                                     Variant="@(View == CalendarView.Week ? ButtonVariant.Primary : ButtonVariant.Ghost)"
+                                     Size="ButtonSize.Small"
+                                     OnClick="() => ChangeView(CalendarView.Week)" />
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    }
+    
+    <div class="@GetCalendarBodyClasses()">
+        @if (ShowWeekdayHeaders)
+        {
+            <div class="@GetWeekdayHeaderClasses()">
+                @foreach (var weekday in GetWeekdayNames())
+                {
+                    <div class="@GetWeekdayHeaderCellClasses()">
+                        @weekday
+                    </div>
+                }
+            </div>
+        }
+        
+        <div class="@GetCalendarGridClasses()">
+            @foreach (var week in GetCalendarWeeks())
+            {
+                @foreach (var day in week)
+                {
+                    <div class="@GetDayCellClasses(day)" 
+                         @onclick="() => HandleDayClick(day)"
+                         @onmouseenter="() => HandleDayHover(day)"
+                         data-date="@day.ToString("yyyy-MM-dd")">
+                        
+                        @if (DayTemplate != null)
+                        {
+                            @DayTemplate(GetDayContext(day))
+                        }
+                        else
+                        {
+                            <div class="@GetDayContentClasses(day)">
+                                <div class="@GetDayNumberClasses(day)">
+                                    @day.Day
+                                </div>
+                                
+                                @if (Events?.Any() == true)
+                                {
+                                    var dayEvents = GetEventsForDay(day);
+                                    if (dayEvents.Any())
+                                    {
+                                        <div class="@GetEventsContainerClasses()">
+                                            @foreach (var calendarEvent in dayEvents.Take(MaxEventsPerDay))
+                                            {
+                                                @if (EventTemplate != null)
+                                                {
+                                                    @EventTemplate(calendarEvent)
+                                                }
+                                                else
+                                                {
+                                                    <div class="@GetEventClasses(calendarEvent)" 
+                                                         title="@calendarEvent.Title"
+                                                         @onclick:stopPropagation="true"
+                                                         @onclick="() => HandleEventClick(calendarEvent)">
+                                                        @GetEventDisplayText(calendarEvent)
+                                                    </div>
+                                                }
+                                            }
+                                            @if (dayEvents.Count() > MaxEventsPerDay)
+                                            {
+                                                <div class="@GetMoreEventsClasses()" 
+                                                     @onclick:stopPropagation="true"
+                                                     @onclick="() => HandleMoreEventsClick(day)">
+                                                    +@(dayEvents.Count() - MaxEventsPerDay) more
+                                                </div>
+                                            }
+                                        </div>
+                                    }
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    #region Parameters
+    
+    /// <summary>Current displayed date</summary>
+    [Parameter, AIParameter("Current calendar date", "DateTime.Today")]
+    public DateTime CurrentDate { get; set; } = DateTime.Today;
+    
+    /// <summary>Date changed callback</summary>
+    [Parameter] public EventCallback<DateTime> CurrentDateChanged { get; set; }
+    
+    /// <summary>Selected date</summary>
+    [Parameter, AIParameter("Currently selected date", "DateTime for highlighting selected day")]
+    public DateTime? SelectedDate { get; set; }
+    
+    /// <summary>Selected date changed callback</summary>
+    [Parameter] public EventCallback<DateTime?> SelectedDateChanged { get; set; }
+    
+    /// <summary>Calendar view mode</summary>
+    [Parameter, AIParameter("Calendar view type", "CalendarView.Month or CalendarView.Week")]
+    public CalendarView View { get; set; } = CalendarView.Month;
+    
+    /// <summary>Calendar events</summary>
+    [Parameter, AIParameter("List of calendar events", "List<CalendarEvent> with Title, StartDate, EndDate")]
+    public List<CalendarEvent> Events { get; set; } = new();
+    
+    /// <summary>Calendar size variant</summary>
+    [Parameter, AIParameter("Calendar size", "CalendarSize.Small, CalendarSize.Default, CalendarSize.Large")]
+    public CalendarSize Size { get; set; } = CalendarSize.Default;
+    
+    /// <summary>Calendar density</summary>
+    [Parameter, AIParameter("Calendar density", "ComponentDensity for spacing control")]
+    public ComponentDensity Density { get; set; } = ComponentDensity.Normal;
+    
+    /// <summary>Show header with navigation</summary>
+    [Parameter, AIParameter("Show calendar header", "true to show month/year title and navigation")]
+    public bool ShowHeader { get; set; } = true;
+    
+    /// <summary>Show navigation buttons</summary>
+    [Parameter, AIParameter("Show navigation arrows", "true to show previous/next buttons")]
+    public bool ShowNavigation { get; set; } = true;
+    
+    /// <summary>Show quick navigation</summary>
+    [Parameter, AIParameter("Show today button", "true to show 'Today' quick navigation")]
+    public bool ShowQuickNavigation { get; set; } = true;
+    
+    /// <summary>Show view toggle buttons</summary>
+    [Parameter, AIParameter("Show view toggle", "true to show Month/Week view buttons")]
+    public bool ShowViewToggle { get; set; } = false;
+    
+    /// <summary>Show weekday headers</summary>
+    [Parameter, AIParameter("Show weekday names", "true to show Sun, Mon, Tue headers")]
+    public bool ShowWeekdayHeaders { get; set; } = true;
+    
+    /// <summary>Maximum events per day cell</summary>
+    [Parameter, AIParameter("Max events per day", "Number of events to show before '+more' link")]
+    public int MaxEventsPerDay { get; set; } = 3;
+    
+    /// <summary>Custom header template</summary>
+    [Parameter] public RenderFragment<CalendarHeaderContext> HeaderTemplate { get; set; }
+    
+    /// <summary>Custom day cell template</summary>
+    [Parameter] public RenderFragment<CalendarDayContext> DayTemplate { get; set; }
+    
+    /// <summary>Custom event template</summary>
+    [Parameter] public RenderFragment<CalendarEvent> EventTemplate { get; set; }
+    
+    /// <summary>Additional CSS classes</summary>
+    [Parameter] public string Class { get; set; }
+    
+    /// <summary>Additional CSS styles</summary>
+    [Parameter] public string Style { get; set; }
+    
+    /// <summary>Day clicked callback</summary>
+    [Parameter] public EventCallback<CalendarDayContext> DayClicked { get; set; }
+    
+    /// <summary>Event clicked callback</summary>
+    [Parameter] public EventCallback<CalendarEvent> EventClicked { get; set; }
+    
+    /// <summary>More events clicked callback</summary>
+    [Parameter] public EventCallback<CalendarDayContext> MoreEventsClicked { get; set; }
+    
+    /// <summary>View changed callback</summary>
+    [Parameter] public EventCallback<CalendarView> ViewChanged { get; set; }
+    
+    #endregion
+    
+    #region CSS Class Generators
+    
+    private string GetCalendarClasses()
+    {
+        var classes = new List<string> { "calendar" };
+        
+        classes.Add(Size switch
+        {
+            CalendarSize.Small => "calendar-sm",
+            CalendarSize.Large => "calendar-lg",
+            _ => "calendar-default"
+        });
+        
+        classes.Add(Density switch
+        {
+            ComponentDensity.Compact => "calendar-compact",
+            ComponentDensity.Dense => "calendar-dense",
+            ComponentDensity.Spacious => "calendar-spacious",
+            _ => "calendar-normal"
+        });
+        
+        if (View == CalendarView.Week)
+            classes.Add("calendar-week-view");
+            
+        if (!string.IsNullOrEmpty(Class))
+            classes.Add(Class);
+        
+        return string.Join(" ", classes);
+    }
+    
+    private string GetHeaderClasses() => "calendar-header";
+    private string GetCalendarBodyClasses() => "calendar-body";
+    private string GetWeekdayHeaderClasses() => "calendar-weekdays";
+    private string GetWeekdayHeaderCellClasses() => "calendar-weekday";
+    private string GetCalendarGridClasses() => "calendar-grid";
+    private string GetTitleClasses() => "calendar-title";
+    
+    private string GetDayCellClasses(DateTime day)
+    {
+        var classes = new List<string> { "calendar-day" };
+        
+        if (day.Month != CurrentDate.Month)
+            classes.Add("calendar-day-other-month");
+            
+        if (day.Date == DateTime.Today)
+            classes.Add("calendar-day-today");
+            
+        if (SelectedDate.HasValue && day.Date == SelectedDate.Value.Date)
+            classes.Add("calendar-day-selected");
+            
+        if (day.DayOfWeek == DayOfWeek.Saturday || day.DayOfWeek == DayOfWeek.Sunday)
+            classes.Add("calendar-day-weekend");
+            
+        if (GetEventsForDay(day).Any())
+            classes.Add("calendar-day-has-events");
+        
+        return string.Join(" ", classes);
+    }
+    
+    private string GetDayContentClasses(DateTime day) => "calendar-day-content";
+    private string GetDayNumberClasses(DateTime day) => "calendar-day-number";
+    private string GetEventsContainerClasses() => "calendar-events";
+    
+    private string GetEventClasses(CalendarEvent calendarEvent)
+    {
+        var classes = new List<string> { "calendar-event" };
+        
+        if (!string.IsNullOrEmpty(calendarEvent.Category))
+            classes.Add($"calendar-event-{calendarEvent.Category.ToLower()}");
+            
+        if (calendarEvent.IsAllDay)
+            classes.Add("calendar-event-allday");
+        
+        return string.Join(" ", classes);
+    }
+    
+    private string GetMoreEventsClasses() => "calendar-more-events";
+    
+    #endregion
+    
+    #region Event Handlers
+    
+    private async Task HandleDayClick(DateTime day)
+    {
+        SelectedDate = day;
+        if (SelectedDateChanged.HasDelegate)
+            await SelectedDateChanged.InvokeAsync(SelectedDate);
+            
+        if (DayClicked.HasDelegate)
+        {
+            var dayContext = new CalendarDayContext 
+            { 
+                Date = day,
+                Events = GetEventsForDay(day).ToList(),
+                IsToday = day.Date == DateTime.Today,
+                IsSelected = SelectedDate?.Date == day.Date,
+                IsCurrentMonth = day.Month == CurrentDate.Month
+            };
+            await DayClicked.InvokeAsync(dayContext);
+        }
+    }
+    
+    private void HandleDayHover(DateTime day)
+    {
+        // Can be extended for hover effects
+    }
+    
+    private async Task HandleEventClick(CalendarEvent calendarEvent)
+    {
+        if (EventClicked.HasDelegate)
+            await EventClicked.InvokeAsync(calendarEvent);
+    }
+    
+    private async Task HandleMoreEventsClick(DateTime day)
+    {
+        if (MoreEventsClicked.HasDelegate)
+        {
+            var dayContext = new CalendarDayContext 
+            { 
+                Date = day,
+                Events = GetEventsForDay(day).ToList(),
+                IsToday = day.Date == DateTime.Today,
+                IsSelected = SelectedDate?.Date == day.Date,
+                IsCurrentMonth = day.Month == CurrentDate.Month
+            };
+            await MoreEventsClicked.InvokeAsync(dayContext);
+        }
+    }
+    
+    private async Task NavigatePrevious()
+    {
+        CurrentDate = View == CalendarView.Month 
+            ? CurrentDate.AddMonths(-1) 
+            : CurrentDate.AddDays(-7);
+            
+        if (CurrentDateChanged.HasDelegate)
+            await CurrentDateChanged.InvokeAsync(CurrentDate);
+    }
+    
+    private async Task NavigateNext()
+    {
+        CurrentDate = View == CalendarView.Month 
+            ? CurrentDate.AddMonths(1) 
+            : CurrentDate.AddDays(7);
+            
+        if (CurrentDateChanged.HasDelegate)
+            await CurrentDateChanged.InvokeAsync(CurrentDate);
+    }
+    
+    private async Task GoToToday()
+    {
+        CurrentDate = DateTime.Today;
+        if (CurrentDateChanged.HasDelegate)
+            await CurrentDateChanged.InvokeAsync(CurrentDate);
+    }
+    
+    private async Task ChangeView(CalendarView newView)
+    {
+        View = newView;
+        if (ViewChanged.HasDelegate)
+            await ViewChanged.InvokeAsync(View);
+    }
+    
+    #endregion
+    
+    #region Helper Methods
+    
+    private List<List<DateTime>> GetCalendarWeeks()
+    {
+        if (View == CalendarView.Week)
+            return GetWeekView();
+        return GetMonthView();
+    }
+    
+    private List<List<DateTime>> GetMonthView()
+    {
+        var weeks = new List<List<DateTime>>();
+        var firstDay = new DateTime(CurrentDate.Year, CurrentDate.Month, 1);
+        var lastDay = firstDay.AddMonths(1).AddDays(-1);
+        
+        var startDate = firstDay.AddDays(-(int)firstDay.DayOfWeek);
+        var endDate = lastDay.AddDays(6 - (int)lastDay.DayOfWeek);
+        
+        var current = startDate;
+        while (current <= endDate)
+        {
+            var week = new List<DateTime>();
+            for (int i = 0; i < 7; i++)
+            {
+                week.Add(current);
+                current = current.AddDays(1);
+            }
+            weeks.Add(week);
+        }
+        
+        return weeks;
+    }
+    
+    private List<List<DateTime>> GetWeekView()
+    {
+        var startOfWeek = CurrentDate.AddDays(-(int)CurrentDate.DayOfWeek);
+        var week = new List<DateTime>();
+        
+        for (int i = 0; i < 7; i++)
+        {
+            week.Add(startOfWeek.AddDays(i));
+        }
+        
+        return new List<List<DateTime>> { week };
+    }
+    
+    private string[] GetWeekdayNames()
+    {
+        return Size == CalendarSize.Small 
+            ? new[] { "S", "M", "T", "W", "T", "F", "S" }
+            : new[] { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
+    }
+    
+    private string GetCurrentTitle()
+    {
+        return View == CalendarView.Month 
+            ? CurrentDate.ToString("MMMM yyyy")
+            : $"{CurrentDate.AddDays(-(int)CurrentDate.DayOfWeek):MMM dd} - {CurrentDate.AddDays(6 - (int)CurrentDate.DayOfWeek):MMM dd, yyyy}";
+    }
+    
+    private string GetPreviousIcon() => View == CalendarView.Month ? "chevron_left" : "keyboard_arrow_left";
+    private string GetNextIcon() => View == CalendarView.Month ? "chevron_right" : "keyboard_arrow_right";
+    
+    private IEnumerable<CalendarEvent> GetEventsForDay(DateTime day)
+    {
+        return Events?.Where(e => 
+            day.Date >= e.StartDate.Date && 
+            day.Date <= e.EndDate.Date) ?? Enumerable.Empty<CalendarEvent>();
+    }
+    
+    private string GetEventDisplayText(CalendarEvent calendarEvent)
+    {
+        if (Size == CalendarSize.Small)
+            return "•";
+        return calendarEvent.Title.Length > 15 
+            ? calendarEvent.Title.Substring(0, 12) + "..."
+            : calendarEvent.Title;
+    }
+    
+    private CalendarHeaderContext GetHeaderContext()
+    {
+        return new CalendarHeaderContext
+        {
+            CurrentDate = CurrentDate,
+            View = View,
+            Title = GetCurrentTitle()
+        };
+    }
+    
+    private CalendarDayContext GetDayContext(DateTime day)
+    {
+        return new CalendarDayContext
+        {
+            Date = day,
+            IsToday = day.Date == DateTime.Today,
+            IsSelected = SelectedDate.HasValue && day.Date == SelectedDate.Value.Date,
+            IsCurrentMonth = day.Month == CurrentDate.Month,
+            IsWeekend = day.DayOfWeek == DayOfWeek.Saturday || day.DayOfWeek == DayOfWeek.Sunday,
+            Events = GetEventsForDay(day).ToList()
+        };
+    }
+    
+    #endregion
+}
