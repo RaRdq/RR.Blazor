@@ -1,40 +1,58 @@
 @use '../abstracts' as *;
+@use 'sass:map';
 
-// Border utility classes with consolidated structure
-.border { 
-  border: var(--border-1) solid var(--color-border-light); 
-  
-  // Border width variants
-  &-2 { border-width: var(--border-2); }
-  &-3 { border-width: calc(var(--border-2) + var(--border-1)); }
-  &-4 { border-width: var(--space-1); }
-  
-  // Border reset variants
-  &-none { border: none; }
-  &-0 { border-width: 0; }
-  
-  // Border color variants
-  &-transparent { border-color: transparent; }
-  &-current { border-color: currentColor; }
-  
-  &-light { border-color: var(--color-border-light); }
-  &-medium { border-color: var(--color-border-medium); }
-  &-strong { border-color: var(--color-border-strong); }
-  
-  &-primary { border-color: var(--color-interactive-primary); }
-  &-secondary { border-color: var(--color-interactive-secondary); }
-  &-success { border-color: var(--color-success); }
-  &-warning { border-color: var(--color-warning); }
-  &-error { border-color: var(--color-error); }
-  &-info { border-color: var(--color-info); }
+// ===== OPTIMIZED BORDER SYSTEM =====
+// Efficient border utility generation using maps
+
+$border-widths: (
+  '': var(--border-1),
+  0: 0,
+  2: var(--border-2),
+  3: calc(var(--border-2) + var(--border-1)),
+  4: var(--space-1)
+);
+
+$border-colors: (
+  "transparent": transparent,
+  current: currentColor,
+  '': var(--color-border),
+  light: var(--color-border),
+  medium: var(--color-border),
+  strong: var(--color-border),
+  primary: var(--color-primary),
+  secondary: var(--color-primary),
+  success: var(--color-success),
+  warning: var(--color-warning),
+  error: var(--color-error),
+  info: var(--color-info)
+);
+
+// Generate border utilities efficiently
+@each $width-name, $width-value in $border-widths {
+  @if $width-name == '' {
+    .border { 
+      border: #{$width-value} solid var(--color-border); 
+    }
+  } @else if $width-name == 0 {
+    .border-0, .border-none { 
+      border: none; 
+    }
+  } @else {
+    .border-#{$width-name} { 
+      border-width: #{$width-value}; 
+    }
+  }
 }
 
-// Side-specific border utilities
-.border-t { border-top: var(--border-1) solid var(--color-border-light); }
-.border-r { border-right: var(--border-1) solid var(--color-border-light); }
-.border-b { border-bottom: var(--border-1) solid var(--color-border-light); }
-.border-l { border-left: var(--border-1) solid var(--color-border-light); }
+// Generate border color utilities
+@each $color-name, $color-value in $border-colors {
+  .border-#{$color-name} { 
+    border-color: #{$color-value}; 
+  }
+}
 
+// ===== SIDE-SPECIFIC BORDER UTILITIES =====
+// Optimized side-specific borders
 $border-sides: (
   t: top,
   r: right,
@@ -42,73 +60,143 @@ $border-sides: (
   l: left
 );
 
-$border-widths: (
-  0: 0,
-  2: var(--border-2),
-  3: calc(var(--border-2) + var(--border-1)),
-  4: var(--space-1)
-);
-
+// Generate side-specific border utilities
 @each $short, $side in $border-sides {
-  @each $num, $width in $border-widths {
-    @if $num != 1 {
-      .border-#{$short}-#{$num} { border-#{$side}-width: #{$width}; }
+  .border-#{$short} { 
+    border-#{$side}: var(--border-1) solid var(--color-border); 
+  }
+  
+  // Side-specific width utilities
+  @each $width-name, $width-value in $border-widths {
+    @if $width-name != '' {
+      .border-#{$short}-#{$width-name} { 
+        border-#{$side}-width: #{$width-value}; 
+      }
     }
   }
 }
 
-// Side-specific border resets
-.border {
-  @each $short, $side in $border-sides {
-    &-#{$short}-0 { border-#{$side}-width: 0; }
-  }
-  
-  &-x-0 { border-left-width: 0; border-right-width: 0; }
-  &-y-0 { border-top-width: 0; border-bottom-width: 0; }
+// Axis-specific border resets (optimized)
+.border-x-0 { 
+  border-left-width: 0; 
+  border-right-width: 0; 
+}
+.border-y-0 { 
+  border-top-width: 0; 
+  border-bottom-width: 0; 
 }
 
 
-.border-button-primary { border-color: var(--button-primary-bg); }
-.border-button-secondary { border-color: var(--button-secondary-border); }
-.border-button-ghost { border-color: var(--button-ghost-border); }
-.border-button-danger { border-color: var(--button-danger-border); }
-.border-button-success { border-color: var(--button-success-border); }
-.border-button-warning { border-color: var(--button-warning-border); }
-.border-button-outline { border-color: var(--button-outline-border); }
-.border-button-glass { border-color: var(--button-glass-border); }
+// ===== COMPONENT-SPECIFIC BORDER UTILITIES =====
+// Button border utilities (optimized using map)
+$button-border-colors: (
+  primary: var(--button-primary-bg),
+  secondary: var(--button-secondary-border),
+  ghost: var(--button-ghost-border),
+  danger: var(--button-danger-border),
+  success: var(--button-success-border),
+  warning: var(--button-warning-border),
+  outline: var(--button-outline-border),
+  glass: var(--button-glass-border)
+);
 
-.hover\:border-button-secondary-hover:hover { border-color: var(--button-secondary-border-hover); }
+@each $variant, $color in $button-border-colors {
+  .border-button-#{$variant} { border-color: #{$color}; }
+}
 
-.border-solid { border-style: solid; }
-.border-dashed { border-style: dashed; }
-.border-dotted { border-style: dotted; }
-.border-none { border-style: none; }
+// Button hover states
+.hover\:border-button-secondary-hover:hover { 
+  border-color: var(--button-secondary-border-hover); 
+}
 
-.rounded-none { border-radius: 0; }
-.rounded-sm { border-radius: var(--radius-sm); }
-.rounded { border-radius: var(--radius-md); }
-.rounded-md { border-radius: var(--radius-md); }
-.rounded-lg { border-radius: var(--radius-lg); }
-.rounded-xl { border-radius: var(--radius-xl); }
-.rounded-2xl { border-radius: var(--radius-2xl); }
-.rounded-full { border-radius: var(--radius-full); }
+// ===== BORDER STYLE UTILITIES =====
+// Optimized border style generation
+$border-styles: (
+  solid: solid,
+  dashed: dashed,
+  dotted: dotted,
+  none: none
+);
 
-.rounded-t-none { border-top-left-radius: 0; border-top-right-radius: 0; }
-.rounded-t-sm { border-top-left-radius: var(--radius-sm); border-top-right-radius: var(--radius-sm); }
-.rounded-t { border-top-left-radius: var(--radius-md); border-top-right-radius: var(--radius-md); }
-.rounded-t-md { border-top-left-radius: var(--radius-md); border-top-right-radius: var(--radius-md); }
-.rounded-t-lg { border-top-left-radius: var(--radius-lg); border-top-right-radius: var(--radius-lg); }
+@each $style-name, $style-value in $border-styles {
+  .border-#{$style-name} { border-style: #{$style-value}; }
+}
 
-.rounded-b-none { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
-.rounded-b-sm { border-bottom-left-radius: var(--radius-sm); border-bottom-right-radius: var(--radius-sm); }
-.rounded-b { border-bottom-left-radius: var(--radius-md); border-bottom-right-radius: var(--radius-md); }
-.rounded-b-md { border-bottom-left-radius: var(--radius-md); border-bottom-right-radius: var(--radius-md); }
-.rounded-b-lg { border-bottom-left-radius: var(--radius-lg); border-bottom-right-radius: var(--radius-lg); }
+// ===== BORDER RADIUS UTILITIES =====
+// Optimized border radius generation
+$border-radius: (
+  none: 0,
+  sm: var(--radius-sm),
+  '': var(--radius-md),
+  md: var(--radius-md),
+  lg: var(--radius-lg),
+  xl: var(--radius-xl),
+  2xl: var(--radius-2xl),
+  full: var(--radius-full)
+);
+
+@each $size-name, $size-value in $border-radius {
+  @if $size-name == '' {
+    .rounded { border-radius: #{$size-value}; }
+  } @else {
+    .rounded-#{$size-name} { border-radius: #{$size-value}; }
+  }
+}
+
+// ===== DIRECTIONAL BORDER RADIUS UTILITIES =====
+// Optimized directional radius generation
+$radius-directions: (
+  t: (top-left, top-right),
+  b: (bottom-left, bottom-right),
+  l: (top-left, bottom-left),
+  r: (top-right, bottom-right),
+  tl: (top-left),
+  tr: (top-right),
+  bl: (bottom-left),
+  br: (bottom-right)
+);
+
+$radius-sizes: (
+  none: 0,
+  sm: var(--radius-sm),
+  '': var(--radius-md),
+  md: var(--radius-md),
+  lg: var(--radius-lg)
+);
+
+@each $direction, $corners in $radius-directions {
+  @each $size-name, $size-value in $radius-sizes {
+    @if $size-name == '' {
+      .rounded-#{$direction} {
+        @each $corner in $corners {
+          border-#{$corner}-radius: #{$size-value};
+        }
+      }
+    } @else {
+      .rounded-#{$direction}-#{$size-name} {
+        @each $corner in $corners {
+          border-#{$corner}-radius: #{$size-value};
+        }
+      }
+    }
+  }
+}
 
 
+// ===== TABLE BORDER UTILITIES =====
 .border-collapse { border-collapse: collapse; }
 .border-separate { border-collapse: separate; }
 
-.hover\:border-primary:hover { border-color: var(--color-interactive-primary); }
-.hover\:border-medium:hover { border-color: var(--color-border-medium); }
-.hover\:border-strong:hover { border-color: var(--color-border-strong); }
+// ===== HOVER BORDER UTILITIES =====
+// Essential hover border colors
+$hover-border-colors: (
+  primary: var(--color-primary),
+  medium: var(--color-border),
+  strong: var(--color-border)
+);
+
+@each $color-name, $color-value in $hover-border-colors {
+  .hover\:border-#{$color-name}:hover { 
+    border-color: #{$color-value}; 
+  }
+}

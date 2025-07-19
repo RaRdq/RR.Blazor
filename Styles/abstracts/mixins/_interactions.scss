@@ -4,13 +4,16 @@
 // INTERACTION MIXINS - Hover, Focus, Loading, Animations
 // ============================================================================
 
-// Interactive pattern mixin
-@mixin layout-interactive($hover-transform: translateY(-1px), $active-transform: translateY(0) scale(0.98)) {
+// Interactive pattern mixin with filter support
+@mixin layout-interactive($hover-transform: translateY(-1px), $active-transform: translateY(0) scale(0.98), $hover-filter: brightness(1.02)) {
   cursor: pointer;
   transition: all var(--duration-fast) var(--ease-out);
   
   &:hover:not(:disabled) {
     transform: $hover-transform;
+    @if $hover-filter {
+      filter: $hover-filter;
+    }
   }
   
   &:active:not(:disabled) {
@@ -18,7 +21,7 @@
   }
   
   &:focus-visible {
-    outline: 2px solid var(--color-interactive-primary);
+    outline: 2px solid var(--color-primary);
     outline-offset: 2px;
   }
   
@@ -31,34 +34,37 @@
 }
 
 // Focus ring generation
-@mixin focus-ring($color: var(--color-interactive-focus), $width: 2px, $offset: 2px) {
+@mixin focus-ring($color: var(--color-focus), $width: 2px, $offset: 2px) {
   &:focus-visible {
     outline: #{$width} solid color-mix(in srgb, #{$color} 40%, transparent);
     outline-offset: #{$offset};
   }
 }
 
-// Hover lift effect
-@mixin hover-lift($distance: -2px) {
+// Hover lift effect with filter enhancement
+@mixin hover-lift($distance: -2px, $filter: brightness(1.02)) {
   transition: var(--transition-fast);
   
   &:hover {
     transform: translateY(#{$distance});
+    filter: $filter;
   }
 }
 
-// Card hover effect
-@mixin card-hover {
+// Card hover effect with filter enhancement
+@mixin card-hover($filter: brightness(1.02) saturate(1.05)) {
   box-shadow: var(--shadow-lg);
   transform: translateY(-0.125rem);
+  filter: $filter;
 }
 
-// Button hover effect
-@mixin button-hover($distance: 0.125rem) {
+// Button hover effect with filter enhancement
+@mixin button-hover($distance: 0.125rem, $filter: brightness(0.95) saturate(1.05)) {
   transition: var(--transition-transform);
   
   &:hover {
     transform: translateY(-#{$distance});
+    filter: $filter;
   }
 }
 
@@ -73,13 +79,13 @@
 
 // Loading skeleton animation
 @mixin loading-skeleton {
-  background: linear-gradient(90deg, var(--color-background-elevated), var(--color-background-pressed), var(--color-background-elevated));
+  background: linear-gradient(90deg, var(--color-surface-elevated), var(--color-surface-pressed), var(--color-surface-elevated));
   background-size: 200% 100%;
   animation: loadingShimmer 1.5s ease-in-out infinite;
 }
 
 // Loading spinner
-@mixin loading-spinner($size: 1.25rem, $color: var(--color-interactive-primary)) {
+@mixin loading-spinner($size: 1.25rem, $color: var(--color-primary)) {
   width: $size;
   height: $size;
   border: var(--border-2) solid transparent;
@@ -90,7 +96,9 @@
 
 // Enhanced transform-interaction mixin - Agent 3 architecture pattern
 @mixin transform-interaction($hover-transform: scale(1.01), $active-transform: scale(0.99), $hover-shadow: var(--theme-shadow-lg), $active-shadow: var(--theme-shadow-sm), $hover-bg: null, $active-bg: null) {
-  transition: all var(--duration-normal) var(--ease-out);
+  & {
+    transition: all var(--duration-normal) var(--ease-out);
+  }
   
   &:hover {
     transform: $hover-transform;
@@ -111,14 +119,15 @@
   }
 }
 
-// Interactive states system
-@mixin interactive-states($primary-color: var(--color-interactive-primary), $hover-color: var(--color-interactive-hover), $active-color: var(--color-interactive-active)) {
+// Interactive states system with filter support
+@mixin interactive-states($primary-color: var(--color-primary), $hover-color: var(--color-primary-hover), $active-color: var(--color-primary-active), $hover-filter: brightness(1.05) saturate(1.1)) {
   transition: all var(--duration-normal) var(--ease-out);
   
   &:hover {
     background: $hover-color;
     transform: translateY(-1px);
     box-shadow: var(--theme-shadow-lg);
+    filter: $hover-filter;
   }
   
   &:active {

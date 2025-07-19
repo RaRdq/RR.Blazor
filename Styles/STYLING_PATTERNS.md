@@ -58,7 +58,7 @@ Define component-specific classes in SCSS for complex patterns:
   
   &-dynamic-icon {
     font-size: var(--icon-size, 1rem);
-    color: var(--icon-color, var(--color-text-primary));
+    color: var(--icon-color, var(--color-text));
   }
 }
 ```

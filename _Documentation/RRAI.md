@@ -1,17 +1,10 @@
-# RR.Blazor AI Agent Statement of Work (SOW)
+# RR.Blazor AI for AI Agent
 
-## Quick Reference
+## 🎯 Framework Vision & Philosophy
 
-- **Total Components**: 66 professional Blazor components
-- **Utility Classes**: 3,309 utility-first CSS classes with bracket notation patterns
-- **CSS Variables**: 336 semantic design tokens
-- **AI Documentation**: Machine-readable JSON schemas in `RR.Blazor/wwwroot/rr-ai-*.json`
-- **Architecture**: R* component pattern with unified smart type detection
-- **Bundle Size**: Ultra-lightweight, tree-shakeable
-- **Performance**: <3s page load for 10k records, 60fps animations
-- **Browser Support**: Chrome 90+, Firefox 88+, Safari 14+, Edge 90+
+**RR.Blazor** is a **lightweight, project-agnostic, generic Blazor component framework** designed to serve as the foundation for modern web applications. The framework prioritizes **minimal bundle size**, **maximum customizability**, and **utility-first composition** to deliver exceptional developer experience and performance.
 
-## Essential Files for AI Agents
+## Essential Files
 
 ### Primary Documentation
 - `RR.Blazor/wwwroot/rr-ai-components.json` - Complete component API reference (66 components)
@@ -216,7 +209,7 @@
 
 ### Modal Workflow
 ```razor
-<RModal @bind-IsOpen="showModal" 
+<RModal @bind-Visible="showModal" 
         Title="User Details"
         Size="ModalSize.Large">
     <RForm Model="@selectedUser" OnValidSubmit="SaveUser">
@@ -382,31 +375,12 @@ pwsh ./RR.Blazor/Scripts/ValidateComponentUsage.ps1
 pwsh ./RR.Blazor/Scripts/ValidateClassUsage.ps1
 ```
 
-## Bundle Information
-
-- **Production CSS**: ~150KB gzipped (includes all 3,309 utilities)
-- **Component Bundle**: ~200KB (tree-shakeable)
-- **JavaScript**: ~50KB (theme system + interactions)
-- **Total Footprint**: <400KB for full system
-- **First Load**: <1.5s on 3G connection
-- **Subsequent Loads**: <200ms (cached)
-
-## Browser Compatibility
-
-- **Chrome**: 90+ (full support)
-- **Firefox**: 88+ (full support) 
-- **Safari**: 14+ (full support)
-- **Edge**: 90+ (full support)
-- **Modern Features**: CSS Grid, Flexbox, CSS Variables, backdrop-filter
-
-## Support & Resources
-
-- **AI Documentation**: `RR.Blazor/wwwroot/rr-ai-components.json` + `RR.Blazor/wwwroot/rr-ai-styles.json`
-- **Component Examples**: All components include usage examples in AI docs
-- **Pattern Library**: README.md contains professional implementation patterns
-- **Performance Guidelines**: Optimized for <3s page loads with 10k+ records
-- **Accessibility**: WCAG 2.1 AA compliant out of the box
-
 ---
 
 **Quick Start for AI Agents**: Read `RR.Blazor/wwwroot/rr-ai-components.json` for complete component APIs, use utility-first classes from `RR.Blazor/wwwroot/rr-ai-styles.json`, apply R* component patterns with automatic type detection, and follow the professional implementation examples above.
+
+**Framework Philosophy**: Lightweight, customizable, generic foundation that empowers developers to build exceptional user experiences through utility-first composition.
+
+**Key Principle**: RR.Blazor provides the tools, projects create the experience.
+
+**Success Measure**: Developers can build any UI using only utility classes and minimal custom CSS.

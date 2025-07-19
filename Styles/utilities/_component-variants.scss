@@ -3,38 +3,108 @@
 @use '../abstracts' as *;
 @use 'sass:map';
 
-// Status color utilities - Loop-based generation
-$status-colors: (
-  primary: (bg: var(--color-interactive-primary), text: var(--color-text-on-primary), border: var(--color-interactive-primary)),
-  secondary: (bg: var(--color-interactive-secondary), text: var(--color-text-on-secondary), border: var(--color-interactive-secondary)),
-  success: (bg: var(--color-success), text: var(--color-text-on-success), border: var(--color-success)),
-  warning: (bg: var(--color-warning), text: var(--color-text-on-warning), border: var(--color-warning)),
-  error: (bg: var(--color-error), text: var(--color-text-on-error), border: var(--color-error)),
-  info: (bg: var(--color-info), text: var(--color-text-on-info), border: var(--color-info))
+// ============================================================================
+// STATUS UTILITIES - Consolidated from multiple files
+// ============================================================================
+// Unified status system with utilities, dots, and component support
+
+// Status maps from _status.scss component system
+$status-types: (
+  'success': (
+    'color': var(--color-success),
+    'bg-light': var(--color-success-bg),
+    'bg-indicator': var(--color-success-bg),
+    'border': var(--color-success)
+  ),
+  'warning': (
+    'color': var(--color-warning),
+    'bg-light': var(--color-warning-bg),
+    'bg-indicator': var(--color-warning-bg),
+    'border': var(--color-warning)
+  ),
+  'error': (
+    'color': var(--color-error),
+    'bg-light': var(--color-error-bg),
+    'bg-indicator': var(--color-error-bg),
+    'border': var(--color-error)
+  ),
+  'info': (
+    'color': var(--color-info),
+    'bg-light': var(--color-info-bg),
+    'bg-indicator': var(--color-info-bg),
+    'border': var(--color-info)
+  ),
+  'pending': (
+    'color': var(--color-text-muted),
+    'bg-light': var(--color-surface),
+    'bg-indicator': var(--color-surface),
+    'border': var(--color-border)
+  ),
+  'active': (
+    'color': var(--color-success),
+    'bg-light': var(--color-success-bg),
+    'bg-indicator': var(--color-success-bg),
+    'border': var(--color-success)
+  ),
+  'inactive': (
+    'color': var(--color-text-muted),
+    'bg-light': var(--color-surface),
+    'bg-indicator': var(--color-surface),
+    'border': var(--color-border)
+  ),
+  'primary': (
+    'color': var(--color-primary),
+    'bg-light': var(--color-primary-bg),
+    'bg-indicator': var(--color-primary-bg),
+    'border': var(--color-primary)
+  )
 );
 
-$status-light-colors: (
-  primary: (bg: var(--color-interactive-secondary), text: var(--color-text-primary), border: var(--color-interactive-primary)),
-  secondary: (bg: var(--color-secondary-light), text: var(--color-secondary-dark), border: var(--color-secondary)),
-  success: (bg: var(--color-success-light), text: var(--color-success-dark), border: var(--color-success)),
-  warning: (bg: var(--color-warning-light), text: var(--color-warning-dark), border: var(--color-warning)),
-  error: (bg: var(--color-error-light), text: var(--color-error-dark), border: var(--color-error)),
-  info: (bg: var(--color-info-light), text: var(--color-info-dark), border: var(--color-info))
-);
-
-@each $name, $props in $status-colors {
-  .status-#{$name} {
-    background: map.get($props, bg);
-    color: map.get($props, text);
-    border-color: map.get($props, border);
+// Generate utility classes for status colors
+@each $type-name, $type-props in $status-types {
+  .status-#{$type-name} {
+    background: map.get($type-props, 'bg-light');
+    color: map.get($type-props, 'color');
+    border-color: map.get($type-props, 'border');
+  }
+  
+  .status-#{$type-name}-light {
+    background: map.get($type-props, 'bg-light');
+    color: map.get($type-props, 'color');
+    border-color: map.get($type-props, 'border');
   }
 }
 
-@each $name, $props in $status-light-colors {
-  .status-#{$name}-light {
-    background: map.get($props, bg);
-    color: map.get($props, text);
-    border-color: map.get($props, border);
+// Consolidated status dot utilities
+.status-dot {
+  width: var(--space-2);
+  height: var(--space-2);
+  background: currentColor;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+  
+  &-pulse {
+    animation: pulseSoft var(--duration-slow) infinite;
+  }
+  
+  // Status type variants
+  @each $type-name, $type-props in $status-types {
+    &-#{$type-name} {
+      background: map.get($type-props, 'color');
+    }
+  }
+}
+
+// Status text utilities
+.status-text {
+  font-weight: var(--font-medium);
+  font-size: var(--text-sm);
+  
+  @each $type-name, $type-props in $status-types {
+    &-#{$type-name} {
+      color: map.get($type-props, 'color');
+    }
   }
 }
 
@@ -58,10 +128,10 @@ $component-sizes: (
 
 // Priority utilities - Loop-based generation
 $priority-levels: (
-  critical: (bg: var(--color-error-light), text: var(--color-error-dark), border: var(--color-error)),
-  high: (bg: var(--color-warning-light), text: var(--color-warning-dark), border: var(--color-warning)),
-  medium: (bg: var(--color-info-light), text: var(--color-info-dark), border: var(--color-info)),
-  low: (bg: var(--color-background-secondary), text: var(--color-text-secondary), border: var(--color-border-medium))
+  critical: (bg: color-mix(in srgb, var(--color-error) 10%, var(--color-surface)), text: var(--color-error-dark), border: var(--color-error)),
+  high: (bg: color-mix(in srgb, var(--color-warning) 10%, var(--color-surface)), text: var(--color-warning-dark), border: var(--color-warning)),
+  medium: (bg: color-mix(in srgb, var(--color-info) 10%, var(--color-surface)), text: var(--color-info-dark), border: var(--color-info)),
+  low: (bg: var(--color-surface), text: var(--color-text-muted), border: var(--color-border))
 );
 
 @each $name, $props in $priority-levels {
@@ -75,13 +145,13 @@ $priority-levels: (
   }
 }
 
-// Important variants - Loop-based generation
-$important-status-colors: (primary, success, warning, error);
+// Important variants - using consolidated $status-types
+$important-status-colors: ('primary', 'success', 'warning', 'error');
 
 @each $name in $important-status-colors {
   .status-#{$name}\! {
-    background: map.get(map.get($status-colors, $name), bg);
-    color: map.get(map.get($status-colors, $name), text);
-    border-color: map.get(map.get($status-colors, $name), border);
+    background: map.get(map.get($status-types, $name), 'bg-light') !important;
+    color: map.get(map.get($status-types, $name), 'color') !important;
+    border-color: map.get(map.get($status-types, $name), 'border') !important;
   }
 }
