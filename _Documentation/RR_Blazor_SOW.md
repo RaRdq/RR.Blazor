@@ -104,17 +104,19 @@ Projects achieve custom styling through utility composition and CSS custom prope
 1. **Check existing utilities** - Search `RR.Blazor/wwwroot/rr-ai-styles.json`
 2. **Review extends system** - Check `RR.Blazor/Styles/abstracts/_extends.scss`
 3. **Use existing mixins** - Review `RR.Blazor/Styles/abstracts/_mixins.scss`
-4. **Compose first** - Try utility composition before custom CSS
+4. **Use existing keyframes** - Review `RR.Blazor/Styles/abstracts/_animations.scss` `RR.Blazor/Styles/utility/_animations.scss`
+5. **Compose first** - Try utility composition before custom CSS
 
 ### **Auto-Generated Documentation System**
 
 **RR.Blazor** features an intelligent, auto-generated documentation system that automatically maintains component documentation:
 
 #### **Component Documentation (`rr-ai-components.json`)**
-- **Auto-Generated**: Documentation is automatically generated from component attributes and parameters
+- **Auto-Generated**: Documentation for all 66 components automatically generated from attributes and parameters
 - **AI-Optimized**: Includes AI-specific hints and usage patterns for intelligent development assistance
 - **Structured Format**: Consistent JSON structure with purpose, parameters, and usage examples
 - **Live Updates**: Documentation updates automatically when components are modified
+- **Validation Coverage**: 246 Razor files with 14,569 utility class usages validated
 
 ```json
 {
@@ -129,10 +131,11 @@ Projects achieve custom styling through utility composition and CSS custom prope
 ```
 
 #### **Style Documentation (`rr-ai-styles.json`)**
-- **Utility Catalog**: Complete catalog of all available utility classes
-- **Pattern Recognition**: Automatically identifies and documents utility patterns
-- **Bracket Notation**: Uses bracket notation for utility variations (e.g., `text-[xs, sm, base, lg]`)
+- **Utility Catalog**: Complete catalog of all 3,309 available utility classes
+- **Pattern Recognition**: Automatically identifies and documents utility patterns with bracket notation
+- **CSS Variables**: 336 semantic CSS variables with comprehensive documentation
 - **AI Integration**: Optimized for AI-powered development tools and code completion
+- **Bracket Notation**: Uses bracket notation for utility variations (e.g., `text-[xs, sm, base, lg]`)
 
 #### **Documentation Maintenance**
 - **Zero Manual Updates**: No need to manually update documentation when adding components
@@ -430,9 +433,9 @@ Use semantic CSS custom properties for component customization:
 | Category | Target | Current | Status |
 |----------|---------|---------|---------|
 | Core Utilities | <80kb | ~75kb | ✅ |
-| Components | <60kb | ~55kb | ✅ |
+| Components (66) | <60kb | ~55kb | ✅ |
 | Theme System | <40kb | ~35kb | ✅ |
-| CSS Variables | <20kb | ~25kb | ⚠️ |
+| CSS Variables (336) | <20kb | ~25kb | ⚠️ |
 | **Total** | **<200kb** | **~190kb** | ✅ |
 
 ### **Performance Requirements**

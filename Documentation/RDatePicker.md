@@ -104,7 +104,6 @@ Lightweight version using native HTML date/datetime inputs for basic scenarios.
 ### Business Date Selector
 ```html
 <RDatePicker @bind-value="meetingDate"
-             Label="Meeting Date"
              ShowTime="true"
              Use24HourFormat="false"
              MinDate="@DateTime.Today"
@@ -119,7 +118,6 @@ Lightweight version using native HTML date/datetime inputs for basic scenarios.
 <RDatePicker @bind-value="projectStart"
              @bind-EndValue="projectEnd"
              Range="true"
-             Label="Project Timeline"
              MinDate="@DateTime.Today"
              DisabledDates="@IsHoliday"
              Format="dd MMM yyyy"
@@ -130,7 +128,6 @@ Lightweight version using native HTML date/datetime inputs for basic scenarios.
 ### Custom Time Intervals
 ```html
 <RDatePicker @bind-value="appointmentTime"
-             Label="Appointment Time"
              ShowTime="true"
              MinuteInterval="30"
              MinDate="@DateTime.Today.AddHours(9)"
@@ -214,7 +211,6 @@ RDatePicker works seamlessly with Blazor forms and validation:
     <DataAnnotationsValidator />
     
     <RDatePicker @bind-value="model.EventDate"
-                 Label="Event Date"
                  Required="true" />
     
     <ValidationMessage For="@(() => model.EventDate)" />
@@ -234,13 +230,11 @@ Existing `RFormField` date inputs can be easily migrated to the modern R* compon
             Text="Select Date" />
 
 <!-- New RDatePicker approach -->
-<RDatePicker @bind-value="dateValue" 
-             Label="Select Date" />
+<RDatePicker @bind-value="dateValue" />
 
 <!-- Alternative: RTextInput for simple date inputs -->
 <RTextInput Type="date" 
-            @bind-value="dateString" 
-            Label="Select Date" />
+            @bind-value="dateString" />
 ```
 
 ## Common Patterns
@@ -249,14 +243,12 @@ Existing `RFormField` date inputs can be easily migrated to the modern R* compon
 ```html
 <div class="meeting-scheduler">
     <RDatePicker @bind-value="meetingStart"
-                 Label="Meeting Start"
                  ShowTime="true"
                  Use24HourFormat="false"
                  MinDate="@DateTime.Today"
                  DisabledDaysOfWeek="@weekends" />
     
     <RDatePicker @bind-value="meetingEnd"
-                 Label="Meeting End"
                  ShowTime="true"
                  Use24HourFormat="false"
                  MinDate="@(meetingStart ?? DateTime.Today)" />
@@ -269,7 +261,6 @@ Existing `RFormField` date inputs can be easily migrated to the modern R* compon
     <RDatePicker @bind-value="checkIn"
                  @bind-EndValue="checkOut"
                  Range="true"
-                 Label="Stay Dates"
                  MinDate="@DateTime.Today"
                  Placeholder="Check-in → Check-out" />
 </div>

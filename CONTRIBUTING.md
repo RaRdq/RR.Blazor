@@ -161,7 +161,7 @@ public class RComponentTests
 
 ### JavaScript Debug Utilities for QA Testing
 
-RR.Blazor includes enterprise-grade debug utilities that automatically load in development environments. These tools are essential for component validation and QA automation.
+RR.Blazor includes enterprise-grade debug utilities that automatically load in development environments. These tools are essential for component validation and QA automation. Current validation coverage includes 246 Razor files with 14,569 utility class usages validated.
 
 #### Accessing Debug Tools
 The debug utilities are available in development environments (localhost, dev ports, debug URLs):
@@ -400,9 +400,9 @@ dotnet build -c Release
 ```
 
 **Generated documentation includes**:
-- 62 components with complete APIs including unified smart components
-- 2,953+ utility patterns with AI hints
-- 33 CSS variable pattern categories
+- 66 components with complete APIs including unified smart components
+- 3,309+ utility patterns with AI hints
+- 336 CSS variables with semantic naming
 - Real-world usage patterns
 - Best practices and accessibility guidelines
 

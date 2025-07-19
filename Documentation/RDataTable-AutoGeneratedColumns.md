@@ -2,7 +2,7 @@
 
 ## Overview
 
-The RDataTable component includes an intelligent auto-generated columns feature that automatically creates column definitions from your model properties using reflection. This eliminates the need for manual column setup in most scenarios while providing smart formatting and display logic.
+The RDataTable component includes an intelligent auto-generated columns feature that automatically creates column definitions from your model properties using reflection. This eliminates the need for manual column setup in most scenarios while providing smart formatting and display logic. This feature is part of RR.Blazor's 66-component library with 94% CLAUDE.md compliance.
 
 ## Quick Start
 

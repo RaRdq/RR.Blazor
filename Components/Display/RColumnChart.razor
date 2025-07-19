@@ -52,8 +52,8 @@
                              tabindex="0"
                              aria-label="@GetBarAriaLabel(dataPoint)">
                             
-                            <div class="column-chart-bar-fill column-chart-bar-fill-@GetColorVariant(dataPoint, index)"
-                                 style="@GetBarStyle(height, color)">
+                            <div class="column-chart-bar-fill column-chart-bar-fill-@GetColorVariant(dataPoint, index) chart-bar-dynamic"
+                                 style="--bar-height: @(height)%; @GetBarColorStyle(color)">
                             </div>
                             
                             @if (ShowValues)
@@ -87,8 +87,8 @@
                             var gridValue = minValue + (range * i / GridLineCount);
                             var gridPosition = i * (100.0 / GridLineCount);
                             
-                            <div class="column-chart-grid-line"
-                                 style="@GetGridLineStyle(gridPosition, IsHorizontal)">
+                            <div class="column-chart-grid-line @GetGridLineClasses(IsHorizontal) chart-grid-line @(IsHorizontal ? "vertical" : "horizontal")"
+                                 style="--grid-position: @(gridPosition)%;">
                                 @if (ShowGridLabels)
                                 {
                                     <span class="column-chart-grid-label">
@@ -115,8 +115,8 @@
                      role="button"
                      tabindex="0"
                      aria-label="@GetLegendAriaLabel(dataPoint)">
-                    <div class="chart-legend-indicator chart-legend-indicator-square" 
-                         style="background-color: @color;"></div>
+                    <div class="chart-legend-indicator chart-legend-indicator-square chart-legend-item" 
+                         style="--legend-color: @(color);"></div>
                     <span class="chart-legend-label">@dataPoint.Label</span>
                     @if (ShowLegendValues)
                     {
@@ -361,24 +361,30 @@
         };
     }
 
-    private string GetBarStyle(double height, string color)
+    private string GetBarHeightStyle(double height)
     {
-        var heightProperty = IsHorizontal ? "width" : "height";
-        var customColor = !color.StartsWith("var(") ? $"background-color: {color};" : "";
-        
-        return $"{heightProperty}: {height}%; {customColor}";
+        var property = IsHorizontal ? "width" : "height";
+        return $"{property}: {height}%;";
     }
 
-    private string GetGridLineStyle(double position, bool isHorizontal)
+    private string GetBarColorStyle(string color)
     {
-        if (isHorizontal)
-        {
-            return $"left: {position}%; top: 0; bottom: 0; width: 1px; border-left: 1px solid var(--color-border-light);";
-        }
-        else
-        {
-            return $"bottom: {position}%; left: 0; right: 0; height: 1px; border-bottom: 1px solid var(--color-border-light);";
-        }
+        return !color.StartsWith("var(") ? $"background-color: {color};" : "";
+    }
+
+    private string GetGridLineClasses(bool isHorizontal)
+    {
+        return isHorizontal ? "column-chart-grid-line-vertical" : "column-chart-grid-line-horizontal";
+    }
+
+    private string GetGridLinePositionStyle(double position, bool isHorizontal)
+    {
+        return isHorizontal ? $"left: {position}%;" : $"bottom: {position}%;";
+    }
+
+    private string GetLegendIndicatorStyle(string color)
+    {
+        return $"background-color: {color};";
     }
 
     private string GetFormattedValue(double value)

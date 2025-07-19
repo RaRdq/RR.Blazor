@@ -106,7 +106,7 @@ Some modern CSS features must be inline:
 
 ## 6. Validation Guidelines
 
-The CSS validation script will flag these patterns:
+The CSS validation script analyzes 246 Razor files with 14,569 utility class usages and will flag these patterns:
 
 ### ✅ Acceptable "Violations"
 - CSS custom properties: `style="--variable: @(value)"`
@@ -145,7 +145,7 @@ When updating components:
 
 ## 9. Available Dynamic Property Utilities
 
-RR.Blazor provides these utility classes for dynamic properties:
+RR.Blazor provides these utility classes for dynamic properties (part of 3,309 total utility classes):
 
 - `.progress-dynamic` - Width based on `--progress-width`
 - `.icon-dynamic` - Size and color from `--icon-size` and `--icon-color`

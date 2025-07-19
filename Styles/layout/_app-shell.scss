@@ -24,23 +24,21 @@
 
 // Primary app shell layout structure
 .app-shell {
-  display: grid;
+  display: flex;
   min-height: 100vh;
   position: relative;
   background: var(--color-background-primary);
-  grid-template-areas: 
-    "header header"
-    "sidebar main";
-  grid-template-columns: var(--sidebar-width, 16rem) 1fr;
-  grid-template-rows: var(--header-height, 4rem) 1fr;
-  
-  &.sidebar-collapsed {
-    grid-template-columns: var(--sidebar-width-collapsed, 4rem) 1fr;
-  }
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
+  box-sizing: border-box;
   
   &-container {
     container-type: inline-size;
     container-name: app-shell;
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
   }
   
   // Touch-friendly minimum targets (44px) - only for interactive elements
@@ -58,11 +56,7 @@
   
   // Mobile-first responsive foundation
   @include responsive-max(md) {
-    grid-template-areas: 
-      "header"
-      "main";
-    grid-template-columns: 1fr;
-    grid-template-rows: var(--header-height, 4rem) 1fr;
+    flex-direction: column;
   }
   
   // Container query support for adaptive layouts
@@ -97,19 +91,22 @@
 
 // App header specific styles
 .app-header {
-  grid-area: header;
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   z-index: var(--z-header);
   height: var(--header-height);
+  width: 100%;
+  max-width: 100vw;
   background: var(--color-background-primary);
   border-bottom: var(--border-1) solid var(--color-border-light);
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 var(--space-4);
+  box-sizing: border-box;
+  overflow: hidden;
   
   // Ensure header doesn't interfere with clickable elements below
   &-height {
@@ -119,6 +116,14 @@
   // Fix for header blocking clicks on dashboard buttons
   hr {
     pointer-events: none;
+  }
+  
+  // Critical responsive fixes for header overflow
+  @include responsive-max(xl) {
+    width: 100vw;
+    max-width: 100vw;
+    left: 0;
+    right: 0;
   }
   
   @include responsive-max(md) {
@@ -134,6 +139,12 @@
   gap: var(--space-3);
   flex: 1;
   min-width: 0;
+  overflow: hidden;
+  
+  @include responsive-max(md) {
+    gap: var(--space-2);
+    flex-wrap: wrap;
+  }
 }
 
 .header-right {
@@ -141,6 +152,12 @@
   align-items: center;
   gap: var(--space-2);
   flex-shrink: 0;
+  overflow: hidden;
+  
+  @include responsive-max(md) {
+    gap: var(--space-1);
+    flex-wrap: wrap;
+  }
 }
 
 // App logo styling
@@ -148,40 +165,42 @@
   display: flex;
   align-items: center;
   gap: var(--space-2);
+  flex-shrink: 0;
+  min-width: 0;
   
   img {
     height: 2rem;
     width: auto;
+    flex-shrink: 0;
+    
+    @include responsive-max(sm) {
+      height: 1.5rem;
+    }
   }
   
   span {
     font-weight: 600;
     color: var(--color-text-primary);
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    
+    @include responsive-max(sm) {
+      max-width: 8rem;
+    }
   }
 }
 
 // Search component with animations
 .app-search {
   position: relative;
+  max-width: 100%;
+  overflow: hidden;
   
   .search-input-expanded {
-    animation: searchExpandLeft 0.3s var(--ease-out) forwards;
+    animation: expand-width 0.3s var(--ease-out) forwards;
     transform-origin: right center;
-  }
-  
-  // Search expand animation
-  @keyframes searchExpandLeft {
-    0% {
-      width: 0;
-      opacity: 0;
-      transform: scaleX(0);
-    }
-    100% {
-      width: 12rem;
-      opacity: 1;
-      transform: scaleX(1);
-    }
+    max-width: 100%;
   }
   
   // Collapsible search states
@@ -195,54 +214,142 @@
   .search-expanded {
     opacity: 1;
     width: 12rem;
+    max-width: 100%;
     transition: all 0.3s var(--ease-out);
+    
+    @include responsive-max(md) {
+      width: 8rem;
+    }
+    
+    @include responsive-max(sm) {
+      width: 6rem;
+    }
+  }
+  
+  @include responsive-max(md) {
+    flex-shrink: 1;
+    min-width: 0;
   }
 }
 
 // App sidebar
 .app-sidebar {
-  grid-area: sidebar;
   position: fixed;
   top: var(--header-height);
   left: 0;
   bottom: 0;
   width: var(--sidebar-width, 16rem);
+  max-width: calc(100vw - var(--space-4));
+  height: calc(100vh - var(--header-height));
   background: var(--color-background-elevated);
   border-right: var(--border-1) solid var(--color-border-light);
   z-index: var(--z-sidebar);
   display: flex;
   flex-direction: column;
   transition: all var(--duration-normal) var(--ease-out);
+  box-sizing: border-box;
+  overflow-x: hidden;
+  overflow-y: hidden;
   
   &.collapsed {
     width: var(--sidebar-width-collapsed, 4rem);
   }
   
-  @include responsive-max(md) {
+  // Mobile-first responsive design
+  @include responsive-max(lg) {
     transform: translateX(-100%);
+    width: 85%;
+    max-width: 320px;
+    z-index: var(--z-modal);
+    border-right: none;
+    box-shadow: var(--shadow-xl);
     
     &.open {
       transform: translateX(0);
     }
   }
+  
+  @include responsive-max(md) {
+    width: 90%;
+    max-width: 280px;
+  }
+  
+  @include responsive-max(sm) {
+    width: 95%;
+    max-width: 260px;
+  }
+  
+  // Fix flex children overflow issues
+  > .flex-1 {
+    min-height: 0;
+    overflow-y: auto;
+    flex: 1 1 0%;
+  }
+  
+  // Ensure footer stays at bottom
+  > .shrink-0 {
+    flex-shrink: 0;
+  }
 }
 
 // Main content area
 .app-main {
-  grid-area: main;
   position: relative;
   min-height: calc(100vh - var(--header-height));
   padding-top: var(--header-height);
+  margin-left: var(--sidebar-width, 16rem);
+  width: calc(100% - var(--sidebar-width, 16rem));
+  max-width: calc(100vw - var(--sidebar-width, 16rem));
   overflow-x: hidden;
+  overflow-y: visible;
+  box-sizing: border-box;
+  transition: all var(--duration-normal) var(--ease-out);
   
   &.auto-wrap-content {
     display: flex;
     flex-direction: column;
   }
   
+  // Full-width content override for DefaultContentFullWidth="true"
+  &.full-width-content {
+    width: 100%;
+    max-width: none;
+    margin-left: 0;
+    padding-left: var(--sidebar-width, 16rem);
+    overflow-y: visible;
+    
+    .app-shell.sidebar-collapsed & {
+      padding-left: var(--sidebar-width-collapsed, 4rem);
+    }
+    
+    @include responsive-max(xl) {
+      padding-left: 0;
+    }
+  }
+  
+  .app-shell.sidebar-collapsed & {
+    margin-left: var(--sidebar-width-collapsed, 4rem);
+    width: calc(100% - var(--sidebar-width-collapsed, 4rem));
+    max-width: calc(100vw - var(--sidebar-width-collapsed, 4rem));
+  }
+  
+  // Critical responsive fixes for horizontal overflow
+  @include responsive-max(xl) {
+    margin-left: 0;
+    width: 100%;
+    max-width: 100vw;
+    
+    .app-shell:not(.sidebar-collapsed) & {
+      margin-left: 0;
+      width: 100%;
+      max-width: 100vw;
+    }
+  }
+  
   @include responsive-max(md) {
     margin-left: 0;
     width: 100%;
+    max-width: 100vw;
   }
 }
 

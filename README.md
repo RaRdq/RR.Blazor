@@ -22,7 +22,7 @@ AI agents consistently hallucinate component APIs, mix framework versions, and g
 - **Fully Responsive**: Mobile-first design with 44px touch targets
 - **Type-Safe**: Full C# type safety with smart reflection-based type inference
 - **Performance**: Optimized rendering with minimal re-renders
-- **Customizable**: 2,953+ CSS utility classes
+- **Customizable**: 3,309+ CSS utility classes
 - **Tree-Shakeable**: Use only what you need
 - **High Contrast Mode**: Built-in support for accessibility preferences
 - **Motion Preferences**: Respects prefers-reduced-motion
@@ -38,10 +38,9 @@ The R* form components replace the legacy RFormField pattern with specialized, p
 
 ```razor
 <!-- Modern R* approach -->
-<RTextInput Label="Email Address" 
+<RTextInput 
             Type="email" 
             @bind-value="model.Email" 
-            StartIcon="email" 
             Required />
 
 <RCheckbox Text="Accept Terms" 
@@ -63,6 +62,12 @@ The R* form components replace the legacy RFormField pattern with specialized, p
 ## Unified Smart Components
 
 RR.Blazor features breakthrough unified smart components that eliminate the need for explicit generic type parameters through intelligent runtime type detection.
+
+**Latest Updates:**
+- **Enhanced AI Documentation**: Complete component and style documentation with 66 components and 3,309 utility classes
+- **SCSS Compliance**: Fixed viewport utilities compilation issue with simplified class generation
+- **Task.Delay Optimization**: Updated components to use Task.Yield() for better performance
+- **Validation Reports**: Integrated class usage validation with detailed compliance reporting
 
 ### 🎯 **RDropdown** - Universal Dropdown
 ```razor
@@ -182,14 +187,13 @@ builder.Services.AddRRBlazor(blazor => blazor
 <!-- Unified smart components - no explicit types needed -->
 <RForm Model="userModel" OnValidSubmit="SaveUser">
     <RDropdown Items="departments" @bind-SelectedValue="userModel.Department" />
-    <RButton Text="Save User" Variant="ButtonVariant.Primary" Type="ButtonType.Submit" />
+    <RButton Text="Save User" Type="ButtonType.Submit" />
 </RForm>
 
 <!-- Traditional usage still supported -->
 <RCard Title="Welcome" Elevation="4" Class="glass-light">
     <div class="pa-6">
-        <RButton Text="Get Started" 
-                 Variant="ButtonVariant.Primary"
+        <RButton Text="Get Started"
                  Icon="rocket_launch"
                  IconPosition="IconPosition.Start"
                  OnClick="@HandleClick" />
@@ -252,9 +256,9 @@ RR.Blazor features an AI-first documentation system that automatically generates
 **Styles**: `wwwroot/rr-ai-styles.json`
 
 **Contains**:
-- 62 components with structured format and essential parameters
-- 2,953 utility classes with bracket notation patterns
-- 283 CSS variables with semantic categorization
+- 66 components with structured format and essential parameters
+- 3,309 utility classes with bracket notation patterns
+- 336 CSS variables with semantic categorization
 - AI-optimized format for pattern extrapolation
 - Source of truth extraction from actual code
 
@@ -437,7 +441,7 @@ All RR.Blazor components use a consistent Icon system for maximum flexibility an
 
 ## CSS Utilities
 
-RR.Blazor includes 800+ utility classes inspired by modern CSS frameworks:
+RR.Blazor includes 3,309+ utility classes inspired by modern CSS frameworks:
 
 ### Spacing (MudBlazor-inspired)
 ```html
@@ -500,7 +504,7 @@ RR.Blazor includes 800+ utility classes inspired by modern CSS frameworks:
     <div class="pa-6">
         <div class="d-flex justify-between align-center mb-4">
             <span class="text-h4 font-bold">$1,247,580</span>
-            <RBadge Text="+8.2%" Variant="BadgeVariant.Success" />
+            <RBadge Text="+8.2%" />
         </div>
         <div class="d-flex gap-4 mb-4">
             <div class="flex-grow-1 text-center pa-3 bg-elevated rounded">
@@ -520,11 +524,9 @@ RR.Blazor includes 800+ utility classes inspired by modern CSS frameworks:
 ```razor
 <div class="d-flex justify-between align-center mb-4">
     <RTextInput Type="search" 
-                Placeholder="Search users..." 
-                StartIcon="search"
+                Placeholder="Search users..."
                 Class="flex-grow-1 mr-4" />
     <RButton Text="Add User" 
-             Variant="ButtonVariant.Primary" 
              Icon="add" 
              IconPosition="IconPosition.Start" />
 </div>
@@ -568,18 +570,14 @@ RR.Blazor includes 800+ utility classes inspired by modern CSS frameworks:
 ```razor
 <RForm @bind-Model="model" OnValidSubmit="@HandleSubmit">
     <FormFields>
-        <RTextInput Label="Email Address"
+        <RTextInput
                     Type="email"
                     @bind-value="model.Email"
-                    Size="TextInputSize.Large"
-                    Variant="TextInputVariant.Outlined"
-                    StartIcon="email"
                     Required />
                     
-        <RTextInput Label="Password"
+        <RTextInput
                     Type="password"
                     @bind-value="model.Password"
-                    StartIcon="lock"
                     ShowPasswordToggle="true"
                     Required />
     </FormFields>

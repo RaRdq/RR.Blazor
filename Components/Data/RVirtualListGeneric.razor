@@ -4,7 +4,7 @@
 @using System.Collections.Generic
 @inject IJSRuntime JS
 
-<div class="@GetContainerClasses()" style="@ContainerStyle">
+<div class="@GetContainerClasses() virtual-container" style="--container-height: @(ContainerHeight)px;">
     @if (Loading && Items.Count == 0)
     {
         <div class="flex flex-col justify-center items-center pa-8">
@@ -43,12 +43,12 @@
                    Context="item"
                    OverscanCount="@BufferSize">
             <ItemContent>
-                <div class="@GetItemClasses()" style="@GetItemStyle()">
+                <div class="@GetItemClasses() virtual-item" style="--item-height: @(ItemHeight)px;">
                     @ItemTemplate(item)
                 </div>
             </ItemContent>
             <Placeholder>
-                <div class="@GetItemClasses()" style="@GetItemStyle()">
+                <div class="@GetItemClasses() virtual-item" style="--item-height: @(ItemHeight)px;">
                     <RSkeleton Height="@SkeletonHeight" />
                 </div>
             </Placeholder>
@@ -56,7 +56,7 @@
         
         @if (HasMoreItems)
         {
-            <div class="text-center pa-4" style="@GetLoadMoreStyle()">
+            <div class="text-center pa-4 @GetLoadMoreClasses()">
                 @if (isLoadingMore)
                 {
                     @if (LoadingMoreTemplate != null)
@@ -156,8 +156,6 @@
     private bool isLoadingMore = false;
     private bool observerInitialized = false;
     
-    private string ContainerStyle => $"--container-height: {ContainerHeight}px;";
-    
     private string GetContainerClasses()
     {
         var classes = new List<string> { "list" };
@@ -187,14 +185,16 @@
         return string.Join(" ", classes);
     }
     
-    private string GetItemStyle()
+    private string GetLoadMoreClasses()
     {
-        return $"--item-min-height: {ItemHeight}px;";
-    }
-    
-    private string GetLoadMoreStyle()
-    {
-        return AutoLoadMore ? "--load-more-position: sticky; --load-more-bottom: 0;" : "";
+        var classes = new List<string>();
+        
+        if (AutoLoadMore)
+        {
+            classes.Add("load-more-sticky");
+        }
+        
+        return string.Join(" ", classes);
     }
     
     protected override async Task OnAfterRenderAsync(bool firstRender)

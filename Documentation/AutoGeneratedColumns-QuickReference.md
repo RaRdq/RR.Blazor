@@ -126,6 +126,7 @@ Use manual `<ColumnsContent>` when you need:
 - Reflection only runs once per type
 - Minimal overhead after initial analysis
 - Same performance as manual columns after first render
+- Part of RR.Blazor's 66-component architecture with 3,309 utility classes
 
 ---
 
