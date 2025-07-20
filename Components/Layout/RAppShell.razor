@@ -38,9 +38,9 @@ Ultra-clean, responsive, and customizable for any business application.
     <!-- Full-Width Header (Over Sidebar) -->
     @if (ShowHeader)
     {
-        <header class="@GetHeaderClasses()">
+        <header class="app-header">
             <!-- Left Section: Toggle + Logo + Title -->
-            <div class="@GetHeaderLeftClasses()">
+            <div class="header-left">
                 @if (ShowSidebar && ShowSidebarToggle)
                 {
                     <RButton Icon="@GetToggleIcon()" 
@@ -53,22 +53,24 @@ Ultra-clean, responsive, and customizable for any business application.
                 
                 @if (LogoContent != null)
                 {
-                    @LogoContent
+                    <div class="app-logo">
+                        @LogoContent
+                    </div>
                 }
                 else if (!string.IsNullOrEmpty(Logo))
                 {
-                    <div class="@GetLogoClasses()">
+                    <div class="app-logo">
                         <img src="@Logo" alt="@Title" />
                         @if (!string.IsNullOrEmpty(Title))
                         {
-                            <span>@Title</span>
+                            <span class="text-base font-semibold text-primary">@Title</span>
                         }
                     </div>
                 }
                 else if (!string.IsNullOrEmpty(Title))
                 {
-                    <div class="@GetLogoClasses()">
-                        <span>@Title</span>
+                    <div class="app-logo">
+                        <span class="text-base font-semibold text-primary">@Title</span>
                     </div>
                 }
                 
@@ -79,44 +81,43 @@ Ultra-clean, responsive, and customizable for any business application.
                 else
                 {
                     <!-- Page Title & Breadcrumbs -->
-                    <div class="min-w-0 flex-1">
-                        <div class="d-flex align-center gap-2 flex-wrap">
+                    <div class="page-header-content">
+                        <div class="page-title-row">
                             @if (!string.IsNullOrEmpty(PageTitle))
                             {
-                                <h1 class="text-lg font-semibold text-primary ma-0">@PageTitle</h1>
+                                <h1 class="page-title">@PageTitle</h1>
                             }
                             @if (ShowBreadcrumbs && Breadcrumbs?.Any() == true)
                             {
-                                <nav class="d-flex align-center gap-2" aria-label="Breadcrumb">
-                                    <ol class="d-flex align-center flex-wrap list-spacious ma-0 pa-0 gap-2">
+                                <nav class="breadcrumb-nav" aria-label="Breadcrumb">
+                                    <ol class="breadcrumb-list">
                                     @foreach (var (item, index) in Breadcrumbs.Select((item, index) => (item, index)))
                                     {
                                         var isLast = index == Breadcrumbs.Count - 1;
                                         
-                                        <li class="d-flex align-center gap-1">
+                                        <li class="breadcrumb-item">
                                             @if (!string.IsNullOrEmpty(item.Icon) && index == 0)
                                             {
-                                                <i class="material-symbols-rounded text-lg text-secondary shrink-0">@item.Icon</i>
+                                                <i class="breadcrumb-icon material-symbols-rounded">@item.Icon</i>
                                             }
                                             
                                             @if (isLast || string.IsNullOrEmpty(item.Href))
                                             {
-                                                <span class="text-body-2 text-primary font-medium leading-none shrink-0" 
+                                                <span class="breadcrumb-text breadcrumb-current" 
                                                       aria-current="@(isLast ? "page" : null)">
                                                     @item.Text
                                                 </span>
                                             }
                                             else
                                             {
-                                                <a href="@item.Href" 
-                                                   class="text-body-2 text-secondary font-normal leading-none shrink-0 text-decoration-none transition-colors hover:text-primary hover:text-decoration-underline focus:outline focus:outline-2 focus:outline-primary focus:outline-offset-2">
+                                                <a href="@item.Href" class="breadcrumb-link">
                                                     @item.Text
                                                 </a>
                                             }
                                             
                                             @if (!isLast)
                                             {
-                                                <span class="d-flex items-center text-tertiary text-lg shrink-0 select-none" aria-hidden="true">
+                                                <span class="breadcrumb-separator" aria-hidden="true">
                                                     <i class="material-symbols-rounded">chevron_right</i>
                                                 </span>
                                             }
@@ -128,8 +129,8 @@ Ultra-clean, responsive, and customizable for any business application.
                         </div>
                         @if (!string.IsNullOrEmpty(PageSubtitle))
                         {
-                            <div>
-                                <p class="text-sm text-secondary ma-0 leading-tight">@PageSubtitle</p>
+                            <div class="page-subtitle-row">
+                                <p class="page-subtitle">@PageSubtitle</p>
                             </div>
                         }
                     </div>
@@ -137,62 +138,65 @@ Ultra-clean, responsive, and customizable for any business application.
             </div>
             
             <!-- Right Section: Search + Actions + User -->
-            <div class="@GetHeaderRightClasses()">
+            <div class="header-right">
                 @if (ShowSearch)
                 {
-                    <div class="@GetSearchClasses()">
+                    <div class="app-search">
                         @if (SearchCollapsible)
                         {
-                            @if (searchExpanded)
-                            {
-                                <RButton Icon="close" 
-                                         Variant="ButtonVariant.Ghost" 
-                                         Size="ButtonSize.Medium"
-                                         OnClick="CollapseSearch" 
-                                         AriaLabel="Close search" 
-                                         Class="search-close-btn" />
-                                <div class="relative">
+                            <div class="search-container @(searchExpanded ? "expanded" : "collapsed")">
+                                @if (searchExpanded)
+                                {
+                                    <div class="d-flex align-center gap-1 w-100 relative">
+                                        <RTextInput Type="FieldType.Search"
+                                                   Placeholder="Search..."
+                                                   Value="@searchQuery"
+                                                   ValueChanged="@(value => { searchQuery = value; HandleSearchChange(); })"
+                                                   Class="flex-1"
+                                                   Id="app-shell-search-input"
+                                                   OnKeyDown="@HandleSearchKeyDown" />
+                                        <RButton Icon="close" 
+                                                 Variant="ButtonVariant.Ghost" 
+                                                 Size="ButtonSize.Small"
+                                                 OnClick="CollapseSearch" 
+                                                 AriaLabel="Close search" 
+                                                 Class="shrink-0" />
+                                    </div>
+                                }
+                                else
+                                {
+                                    <RButton Icon="search" 
+                                             Variant="ButtonVariant.Ghost" 
+                                             Size="ButtonSize.Small"
+                                             OnClick="@(async () => await ExpandSearch())" 
+                                             AriaLabel="Open search" />
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="search-container expanded">
+                                <div class="d-flex align-center gap-1 w-100 relative">
                                     <RTextInput Type="FieldType.Search"
                                                Placeholder="Search..."
                                                Value="@searchQuery"
                                                ValueChanged="@(value => { searchQuery = value; HandleSearchChange(); })"
-                                               Class="search-input-expanded"
-                                               Id="app-shell-search-input"
+                                               Class="flex-1"
+                                               StartIcon="search"
                                                OnKeyDown="@HandleSearchKeyDown" />
                                 </div>
-                            }
-                            else
-                            {
-                                <RButton Icon="search" 
-                                         Variant="ButtonVariant.Ghost" 
-                                         Size="ButtonSize.Medium"
-                                         OnClick="@(async () => await ExpandSearch())" 
-                                         AriaLabel="Open search" 
-                                         Class="search-toggle-btn" />
-                            }
-                        }
-                        else
-                        {
-                            <div class="relative">
-                                <RTextInput Type="FieldType.Search"
-                                           Placeholder="Search..."
-                                           Value="@searchQuery"
-                                           ValueChanged="@(value => { searchQuery = value; HandleSearchChange(); })"
-                                           Class="search-input-expanded"
-                                           StartIcon="search"
-                                           OnKeyDown="@HandleSearchKeyDown" />
                             </div>
                         }
                         
                         <!-- Search Results -->
                         @if (showSearchResults && searchResults.Any())
                         {
-                            <div class="absolute top-100 left-0 right-0 bg-surface-elevated shadow-lg rounded-lg mt-1 py-2 z-50 max-h-300 overflow-y-auto"
+                            <div class="search-dropdown"
                                  role="listbox"
                                  aria-label="Search results">
                                 @foreach (var (result, index) in searchResults.Take(8).Select((r, i) => (r, i)))
                                 {
-                                    <button class="@GetSearchResultClasses(index) w-full text-left px-3 py-2 hover:bg-surface flex items-center gap-3 group focus:bg-surface focus:outline-none"
+                                    <button class="search-result-item @(selectedResultIndex == index ? "selected" : "")"
                                             @onclick="() => HandleSearchResultClick(result)"
                                             role="option"
                                             aria-selected="@(selectedResultIndex == index)"
@@ -200,16 +204,16 @@ Ultra-clean, responsive, and customizable for any business application.
                                             data-result-index="@index">
                                         @if (!string.IsNullOrEmpty(result.Icon))
                                         {
-                                            <i class="material-symbols-rounded text-sm text-secondary group-hover:text-primary">@result.Icon</i>
+                                            <i class="search-result-icon material-symbols-rounded">@result.Icon</i>
                                         }
-                                        <div class="flex-1 min-w-0">
-                                            <div class="text-sm font-medium text-primary">@result.Title</div>
+                                        <div class="search-result-content">
+                                            <div class="search-result-title">@result.Title</div>
                                             @if (!string.IsNullOrEmpty(result.Description))
                                             {
-                                                <div class="text-xs text-secondary truncate">@result.Description</div>
+                                                <div class="search-result-description">@result.Description</div>
                                             }
                                         </div>
-                                        <span class="text-xs text-tertiary">@result.Category</span>
+                                        <span class="search-result-category">@result.Category</span>
                                     </button>
                                 }
                             </div>
@@ -245,21 +249,23 @@ Ultra-clean, responsive, and customizable for any business application.
                 
                 @if (CurrentUser != null && ShowUserMenu && UserMenu != null)
                 {
-                    <div class="relative" @onclick="ToggleUserMenu">
-                        <RButton Variant="ButtonVariant.Ghost" Size="ButtonSize.Small">
-                            <div class="flex items-center gap-2">
+                    <div class="relative d-flex align-center" @onclick="ToggleUserMenu">
+                        <RButton Variant="ButtonVariant.Ghost" 
+                                 Size="ButtonSize.Small"
+                                 Class="touch-target">
+                            <div class="d-flex align-center gap-2">
                                 <RAvatar Text="@CurrentUser.GetInitials()" 
                                          ImageSrc="@CurrentUser.Avatar"
                                          Size="AvatarSize.Small"
                                          ShowStatus="true"
                                          Status="@(CurrentUser.IsOnline ? AvatarStatus.Online : AvatarStatus.Offline)" />
-                                <span class="text-sm font-medium hidden md:inline">@CurrentUser.GetDisplayName()</span>
-                                <i class="material-symbols-rounded text-sm">@(showUserMenu ? "expand_less" : "expand_more")</i>
+                                <span class="text-sm font-medium text-truncate hidden md:inline">@CurrentUser.GetDisplayName()</span>
+                                <i class="material-symbols-rounded text-sm text-secondary transition-transform">@(showUserMenu ? "expand_less" : "expand_more")</i>
                             </div>
                         </RButton>
                         @if (showUserMenu)
                         {
-                            <div class="absolute top-100 right-0 mt-1 z-50">
+                            <div class="user-menu-dropdown">
                                 @UserMenu
                             </div>
                         }
@@ -290,7 +296,7 @@ Ultra-clean, responsive, and customizable for any business application.
             <!-- Sidebar Footer -->
             @if (SidebarFooter != null)
             {
-                <div class="shrink-0 border-t border-light/20 pt-4">
+                <div class="shrink-0 border-t border-light/20 pt-4 px-4 pb-4">
                     <CascadingValue Value="sidebarCollapsed" Name="SidebarCollapsed">
                         @SidebarFooter
                     </CascadingValue>
@@ -298,8 +304,8 @@ Ultra-clean, responsive, and customizable for any business application.
             }
             else if (CurrentUser != null && ShowUserMenu && !ShowHeader)
             {
-                <div class="shrink-0 border-t border-light/20 pt-4">
-                    <div class="flex items-center gap-3 px-4 py-3">
+                <div class="shrink-0 border-t border-light pa-4">
+                    <div class="d-flex align-center gap-3">
                         <RAvatar Text="@CurrentUser.GetInitials()" 
                                  ImageSrc="@CurrentUser.Avatar"
                                  Size="AvatarSize.Small"
@@ -308,8 +314,8 @@ Ultra-clean, responsive, and customizable for any business application.
                         @if (!sidebarCollapsed)
                         {
                             <div class="flex-1 min-w-0">
-                                <div class="text-sm font-medium text-primary truncate">@CurrentUser.GetDisplayName()</div>
-                                <div class="text-xs text-secondary truncate">@CurrentUser.Role</div>
+                                <div class="text-sm font-medium text-primary text-truncate">@CurrentUser.GetDisplayName()</div>
+                                <div class="text-xs text-secondary text-truncate">@CurrentUser.Role</div>
                             </div>
                         }
                     </div>
@@ -348,8 +354,10 @@ Ultra-clean, responsive, and customizable for any business application.
         <RToastContainer />
     }
     
-    <!-- Modal Provider -->
+    <!-- Modal Provider - Framework Integration Point -->
+    <!-- Uses CSS portal technique to render at body level while staying in app shell -->
     <RModalProvider />
+    
 </div>
 </RThemeProvider>
 

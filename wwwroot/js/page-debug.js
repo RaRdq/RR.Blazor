@@ -88,721 +88,117 @@ const RRDebugAPI = (() => {
         }
     }
     
-    // Comprehensive issue detection patterns for all web development problems
+    // CRITICAL ISSUES ONLY - Real problems that need fixing, not normal SPA patterns
     const CRITICAL_ISSUES = {
-        // Layout & Display Issues
-        invisibleElement: el => {
+        // Layout & Display Issues - Only truly broken elements
+        brokenRender: el => {
             const s = getComputedStyle(el);
             const rect = el.getBoundingClientRect();
-            return (s.display === 'none' && el.textContent?.trim()) ||
-                   (s.visibility === 'hidden' && el.textContent?.trim()) ||
-                   (s.opacity === '0' && el.textContent?.trim()) ||
-                   (rect.width === 0 && rect.height === 0 && el.textContent?.trim());
+            // Only flag visible elements that should have content but are broken
+            return s.display !== 'none' && s.visibility !== 'hidden' && 
+                   rect.width === 0 && rect.height === 0 && 
+                   el.textContent?.trim() && el.textContent.length > 5;
         },
         
-        overflowingElement: el => {
-            const rect = el.getBoundingClientRect();
-            return rect.width > window.innerWidth * 1.2 || rect.height > window.innerHeight * 2;
-        },
-        
-        offscreenElement: el => {
+        criticalOverflow: el => {
             const rect = el.getBoundingClientRect();
             const s = getComputedStyle(el);
-            return s.position !== 'fixed' && (rect.right < -50 || rect.bottom < -50 || 
-                   rect.left > window.innerWidth + 50 || rect.top > window.innerHeight + 50);
+            // Only flag elements that break layout AND are visible
+            return s.display !== 'none' && s.visibility !== 'hidden' && 
+                   rect.width > window.innerWidth * 1.5 && s.overflow === 'visible';
         },
         
-        zeroSizedWithContent: el => {
-            const rect = el.getBoundingClientRect();
-            return (rect.width === 0 || rect.height === 0) && 
-                   (el.textContent?.trim() || el.children.length > 0);
+        brokenForm: el => {
+            // Forms that can't be used
+            return ['INPUT', 'BUTTON', 'SELECT', 'TEXTAREA'].includes(el.tagName) &&
+                   !el.disabled && getComputedStyle(el).display !== 'none' &&
+                   (getComputedStyle(el).opacity === '0' || 
+                    (el.getBoundingClientRect().width === 0 && el.getBoundingClientRect().height === 0));
         },
         
-        brokenFlexbox: el => {
-            const s = getComputedStyle(el);
-            return (el.className.includes('flex') && !s.display.includes('flex')) ||
-                   (s.display === 'flex' && s.flexWrap === 'nowrap' && el.children.length > 8);
-        },
-        
-        brokenVerticalRhythm: el => {
-            const s = getComputedStyle(el);
-            const lineHeight = parseFloat(s.lineHeight) || 0;
-            const fontSize = parseFloat(s.fontSize) || 0;
-            
-            // Flag elements with broken line-height ratios
-            if (fontSize > 0 && lineHeight > 0) {
-                const ratio = lineHeight / fontSize;
-                return ratio < 0.8 || ratio > 3.0; // Outside reasonable range
-            }
-            
-            return false;
-        },
-        
-        extremeHeight: el => {
+        brokenInteraction: el => {
+            // Interactive elements that can't be clicked
             const rect = el.getBoundingClientRect();
             const s = getComputedStyle(el);
-            
-            // Detect suspiciously extreme heights that indicate corruption
-            const hasFixedExtremeHeight = s.height && s.height.includes('px') && 
-                                        parseFloat(s.height) > window.innerHeight * 3;
-            
-            const hasMinHeightIssue = s.minHeight && s.minHeight.includes('px') && 
-                                    parseFloat(s.minHeight) > window.innerHeight;
-            
-            const hasRenderExtremeHeight = rect.height > window.innerHeight * 10;
-            
-            return hasFixedExtremeHeight || hasMinHeightIssue || hasRenderExtremeHeight;
+            const isInteractive = ['BUTTON', 'A'].includes(el.tagName) || el.onclick;
+            return isInteractive && s.display !== 'none' && 
+                   (rect.width < 10 || rect.height < 10 || s.pointerEvents === 'none');
         },
         
-        brokenGrid: el => {
+        cssCorruption: el => {
             const s = getComputedStyle(el);
-            return (el.className.includes('grid') && s.display !== 'grid') ||
-                   (s.display === 'grid' && !s.gridTemplateColumns && !s.gridTemplateRows && el.children.length > 0);
+            // Only flag truly corrupted CSS rules
+            return s.minHeight === '44px' && 
+                   !['BUTTON', 'INPUT', 'A', 'LABEL', 'SELECT', 'TEXTAREA'].includes(el.tagName);
         },
         
-        // CSS & Styling Issues
-        forcedHeight: el => {
+        brokenLayout: el => {
+            const rect = el.getBoundingClientRect();
             const s = getComputedStyle(el);
-            return s.minHeight === '44px' && !['BUTTON', 'INPUT', 'A', 'LABEL', 'SELECT', 'TEXTAREA'].includes(el.tagName);
+            // Elements with impossible dimensions
+            return rect.height > window.innerHeight * 10 || 
+                   (s.display === 'grid' && !s.gridTemplateColumns && !s.gridTemplateRows && el.children.length > 5);
         },
         
         invalidCSS: el => {
+            // Only flag truly invalid CSS classes that break rendering
             return Array.from(el.classList).some(cls => 
-                cls.startsWith('@') || cls.includes('undefined') || cls.includes('NaN') || 
-                cls.includes('null') || cls.includes('extend-') || cls.includes('mixin-'));
+                cls.includes('undefined') || cls.includes('NaN') || cls.includes('null'));
         },
         
-        missingCriticalStyles: el => {
-            const s = getComputedStyle(el);
-            const tag = el.tagName.toLowerCase();
-            return (tag === 'button' && s.cursor !== 'pointer') ||
-                   (tag === 'a' && s.cursor !== 'pointer' && el.href) ||
-                   (tag === 'input' && s.padding === '0px') ||
-                   (el.className.includes('btn') && s.cursor !== 'pointer');
-        },
-        
-        textColorIssues: el => {
+        invisibleText: el => {
             const s = getComputedStyle(el);
             const hasText = el.textContent?.trim();
-            return hasText && (
-                s.color === s.backgroundColor ||
-                s.color === 'transparent' ||
-                (s.color === 'rgb(255, 255, 255)' && s.backgroundColor === 'rgb(255, 255, 255)') ||
-                (s.color === 'rgb(0, 0, 0)' && s.backgroundColor === 'rgb(0, 0, 0)')
-            );
+            // Only flag text that is truly invisible but should be visible
+            return hasText && hasText.length > 3 && s.display !== 'none' &&
+                   (s.color === s.backgroundColor && s.color !== 'transparent' ||
+                    s.color === 'transparent' && s.backgroundColor !== 'transparent');
         },
         
-        // Typography Issues
-        tinyText: el => {
-            const s = getComputedStyle(el);
-            return el.textContent?.trim() && parseFloat(s.fontSize) < 10;
-        },
-        
-        hugeText: el => {
-            const s = getComputedStyle(el);
-            return el.textContent?.trim() && parseFloat(s.fontSize) > 72;
-        },
-        
-        // Accessibility Issues
+        // Accessibility Issues - Only critical ones
         missingAltText: el => {
-            return el.tagName === 'IMG' && !el.alt && !el.getAttribute('aria-label');
+            return el.tagName === 'IMG' && !el.alt && !el.getAttribute('aria-label') && 
+                   getComputedStyle(el).display !== 'none';
         },
         
-        emptyButtonOrLink: el => {
-            return (el.tagName === 'BUTTON' || el.tagName === 'A') && 
-                   !el.textContent?.trim() && !el.getAttribute('aria-label') && 
-                   !el.querySelector('img[alt]');
+        emptyButton: el => {
+            return el.tagName === 'BUTTON' && !el.textContent?.trim() && 
+                   !el.getAttribute('aria-label') && !el.querySelector('img[alt]') &&
+                   getComputedStyle(el).display !== 'none';
         },
         
-        smallTouchTarget: el => {
-            const rect = el.getBoundingClientRect();
-            const isInteractive = ['BUTTON', 'A', 'INPUT', 'SELECT', 'TEXTAREA'].includes(el.tagName) ||
-                                 el.onclick || el.getAttribute('role') === 'button';
-            return isInteractive && (rect.width < 44 || rect.height < 44) && rect.width > 0 && rect.height > 0;
+        // Critical JavaScript Issues
+        jsErrors: () => {
+            return window.__RR_CONSOLE_ERRORS?.length > 0;
         },
         
-        // Performance Issues
-        excessiveNesting: el => {
-            let depth = 0;
-            let current = el;
-            while (current.parentElement) {
-                depth++;
-                current = current.parentElement;
-                if (depth > 20) break; // Prevent infinite loops
-            }
-            return depth > 15;
+        // Critical Framework Issues  
+        blazorError: el => {
+            return el.getAttribute('b-error') || el.className.includes('blazor-error-boundary');
         },
         
-        tooManyChildren: el => {
-            return el.children.length > 30;
-        },
-        
-        // Position & Z-index Issues
-        excessiveZIndex: el => {
-            const s = getComputedStyle(el);
-            const zIndex = parseInt(s.zIndex);
-            return !isNaN(zIndex) && zIndex > 1000;
-        },
-        
-        positionedWithoutCoords: el => {
-            const s = getComputedStyle(el);
-            return (s.position === 'absolute' || s.position === 'fixed') &&
-                   s.top === 'auto' && s.right === 'auto' && 
-                   s.bottom === 'auto' && s.left === 'auto';
-        },
-        
-        // Form Issues
-        inputWithoutLabels: el => {
-            return ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName) &&
-                   el.type !== 'hidden' && !el.labels?.length && 
-                   !el.getAttribute('aria-label') && !el.getAttribute('placeholder');
-        },
-        
-        // Mobile & Responsive Issues
-        notMobileFriendly: el => {
-            const rect = el.getBoundingClientRect();
-            return rect.width > window.innerWidth && !['HTML', 'BODY'].includes(el.tagName);
-        },
-        
-        fixedWidthBreakpoint: el => {
-            const s = getComputedStyle(el);
-            return s.width && s.width.includes('px') && parseInt(s.width) > 768 && 
-                   !['IMG', 'VIDEO', 'IFRAME'].includes(el.tagName);
-        },
-        
-        // Animation & Transition Issues
-        missingTransitions: el => {
-            const s = getComputedStyle(el);
-            const isInteractive = ['BUTTON', 'A'].includes(el.tagName) || el.onclick ||
-                                 el.className.includes('hover') || el.className.includes('btn');
-            return isInteractive && s.transition === 'all 0s ease 0s';
-        },
-        
-        // Color & Contrast Issues
-        lowContrast: el => {
-            const s = getComputedStyle(el);
-            if (!el.textContent?.trim()) return false;
-            
-            const color = s.color;
-            const bgColor = s.backgroundColor;
-            return (color === 'rgb(128, 128, 128)' && bgColor === 'rgb(255, 255, 255)') ||
-                   (color === 'rgb(255, 255, 255)' && bgColor === 'rgb(240, 240, 240)');
-        },
-        
-        // Layout & Spacing Issues
-        negativeMargins: el => {
-            const s = getComputedStyle(el);
-            return s.marginLeft.includes('-') || s.marginRight.includes('-') ||
-                   s.marginTop.includes('-') || s.marginBottom.includes('-');
-        },
-        
-        excessiveSpacing: el => {
-            const s = getComputedStyle(el);
-            const viewportHeight = window.innerHeight;
-            const viewportWidth = window.innerWidth;
-            
-            // Check for excessive margins/padding relative to viewport
-            const margin = Math.max(
-                parseFloat(s.marginTop) || 0,
-                parseFloat(s.marginBottom) || 0,
-                parseFloat(s.marginLeft) || 0,
-                parseFloat(s.marginRight) || 0
-            );
-            
-            const padding = Math.max(
-                parseFloat(s.paddingTop) || 0,
-                parseFloat(s.paddingBottom) || 0,
-                parseFloat(s.paddingLeft) || 0,
-                parseFloat(s.paddingRight) || 0
-            );
-            
-            // Flag if any spacing exceeds reasonable thresholds
-            return margin > viewportHeight * 0.3 || padding > viewportWidth * 0.2 ||
-                   margin > 300 || padding > 200;
-        },
-        
-        disproportionateSpacing: el => {
-            const s = getComputedStyle(el);
-            const rect = el.getBoundingClientRect();
-            
-            // Skip if element has no content or size
-            if (rect.width === 0 || rect.height === 0) return false;
-            
-            const totalPadding = (parseFloat(s.paddingTop) || 0) + 
-                               (parseFloat(s.paddingBottom) || 0) + 
-                               (parseFloat(s.paddingLeft) || 0) + 
-                               (parseFloat(s.paddingRight) || 0);
-            
-            const totalMargin = (parseFloat(s.marginTop) || 0) + 
-                              (parseFloat(s.marginBottom) || 0) + 
-                              (parseFloat(s.marginLeft) || 0) + 
-                              (parseFloat(s.marginRight) || 0);
-            
-            // Flag if spacing is larger than the content itself
-            return totalPadding > rect.width || totalMargin > rect.height * 2;
-        },
-        
-        inconsistentSpacing: el => {
-            const s = getComputedStyle(el);
-            
-            // Check for wildly inconsistent margin/padding values
-            const margins = [
-                parseFloat(s.marginTop) || 0,
-                parseFloat(s.marginRight) || 0,
-                parseFloat(s.marginBottom) || 0,
-                parseFloat(s.marginLeft) || 0
-            ];
-            
-            const paddings = [
-                parseFloat(s.paddingTop) || 0,
-                parseFloat(s.paddingRight) || 0,
-                parseFloat(s.paddingBottom) || 0,
-                parseFloat(s.paddingLeft) || 0
-            ];
-            
-            // Calculate variance to detect inconsistency
-            const marginMax = Math.max(...margins);
-            const marginMin = Math.min(...margins.filter(m => m > 0));
-            const paddingMax = Math.max(...paddings);
-            const paddingMin = Math.min(...paddings.filter(p => p > 0));
-            
-            // Flag if there's extreme inconsistency (more than 10x difference)
-            return (marginMax > 0 && marginMin > 0 && marginMax / marginMin > 10) ||
-                   (paddingMax > 0 && paddingMin > 0 && paddingMax / paddingMin > 10);
-        },
-        
-        brokenGutters: el => {
-            const s = getComputedStyle(el);
-            
-            // Check for broken grid/flex gutters
-            if (s.display === 'grid') {
-                const gap = parseFloat(s.gap) || parseFloat(s.gridGap) || 0;
-                const columnGap = parseFloat(s.columnGap) || parseFloat(s.gridColumnGap) || 0;
-                const rowGap = parseFloat(s.rowGap) || parseFloat(s.gridRowGap) || 0;
-                
-                // Flag excessive gaps in grid layouts
-                return gap > 100 || columnGap > 150 || rowGap > 150;
-            }
-            
-            if (s.display === 'flex') {
-                const gap = parseFloat(s.gap) || 0;
-                return gap > 100;
-            }
-            
-            return false;
-        },
-        
-        malformedLayout: el => {
-            const rect = el.getBoundingClientRect();
-            const s = getComputedStyle(el);
-            
-            // Detect severely malformed elements
-            const hasExtremeAspectRatio = rect.width > 0 && rect.height > 0 && 
-                                        (rect.width / rect.height > 50 || rect.height / rect.width > 50);
-            
-            const hasExtremeSize = rect.width > window.innerWidth * 5 || 
-                                 rect.height > window.innerHeight * 5;
-            
-            const hasConfictingPositions = s.position === 'absolute' && 
-                                         s.top !== 'auto' && s.bottom !== 'auto' &&
-                                         s.left !== 'auto' && s.right !== 'auto';
-            
-            return hasExtremeAspectRatio || hasExtremeSize || hasConfictingPositions;
-        },
-        
-        overlapppingElements: el => {
-            const rect = el.getBoundingClientRect();
-            const siblings = Array.from(el.parentElement?.children || []);
-            return siblings.some(sibling => {
-                if (sibling === el) return false;
-                const sibRect = sibling.getBoundingClientRect();
-                return rect.left < sibRect.right && rect.right > sibRect.left &&
-                       rect.top < sibRect.bottom && rect.bottom > sibRect.top;
-            });
-        },
-        
-        // Content Issues
-        emptyContainer: el => {
-            return el.children.length === 0 && !el.textContent?.trim() && 
-                   !['IMG', 'INPUT', 'HR', 'BR'].includes(el.tagName) &&
-                   el.getBoundingClientRect().height > 20;
-        },
-        
-        textOverflow: el => {
-            const s = getComputedStyle(el);
-            return s.overflow === 'visible' && el.scrollWidth > el.clientWidth + 5;
-        },
-        
-        // Image Issues
-        unsizedImage: el => {
-            if (el.tagName !== 'IMG') return false;
-            const s = getComputedStyle(el);
-            return !s.width || !s.height || s.width === 'auto' || s.height === 'auto';
-        },
-        
-        // JavaScript Issues
-        consoleErrors: () => {
-            return window.__rrDebugErrors?.length > 0;
-        },
-        
-        // Theme Issues
-        hardcodedColors: el => {
-            const s = getComputedStyle(el);
-            const hasHardcoded = s.color?.includes('#') || s.backgroundColor?.includes('#') ||
-                               s.borderColor?.includes('#');
-            return hasHardcoded && !el.style.color && !el.style.backgroundColor;
-        },
-        
-        // Performance & Memory Issues
-        heavyDOMNode: el => {
-            return el.children.length > 50 || el.innerHTML.length > 10000;
-        },
-        
-        duplicateIds: el => {
+        // Duplicated IDs break functionality
+        duplicateId: el => {
             if (!el.id) return false;
             try {
-                // Escape CSS selector for IDs that start with digits or contain special characters
                 const escapedId = CSS.escape(el.id);
                 return document.querySelectorAll(`#${escapedId}`).length > 1;
             } catch (e) {
-                // Fallback for browsers without CSS.escape
                 return document.getElementById(el.id) !== el;
             }
         },
         
-        // Loading & State Issues
-        emptyLoadingState: el => {
-            return el.className.includes('loading') && !el.textContent?.trim() && 
-                   !el.querySelector('.spinner, .skeleton, .placeholder');
-        },
-        
-        // Navigation Issues
-        brokenLinks: el => {
-            return el.tagName === 'A' && el.href && 
-                   (el.href === window.location.href + '#' || el.href.endsWith('undefined'));
-        },
-        
-        // Security Issues
-        unsafeInlineEvents: el => {
-            return ['onclick', 'onmouseover', 'onerror', 'onload'].some(event => el.getAttribute(event));
-        },
-        
-        // SEO Issues
-        missingHeadingHierarchy: el => {
-            if (!['H1', 'H2', 'H3', 'H4', 'H5', 'H6'].includes(el.tagName)) return false;
-            const level = parseInt(el.tagName[1]);
-            const prevHeading = document.querySelector(`h${level - 1}`);
-            return level > 1 && !prevHeading;
-        },
-        
-        // Utility Issues
-        redundantClasses: el => {
-            const classes = Array.from(el.classList);
-            return classes.length !== new Set(classes).size; // Has duplicate classes
-        },
-        
-        // Framework-specific Issues
-        blazorComponentError: el => {
-            return el.getAttribute('b-error') || el.className.includes('blazor-error-boundary');
-        },
-        
-        // JavaScript vs CSS Conflicts
-        jsOverridingCSS: el => {
-            const computed = getComputedStyle(el);
-            const inline = el.style;
-            
-            // Detect when inline styles override CSS with !important indicators
-            const hasInlineConflicts = ['display', 'position', 'width', 'height', 'top', 'left'].some(prop => {
-                return inline[prop] && computed[prop] !== inline[prop];
-            });
-            
-            // Check for programmatic style conflicts
-            const hasDataConflicts = el.dataset.originalStyle || el.dataset.jsModified;
-            
-            return hasInlineConflicts || hasDataConflicts;
-        },
-        
-        dynamicStyleConflict: el => {
+        // Critical Style Mismatches - Only check CSS class vs computed conflicts
+        styleMismatch: el => {
             const s = getComputedStyle(el);
-            
-            // Detect elements with CSS classes that are being overridden by JS
-            const hasTransformConflict = s.transform !== 'none' && el.style.transform && 
-                                       s.transform !== el.style.transform;
-            
-            const hasDisplayConflict = el.classList.contains('hidden') && s.display !== 'none';
-            
-            const hasVisibilityConflict = el.classList.contains('invisible') && s.visibility !== 'hidden';
-            
-            return hasTransformConflict || hasDisplayConflict || hasVisibilityConflict;
-        },
-        
-        inlineStyleOveruse: el => {
-            // Detect excessive inline styles that should be CSS classes
-            const inlineStyleCount = el.style.length;
-            const hasMultipleInlineStyles = inlineStyleCount > 5;
-            
-            // Check for complex inline styles that indicate JS/CSS conflicts
-            const hasComplexInlineStyles = el.style.cssText && 
-                el.style.cssText.includes('!important');
-            
-            return hasMultipleInlineStyles || hasComplexInlineStyles;
-        },
-        
-        animationConflict: el => {
-            const s = getComputedStyle(el);
-            
-            // Detect CSS animations being overridden by JS
-            const hasCSSAnimation = s.animation !== 'none';
-            const hasCSSTransition = s.transition !== 'all 0s ease 0s';
-            
-            // Check for JS animation libraries that might conflict
-            const hasJSAnimation = el.style.transition || el.style.animation ||
-                                 el.getAttribute('data-animate') ||
-                                 el.classList.toString().includes('animate-');
-            
-            return (hasCSSAnimation || hasCSSTransition) && hasJSAnimation;
-        },
-        
-        computedStyleMismatch: el => {
-            const s = getComputedStyle(el);
-            
-            // Detect when computed styles don't match expected class behavior
+            // Flag serious conflicts between CSS classes and computed styles
             const flexClassButNotFlex = (el.className.includes('flex') || el.className.includes('d-flex')) && 
-                                      !s.display.includes('flex');
-            
-            const gridClassButNotGrid = (el.className.includes('grid') || el.className.includes('d-grid')) && 
-                                      s.display !== 'grid';
+                                      !s.display.includes('flex') && s.display !== 'none';
             
             const hiddenClassButVisible = (el.className.includes('hidden') || el.className.includes('d-none')) && 
-                                        s.display !== 'none';
+                                        s.display !== 'none' && s.visibility !== 'hidden';
             
-            return flexClassButNotFlex || gridClassButNotGrid || hiddenClassButVisible;
-        },
-        
-        eventListenerStyling: el => {
-            // Detect elements that likely have JS event listeners affecting styling
-            const hasClickEvents = el.onclick || el.addEventListener;
-            const hasHoverStyling = el.style.cursor === 'pointer' || 
-                                  getComputedStyle(el).cursor === 'pointer';
-            
-            // Check for elements that should be CSS-only but have JS styling
-            const isStaticElement = ['DIV', 'SPAN', 'P', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6'].includes(el.tagName);
-            
-            return isStaticElement && hasClickEvents && hasHoverStyling && 
-                   !el.getAttribute('role') && !el.tabIndex;
-        },
-        
-        cssVariableOverride: el => {
-            const s = getComputedStyle(el);
-            
-            // Detect CSS custom properties being overridden inconsistently
-            const cssVarProps = ['--primary-color', '--secondary-color', '--background-color', '--text-color'];
-            const hasOverriddenVars = cssVarProps.some(prop => {
-                const rootValue = getComputedStyle(document.documentElement).getPropertyValue(prop);
-                const elValue = s.getPropertyValue(prop);
-                return rootValue && elValue && rootValue !== elValue;
-            });
-            
-            return hasOverriddenVars;
-        },
-        
-        styleRecalculation: el => {
-            // Detect elements that cause expensive style recalculations
-            const rect = el.getBoundingClientRect();
-            const s = getComputedStyle(el);
-            
-            // Elements with complex selectors or dynamic properties
-            const hasComplexTransforms = s.transform !== 'none' && s.transform.includes('matrix');
-            const hasComplexFilters = s.filter !== 'none';
-            const hasComplexClipping = s.clipPath !== 'none';
-            
-            return hasComplexTransforms || hasComplexFilters || hasComplexClipping;
-        },
-        
-        // Animation & Transition Tracking
-        brokenTransitions: el => {
-            const s = getComputedStyle(el);
-            const isInteractive = ['BUTTON', 'A', 'INPUT', 'SELECT'].includes(el.tagName) ||
-                                 el.onclick || el.className.includes('btn') || el.className.includes('hover');
-            
-            if (!isInteractive) return false;
-            
-            // Check for broken transition properties
-            const transition = s.transition;
-            const hasTransition = transition && transition !== 'all 0s ease 0s';
-            
-            if (hasTransition) {
-                // Detect invalid transition values
-                const hasInvalidDuration = transition.includes('0s') && transition.includes('ease');
-                const hasInvalidProperty = transition.includes('undefined') || transition.includes('NaN');
-                return hasInvalidDuration || hasInvalidProperty;
-            }
-            
-            return false;
-        },
-        
-        invisibleAnimation: el => {
-            const s = getComputedStyle(el);
-            
-            // Detect animations that are effectively invisible
-            const hasAnimation = s.animation !== 'none';
-            
-            if (hasAnimation) {
-                // Check for animations with transparent or same-color transitions
-                const opacity = parseFloat(s.opacity);
-                const color = s.color;
-                const backgroundColor = s.backgroundColor;
-                
-                // Flag animations on invisible elements
-                const isInvisible = opacity === 0 || s.visibility === 'hidden' || s.display === 'none';
-                
-                // Flag animations with no visual change
-                const hasNoVisualChange = color === backgroundColor && color === 'rgba(0, 0, 0, 0)';
-                
-                return isInvisible || hasNoVisualChange;
-            }
-            
-            return false;
-        },
-        
-        motionWithoutPurpose: el => {
-            const s = getComputedStyle(el);
-            
-            // Detect motion that serves no UX purpose
-            const hasTransform = s.transform !== 'none';
-            const hasAnimation = s.animation !== 'none';
-            const hasTransition = s.transition !== 'all 0s ease 0s';
-            
-            if (hasTransform || hasAnimation || hasTransition) {
-                // Check if element is interactive or provides feedback
-                const isInteractive = ['BUTTON', 'A', 'INPUT'].includes(el.tagName) ||
-                                     el.onclick || el.onmouseover || el.getAttribute('role');
-                
-                const providesVisualFeedback = el.className.includes('loading') ||
-                                             el.className.includes('spinner') ||
-                                             el.className.includes('progress');
-                
-                // Flag motion on non-interactive, non-feedback elements
-                return !isInteractive && !providesVisualFeedback;
-            }
-            
-            return false;
-        },
-        
-        performanceKillingAnimation: el => {
-            const s = getComputedStyle(el);
-            
-            // Detect animations that cause performance issues
-            const hasExpensiveAnimation = s.animation !== 'none' && (
-                s.animation.includes('infinite') ||
-                s.animationIterationCount === 'infinite'
-            );
-            
-            const hasExpensiveTransform = s.transform !== 'none' && (
-                s.transform.includes('matrix3d') ||
-                s.transform.includes('perspective')
-            );
-            
-            const hasLayoutTriggering = s.transition && (
-                s.transition.includes('width') ||
-                s.transition.includes('height') ||
-                s.transition.includes('top') ||
-                s.transition.includes('left')
-            );
-            
-            return hasExpensiveAnimation || hasExpensiveTransform || hasLayoutTriggering;
-        },
-        
-        hoverStateIssues: el => {
-            const s = getComputedStyle(el);
-            const isInteractive = ['BUTTON', 'A'].includes(el.tagName) || el.onclick;
-            
-            if (!isInteractive) return false;
-            
-            // Simulate hover to test visibility
-            const originalTransition = el.style.transition;
-            el.style.transition = 'none'; // Temporarily disable transitions for testing
-            
-            // Check hover styles by adding hover class if it exists
-            const hoverClass = Array.from(el.classList).find(cls => cls.includes('hover'));
-            if (hoverClass) {
-                const hoverS = getComputedStyle(el);
-                
-                // Check for invisible hover states
-                const hoverColor = hoverS.color;
-                const hoverBg = hoverS.backgroundColor;
-                
-                const isInvisibleHover = hoverColor === 'rgba(0, 0, 0, 0)' ||
-                                       hoverBg === 'rgba(0, 0, 0, 0)' ||
-                                       hoverColor === '#ffffff' && hoverBg === '#ffffff' ||
-                                       hoverColor === 'transparent';
-                
-                // Restore original transition
-                el.style.transition = originalTransition;
-                
-                return isInvisibleHover;
-            }
-            
-            el.style.transition = originalTransition;
-            return false;
-        },
-        
-        motionReducedIgnored: el => {
-            const s = getComputedStyle(el);
-            
-            // Check if animations ignore prefers-reduced-motion
-            const hasMotion = s.animation !== 'none' || s.transition !== 'all 0s ease 0s';
-            
-            if (hasMotion) {
-                // Test if motion is disabled when user prefers reduced motion
-                const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-                
-                if (prefersReducedMotion) {
-                    // Motion should be disabled or significantly reduced
-                    const stillHasMotion = s.animation !== 'none' ||
-                                         (s.transition !== 'all 0s ease 0s' && !s.transition.includes('0.15s'));
-                    
-                    return stillHasMotion;
-                }
-            }
-            
-            return false;
-        },
-        
-        activeStateTracking: el => {
-            const s = getComputedStyle(el);
-            const isInteractive = ['BUTTON', 'A', 'INPUT'].includes(el.tagName) || el.onclick;
-            
-            if (!isInteractive) return false;
-            
-            // Test if active states are properly defined
-            const hasActiveTransition = s.transition && s.transition !== 'all 0s ease 0s';
-            const hasTransform = s.transform !== 'none';
-            
-            // Check for missing active state feedback
-            const lacksActiveFeedback = !hasActiveTransition && !hasTransform &&
-                                      s.cursor === 'pointer' && !el.disabled;
-            
-            return lacksActiveFeedback;
-        },
-        
-        loadingAnimationIssues: el => {
-            const s = getComputedStyle(el);
-            const isLoadingElement = el.className.includes('loading') ||
-                                   el.className.includes('spinner') ||
-                                   el.className.includes('skeleton');
-            
-            if (!isLoadingElement) return false;
-            
-            // Check if loading animations are working
-            const hasAnimation = s.animation !== 'none';
-            const hasRotation = s.transform && s.transform.includes('rotate');
-            const hasOpacityChange = s.opacity !== '1';
-            
-            // Loading elements should have some form of animation
-            const lacksAnimation = !hasAnimation && !hasRotation && !hasOpacityChange;
-            
-            return lacksAnimation;
+            return flexClassButNotFlex || hiddenClassButVisible;
         }
     };
 
@@ -1008,7 +404,7 @@ const RRDebugAPI = (() => {
 
         const root = getComputedStyle(document.documentElement);
         const criticalVars = [
-            '--header-height', '--sidebar-width', '--color-text-primary', 
+            '--header-height', '--sidebar-width', '--color-text', 
             '--space-4', '--radius-lg', '--shadow-md'
         ];
 
@@ -1041,37 +437,101 @@ const RRDebugAPI = (() => {
         return verification;
     }
 
+    // Helper functions for AI agent integration
+    function generateSelector(el) {
+        if (el.id) return `#${el.id}`;
+        
+        let selector = el.tagName.toLowerCase();
+        if (el.className) {
+            const classes = el.className.split(' ').filter(c => c && !c.includes('ng-') && !c.includes('_')).slice(0, 2);
+            if (classes.length > 0) selector += '.' + classes.join('.');
+        }
+        
+        // Add position context if needed
+        const parent = el.parentElement;
+        if (parent && parent.children.length > 1) {
+            const index = Array.from(parent.children).indexOf(el);
+            selector += `:nth-child(${index + 1})`;
+        }
+        
+        return selector;
+    }
+
+    function getRelevantStyles(el, issueType) {
+        const s = getComputedStyle(el);
+        const relevantStyles = {
+            display: s.display,
+            visibility: s.visibility,
+            opacity: s.opacity,
+            position: s.position,
+            width: s.width,
+            height: s.height
+        };
+
+        // Add issue-specific styles
+        if (issueType === 'cssCorruption') relevantStyles.minHeight = s.minHeight;
+        if (issueType === 'invisibleText') relevantStyles.color = s.color;
+        if (issueType === 'brokenLayout') {
+            relevantStyles.gridTemplateColumns = s.gridTemplateColumns;
+            relevantStyles.gridTemplateRows = s.gridTemplateRows;
+        }
+
+        return sanitizeForJSON(relevantStyles);
+    }
+
     function analyze() {
         const allElements = document.querySelectorAll('*');
-        const issues = {
-            forcedHeight: 0,
-            brokenFlex: 0,
-            invalidCSS: 0,
-            total: 0
-        };
+        const issues = Object.keys(CRITICAL_ISSUES).reduce((acc, key) => {
+            acc[key] = 0;
+            return acc;
+        }, { total: 0 });
+
+        const detectedIssues = []; // Store actual problem elements with DOM references
 
         Array.from(allElements).forEach(el => {
             Object.entries(CRITICAL_ISSUES).forEach(([type, checkFn]) => {
                 if (checkFn(el)) {
                     issues[type]++;
                     issues.total++;
+                    
+                    // Store reference to problematic element for AI agents
+                    detectedIssues.push({
+                        type,
+                        element: el,
+                        selector: generateSelector(el),
+                        tagName: el.tagName.toLowerCase(),
+                        classes: sanitizeForJSON(el.className),
+                        id: el.id,
+                        textContent: sanitizeForJSON(el.textContent?.substring(0, 50)),
+                        styles: getRelevantStyles(el, type)
+                    });
                 }
             });
         });
 
-        const score = Math.max(0, 100 - (issues.total / allElements.length * 200));
-        const status = score >= 85 ? 'excellent' : score >= 70 ? 'good' : score >= 50 ? 'fair' : 'critical';
+        // More reasonable scoring: Only critical issues matter
+        const criticalCount = issues.cssCorruption + issues.brokenForm + issues.brokenInteraction + 
+                             issues.blazorError + issues.jsErrors + issues.invalidCSS;
+        const score = Math.max(0, 100 - (criticalCount * 5) - (issues.total * 0.5));
+        const status = criticalCount > 0 ? 'critical' : 
+                      score >= 90 ? 'excellent' : score >= 80 ? 'good' : score >= 70 ? 'fair' : 'needs-attention';
 
         const report = {
             score: Math.round(score),
             status,
             totalElements: allElements.length,
             issues,
+            detectedIssues: detectedIssues.slice(0, 20), // Limit for performance, most critical first
+            criticalCount,
+            isHealthy: criticalCount === 0 && score >= 80,
             actionable: generateActionableInsights(issues, allElements.length)
         };
 
         console.log(`🔍 Page Analysis - Score: ${report.score}% (${report.status})`);
-        console.log('📊 Critical Issues:', issues);
+        console.log('📊 Issue Counts:', issues);
+        if (detectedIssues.length > 0) {
+            console.log('🎯 Detected Issues with DOM References:', detectedIssues.slice(0, 5));
+        }
         console.log('🎯 Actionable Insights:', report.actionable);
 
         return report;
@@ -1603,12 +1063,10 @@ const RRDebugAPI = (() => {
 
     // Helper function for element-specific analysis
     const analyzeElements = (elements) => {
-        const issues = {
-            forcedHeight: 0,
-            brokenFlex: 0,
-            invalidCSS: 0,
-            total: 0
-        };
+        const issues = Object.keys(CRITICAL_ISSUES).reduce((acc, key) => {
+            acc[key] = 0;
+            return acc;
+        }, { total: 0 });
 
         Array.from(elements).forEach(el => {
             Object.entries(CRITICAL_ISSUES).forEach(([type, checkFn]) => {
@@ -1619,8 +1077,11 @@ const RRDebugAPI = (() => {
             });
         });
 
-        const score = Math.max(0, 100 - (issues.total / elements.length * 200));
-        const status = score >= 85 ? 'excellent' : score >= 70 ? 'good' : score >= 50 ? 'fair' : 'critical';
+        const criticalCount = issues.cssCorruption + issues.brokenForm + issues.brokenInteraction + 
+                             issues.blazorError + issues.jsErrors + issues.invalidCSS;
+        const score = Math.max(0, 100 - (criticalCount * 5) - (issues.total * 0.5));
+        const status = criticalCount > 0 ? 'critical' : 
+                      score >= 90 ? 'excellent' : score >= 80 ? 'good' : score >= 70 ? 'fair' : 'needs-attention';
 
         return {
             score: Math.round(score),
@@ -1888,4 +1349,4 @@ if (window.location.search.includes('debug=true') || window.location.search.incl
     }, 1000);
 }
 
-export default RRDebugAPI;
+// export default RRDebugAPI; // Commented out for HTML compatibility

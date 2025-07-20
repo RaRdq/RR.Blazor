@@ -9,9 +9,10 @@
 <ai-common-use>Dashboard grids, stats cards, responsive layouts, card containers</ai-common-use>
 <ai-pattern name="stats-grid">
 <RGrid Type="GridType.Stats" Variant="GridVariant.Compact">
-    <RCard Text="Metric 1" />
-    <RCard Text="Metric 2" />
+    <RStatsCard Text="Monthly" Value="$892K" Icon="trending_up" />
+    <RStatsCard Text="Quarterly" Value="$2.1M" Icon="bar_chart" />
 </RGrid>
+<!-- Now using utility-first classes: d-grid grid-auto-fit-200 gap-2 w-full -->
 </ai-pattern>
 **@
 
@@ -34,7 +35,11 @@
         switch (Type)
         {
             case GridType.Stats:
-                classes.Add("stats-grid");
+                // Utility-first stats grid implementation
+                classes.Add("d-grid");
+                classes.Add("w-full");
+                classes.Add(Variant == GridVariant.Compact ? "grid-auto-fit-200" : "grid-auto-fit-250");
+                classes.Add(Variant == GridVariant.Compact ? "gap-2" : "gap-4");
                 break;
             case GridType.Action:
                 classes.Add("action-grid");
@@ -45,14 +50,11 @@
                 break;
         }
 
-        switch (Variant)
+        // Note: Spacious variant uses larger gap for stats grid
+        if (Type == GridType.Stats && Variant == GridVariant.Spacious)
         {
-            case GridVariant.Compact:
-                classes.Add($"{GetGridBaseClass()}-compact");
-                break;
-            case GridVariant.Spacious:
-                classes.Add($"{GetGridBaseClass()}-spacious");
-                break;
+            classes.RemoveAll(c => c.StartsWith("gap-"));
+            classes.Add("gap-6");
         }
 
         if (!string.IsNullOrEmpty(Class))
@@ -65,7 +67,7 @@
     {
         return Type switch
         {
-            GridType.Stats => "stats-grid",
+            GridType.Stats => "d-grid", // Now using utility-first approach
             GridType.Action => "action-grid",
             _ => "grid-auto-fit"
         };

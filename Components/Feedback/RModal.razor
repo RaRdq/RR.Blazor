@@ -2,9 +2,7 @@
 @using Microsoft.JSInterop
 @* RModal - Generic modal component with comprehensive configuration *@
 
-@if (Visible)
-{
-<div class="modal @Class" @onclick="HandleBackdropClick" 
+<div class="modal @Class @(Visible ? "modal--visible" : "modal--hidden")" @onclick="HandleBackdropClick" 
      role="dialog" 
      aria-modal="true" 
      aria-labelledby="@ModalTitleId" 
@@ -107,7 +105,6 @@
         }
     </div>
 </div>
-}
 
 @code {
     [Parameter] public bool Visible { get; set; }
@@ -214,6 +211,9 @@
             // Store reference to currently focused element
             await JSRuntime.InvokeVoidAsync("eval", "window._previouslyFocusedElement = document.activeElement");
             
+            // Add modal-open class to body for scroll lock and proper positioning
+            await JSRuntime.InvokeVoidAsync("eval", "document.body.classList.add('modal-open')");
+            
             // Focus the modal after a brief delay to ensure it's rendered
             await Task.Delay(100);
             await modalElement.FocusAsync();
@@ -253,6 +253,9 @@
     {
         try
         {
+            // Remove modal-open class from body to restore scrolling
+            await JSRuntime.InvokeVoidAsync("eval", "document.body.classList.remove('modal-open')");
+            
             // Remove keyboard event listener and cleanup
             await JSRuntime.InvokeVoidAsync("eval", @"
                 if (window._modalKeyHandler) {
@@ -390,6 +393,9 @@
             {
                 await RestoreFocus();
             }
+            
+            // Ensure modal-open class is removed on disposal
+            await JSRuntime.InvokeVoidAsync("eval", "document.body.classList.remove('modal-open')");
         }
         catch (Exception ex)
         {

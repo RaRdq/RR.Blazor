@@ -33,6 +33,8 @@ class ModalProvider {
                 const hasModal = document.querySelector('.modal[role="dialog"]');
                 
                 if (hasModal) {
+                    // FRAMEWORK INTEGRATION FIX: Move modal to body level for proper positioning
+                    this.repositionModalToBodyLevel(hasModal);
                     this.lockBodyScroll();
                 } else {
                     this.unlockBodyScroll();
@@ -54,11 +56,52 @@ class ModalProvider {
         this.checkModalState();
     }
 
+    repositionModalToBodyLevel(modal) {
+        // Check if modal is already at body level
+        if (modal.parentElement === document.body) {
+            return; // Already positioned correctly
+        }
+
+        // Store original parent for cleanup
+        if (!modal._originalParent) {
+            modal._originalParent = modal.parentElement;
+            modal._originalNextSibling = modal.nextSibling;
+        }
+
+        // Move modal to body level for proper viewport positioning
+        document.body.appendChild(modal);
+        
+        // Ensure modal has proper body-level positioning
+        modal.style.position = 'fixed';
+        modal.style.inset = '0';
+        modal.style.zIndex = getComputedStyle(document.documentElement).getPropertyValue('--z-modal') || '1050';
+        
+        console.log('[Modal Provider] Repositioned modal to body level for framework integration');
+    }
+
+    restoreModalPosition(modal) {
+        // Restore modal to original position when closed
+        if (modal._originalParent && modal._originalParent !== document.body) {
+            if (modal._originalNextSibling) {
+                modal._originalParent.insertBefore(modal, modal._originalNextSibling);
+            } else {
+                modal._originalParent.appendChild(modal);
+            }
+            
+            // Clean up tracking properties
+            delete modal._originalParent;
+            delete modal._originalNextSibling;
+            
+            console.log('[Modal Provider] Restored modal to original position');
+        }
+    }
+
     checkModalState() {
         // Look for any modal elements in the DOM, not just inside modal-provider
         const hasModal = document.querySelector('.modal[role="dialog"]');
         
         if (hasModal) {
+            this.repositionModalToBodyLevel(hasModal);
             this.lockBodyScroll();
         } else {
             this.unlockBodyScroll();
@@ -73,18 +116,34 @@ class ModalProvider {
             // Calculate scrollbar width to prevent layout shift
             const scrollbarWidth = this.getScrollbarWidth();
             
-            // Apply scroll lock
+            // Apply scroll lock with enhanced compatibility
             document.body.style.overflow = 'hidden';
             document.body.style.position = 'fixed';
             document.body.style.top = `-${this.originalScrollTop}px`;
+            document.body.style.left = '0';
+            document.body.style.right = '0';
             document.body.style.width = '100%';
             document.body.style.paddingRight = scrollbarWidth + 'px';
             
             // Also lock html element for better browser compatibility
             document.documentElement.style.overflow = 'hidden';
+            document.documentElement.style.position = 'relative';
+            
+            // Prevent touch scrolling on mobile devices
+            document.body.style.touchAction = 'none';
+            document.body.style.webkitOverflowScrolling = 'touch';
             
             // Add body class for additional styling hooks
             document.body.classList.add('modal-open');
+            
+            // Prevent wheel and touch events that cause visual scrolling
+            this.preventScrollEvents();
+            
+            // Prevent scroll restoration during popstate
+            if ('scrollRestoration' in history) {
+                this.originalScrollRestoration = history.scrollRestoration;
+                history.scrollRestoration = 'manual';
+            }
         }
     }
 
@@ -93,24 +152,86 @@ class ModalProvider {
         const hasModal = document.querySelector('.modal[role="dialog"]');
         
         if (!hasModal && document.body.classList.contains('modal-open')) {
+            // Restore any modals that were moved to body level
+            const bodyModals = document.querySelectorAll('body > .modal[role="dialog"]');
+            bodyModals.forEach(modal => this.restoreModalPosition(modal));
+            
             // Remove scroll lock
             document.body.style.overflow = '';
             document.body.style.position = '';
             document.body.style.top = '';
+            document.body.style.left = '';
+            document.body.style.right = '';
             document.body.style.width = '';
             document.body.style.paddingRight = '';
+            document.body.style.touchAction = '';
+            document.body.style.webkitOverflowScrolling = '';
             
             // Unlock html element
             document.documentElement.style.overflow = '';
+            document.documentElement.style.position = '';
             
             // Remove body class
             document.body.classList.remove('modal-open');
+            
+            // Remove scroll event prevention
+            this.allowScrollEvents();
+            
+            // Restore scroll restoration
+            if (this.originalScrollRestoration) {
+                history.scrollRestoration = this.originalScrollRestoration;
+                this.originalScrollRestoration = null;
+            }
             
             // Restore scroll position
             if (this.originalScrollTop) {
                 window.scrollTo(0, this.originalScrollTop);
                 this.originalScrollTop = 0;
             }
+        }
+    }
+
+    preventScrollEvents() {
+        // Prevent wheel events (mouse scroll)
+        this.wheelListener = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+        };
+        
+        // Prevent touch events (mobile scroll)
+        this.touchMoveListener = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+        };
+        
+        // Prevent keyboard scroll (arrow keys, space, page up/down)
+        this.keydownListener = (e) => {
+            const scrollKeys = ['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' '];
+            if (scrollKeys.includes(e.key)) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        };
+        
+        // Add listeners with passive: false to ensure preventDefault works
+        document.addEventListener('wheel', this.wheelListener, { passive: false });
+        document.addEventListener('touchmove', this.touchMoveListener, { passive: false });
+        document.addEventListener('keydown', this.keydownListener, { passive: false });
+    }
+
+    allowScrollEvents() {
+        // Remove all scroll prevention listeners
+        if (this.wheelListener) {
+            document.removeEventListener('wheel', this.wheelListener);
+            this.wheelListener = null;
+        }
+        if (this.touchMoveListener) {
+            document.removeEventListener('touchmove', this.touchMoveListener);
+            this.touchMoveListener = null;
+        }
+        if (this.keydownListener) {
+            document.removeEventListener('keydown', this.keydownListener);
+            this.keydownListener = null;
         }
     }
 
@@ -156,6 +277,9 @@ class ModalProvider {
         if (this.scrollObserver) {
             this.scrollObserver.disconnect();
         }
+
+        // Remove scroll event prevention
+        this.allowScrollEvents();
 
         // Restore body scroll completely
         this.unlockBodyScroll();

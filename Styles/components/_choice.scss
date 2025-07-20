@@ -110,7 +110,7 @@
       border: var(--border-1) solid var(--color-border);
       border-radius: var(--radius-lg);
       margin: 0;
-      padding: var(--space-3) var(--space-4);
+      padding: var(--space-3) calc(var(--space-4) + var(--icon-base) + var(--space-2)) var(--space-3) var(--space-4);
       cursor: pointer;
       transition: all var(--duration-fast) var(--ease-out);
       width: 100%;
@@ -173,26 +173,22 @@
         min-width: 0;
       }
       
+      // Use background image instead of pseudo-element to avoid conflicts
+      & {
+        background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");
+        background-repeat: no-repeat;
+        background-position: right var(--space-3) center;
+        background-size: var(--icon-base);
+        transition: all var(--duration-fast) var(--ease-out);
+      }
+      
       @supports (backdrop-filter: blur(var(--blur-md))) {
         background: color-mix(in srgb, var(--color-surface-elevated) 85%, transparent);
         border-color: color-mix(in srgb, var(--color-border) 60%, transparent);
       }
       
-      &::after {
-        content: 'expand_more';
-        font-family: 'Material Symbols Rounded';
-        position: absolute;
-        right: var(--space-3);
-        top: 50%;
-        transform: translateY(-50%);
-        transition: all var(--duration-fast) var(--ease-out);
-        font-size: var(--icon-base);
-        color: var(--color-text-muted);
-        opacity: 0.8;
-      }
-      
-      &-open::after {
-        transform: translateY(-50%) rotate(180deg);
+      &-open {
+        background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='18,15 12,9 6,15'%3e%3c/polyline%3e%3c/svg%3e");
       }
       
       &:hover:not(:disabled) {
@@ -225,12 +221,8 @@
     }
     
     .choice-viewport {
-      position: absolute;
-      left: 0;
-      right: 0;
-      z-index: var(--z-dropdown);
-      transform: translateZ(0);
-      will-change: transform;
+      position: fixed;
+      z-index: var(--z-popover);
     }
     
     .choice-content {
@@ -247,9 +239,6 @@
       animation: dropdownSlideIn var(--duration-normal) var(--ease-out);
       padding: var(--space-2) 0;
       position: relative;
-      z-index: var(--z-dropdown);
-      transform: translateZ(0);
-      isolation: isolate;
       
       // Special handling when inside sidebar
       .app-sidebar & {
@@ -477,21 +466,51 @@
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: calc(var(--z-dropdown) - 1);
+  z-index: calc(var(--z-popover) - 1);
   background: transparent;
   cursor: default;
 }
 
-// Global choice container fix
+// Simple container fix - no protective interventions
 .choice {
-  &:has(.choice-viewport) {
-    position: relative;
-    z-index: var(--z-dropdown);
+  position: relative;
+}
+
+// Robust z-index system for choice components
+.choice-viewport {
+  z-index: var(--z-dropdown);
+  
+  // Higher z-index when inside dialogs/modals
+  .modal-content &,
+  .modal &,
+  [role="dialog"] & {
+    z-index: calc(var(--z-modal-content) + 10);
   }
   
-  &.open,
-  &[aria-expanded="true"] {
-    position: relative;
-    z-index: var(--z-dropdown);
+  // Highest z-index when inside already elevated popover contexts
+  .choice-viewport &,
+  .dropdown &,
+  .popover & {
+    z-index: calc(var(--z-dropdown) + 10);
   }
 }
+
+.choice-backdrop {
+  z-index: calc(var(--z-dropdown) - 5);
+  
+  // Higher z-index when inside dialogs/modals
+  .modal-content &,
+  .modal &,
+  [role="dialog"] & {
+    z-index: calc(var(--z-modal-content) + 5);
+  }
+  
+  // Elevated when inside other popover contexts
+  .choice-viewport &,
+  .dropdown &,
+  .popover & {
+    z-index: calc(var(--z-dropdown) + 5);
+  }
+}
+
+// Context-aware z-index system ensures proper stacking in all scenarios

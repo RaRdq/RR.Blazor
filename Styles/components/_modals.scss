@@ -1,13 +1,105 @@
 @use '../abstracts' as *;
+
+// GLOBAL OVERLAY POSITIONING SYSTEM
+// Fixes modals, dropdowns, tooltips, and all overlays at the top level
+
+// FRAMEWORK INTEGRATION SOLUTION
+// Allows modal provider to render at body level while staying in app shell
+.modal-provider {
+  // Core viewport positioning that breaks out of any container
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  z-index: var(--z-modal-container) !important;
+  pointer-events: none;
+  
+  // Force break out of all containing contexts - CRITICAL for framework integration
+  transform: translateZ(0) !important; // Force new stacking context at highest level
+  contain: none !important;
+  container-type: normal !important;
+  isolation: auto !important;
+  
+  // Override any parent transforms or constraints
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  overflow: visible !important;
+  
+  // Active state enables pointer events
+  &.active {
+    pointer-events: auto;
+  }
+  
+  // Ensure modals render correctly within provider
+  .modal {
+    pointer-events: auto;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+  }
+}
+
+// When any overlay is open, break all containment constraints
+body.modal-open,
+body:has(.modal[role="dialog"]),
+body:has(.dropdown-open),
+body:has([role="listbox"]),
+body:has([role="tooltip"]),
+body:has(.popover) {
+  // Lock body scroll but don't constrain positioning
+  overflow: hidden !important;
+  
+  // Break ALL stacking contexts and containment
+  .app-shell,
+  .app-shell-container,
+  main,
+  .main-content,
+  .content,
+  section,
+  article,
+  aside {
+    // Disable all CSS containment
+    contain: none !important;
+    container-type: normal !important;
+    isolation: auto !important;
+    
+    // Remove transforms that create stacking contexts
+    transform: none !important;
+    translate: none !important;
+    
+    // Remove filters that create stacking contexts
+    filter: none !important;
+    backdrop-filter: none !important;
+    
+    // Ensure overflow doesn't clip overlays
+    overflow: visible !important;
+  }
+}
+
+// Modal provider positioning handled inline for maximum specificity
+
 .modal {
-  position: fixed;
-  inset: 0;
-  z-index: var(--z-modal);
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: var(--z-modal) !important;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: var(--space-2);
   animation: fadeIn var(--duration-fast) var(--ease-out);
+  
+  // Visibility states
+  &--hidden {
+    display: none !important;
+  }
+  
+  &--visible {
+    display: flex !important;
+  }
   
   @include responsive-min(md) {
     padding: var(--space-4);
@@ -15,17 +107,26 @@
   }
   
   &-backdrop {
-    position: absolute;
-    inset: 0;
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: var(--z-modal-backdrop) !important;
     @include glass-enhanced(light, false, false);
     background: var(--overlay-medium);
     cursor: pointer;
     animation: fadeIn var(--duration-fast) var(--ease-out);
+    
+    // Ensure backdrop is always visible with fallback
+    background: 
+      var(--overlay-medium), 
+      rgba(15, 23, 42, 0.75),
+      rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(8px) saturate(1.1);
+    -webkit-backdrop-filter: blur(8px) saturate(1.1);
   }
   
   &-content {
     position: relative;
-    z-index: calc(var(--z-modal) + 1);
+    z-index: var(--z-modal-content);
     background: var(--color-surface-elevated);
     border-radius: var(--radius-2xl);
     border: 1px solid var(--color-border);
@@ -35,14 +136,21 @@
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    margin: 0;
+    margin: 0 auto;
     box-shadow: var(--shadow-executive);
+    
+    // Ensure shadow is always applied with fallback
+    box-shadow: 
+      0 32px 64px rgba(0, 0, 0, 0.24),
+      0 16px 32px rgba(0, 0, 0, 0.16),
+      0 8px 16px rgba(0, 0, 0, 0.12),
+      var(--shadow-executive);
     
     // MOBILE-FIRST VIEWPORT HANDLING
     max-height: 100vh;
     max-height: 100dvh; // Dynamic viewport height for mobile
     border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-    animation: slideUp var(--duration-slow) var(--ease-out-back);
+    animation: slideUp var(--duration-slow) var(--ease-out);
     
     // Handle virtual keyboard on mobile
     &.keyboard-visible {
@@ -56,7 +164,7 @@
       border-radius: var(--radius-2xl);
       margin: auto;
       width: auto;
-      animation: scaleIn var(--duration-slow) var(--ease-out-back);
+      animation: scaleIn var(--duration-slow) var(--ease-out);
     }
     
     // Touch scrolling optimization
@@ -303,19 +411,12 @@
   }
 }
 
-.modal-provider {
-  position: fixed;
-  inset: 0;
-  z-index: var(--z-modal-container);
-  pointer-events: none;
-  
-  .modal {
-    pointer-events: auto;
-  }
-}
+// Modal provider styles moved inline for maximum control
 
 // Enhanced modal body scroll lock styling
 .modal-open {
+  overflow: hidden !important;
+  
   .app-shell {
     // Ensure app shell content doesn't shift when scrollbar is hidden
     transition: none !important;
@@ -324,8 +425,49 @@
   // Ensure modal backdrop covers the entire viewport
   .modal-backdrop {
     position: fixed !important;
-    inset: 0 !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
     z-index: var(--z-modal-backdrop) !important;
+  }
+}
+
+// Ensure body doesn't scroll when modal is open
+body.modal-open {
+  overflow: hidden !important;
+  
+  // Context-aware z-index stacking system
+  // Dropdowns/choices outside modals get elevated above backdrop
+  .choice-viewport:not(.modal-content .choice-viewport):not(.modal .choice-viewport),
+  .dropdown:not(.modal-content .dropdown):not(.modal .dropdown),
+  .popover:not(.modal-content .popover):not(.modal .popover),
+  .tooltip:not(.modal-content .tooltip):not(.modal .tooltip) {
+    z-index: calc(var(--z-modal-backdrop) + 10) !important;
+  }
+  
+  // Dropdowns/choices inside modal content get positioned above modal content
+  .modal-content .choice-viewport,
+  .modal .choice-viewport,
+  .modal-content .dropdown,
+  .modal .dropdown,
+  .modal-content .popover,
+  .modal .popover,
+  .modal-content .tooltip,
+  .modal .tooltip {
+    z-index: calc(var(--z-modal-content) + 10) !important;
+  }
+  
+  // Choice backdrops get positioned appropriately based on context
+  .choice-backdrop:not(.modal-content .choice-backdrop):not(.modal .choice-backdrop) {
+    z-index: calc(var(--z-modal-backdrop) + 5) !important;
+  }
+  
+  .modal-content .choice-backdrop,
+  .modal .choice-backdrop {
+    z-index: calc(var(--z-modal-content) + 5) !important;
   }
 }
 

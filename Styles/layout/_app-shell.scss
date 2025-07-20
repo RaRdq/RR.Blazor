@@ -117,7 +117,7 @@
   right: 0;
   z-index: var(--z-header);
   height: var(--header-height);
-  width: 100%;
+  width: 100vw;
   max-width: 100vw;
   background: var(--color-canvas);
   border-bottom: var(--border-1) solid var(--color-border);
@@ -189,73 +189,97 @@
 }
 
 .header-right {
-  display: flex;
-  align-items: center;
+  @extend %flex-center;
   gap: var(--space-2);
   flex-shrink: 0;
-  overflow: hidden;
   
-  // Enhanced tablet support
+  // Enhanced responsive gaps
   @include responsive-max(lg) {
     gap: var(--space-1-5);
-    flex-wrap: nowrap;
   }
   
   @include responsive-max(md) {
     gap: var(--space-1);
-    flex-wrap: nowrap;
   }
   
   @include responsive-max(sm) {
     gap: var(--space-0-5);
     flex-wrap: wrap;
   }
+  
+  // Modal-aware containment reset
+  .modal-open & {
+    isolation: auto;
+  }
 }
 
 .app-logo {
-  display: flex;
-  align-items: center;
+  @extend %flex-center;
   gap: var(--space-2);
   flex-shrink: 0;
   min-width: 0;
-  height: calc(var(--header-height) - var(--space-4));
-  overflow: hidden;
+  height: calc(var(--header-height) - var(--space-3));
+  padding: var(--space-1-5) 0;
   
-  > * {
-    max-height: 100%;
+  img {
     height: auto;
+    width: auto;
     flex-shrink: 0;
+    object-fit: contain;
+    
+    // Default constraints when no utility class is present
+    &:not(.h-8):not(.h-12):not(.h-16):not(.h-20):not(.h-24) {
+      max-height: 2rem;
+      max-width: 8rem;
+    }
+    
+    // Respect LogoComponent utility classes but constrain within header
+    &.h-8 { max-height: 2rem; }
+    &.h-12 { max-height: 2.5rem; }
+    &.h-16 { max-height: 2.8rem; }
+    &.h-20 { max-height: 3rem; }
+    &.h-24 { max-height: 3.2rem; }
+  }
+  
+  span {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-shrink: 1;
+    min-width: 0;
   }
 }
 
 // Page Header Content Styles
 .page-header-content {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
+  @extend %flex-column;
+  gap: var(--space-1);
   min-width: 0;
   flex: 1;
+  align-items: flex-start;
+  justify-content: center;
   
   @include responsive-max(sm) {
-    gap: var(--space-1-5);
+    gap: var(--space-0-5);
   }
 }
 
 .page-title-row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  flex-wrap: wrap;
+  @extend %flex-row;
+  align-items: baseline;
+  gap: var(--space-2);
+  flex-wrap: nowrap;
   min-width: 0;
+  width: 100%;
   
   @include responsive-max(md) {
-    gap: var(--space-2);
+    gap: var(--space-1-5);
   }
   
   @include responsive-max(sm) {
     flex-direction: column;
     align-items: flex-start;
-    gap: var(--space-1);
+    gap: var(--space-0-5);
   }
 }
 
@@ -263,7 +287,7 @@
   margin: 0;
   font-size: var(--text-lg);
   font-weight: var(--font-semibold);
-  color: var(--color-text-primary);
+  color: var(--color-text);
   line-height: 1.25;
   flex-shrink: 0;
   
@@ -273,10 +297,11 @@
 }
 
 .page-subtitle-row {
-  margin-top: var(--space-1);
+  margin-top: 0;
+  width: 100%;
   
   @include responsive-max(sm) {
-    margin-top: var(--space-0-5);
+    margin-top: 0;
   }
 }
 
@@ -293,8 +318,7 @@
 
 // Breadcrumb Styles
 .page-breadcrumbs {
-  display: flex;
-  align-items: center;
+  @extend %flex-center;
   min-width: 0;
   flex-shrink: 1;
   
@@ -350,7 +374,7 @@
   }
   
   &.breadcrumb-current {
-    color: var(--color-text-primary);
+    color: var(--color-text);
     font-weight: var(--font-medium);
   }
   
@@ -361,7 +385,7 @@
     transition: color var(--duration-fast) var(--ease-out);
     
     &:hover {
-      color: var(--color-text-primary);
+      color: var(--color-text);
       text-decoration: underline;
     }
     
@@ -391,131 +415,178 @@
 }
 
 .app-search {
+  @extend %interactive-base;
   position: relative;
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  max-width: 100%;
-  overflow: visible;
+  min-width: 0;
   
-  // Collapsible search layout - prevent layout shifts
-  &.search-collapsible {
-    // Reserve space for expanded search to prevent layout shifts
-    min-width: 15rem;
-    contain: layout; // Prevent layout shifts
+  .search-container {
     position: relative;
+    display: flex;
+    align-items: center;
+    transition: var(--transition-normal);
     
-    // Enhanced tablet viewport support (768px-1024px) 
-    @include responsive-between(md, lg) {
-      min-width: 14rem;
+    &.collapsed {
+      width: auto;
     }
     
-    @include responsive-max(md) {
-      min-width: 12rem;
-    }
-    
-    @include responsive-max(sm) {
-      min-width: 10rem;
-    }
-    
-    // Very small tablet optimization
-    @media (max-width: 900px) and (min-width: 768px) {
-      min-width: 13rem;
-    }
-    
-    // Toggle button positioning  
-    .search-toggle-btn {
-      position: absolute;
-      left: 0;
-      top: 50%;
-      transform: translateY(-50%);
-      z-index: 2;
-    }
-    
-    // Close button and input container positioning
-    .search-close-btn,
-    .relative {
-      position: absolute;
-      left: 0;
-      top: 50%;
-      transform: translateY(-50%);
-      width: 100%;
-      z-index: 1;
+    &.expanded {
+      width: 16rem;
       
-      // Smooth entrance animation  
-      animation: searchSlideIn var(--duration-fast) var(--ease-out);
-    }
-    
-    // Search input styling
-    .search-input-expanded {
-      width: 100%;
-      margin: 0;
-    }
-  }
-  
-  // Non-collapsible search layout
-  &:not(.search-collapsible) {
-    .search-input-container {
-      max-width: 15rem;
-      opacity: 1;
-      
-      // Enhanced tablet viewport support (768px-1024px)
-      @include responsive-range(md, lg) {
-        max-width: 14rem;
+      @include responsive-max(lg) {
+        width: 14rem;
       }
       
       @include responsive-max(md) {
-        max-width: 12rem;
+        width: 12rem;
       }
       
       @include responsive-max(sm) {
-        max-width: 10rem;
+        width: 10rem;
       }
       
-      // Very small tablet optimization
-      @media (max-width: 900px) and (min-width: 768px) {
-        max-width: 13rem;
+      .search-input-wrapper {
+        @extend %form-row-base;
+        width: 100%;
+        position: relative;
+        gap: var(--space-1);
+        margin-bottom: 0;
+        
+        .search-input {
+          flex: 1;
+          min-width: 0;
+        }
+        
+        .search-close-btn {
+          @extend %icon-button;
+          flex-shrink: 0;
+        }
       }
     }
   }
   
-  // Enhanced responsiveness for tablet viewports
-  @include responsive-max(lg) {
-    flex-shrink: 1;
-    min-width: 0;
-    gap: var(--space-1-5);
-  }
-  
-  @include responsive-max(md) {
-    flex-shrink: 1;
-    min-width: 0;
-    gap: var(--space-1);
-  }
-  
-  // Search result item styles
-  .search-result-item {
-    &:focus,
-    &:hover,
-    &.bg-surface {
-      background: var(--color-surface);
-      color: var(--color-text-primary);
+  .search-dropdown {
+    @extend %card-base-enhanced;
+    position: absolute;
+    top: calc(100% + var(--space-1));
+    left: 0;
+    right: 0;
+    max-height: 20rem;
+    overflow-y: auto;
+    z-index: var(--z-popover);
+    padding: var(--space-2) 0;
+    animation: dropdownSlideIn var(--duration-fast) var(--ease-out);
+    
+    .search-result-item {
+      @extend %button-state-base;
+      @extend %text-truncate;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      padding: var(--space-2) var(--space-3);
+      background: transparent;
+      text-align: left;
       
-      .text-secondary {
+      &:hover,
+      &.selected {
+        background: var(--color-surface);
+      }
+      
+      .search-result-icon {
+        font-size: var(--text-sm);
         color: var(--color-text-secondary);
+        flex-shrink: 0;
+        
+        .search-result-item:hover & {
+          color: var(--color-text);
+        }
       }
       
-      .text-tertiary {
+      .search-result-content {
+        flex: 1;
+        min-width: 0;
+        
+        .search-result-title {
+          font-size: var(--text-sm);
+          font-weight: 500;
+          color: var(--color-text);
+          line-height: 1.4;
+        }
+        
+        .search-result-description {
+          font-size: var(--text-xs);
+          color: var(--color-text-secondary);
+          line-height: 1.3;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+      }
+      
+      .search-result-category {
+        font-size: var(--text-xs);
         color: var(--color-text-tertiary);
+        flex-shrink: 0;
       }
-      
-      i {
-        color: var(--color-primary);
-      }
+    }
+  }
+}
+
+// User Menu Container
+.user-menu-container {
+  @extend %interactive-base;
+  position: relative;
+  
+  .user-menu-trigger {
+    @extend %touch-target;
+    min-width: auto;
+  }
+  
+  .user-menu-content {
+    @extend %form-row-base;
+    gap: var(--space-2);
+    min-width: 0;
+    margin-bottom: 0;
+  }
+  
+  .user-display-name {
+    @extend %text-truncate;
+    font-size: var(--text-sm);
+    font-weight: var(--font-medium);
+    color: var(--color-text);
+    
+    @include responsive-max(md) {
+      display: none;
+    }
+  }
+  
+  .user-menu-chevron {
+    @extend %icon-base;
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+    transition: var(--transition-fast);
+  }
+  
+  .user-menu-dropdown {
+    position: absolute;
+    top: calc(100% + var(--space-1));
+    right: 0;
+    z-index: calc(var(--z-header) + 20);
+    opacity: 1;
+    transform: translateY(0);
+    animation: dropdownSlideIn var(--duration-fast) var(--ease-out);
+    min-width: 200px;
+    
+    @include responsive-max(md) {
+      right: var(--space-2);
+      left: auto;
+      transform: translateX(0);
+      min-width: 180px;
     }
     
-    &:focus {
-      outline: 2px solid var(--color-primary);
-      outline-offset: -2px;
+    @include responsive-max(sm) {
+      right: var(--space-1);
+      min-width: 160px;
     }
   }
 }
@@ -543,13 +614,28 @@
     max-width: 100%;
     box-sizing: border-box;
     overflow-x: hidden;
+    min-width: 0;
+  }
+  
+  // Specific fix for navigation content wrapper
+  .flex-1 {
+    overflow-x: hidden;
+    min-width: 0;
+    max-width: 100%;
+    
+    // Ensure any nested navigation components don't overflow
+    * {
+      max-width: 100%;
+      box-sizing: border-box;
+      min-width: 0;
+    }
   }
   
   &.collapsed {
     width: var(--sidebar-width-collapsed, 4rem);
   }
   
-  @include responsive-max(lg) {
+  @include responsive-max(md) {
     transform: translateX(-100%);
     width: 80%;
     max-width: 340px;
@@ -557,8 +643,22 @@
     border-right: none;
     box-shadow: var(--shadow-xl);
     
+    // Disable transform when modal is open to prevent stacking context issues
+    body.modal-open & {
+      transform: none !important;
+      visibility: hidden;
+      
+      &.open {
+        visibility: visible;
+      }
+    }
+    
     &.open {
       transform: translateX(0);
+      
+      body.modal-open & {
+        transform: none !important;
+      }
     }
   }
   
@@ -596,7 +696,7 @@
   position: relative;
   min-height: calc(100vh - var(--header-height));
   padding-top: var(--header-height);
-  margin-left: var(--sidebar-width, 16rem);
+  margin-left: 0;
   width: 100%;
   max-width: 100%;
   overflow-x: hidden;
@@ -614,27 +714,18 @@
     width: 100vw;
     max-width: 100vw;
     margin-left: 0;
-    padding-left: var(--sidebar-width, 16rem);
     overflow-x: hidden;
     overflow-y: visible;
     box-sizing: border-box;
     
-    .app-shell.sidebar-collapsed & {
-      padding-left: var(--sidebar-width-collapsed, 4rem);
-    }
-    
     @include responsive-max(xl) {
-      padding-left: 0;
+      margin-left: 0;
       width: 100vw;
       max-width: 100vw;
     }
   }
   
   .app-shell.sidebar-collapsed & {
-    margin-left: var(--sidebar-width-collapsed, 4rem);
-  }
-  
-  @include responsive-max(lg) {
     margin-left: 0;
     width: 100%;
     max-width: 100%;
@@ -642,8 +733,8 @@
   
   @include responsive-max(md) {
     margin-left: 0;
-    width: 100%;
-    max-width: 100%;
+    width: 100vw;
+    max-width: 100vw;
   }
 }
 
@@ -728,12 +819,10 @@
   }
   
   &-with-sidebar {
-    margin-left: calc(var(--sidebar-width) * -1);
-    padding-left: var(--sidebar-width);
+    // Simplified: let app-main handle sidebar positioning
     
     @include responsive-max(lg) {
       margin-left: 0;
-      padding-left: 0;
     }
   }
 }
@@ -758,13 +847,4 @@
 // SEARCH ANIMATIONS
 // ============================================================================
 
-@keyframes searchSlideIn {
-  from {
-    opacity: 0;
-    transform: translateY(-50%) translateX(1rem);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(-50%) translateX(0);
-  }
-}
+// Use existing keyframe from _animations.scss instead of custom searchSlideIn

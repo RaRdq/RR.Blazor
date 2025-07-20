@@ -172,7 +172,7 @@ $table-variants: (
       background: var(--color-surface-elevated);
       border: var(--border-1) solid var(--color-border);
       border-radius: var(--radius-md);
-      min-height: 2.75rem; // WCAG AA touch target
+      min-height: var(--space-11); // WCAG AA touch target
       
       // Show only on mobile
       @include responsive-min(md) {
@@ -231,6 +231,29 @@ $table-variants: (
     overflow-x: auto;
     max-height: 70vh;
     
+    // Mobile-first responsive table handling
+    @include responsive-max(md) {
+      // Force horizontal scroll on mobile when content exceeds viewport
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-x: contain;
+      
+      // Add scroll indicator shadow on mobile
+      &::after {
+        content: '';
+        position: sticky;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        width: 1rem;
+        background: linear-gradient(270deg, 
+          var(--color-surface-elevated) 0%, 
+          transparent 100%);
+        pointer-events: none;
+        flex-shrink: 0;
+      }
+    }
+    
     // Mobile-optimized scrolling with theme awareness
     @media (hover: none) and (pointer: coarse) {
       -webkit-overflow-scrolling: touch;
@@ -247,8 +270,8 @@ $table-variants: (
     // Desktop scrollbar with theme styling
     @media (hover: hover) and (pointer: fine) {
       &::-webkit-scrollbar {
-        width: 8px;
-        height: 8px;
+        width: var(--space-2);
+        height: var(--space-2);
       }
       
       &::-webkit-scrollbar-track {
@@ -271,254 +294,299 @@ $table-variants: (
     border-collapse: collapse;
     font-size: var(--text-sm);
     
+    // Mobile-first responsive table width
+    @include responsive-max(md) {
+      min-width: 100%;
+      width: max-content; // Allow table to expand beyond container width
+      table-layout: auto; // Let content determine column widths
+    }
+    
+    @include responsive-min(md) {
+      table-layout: fixed; // Fixed layout for desktop
+      width: 100%;
+    }
+    
     thead {
       background: var(--glass-medium-bg);
       backdrop-filter: blur(var(--glass-medium-blur));
       position: sticky;
       top: 0;
       z-index: 10;
-      
-      th {
-        padding: var(--space-4) var(--space-3);
-        text-align: left;
-        font-weight: var(--font-semibold);
-        color: var(--color-text);
-        font-size: var(--text-xs);
-        text-transform: uppercase;
-        letter-spacing: var(--tracking-wide);
-        border-bottom: var(--border-2) solid var(--color-border);
-        white-space: nowrap;
-        vertical-align: middle;
-        line-height: var(--leading-normal);
-        
-        // Mobile-first edge padding
-        &:first-child {
-          padding-left: var(--space-3);
-          
-          @include responsive-min(md) {
-            padding-left: var(--space-6);
-          }
-        }
-        
-        &:last-child {
-          padding-right: var(--space-3);
-          
-          @include responsive-min(md) {
-            padding-right: var(--space-6);
-          }
-        }
-        
-        // Sortable headers with WCAG AA touch targets
-        &.sortable {
-          @extend %button-base;
-          @extend %touch-target;
-          cursor: pointer;
-          user-select: none;
-          position: relative;
-          transition: all var(--duration-fast) var(--ease-out);
-          display: flex;
-          align-items: center;
-          padding: var(--space-3) var(--space-4);
-          border-radius: var(--radius-sm);
-          
-          // Responsive hover and interaction states
-          @include interactive-button(scale(1.02), scale(0.98), var(--shadow-sm), none);
-          
-          @media (hover: hover) and (pointer: fine) {
-            &:hover {
-              background: var(--glass-hover-bg);
-              backdrop-filter: blur(var(--glass-hover-blur));
-              color: var(--color-primary);
-            }
-          }
-          
-          @media (hover: none) and (pointer: coarse) {
-            &:active {
-              background: var(--glass-hover-bg);
-            }
-          }
-          
-          // Sort indicators with mobile-first sizing
-          &::after {
-            content: '';
-            position: absolute;
-            right: var(--space-2);
-            top: 50%;
-            transform: translateY(-50%);
-            width: 0;
-            height: 0;
-            border-left: 6px solid transparent;
-            border-right: 6px solid transparent;
-            border-bottom: 8px solid var(--color-text-subtle);
-            opacity: var(--opacity-disabled);
-            transition: all var(--duration-fast) var(--ease-out);
-            
-            // Desktop refinement
-            @include responsive-min(md) {
-              border-left: 4px solid transparent;
-              border-right: 4px solid transparent;
-              border-bottom: 6px solid var(--color-text-subtle);
-            }
-          }
-          
-          // Sort states with responsive indicators
-          &.sort-asc::after {
-            border-bottom: 8px solid var(--color-primary);
-            opacity: 1;
-            transform: translateY(-50%) scale(1.1);
-            
-            @include responsive-min(md) {
-              border-bottom: 6px solid var(--color-primary);
-            }
-          }
-          
-          &.sort-desc::after {
-            border-bottom: none;
-            border-top: 8px solid var(--color-primary);
-            opacity: 1;
-            transform: translateY(-50%) scale(1.1);
-            
-            @include responsive-min(md) {
-              border-top: 6px solid var(--color-primary);
-            }
-          }
-        }
-      }
+    }
+  }
+}
+
+// Table header cells
+.table-header-cell {
+  padding: var(--space-4) var(--space-3);
+  text-align: left;
+  font-weight: var(--font-semibold);
+  color: var(--color-text);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+  border-bottom: var(--border-2) solid var(--color-border);
+  white-space: nowrap;
+  vertical-align: middle;
+  line-height: var(--leading-normal);
+  
+  // Mobile-first responsive header sizing
+  @include responsive-max(md) {
+    padding: var(--space-2) var(--space-2);
+    font-size: var(--text-2xs);
+    max-width: 8rem; // Limit header width on mobile
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  &:first-child {
+    padding-left: var(--space-3);
+    
+    @include responsive-max(md) {
+      padding-left: var(--space-2);
+      min-width: 3rem; // Minimum width for first column header
     }
     
-    // Body with theme-aware row states
-    tbody {
-      tr {
-        transition: all var(--duration-fast) var(--ease-out);
-        
-        // Responsive hover effects
-        @include hover-lift(-1px, brightness(1.02));
-        
-        @media (hover: hover) and (pointer: fine) {
-          &:hover {
-            background: var(--glass-hover-bg);
-            backdrop-filter: blur(var(--glass-hover-blur));
-          }
-        }
-        
-        // Touch device active states
-        @media (hover: none) and (pointer: coarse) {
-          &:active {
-            background: var(--glass-hover-bg);
-          }
-        }
-        
-        // Row state modifiers
-        &:nth-child(even) {
-          background: var(--glass-light-bg);
-          
-          &:hover {
-            background: var(--glass-hover-bg);
-            backdrop-filter: blur(var(--glass-hover-blur));
-          }
-        }
-        
-        &.selected {
-          background: var(--glass-primary-bg);
-          color: var(--color-text-inverse);
-          box-shadow: var(--glass-primary-shadow);
-          backdrop-filter: blur(var(--glass-medium-blur));
-          
-          &:hover {
-            background: var(--color-primary-hover);
-          }
-        }
-        
-        &.highlighted {
-          background: color-mix(in srgb, var(--color-warning) 10%, var(--color-surface));
-          
-          &:hover {
-            background: color-mix(in srgb, var(--color-warning) 10%, var(--color-surface));
-          }
-        }
-      }
-      
-      td {
-        padding: var(--space-4) var(--space-3);
-        color: var(--color-text-muted);
-        border-bottom: var(--border-1) solid var(--color-border);
-        vertical-align: middle;
-        line-height: var(--leading-normal);
-        
-        // Ensure consistent alignment for cell content
-        > * {
-          vertical-align: middle;
-          line-height: var(--leading-normal);
-        }
-        
-        // Fix flex containers in cells
-        .flex {
-          align-items: center;
-          min-height: 2.5rem; // Ensure minimum touch target
-        }
-        
-        // Mobile-first edge padding
-        &:first-child {
-          padding-left: var(--space-3);
-          
-          @include responsive-min(md) {
-            padding-left: var(--space-6);
-          }
-        }
-        
-        &:last-child {
-          padding-right: var(--space-3);
-          
-          @include responsive-min(md) {
-            padding-right: var(--space-6);
-          }
-        }
-        
-        // Semantic cell type modifiers
-        &.number {
-          text-align: right;
-          font-variant-numeric: tabular-nums;
-        }
-        
-        &.currency {
-          text-align: right;
-          font-variant-numeric: tabular-nums;
-          font-weight: var(--font-medium);
-          color: var(--color-text);
-        }
-        
-        &.date {
-          font-variant-numeric: tabular-nums;
-          color: var(--color-text-subtle);
-        }
-        
-        &.status {
-          text-align: center;
-        }
-        
-        &.actions {
-          text-align: right;
-          
-          .flex {
-            justify-content: flex-end;
-            align-items: center;
-            gap: var(--space-1);
-          }
-          
-          // Ensure action buttons are properly aligned
-          .button {
-            min-width: 2.5rem;
-            min-height: 2.5rem;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-          }
-        }
-      }
+    @include responsive-min(md) {
+      padding-left: var(--space-6);
     }
   }
   
-  &-footer {
+  &:last-child {
+    padding-right: var(--space-3);
+    
+    @include responsive-max(md) {
+      padding-right: var(--space-2);
+    }
+    
+    @include responsive-min(md) {
+      padding-right: var(--space-6);
+    }
+  }
+}
+
+// Sortable table headers
+.table-header-sortable {
+  @extend %button-base;
+  @extend %touch-target;
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+  transition: all var(--duration-fast) var(--ease-out);
+  display: flex;
+  align-items: center;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  
+  @include interactive-button(scale(1.02), scale(0.98), var(--shadow-sm), none);
+  
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      background: var(--glass-hover-bg);
+      backdrop-filter: blur(var(--glass-hover-blur));
+      color: var(--color-primary);
+    }
+  }
+  
+  @media (hover: none) and (pointer: coarse) {
+    &:active {
+      background: var(--glass-hover-bg);
+    }
+  }
+}
+
+// Sort indicators
+.table-sort-indicator {
+  &::after {
+    content: '';
+    position: absolute;
+    right: var(--space-2);
+    top: 50%;
+    transform: translateY(-50%);
+    width: 0;
+    height: 0;
+    border-left: var(--space-1-5) solid transparent;
+    border-right: var(--space-1-5) solid transparent;
+    border-bottom: var(--space-2) solid var(--color-text-subtle);
+    opacity: var(--opacity-disabled);
+    transition: all var(--duration-fast) var(--ease-out);
+    
+    @include responsive-min(md) {
+      border-left: var(--space-1) solid transparent;
+      border-right: var(--space-1) solid transparent;
+      border-bottom: var(--space-1-5) solid var(--color-text-subtle);
+    }
+  }
+  
+  &.sort-asc::after {
+    border-bottom: var(--space-2) solid var(--color-primary);
+    opacity: 1;
+    transform: translateY(-50%) scale(1.1);
+    
+    @include responsive-min(md) {
+      border-bottom: var(--space-1-5) solid var(--color-primary);
+    }
+  }
+  
+  &.sort-desc::after {
+    border-bottom: none;
+    border-top: var(--space-2) solid var(--color-primary);
+    opacity: 1;
+    transform: translateY(-50%) scale(1.1);
+    
+    @include responsive-min(md) {
+      border-top: var(--space-1-5) solid var(--color-primary);
+    }
+  }
+}
+
+// Table row states
+.table-row {
+  transition: all var(--duration-fast) var(--ease-out);
+  
+  @include hover-lift(calc(-1 * var(--border-1)), brightness(1.02));
+  
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      background: var(--glass-hover-bg);
+      backdrop-filter: blur(var(--glass-hover-blur));
+    }
+  }
+  
+  @media (hover: none) and (pointer: coarse) {
+    &:active {
+      background: var(--glass-hover-bg);
+    }
+  }
+  
+  &--striped:nth-child(even) {
+    background: var(--glass-light-bg);
+    
+    &:hover {
+      background: var(--glass-hover-bg);
+      backdrop-filter: blur(var(--glass-hover-blur));
+    }
+  }
+  
+  &--selected {
+    background: var(--glass-primary-bg);
+    color: var(--color-text-inverse);
+    box-shadow: var(--glass-primary-shadow);
+    backdrop-filter: blur(var(--glass-medium-blur));
+    
+    &:hover {
+      background: var(--color-primary-hover);
+    }
+  }
+  
+  &--highlighted {
+    background: color-mix(in srgb, var(--color-warning) 10%, var(--color-surface));
+    
+    &:hover {
+      background: color-mix(in srgb, var(--color-warning) 15%, var(--color-surface));
+    }
+  }
+}
+
+// Table cell styles
+.table-cell {
+  padding: var(--space-4) var(--space-3);
+  color: var(--color-text-muted);
+  border-bottom: var(--border-1) solid var(--color-border);
+  vertical-align: middle;
+  line-height: var(--leading-normal);
+  
+  > * {
+    vertical-align: middle;
+    line-height: var(--leading-normal);
+  }
+  
+  // Mobile-first responsive cell sizing
+  @include responsive-max(md) {
+    padding: var(--space-2) var(--space-2);
+    font-size: var(--text-xs);
+    white-space: nowrap; // Prevent text wrapping on mobile
+    max-width: 8rem; // Limit cell width on mobile
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  &:first-child {
+    padding-left: var(--space-3);
+    
+    @include responsive-max(md) {
+      padding-left: var(--space-2);
+      min-width: 3rem; // Minimum width for first column
+    }
+    
+    @include responsive-min(md) {
+      padding-left: var(--space-6);
+    }
+  }
+  
+  &:last-child {
+    padding-right: var(--space-3);
+    
+    @include responsive-max(md) {
+      padding-right: var(--space-2);
+    }
+    
+    @include responsive-min(md) {
+      padding-right: var(--space-6);
+    }
+  }
+}
+
+// Table cell types
+.table-cell--number {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.table-cell--currency {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--font-medium);
+  color: var(--color-text);
+}
+
+.table-cell--date {
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-subtle);
+}
+
+.table-cell--status {
+  text-align: center;
+}
+
+.table-cell--actions {
+  text-align: right;
+}
+
+// Table cell flex containers
+.table-cell-flex {
+  align-items: center;
+  min-height: var(--space-11);
+}
+
+// Table actions container
+.table-actions-flex {
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+// Table action buttons
+.table-action-button {
+  min-width: var(--space-11);
+  min-height: var(--space-11);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+// Table footer
+.table-footer {
     padding: var(--space-4) var(--space-6);
     background: var(--glass-light-bg);
     border-top: var(--border-1) solid var(--color-border);
@@ -540,111 +608,137 @@ $table-variants: (
       align-items: center;
       gap: var(--space-4);
     }
+}
+
+// Table footer pagination
+.table-footer-pagination {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  
+  @include responsive-max(md) {
+    justify-content: center;
+    width: 100%;
+  }
+}
+
+// Table footer pagination buttons (mobile)
+.table-pagination-button {
+  min-width: var(--space-11);
+  min-height: var(--space-11);
+  
+  @include responsive-max(md) {
+    .button-text {
+      display: none;
+    }
+  }
+  
+  @include responsive-min(md) {
+    .button-text {
+      display: inline;
+    }
+  }
+}
+
+// Table footer page info
+.table-page-info {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--color-text);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface-elevated);
+  border-radius: var(--radius-md);
+}
+
+// Table footer info
+.table-footer-info {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  
+  strong {
+    color: var(--color-text);
+    font-weight: var(--font-semibold);
+  }
+  
+  @include responsive-max(md) {
+    justify-content: center;
+    text-align: center;
+  }
+}
+
+// Table size variants using configuration maps
+@each $size-name, $size-props in $table-sizes {
+  .table-#{$size-name} {
+    font-size: map.get($size-props, 'font-size');
+  }
+  
+  .table-#{$size-name} .table-header-cell {
+    padding: map.get($size-props, 'header-padding');
+  }
+  
+  .table-#{$size-name} .table-cell {
+    padding: map.get($size-props, 'cell-padding');
+  }
+}
+
+// Table density variants - affects cell padding and line height
+.table-compact {
+  th, td {
+    padding: var(--space-1) var(--space-2);
+    line-height: var(--leading-tight);
+    font-size: var(--text-xs);
+  }
+}
+
+.table-dense {
+  th, td {
+    padding: var(--space-2) var(--space-3);
+    line-height: var(--leading-snug);
+    font-size: var(--text-sm);
+  }
+}
+
+.table-normal {
+  th, td {
+    padding: var(--space-3) var(--space-4);
+    line-height: var(--leading-normal);
+    font-size: var(--text-sm);
+  }
+}
+
+.table-spacious {
+  th, td {
+    padding: var(--space-4) var(--space-6);
+    line-height: var(--leading-relaxed);
+    font-size: var(--text-base);
+  }
+}
+
+// Table style variants
+.table-bordered {
+  .table-header-cell,
+  .table-cell {
+    border-right: var(--border-1) solid var(--color-border);
     
-    // Pagination with mobile-optimized touch targets
-    &-pagination {
-      display: flex;
-      gap: var(--space-2);
-      align-items: center;
-      
-      // Mobile-specific pagination layout
-      @include responsive-max(md) {
-        justify-content: center;
-        width: 100%;
-        
-        .button {
-          min-width: 2.75rem; // 44px WCAG AA
-          min-height: 2.75rem; // 44px WCAG AA touch target
-          
-          .button-text {
-            display: none;
-          }
-        }
-        
-        .page-info {
-          font-size: var(--text-sm);
-          font-weight: var(--font-medium);
-          color: var(--color-text);
-          padding: var(--space-2) var(--space-3);
-          background: var(--color-surface-elevated);
-          border-radius: var(--radius-md);
-        }
-      }
-      
-      // Desktop pagination layout
-      @include responsive-min(md) {
-        .button-text {
-          display: inline;
-        }
-      }
-    }
-    
-    &-info {
-      font-size: var(--text-sm);
-      color: var(--color-text-muted);
-      display: flex;
-      align-items: center;
-      gap: var(--space-2);
-      
-      strong {
-        color: var(--color-text);
-        font-weight: var(--font-semibold);
-      }
-      
-      // Mobile-first info layout
-      @include responsive-max(md) {
-        justify-content: center;
-        text-align: center;
-      }
+    &:last-child {
+      border-right: none;
     }
   }
+}
+
+.table-striped .table-row:nth-child(even) {
+  background: var(--color-surface);
+}
+
+.table-hover .table-row {
+  cursor: pointer;
   
-  // Table size variants using configuration maps
-  @each $size-name, $size-props in $table-sizes {
-    &-#{$size-name} {
-      .table-table {
-        font-size: map.get($size-props, 'font-size');
-        
-        thead th {
-          padding: map.get($size-props, 'header-padding');
-        }
-        
-        tbody td {
-          padding: map.get($size-props, 'cell-padding');
-        }
-      }
-    }
-  }
-  
-  // Table style variants
-  &-bordered {
-    .table-table {
-      tbody td,
-      thead th {
-        border-right: var(--border-1) solid var(--color-border);
-        
-        &:last-child {
-          border-right: none;
-        }
-      }
-    }
-  }
-  
-  &-striped {
-    .table-table tbody tr:nth-child(even) {
-      background: var(--color-surface);
-    }
-  }
-  
-  &-hover {
-    .table-table tbody tr {
-      cursor: pointer;
-      
-      @media (hover: hover) and (pointer: fine) {
-        &:hover {
-          background: var(--color-surface-elevated);
-        }
-      }
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      background: var(--color-surface-elevated);
     }
   }
 }
@@ -657,19 +751,19 @@ $table-variants: (
   box-shadow: var(--theme-shadow-xl);
   backdrop-filter: blur(var(--blur-md));
   z-index: var(--z-dropdown);
-  min-width: 200px;
-  max-width: 350px;
+  min-width: var(--space-48);
+  max-width: var(--space-64);
   
   &::before {
     content: '';
     position: absolute;
-    top: -6px;
+    top: calc(-1 * var(--space-1-5));
     right: var(--space-4);
     width: 0;
     height: 0;
-    border-left: 6px solid transparent;
-    border-right: 6px solid transparent;
-    border-bottom: 6px solid var(--color-surface-elevated);
+    border-left: var(--space-1-5) solid transparent;
+    border-right: var(--space-1-5) solid transparent;
+    border-bottom: var(--space-1-5) solid var(--color-surface-elevated);
   }
   
   .rformfield {
@@ -729,7 +823,7 @@ $table-variants: (
     right: 0;
     top: 0;
     bottom: 0;
-    width: 8px;
+    width: var(--space-2);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -755,9 +849,9 @@ $table-variants: (
     content: '';
     position: absolute;
     top: 0;
-    right: -1px;
+    right: calc(-1 * var(--border-1));
     bottom: 0;
-    width: 8px;
+    width: var(--space-2);
     background: linear-gradient(
       90deg, 
       rgba(0, 0, 0, 0.1) 0%, 

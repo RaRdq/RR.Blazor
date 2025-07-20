@@ -167,6 +167,8 @@
     .search-collapsible & {
       width: 0;
       opacity: 0;
+      overflow: hidden;
+      transition: all var(--duration-normal) var(--ease-out);
       
       &.expanded {
         width: 12rem;
@@ -207,30 +209,52 @@
     }
   }
   
-  // Enhanced search toggle button styling
+  // Enhanced search toggle button styling with proper isolation
   .search-toggle-btn,
   .search-close-btn {
     flex-shrink: 0;
     min-width: 2.5rem !important;
     min-height: 2.5rem !important;
+    position: relative;
+    border-radius: var(--radius-md);
+    transition: all var(--duration-fast) var(--ease-out);
     
     // Larger, more visible icons
     .material-symbols-rounded {
       font-size: 1.25rem !important;
       font-weight: 500 !important;
+      transition: inherit;
     }
     
     // Better contrast and hover states
     color: var(--color-text-secondary);
+    background-color: transparent;
     
     &:hover {
       color: var(--color-primary);
       background-color: var(--color-primary-light);
+      transform: none; // Prevent transform affecting layout
+      z-index: 1; // Ensure button stays within its container
     }
     
     &:focus {
       outline: 2px solid var(--color-primary);
       outline-offset: 2px;
+      z-index: 2;
+    }
+    
+    // Ensure hover effects don't bleed to adjacent elements
+    &::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      transition: inherit;
+      z-index: -1;
+    }
+    
+    &:hover::before {
+      background-color: var(--color-primary-light);
     }
   }
   
@@ -240,7 +264,7 @@
     top: calc(100% + 0.5rem) !important;
     left: 0 !important;
     right: 0 !important;
-    z-index: calc(var(--z-header) + 20) !important;
+    z-index: var(--z-dropdown) !important;
     background: var(--color-surface-elevated) !important;
     border: 1px solid var(--color-border) !important;
     border-radius: var(--radius-lg) !important;
@@ -248,10 +272,6 @@
     max-height: 20rem !important;
     overflow-y: auto !important;
     
-    // Ensure dropdown is above all other elements
-    contain: layout style paint;
-    will-change: transform;
-    transform: translateZ(0);
   }
 }
 
@@ -313,6 +333,24 @@
       pointer-events: auto !important;
     }
   }
+  
+  .header-left,
+  .header-right {
+    position: relative;
+  }
+  
+  .app-search {
+    position: relative;
+    
+    // Ensure search container doesn't affect neighboring elements
+    &::before {
+      content: '';
+      position: absolute;
+      inset: -4px;
+      z-index: -1;
+      pointer-events: none;
+    }
+  }
 }
 
 // App shell specific dropdown extensions (dropdown core in _dropdowns.scss)
@@ -360,7 +398,7 @@
   .user-display-name {
     font-size: var(--text-sm);
     font-weight: var(--font-medium);
-    color: var(--color-text-primary);
+    color: var(--color-text);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -383,7 +421,7 @@
     top: calc(100% + var(--space-1));
     right: 0;
     left: auto;
-    z-index: calc(var(--z-header) + 20);
+    z-index: var(--z-dropdown);
     
     background: var(--color-surface-elevated);
     border: 1px solid var(--color-border);
@@ -402,10 +440,6 @@
     animation: dropdownFadeIn var(--duration-fast) var(--ease-out);
     transform-origin: top right;
     
-    // Ensure dropdown is above all content
-    contain: layout style paint;
-    will-change: transform, opacity;
-    transform: translateZ(0);
   }
   
   // Enhanced avatar alignment
@@ -637,25 +671,17 @@
     }
   }
   
-  // Optimized reflow for dynamic content
   .dynamic-content {
-    contain: layout style paint;
   }
   
-  // Virtual scrolling support
   .virtualized-list {
     height: 100%;
     overflow: auto;
-    contain: strict;
   }
 }
 
-// Enhanced focus management for app-shell content areas
 .shell-focus {
-  contain: layout;
-  
   &:focus-within {
-    contain: none; // Allow focus ring to show properly
   }
   
   // App-shell specific focus enhancements

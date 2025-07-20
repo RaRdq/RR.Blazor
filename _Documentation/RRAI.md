@@ -384,3 +384,32 @@ pwsh ./RR.Blazor/Scripts/ValidateClassUsage.ps1
 **Key Principle**: RR.Blazor provides the tools, projects create the experience.
 
 **Success Measure**: Developers can build any UI using only utility classes and minimal custom CSS.
+
+## Container-Agnostic Component Architecture
+
+**Critical Principle**: Every RR.Blazor component must be fully container-agnostic and context-independent. Components should never include protective styling, hardcoded positioning, or assumptions about their parent container.
+
+### Component Independence Rules
+- **No Protective Styling**: Components must not include CSS that compensates for layout context (e.g., sidebar width, modal positioning)
+- **No Context Assumptions**: Components should work identically whether placed in modals, sidebars, main content, or nested containers
+- **Pure Utility Composition**: All layout concerns handled through utility classes applied by the consumer
+- **Container Responsibility**: Parent containers handle their own layout requirements without child component interference
+
+### Architecture Pattern
+```razor
+<!-- ❌ Wrong: Component with protective styling -->
+<div class="dashboard-content" style="margin-left: var(--sidebar-width)">
+    <RCard>Content</RCard>
+</div>
+
+<!-- ✅ Correct: Container handles layout, component stays pure -->
+<div class="main-content-with-sidebar">
+    <RCard>Content</RCard>
+</div>
+```
+
+### Implementation Guidelines
+- Layout concerns belong in app shell architecture, not individual components
+- Use semantic CSS variables and utility classes for consistent spacing
+- Components should render identically in any container context
+- Test components in isolation and in various container contexts
