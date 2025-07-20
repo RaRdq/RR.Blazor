@@ -2,7 +2,7 @@
 
 ## Overview
 
-RR.Blazor follows a **hybrid approach** that combines utility-first CSS with component-specific patterns. This guide explains when to use different styling approaches.
+RR.Blazor follows a **hybrid approach** that combines utility-first CSS with component-specific patterns. This guide explains when to use different styling approaches while maintaining WCAG 2.1 AA accessibility compliance and cross-device responsive design (mobile, PC, laptop, iPad portrait/landscape).
 
 ## 1. Pure Utility Classes (Preferred for Static Styling)
 
@@ -16,8 +16,9 @@ Use utility classes for all static styling:
 
 **Benefits:**
 - Consistent spacing and sizing
-- Theme-aware colors
-- Mobile-first responsive design
+- Theme-aware colors with WCAG 2.1 AA contrast compliance
+- Cross-device responsive design (mobile, PC, laptop, iPad portrait/landscape)
+- Touch-friendly 44px minimum targets
 - Easy maintenance
 
 ## 2. CSS Custom Properties for Dynamic Values (Component Libraries)
@@ -134,14 +135,17 @@ When updating components:
 ### DO:
 - Use utility classes for 90% of styling
 - Use CSS custom properties for dynamic values from C#
-- Follow mobile-first responsive patterns
-- Leverage RR.Blazor semantic color variables
+- Follow cross-device responsive patterns (mobile, PC, laptop, iPad portrait/landscape)
+- Ensure WCAG 2.1 AA accessibility compliance
+- Provide 44px minimum touch targets for mobile devices
+- Leverage RR.Blazor semantic color variables with proper contrast ratios
 
 ### DON'T:
 - Hardcode colors, spacing, or typography in inline styles
 - Duplicate existing utility patterns
 - Use inline styles for static positioning or dimensions
-- Ignore responsive design considerations
+- Ignore accessibility requirements or responsive design considerations
+- Create touch targets smaller than 44px
 
 ## 9. Available Dynamic Property Utilities
 
@@ -171,8 +175,9 @@ RR.Blazor provides these utility classes for dynamic properties (part of 3,309 t
 
 This approach provides:
 - ✅ Utility-first static styling
-- ✅ Theme-aware colors and spacing  
-- ✅ Responsive design
+- ✅ Theme-aware colors and spacing with WCAG 2.1 AA compliance
+- ✅ Cross-device responsive design (mobile, PC, laptop, iPad portrait/landscape)
 - ✅ Dynamic values where needed
-- ✅ Accessibility compliance
+- ✅ Full accessibility compliance (ARIA attributes, keyboard navigation)
+- ✅ Touch-friendly 44px minimum targets
 - ✅ Performance optimization

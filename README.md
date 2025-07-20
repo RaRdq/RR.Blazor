@@ -17,15 +17,15 @@ AI agents consistently hallucinate component APIs, mix framework versions, and g
 - **Fluent Configuration API**: Clean, chainable configuration with `.WithTheme()`, `.WithToasts()`, etc.
 - **100% Theme-aware**: Dynamic light/dark/high-contrast modes with CSS variables
 - **Complete Toast System**: Auto-dismissing notifications with manual close, positioning, and animations
-- **Accessibility First**: WCAG 2.1 AA compliant with screen reader support  
+- **WCAG 2.1 AA Compliant**: Full accessibility support with screen reader optimization
 - **Zero Dependencies**: Pure Blazor components, no external UI libraries
-- **Fully Responsive**: Mobile-first design with 44px touch targets
+- **Fully Responsive**: Adaptive design (mobile, PC, laptop, iPad portrait/landscape)
+- **Touch-Friendly**: 44px minimum touch targets with optimized mobile experience
 - **Type-Safe**: Full C# type safety with smart reflection-based type inference
 - **Performance**: Optimized rendering with minimal re-renders
 - **Customizable**: 3,309+ CSS utility classes
 - **Tree-Shakeable**: Use only what you need
-- **High Contrast Mode**: Built-in support for accessibility preferences
-- **Motion Preferences**: Respects prefers-reduced-motion
+- **Modern Design**: Professional themes with light/dark mode support
 - **AI-First Documentation**: Auto-generated JSON schema optimized for AI consumption
 
 ## R* Component Architecture
@@ -57,7 +57,8 @@ The R* form components replace the legacy RFormField pattern with specialized, p
 - **Consistent API**: All R* components share common patterns and parameters
 - **Built-in Validation**: Integrated with RInputBase for seamless form validation
 - **Enterprise Styling**: Professional appearance with density and variant support
-- **Accessibility First**: WCAG 2.1 AA compliant with screen reader support
+- **WCAG 2.1 AA Compliant**: Accessibility-first design with ARIA attributes and keyboard navigation
+- **Adaptive Responsive**: Optimized for mobile, PC, laptop, iPad portrait/landscape
 
 ## Unified Smart Components
 
@@ -218,7 +219,8 @@ builder.Services.AddRRBlazor();
 - ✅ All 65+ components with unified smart type detection
 - ✅ Modern R* form components (RTextInput, RCheckbox, RRadio, etc.)
 - ✅ 2,953+ utility classes available
-- ✅ Accessibility features enabled
+- ✅ WCAG 2.1 AA accessibility compliance
+- ✅ Adaptive responsive design (mobile, PC, laptop, iPad)
 
 ### Fluent Customization
 ```csharp
@@ -293,7 +295,7 @@ cp RR.Blazor/.claude/commands/designer.md .claude/commands/
 - Complete RR.Blazor expertise (all 49 components + 800+ utilities)  
 - Modern design patterns (glassmorphism, micro-animations)
 - Performance optimization (virtual scrolling, lazy loading, 60fps)
-- Accessibility compliance (WCAG 2.1 AA+, screen reader optimized)
+- WCAG 2.1 AA accessibility compliance and cross-device responsive optimization
 
 **Usage Examples**:
 ```bash
@@ -304,7 +306,7 @@ cp RR.Blazor/.claude/commands/designer.md .claude/commands/
 /designer Implement the designed wizard using RR.Blazor components and utility-first styling
 
 # Reflection phase
-/designer Reflect on the implementation with accessibility and performance validation
+/designer Reflect on the implementation with accessibility, responsive design, and performance validation
 ```
 
 ### AI Prompts

@@ -11,17 +11,17 @@
      aria-describedby="@(!string.IsNullOrEmpty(Subtitle) ? ModalDescriptionId : null)"
      @ref="modalElement"
      tabindex="-1">
-    <div class="modal-backdrop backdrop-blur-sm overlay-dark opacity-50" aria-hidden="true"></div>
-    <div class="modal-content @GetSizeClass() shadow-xl glass-light" @onclick:stopPropagation="true">
+    <div class="modal-backdrop" aria-hidden="true"></div>
+    <div class="modal-content @GetSizeClass()" @onclick:stopPropagation="true">
         @if (ShowHeader)
         {
             <div class="modal-header @GetModalHeaderClasses()">
-                <div class="d-flex items-center @GetModalHeaderClasses()">
+                <div class="layout-flex d-flex align-center @GetModalHeaderClasses()">
                     @if (!string.IsNullOrEmpty(Icon))
                     {
                         <i class="material-symbols-rounded text-primary @GetIconSizeClass()" aria-hidden="true">@Icon</i>
                     }
-                    <div class="d-flex flex-col">
+                    <div class="layout-flex-col">
                         <h3 id="@ModalTitleId" class="modal-title ma-0 @GetTitleClasses()">@Text</h3>
                         @if (!string.IsNullOrEmpty(Subtitle))
                         {
@@ -29,7 +29,7 @@
                         }
                     </div>
                 </div>
-                <div class="header-actions d-flex items-center gap-2">
+                <div class="header-actions layout-flex d-flex align-center layout-gap-2">
                     @HeaderContent
                     @if (ShowCloseButton)
                     {
@@ -48,8 +48,8 @@
         <div class="modal-body @GetModalBodyClasses()">
             @if (Processing && ShowProcessingOverlay)
             {
-                <div class="overlay-full overlay-light d-flex items-center justify-center">
-                    <div class="d-flex flex-col items-center @GetProcessingOverlayClasses() bg-surface-elevated rounded-lg shadow-lg">
+                <div class="overlay-full overlay-light layout-flex d-flex align-center justify-center z-modal">
+                    <div class="layout-flex layout-flex-col d-flex align-center @GetProcessingOverlayClasses() bg-surface-elevated rounded-lg shadow-lg">
                         <div class="spinner-lg"></div>
                         <p class="text-body-2 text-secondary ma-0">@ProcessingMessage</p>
                     </div>
@@ -97,7 +97,7 @@
                     </RActionGroup>
                     @if (ShowUnsavedIndicator && HasUnsavedChanges)
                     {
-                        <div class="d-flex items-center gap-2 pa-3 bg-info-light text-info rounded-lg">
+                        <div class="layout-flex d-flex align-center layout-gap-2 pa-3 bg-info-light text-info rounded-lg">
                             <i class="material-symbols-rounded">info</i>
                             <span class="text-sm">You have unsaved changes</span>
                         </div>
@@ -218,7 +218,7 @@
             await Task.Delay(100);
             await modalElement.FocusAsync();
             
-            // Set up keyboard event listener for escape key
+            // Set up keyboard event listener for escape key and store modal instance
             await JSRuntime.InvokeVoidAsync("eval", @"
                 window._modalKeyHandler = function(e) {
                     if (e.key === 'Escape' && window._modalInstance) {
@@ -226,9 +226,13 @@
                     }
                 };
                 document.addEventListener('keydown', window._modalKeyHandler);
+                
+                window.setModalInstance = function(instance) {
+                    window._modalInstance = instance;
+                };
             ");
             
-            await JSRuntime.InvokeVoidAsync("eval", "window._modalInstance = arguments[0]", DotNetObjectReference.Create(this));
+            await JSRuntime.InvokeVoidAsync("setModalInstance", DotNetObjectReference.Create(this));
         }
         catch (Exception ex)
         {
@@ -249,13 +253,14 @@
     {
         try
         {
-            // Remove keyboard event listener
+            // Remove keyboard event listener and cleanup
             await JSRuntime.InvokeVoidAsync("eval", @"
                 if (window._modalKeyHandler) {
                     document.removeEventListener('keydown', window._modalKeyHandler);
                     window._modalKeyHandler = null;
                 }
                 window._modalInstance = null;
+                delete window.setModalInstance;
             ");
             
             // Restore focus to previously focused element
@@ -309,11 +314,11 @@
     {
         return Density switch
         {
-            ComponentDensity.Compact => "pa-2 gap-2",
-            ComponentDensity.Dense => "pa-3 gap-3",
-            ComponentDensity.Normal => "pa-4 gap-3",
-            ComponentDensity.Spacious => "pa-6 gap-4",
-            _ => "pa-4 gap-3"
+            ComponentDensity.Compact => "pa-2 layout-gap-2",
+            ComponentDensity.Dense => "pa-3 layout-gap-3",
+            ComponentDensity.Normal => "pa-4 layout-gap-3",
+            ComponentDensity.Spacious => "pa-6 layout-gap-4",
+            _ => "pa-4 layout-gap-3"
         };
     }
 
@@ -333,11 +338,11 @@
     {
         return Density switch
         {
-            ComponentDensity.Compact => "pa-2 gap-2",
-            ComponentDensity.Dense => "pa-3 gap-3",
-            ComponentDensity.Normal => "pa-4 gap-3",
-            ComponentDensity.Spacious => "pa-6 gap-4",
-            _ => "pa-4 gap-3"
+            ComponentDensity.Compact => "pa-2 layout-gap-2",
+            ComponentDensity.Dense => "pa-3 layout-gap-3",
+            ComponentDensity.Normal => "pa-4 layout-gap-3",
+            ComponentDensity.Spacious => "pa-6 layout-gap-4",
+            _ => "pa-4 layout-gap-3"
         };
     }
 
@@ -369,11 +374,26 @@
     {
         return Density switch
         {
-            ComponentDensity.Compact => "pa-3 gap-2",
-            ComponentDensity.Dense => "pa-4 gap-3",
-            ComponentDensity.Normal => "pa-6 gap-3",
-            ComponentDensity.Spacious => "pa-8 gap-4",
-            _ => "pa-6 gap-3"
+            ComponentDensity.Compact => "pa-3 layout-gap-2",
+            ComponentDensity.Dense => "pa-4 layout-gap-3",
+            ComponentDensity.Normal => "pa-6 layout-gap-3",
+            ComponentDensity.Spacious => "pa-8 layout-gap-4",
+            _ => "pa-6 layout-gap-3"
         };
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            if (Visible)
+            {
+                await RestoreFocus();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error during modal disposal: {ex.Message}");
+        }
     }
 }

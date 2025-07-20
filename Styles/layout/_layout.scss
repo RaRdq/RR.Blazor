@@ -1,4 +1,9 @@
 @use '../abstracts' as *;
+@use 'sass:map';
+@use 'sass:list';
+@use 'sass:meta';
+
+// Layout mixins (keeping these as they're good abstractions)
 @mixin layout-container($max-width: 100%, $padding: var(--space-4)) {
   width: 100%;
   max-width: $max-width;
@@ -6,6 +11,7 @@
   padding-left: $padding;
   padding-right: $padding;
 }
+
 @mixin layout-position($position, $inset: null) {
   position: $position;
   @if $inset {
@@ -26,6 +32,7 @@
     }
   }
 }
+
 @mixin layout-flex($direction: row, $align: stretch, $justify: flex-start, $gap: 0) {
   display: flex;
   flex-direction: $direction;
@@ -35,6 +42,7 @@
     gap: $gap;
   }
 }
+
 @mixin layout-grid($columns: 1, $gap: var(--space-4), $align: stretch) {
   display: grid;
   @if $columns == 'auto-fit' {
@@ -47,6 +55,7 @@
   gap: $gap;
   align-items: $align;
 }
+
 @mixin layout-interactive($hover-transform: translateY(-1px), $active-transform: translateY(0) scale(0.98)) {
   cursor: pointer;
   transition: all var(--duration-fast) var(--ease-out);
@@ -71,6 +80,7 @@
     transform: none !important;
   }
 }
+
 @mixin layout-surface($variant: 'elevated', $radius: var(--radius-md)) {
   border-radius: $radius;
   
@@ -92,6 +102,7 @@
     border: var(--border-1) solid var(--color-border-subtle);
   }
 }
+
 @mixin layout-backdrop($opacity: 0.6, $blur: false) {
   & {
     @include layout-position(fixed, 'full');
@@ -109,146 +120,281 @@
     visibility: visible;
   }
 }
-.layout-container {
-  @include layout-container;
-  
-  @include modifier(sm) { @include layout-container(640px); }
-  @include modifier(md) { @include layout-container(768px); }
-  @include modifier(lg) { @include layout-container(1024px); }
-  @include modifier(xl) { @include layout-container(1280px); }
-  @include modifier(2xl) { @include layout-container(1536px); }
-  @include modifier(fluid) { @include layout-container(none, 0); }
-}
-.layout-fixed {
-  @include layout-position(fixed);
-  
-  @include modifier(top) { @include layout-position(fixed, 'top'); }
-  @include modifier(bottom) { @include layout-position(fixed, 'bottom'); }
-  @include modifier(left) { @include layout-position(fixed, 'left'); }
-  @include modifier(right) { @include layout-position(fixed, 'right'); }
-  @include modifier(inset) { @include layout-position(fixed, 'full'); }
-}
 
-.layout-sticky {
-  @include layout-position(sticky);
-  
-  @include modifier(top) { @include layout-position(sticky, 'top'); }
-  @include modifier(bottom) { @include layout-position(sticky, 'bottom'); }
-}
+// App-specific container patterns (use existing container utilities for standard containers)
 
-.layout-relative {
-  @include layout-position(relative);
-}
+// Layout-specific positioning patterns only (use existing positioning utilities for standard positioning)
 
-.layout-absolute {
-  @include layout-position(absolute);
-  
-  @include modifier(top) { @include layout-position(absolute, 'top'); }
-  @include modifier(bottom) { @include layout-position(absolute, 'bottom'); }
-  @include modifier(left) { @include layout-position(absolute, 'left'); }
-  @include modifier(right) { @include layout-position(absolute, 'right'); }
-  @include modifier(inset) { @include layout-position(absolute, 'full'); }
-  @include modifier(center) { @include layout-position(absolute, 'center'); }
-}
-.layout-flex {
-  @include layout-flex;
-  
-  @include modifier(col) { @include layout-flex(column); }
-  @include modifier(row) { @include layout-flex(row); }
-  @include modifier(wrap) { flex-wrap: wrap; }
-  @include modifier(nowrap) { flex-wrap: nowrap; }
-  
-  @include modifier(center) { @include layout-flex(row, center, center); }
-  @include modifier(between) { @include layout-flex(row, center, space-between); }
-  @include modifier(around) { @include layout-flex(row, center, space-around); }
-  @include modifier(end) { @include layout-flex(row, center, flex-end); }
-  @include modifier(start) { @include layout-flex(row, center, flex-start); }
-}
+// Layout-specific patterns (non-redundant with existing utilities)
+
+// Grid utilities with loops and patterns
+$grid-columns: (
+  1: 1,
+  2: 2, 
+  3: 3,
+  4: 4,
+  12: 12,
+  auto-fit: 'auto-fit',
+  auto-fill: 'auto-fill'
+);
+
+// Grid patterns for specific layouts
+$grid-patterns: (
+  auto: repeat(auto-fill, minmax(20rem, 1fr)),
+  2: repeat(2, 1fr),
+  3: repeat(3, 1fr), 
+  4: repeat(4, 1fr)
+);
+
 .layout-grid {
   @include layout-grid;
   
-  @include modifier(cols-1) { @include layout-grid(1); }
-  @include modifier(cols-2) { @include layout-grid(2); }
-  @include modifier(cols-3) { @include layout-grid(3); }
-  @include modifier(cols-4) { @include layout-grid(4); }
-  @include modifier(cols-12) { @include layout-grid(12); }
+  // Standard column utilities
+  @each $name, $columns in $grid-columns {
+    &-cols-#{$name} {
+      @include layout-grid($columns);
+    }
+  }
   
-  @include modifier(auto-fit) { @include layout-grid('auto-fit'); }
-  @include modifier(auto-fill) { @include layout-grid('auto-fill'); }
+  // Pattern-based utilities (from layout-patterns)
+  @each $name, $pattern in $grid-patterns {
+    &-#{$name} {
+      display: grid;
+      gap: var(--space-4);
+      grid-template-columns: #{$pattern};
+    }
+  }
+  
+  // Responsive grid patterns
+  @include responsive-max(lg) {
+    &-4 { grid-template-columns: repeat(2, 1fr); }
+    &-3 { grid-template-columns: repeat(2, 1fr); }
+  }
+  
+  @include responsive-max(md) {
+    &-4, &-3, &-2 { grid-template-columns: 1fr; }
+  }
 }
+
+// Gap utilities with loop
+$gap-sizes: (
+  0: 0,
+  1: var(--space-1),
+  2: var(--space-2),
+  3: var(--space-3),
+  4: var(--space-4),
+  6: var(--space-6),
+  8: var(--space-8)
+);
+
 .layout-gap {
-  @include modifier(0) { gap: 0; }
-  @include modifier(1) { gap: var(--space-1); }
-  @include modifier(2) { gap: var(--space-2); }
-  @include modifier(3) { gap: var(--space-3); }
-  @include modifier(4) { gap: var(--space-4); }
-  @include modifier(6) { gap: var(--space-6); }
-  @include modifier(8) { gap: var(--space-8); }
+  @each $name, $size in $gap-sizes {
+    &-#{$name} {
+      gap: #{$size};
+    }
+  }
 }
+
+// Overflow utilities with modern pattern
+$overflow-values: (
+  hidden: hidden,
+  auto: auto,
+  scroll: scroll,
+  x-auto: (overflow-x: auto),
+  y-auto: (overflow-y: auto),
+  x-hidden: (overflow-x: hidden),
+  y-hidden: (overflow-y: hidden)
+);
+
 .layout-overflow {
-  @include modifier(hidden) { overflow: hidden; }
-  @include modifier(auto) { overflow: auto; }
-  @include modifier(scroll) { overflow: scroll; }
-  @include modifier(x-auto) { overflow-x: auto; }
-  @include modifier(y-auto) { overflow-y: auto; }
-  @include modifier(x-hidden) { overflow-x: hidden; }
-  @include modifier(y-hidden) { overflow-y: hidden; }
+  @each $name, $value in $overflow-values {
+    &-#{$name} {
+      @if meta.type-of($value) == map {
+        @each $property, $val in $value {
+          #{$property}: #{$val};
+        }
+      } @else {
+        overflow: #{$value};
+      }
+    }
+  }
 }
+
+// Z-index utilities with cleaner approach
+$z-index-values: (
+  0: 0,
+  10: 10,
+  20: 20,
+  30: 30,
+  40: 40,
+  50: 50,
+  dropdown: var(--z-dropdown),
+  modal: var(--z-modal),
+  modal-backdrop: var(--z-modal-backdrop),
+  modal-container: var(--z-modal-container),
+  modal-overlay: var(--z-modal-overlay),
+  floating: var(--z-floating)
+);
+
 .layout-z {
-  @include modifier(0) { z-index: 0; }
-  @include modifier(10) { z-index: 10; }
-  @include modifier(20) { z-index: 20; }
-  @include modifier(30) { z-index: 30; }
-  @include modifier(40) { z-index: 40; }
-  @include modifier(50) { z-index: 50; }
-  @include modifier(dropdown) { z-index: var(--z-dropdown); }
-  @include modifier(modal) { z-index: var(--z-modal); }
-  @include modifier(floating) { z-index: var(--z-floating); }
+  @each $name, $value in $z-index-values {
+    &-#{$name} {
+      z-index: #{$value};
+    }
+  }
 }
 
-@include responsive-max(sm) {
-  .layout-sm\:flex-col { @include layout-flex(column); }
-  .layout-sm\:grid-cols-1 { @include layout-grid(1); }
-  .layout-sm\:gap-2 { gap: var(--space-2); }
-  .layout-sm\:hidden { display: none; }
+// Additional layout utilities (minimal set)
+.layout {
+  
+  // Split layout patterns (from layout-patterns)
+  &-split {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: var(--space-6);
+    
+    &-reverse {
+      grid-template-columns: 320px 1fr;
+    }
+    
+    &-equal {
+      grid-template-columns: 1fr 1fr;
+    }
+    
+    @include responsive-max(lg) {
+      grid-template-columns: 1fr;
+      gap: var(--space-4);
+    }
+  }
+  
+  // Masonry layout patterns
+  &-masonry {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: var(--space-4);
+    align-items: start;
+    
+    &-sm { grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
+    &-lg { grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); }
+    
+    @include responsive-max(md) {
+      grid-template-columns: 1fr;
+      gap: var(--space-3);
+    }
+  }
+  
+  // Focus containment pattern
+  &-focus {
+    contain: layout;
+    
+    &:focus-within {
+      contain: none;
+    }
+  }
 }
 
-@include responsive-max(md) {
-  .layout-md\:flex-col { @include layout-flex(column); }
-  .layout-md\:grid-cols-2 { @include layout-grid(2); }
-  .layout-md\:gap-3 { gap: var(--space-3); }
-  .layout-md\:hidden { display: none; }
+// Responsive utilities with loops  
+$responsive-utilities: (
+  flex-col: (layout-flex(column)),
+  hidden: (display: none)
+);
+
+$responsive-grid-cols: (
+  sm: 1,
+  md: 2, 
+  lg: 3
+);
+
+$responsive-gaps: (
+  sm: var(--space-2),
+  md: var(--space-3),
+  lg: var(--space-4)
+);
+
+// Responsive utilities using proper breakpoint system
+@each $breakpoint, $value in $breakpoints {
+  @if $breakpoint != xs {
+    @include responsive-max($breakpoint) {
+      .layout-#{$breakpoint}\:flex-col {
+        @include layout-flex(column);
+      }
+      
+      .layout-#{$breakpoint}\:hidden {
+        display: none;
+      }
+      
+      @if map.has-key($responsive-grid-cols, $breakpoint) {
+        .layout-#{$breakpoint}\:grid-cols-#{map.get($responsive-grid-cols, $breakpoint)} {
+          @include layout-grid(map.get($responsive-grid-cols, $breakpoint));
+        }
+      }
+      
+      @if map.has-key($responsive-gaps, $breakpoint) {
+        .layout-#{$breakpoint}\:gap-#{$breakpoint} {
+          gap: map.get($responsive-gaps, $breakpoint);
+        }
+      }
+    }
+  }
 }
 
-@include responsive-max(lg) {
-  .layout-lg\:flex-col { @include layout-flex(column); }
-  .layout-lg\:grid-cols-3 { @include layout-grid(3); }
-  .layout-lg\:gap-4 { gap: var(--space-4); }
-  .layout-lg\:hidden { display: none; }
-}
+// Interactive utilities with modern approach
+$interactive-variants: (
+  default: (translateY(-1px), translateY(0) scale(0.98)),
+  subtle: (translateY(-0.5px), scale(0.99)),
+  strong: (translateY(-2px), scale(0.97)),
+  none: (none, none)
+);
 
 .layout-interactive {
-  @include layout-interactive;
-  
-  @include modifier(subtle) { @include layout-interactive(translateY(-0.5px), scale(0.99)); }
-  @include modifier(strong) { @include layout-interactive(translateY(-2px), scale(0.97)); }
-  @include modifier(none) { @include layout-interactive(none, none); }
+  @each $name, $transforms in $interactive-variants {
+    @if $name == default {
+      @include layout-interactive(list.nth($transforms, 1), list.nth($transforms, 2));
+    } @else {
+      &-#{$name} {
+        @include layout-interactive(list.nth($transforms, 1), list.nth($transforms, 2));
+      }
+    }
+  }
 }
+
+// Backdrop utilities with modern pattern
+$backdrop-variants: (
+  default: (0.6, false),
+  blur: (0.6, true),
+  light: (0.4, false),
+  heavy: (0.8, false)
+);
 
 .layout-backdrop {
-  @include layout-backdrop;
-  
-  @include modifier(blur) { @include layout-backdrop(0.6, true); }
-  @include modifier(light) { @include layout-backdrop(0.4); }
-  @include modifier(heavy) { @include layout-backdrop(0.8); }
+  @each $name, $config in $backdrop-variants {
+    @if $name == default {
+      @include layout-backdrop(list.nth($config, 1), list.nth($config, 2));
+    } @else {
+      &-#{$name} {
+        @include layout-backdrop(list.nth($config, 1), list.nth($config, 2));
+      }
+    }
+  }
 }
+
+// Surface utilities with modern pattern  
+$surface-variants: (
+  default: 'elevated',
+  flat: 'flat',
+  raised: 'raised',
+  floating: 'floating',
+  glass: 'glass'
+);
 
 .layout-surface {
-  @include layout-surface;
-  
-  @include modifier(flat) { @include layout-surface('flat'); }
-  @include modifier(raised) { @include layout-surface('raised'); }
-  @include modifier(floating) { @include layout-surface('floating'); }
-  @include modifier(glass) { @include layout-surface('glass'); }
+  @each $name, $variant in $surface-variants {
+    @if $name == default {
+      @include layout-surface($variant);
+    } @else {
+      &-#{$name} {
+        @include layout-surface($variant);
+      }
+    }
+  }
 }
-

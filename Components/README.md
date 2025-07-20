@@ -9,7 +9,9 @@ RR.Blazor features a modern R* component architecture that provides:
 - **Unified API**: All R* components share common patterns and parameters
 - **Built-in Validation**: Integrated with RInputBase for seamless form validation
 - **Enterprise Styling**: Professional appearance with density and variant support
-- **Accessibility First**: WCAG 2.1 AA compliant with screen reader support
+- **WCAG 2.1 AA Compliant**: Full accessibility with screen reader support and keyboard navigation
+- **Cross-Device Responsive**: Optimized for mobile, PC, laptop, iPad portrait/landscape
+- **Touch-Friendly**: 44px minimum touch targets for mobile devices
 - **Type Safety**: Strongly-typed parameters prevent runtime errors
 
 ### Modern Form Components
@@ -164,9 +166,11 @@ All components are automatically available through the `@using RR.Blazor.Compone
 1. **Generic First**: Components should be reusable across different domains
 2. **Semantic Colors**: Use semantic CSS variables (`var(--color-*)`) instead of hardcoded values
 3. **Utility Integration**: Work seamlessly with RR.Blazor utility classes
-4. **Theme Aware**: Support automatic light/dark theme switching
-5. **Accessible**: Follow WCAG guidelines and provide proper ARIA labels
-6. **Performance**: Optimize for minimal re-renders and bundle size
+4. **Theme Aware**: Support automatic light/dark theme switching with WCAG 2.1 AA contrast ratios
+5. **WCAG 2.1 AA Compliant**: Full accessibility with ARIA labels, keyboard navigation, and screen reader support
+6. **Cross-Device Responsive**: Adaptive design for mobile, PC, laptop, iPad portrait/landscape
+7. **Touch-Friendly**: 44px minimum touch targets for mobile devices
+8. **Performance**: Optimize for minimal re-renders and bundle size
 
 ## Adding New Components
 
@@ -175,9 +179,12 @@ When adding new components:
 1. **Choose the right category** - Place in the most logical folder
 2. **Follow naming conventions** - Use `R` prefix and PascalCase
 3. **Use semantic variables** - Leverage the RR.Blazor design system
-4. **Document thoroughly** - Include XML docs and usage examples
-5. **Add to imports** - Ensure namespace is included in `_Imports.razor`
-6. **Inherit from RInputBase** - For form components, inherit from RInputBase for consistency
+4. **Ensure WCAG 2.1 AA compliance** - Include proper ARIA attributes and keyboard navigation
+5. **Implement responsive design** - Support mobile, PC, laptop, iPad portrait/landscape
+6. **Provide touch-friendly targets** - Minimum 44px touch targets for mobile
+7. **Document thoroughly** - Include XML docs and usage examples
+8. **Add to imports** - Ensure namespace is included in `_Imports.razor`
+9. **Inherit from RInputBase** - For form components, inherit from RInputBase for consistency
 
 ## Component Dependencies
 

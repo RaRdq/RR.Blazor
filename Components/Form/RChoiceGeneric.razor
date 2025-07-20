@@ -1,0 +1,320 @@
+@** 
+<summary>Generic choice component implementation with smart variant detection</summary>
+<category>Form</category>
+<complexity>Complex</complexity>
+<ai-prompt>Create choice component that adapts between inline and dropdown modes</ai-prompt>
+<ai-common-use>option selection, filters, toggles, menus with smart layout</ai-common-use>
+<ai-avoid>Don't use for simple on/off toggles - use checkbox instead</ai-avoid>
+<ai-pattern name="smart-choice">Items="@options" for automatic detection</ai-pattern>
+<ai-pattern name="forced-inline">Variant="ChoiceVariant.Inline" Style="ChoiceStyle.Pills"</ai-pattern>
+<ai-pattern name="forced-dropdown">Variant="ChoiceVariant.Dropdown"</ai-pattern>
+**@
+
+@attribute [Component("RChoiceGeneric", Category = "Form")]
+@attribute [AIOptimized(Prompt = "Create adaptive choice component")]
+
+@typeparam TValue where TValue : notnull
+@inherits RChoiceBase
+@using Microsoft.AspNetCore.Components
+@using RR.Blazor.Components.Form
+
+@if (EffectiveVariant == ChoiceVariant.Dropdown)
+{
+    <!-- Dropdown Mode -->
+    <div class="choice choice-dropdown @GetDropdownClass() @base.Class" @ref="choiceRef">
+        <button class="choice-trigger touch-target @GetTriggerClass()"
+                @onclick="ToggleDropdown"
+                @onkeydown="OnKeyDown"
+                aria-haspopup="true"
+                aria-expanded="@IsOpen"
+                aria-label="@(AriaLabel ?? "Open dropdown")"
+                disabled="@Disabled">
+            @if (!string.IsNullOrEmpty(GetSelectedItemIcon()))
+            {
+                <i class="material-symbols-rounded">@GetSelectedItemIcon()</i>
+            }
+            @if (base.ChildContent != null)
+            {
+                @base.ChildContent
+            }
+            else
+            {
+                <span>@GetSelectedItemLabel()</span>
+            }
+        </button>
+
+        @if (IsOpen)
+        {
+            <div class="choice-backdrop" @onclick="CloseDropdown"></div>
+            <div class="choice-viewport">
+                <div class="choice-content">
+                    @if (Items != null)
+                    {
+                        @foreach (var item in Items)
+                        {
+                            <button class="choice-item @GetItemClass(item)"
+                                    @onclick="() => OnItemSelected(item)"
+                                    disabled="@IsItemDisabled(item)">
+                                @if (!string.IsNullOrEmpty(GetItemIcon(item)))
+                                {
+                                    <i class="material-symbols-rounded">@GetItemIcon(item)</i>
+                                }
+                                <span>@GetItemLabel(item)</span>
+                                @if (IsItemActive(item))
+                                {
+                                    <i class="material-symbols-rounded">check</i>
+                                }
+                            </button>
+                        }
+                    }
+                </div>
+            </div>
+        }
+    </div>
+}
+else
+{
+    <!-- Inline Mode -->
+    <div class="choice choice-inline @GetInlineClass() @base.Class">
+        @if (Items != null)
+        {
+            @foreach (var item in Items)
+            {
+                <button class="choice-item @GetItemClass(item)" 
+                        @onclick="() => OnItemSelected(item)"
+                        title="@GetItemTitle(item)"
+                        aria-label="@GetItemAriaLabel(item)"
+                        disabled="@IsItemDisabled(item)">
+                    @if (!string.IsNullOrEmpty(GetItemIcon(item)))
+                    {
+                        <i class="material-symbols-rounded">@GetItemIcon(item)</i>
+                    }
+                    @if (ShowLabels && !string.IsNullOrEmpty(GetItemLabel(item)))
+                    {
+                        <span class="choice-label">@GetItemLabel(item)</span>
+                    }
+                    @if (IsItemActive(item) && ShowActiveIndicator)
+                    {
+                        <i class="material-symbols-rounded choice-check">check</i>
+                    }
+                    @if (IsItemLoading(item))
+                    {
+                        <div class="choice-loading">
+                            <i class="material-symbols-rounded">hourglass_empty</i>
+                        </div>
+                    }
+                </button>
+            }
+        }
+    </div>
+}
+
+@code {
+    private ElementReference choiceRef;
+    private bool isOpen = false;
+
+    [Parameter] public IEnumerable<TValue> Items { get; set; }
+    [Parameter] public TValue SelectedValue { get; set; }
+    [Parameter] public EventCallback<TValue> SelectedValueChangedTyped { get; set; }
+    [Parameter] public EventCallback<object> SelectedValueChangedObject { get; set; }
+    [Parameter] public Func<TValue, string> ItemLabelSelectorTyped { get; set; }
+    [Parameter] public Func<TValue, string> ItemIconSelectorTyped { get; set; }
+    [Parameter] public Func<TValue, string> ItemTitleSelectorTyped { get; set; }
+    [Parameter] public Func<TValue, string> ItemAriaLabelSelectorTyped { get; set; }
+    [Parameter] public Func<TValue, bool> ItemDisabledSelectorTyped { get; set; }
+    [Parameter] public Func<TValue, bool> ItemLoadingSelectorTyped { get; set; }
+    [Parameter] public ChoiceVariant EffectiveVariant { get; set; } = ChoiceVariant.Inline;
+    [Parameter] public ChoiceStyle Style { get; set; } = ChoiceStyle.Standard;
+
+    private bool IsOpen => isOpen && !Disabled;
+
+    private string GetDropdownClass()
+    {
+        var classes = new List<string>();
+        
+        classes.Add($"choice-{Size.ToString().ToLower()}");
+        
+        if (!string.IsNullOrEmpty(AdditionalClass))
+        {
+            classes.Add(AdditionalClass);
+        }
+        
+        return string.Join(" ", classes);
+    }
+
+    private string GetInlineClass()
+    {
+        var classes = new List<string>();
+        
+        classes.Add($"choice-{Style.ToString().ToLower()}");
+        classes.Add($"choice-{Size.ToString().ToLower()}");
+        classes.Add($"choice-{Direction.ToString().ToLower()}");
+        
+        if (!string.IsNullOrEmpty(AdditionalClass))
+        {
+            classes.Add(AdditionalClass);
+        }
+        
+        return string.Join(" ", classes);
+    }
+
+    private string GetTriggerClass()
+    {
+        var classes = new List<string>();
+        
+        if (IsOpen)
+        {
+            classes.Add("choice-trigger-open");
+        }
+        
+        return string.Join(" ", classes);
+    }
+
+    private string GetItemClass(TValue item)
+    {
+        var classes = new List<string>();
+        
+        if (IsItemActive(item))
+        {
+            classes.Add("choice-item-active");
+        }
+        
+        if (IsItemDisabled(item))
+        {
+            classes.Add("choice-item-disabled");
+        }
+        
+        if (IsItemLoading(item))
+        {
+            classes.Add("choice-item-loading");
+        }
+        
+        return string.Join(" ", classes);
+    }
+
+    private bool IsItemActive(TValue item)
+    {
+        return EqualityComparer<TValue>.Default.Equals(item, SelectedValue);
+    }
+
+    private bool IsItemDisabled(TValue item)
+    {
+        return ItemDisabledSelectorTyped?.Invoke(item) ?? base.ItemDisabledSelector?.Invoke(item) ?? false;
+    }
+
+    private bool IsItemLoading(TValue item)
+    {
+        return ItemLoadingSelectorTyped?.Invoke(item) ?? base.ItemLoadingSelector?.Invoke(item) ?? false;
+    }
+
+    private string GetItemLabel(TValue item)
+    {
+        return ItemLabelSelectorTyped?.Invoke(item) ?? base.ItemLabelSelector?.Invoke(item) ?? item?.ToString() ?? "";
+    }
+
+    private string GetItemIcon(TValue item)
+    {
+        return ItemIconSelectorTyped?.Invoke(item) ?? base.ItemIconSelector?.Invoke(item) ?? "";
+    }
+
+    private string GetItemTitle(TValue item)
+    {
+        return ItemTitleSelectorTyped?.Invoke(item) ?? base.ItemTitleSelector?.Invoke(item) ?? GetItemLabel(item);
+    }
+
+    private string GetItemAriaLabel(TValue item)
+    {
+        return ItemAriaLabelSelectorTyped?.Invoke(item) ?? base.ItemAriaLabelSelector?.Invoke(item) ?? $"Select {GetItemLabel(item)}";
+    }
+
+    private string GetSelectedItemLabel()
+    {
+        if (SelectedValue != null)
+        {
+            return GetItemLabel(SelectedValue);
+        }
+        return "Select an option";
+    }
+
+    private string GetSelectedItemIcon()
+    {
+        if (SelectedValue != null)
+        {
+            return GetItemIcon(SelectedValue);
+        }
+        return "";
+    }
+
+    private async Task ToggleDropdown()
+    {
+        if (Disabled) return;
+        
+        if (isOpen)
+        {
+            await CloseDropdown();
+        }
+        else
+        {
+            await OpenDropdown();
+        }
+    }
+
+    private async Task OpenDropdown()
+    {
+        isOpen = true;
+        StateHasChanged();
+    }
+
+    private async Task CloseDropdown()
+    {
+        isOpen = false;
+        StateHasChanged();
+    }
+
+    private async Task OnItemSelected(TValue item)
+    {
+        if (IsItemDisabled(item) || IsItemLoading(item))
+            return;
+
+        SelectedValue = item;
+        
+        // Call the strongly typed callback
+        if (SelectedValueChangedTyped.HasDelegate)
+            await SelectedValueChangedTyped.InvokeAsync(item);
+            
+        // Call the object-based callback from smart wrapper
+        if (SelectedValueChangedObject.HasDelegate)
+            await SelectedValueChangedObject.InvokeAsync(item);
+        
+        // Also call the base untyped callback if needed
+        if (base.SelectedValueChanged.HasDelegate)
+            await base.SelectedValueChanged.InvokeAsync(item);
+        
+        if (EffectiveVariant == ChoiceVariant.Dropdown && CloseOnSelect)
+        {
+            await CloseDropdown();
+        }
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (EffectiveVariant != ChoiceVariant.Dropdown) return;
+        
+        switch (e.Key)
+        {
+            case "Escape":
+                if (IsOpen)
+                {
+                    await CloseDropdown();
+                }
+                break;
+            case "Enter":
+            case " ":
+                if (!IsOpen)
+                {
+                    await OpenDropdown();
+                }
+                break;
+        }
+    }
+}

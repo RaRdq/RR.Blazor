@@ -203,5 +203,5 @@ public class FormSectionConfig
     public SectionElevation Elevation { get; set; } = SectionElevation.None;
     public bool IsCollapsible { get; set; } = false;
     public bool IsExpanded { get; set; } = true;
-    public string CssClass { get; set; }
+    public string Class { get; set; }
 }

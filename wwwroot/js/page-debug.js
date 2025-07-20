@@ -460,7 +460,14 @@ const RRDebugAPI = (() => {
         
         duplicateIds: el => {
             if (!el.id) return false;
-            return document.querySelectorAll(`#${el.id}`).length > 1;
+            try {
+                // Escape CSS selector for IDs that start with digits or contain special characters
+                const escapedId = CSS.escape(el.id);
+                return document.querySelectorAll(`#${escapedId}`).length > 1;
+            } catch (e) {
+                // Fallback for browsers without CSS.escape
+                return document.getElementById(el.id) !== el;
+            }
         },
         
         // Loading & State Issues

@@ -79,20 +79,20 @@ Ultra-clean, responsive, and customizable for any business application.
                 {
                     <!-- Page Title & Breadcrumbs -->
                     <div class="min-w-0 flex-1">
-                        <div class="d-flex items-center gap-2 flex-wrap">
+                        <div class="layout-flex d-flex align-center layout-gap-2 layout-flex-wrap">
                             @if (!string.IsNullOrEmpty(PageTitle))
                             {
                                 <h1 class="text-lg font-semibold text-primary ma-0">@PageTitle</h1>
                             }
                             @if (ShowBreadcrumbs && Breadcrumbs?.Any() == true)
                             {
-                                <nav class="d-flex items-center gap-2" aria-label="Breadcrumb">
-                                    <ol class="d-flex items-center flex-wrap list-spacious ma-0 pa-0 gap-2">
+                                <nav class="layout-flex d-flex align-center layout-gap-2" aria-label="Breadcrumb">
+                                    <ol class="layout-flex d-flex align-center layout-flex-wrap list-spacious ma-0 pa-0 layout-gap-2">
                                     @foreach (var (item, index) in Breadcrumbs.Select((item, index) => (item, index)))
                                     {
                                         var isLast = index == Breadcrumbs.Count - 1;
                                         
-                                        <li class="d-flex items-center gap-1">
+                                        <li class="layout-flex d-flex align-center layout-gap-1">
                                             @if (!string.IsNullOrEmpty(item.Icon) && index == 0)
                                             {
                                                 <i class="material-symbols-rounded text-lg text-secondary shrink-0">@item.Icon</i>
@@ -533,22 +533,26 @@ Ultra-clean, responsive, and customizable for any business application.
             try
             {
                 jsModule = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/RR.Blazor/js/app-shell.js");
-                await jsModule.InvokeVoidAsync("initialize");
-                
-                // Update mobile state
-                IsMobile = await jsModule.InvokeAsync<bool>("isMobile");
-                
-                // Mobile sidebar should be closed by default
-                if (IsMobile)
+                if (jsModule != null)
                 {
-                    sidebarOpen = false;
+                    await jsModule.InvokeVoidAsync("initialize");
+                    
+                    // Update mobile state
+                    IsMobile = await jsModule.InvokeAsync<bool>("isMobile");
+                    
+                    // Mobile sidebar should be closed by default
+                    if (IsMobile)
+                    {
+                        sidebarOpen = false;
+                    }
+                    
+                    StateHasChanged();
                 }
-                
-                StateHasChanged();
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine($"Failed to initialize app shell JS: {ex.Message}");
+                // Log warning instead of error since this is non-critical
+                Console.WriteLine($"Warning: App shell JS initialization failed: {ex.Message}");
             }
         }
     }

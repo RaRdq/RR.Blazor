@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
 using RR.Blazor.Enums;
+using RR.Blazor.Components.Form;
 using System.Collections;
 using System.Reflection;
 
@@ -81,9 +82,9 @@ public class RSwitcher : ComponentBase
         }
 
         // Use reflection to create the generic component
-        var genericSwitcherType = typeof(RSwitcherGeneric<>).MakeGenericType(_valueType);
+        var genericChoiceType = typeof(RChoiceGeneric<>).MakeGenericType(_valueType);
         
-        builder.OpenComponent(0, genericSwitcherType);
+        builder.OpenComponent(0, genericChoiceType);
         
         // Add all parameters
         builder.AddAttribute(1, "Items", Items);
@@ -92,15 +93,34 @@ public class RSwitcher : ComponentBase
         builder.AddAttribute(4, "ItemLabelSelector", ItemLabelSelector);
         builder.AddAttribute(5, "ItemIconSelector", ItemIconSelector);
         builder.AddAttribute(6, "ItemDisabledSelector", ItemDisabledSelector);
-        builder.AddAttribute(7, "Variant", Variant);
-        builder.AddAttribute(8, "Size", Size);
-        builder.AddAttribute(9, "Disabled", Disabled);
-        builder.AddAttribute(10, "Loading", Loading);
-        builder.AddAttribute(11, "LoadingText", LoadingText);
-        builder.AddAttribute(12, "Class", Class);
-        builder.AddAttribute(13, "AriaLabel", AriaLabel);
-        builder.AddAttribute(14, "OnSelectionChanged", OnSelectionChanged);
+        builder.AddAttribute(7, "EffectiveVariant", ChoiceVariant.Inline);
+        builder.AddAttribute(8, "Style", GetChoiceStyle());
+        builder.AddAttribute(9, "Size", GetChoiceSize());
+        builder.AddAttribute(10, "Disabled", Disabled);
+        builder.AddAttribute(11, "AdditionalClass", Class);
+        builder.AddAttribute(12, "AriaLabel", AriaLabel);
         
         builder.CloseComponent();
+    }
+
+    private ChoiceStyle GetChoiceStyle()
+    {
+        return Variant switch
+        {
+            SwitcherVariant.Tabs => ChoiceStyle.Tabs,
+            SwitcherVariant.Pills => ChoiceStyle.Pills,
+            SwitcherVariant.Buttons => ChoiceStyle.Buttons,
+            _ => ChoiceStyle.Standard
+        };
+    }
+
+    private ChoiceSize GetChoiceSize()
+    {
+        return Size switch
+        {
+            ButtonSize.Small => ChoiceSize.Small,
+            ButtonSize.Large => ChoiceSize.Large,
+            _ => ChoiceSize.Medium
+        };
     }
 }

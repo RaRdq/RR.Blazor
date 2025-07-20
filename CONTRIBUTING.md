@@ -39,8 +39,8 @@ RR.Blazor is designed to be AI-agent friendly. Whether you're Claude, GPT-4, or 
 
 3. Component must include:
    - Full parameter documentation
-   - Keyboard navigation support
-   - ARIA attributes for accessibility
+   - WCAG 2.1 AA accessibility compliance (ARIA attributes, keyboard navigation)
+   - Adaptive responsive design (mobile, PC, laptop, iPad portrait/landscape)
    - Loading/disabled states
    - Theme CSS variable usage
 
@@ -116,7 +116,8 @@ Always check these before modifying:
 - [ ] Component is generic (no business logic)
 - [ ] Uses RR.Blazor naming convention (R prefix)
 - [ ] Theme-aware (uses CSS variables)
-- [ ] Accessibility compliant (ARIA, keyboard nav)
+- [ ] WCAG 2.1 AA accessibility compliant (ARIA attributes, keyboard navigation)
+- [ ] Adaptive responsive design (mobile, PC, laptop, iPad portrait/landscape)
 - [ ] AI metadata added with @** blocks
 - [ ] No hardcoded colors/spacing
 - [ ] Responsive design implemented
@@ -127,7 +128,8 @@ Always check these before modifying:
 #### QA Debug Verification (Required for AI Agents)
 - [ ] `window.RRDebug.analyze()` shows 85%+ health score
 - [ ] `window.RRDebug.component('.your-component')` reports zero critical issues
-- [ ] `window.RRDebug.scan('interactive-elements')` shows proper accessibility
+- [ ] `window.RRDebug.scan('interactive-elements')` shows WCAG 2.1 AA compliance
+- [ ] All responsive breakpoints tested (mobile, PC, laptop, iPad portrait/landscape)
 - [ ] All responsive breakpoints tested with debug tools
 - [ ] Debug output included in PR/commit description
 
@@ -254,7 +256,7 @@ window.RRDebug.scan('button, [role="button"], .btn', {limit: 20})
 
 The debug tools automatically detect:
 - **Layout Issues**: Zero-size elements, broken flex/grid, invalid positioning
-- **Accessibility Issues**: Missing alt text, poor contrast, missing focus indicators
+- **Accessibility Issues**: WCAG 2.1 AA violations, missing ARIA attributes, keyboard navigation gaps
 - **CSS Issues**: Invalid class names, missing variables, forced height corruption
 - **Performance Issues**: Excessive inline styles, DOM complexity
 - **Responsive Issues**: Broken responsive utilities, display conflicts
@@ -271,8 +273,8 @@ This will auto-run page analysis and log results to console.
 
 1. **Always test in development environment** - Debug tools only load in dev mode
 2. **Test component isolation** - Use `component()` method for focused testing
-3. **Check responsive behavior** - Test at different viewport sizes
-4. **Validate accessibility** - Pay attention to ARIA warnings and focus indicators
+3. **Check responsive behavior** - Test mobile, PC, laptop, iPad portrait/landscape
+4. **Validate accessibility compliance** - Ensure WCAG 2.1 AA standards met
 5. **Monitor health scores** - Aim for 85%+ on critical pages, 70%+ minimum
 6. **Document issues systematically** - Use debug output for bug reports
 
@@ -312,7 +314,8 @@ console.log('📋 QA Report Generated:', qaReport)
 - **Properties**: List all parameters with types
 - **Events**: List all EventCallbacks
 - **Variants**: List all enum values
-- **Accessibility**: Keyboard shortcuts, ARIA usage
+- **Accessibility**: WCAG 2.1 AA compliance, ARIA usage, keyboard navigation
+- **Responsive Design**: Mobile, PC, laptop, iPad portrait/landscape support
 ```
 
 ## Integration with AI Tools
@@ -350,8 +353,8 @@ window.RRDebug.getQAReport()               // Automation report
 
 2. **Include debug output in reports** - Copy console output to provide specific issue details
 3. **Use health scores for decision making** - Only approve components with 85%+ scores
-4. **Focus on pattern violations** - Invalid CSS classes, broken responsive utilities, accessibility issues
-5. **Test responsive behavior** - Verify mobile-first design and breakpoint behavior
+4. **Focus on compliance violations** - WCAG 2.1 AA accessibility, responsive design failures
+5. **Test cross-device compatibility** - Mobile, PC, laptop, iPad portrait/landscape behavior
 
 ## Common Patterns to Follow
 
@@ -404,7 +407,8 @@ dotnet build -c Release
 - 3,309+ utility patterns with AI hints
 - 336 CSS variables with semantic naming
 - Real-world usage patterns
-- Best practices and accessibility guidelines
+- WCAG 2.1 AA accessibility compliance guidelines
+- Cross-device responsive design patterns (mobile, PC, laptop, iPad)
 
 ## Questions or Issues?
 

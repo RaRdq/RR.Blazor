@@ -188,23 +188,29 @@ Supports info, success, warning, and error states with consistent styling.
         });
         
         // Type and variant classes using existing utilities
-        var typeClass = Type switch
+        var (bgClass, textClass, borderClass) = Type switch
         {
-            AlertType.Success => "bg-success-light text-success border-success",
-            AlertType.Warning => "bg-warning-light text-warning border-warning", 
-            AlertType.Error => "bg-error-light text-error border-error",
-            _ => "bg-info-light text-info border-info"
+            AlertType.Success => ("bg-success-light", "text-success", "border-success"),
+            AlertType.Warning => ("bg-warning-light", "text-warning", "border-warning"), 
+            AlertType.Error => ("bg-error-light", "text-error", "border-error"),
+            _ => ("bg-info-light", "text-info", "border-info")
         };
         
-        var variantClass = Variant switch
+        var variantClasses = Variant switch
         {
-            AlertVariant.Filled => typeClass.Replace("-light", ""),
-            AlertVariant.Outline => typeClass.Replace("bg-", "border-").Replace("-light", ""),
-            AlertVariant.Subtle => typeClass,
-            _ => typeClass
+            AlertVariant.Filled => Type switch
+            {
+                AlertType.Success => "bg-success text-on-success border-success",
+                AlertType.Warning => "bg-warning text-on-warning border-warning",
+                AlertType.Error => "bg-error text-on-error border-error",
+                _ => "bg-info text-on-info border-info"
+            },
+            AlertVariant.Outline => $"bg-transparent {textClass} {borderClass}",
+            AlertVariant.Subtle => $"{bgClass} {textClass} {borderClass}",
+            _ => $"{bgClass} {textClass} {borderClass}"
         };
         
-        classes.Add(variantClass);
+        classes.Add(variantClasses);
         
         // Modifier classes
         if (FullWidth)

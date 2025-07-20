@@ -50,7 +50,7 @@ namespace RR.Blazor.Models
         
         /// <summary>Custom CSS class for styling</summary>
         [AIParameter("Custom styling class", Example = "bg-success text-white")]
-        public string? CssClass { get; set; }
+        public string? Class { get; set; }
         
         /// <summary>Event priority level</summary>
         [AIParameter("Event priority", Example = "EventPriority.High")]
