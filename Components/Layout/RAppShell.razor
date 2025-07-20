@@ -18,6 +18,7 @@ Ultra-clean, responsive, and customizable for any business application.
 @using RR.Blazor.Enums
 @using RR.Blazor.Attributes
 @using Microsoft.AspNetCore.Components.Routing
+@using Microsoft.AspNetCore.Components.Web
 
 @inherits LayoutComponentBase
 @inject IJSRuntime JS
@@ -79,20 +80,20 @@ Ultra-clean, responsive, and customizable for any business application.
                 {
                     <!-- Page Title & Breadcrumbs -->
                     <div class="min-w-0 flex-1">
-                        <div class="layout-flex d-flex align-center layout-gap-2 layout-flex-wrap">
+                        <div class="d-flex align-center gap-2 flex-wrap">
                             @if (!string.IsNullOrEmpty(PageTitle))
                             {
                                 <h1 class="text-lg font-semibold text-primary ma-0">@PageTitle</h1>
                             }
                             @if (ShowBreadcrumbs && Breadcrumbs?.Any() == true)
                             {
-                                <nav class="layout-flex d-flex align-center layout-gap-2" aria-label="Breadcrumb">
-                                    <ol class="layout-flex d-flex align-center layout-flex-wrap list-spacious ma-0 pa-0 layout-gap-2">
+                                <nav class="d-flex align-center gap-2" aria-label="Breadcrumb">
+                                    <ol class="d-flex align-center flex-wrap list-spacious ma-0 pa-0 gap-2">
                                     @foreach (var (item, index) in Breadcrumbs.Select((item, index) => (item, index)))
                                     {
                                         var isLast = index == Breadcrumbs.Count - 1;
                                         
-                                        <li class="layout-flex d-flex align-center layout-gap-1">
+                                        <li class="d-flex align-center gap-1">
                                             @if (!string.IsNullOrEmpty(item.Icon) && index == 0)
                                             {
                                                 <i class="material-symbols-rounded text-lg text-secondary shrink-0">@item.Icon</i>
@@ -127,7 +128,9 @@ Ultra-clean, responsive, and customizable for any business application.
                         </div>
                         @if (!string.IsNullOrEmpty(PageSubtitle))
                         {
-                            <p class="text-sm text-secondary ma-0 leading-tight">@PageSubtitle</p>
+                            <div>
+                                <p class="text-sm text-secondary ma-0 leading-tight">@PageSubtitle</p>
+                            </div>
                         }
                     </div>
                 }
@@ -144,45 +147,57 @@ Ultra-clean, responsive, and customizable for any business application.
                             {
                                 <RButton Icon="close" 
                                          Variant="ButtonVariant.Ghost" 
-                                         Size="ButtonSize.Small"
+                                         Size="ButtonSize.Medium"
                                          OnClick="CollapseSearch" 
-                                         AriaLabel="Close search" />
-                                <RInput Type="FieldType.Search"
-                                           Placeholder="Search..."
-                                           Value="@searchQuery"
-                                           ValueChanged="@(value => { searchQuery = value?.ToString(); HandleSearchChange(); })"
-                                           Class="w-full max-w-48 search-input-expanded"
-                                           Id="app-shell-search-input" />
+                                         AriaLabel="Close search" 
+                                         Class="search-close-btn" />
+                                <div class="relative">
+                                    <RTextInput Type="FieldType.Search"
+                                               Placeholder="Search..."
+                                               Value="@searchQuery"
+                                               ValueChanged="@(value => { searchQuery = value; HandleSearchChange(); })"
+                                               Class="search-input-expanded"
+                                               Id="app-shell-search-input"
+                                               OnKeyDown="@HandleSearchKeyDown" />
+                                </div>
                             }
                             else
                             {
                                 <RButton Icon="search" 
                                          Variant="ButtonVariant.Ghost" 
-                                         Size="ButtonSize.Small"
+                                         Size="ButtonSize.Medium"
                                          OnClick="@(async () => await ExpandSearch())" 
-                                         AriaLabel="Open search" />
+                                         AriaLabel="Open search" 
+                                         Class="search-toggle-btn" />
                             }
                         }
                         else
                         {
                             <div class="relative">
-                                <RInput Type="FieldType.Search"
+                                <RTextInput Type="FieldType.Search"
                                            Placeholder="Search..."
                                            Value="@searchQuery"
-                                           ValueChanged="@(value => { searchQuery = value?.ToString(); HandleSearchChange(); })"
-                                           Class="w-full max-w-64" />
-                                <i class="material-symbols-rounded absolute left-3 top-1/2 transform -translate-y-1/2 text-tertiary">search</i>
+                                           ValueChanged="@(value => { searchQuery = value; HandleSearchChange(); })"
+                                           Class="search-input-expanded"
+                                           StartIcon="search"
+                                           OnKeyDown="@HandleSearchKeyDown" />
                             </div>
                         }
                         
                         <!-- Search Results -->
                         @if (showSearchResults && searchResults.Any())
                         {
-                            <div class="absolute top-100 left-0 right-0 bg-surface-elevated shadow-lg rounded-lg mt-1 py-2 z-50 max-h-300 overflow-y-auto">
-                                @foreach (var result in searchResults.Take(8))
+                            <div class="absolute top-100 left-0 right-0 bg-surface-elevated shadow-lg rounded-lg mt-1 py-2 z-50 max-h-300 overflow-y-auto"
+                                 role="listbox"
+                                 aria-label="Search results">
+                                @foreach (var (result, index) in searchResults.Take(8).Select((r, i) => (r, i)))
                                 {
-                                    <button class="w-full text-left px-3 py-2 hover:bg-surface flex items-center gap-3 group"
-                                            @onclick="() => HandleSearchResultClick(result)">
+                                    <button class="@GetSearchResultClasses(index) w-full text-left px-3 py-2 hover:bg-surface flex items-center gap-3 group focus:bg-surface focus:outline-none"
+                                            @onclick="() => HandleSearchResultClick(result)"
+                                            role="option"
+                                            aria-selected="@(selectedResultIndex == index)"
+                                            tabindex="-1"
+                                            data-result-index="@index">
                                         @if (!string.IsNullOrEmpty(result.Icon))
                                         {
                                             <i class="material-symbols-rounded text-sm text-secondary group-hover:text-primary">@result.Icon</i>
@@ -349,6 +364,7 @@ Ultra-clean, responsive, and customizable for any business application.
     private bool showUserMenu = false;
     private bool searchExpanded = false;
     private Timer searchDebounceTimer;
+    private int selectedResultIndex = -1;
     
     // ===== CORE PARAMETERS =====
     
@@ -608,6 +624,7 @@ Ultra-clean, responsive, and customizable for any business application.
             {
                 showSearchResults = false;
                 searchResults.Clear();
+                selectedResultIndex = -1;
                 StateHasChanged();
                 return;
             }
@@ -624,6 +641,7 @@ Ultra-clean, responsive, and customizable for any business application.
                             {
                                 searchResults = await SearchService.SearchAsync(searchQuery);
                                 showSearchResults = searchResults.Any();
+                                selectedResultIndex = -1; // Reset selection when new results load
                                 StateHasChanged();
                             }
                         });
@@ -645,6 +663,7 @@ Ultra-clean, responsive, and customizable for any business application.
     {
         showSearchResults = false;
         searchQuery = string.Empty;
+        selectedResultIndex = -1;
         
         await SearchService.AddToRecentAsync(result);
         
@@ -692,8 +711,85 @@ Ultra-clean, responsive, and customizable for any business application.
         searchExpanded = false;
         searchQuery = string.Empty;
         showSearchResults = false;
+        selectedResultIndex = -1;
         searchDebounceTimer?.Dispose();
         searchDebounceTimer = null;
+    }
+    
+    private async Task HandleSearchKeyDown(KeyboardEventArgs e)
+    {
+        if (!showSearchResults || !searchResults.Any()) return;
+        
+        switch (e.Key)
+        {
+            case "ArrowDown":
+                selectedResultIndex = Math.Min(selectedResultIndex + 1, searchResults.Count - 1);
+                await FocusSelectedResult();
+                StateHasChanged();
+                break;
+                
+            case "ArrowUp":
+                selectedResultIndex = Math.Max(selectedResultIndex - 1, -1);
+                if (selectedResultIndex == -1)
+                {
+                    await FocusSearchInput();
+                }
+                else
+                {
+                    await FocusSelectedResult();
+                }
+                StateHasChanged();
+                break;
+                
+            case "Enter":
+                if (selectedResultIndex >= 0 && selectedResultIndex < searchResults.Count)
+                {
+                    await HandleSearchResultClick(searchResults[selectedResultIndex]);
+                }
+                break;
+                
+            case "Escape":
+                CollapseSearch();
+                StateHasChanged();
+                break;
+        }
+    }
+    
+    private async Task FocusSelectedResult()
+    {
+        if (selectedResultIndex >= 0)
+        {
+            try
+            {
+                await JS.InvokeVoidAsync("focusElement", $"[data-result-index='{selectedResultIndex}']");
+            }
+            catch
+            {
+                // Ignore focus errors
+            }
+        }
+    }
+    
+    private async Task FocusSearchInput()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("focusElement", "app-shell-search-input");
+        }
+        catch
+        {
+            // Ignore focus errors
+        }
+    }
+    
+    private string GetSearchResultClasses(int index)
+    {
+        var baseClasses = "search-result-item";
+        if (selectedResultIndex == index)
+        {
+            baseClasses += " bg-surface";
+        }
+        return baseClasses;
     }
     
     // ===== CSS CLASS GENERATORS =====
@@ -739,7 +835,12 @@ Ultra-clean, responsive, and customizable for any business application.
     
     private string GetSearchClasses()
     {
-        return "app-search";
+        var classes = new List<string> { "app-search" };
+        
+        if (SearchCollapsible)
+            classes.Add("search-collapsible");
+            
+        return string.Join(" ", classes);
     }
     
     private string GetSidebarClasses()

@@ -384,6 +384,11 @@ $componentConstraints = @{
         Context = 'ColumnsContent'
         Description = 'RDataTableColumn must be used within RDataTable''s ColumnsContent'
     }
+    'RDataTableColumnGeneric' = @{
+        RequiredParent = 'RDataTableGeneric'
+        Context = 'ColumnsContent'
+        Description = 'RDataTableColumnGeneric must be used within RDataTableGeneric''s ColumnsContent'
+    }
     'RListItem' = @{
         RequiredParent = 'RList'
         Context = 'ChildContent'
@@ -424,8 +429,8 @@ function Test-ComponentConstraints {
             $requiredParents = @($requiredParents)
         }
         
-        # Find all instances of child component
-        $childPattern = "(?s)<$childComponent[^>]*(?:/>|>.*?</$childComponent>)"
+        # Find all instances of child component (using word boundaries to prevent substring matches)
+        $childPattern = "(?s)<$childComponent\b[^>]*(?:/>|>.*?</$childComponent>)"
         $childMatches = [regex]::Matches($Content, $childPattern)
         
         foreach ($childMatch in $childMatches) {
@@ -436,8 +441,8 @@ function Test-ComponentConstraints {
             
             # Check each possible parent type
             foreach ($requiredParent in $requiredParents) {
-                # Look for parent component that contains this child
-                $parentPattern = "(?s)<$requiredParent[^>]*>.*?</$requiredParent>"
+                # Look for parent component that contains this child (using word boundaries to prevent substring matches)
+                $parentPattern = "(?s)<$requiredParent\b[^>]*>.*?</$requiredParent>"
                 $parentMatches = [regex]::Matches($Content, $parentPattern)
                 
                 foreach ($parentMatch in $parentMatches) {

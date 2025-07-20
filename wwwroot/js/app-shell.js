@@ -179,6 +179,28 @@ function focusSearch() {
     }
 }
 
+export function focusElement(selector) {
+    try {
+        let element;
+        if (selector.startsWith('#')) {
+            element = document.getElementById(selector.substring(1));
+        } else if (selector.startsWith('[') && selector.endsWith(']')) {
+            element = document.querySelector(selector);
+        } else {
+            element = document.querySelector(selector);
+        }
+        
+        if (element) {
+            element.focus();
+            return true;
+        }
+        return false;
+    } catch (error) {
+        console.warn('Focus element failed:', error);
+        return false;
+    }
+}
+
 function toggleSidebar() {
     const sidebar = document.querySelector('.sidebar');
     const toggleButton = document.querySelector('.header__toggle, [aria-label="Toggle sidebar"]');
@@ -303,5 +325,6 @@ window.RRAppShell = {
     scrollToElement,
     copyToClipboard,
     getPerformanceMetrics,
-    updateUrlWithoutScroll
+    updateUrlWithoutScroll,
+    focusElement
 };

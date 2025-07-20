@@ -135,20 +135,123 @@
   }
 }
 
-// Search expansion animation
+// Search expansion animation and icon fixes
 .app-search {
-  .search-input-expanded {
-    width: 0;
-    opacity: 0;
-    animation: slideRight var(--duration-normal) var(--ease-out) forwards;
+  
+  // Search input container animation
+  .search-input-container {
+    display: flex;
+    align-items: center;
     overflow: hidden;
+    transition: all var(--duration-normal) var(--ease-out);
+    
+    .search-input-expanded {
+      width: 100%;
+      min-width: 12rem;
+      
+      // Enhanced tablet viewport support
+      @include responsive-between(md, lg) {
+        min-width: 11rem;
+      }
+      
+      @include responsive-max(md) {
+        min-width: 10rem;
+      }
+      
+      @include responsive-max(sm) {
+        min-width: 8rem;
+      }
+    }
+    
+    // Default state for collapsible containers
+    .search-collapsible & {
+      width: 0;
+      opacity: 0;
+      
+      &.expanded {
+        width: 12rem;
+        opacity: 1;
+        
+        // Enhanced tablet viewport support
+        @include responsive-between(md, lg) {
+          width: 11rem;
+        }
+        
+        @include responsive-max(md) {
+          width: 10rem;
+        }
+        
+        @include responsive-max(sm) {
+          width: 8rem;
+        }
+      }
+    }
+    
+    // Always visible for non-collapsible
+    .app-search:not(.search-collapsible) & {
+      width: 12rem;
+      opacity: 1;
+      
+      // Enhanced tablet viewport support
+      @include responsive-between(md, lg) {
+        width: 11rem;
+      }
+      
+      @include responsive-max(md) {
+        width: 10rem;
+      }
+      
+      @include responsive-max(sm) {
+        width: 8rem;
+      }
+    }
   }
   
-  .search-input-collapsed {
-    width: 12rem;
-    opacity: 1;
-    animation: slideLeft var(--duration-normal) var(--ease-out) forwards;
-    overflow: hidden;
+  // Enhanced search toggle button styling
+  .search-toggle-btn,
+  .search-close-btn {
+    flex-shrink: 0;
+    min-width: 2.5rem !important;
+    min-height: 2.5rem !important;
+    
+    // Larger, more visible icons
+    .material-symbols-rounded {
+      font-size: 1.25rem !important;
+      font-weight: 500 !important;
+    }
+    
+    // Better contrast and hover states
+    color: var(--color-text-secondary);
+    
+    &:hover {
+      color: var(--color-primary);
+      background-color: var(--color-primary-light);
+    }
+    
+    &:focus {
+      outline: 2px solid var(--color-primary);
+      outline-offset: 2px;
+    }
+  }
+  
+  // Search results dropdown positioning fix
+  .absolute {
+    position: absolute !important;
+    top: calc(100% + 0.5rem) !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: calc(var(--z-header) + 20) !important;
+    background: var(--color-surface-elevated) !important;
+    border: 1px solid var(--color-border) !important;
+    border-radius: var(--radius-lg) !important;
+    box-shadow: var(--shadow-xl) !important;
+    max-height: 20rem !important;
+    overflow-y: auto !important;
+    
+    // Ensure dropdown is above all other elements
+    contain: layout style paint;
+    will-change: transform;
+    transform: translateZ(0);
   }
 }
 
@@ -166,6 +269,12 @@
   padding-right: var(--space-4);
   
   // Responsive padding adjustments
+  // Enhanced tablet responsiveness
+  @include responsive-between(md, lg) {
+    padding-left: var(--space-3-5);
+    padding-right: var(--space-3-5);
+  }
+  
   @include responsive-max(md) {
     padding-left: var(--space-3);
     padding-right: var(--space-3);
@@ -212,27 +321,99 @@
   z-index: var(--z-dropdown);
 }
 
-// Fix user profile dropdown positioning to prevent overlap
-.app-shell .app-header .relative {
-  .absolute {
-    // Position dropdown below trigger with proper offset
-    top: calc(100% + var(--space-2)) !important;
-    bottom: auto !important;
-    right: 0 !important;
-    left: auto !important;
+// User menu container and positioning fixes
+.app-shell .app-header .user-menu-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  z-index: calc(var(--z-header) + 5);
+  
+  .user-menu-trigger {
+    display: flex;
+    align-items: center;
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius-md);
+    transition: all var(--duration-fast) var(--ease-out);
+    min-height: 2.5rem;
     
-    // Ensure it doesn't overlap trigger
-    margin-top: var(--space-1) !important;
+    &:hover {
+      background-color: var(--color-surface-hover);
+    }
     
-    // Higher z-index than header
-    z-index: calc(var(--z-header) + 10) !important;
+    &:focus {
+      outline: 2px solid var(--color-primary);
+      outline-offset: 2px;
+    }
+  }
+  
+  .user-menu-content {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-width: 0;
     
-    // Ensure proper styling
-    background: var(--color-surface-elevated) !important;
-    border: 1px solid var(--color-border) !important;
-    border-radius: var(--radius-lg) !important;
-    box-shadow: var(--shadow-xl) !important;
-    min-width: 12rem !important;
+    @include responsive-max(md) {
+      gap: var(--space-1);
+    }
+  }
+  
+  .user-display-name {
+    font-size: var(--text-sm);
+    font-weight: var(--font-medium);
+    color: var(--color-text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 8rem;
+    
+    @include responsive-max(md) {
+      display: none;
+    }
+  }
+  
+  .user-menu-chevron {
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+    transition: transform var(--duration-fast) var(--ease-out);
+    flex-shrink: 0;
+  }
+  
+  .user-menu-dropdown {
+    position: absolute;
+    top: calc(100% + var(--space-1));
+    right: 0;
+    left: auto;
+    z-index: calc(var(--z-header) + 20);
+    
+    background: var(--color-surface-elevated);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-xl);
+    min-width: 12rem;
+    max-width: 16rem;
+    
+    // Ensure dropdown doesn't go off-screen on mobile
+    @include responsive-max(sm) {
+      right: var(--space-2);
+      min-width: 10rem;
+    }
+    
+    // Animation
+    animation: dropdownFadeIn var(--duration-fast) var(--ease-out);
+    transform-origin: top right;
+    
+    // Ensure dropdown is above all content
+    contain: layout style paint;
+    will-change: transform, opacity;
+    transform: translateZ(0);
+  }
+  
+  // Enhanced avatar alignment
+  .avatar {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 }
 
@@ -488,6 +669,48 @@
 // ============================================================================
 // ANIMATIONS - Uses existing keyframes from abstracts/_animations.scss
 // ============================================================================
+
+// Search expansion keyframes
+@keyframes expandSearch {
+  from {
+    width: 0;
+    opacity: 0;
+  }
+  to {
+    width: 12rem;
+    opacity: 1;
+    
+    @include responsive-max(md) {
+      width: 10rem;
+    }
+    
+    @include responsive-max(sm) {
+      width: 8rem;
+    }
+  }
+}
+
+@keyframes collapseSearch {
+  from {
+    width: 12rem;
+    opacity: 1;
+  }
+  to {
+    width: 0;
+    opacity: 0;
+  }
+}
+
+@keyframes dropdownFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-0.5rem) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
 
 .search-results {
   animation: searchDropIn var(--duration-normal) var(--ease-out);
