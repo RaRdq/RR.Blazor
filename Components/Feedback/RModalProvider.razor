@@ -1,12 +1,17 @@
 @using RR.Blazor.Models
 @using RR.Blazor.Services
 @using RR.Blazor.Enums
+@using Microsoft.AspNetCore.Components.Web
 @implements IDisposable
 @inject IModalService ModalService
 @inject IJSRuntime JSRuntime
 
-@* RModalProvider - MudBlazor-style modal container that manages all active modals *@
-<div class="modal-provider @(_activeModals.Any() ? "active" : "")">
+@* RModalProvider - Pure C#/CSS modal container at viewport level *@
+<div class="modal-provider @(_activeModals.Any() ? "active" : "")" 
+     @onkeydown="OnKeyDownHandler" 
+     @onkeydown:preventDefault="false" 
+     tabindex="-1"
+     style="@GetModalProviderStyles()">
     @foreach (var modal in _activeModals)
     {
         <RModal 
@@ -51,28 +56,27 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
+        // Pure C# implementation - no JavaScript module required
+        // All modal functionality is now handled via CSS and C# events
+        if (firstRender && _activeModals.Any())
         {
-            try
-            {
-                _jsModule = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./_content/RR.Blazor/js/modal-provider.js");
-                if (_jsModule != null)
-                {
-                    await _jsModule.InvokeVoidAsync("initialize", _dotNetRef);
-                }
-            }
-            catch (Exception ex)
-            {
-                // Log warning instead of error since this is non-critical
-                Console.WriteLine($"Warning: Modal provider JS initialization failed: {ex.Message}");
-            }
+            // Focus the modal provider for keyboard handling
+            await JSRuntime.InvokeVoidAsync("eval", "document.querySelector('.modal-provider.active')?.focus()");
         }
     }
 
     private void OnModalOpened(ModalInstance modal)
     {
         _activeModals.Add(modal);
-        InvokeAsync(StateHasChanged);
+        // Immediate state change to apply viewport positioning
+        StateHasChanged();
+        
+        InvokeAsync(async () =>
+        {
+            // Focus the modal provider to enable keyboard handling
+            await Task.Yield();
+            await JSRuntime.InvokeVoidAsync("eval", "document.querySelector('.modal-provider.active')?.focus()");
+        });
     }
 
     private void OnModalClosed(ModalInstance modal)
@@ -214,9 +218,22 @@
         _ => "default"
     };
 
+    private async Task OnKeyDownHandler(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape" && _activeModals.Any())
+        {
+            var topModal = _activeModals.LastOrDefault();
+            if (topModal?.Options.CloseOnEscape == true)
+            {
+                await HandleModalClose(topModal);
+            }
+        }
+    }
+
     [JSInvokable]
     public async Task OnKeyDown(string key)
     {
+        // Legacy method for backwards compatibility
         if (key == "Escape" && _activeModals.Any())
         {
             var topModal = _activeModals.LastOrDefault();
@@ -227,11 +244,33 @@
         }
     }
 
+    private string GetModalProviderStyles()
+    {
+        if (!_activeModals.Any())
+        {
+            return "pointer-events: none;";
+        }
+        
+        // Viewport-level positioning when modals are active
+        return string.Join("; ", new[]
+        {
+            "position: fixed !important",
+            "top: 0 !important",
+            "left: 0 !important", 
+            "right: 0 !important",
+            "bottom: 0 !important",
+            "width: 100vw !important",
+            "height: 100vh !important",
+            "z-index: var(--z-modal-container) !important",
+            "pointer-events: auto"
+        }) + ";";
+    }
+
     public void Dispose()
     {
         ModalService.OnModalOpened -= OnModalOpened;
         ModalService.OnModalClosed -= OnModalClosed;
         _dotNetRef?.Dispose();
-        _jsModule?.DisposeAsync();
+        // No longer need JS module disposal - pure C# implementation
     }
 }

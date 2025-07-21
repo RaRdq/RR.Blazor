@@ -38,7 +38,6 @@ public abstract class RFormBase : ComponentBase
     [Parameter] public RenderFragment HeaderContent { get; set; }
     [Parameter] public RenderFragment FooterContent { get; set; }
     [Parameter] public string Class { get; set; }
-    [Parameter] public string AdditionalClass { get; set; }
     
     // Events - Object-based for smart detection
     [Parameter] public EventCallback<object> OnValidSubmit { get; set; }
@@ -120,8 +119,6 @@ public class RForm : RFormBase
         
         if (!string.IsNullOrEmpty(Class))
             builder.AddAttribute(index++, nameof(Class), Class);
-        if (!string.IsNullOrEmpty(AdditionalClass))
-            builder.AddAttribute(index++, nameof(AdditionalClass), AdditionalClass);
         
         // Forward content - only add non-null values
         if (ChildContent != null)

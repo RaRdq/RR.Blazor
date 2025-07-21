@@ -97,7 +97,7 @@ public class RSwitcher : ComponentBase
         builder.AddAttribute(8, "Style", GetChoiceStyle());
         builder.AddAttribute(9, "Size", GetChoiceSize());
         builder.AddAttribute(10, "Disabled", Disabled);
-        builder.AddAttribute(11, "AdditionalClass", Class);
+        builder.AddAttribute(11, "Class", Class);
         builder.AddAttribute(12, "AriaLabel", AriaLabel);
         
         builder.CloseComponent();

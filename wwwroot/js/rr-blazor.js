@@ -512,6 +512,50 @@ window.RRBlazor = {
         const dropdown = dropdownElement;
         dropdown.classList.remove('dropdown--position-above', 'dropdown--position-below');
         dropdown.classList.add(shouldPositionAbove ? 'dropdown--position-above' : 'dropdown--position-below');
+    },
+    
+    // Adjust choice component position based on viewport constraints
+    adjustChoicePosition: function(choiceElement) {
+        if (!choiceElement) return;
+        
+        const viewport = choiceElement.querySelector('.choice-viewport');
+        const trigger = choiceElement.querySelector('.choice-trigger');
+        
+        if (!viewport || !trigger) return;
+        
+        // Get trigger and viewport dimensions
+        const triggerRect = trigger.getBoundingClientRect();
+        const viewportHeight = window.innerHeight;
+        const viewportWidth = window.innerWidth;
+        
+        // Calculate space above and below the trigger
+        const spaceAbove = triggerRect.top;
+        const spaceBelow = viewportHeight - triggerRect.bottom;
+        
+        // Get viewport content dimensions (temporarily show to measure)
+        const originalDisplay = viewport.style.display;
+        const originalVisibility = viewport.style.visibility;
+        viewport.style.visibility = 'hidden';
+        viewport.style.display = 'block';
+        const viewportRect = viewport.getBoundingClientRect();
+        viewport.style.display = originalDisplay;
+        viewport.style.visibility = originalVisibility;
+        
+        const contentHeight = viewportRect.height || 200; // Fallback height
+        const shouldPositionAbove = spaceBelow < contentHeight && spaceAbove > spaceBelow;
+        
+        // Remove existing positioning classes
+        choiceElement.classList.remove('choice-top', 'choice-bottom', 'choice-topend', 'choice-bottomend');
+        
+        // Check if we need right alignment
+        const shouldAlignRight = triggerRect.right + 320 > viewportWidth; // 320px typical choice width
+        
+        // Apply appropriate positioning class
+        if (shouldPositionAbove) {
+            choiceElement.classList.add(shouldAlignRight ? 'choice-topend' : 'choice-top');
+        } else {
+            choiceElement.classList.add(shouldAlignRight ? 'choice-bottomend' : 'choice-bottom');
+        }
     }
 };
 

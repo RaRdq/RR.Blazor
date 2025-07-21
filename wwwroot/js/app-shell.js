@@ -102,14 +102,9 @@ function setupResponsive() {
             }
             
             if (sidebar) {
-                // Use CSS classes instead of direct style manipulation
                 sidebar.classList.add('sidebar-closed', 'mobile-hidden');
-                
-                // Add mobile classes to body/html for CSS targeting
-                document.body.classList.add('mobile-layout');
                 document.documentElement.classList.add('mobile-layout');
                 
-                // Ensure main content gets proper mobile class
                 const mainContent = document.querySelector('.main-content');
                 if (mainContent) {
                     mainContent.classList.add('mobile-sidebar');
@@ -127,11 +122,8 @@ function setupResponsive() {
             
             if (sidebar) {
                 sidebar.classList.remove('mobile-hidden', 'sidebar-closed');
-                
-                document.body.classList.remove('mobile-layout');
                 document.documentElement.classList.remove('mobile-layout');
                 
-                // Remove mobile class from main content
                 const mainContent = document.querySelector('.main-content');
                 if (mainContent) {
                     mainContent.classList.remove('mobile-sidebar');

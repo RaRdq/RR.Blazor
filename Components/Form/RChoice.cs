@@ -20,8 +20,8 @@ public abstract class RChoiceBase : ComponentBase
     [Parameter] public bool ShowLabels { get; set; } = true;
     [Parameter] public bool ShowActiveIndicator { get; set; } = false;
     [Parameter] public ChoiceSize Size { get; set; } = ChoiceSize.Medium;
+    [Parameter] public ComponentDensity Density { get; set; } = ComponentDensity.Normal;
     [Parameter] public ChoiceDirection Direction { get; set; } = ChoiceDirection.Horizontal;
-    [Parameter] public string AdditionalClass { get; set; }
     [Parameter] public bool Disabled { get; set; } = false;
     [Parameter] public bool CloseOnSelect { get; set; } = true;
     [Parameter] public string AriaLabel { get; set; }
@@ -128,8 +128,8 @@ public class RChoice : RChoiceBase
         builder.AddAttribute(107, "ShowLabels", ShowLabels);
         builder.AddAttribute(108, "ShowActiveIndicator", ShowActiveIndicator);
         builder.AddAttribute(109, "Size", Size);
-        builder.AddAttribute(110, "Direction", Direction);
-        builder.AddAttribute(111, "AdditionalClass", AdditionalClass);
+        builder.AddAttribute(110, "Density", Density);
+        builder.AddAttribute(111, "Direction", Direction);
         builder.AddAttribute(112, "Disabled", Disabled);
         builder.AddAttribute(113, "CloseOnSelect", CloseOnSelect);
         builder.AddAttribute(114, "AriaLabel", AriaLabel);

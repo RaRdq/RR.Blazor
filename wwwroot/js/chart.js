@@ -260,12 +260,6 @@ export function enhanceChartAccessibility(element, options = {}) {
     const interactiveElements = element.querySelectorAll('.pie-slice, .column-chart-bar');
     interactiveElements.forEach((el, index) => {
         el.setAttribute('tabindex', '0');
-        el.addEventListener('focus', () => {
-            el.style.outline = '2px solid var(--color-interactive-focus)';
-        });
-        el.addEventListener('blur', () => {
-            el.style.outline = 'none';
-        });
     });
 }
 

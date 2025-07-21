@@ -945,14 +945,15 @@ const RRDebugAPI = (() => {
             }
         });
         
-        issues.concat(layoutIssues).slice(0, 5).forEach((issue, i) => {
-            const elements = document.querySelectorAll(issue.selector ? `.${issue.selector.split(' ')[0]}` : issue.element);
-            const colors = ['red', 'orange', 'yellow', 'purple', 'blue'];
-            elements.forEach(el => {
-                el.style.outline = `2px solid ${colors[i % colors.length]}`;
-                setTimeout(() => el.style.outline = '', 3000);
-            });
-        });
+        // Auto-highlighting disabled to prevent unwanted visual debug borders
+        // issues.concat(layoutIssues).slice(0, 5).forEach((issue, i) => {
+        //     const elements = document.querySelectorAll(issue.selector ? `.${issue.selector.split(' ')[0]}` : issue.element);
+        //     const colors = ['red', 'orange', 'yellow', 'purple', 'blue'];
+        //     elements.forEach(el => {
+        //         el.style.outline = `2px solid ${colors[i % colors.length]}`;
+        //         setTimeout(() => el.style.outline = '', 3000);
+        //     });
+        // });
         
         const totalIssues = issues.length + layoutIssues.length + accessibilityIssues.length + performanceIssues.length;
         const severity = totalIssues > 10 ? 'critical' : totalIssues > 5 ? 'high' : totalIssues > 2 ? 'medium' : 'low';

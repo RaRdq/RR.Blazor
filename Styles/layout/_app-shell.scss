@@ -207,6 +207,40 @@
     flex-wrap: wrap;
   }
   
+  // Extra small screens (320px) - hide non-essential elements
+  @include responsive-max(xs) {
+    gap: var(--space-0-25);
+    
+    // Hide theme toggle on very small screens
+    .theme-switcher,
+    .theme-toggle {
+      display: none;
+    }
+    
+    // Hide non-essential quick actions
+    .quick-actions > *:not(:first-child) {
+      display: none;
+    }
+    
+    // Compact user menu - avatar only
+    .user-display-name {
+      display: none !important;
+    }
+  }
+  
+  // Ensure search button always remains visible at small screens
+  @media (max-width: 413px) {
+    .app-search {
+      flex-shrink: 0;
+      min-width: auto;
+      
+      .search-container.collapsed {
+        width: auto;
+        min-width: var(--touch-target-min, 44px);
+      }
+    }
+  }
+  
   // Modal-aware containment reset
   .modal-open & {
     isolation: auto;
@@ -390,7 +424,7 @@
     }
     
     &:focus {
-      outline: 2px solid var(--color-primary);
+      outline: none;
       outline-offset: 2px;
       border-radius: var(--radius-xs);
     }
@@ -441,7 +475,17 @@
       }
       
       @include responsive-max(sm) {
-        width: 10rem;
+        width: 8rem;
+      }
+      
+      // Critical fix for viewports <414px (iPhone 6/7/8 and smaller)
+      @media (max-width: 413px) {
+        width: 6rem;
+      }
+      
+      // Extra small screens (iPhone 5/SE at 320px)
+      @media (max-width: 350px) {
+        width: 4rem;
       }
       
       .search-input-wrapper {
@@ -639,9 +683,10 @@
     transform: translateX(-100%);
     width: 80%;
     max-width: 340px;
-    z-index: var(--z-modal);
+    z-index: calc(var(--z-header) + 10);
     border-right: none;
     box-shadow: var(--shadow-xl);
+    pointer-events: none;
     
     // Disable transform when modal is open to prevent stacking context issues
     body.modal-open & {
@@ -655,6 +700,7 @@
     
     &.open {
       transform: translateX(0);
+      pointer-events: auto;
       
       body.modal-open & {
         transform: none !important;
@@ -700,7 +746,6 @@
   width: 100%;
   max-width: 100%;
   overflow-x: hidden;
-  overflow-y: visible;
   box-sizing: border-box;
   transition: all var(--duration-normal) var(--ease-out);
   flex: 1;

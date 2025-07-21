@@ -1,9 +1,9 @@
-// Unified Choice Component
-// Replaces both switcher and dropdown with variant-based approach
+// Choice Component - Clean CSS-only positioning
 @use '../abstracts' as *;
 
 .choice {
   position: relative;
+  width: 100%;
   
   // Common item styling for all variants
   &-item {
@@ -32,7 +32,7 @@
     }
     
     &:focus-visible {
-      outline: var(--border-2) solid var(--color-primary);
+      outline: none;
       outline-offset: var(--border-2);
     }
     
@@ -52,158 +52,63 @@
     &-disabled {
       opacity: var(--opacity-disabled);
       cursor: not-allowed;
-      
-      &:hover {
-        transform: none;
-      }
+      pointer-events: none;
     }
     
     &-loading {
       cursor: wait;
-      
-      .choice-loading {
-        color: var(--color-primary);
-      }
+      opacity: var(--opacity-loading);
     }
   }
 
-  &-label {
-    font-weight: inherit;
-    @include text-truncate(1);
-  }
-
-  &-check {
-    color: var(--color-success);
-    font-size: var(--text-sm);
-    margin-left: auto;
-    flex-shrink: 0;
-  }
-
-  &-loading {
-    color: var(--color-primary);
-    font-size: var(--text-sm);
-    margin-left: auto;
-    flex-shrink: 0;
-  }
-
-  // VARIANT: Inline (former switcher)
-  &-inline {
-    display: flex;
-    
-    &.choice-horizontal {
-      flex-direction: row;
-      align-items: center;
-      gap: var(--space-1);
-    }
-    
-    &.choice-vertical {
-      flex-direction: column;
-      align-items: stretch;
-      gap: var(--space-1);
-    }
-  }
-
-  // VARIANT: Dropdown (former dropdown)
+  // Dropdown variant
   &-dropdown {
+    position: relative;
+    
     .choice-trigger {
+      @include button-reset;
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      padding: var(--space-3);
+      width: 100%;
       background: var(--color-surface-elevated);
       border: var(--border-1) solid var(--color-border);
       border-radius: var(--radius-lg);
-      margin: 0;
-      padding: var(--space-3) calc(var(--space-4) + var(--icon-base) + var(--space-2)) var(--space-3) var(--space-4);
+      color: var(--color-text);
+      font-size: var(--text-sm);
+      font-weight: var(--font-medium);
+      text-align: left;
       cursor: pointer;
       transition: all var(--duration-fast) var(--ease-out);
-      width: 100%;
-      max-width: 100%;
-      text-align: left;
+      
+      // Chevron indicator - positioned as pseudo-element for smooth animation
       position: relative;
-      overflow: hidden;
-      box-shadow: var(--shadow-sm);
-      backdrop-filter: blur(8px);
-      box-sizing: border-box;
-      min-width: 0;
+      padding-right: calc(var(--space-3) + var(--icon-base) + var(--space-2));
       
-      // Comprehensive overflow handling for all nested content
-      * {
-        min-width: 0;
-        box-sizing: border-box;
-      }
-      
-      // Direct children get overflow protection
-      > * {
-        overflow: hidden;
-        min-width: 0;
-      }
-      
-      // Flex containers need proper handling
-      .d-flex,
-      .flex,
-      [class*="flex-"] {
-        min-width: 0;
-        flex-shrink: 1;
-        
-        &.flex-1,
-        &.flex-grow {
-          min-width: 0;
-          overflow: hidden;
-        }
-        
-        &.flex-col,
-        &.flex-column {
-          min-width: 0;
-          
-          > * {
-            min-width: 0;
-            overflow: hidden;
-          }
-        }
-      }
-      
-      // Text elements get proper truncation
-      .text-truncate,
-      [class*="text-caption"],
-      [class*="text-2xs"],
-      [class*="text-xs"],
-      [class*="text-sm"],
-      [class*="text-base"],
-      [class*="text-lg"] {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        min-width: 0;
-      }
-      
-      // Use background image instead of pseudo-element to avoid conflicts
-      & {
+      &::after {
+        content: '';
+        position: absolute;
+        right: var(--space-3);
+        top: 50%;
+        transform: translateY(-50%);
+        width: var(--icon-base);
+        height: var(--icon-base);
         background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");
         background-repeat: no-repeat;
-        background-position: right var(--space-3) center;
-        background-size: var(--icon-base);
-        transition: all var(--duration-fast) var(--ease-out);
-      }
-      
-      @supports (backdrop-filter: blur(var(--blur-md))) {
-        background: color-mix(in srgb, var(--color-surface-elevated) 85%, transparent);
-        border-color: color-mix(in srgb, var(--color-border) 60%, transparent);
-      }
-      
-      &-open {
-        background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='18,15 12,9 6,15'%3e%3c/polyline%3e%3c/svg%3e");
+        background-position: center;
+        background-size: contain;
+        transition: transform var(--duration-fast) var(--ease-out);
       }
       
       &:hover:not(:disabled) {
-        border-color: var(--color-border);
-        box-shadow: var(--shadow-lg);
-        transform: translateY(-2px) scale(1.01);
-        
-        &::after {
-          opacity: 1;
-          color: var(--color-text);
-        }
+        background: var(--state-hover-bg);
+        border-color: var(--color-border-hover);
+        box-shadow: var(--shadow-sm);
       }
       
-      &:focus:not(:disabled) {
-        outline: var(--border-2) solid var(--color-primary);
+      &:focus-visible {
+        outline: none;
         outline-offset: var(--border-1);
         border-color: var(--color-primary);
       }
@@ -211,306 +116,154 @@
       &:disabled {
         opacity: var(--opacity-disabled);
         cursor: not-allowed;
-        
-        &:hover {
-          transform: none;
-          box-shadow: none;
-          border-color: var(--color-border);
-        }
       }
     }
     
     .choice-viewport {
-      position: fixed;
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: calc(100% + var(--space-1));
       z-index: var(--z-popover);
-    }
-    
-    .choice-content {
-      background: var(--color-surface-elevated);
-      border: var(--border-1) solid var(--color-border);
-      border-radius: var(--radius-xl);
-      box-shadow: var(--shadow-2xl);
-      backdrop-filter: blur(20px);
-      min-width: 16rem;
-      max-width: min(320px, 90vw);
-      max-height: min(320px, 50vh);
-      overflow-y: auto;
-      width: max-content;
-      animation: dropdownSlideIn var(--duration-normal) var(--ease-out);
-      padding: var(--space-2) 0;
-      position: relative;
       
-      // Special handling when inside sidebar
+      // Higher z-index in header context to appear above other header elements
+      .app-header & {
+        z-index: calc(var(--z-header) + 25);
+      }
+      
+      // Ensure dropdown appears above sidebar and navigation
       .app-sidebar & {
-        min-width: calc(var(--sidebar-width, 16rem) - var(--space-4));
-        max-width: calc(var(--sidebar-width, 16rem) - var(--space-4));
-        width: calc(var(--sidebar-width, 16rem) - var(--space-4));
+        z-index: var(--z-modal);
+      }
+      visibility: hidden;
+      opacity: 0;
+      transform: translateY(-var(--space-2));
+      transition: all var(--duration-fast) var(--ease-out);
+      pointer-events: none;
+      
+      .choice-content {
+        background: var(--color-surface-elevated);
+        border: var(--border-1) solid var(--color-border);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-lg);
+        backdrop-filter: blur(var(--blur-md));
+        min-width: 100%;
+        max-height: min(300px, 50vh);
+        overflow-y: auto;
+        padding: var(--space-1) 0;
         
-        // For collapsed sidebar
-        .app-shell.sidebar-collapsed & {
-          min-width: 12rem;
-          max-width: 12rem;
-          width: 12rem;
-        }
-      }
-      
-      @supports (backdrop-filter: blur(var(--blur-xl))) {
-        background: color-mix(in srgb, var(--color-surface-elevated) 92%, transparent);
-        border-color: color-mix(in srgb, var(--color-border) 50%, transparent);
-      }
-      
-      &::-webkit-scrollbar {
-        width: var(--space-1);
-      }
-      
-      &::-webkit-scrollbar-track {
-        background: transparent;
-      }
-      
-      &::-webkit-scrollbar-thumb {
-        background: var(--color-border);
-        border-radius: var(--radius-sm);
-        
-        &:hover {
-          background: var(--color-border);
-        }
-      }
-    }
-    
-    .choice-item {
-      background: none;
-      border: none;
-      margin: var(--space-1) var(--space-2);
-      padding: var(--space-3) var(--space-3);
-      width: calc(100% - var(--space-4));
-      text-align: left;
-      
-      &:hover:not(&-disabled) {
-        background: var(--color-primary-light);
-        transform: translateX(2px) scale(1.02);
-        box-shadow: var(--shadow-sm);
-      }
-      
-      &-active {
-        background: var(--color-primary-medium);
-        color: var(--color-primary);
-        box-shadow: var(--shadow-sm);
-        border: var(--border-1) solid var(--color-primary);
-        
-        &:hover {
-          background: var(--color-primary-medium);
-          transform: translateX(2px) scale(1.02);
-          box-shadow: var(--shadow-md);
+        .choice-item {
+          border: none;
+          border-radius: 0;
+          background: transparent;
+          margin: 0;
+          justify-content: flex-start;
+          text-align: left;
+          padding: var(--space-2) var(--space-3);
+          
+          &:hover {
+            background: var(--state-hover-bg);
+            transform: none;
+          }
+          
+          &:first-child {
+            border-top-left-radius: var(--radius-lg);
+            border-top-right-radius: var(--radius-lg);
+          }
+          
+          &:last-child {
+            border-bottom-left-radius: var(--radius-lg);
+            border-bottom-right-radius: var(--radius-lg);
+          }
         }
       }
     }
     
-    // Positioning variants
-    &.choice-bottom .choice-viewport {
-      top: calc(100% + #{var(--space-2)});
-    }
-    
-    &.choice-top .choice-viewport {
-      bottom: calc(100% + #{var(--space-2)});
-      top: auto;
-    }
-    
-    &.choice-topend .choice-viewport {
-      bottom: calc(100% + #{var(--space-2)});
-      top: auto;
-      left: auto;
-      right: 0;
-    }
-    
-    &.choice-topstart .choice-viewport {
-      bottom: calc(100% + #{var(--space-2)});
-      top: auto;
+    // Backdrop for z-index isolation
+    .choice-backdrop {
+      position: fixed;
+      top: 0;
       left: 0;
-      right: auto;
-    }
-    
-    &.choice-bottomend .choice-viewport {
-      top: calc(100% + #{var(--space-2)});
-      left: auto;
       right: 0;
+      bottom: 0;
+      z-index: calc(var(--z-popover) - 1);
+      background: transparent;
+      pointer-events: none;
+      
+      // Higher backdrop in sidebar context
+      .app-sidebar & {
+        z-index: calc(var(--z-modal) - 1);
+      }
+      
+      .choice-open & {
+        pointer-events: auto;
+      }
     }
     
-    &.choice-bottomstart .choice-viewport {
-      top: calc(100% + #{var(--space-2)});
-      left: 0;
-      right: auto;
+    // Open state
+    &.choice-open {
+      .choice-trigger {
+        border-color: var(--color-primary);
+        box-shadow: var(--shadow-sm);
+        
+        &::after {
+          transform: translateY(-50%) rotate(180deg);
+        }
+      }
+      
+      .choice-viewport {
+        visibility: visible;
+        opacity: 1;
+        transform: translateY(0);
+        pointer-events: auto;
+      }
+    }
+    
+    // Position above when in bottom area (sidebar footer)
+    .app-sidebar .shrink-0 &,
+    [data-position="bottom"] & {
+      .choice-viewport {
+        top: auto;
+        bottom: calc(100% + var(--space-1));
+        transform: translateY(var(--space-2));
+      }
+      
+      &.choice-open .choice-viewport {
+        transform: translateY(0);
+      }
     }
   }
 
-  // Size variants
-  &-small {
-    .choice-item {
-      padding: var(--space-1) var(--space-2);
-      font-size: var(--text-xs);
-    }
-  }
-  
-  &-large {
-    .choice-item {
-      padding: var(--space-3) var(--space-4);
-      font-size: var(--text-base);
-    }
-  }
-
-  // Style variants for inline choices
-  &-compact.choice-inline {
-    gap: 0;
+  // Switcher variant
+  &-switcher {
+    display: flex;
+    background: var(--color-surface-muted);
+    border: var(--border-1) solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-1);
+    gap: var(--space-1);
     
     .choice-item {
-      border-radius: 0;
-      border-right: none;
-      
-      &:first-child {
-        border-radius: var(--radius-md) 0 0 var(--radius-md);
-      }
-      
-      &:last-child {
-        border-radius: 0 var(--radius-md) var(--radius-md) 0;
-        border-right: var(--border-1) solid var(--color-border);
-      }
-      
-      &-active {
-        border-right: var(--border-1) solid var(--color-primary);
-      }
-    }
-  }
-  
-  &-pills.choice-inline .choice-item {
-    border-radius: var(--radius-full);
-    padding: var(--space-2) var(--space-4);
-  }
-  
-  &-tabs.choice-inline {
-    border-bottom: var(--border-1) solid var(--color-border);
-    
-    .choice-item {
+      flex: 1;
       border: none;
-      border-bottom: var(--border-2) solid transparent;
-      border-radius: 0;
       background: transparent;
       
-      &:hover:not(&-active) {
-        background: var(--color-surface);
-        border-bottom-color: var(--color-border);
-      }
-      
       &-active {
-        background: transparent;
-        border-bottom-color: var(--color-primary);
-        color: var(--color-primary);
+        background: var(--color-surface-elevated);
+        box-shadow: var(--shadow-sm);
       }
     }
   }
-  
-  &-buttons.choice-inline .choice-item {
-    background: var(--color-canvas);
-    border: var(--border-2) solid var(--color-border);
-    
-    &:hover:not(&-active) {
-      background: var(--state-hover-bg);
-      box-shadow: var(--shadow-sm);
-    }
-    
-    &-active {
-      background: var(--color-primary);
-      border-color: var(--color-primary);
-      box-shadow: var(--shadow-md);
-    }
-  }
-
-  // Dropdown-specific elements
-  &-header,
-  &-footer {
-    padding: var(--space-2) var(--space-3);
-    background: var(--color-surface);
-    border-bottom: var(--border-1) solid var(--color-border);
-    font-size: var(--text-xs);
-    font-weight: var(--font-medium);
-    color: var(--color-text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.025em;
-  }
-  
-  &-footer {
-    border-bottom: none;
-    border-top: var(--border-1) solid var(--color-border);
-  }
-  
-  &-separator {
-    height: var(--border-1);
-    background: var(--color-border);
-    margin: var(--space-2) 0;
-  }
-
-  // Responsive adjustments
-  @include responsive-max(sm) {
-    &-horizontal.choice-inline {
-      flex-wrap: wrap;
-    }
-    
-    .choice-item {
-      min-height: var(--space-11);
-    }
-  }
 }
 
-// Backdrop for dropdown outside click detection
-.choice-backdrop {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: calc(var(--z-popover) - 1);
-  background: transparent;
-  cursor: default;
-}
-
-// Simple container fix - no protective interventions
-.choice {
-  position: relative;
-}
-
-// Robust z-index system for choice components
-.choice-viewport {
-  z-index: var(--z-dropdown);
-  
-  // Higher z-index when inside dialogs/modals
-  .modal-content &,
-  .modal &,
-  [role="dialog"] & {
-    z-index: calc(var(--z-modal-content) + 10);
+// Animation keyframes
+@keyframes dropdownSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-var(--space-2));
   }
-  
-  // Highest z-index when inside already elevated popover contexts
-  .choice-viewport &,
-  .dropdown &,
-  .popover & {
-    z-index: calc(var(--z-dropdown) + 10);
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
-
-.choice-backdrop {
-  z-index: calc(var(--z-dropdown) - 5);
-  
-  // Higher z-index when inside dialogs/modals
-  .modal-content &,
-  .modal &,
-  [role="dialog"] & {
-    z-index: calc(var(--z-modal-content) + 5);
-  }
-  
-  // Elevated when inside other popover contexts
-  .choice-viewport &,
-  .dropdown &,
-  .popover & {
-    z-index: calc(var(--z-dropdown) + 5);
-  }
-}
-
-// Context-aware z-index system ensures proper stacking in all scenarios

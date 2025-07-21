@@ -7,7 +7,7 @@ using RR.Blazor.Models;
 
 namespace RR.Blazor.Services;
 
-public class ModalService() : IModalService, IDisposable
+public class ModalService(IJSRuntime jsRuntime) : IModalService, IDisposable
 {
     private readonly List<ModalInstance> _activeModals = new();
     private bool _isDisposed;
@@ -17,6 +17,20 @@ public class ModalService() : IModalService, IDisposable
     public event Action<ModalInstance> OnModalOpened;
     public event Action<ModalInstance> OnModalClosed;
     public event Action OnAllModalsClosed;
+
+    public bool HasVisibleModals => _activeModals.Any(m => m.Visible);
+
+    private async Task ManageBodyScrollLockAsync()
+    {
+        if (HasVisibleModals)
+        {
+            await jsRuntime.InvokeVoidAsync("document.body.classList.add", "modal-open");
+        }
+        else
+        {
+            await jsRuntime.InvokeVoidAsync("document.body.classList.remove", "modal-open");
+        }
+    }
 
     public async Task<ModalResult<T>> ShowAsync<T>(ModalOptions<T> options)
     {
@@ -54,6 +68,7 @@ public class ModalService() : IModalService, IDisposable
 
         _activeModals.Add(modalInstance);
         OnModalOpened?.Invoke(modalInstance);
+        await ManageBodyScrollLockAsync();
 
         if (options.AutoCloseDelay.HasValue)
         {
@@ -423,6 +438,7 @@ public class ModalService() : IModalService, IDisposable
             }
 
             OnModalClosed?.Invoke(modal);
+            await ManageBodyScrollLockAsync();
 
             if (!_activeModals.Any())
             {
@@ -434,10 +450,16 @@ public class ModalService() : IModalService, IDisposable
     public async Task CloseAllAsync()
     {
         var modalsToClose = _activeModals.ToList();
+        _activeModals.Clear();
+        
         foreach (var modal in modalsToClose)
         {
-            await CloseAsync(modal.Id, Enums.ModalResult.Cancel);
+            modal.Visible = false;
+            OnModalClosed?.Invoke(modal);
         }
+        
+        await ManageBodyScrollLockAsync();
+        OnAllModalsClosed?.Invoke();
     }
 
     public bool IsModalOpen(string modalId = null)

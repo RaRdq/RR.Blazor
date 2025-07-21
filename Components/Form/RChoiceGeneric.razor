@@ -17,12 +17,13 @@
 @inherits RChoiceBase
 @using Microsoft.AspNetCore.Components
 @using RR.Blazor.Components.Form
+@inject IJSRuntime JSRuntime
 
 @if (EffectiveVariant == ChoiceVariant.Dropdown)
 {
     <!-- Dropdown Mode -->
-    <div class="choice choice-dropdown @GetDropdownClass() @base.Class" @ref="choiceRef">
-        <button class="choice-trigger touch-target @GetTriggerClass()"
+    <div class="choice choice-dropdown @(IsOpen ? "choice-open" : "") @GetDropdownDensityClass() @base.Class" @ref="choiceRef">
+        <button class="choice-trigger touch-target"
                 @onclick="ToggleDropdown"
                 @onkeydown="OnKeyDown"
                 aria-haspopup="true"
@@ -128,66 +129,55 @@ else
 
     private bool IsOpen => isOpen && !Disabled;
 
-    private string GetDropdownClass()
-    {
-        var classes = new List<string>();
-        
-        classes.Add($"choice-{Size.ToString().ToLower()}");
-        
-        if (!string.IsNullOrEmpty(AdditionalClass))
-        {
-            classes.Add(AdditionalClass);
-        }
-        
-        return string.Join(" ", classes);
-    }
 
     private string GetInlineClass()
     {
-        var classes = new List<string>();
+        var classes = new List<string> { "choice-switcher" };
         
-        classes.Add($"choice-{Style.ToString().ToLower()}");
-        classes.Add($"choice-{Size.ToString().ToLower()}");
-        classes.Add($"choice-{Direction.ToString().ToLower()}");
-        
-        if (!string.IsNullOrEmpty(AdditionalClass))
+        // Add density classes
+        classes.Add(Density switch
         {
-            classes.Add(AdditionalClass);
-        }
+            ComponentDensity.Compact => "choice-compact",
+            ComponentDensity.Dense => "choice-dense",
+            ComponentDensity.Normal => "choice-normal", 
+            ComponentDensity.Spacious => "choice-spacious",
+            _ => "choice-normal"
+        });
+        
+        if (!string.IsNullOrEmpty(base.Class))
+            classes.Add(base.Class);
         
         return string.Join(" ", classes);
     }
 
-    private string GetTriggerClass()
+    private string GetDropdownDensityClass()
     {
         var classes = new List<string>();
         
-        if (IsOpen)
+        // Add density classes
+        classes.Add(Density switch
         {
-            classes.Add("choice-trigger-open");
-        }
+            ComponentDensity.Compact => "choice-compact",
+            ComponentDensity.Dense => "choice-dense", 
+            ComponentDensity.Normal => "choice-normal",
+            ComponentDensity.Spacious => "choice-spacious",
+            _ => "choice-normal"
+        });
+        
+        // Add custom classes
+        if (!string.IsNullOrEmpty(base.Class))
+            classes.Add(base.Class);
         
         return string.Join(" ", classes);
     }
 
     private string GetItemClass(TValue item)
     {
-        var classes = new List<string>();
+        var classes = new List<string> { "choice-item" };
         
-        if (IsItemActive(item))
-        {
-            classes.Add("choice-item-active");
-        }
-        
-        if (IsItemDisabled(item))
-        {
-            classes.Add("choice-item-disabled");
-        }
-        
-        if (IsItemLoading(item))
-        {
-            classes.Add("choice-item-loading");
-        }
+        if (IsItemActive(item)) classes.Add("choice-item-active");
+        if (IsItemDisabled(item)) classes.Add("choice-item-disabled");
+        if (IsItemLoading(item)) classes.Add("choice-item-loading");
         
         return string.Join(" ", classes);
     }
@@ -259,16 +249,18 @@ else
         }
     }
 
-    private async Task OpenDropdown()
+    private Task OpenDropdown()
     {
         isOpen = true;
         StateHasChanged();
+        return Task.CompletedTask;
     }
 
-    private async Task CloseDropdown()
+    private Task CloseDropdown()
     {
         isOpen = false;
         StateHasChanged();
+        return Task.CompletedTask;
     }
 
     private async Task OnItemSelected(TValue item)
