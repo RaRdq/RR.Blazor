@@ -44,6 +44,15 @@
   // Smooth scalein + fadein animation
   transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   
+  // Critical mobile safety for 375px viewport
+  @include responsive-max(sm) {
+    // Ensure modal doesn't extend beyond viewport on small screens
+    padding: var(--space-2);
+    // Force safe positioning within viewport bounds
+    align-items: safe center;
+    justify-content: safe center;
+  }
+  
   // Visible state - sexy scalein + fadein
   &--visible {
     opacity: 1 !important;
@@ -83,7 +92,7 @@
     max-width: 32rem;
     width: 100%;
     max-height: 90vh;
-    overflow: hidden;
+    overflow: visible; // Allow modal-body to handle scrolling
     display: flex;
     flex-direction: column;
     box-shadow: 
@@ -117,20 +126,56 @@
     }
   }
   
-  // Mobile-first responsive
+  // Mobile-first responsive - Enhanced for JavaScript repositioning compatibility
   @include responsive-max(sm) {
-    padding: 0;
+    // Ensure padding respects safe area and viewport bounds
+    padding: max(var(--space-2), env(safe-area-inset-top)) max(var(--space-2), env(safe-area-inset-right)) max(var(--space-2), env(safe-area-inset-bottom)) max(var(--space-2), env(safe-area-inset-left));
+    align-items: safe center; // Safe centering for mobile browsers
+    justify-content: safe center; // Safe centering for mobile browsers
+    
+    // Override JavaScript forcing with !important when needed for mobile safety
+    &[style*="position: fixed"] {
+      // Allow JavaScript positioning but ensure mobile viewport safety
+      align-items: safe center !important;
+      justify-content: safe center !important;
+      // Ensure content doesn't extend beyond safe viewport bounds
+      overflow: auto !important;
+    }
     
     .modal-content {
-      max-height: 100vh;
-      border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+      // Enhanced mobile content sizing to prevent viewport overflow
+      max-height: calc(100vh - var(--space-4) - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+      max-width: calc(100vw - var(--space-4) - env(safe-area-inset-left) - env(safe-area-inset-right));
+      min-height: 200px;
+      width: 100%;
+      border-radius: var(--radius-lg); // Slightly reduced for mobile
+      margin: auto; // Center within available space
       
-      // Mobile slide-up animation
-      transform: translateY(100%);
-      transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+      // Override JavaScript forced styles when they conflict with mobile safety
+      &[style*="position: fixed"] {
+        position: relative !important; // Force relative positioning within modal for mobile
+        width: 100% !important;
+        height: auto !important;
+        top: auto !important;
+        left: auto !important;
+        right: auto !important;
+        bottom: auto !important;
+        transform: none !important;
+      }
       
-      .modal--visible & {
-        transform: translateY(0);
+      // Ensure modal content animation works properly on mobile
+      transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+    }
+  }
+  
+  // Enhanced visible state for mobile compatibility
+  &--visible {
+    @include responsive-max(sm) {
+      .modal-content {
+        // Ensure visibility and proper positioning regardless of JavaScript interference
+        opacity: 1 !important;
+        transform: none !important;
+        visibility: visible !important;
       }
     }
   }
@@ -154,7 +199,83 @@
   background: linear-gradient(135deg, var(--color-surface-elevated) 0%, var(--color-surface) 100%);
   
   @include responsive-max(sm) {
-    padding: var(--space-4);
+    // Enhanced mobile header layout - ensures close button always accessible
+    padding: var(--space-3);
+    min-height: 60px; // Increased for better touch targets
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    
+    // Critical fix: Ensure flexbox layout works within mobile viewport bounds
+    display: flex !important;
+    flex-direction: row !important;
+    gap: var(--space-2);
+    align-items: center;
+    justify-content: space-between;
+    
+    // Prevent any JavaScript or inherited styles from breaking mobile layout
+    &[style] {
+      display: flex !important;
+      flex-direction: row !important;
+      justify-content: space-between !important;
+    }
+    
+    .header-actions {
+      // Critical mobile fix: Ensure close button stays within 375px viewport
+      flex-shrink: 0 !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      width: 48px !important; // Fixed width to fit within mobile viewport
+      min-width: 48px !important;
+      max-width: 48px !important;
+      height: 48px !important;
+      overflow: visible !important;
+      z-index: 20 !important;
+      
+      // Override any inherited styles that might hide the button
+      opacity: 1 !important;
+      visibility: visible !important;
+      pointer-events: auto !important;
+      position: relative !important;
+      margin-left: auto !important; // Push to right within viewport bounds
+    }
+    
+    // Enhanced title section that respects close button space within 375px viewport
+    .d-flex.align-center {
+      flex: 1 1 auto !important;
+      min-width: 0 !important; // Force shrinking when needed
+      max-width: calc(100% - 56px) !important; // Always leave room for close button + margin
+      overflow: hidden;
+      
+      .d-flex.flex-col {
+        min-width: 0 !important;
+        max-width: 100% !important;
+        overflow: hidden;
+        
+        .modal-title {
+          // Critical fix for 375px viewport - conservative sizing
+          max-width: calc(375px - 140px) !important; // 375px viewport - padding - button - margins
+          word-wrap: break-word;
+          overflow-wrap: break-word;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap; // Force single line on mobile for predictable layout
+          line-height: 1.3;
+          font-size: var(--text-base); // Slightly smaller on mobile
+        }
+        
+        .modal-subtitle {
+          max-width: calc(375px - 140px) !important; // Match title constraints
+          word-wrap: break-word;
+          overflow-wrap: break-word;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap; // Force single line for predictable layout
+          font-size: var(--text-sm);
+        }
+      }
+    }
   }
 }
 
@@ -176,21 +297,70 @@
 }
 
 .modal-close {
+  // Base button styles for all screen sizes
   width: 44px;
   height: 44px;
   border-radius: var(--radius-full);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  display: flex;
+  display: flex !important; // Force display to prevent hiding
   align-items: center;
   justify-content: center;
   cursor: pointer;
   color: var(--color-text-muted);
   transition: all var(--duration-fast) var(--ease-out);
+  flex-shrink: 0 !important; // Prevent button from shrinking under any circumstances
+  z-index: 30 !important; // Ensure button is above all content including overlays
+  position: relative !important; // Ensure proper stacking context
+  
+  // Ensure button is always interactive
+  pointer-events: auto !important;
+  opacity: 1 !important;
+  visibility: visible !important;
   
   @include responsive-min(md) {
     width: 40px;
     height: 40px;
+  }
+  
+  @include responsive-max(sm) {
+    // Enhanced mobile accessibility - WCAG 2.1 AA compliance
+    min-width: 48px !important; // Increased for better accessibility
+    min-height: 48px !important;
+    width: 48px !important;
+    height: 48px !important;
+    margin: 0 !important; // Remove any margin that could cause layout issues
+    padding: 0 !important; // Ensure consistent sizing
+    
+    // Positioning to ensure always visible and accessible
+    position: relative !important;
+    z-index: 50 !important; // Maximum priority on mobile
+    flex-shrink: 0 !important;
+    
+    // Grid positioning for mobile layout
+    justify-self: end !important;
+    align-self: center !important;
+    
+    // Ensure button stays within viewport bounds
+    box-sizing: border-box !important;
+    
+    // Override any external styles that might interfere
+    right: auto !important;
+    left: auto !important;
+    top: auto !important;
+    bottom: auto !important;
+    transform: none !important;
+    
+    // Enhanced contrast for mobile visibility
+    background: var(--color-surface-elevated) !important;
+    border: 2px solid var(--color-border) !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+    
+    // Ensure icon is properly sized for touch
+    .material-symbols-rounded, i {
+      font-size: 20px !important;
+      line-height: 1 !important;
+    }
   }
   
   @media (hover: hover) and (pointer: fine) {
@@ -205,6 +375,13 @@
   &:focus-visible {
     outline: 2px solid var(--color-primary);
     outline-offset: 2px;
+  }
+  
+  // Ensure button is always accessible
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
   }
 }
 
@@ -259,6 +436,13 @@ body.modal-open {
   
   // Prevent layout shift when scrollbar disappears
   padding-right: var(--scrollbar-width, 0);
+  
+  // Fix for mobile: prevent JavaScript scroll lock from displacing modal content
+  @include responsive-max(sm) {
+    position: static !important; // Override JavaScript fixed positioning
+    top: auto !important; // Override JavaScript top positioning
+    // Keep overflow hidden for scroll lock, but prevent viewport displacement
+  }
 }
 
 // Keyframe animations
