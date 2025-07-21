@@ -556,6 +556,72 @@ window.RRBlazor = {
         } else {
             choiceElement.classList.add(shouldAlignRight ? 'choice-bottomend' : 'choice-bottom');
         }
+    },
+
+    // Choice dropdown viewport calculation for universal positioning
+    Choice: {
+        shouldOpenUpward: function(element) {
+            try {
+                if (!element) return false;
+                
+                const rect = element.getBoundingClientRect();
+                const viewportHeight = window.innerHeight;
+                const estimatedDropdownHeight = 300;
+                const scrollBuffer = 20;
+                
+                const spaceBelow = viewportHeight - rect.bottom - scrollBuffer;
+                const spaceAbove = rect.top - scrollBuffer;
+                
+                return spaceBelow < estimatedDropdownHeight && spaceAbove > estimatedDropdownHeight;
+            } catch (error) {
+                debugLogger.warn('Choice.shouldOpenUpward error:', error);
+                return false;
+            }
+        },
+        
+        positionDropdown: function(triggerElement) {
+            try {
+                if (!triggerElement) return { left: 0, top: 0, width: 0 };
+                
+                const triggerRect = triggerElement.getBoundingClientRect();
+                const viewportWidth = window.innerWidth;
+                const viewportHeight = window.innerHeight;
+                const estimatedDropdownHeight = 300;
+                const estimatedDropdownWidth = Math.max(triggerRect.width, 200);
+                const scrollBuffer = 20;
+                
+                // Calculate vertical position
+                const spaceBelow = viewportHeight - triggerRect.bottom - scrollBuffer;
+                const spaceAbove = triggerRect.top - scrollBuffer;
+                const shouldOpenUp = spaceBelow < estimatedDropdownHeight && spaceAbove > estimatedDropdownHeight;
+                
+                let top = shouldOpenUp 
+                    ? triggerRect.top - estimatedDropdownHeight - 2
+                    : triggerRect.bottom + 2;
+                    
+                // Ensure dropdown stays within viewport
+                top = Math.max(scrollBuffer, Math.min(top, viewportHeight - estimatedDropdownHeight - scrollBuffer));
+                
+                // Calculate horizontal position  
+                let left = triggerRect.left;
+                
+                // Ensure dropdown doesn't overflow viewport horizontally
+                if (left + estimatedDropdownWidth > viewportWidth - scrollBuffer) {
+                    left = viewportWidth - estimatedDropdownWidth - scrollBuffer;
+                }
+                left = Math.max(scrollBuffer, left);
+                
+                return {
+                    left: Math.round(left),
+                    top: Math.round(top),
+                    width: Math.round(triggerRect.width),
+                    direction: shouldOpenUp ? 'up' : 'down'
+                };
+            } catch (error) {
+                debugLogger.warn('Choice.positionDropdown error:', error);
+                return { left: 0, top: 0, width: 0, direction: 'down' };
+            }
+        }
     }
 };
 

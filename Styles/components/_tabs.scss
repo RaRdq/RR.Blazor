@@ -116,27 +116,14 @@ $tab-variants: (
       }
     }
     
-    // Neo-morphism shadow effect
-    &::after {
-      content: '';
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      height: 1px;
-      background: linear-gradient(90deg,
-        transparent 0%,
-        var(--theme-border-light) 20%,
-        var(--theme-border-light) 80%,
-        transparent 100%);
-      opacity: 0.5;
-    }
+    // Remove dark border - use only animated underlines
     
-    // Mobile-optimized arrows with consistent spacing
+    // Mobile-optimized arrows with consistent spacing - centered with tabs
     &-arrow {
       position: absolute;
-      top: 50%;
-      transform: translateY(-50%);
+      top: var(--space-2);
+      bottom: var(--space-2);
+      margin: auto 0;
       width: 2.5rem;
       height: 2.5rem;
       @extend %button-base;
@@ -153,10 +140,12 @@ $tab-variants: (
         var(--state-hover-bg) 100%
       );
       
-      // Mobile-first sizing
+      // Mobile-first sizing and positioning
       @include responsive-max(md) {
         width: 2rem;
         height: 2rem;
+        top: var(--space-1);
+        bottom: var(--space-1);
       }
       
       &:hover {
@@ -166,9 +155,9 @@ $tab-variants: (
           var(--color-primary) 100%
         );
         border-color: var(--color-primary);
-        transform: translateY(-50%) scale(1.1);
+        transform: scale(1.1);
         
-        i { color: var(--color-text-on-primary); }
+        i { color: var(--color-text-inverse); }
       }
       
       &-visible {
@@ -237,17 +226,18 @@ $tab-variants: (
     }
   }
   
-  // Tab Indicator - mobile-first with theme awareness
+  // Tab Indicator - Beautiful animated underline that follows active tab
   &-indicator {
     position: absolute;
     bottom: 0;
     height: 3px;
     background: linear-gradient(90deg, 
-      var(--color-primary) 0%,
-      var(--theme-primary-hover) 50%,
-      var(--color-primary) 100%);
+      transparent 0%,
+      var(--color-primary) 15%,
+      var(--color-primary) 85%,
+      transparent 100%);
     border-radius: var(--radius-full);
-    z-index: 2;
+    z-index: 3;
     opacity: 1;
     box-shadow: 
       0 0 12px var(--color-primary),
@@ -255,11 +245,11 @@ $tab-variants: (
     left: var(--indicator-left, 0);
     width: var(--indicator-width, 0);
     
-    // Optimized transition for mobile performance
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    transition-property: left, width, background, box-shadow, opacity;
+    // Sexy smooth animation between tabs
+    transition: all 0.5s cubic-bezier(0.23, 1, 0.32, 1);
+    transition-property: left, width, opacity, transform;
     
-    // Pulsing glow effect
+    // Breathing glow effect for extra sexiness
     &::before {
       content: '';
       position: absolute;
@@ -267,12 +257,16 @@ $tab-variants: (
       left: -4px;
       right: -4px;
       bottom: -2px;
-      background: inherit;
+      background: linear-gradient(90deg, 
+        transparent 0%,
+        var(--color-primary) 20%,
+        var(--color-primary) 80%,
+        transparent 100%);
       border-radius: inherit;
-      opacity: 0.3;
-      filter: blur(6px);
+      opacity: 0.4;
+      filter: blur(8px);
       z-index: -1;
-      animation: breathe 2s var(--ease-in-out) infinite;
+      animation: breathe 3s ease-in-out infinite;
     }
     
     // Mobile-first responsive behavior
@@ -285,13 +279,9 @@ $tab-variants: (
       &::before {
         top: -1px;
         bottom: -1px;
-        filter: blur(4px);
-        opacity: 0.4;
+        filter: blur(6px);
+        opacity: 0.3;
       }
-    }
-    
-    @include responsive-max(lg) {
-      height: 2px;
     }
   }
   
@@ -441,15 +431,15 @@ $tab-variants: (
       // Semantic variant colors
       &-danger {
         background: var(--color-error);
-        color: var(--color-text-on-primary);
+        color: var(--color-text-inverse);
       }
       &-warning {
         background: var(--color-warning);
-        color: var(--color-text-on-primary);
+        color: var(--color-text-inverse);
       }
       &-success {
         background: var(--color-success);
-        color: var(--color-text-on-primary);
+        color: var(--color-text-inverse);
       }
     }
     
@@ -476,12 +466,12 @@ $tab-variants: (
       }
       
       &:hover {
-        background: var(--color-overlay-dark-10);
+        background: transparent;
       }
     }
     
     // Hover - optimized for mobile and desktop
-    &:hover {
+    &:hover:not(.tabs-tab-active):not(&-active) {
       color: var(--color-text);
       background: transparent;
       
@@ -489,7 +479,7 @@ $tab-variants: (
       @media (hover: hover) and (pointer: fine) {
         transform: translateY(-1px);
         
-        // Underline effect on hover
+        // Underline effect on hover (only for non-active tabs)
         &::after {
           content: '';
           position: absolute;
@@ -510,43 +500,22 @@ $tab-variants: (
       }
     }
     
-    // Active/Selected state with theme awareness
+    // Active/Selected state - Clean without individual underlines (use shared indicator)
     &-active,
     &.active {
-      color: var(--color-text);
+      color: var(--color-primary);
       background: transparent;
       box-shadow: none;
       position: relative;
-      font-weight: var(--font-medium);
+      font-weight: var(--font-semibold);
       
-      // Active underline
-      &::after {
-        content: '';
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        height: 3px;
-        background: linear-gradient(90deg, 
-          transparent 0%, 
-          var(--color-primary) 10%, 
-          var(--color-primary) 90%, 
-          transparent 100%);
-        border-radius: var(--radius-full);
-        box-shadow: 
-          0 0 8px color-mix(in srgb, var(--color-primary) 40%, transparent),
-          0 0 16px color-mix(in srgb, var(--color-primary) 20%, transparent);
-        animation: glow-pulse 2s var(--ease-in-out) infinite;
-        
-        // Mobile-optimized height
-        @include responsive-max(md) {
-          height: 2px;
-        }
-      }
+      // Slight glow effect for active tab
+      text-shadow: 0 0 8px color-mix(in srgb, var(--color-primary) 20%, transparent);
       
       &:hover {
         background: transparent;
         box-shadow: none;
+        color: var(--color-primary);
         
         @media (hover: hover) and (pointer: fine) {
           transform: translateY(-1px);
@@ -670,17 +639,11 @@ $tab-variants: (
         // Ensure proper contrast for glass variant
         .tabs-tab {
           &-active {
-            color: var(--color-text);
+            color: var(--color-primary);
             background: var(--glass-bg-light);
             backdrop-filter: blur(var(--blur-md));
             border: var(--border-1) solid var(--glass-border-medium);
-            font-weight: var(--font-medium);
-            
-            &::after {
-              height: 2px;
-              background: var(--color-primary);
-              box-shadow: 0 0 6px color-mix(in srgb, var(--color-primary) 40%, transparent);
-            }
+            font-weight: var(--font-semibold);
           }
         }
       }
@@ -698,18 +661,15 @@ $tab-variants: (
           
           &-active {
             background: var(--color-primary);
-            color: var(--color-text-on-primary);
+            color: var(--color-text-inverse);
             box-shadow: var(--shadow-md);
             font-weight: var(--font-medium);
             
-            // Remove the underline for pills variant
-            &::after {
-              display: none;
-            }
+            // Pills variant doesn't use underlines
             
             &:hover {
               background: var(--color-primary-hover);
-              color: var(--color-text-on-primary);
+              color: var(--color-text-inverse);
             }
           }
         }
@@ -736,15 +696,9 @@ $tab-variants: (
         @if $variant-name == 'underline' {
           .tabs-tab {
             &-active {
-              color: var(--color-text);
+              color: var(--color-primary);
               background: transparent;
               font-weight: var(--font-semibold);
-              
-              &::after {
-                height: 2px;
-                background: var(--color-primary);
-                box-shadow: 0 0 4px color-mix(in srgb, var(--color-primary) 30%, transparent);
-              }
             }
           }
         }

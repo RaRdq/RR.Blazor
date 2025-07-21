@@ -1,4 +1,5 @@
 using RR.Blazor.Enums;
+using System.Linq;
 
 namespace RR.Blazor.Utilities
 {
@@ -54,15 +55,27 @@ namespace RR.Blazor.Utilities
         /// </summary>
         public static string GetButtonSize(ButtonSize size, ComponentDensity density)
         {
-            var baseClasses = size switch
+            var sizeClass = size switch
             {
-                ButtonSize.Small => "px-3 py-1.5 text-sm",
-                ButtonSize.Medium => "px-4 py-2 text-base",
-                ButtonSize.Large => "px-6 py-3 text-lg",
-                _ => "px-4 py-2 text-base"
+                ButtonSize.ExtraSmall => "button-xs",
+                ButtonSize.Small => "button-sm",
+                ButtonSize.Medium => "", // Default size
+                ButtonSize.Large => "button-lg",
+                ButtonSize.ExtraLarge => "button-xl",
+                _ => ""
             };
             
-            return ApplyDensityToClasses(baseClasses, density);
+            // Apply density modifiers
+            var densityClass = density switch
+            {
+                ComponentDensity.Compact => "button-compact",
+                ComponentDensity.Dense => "button-dense",
+                ComponentDensity.Normal => "",
+                ComponentDensity.Spacious => "button-spacious",
+                _ => ""
+            };
+            
+            return string.Join(" ", new[] { sizeClass, densityClass }.Where(c => !string.IsNullOrEmpty(c)));
         }
         
         /// <summary>
@@ -72,10 +85,12 @@ namespace RR.Blazor.Utilities
         {
             var baseSize = size switch
             {
-                ButtonSize.Small => "text-sm",
-                ButtonSize.Medium => "text-base",
-                ButtonSize.Large => "text-lg",
-                _ => "text-base"
+                ButtonSize.ExtraSmall => "text-sm",
+                ButtonSize.Small => "text-base",
+                ButtonSize.Medium => "text-lg",
+                ButtonSize.Large => "text-xl",
+                ButtonSize.ExtraLarge => "text-2xl",
+                _ => "text-lg"
             };
             
             return ApplyDensityToTextSize(baseSize, density);
@@ -155,9 +170,11 @@ namespace RR.Blazor.Utilities
             {
                 "ButtonSize" => new Dictionary<string, string>
                 {
+                    { "ExtraSmall", "text-xs" },
                     { "Small", "text-sm" },
                     { "Medium", "text-base" },
-                    { "Large", "text-lg" }
+                    { "Large", "text-lg" },
+                    { "ExtraLarge", "text-xl" }
                 },
                 "BadgeSize" => new Dictionary<string, string>
                 {

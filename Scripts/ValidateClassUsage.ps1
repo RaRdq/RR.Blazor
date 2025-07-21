@@ -114,7 +114,7 @@ if (Test-Path $StylesDocPath) {
 $allClasses = @{}
 $availableClasses.Keys | ForEach-Object { $allClasses[$_] = "utility" }
 
-# Find all Razor files based on project paths or auto-detection
+# Find all code files (.razor, .cs, .js, .ts, .ch) based on project paths or auto-detection
 if ($ProjectPaths.Count -gt 0) {
     # Use specific project paths provided by user
     $razorFiles = @()
@@ -126,22 +126,22 @@ if ($ProjectPaths.Count -gt 0) {
         }
         
         if (Test-Path $fullProjectPath) {
-            $projectRazorFiles = Get-ChildItem -Path $fullProjectPath -Recurse -Filter "*.razor" | Where-Object { 
+            $projectCodeFiles = Get-ChildItem -Path $fullProjectPath -Recurse -Include "*.razor", "*.cs", "*.js", "*.ts", "*.ch" | Where-Object { 
                 $_.FullName -notlike "*node_modules*" -and 
                 $_.FullName -notlike "*bin*" -and 
                 $_.FullName -notlike "*obj*" -and 
                 $_.FullName -notlike "*_backup*" -and 
                 $_.FullName -notlike "*_Backup*"
             }
-            $razorFiles += $projectRazorFiles
-            Write-Host "  Found $($projectRazorFiles.Count) Razor files in: $projectPath" -ForegroundColor Gray
+            $razorFiles += $projectCodeFiles
+            Write-Host "  Found $($projectCodeFiles.Count) code files in: $projectPath" -ForegroundColor Gray
         } else {
             Write-Host "  ⚠️ Project path not found: $projectPath" -ForegroundColor Yellow
         }
     }
 } else {
     # Auto-detect client projects - exclude server and RR modules except RR.Blazor
-    $razorFiles = Get-ChildItem -Path $SolutionPath -Recurse -Filter "*.razor" | Where-Object { 
+    $razorFiles = Get-ChildItem -Path $SolutionPath -Recurse -Include "*.razor", "*.cs", "*.js", "*.ts", "*.ch" | Where-Object { 
         $_.FullName -notlike "*node_modules*" -and 
         $_.FullName -notlike "*bin*" -and 
         $_.FullName -notlike "*obj*" -and 
@@ -157,7 +157,7 @@ if ($ProjectPaths.Count -gt 0) {
     }
 }
 
-Write-Host "🔍 Found $($razorFiles.Count) Razor files to analyze" -ForegroundColor Green
+Write-Host "🔍 Found $($razorFiles.Count) code files to analyze" -ForegroundColor Green
 
 $issues = @()
 $inlineStyleCount = 0
@@ -277,6 +277,143 @@ foreach ($file in $razorFiles) {
                         Line = ($content.Substring(0, $match.Index) -split "`n").Length
                         Type = "MissingClass"
                         Issue = "Class not found in RR.Blazor AI documentation"
+                        Content = $class
+                        Suggestion = "Check spelling or add class to RR.Blazor system"
+                    }
+                }
+            }
+        }
+    }
+    
+    # Extract class strings from C# code blocks and expressions
+    # Pattern 1: String literals containing CSS classes in @code blocks
+    $codeBlockPattern = '(?s)@code\s*\{.*?\}'
+    $codeBlockMatches = [regex]::Matches($content, $codeBlockPattern)
+    
+    foreach ($codeBlockMatch in $codeBlockMatches) {
+        $codeContent = $codeBlockMatch.Value
+        
+        # Look for string literals that likely contain CSS classes
+        $stringLiteralPattern = '"([^"]*(?:\s+[a-z][a-z0-9-]*){1,}[^"]*)"'
+        $stringMatches = [regex]::Matches($codeContent, $stringLiteralPattern)
+        
+        foreach ($stringMatch in $stringMatches) {
+            $stringValue = $stringMatch.Groups[1].Value
+            
+            # Skip strings that are clearly not CSS classes
+            if ($stringValue -match '^\s*$|^[A-Z]|@|{|}|\(|\)|==|!=|<=|>=|<|>|\?|:|\||&|\\|/|mailto:|http:|https:|javascript:|Error|Failed|Invalid|Processing|Loading|Completed|Successfully') {
+                continue
+            }
+            
+            # Skip strings that contain common non-CSS words
+            $nonCssPatterns = @(
+                'data', 'user', 'error', 'message', 'failed', 'success', 'loading', 'complete',
+                'api', 'endpoint', 'query', 'response', 'request', 'method', 'function',
+                'database', 'table', 'column', 'field', 'record', 'entity',
+                'input', 'output', 'result', 'value', 'parameter', 'argument',
+                'the', 'and', 'or', 'with', 'from', 'to', 'in', 'on', 'at', 'by',
+                'debug', 'info', 'warn', 'trace', 'log', 'console'
+            )
+            
+            $containsNonCssWords = $false
+            foreach ($pattern in $nonCssPatterns) {
+                if ($stringValue -match "\\b$pattern\\b") {
+                    $containsNonCssWords = $true
+                    break
+                }
+            }
+            
+            if ($containsNonCssWords) {
+                continue
+            }
+            
+            # Extract potential CSS classes from the string
+            $potentialClasses = $stringValue -split '\s+' | Where-Object { 
+                $_ -ne '' -and 
+                $_ -match '^[a-z][a-z0-9-]*$' -and
+                $_ -notmatch '^\d+$' -and
+                $_.Length -le 50 -and  # Reasonable max length for CSS classes
+                $_ -notmatch '^(mailto|http|https|ftp|file|javascript)' # Protocol prefixes
+            }
+            
+            foreach ($class in $potentialClasses) {
+                $totalClassUsages++
+                
+                if (-not (IsValidClass($class))) {
+                    $lineNumber = ($content.Substring(0, $codeBlockMatch.Index + $stringMatch.Index) -split "`n").Length
+                    $issues += [PSCustomObject]@{
+                        File = $relativePath
+                        Line = $lineNumber
+                        Type = "MissingClass"
+                        Issue = "Class not found in RR.Blazor AI documentation (found in C# code)"
+                        Content = $class
+                        Suggestion = "Check spelling or add class to RR.Blazor system"
+                    }
+                }
+            }
+        }
+    }
+    
+    # Pattern 2: String literals in C# expressions (outside @code blocks)
+    $csharpExpressionPattern = '@\([^)]+\)|@[a-zA-Z_][a-zA-Z0-9_]*\([^)]*\)|@\{[^}]*\}'
+    $expressionMatches = [regex]::Matches($content, $csharpExpressionPattern)
+    
+    foreach ($expressionMatch in $expressionMatches) {
+        $expressionContent = $expressionMatch.Value
+        
+        # Look for string literals within expressions
+        $stringLiteralPattern = '"([^"]*(?:\s+[a-z][a-z0-9-]*){1,}[^"]*)"'
+        $stringMatches = [regex]::Matches($expressionContent, $stringLiteralPattern)
+        
+        foreach ($stringMatch in $stringMatches) {
+            $stringValue = $stringMatch.Groups[1].Value
+            
+            # Skip strings that are clearly not CSS classes
+            if ($stringValue -match '^\s*$|^[A-Z]|@|{|}|\(|\)|==|!=|<=|>=|<|>|\?|:|\||&|\\|/|mailto:|http:|https:|javascript:|Error|Failed|Invalid|Processing|Loading|Completed|Successfully') {
+                continue
+            }
+            
+            # Skip strings that contain common non-CSS words
+            $nonCssPatterns = @(
+                'data', 'user', 'error', 'message', 'failed', 'success', 'loading', 'complete',
+                'api', 'endpoint', 'query', 'response', 'request', 'method', 'function',
+                'database', 'table', 'column', 'field', 'record', 'entity',
+                'input', 'output', 'result', 'value', 'parameter', 'argument',
+                'the', 'and', 'or', 'with', 'from', 'to', 'in', 'on', 'at', 'by',
+                'debug', 'info', 'warn', 'trace', 'log', 'console'
+            )
+            
+            $containsNonCssWords = $false
+            foreach ($pattern in $nonCssPatterns) {
+                if ($stringValue -match "\\b$pattern\\b") {
+                    $containsNonCssWords = $true
+                    break
+                }
+            }
+            
+            if ($containsNonCssWords) {
+                continue
+            }
+            
+            # Extract potential CSS classes from the string
+            $potentialClasses = $stringValue -split '\s+' | Where-Object { 
+                $_ -ne '' -and 
+                $_ -match '^[a-z][a-z0-9-]*$' -and
+                $_ -notmatch '^\d+$' -and
+                $_.Length -le 50 -and  # Reasonable max length for CSS classes
+                $_ -notmatch '^(mailto|http|https|ftp|file|javascript)' # Protocol prefixes
+            }
+            
+            foreach ($class in $potentialClasses) {
+                $totalClassUsages++
+                
+                if (-not (IsValidClass($class))) {
+                    $lineNumber = ($content.Substring(0, $expressionMatch.Index + $stringMatch.Index) -split "`n").Length
+                    $issues += [PSCustomObject]@{
+                        File = $relativePath
+                        Line = $lineNumber
+                        Type = "MissingClass"
+                        Issue = "Class not found in RR.Blazor AI documentation (found in C# expression)"
                         Content = $class
                         Suggestion = "Check spelling or add class to RR.Blazor system"
                     }

@@ -16,6 +16,7 @@ Professional button component with enterprise variants, AI-optimized for rapid d
 @using RR.Blazor.Enums
 @using RR.Blazor.Attributes
 @using RR.Blazor.Components.Base
+@using RR.Blazor.Utilities
 @using Microsoft.AspNetCore.Components
 @inherits RVariantComponentBase<ButtonSize, ButtonVariant>
 @inject IJSRuntime JSRuntime
@@ -193,15 +194,8 @@ Professional button component with enterprise variants, AI-optimized for rapid d
         // Size classes with density modifiers
         classes.Add(GetSizeClasses());
         
-        // Density-specific gap adjustments
-        classes.Add(Density switch
-        {
-            ComponentDensity.Compact => "button-gap-compact",
-            ComponentDensity.Dense => "button-gap-dense",
-            ComponentDensity.Normal => "button-gap-normal",
-            ComponentDensity.Spacious => "button-gap-spacious",
-            _ => "button-gap-normal"
-        });
+        // Density-specific gap adjustments using helper
+        classes.Add(DensityHelper.GetGap(Density));
         
         // Border radius handled by SCSS
         if (!Rounded)
@@ -246,6 +240,26 @@ Professional button component with enterprise variants, AI-optimized for rapid d
                 
             case ButtonVariant.Info:
                 classes.Add("button-info");
+                break;
+                
+            case ButtonVariant.Gradient:
+                classes.Add("button-gradient");
+                break;
+                
+            case ButtonVariant.Neon:
+                classes.Add("button-neon");
+                break;
+                
+            case ButtonVariant.Neumorphism:
+                classes.Add("button-neumorphism");
+                break;
+                
+            case ButtonVariant.Shimmer:
+                classes.Add("button-shimmer");
+                break;
+                
+            case ButtonVariant.Enterprise:
+                classes.Add("button-enterprise");
                 break;
         }
         
@@ -312,33 +326,17 @@ Professional button component with enterprise variants, AI-optimized for rapid d
     
     protected override string GetSizeClasses()
     {
-        var sizeClass = Size switch
-        {
-            ButtonSize.ExtraSmall => "button-xs",
-            ButtonSize.Small => "button-sm",
-            ButtonSize.Medium => "", // Default size
-            ButtonSize.Large => "button-lg",
-            ButtonSize.ExtraLarge => "button-xl",
-            _ => ""
-        };
-        
-        // Apply density modifiers
-        var densityClass = Density switch
-        {
-            ComponentDensity.Compact => "button-compact",
-            ComponentDensity.Dense => "button-dense",
-            ComponentDensity.Normal => "",
-            ComponentDensity.Spacious => "button-spacious",
-            _ => ""
-        };
-        
-        return string.Join(" ", new[] { sizeClass, densityClass }.Where(c => !string.IsNullOrEmpty(c)));
+        return SizeHelper.GetButtonSize(Size, Density);
     }
     
     
     private string GetIconClasses()
     {
-        var classes = new List<string> { "button-icon" };
+        var classes = new List<string> 
+        { 
+            "material-symbols-rounded",
+            SizeHelper.GetButtonIconSize(Size, Density)
+        };
         
         // Position spacing - only add margin if there's text content
         if (!string.IsNullOrEmpty(Text))
@@ -363,7 +361,7 @@ Professional button component with enterprise variants, AI-optimized for rapid d
         return string.Join(" ", classes);
     }
     
-    private string GetTextClass() => "button-text";
+    private string GetTextClass() => $"button-text {SizeHelper.GetTextSize(Size, Density)}";
     
     private async Task HandleClick(MouseEventArgs e)
     {
@@ -502,6 +500,11 @@ Professional button component with enterprise variants, AI-optimized for rapid d
             ButtonVariant.Ghost => "button-ghost",
             ButtonVariant.Outline => "button-outline",
             ButtonVariant.Glass => "button-glass",
+            ButtonVariant.Gradient => "button-gradient",
+            ButtonVariant.Neon => "button-neon",
+            ButtonVariant.Neumorphism => "button-neumorphism",
+            ButtonVariant.Shimmer => "button-shimmer",
+            ButtonVariant.Enterprise => "button-enterprise",
             _ => "button-primary"
         };
     }

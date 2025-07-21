@@ -11,6 +11,11 @@ namespace RR.Blazor.Enums
         Glass,
         Success,
         Warning,
-        Error
+        Error,
+        Gradient,
+        Neon,
+        Neumorphism,
+        Shimmer,
+        Enterprise
     }
 }
