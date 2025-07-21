@@ -1,120 +1,79 @@
 @use '../abstracts' as *;
 
-// GLOBAL OVERLAY POSITIONING SYSTEM
-// Fixes modals, dropdowns, tooltips, and all overlays at the top level
+// ===========================================
+// ELEGANT MODAL SYSTEM - CLEAN & BEAUTIFUL
+// ===========================================
 
-// PURE CSS VIEWPORT-LEVEL MODAL PROVIDER
-// Modal provider positioning controlled by C# inline styles for maximum specificity
+// Modal Provider - Viewport-level positioning
 .modal-provider {
-  // Force break out of all containing contexts - CRITICAL for framework integration
-  transform: translateZ(0) !important; // Force new stacking context at highest level
-  contain: none !important;
-  container-type: normal !important;
-  isolation: auto !important;
+  // Hidden by default
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal-container);
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
   
-  // Override any parent transforms or constraints
-  margin: 0 !important;
-  padding: 0 !important;
-  border: none !important;
-  overflow: visible !important;
+  // Smooth fade transition for provider
+  transition: opacity 0.2s ease-out, visibility 0.2s ease-out;
   
-  // When active, force viewport-level rendering
+  // Active state - covers entire viewport
   &.active {
-    // Additional containment breaking for active state
-    transform: translateZ(0) translate3d(0, 0, 0) !important;
-    will-change: transform !important;
-  }
-  
-  // Ensure modals render correctly within provider at viewport level
-  .modal {
     pointer-events: auto;
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    right: 0 !important;
-    bottom: 0 !important;
+    opacity: 1;
+    visibility: visible;
   }
 }
 
-// CSS-ONLY SCROLL LOCKING - No JavaScript required
-body.modal-open {
-  // Lock body scroll with position fix to prevent jump
-  overflow: hidden !important;
-  position: fixed !important;
-  width: 100% !important;
-  height: 100% !important;
-  
-  // Break ALL stacking contexts and containment
-  .app-shell,
-  .app-shell-container,
-  main,
-  .main-content,
-  .content,
-  section,
-  article,
-  aside {
-    // Disable all CSS containment
-    contain: none !important;
-    container-type: normal !important;
-    isolation: auto !important;
-    
-    // Remove transforms that create stacking contexts
-    transform: none !important;
-    translate: none !important;
-    
-    // Remove filters that create stacking contexts
-    filter: none !important;
-    backdrop-filter: none !important;
-    
-    // Ensure overflow doesn't clip overlays
-    overflow: visible !important;
-  }
-}
-
-// Modal provider positioning handled inline for maximum specificity
-
+// Modal - Individual modal styling
 .modal {
-  position: fixed !important;
-  inset: 0 !important;
-  z-index: var(--z-modal) !important;
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: var(--space-2);
-  animation: fadeIn var(--duration-fast) var(--ease-out);
+  padding: var(--space-4);
   
-  // Visibility states
-  &--hidden {
-    display: none !important;
-  }
+  // Hidden by default
+  opacity: 0;
+  visibility: hidden;
+  transform: scale(0.95);
+  pointer-events: none;
   
+  // Smooth scalein + fadein animation
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  
+  // Visible state - sexy scalein + fadein
   &--visible {
-    display: flex !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    transform: scale(1) !important;
+    pointer-events: auto !important;
   }
   
-  @include responsive-min(md) {
-    padding: var(--space-4);
-    align-items: center;
+  // Hidden state
+  &--hidden {
+    opacity: 0 !important;
+    visibility: hidden !important;
+    transform: scale(0.95) !important;
+    pointer-events: none !important;
   }
   
+  // Backdrop
   &-backdrop {
-    position: fixed !important;
-    inset: 0 !important;
-    z-index: var(--z-modal-backdrop) !important;
-    @include glass-enhanced(light, false, false);
-    background: var(--overlay-medium);
+    position: absolute;
+    inset: 0;
+    z-index: var(--z-modal-backdrop);
+    background: rgba(15, 23, 42, 0.7);
+    backdrop-filter: blur(8px);
     cursor: pointer;
-    animation: fadeIn var(--duration-fast) var(--ease-out);
     
-    // Ensure backdrop is always visible with fallback
-    background: 
-      var(--overlay-medium), 
-      rgba(15, 23, 42, 0.75),
-      rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(8px) saturate(1.1);
-    -webkit-backdrop-filter: blur(8px) saturate(1.1);
+    // Subtle backdrop fade
+    animation: backdropFade 0.2s ease-out;
   }
   
+  // Modal Content
   &-content {
     position: relative;
     z-index: var(--z-modal-content);
@@ -123,64 +82,24 @@ body.modal-open {
     border: 1px solid var(--color-border);
     max-width: 32rem;
     width: 100%;
-    max-height: 95vh;
+    max-height: 90vh;
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    margin: 0 auto;
-    box-shadow: var(--shadow-executive);
-    
-    // Ensure shadow is always applied with fallback
     box-shadow: 
       0 32px 64px rgba(0, 0, 0, 0.24),
       0 16px 32px rgba(0, 0, 0, 0.16),
-      0 8px 16px rgba(0, 0, 0, 0.12),
-      var(--shadow-executive);
+      0 8px 16px rgba(0, 0, 0, 0.12);
     
-    // MOBILE-FIRST VIEWPORT HANDLING
-    max-height: 100vh;
-    max-height: 100dvh; // Dynamic viewport height for mobile
-    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-    animation: slideUp var(--duration-slow) var(--ease-out);
-    
-    // Handle virtual keyboard on mobile
-    &.keyboard-visible {
-      max-height: 50vh;
-      overflow-y: auto;
-    }
-    
-    // Medium screens and up: Standard modal appearance
-    @include responsive-min(md) {
-      max-height: 90vh;
-      border-radius: var(--radius-2xl);
-      margin: auto;
-      width: auto;
-      animation: scaleIn var(--duration-slow) var(--ease-out);
-    }
-    
-    // Touch scrolling optimization
-    @media (hover: none) and (pointer: coarse) {
-      -webkit-overflow-scrolling: touch;
-      overscroll-behavior: contain;
-    }
-  &-small {
-      max-width: 24rem;
-    }
-  &-large {
-      max-width: 48rem;
-    }
-  &-xlarge {
-      max-width: 64rem;
-      width: 95%;
-    }
-  &-wide {
-      max-width: 56rem;
-      width: 90%;
-    }
-  &-full {
-      max-width: 95vw;
-      width: 95%;
-      max-height: 90vh;
+    // Responsive sizes
+    &-small { max-width: 24rem; }
+    &-large { max-width: 48rem; }
+    &-xlarge { max-width: 64rem; width: 95%; }
+    &-wide { max-width: 56rem; width: 90%; }
+    &-full { 
+      max-width: 95vw; 
+      width: 95%; 
+      max-height: 90vh; 
       
       @include responsive-max(md) {
         max-width: 100vw;
@@ -189,276 +108,166 @@ body.modal-open {
         border-radius: 0;
       }
     }
-  &-glass {
+    
+    // Glass variant
+    &-glass {
       background: var(--glass-bg-strong);
       backdrop-filter: blur(var(--blur-xl));
       border: var(--border-1) solid var(--glass-border-strong);
     }
   }
   
-  &-header {
-    padding: var(--space-6);
-    border-bottom: 1px solid var(--color-border);
-    flex-shrink: 0;
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    background: linear-gradient(135deg, var(--color-surface-elevated) 0%, var(--color-surface) 100%);
+  // Mobile-first responsive
+  @include responsive-max(sm) {
+    padding: 0;
     
-    @include responsive-max(sm) {
-      padding: var(--space-4);
+    .modal-content {
+      max-height: 100vh;
+      border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+      
+      // Mobile slide-up animation
+      transform: translateY(100%);
+      transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+      
+      .modal--visible & {
+        transform: translateY(0);
+      }
     }
   }
   
-  &-title {
-    font-size: var(--text-xl);
-    font-weight: var(--font-semibold);
-    color: var(--color-text);
-    margin: 0;
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    
-    @include responsive-min(md) {
-      font-size: var(--text-xl);
-    }
-  }
-  
-  &-subtitle {
-    font-size: var(--text-sm);
-    color: var(--color-text-muted);
-    margin-top: var(--space-2);
-    margin-bottom: 0;
-    margin-left: 0;
-    margin-right: 0;
-    line-height: var(--leading-relaxed);
-  }
-  
-  &-close {
-    width: 44px;
-    height: 44px;
-    border-radius: var(--radius-full);
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    color: var(--color-text-muted);
-    transition: all var(--duration-fast) var(--ease-out);
-    touch-action: manipulation;
-    -webkit-tap-highlight-color: transparent;
-    
-    @include responsive-min(md) {
-      width: 40px;
-      height: 40px;
-    }
-    
-    @media (hover: hover) and (pointer: fine) {
-      &:hover {
-        background: var(--color-surface);
-        border-color: var(--color-border);
-        color: var(--color-text);
-        transform: scale(1.05);
-      }
-      
-      &:active {
-        transform: scale(0.95);
-      }
-    }
-    
-    @media (hover: none) and (pointer: coarse) {
-      &:active {
-        transform: scale(0.95);
-        background: var(--state-hover-bg);
-      }
-    }
-    
-    &:focus-visible {
-      outline: none;
-      outline-offset: 2px;
-    }
-  }
-  
-  &-body {
-    flex: 1;
-    padding: var(--space-4);
-    overflow-y: auto;
-    position: relative;
-    
-    // Optimize for mobile touch scrolling
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
-    scroll-behavior: smooth;
-    
-    // Medium screens and up: Standard padding
-    @include responsive-min(md) {
-      padding: var(--space-6);
-    }
-    
-    // Hide scrollbar on mobile for cleaner look
-    @media (hover: none) and (pointer: coarse) {
-      &::-webkit-scrollbar {
-        width: 0;
-        background: transparent;
-      }
-    }
-    
-    // Desktop scrollbar styling
-    @media (hover: hover) and (pointer: fine) {
-      &::-webkit-scrollbar {
-        width: 8px;
-      }
-      
-      &::-webkit-scrollbar-track {
-        background: var(--color-surface);
-        border-radius: var(--radius-sm);
-      }
-      
-      &::-webkit-scrollbar-thumb {
-        background: var(--color-border);
-        border-radius: var(--radius-sm);
-        
-        &:hover {
-          background: var(--color-border);
-        }
-      }
-    }
-    
-    > *:first-child {
-      margin-top: 0;
-    }
-    
-    > *:last-child {
-      margin-bottom: 0;
-    }
-  }
-  
-  &-footer {
-    padding: var(--space-4);
-    border-top: 1px solid var(--color-border);
-    background: var(--color-surface);
-    flex-shrink: 0;
-    
-    // Stack buttons vertically on mobile
-    .button-group,
-    .modal-actions {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-2);
-    }
-    
-    // Medium screens and up: Horizontal layout
-    @include responsive-min(md) {
-      padding: var(--space-6);
-      
-      .button-group,
-      .modal-actions {
-        flex-direction: row;
-        gap: var(--space-3);
-        
-        .button {
-          width: 100%;
-          min-height: 44px;
-          justify-content: center;
-        }
-      }
-      
-      // Reverse order for mobile (primary action on top)
-      .modal-actions {
-        flex-direction: column-reverse;
-      }
-    }
-    
-    // Desktop horizontal layout
-    @include responsive-min(md) {
-      .button-group,
-      .modal-actions {
-        display: flex;
-        flex-direction: row;
-        gap: var(--space-3);
-        justify-content: flex-end;
-      }
+  // Desktop scale-in animation
+  @include responsive-min(md) {
+    .modal-content {
+      // Scale animation handled by parent .modal class
     }
   }
 }
 
-// MOBILE-FIRST MODAL ANIMATIONS
-// slideUp animation moved to abstracts/_animations.scss
+// Modal Header
+.modal-header {
+  padding: var(--space-6);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  background: linear-gradient(135deg, var(--color-surface-elevated) 0%, var(--color-surface) 100%);
+  
+  @include responsive-max(sm) {
+    padding: var(--space-4);
+  }
+}
 
-// Mobile gesture support utilities
-.modal-gesture-indicator {
-  position: absolute;
-  top: var(--space-2);
-  left: 50%;
-  transform: translateX(-50%);
-  width: var(--space-8);
-  height: 4px;
-  background: var(--color-border);
+.modal-title {
+  font-size: var(--text-xl);
+  font-weight: var(--font-semibold);
+  color: var(--color-text);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.modal-subtitle {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  margin: var(--space-2) 0 0 0;
+  line-height: var(--leading-relaxed);
+}
+
+.modal-close {
+  width: 44px;
+  height: 44px;
   border-radius: var(--radius-full);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  transition: all var(--duration-fast) var(--ease-out);
   
   @include responsive-min(md) {
-    display: none;
+    width: 40px;
+    height: 40px;
+  }
+  
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      background: var(--color-surface);
+      border-color: var(--color-border);
+      color: var(--color-text);
+      transform: scale(1.05);
+    }
+  }
+  
+  &:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
   }
 }
 
-// Modal provider styles moved inline for maximum control
-
-// Enhanced modal body scroll lock styling
-.modal-open {
-  overflow: hidden !important;
+// Modal Body
+.modal-body {
+  flex: 1;
+  padding: var(--space-6);
+  overflow-y: auto;
+  // Smooth scrolling
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   
-  .app-shell {
-    // Ensure app shell content doesn't shift when scrollbar is hidden
-    transition: none !important;
-  }
-  
-  // Ensure modal backdrop covers the entire viewport
-  .modal-backdrop {
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    right: 0 !important;
-    bottom: 0 !important;
-    width: 100vw !important;
-    height: 100vh !important;
-    z-index: var(--z-modal-backdrop) !important;
+  @include responsive-max(sm) {
+    padding: var(--space-4);
   }
 }
 
-// Context-aware z-index stacking system for modal-open
+// Modal Footer
+.modal-footer {
+  padding: var(--space-6);
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
+  flex-shrink: 0;
+  
+  @include responsive-max(sm) {
+    padding: var(--space-4);
+  }
+  
+  // Button layout
+  .button-group,
+  .modal-actions {
+    display: flex;
+    gap: var(--space-3);
+    justify-content: flex-end;
+    
+    @include responsive-max(sm) {
+      flex-direction: column-reverse;
+      
+      .button {
+        width: 100%;
+        min-height: 44px;
+        justify-content: center;
+      }
+    }
+  }
+}
+
+// Body scroll lock when modal is open
 body.modal-open {
-  // Dropdowns/choices outside modals get elevated above backdrop
-  .choice-viewport:not(.modal-content .choice-viewport):not(.modal .choice-viewport),
-  .dropdown:not(.modal-content .dropdown):not(.modal .dropdown),
-  .popover:not(.modal-content .popover):not(.modal .popover),
-  .tooltip:not(.modal-content .tooltip):not(.modal .tooltip) {
-    z-index: calc(var(--z-modal-backdrop) + 10) !important;
-  }
+  overflow: hidden;
   
-  // Dropdowns/choices inside modal content get positioned above modal content
-  .modal-content .choice-viewport,
-  .modal .choice-viewport,
-  .modal-content .dropdown,
-  .modal .dropdown,
-  .modal-content .popover,
-  .modal .popover,
-  .modal-content .tooltip,
-  .modal .tooltip {
-    z-index: calc(var(--z-modal-content) + 10) !important;
-  }
-  
-  // Choice backdrops get positioned appropriately based on context
-  .choice-backdrop:not(.modal-content .choice-backdrop):not(.modal .choice-backdrop) {
-    z-index: calc(var(--z-modal-backdrop) + 5) !important;
-  }
-  
-  .modal-content .choice-backdrop,
-  .modal .choice-backdrop {
-    z-index: calc(var(--z-modal-content) + 5) !important;
-  }
+  // Prevent layout shift when scrollbar disappears
+  padding-right: var(--scrollbar-width, 0);
 }
 
+// Keyframe animations
+@keyframes backdropFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+// Confirm Modal - Special styling for confirmation dialogs
 .confirm-modal {
   display: flex;
   flex-direction: column;
@@ -476,26 +285,26 @@ body.modal-open {
     justify-content: center;
     font-size: 2rem;
     margin-bottom: var(--space-2);
-  &-info {
+    
+    &-info {
       background: color-mix(in srgb, var(--color-info) 10%, var(--color-surface));
       color: var(--color-info);
     }
-  &-danger {
+    
+    &-danger {
       background: color-mix(in srgb, var(--color-error) 10%, var(--color-surface));
       color: var(--color-error);
     }
-  &-warning {
+    
+    &-warning {
       background: color-mix(in srgb, var(--color-warning) 10%, var(--color-surface));
       color: var(--color-warning);
     }
-  &-success {
+    
+    &-success {
       background: color-mix(in srgb, var(--color-success) 10%, var(--color-surface));
       color: var(--color-success);
     }
-  }
-  
-  &-content {
-    flex: 1;
   }
   
   &-message {
@@ -503,627 +312,5 @@ body.modal-open {
     color: var(--color-text);
     margin: 0 0 var(--space-3) 0;
     line-height: var(--leading-relaxed);
-  }
-  
-  &-details {
-    margin-top: var(--space-3);
-  }
-  
-  &-warning {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    padding: var(--space-3);
-    background: color-mix(in srgb, var(--color-warning) 10%, var(--color-surface));
-    border-radius: var(--radius-md);
-    font-size: var(--text-sm);
-    color: var(--color-warning);
-    margin-top: var(--space-4);
-  }
-}
-
-.message-modal {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: var(--space-4);
-  padding: var(--space-6);
-  
-  &-icon {
-    width: 3rem;
-    height: 3rem;
-    border-radius: var(--radius-full);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.5rem;
-  &-info {
-      background: color-mix(in srgb, var(--color-info) 10%, var(--color-surface));
-      color: var(--color-info);
-    }
-  &-warning {
-      background: color-mix(in srgb, var(--color-warning) 10%, var(--color-surface));
-      color: var(--color-warning);
-    }
-  &-destructive {
-      background: color-mix(in srgb, var(--color-error) 10%, var(--color-surface));
-      color: var(--color-error);
-    }
-  &-success {
-      background: color-mix(in srgb, var(--color-success) 10%, var(--color-surface));
-      color: var(--color-success);
-    }
-  }
-  
-  &-content {
-    flex: 1;
-  }
-  
-  &-message {
-    font-size: var(--text-base);
-    color: var(--color-text);
-    line-height: var(--leading-relaxed);
-    margin: 0;
-  }
-}
-
-.form-modal {
-  padding: var(--space-4);
-  
-  &-content {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-  }
-  
-  &-fields {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-  }
-  
-  &-field {
-    width: 100%;
-  }
-  
-  &-validation {
-    margin-top: var(--space-4);
-    
-    .validation-error {
-      border-radius: var(--radius-md);
-      padding: var(--space-4);
-      display: flex;
-      gap: var(--space-3);
-      background: color-mix(in srgb, var(--color-error) 10%, var(--color-surface));
-      border: var(--border-1) solid color-mix(in srgb, var(--color-error) 10%, var(--color-surface));
-      color: var(--color-error);
-      
-      > i {
-        color: var(--color-error);
-      }
-      
-      &-content {
-        flex: 1;
-        
-        h4 {
-          margin: 0 0 var(--space-2) 0;
-          font-size: var(--text-sm);
-          font-weight: var(--font-semibold);
-        }
-        
-        ul {
-          margin: 0;
-          padding-left: var(--space-4);
-          
-          li {
-            font-size: var(--text-sm);
-            margin-bottom: var(--space-1);
-          }
-        }
-      }
-    }
-  }
-}
-
-.select-modal {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  
-  &-search {
-    padding: var(--space-4);
-    border-bottom: var(--border-1) solid var(--color-border);
-    flex-shrink: 0;
-  }
-  
-  &-content {
-    flex: 1;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-  }
-  
-  &-list {
-    flex: 1;
-    overflow-y: auto;
-    padding: var(--space-2);
-    
-    &::-webkit-scrollbar {
-      width: 8px;
-    }
-    
-    &::-webkit-scrollbar-track {
-      background: var(--color-surface);
-      border-radius: var(--radius-sm);
-    }
-    
-    &::-webkit-scrollbar-thumb {
-      background: var(--color-border);
-      border-radius: var(--radius-sm);
-      
-      &:hover {
-        background: var(--color-border);
-      }
-    }
-  }
-  
-  &-item {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    padding: var(--space-3);
-    border-radius: var(--radius-md);
-    cursor: pointer;
-    transition: all var(--duration-fast) var(--ease-out);
-    border: var(--border-1) solid transparent;
-    
-    &:hover {
-      background: var(--color-surface);
-      border-color: var(--color-border);
-    }
-    
-    &.selected {
-      background: var(--color-primary);
-      border-color: var(--color-primary);
-      
-      .select-modal-item-text {
-        font-weight: var(--font-semibold);
-        color: var(--color-text-inverse);
-      }
-    }
-  }
-  
-  &-checkbox,
-  &-radio {
-    position: relative;
-    
-    input {
-      position: absolute;
-      opacity: 0;
-      pointer-events: none;
-    }
-    
-    > i {
-      font-size: 1.25rem;
-      color: var(--color-border);
-      transition: color var(--duration-fast) var(--ease-out);
-    }
-    
-    .selected & i {
-      color: var(--color-primary);
-    }
-  }
-  
-  &-item-content {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-  }
-  
-  &-item-text {
-    font-size: var(--text-base);
-    color: var(--color-text);
-    font-weight: var(--font-medium);
-  }
-  
-  &-item-subtext {
-    font-size: var(--text-sm);
-    color: var(--color-text-muted);
-  }
-  
-  &-item-actions {
-    display: flex;
-    gap: var(--space-2);
-  }
-  
-  &-empty {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: var(--space-8);
-  }
-  
-  &-summary {
-    border-top: var(--border-1) solid var(--color-border);
-    padding: var(--space-4);
-    background: var(--color-surface);
-    flex-shrink: 0;
-  }
-  
-  &-count {
-    font-size: var(--text-sm);
-    color: var(--color-text-muted);
-    font-weight: var(--font-medium);
-  }
-  
-  &-selected-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2);
-    margin-top: var(--space-3);
-  }
-}
-
-.detail-modal {
-  padding: var(--space-4);
-  
-  &-content {
-    margin-bottom: var(--space-6);
-  }
-  
-  &-properties {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-  }
-  
-  &-property {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: var(--space-2);
-    padding: var(--space-3);
-    background: var(--color-surface);
-    border-radius: var(--radius-md);
-    
-    @include responsive-min(md) {
-      flex-direction: row;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: var(--space-4);
-    }
-  }
-  
-  &-property-label {
-    font-size: var(--text-sm);
-    font-weight: var(--font-semibold);
-    color: var(--color-text-muted);
-    min-width: 120px;
-    flex-shrink: 0;
-  }
-  
-  &-property-value {
-    font-size: var(--text-base);
-    color: var(--color-text);
-    text-align: left;
-    
-    @include responsive-min(md) {
-      text-align: right;
-    }
-  }
-  
-  &-metadata {
-    border-top: var(--border-1) solid var(--color-border);
-    padding-top: var(--space-4);
-    margin-top: var(--space-4);
-  }
-  
-  &-metadata-title {
-    font-size: var(--text-lg);
-    font-weight: var(--font-semibold);
-    color: var(--color-text);
-    margin-bottom: var(--space-3);
-  }
-  
-  &-metadata-content {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-  }
-  
-  &-metadata-item {
-    display: flex;
-    justify-content: space-between;
-    font-size: var(--text-sm);
-  }
-  
-  &-metadata-label {
-    color: var(--color-text-muted);
-    font-weight: var(--font-medium);
-  }
-  
-  &-metadata-value {
-    color: var(--color-text);
-    font-family: var(--font-mono);
-  }
-  
-  &-empty {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: var(--space-8);
-  }
-}
-
-.preview-modal {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  
-  &-toolbar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: var(--space-4);
-    border-bottom: var(--border-1) solid var(--color-border);
-    background: var(--color-surface);
-    flex-shrink: 0;
-  }
-  
-  &-toolbar-left,
-  &-toolbar-right {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-  }
-  
-  &-word-count {
-    font-size: var(--text-sm);
-    color: var(--color-text-muted);
-  }
-  
-  &-content {
-    flex: 1;
-    overflow: auto;
-    padding: var(--space-4);
-    
-    &::-webkit-scrollbar {
-      width: 8px;
-    }
-    
-    &::-webkit-scrollbar-track {
-      background: var(--color-surface);
-      border-radius: var(--radius-sm);
-    }
-    
-    &::-webkit-scrollbar-thumb {
-      background: var(--color-border);
-      border-radius: var(--radius-sm);
-      
-      &:hover {
-        background: var(--color-border);
-      }
-    }
-  }
-  
-  &-text {
-    font-family: var(--font-sans);
-    line-height: var(--leading-relaxed);
-    color: var(--color-text);
-  }
-  
-  &-code {
-    background: var(--color-surface);
-    border: var(--border-1) solid var(--color-border);
-    border-radius: var(--radius-md);
-    padding: var(--space-4);
-    font-family: var(--font-mono);
-    font-size: var(--text-sm);
-    line-height: var(--leading-relaxed);
-    overflow-x: auto;
-    white-space: pre;
-    
-    code {
-      background: none;
-      padding: 0;
-      border: none;
-      font-family: inherit;
-    }
-  }
-  
-  &-markdown {
-    h1, h2, h3, h4, h5, h6 {
-      margin: var(--space-4) 0 var(--space-2) 0;
-      font-weight: var(--font-semibold);
-      color: var(--color-text);
-    }
-    
-    h1 { font-size: var(--text-2xl); }
-    h2 { font-size: var(--text-xl); }
-    h3 { font-size: var(--text-lg); }
-    
-    p {
-      margin: var(--space-3) 0;
-    }
-    
-    strong {
-      font-weight: var(--font-semibold);
-    }
-    
-    em {
-      font-style: italic;
-    }
-    
-    code {
-      background: var(--color-surface);
-      padding: var(--space-1) var(--space-2);
-      border-radius: var(--radius-sm);
-      font-family: var(--font-mono);
-      font-size: 0.9em;
-    }
-  }
-  
-  &-image {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 300px;
-  }
-  
-  &-img {
-    max-width: 100%;
-    max-height: 70vh;
-    border-radius: var(--radius-md);
-    box-shadow: 0 4px 20px var(--color-overlay-light);
-  }
-  
-  &-json {
-    background: var(--color-surface);
-    border-radius: var(--radius-md);
-    overflow: hidden;
-  }
-  
-  &-unsupported {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: var(--space-8);
-    text-align: center;
-  }
-  
-  &-metadata {
-    border-top: var(--border-1) solid var(--color-border);
-    padding: var(--space-4);
-    background: var(--color-surface);
-    flex-shrink: 0;
-  }
-  
-  &-metadata-title {
-    font-size: var(--text-lg);
-    font-weight: var(--font-semibold);
-    color: var(--color-text);
-    margin-bottom: var(--space-3);
-  }
-  
-  &-metadata-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: var(--space-3);
-  }
-  
-  &-metadata-item {
-    display: flex;
-    justify-content: space-between;
-    font-size: var(--text-sm);
-  }
-  
-  &-metadata-label {
-    color: var(--color-text-muted);
-    font-weight: var(--font-medium);
-  }
-  
-  &-metadata-value {
-    color: var(--color-text);
-    font-family: var(--font-mono);
-  }
-  
-  &-empty {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: var(--space-8);
-  }
-}
-
-.modal-overlay-manager {
-  position: fixed;
-  inset: 0;
-  z-index: var(--z-modal-overlay);
-  pointer-events: none;
-  
-  &.active {
-    pointer-events: all;
-  }
-}
-
-.modal-responsive {
-  .modal-content {
-    // Enhanced mobile-first responsive design
-    @include responsive-max(sm) {
-      margin: 0;
-      max-height: 100vh;
-      max-height: 100dvh;
-      border-radius: 0;
-      width: 100%;
-    }
-    
-    @include responsive-min(sm) {
-      margin: var(--space-4);
-      max-height: 85vh;
-      border-radius: var(--radius-xl);
-    }
-    
-    @include responsive-min(md) {
-      margin: var(--space-6);
-      max-height: 90vh;
-      border-radius: var(--radius-2xl);
-    }
-  }
-}
-
-.modal-content-responsive {
-  // Safe content areas that prevent overflow
-  padding: var(--space-2);
-  overflow: hidden;
-  
-  @include responsive-min(sm) {
-    padding: var(--space-4);
-  }
-  
-  @include responsive-min(md) {
-    padding: var(--space-6);
-  }
-  
-  // Ensure content scrolls properly
-  > * {
-    overflow-x: hidden;
-    word-wrap: break-word;
-  }
-}
-
-// Touch-optimized interaction targets
-.touch-target {
-  min-height: 44px !important;
-  min-width: 44px !important;
-  
-  @include responsive-min(md) {
-    min-height: 40px !important;
-    min-width: auto !important;
-  }
-}
-
-// Mobile-safe content areas
-.mobile-safe {
-  max-width: 100%;
-  overflow-x: hidden;
-  word-wrap: break-word;
-  
-  // Prevent layout breaking elements
-  table,
-  .table,
-  pre,
-  code {
-    max-width: 100%;
-    overflow-x: auto;
-  }
-  
-  // Safe image handling
-  img {
-    max-width: 100%;
-    height: auto;
   }
 }

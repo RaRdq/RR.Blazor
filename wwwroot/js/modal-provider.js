@@ -1,48 +1,71 @@
+// ===========================================
+// JAVASCRIPT DOM REPOSITIONING MODAL SYSTEM  
+// Moves modals to document.body level for full viewport coverage
+// ===========================================
+
 export function initialize(dotNetRef) {
     const modalProvider = new ModalProvider(dotNetRef);
+    console.log('[Modal Provider] JavaScript DOM repositioning system initialized');
     return modalProvider;
 }
 
 class ModalProvider {
     constructor(dotNetRef) {
         this.dotNetRef = dotNetRef;
-        this.setupEventListeners();
-    }
-
-    setupEventListeners() {
-        document.addEventListener('keydown', (event) => {
-            if (event.key === 'Escape' && this.dotNetRef) {
-                this.dotNetRef.invokeMethodAsync('OnKeyDown', event.key);
-            }
-        });
-
+        this.repositionedModals = new Set();
+        this.setupKeyboardHandling();
         this.setupScrollLock();
         this.setupFocusManagement();
+        this.setupModalRepositioning();
     }
 
-    getVisibleModal() {
-        const modals = document.querySelectorAll('.modal[role="dialog"]');
-        for (const modal of modals) {
-            const computedStyle = window.getComputedStyle(modal);
-            const isVisible = computedStyle.display !== 'none' && 
-                             computedStyle.visibility !== 'hidden' && 
-                             computedStyle.opacity !== '0' &&
-                             modal.offsetHeight > 0 && 
-                             modal.offsetWidth > 0;
-            if (isVisible) return modal;
-        }
-        return null;
+    setupKeyboardHandling() {
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                const activeModal = this.getActiveModal();
+                if (activeModal && this.dotNetRef) {
+                    this.dotNetRef.invokeMethodAsync('OnKeyDown', event.key);
+                }
+            }
+        });
     }
 
-    setupScrollLock() {
-        const observer = new MutationObserver(() => {
-            requestAnimationFrame(() => {
-                const visibleModal = this.getVisibleModal();
-                if (visibleModal) {
-                    this.repositionModalToBodyLevel(visibleModal);
-                    this.lockBodyScroll();
-                } else {
-                    this.unlockBodyScroll();
+    setupModalRepositioning() {
+        // Watch for modals being added to the DOM
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach(mutation => {
+                if (mutation.type === 'childList') {
+                    // Check for new modal elements
+                    mutation.addedNodes.forEach(node => {
+                        if (node.nodeType === Node.ELEMENT_NODE) {
+                            // Look for modal elements
+                            const modals = node.classList?.contains('modal') ? [node] : node.querySelectorAll?.('.modal') || [];
+                            modals.forEach(modal => {
+                                if (modal.classList.contains('modal--visible')) {
+                                    this.repositionModalToBodyLevel(modal);
+                                }
+                            });
+                            
+                            // Check if modal-provider becomes active
+                            if (node.classList?.contains('modal-provider') && node.classList.contains('active')) {
+                                this.processModalProvider(node);
+                            }
+                        }
+                    });
+                    
+                    // Check for attribute changes on existing modal providers
+                    const modalProviders = document.querySelectorAll('.modal-provider.active');
+                    modalProviders.forEach(provider => this.processModalProvider(provider));
+                }
+                
+                if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+                    const target = mutation.target;
+                    if (target.classList.contains('modal-provider') && target.classList.contains('active')) {
+                        this.processModalProvider(target);
+                    }
+                    if (target.classList.contains('modal') && target.classList.contains('modal--visible')) {
+                        this.repositionModalToBodyLevel(target);
+                    }
                 }
             });
         });
@@ -51,158 +74,160 @@ class ModalProvider {
             childList: true, 
             subtree: true,
             attributes: true,
-            attributeFilter: ['class', 'style']
+            attributeFilter: ['class']
         });
 
-        this.scrollObserver = observer;
-        
-        const visibleModal = this.getVisibleModal();
-        if (visibleModal) {
-            this.repositionModalToBodyLevel(visibleModal);
-            this.lockBodyScroll();
-        } else {
-            this.unlockBodyScroll();
+        this.modalObserver = observer;
+    }
+
+    processModalProvider(provider) {
+        // Move the entire modal provider to body level
+        if (provider.parentElement !== document.body) {
+            console.log('[Modal Provider] Moving modal provider to document.body for viewport coverage');
+            
+            // Store original position for restoration
+            if (!provider._originalParent) {
+                provider._originalParent = provider.parentElement;
+                provider._originalNextSibling = provider.nextSibling;
+            }
+            
+            // Move to body level
+            document.body.appendChild(provider);
+            
+            // Apply viewport-level positioning
+            this.applyBodyLevelStyles(provider);
         }
+        
+        // Lock body scroll when modal provider is active
+        this.lockBodyScroll();
+        
+        // Process any modals within the provider
+        const modals = provider.querySelectorAll('.modal--visible');
+        modals.forEach(modal => {
+            this.applyModalStyles(modal);
+        });
     }
 
     repositionModalToBodyLevel(modal) {
-        if (modal.parentElement === document.body) return;
+        console.log('[Modal Provider] Repositioning modal to body level for full viewport coverage');
+        
+        // Lock body scroll when any modal becomes visible
+        this.lockBodyScroll();
+        
+        // Check if modal is already at body level
+        if (modal.parentElement === document.body) {
+            this.applyModalStyles(modal);
+            return;
+        }
 
+        // Store original parent for cleanup
         if (!modal._originalParent) {
             modal._originalParent = modal.parentElement;
             modal._originalNextSibling = modal.nextSibling;
         }
 
+        // Move modal to body level for proper viewport positioning
         document.body.appendChild(modal);
-        modal.style.position = 'fixed';
-        modal.style.inset = '0';
-        modal.style.zIndex = getComputedStyle(document.documentElement).getPropertyValue('--z-modal') || '1050';
+        this.repositionedModals.add(modal);
+        
+        // Apply body-level modal styles
+        this.applyModalStyles(modal);
     }
 
-    restoreModalPosition(modal) {
-        if (modal._originalParent && modal._originalParent !== document.body) {
-            if (modal._originalNextSibling) {
-                modal._originalParent.insertBefore(modal, modal._originalNextSibling);
+    applyBodyLevelStyles(element) {
+        // Force maximum positioning for modal provider
+        const styles = {
+            position: 'fixed',
+            top: '0',
+            left: '0',
+            right: '0',
+            bottom: '0',
+            width: '100vw',
+            height: '100vh',
+            zIndex: '1045',
+            pointerEvents: 'auto'
+        };
+
+        Object.assign(element.style, styles);
+        
+        // Force with !important to override any CSS
+        element.style.setProperty('position', 'fixed', 'important');
+        element.style.setProperty('inset', '0', 'important');
+        element.style.setProperty('z-index', '1045', 'important');
+        element.style.setProperty('pointer-events', 'auto', 'important');
+        
+        console.log('[Modal Provider] Applied body-level positioning to modal provider');
+    }
+
+    applyModalStyles(modal) {
+        // Force viewport-level positioning for modals
+        const styles = {
+            position: 'fixed',
+            top: '0',
+            left: '0',
+            right: '0',
+            bottom: '0',
+            width: '100vw',
+            height: '100vh',
+            zIndex: '1050',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            opacity: '1',
+            visibility: 'visible'
+        };
+
+        Object.assign(modal.style, styles);
+        
+        // Force with !important to override CSS animations that cause blinking
+        modal.style.setProperty('position', 'fixed', 'important');
+        modal.style.setProperty('inset', '0', 'important');
+        modal.style.setProperty('z-index', '1050', 'important');
+        modal.style.setProperty('opacity', '1', 'important');
+        modal.style.setProperty('visibility', 'visible', 'important');
+        modal.style.setProperty('pointer-events', 'auto', 'important');
+        
+        console.log('[Modal Provider] Applied viewport-level positioning to modal');
+    }
+
+    setupScrollLock() {
+        // Watch for modal provider state changes
+        const observer = new MutationObserver(() => {
+            const provider = document.querySelector('.modal-provider.active');
+            if (provider) {
+                this.lockBodyScroll();
             } else {
-                modal._originalParent.appendChild(modal);
+                this.unlockBodyScroll();
             }
-            
-            delete modal._originalParent;
-            delete modal._originalNextSibling;
-        }
-    }
+        });
 
-    lockBodyScroll() {
-        if (document.body.classList.contains('modal-open')) return;
-        
-        this.originalScrollTop = window.pageYOffset || document.documentElement.scrollTop;
-        
-        document.body.style.overflow = 'hidden';
-        document.body.style.position = 'fixed';
-        document.body.style.top = `-${this.originalScrollTop}px`;
-        document.body.style.left = '0';
-        document.body.style.right = '0';
-        document.body.style.width = '100%';
-        
-        document.body.classList.add('modal-open');
-        
-        this.preventScrollEvents();
-    }
+        observer.observe(document.body, { 
+            childList: true, 
+            subtree: true, 
+            attributes: true, 
+            attributeFilter: ['class'] 
+        });
 
-    unlockBodyScroll() {
-        const visibleModal = this.getVisibleModal();
-        if (visibleModal) return;
-        
-        const bodyModals = document.querySelectorAll('body > .modal[role="dialog"]');
-        bodyModals.forEach(modal => this.restoreModalPosition(modal));
-        
-        document.body.style.overflow = '';
-        document.body.style.position = '';
-        document.body.style.top = '';
-        document.body.style.left = '';
-        document.body.style.right = '';
-        document.body.style.width = '';
-        
-        document.body.classList.remove('modal-open');
-        
-        this.allowScrollEvents();
-        
-        if (this.originalScrollTop) {
-            window.scrollTo(0, this.originalScrollTop);
-            this.originalScrollTop = 0;
-        }
-    }
-
-    preventScrollEvents() {
-        this.wheelListener = (e) => {
-            if (!this.isScrollableArea(e.target)) {
-                e.preventDefault();
-                e.stopPropagation();
-            }
-        };
-        
-        this.touchMoveListener = (e) => {
-            if (!this.isScrollableArea(e.target)) {
-                e.preventDefault();
-                e.stopPropagation();
-            }
-        };
-        
-        this.keydownListener = (e) => {
-            const scrollKeys = ['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' '];
-            if (scrollKeys.includes(e.key) && !this.isScrollableArea(e.target)) {
-                e.preventDefault();
-                e.stopPropagation();
-            }
-        };
-        
-        document.addEventListener('wheel', this.wheelListener, { passive: false });
-        document.addEventListener('touchmove', this.touchMoveListener, { passive: false });
-        document.addEventListener('keydown', this.keydownListener, { passive: false });
-    }
-
-    isScrollableArea(element) {
-        while (element && element !== document.body) {
-            if (element.matches('.modal-body, .modal-content, .select-modal-list, [data-scroll="true"]')) {
-                const computedStyle = window.getComputedStyle(element);
-                return computedStyle.overflowY === 'auto' || 
-                       computedStyle.overflowY === 'scroll' ||
-                       computedStyle.overflow === 'auto' ||
-                       computedStyle.overflow === 'scroll';
-            }
-            element = element.parentElement;
-        }
-        return false;
-    }
-
-    allowScrollEvents() {
-        if (this.wheelListener) {
-            document.removeEventListener('wheel', this.wheelListener);
-            this.wheelListener = null;
-        }
-        if (this.touchMoveListener) {
-            document.removeEventListener('touchmove', this.touchMoveListener);
-            this.touchMoveListener = null;
-        }
-        if (this.keydownListener) {
-            document.removeEventListener('keydown', this.keydownListener);
-            this.keydownListener = null;
-        }
+        this.scrollObserver = observer;
     }
 
     setupFocusManagement() {
         document.addEventListener('focusin', (event) => {
-            const modals = document.querySelectorAll('.modal[role="dialog"]');
-            if (modals.length === 0) return;
+            const activeModal = this.getActiveModal();
+            if (!activeModal) return;
 
-            const topModal = Array.from(modals).pop();
-            if (!topModal.contains(event.target)) {
-                const focusableElement = this.getFocusableElements(topModal)[0];
+            // If focus goes outside modal, bring it back
+            if (!activeModal.contains(event.target)) {
+                const focusableElement = this.getFocusableElements(activeModal)[0];
                 if (focusableElement) {
                     focusableElement.focus();
                 }
             }
         });
+    }
+
+    getActiveModal() {
+        return document.querySelector('.modal--visible');
     }
 
     getFocusableElements(container) {
@@ -218,74 +243,115 @@ class ModalProvider {
         return container.querySelectorAll(focusableSelectors.join(', '));
     }
 
-    dispose() {
-        if (this.scrollObserver) {
-            this.scrollObserver.disconnect();
-        }
+    lockBodyScroll() {
+        if (document.body.classList.contains('modal-open')) return;
+        
+        // Store current scroll position
+        this.scrollPosition = window.pageYOffset;
+        
+        // Lock scroll
+        document.body.style.overflow = 'hidden';
+        document.body.style.position = 'fixed';
+        document.body.style.top = `-${this.scrollPosition}px`;
+        document.body.style.width = '100%';
+        
+        document.body.classList.add('modal-open');
+        
+        console.log('[Modal Provider] Body scroll locked');
+    }
 
-        this.allowScrollEvents();
+    unlockBodyScroll() {
+        // Only unlock if no visible modals exist
+        const visibleModals = document.querySelectorAll('.modal--visible');
+        if (visibleModals.length > 0) {
+            console.log('[Modal Provider] Scroll unlock prevented - modals still visible:', visibleModals.length);
+            return;
+        }
+        
+        if (!document.body.classList.contains('modal-open')) return;
+        
+        // Restore all repositioned modals first
+        this.restoreModalPositions();
+        
+        // Restore scroll position and unlock
+        document.body.style.overflow = '';
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.width = '';
+        
+        document.body.classList.remove('modal-open');
+        
+        // Restore scroll position
+        if (this.scrollPosition) {
+            window.scrollTo(0, this.scrollPosition);
+            this.scrollPosition = 0;
+        }
+        
+        console.log('[Modal Provider] Body scroll unlocked');
+    }
+
+    restoreModalPositions() {
+        // Restore modal providers to original positions
+        const modalProviders = document.querySelectorAll('.modal-provider');
+        modalProviders.forEach(provider => {
+            if (provider._originalParent && provider._originalParent !== document.body) {
+                console.log('[Modal Provider] Restoring modal provider to original position');
+                
+                if (provider._originalNextSibling) {
+                    provider._originalParent.insertBefore(provider, provider._originalNextSibling);
+                } else {
+                    provider._originalParent.appendChild(provider);
+                }
+                
+                delete provider._originalParent;
+                delete provider._originalNextSibling;
+            }
+        });
+        
+        // Restore repositioned modals
+        this.repositionedModals.forEach(modal => {
+            if (modal._originalParent && modal._originalParent !== document.body) {
+                console.log('[Modal Provider] Restoring modal to original position');
+                
+                if (modal._originalNextSibling) {
+                    modal._originalParent.insertBefore(modal, modal._originalNextSibling);
+                } else {
+                    modal._originalParent.appendChild(modal);
+                }
+                
+                delete modal._originalParent;
+                delete modal._originalNextSibling;
+            }
+        });
+        
+        this.repositionedModals.clear();
+    }
+
+    dispose() {
+        this.modalObserver?.disconnect();
+        this.scrollObserver?.disconnect();
+        this.restoreModalPositions();
         this.unlockBodyScroll();
+        
+        console.log('[Modal Provider] JavaScript DOM repositioning system disposed');
     }
 }
 
+// Export for backwards compatibility
 export const modalUtils = {
     copyToClipboard(text) {
-        return RRBlazor.copyToClipboard(text);
+        return navigator.clipboard?.writeText(text) || Promise.reject('Clipboard not available');
     },
 
     downloadContent(content, fileName, contentType = 'text/plain') {
-        return RRBlazor.downloadContent(content, fileName, contentType);
-    },
-
-    setupFormValidation(formElement) {
-        if (!formElement) return;
-
-        const inputs = formElement.querySelectorAll('input, select, textarea');
-        inputs.forEach(input => {
-            input.addEventListener('blur', () => {
-                this.validateField(input);
-            });
-
-            input.addEventListener('input', () => {
-                this.clearFieldErrors(input);
-            });
-        });
-    },
-
-    validateField(field) {
-        if (field.hasAttribute('required') && !field.value.trim()) {
-            this.showFieldError(field, 'This field is required');
-            return false;
-        }
-
-        if (field.type === 'email' && field.value && !this.isValidEmail(field.value)) {
-            this.showFieldError(field, 'Please enter a valid email address');
-            return false;
-        }
-
-        this.clearFieldErrors(field);
-        return true;
-    },
-
-    showFieldError(field, message) {
-        this.clearFieldErrors(field);
-        const errorElement = document.createElement('div');
-        errorElement.className = 'field-error text-sm text--error mt-1';
-        errorElement.textContent = message;
-        field.parentElement.appendChild(errorElement);
-        field.classList.add('field--error');
-    },
-
-    clearFieldErrors(field) {
-        const errorElement = field.parentElement.querySelector('.field-error');
-        if (errorElement) {
-            errorElement.remove();
-        }
-        field.classList.remove('field--error');
-    },
-
-    isValidEmail(email) {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        return emailRegex.test(email);
+        const blob = new Blob([content], { type: contentType });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
     }
 };
