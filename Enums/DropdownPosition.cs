@@ -8,5 +8,7 @@ public enum DropdownPosition
     Bottom,
     BottomEnd,
     BottomStart,
+    Left,
+    Right,
     Auto
 }
