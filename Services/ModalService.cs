@@ -7,7 +7,7 @@ using RR.Blazor.Models;
 
 namespace RR.Blazor.Services;
 
-public class ModalService(IJSRuntime jsRuntime) : IModalService, IDisposable
+public class ModalService : IModalService, IDisposable
 {
     private readonly List<ModalInstance> _activeModals = new();
     private bool _isDisposed;
