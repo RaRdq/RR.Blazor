@@ -6,53 +6,52 @@
 @inject IModalService ModalService
 @inject IJSRuntime JSRuntime
 
-@* RModalProvider - JavaScript DOM repositioning system for framework integration *@
-@* Stays in RAppShell as required - JavaScript portals move modals to body level *@
-<div class="modal-provider @(_activeModals.Any() ? "active" : "")" 
-     @onkeydown="OnKeyDownHandler" 
-     @onkeydown:preventDefault="false" 
-     tabindex="-1"
-     style="@GetProviderStyles()">
-    @foreach (var modal in _activeModals)
-    {
-        <RModal 
-            @key="modal.Id"
-            Visible="@modal.Visible"
-            Text="@modal.Options.Title"
-            Subtitle="@modal.Options.Subtitle"
-            Icon="@modal.Options.Icon"
-            Size="@modal.Options.Size"
-            Variant="@modal.Options.Variant"
-            CloseOnBackdrop="@modal.Options.CloseOnBackdrop"
-            CloseOnEscape="@modal.Options.CloseOnEscape"
-            ShowCloseButton="@modal.Options.ShowCloseButton"
-            ShowHeader="@modal.Options.ShowHeader"
-            ShowFooter="@modal.Options.ShowFooter"
-            Class="@modal.Options.Class"
-            OnClose="@(() => HandleModalClose(modal))"
-            OnCancel="@(() => HandleModalCancel(modal))"
-            OnPrimaryAction="@(() => HandlePrimaryAction(modal))"
-            FooterContent="@(modal.Options.Buttons.Any() ? CreateModalFooter(modal) : null)">
-            
-            @if (modal.Options.ComponentType != null)
+@if (ModalService.HasVisibleModals)
+{
+    <div @ref="_modalContainer" style="display: none;">
+        <div class="modal-backdrop" @onclick="HandleBackdropClick" @onkeydown="OnKeyDownHandler" @onkeydown:preventDefault="false" tabindex="-1">
+            @foreach (var modal in ModalService.ActiveModals)
             {
-                <DynamicComponent Type="modal.Options.ComponentType" Parameters="GetComponentParameters(modal)" />
+                <RModal 
+                    @key="modal.Id"
+                    Visible="@modal.Visible"
+                    Text="@modal.Options.Title"
+                    Subtitle="@modal.Options.Subtitle"
+                    Icon="@modal.Options.Icon"
+                    Size="@modal.Options.Size"
+                    Variant="@modal.Options.Variant"
+                    CloseOnBackdrop="@modal.Options.CloseOnBackdrop"
+                    CloseOnEscape="@modal.Options.CloseOnEscape"
+                    ShowCloseButton="@modal.Options.ShowCloseButton"
+                    ShowHeader="@modal.Options.ShowHeader"
+                    ShowFooter="@modal.Options.ShowFooter"
+                    OnClose="@(() => HandleModalClose(modal))"
+                    OnCancel="@(() => HandleModalCancel(modal))"
+                    OnPrimaryAction="@(() => HandlePrimaryAction(modal))"
+                    FooterContent="@(modal.Options.Buttons.Any() ? CreateModalFooter(modal) : null)">
+                    
+                    @if (modal.Options.ComponentType != null)
+                    {
+                        <DynamicComponent Type="modal.Options.ComponentType" Parameters="GetComponentParameters(modal)" />
+                    }
+                </RModal>
             }
-        </RModal>
-    }
-</div>
+        </div>
+    </div>
+}
 
 @code {
-    private readonly List<ModalInstance> _activeModals = new();
-    private DotNetObjectReference<RModalProvider> _dotNetRef;
+    private ElementReference _modalContainer;
     private IJSObjectReference _jsModule;
+    private static int _portalCounter = 0;
+    private readonly string _portalId = $"modal-{System.Threading.Interlocked.Increment(ref _portalCounter)}";
+    private bool _isPortalCreated = false;
 
-    protected override async Task OnInitializedAsync()
+    protected override void OnInitialized()
     {
-        _dotNetRef = DotNetObjectReference.Create(this);
-        
-        ModalService.OnModalOpened += OnModalOpened;
-        ModalService.OnModalClosed += OnModalClosed;
+        ModalService.OnModalOpened += OnModalStateChanged;
+        ModalService.OnModalClosed += OnModalStateChanged;
+        ModalService.OnAllModalsClosed += OnAllModalsClosed;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -61,35 +60,66 @@
         {
             try
             {
-                // Initialize JavaScript DOM repositioning system
-                _jsModule = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./_content/RR.Blazor/js/modal-provider.js");
-                await _jsModule.InvokeVoidAsync("initialize", _dotNetRef);
-                
-                Console.WriteLine("[RModalProvider] JavaScript DOM repositioning system initialized successfully");
+                _jsModule = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./js/portal.js");
             }
-            catch (Exception ex)
+            catch
             {
-                Console.WriteLine($"[RModalProvider] Failed to initialize JavaScript module: {ex.Message}");
+                // Silent fail
             }
         }
-        
-        if (_activeModals.Any())
+
+        if (ModalService.HasVisibleModals && !_isPortalCreated)
         {
-            // Focus management for keyboard handling
-            await JSRuntime.InvokeVoidAsync("eval", "document.querySelector('.modal-provider.active')?.focus()");
+            await CreatePortal();
+        }
+        else if (!ModalService.HasVisibleModals && _isPortalCreated)
+        {
+            await CleanupPortal();
         }
     }
 
-    private void OnModalOpened(ModalInstance modal)
+    private async Task CreatePortal()
     {
-        _activeModals.Add(modal);
-        StateHasChanged();
+        if (_jsModule != null && !_isPortalCreated)
+        {
+            try
+            {
+                await _jsModule.InvokeVoidAsync("createPortal", _modalContainer, "body", _portalId, "", GetFullViewportStyles());
+                await JSRuntime.InvokeVoidAsync("document.body.classList.add", "modal-open");
+                _isPortalCreated = true;
+            }
+            catch
+            {
+                // Silent fail
+            }
+        }
     }
 
-    private void OnModalClosed(ModalInstance modal)
+    private async Task CleanupPortal()
     {
-        _activeModals.Remove(modal);
-        StateHasChanged();
+        if (_jsModule != null && _isPortalCreated)
+        {
+            try
+            {
+                await _jsModule.InvokeVoidAsync("cleanupPortal", _portalId);
+                await JSRuntime.InvokeVoidAsync("document.body.classList.remove", "modal-open");
+                _isPortalCreated = false;
+            }
+            catch
+            {
+                // Silent fail
+            }
+        }
+    }
+
+    private void OnModalStateChanged(ModalInstance modal)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnAllModalsClosed()
+    {
+        InvokeAsync(StateHasChanged);
     }
 
     private Dictionary<string, object> GetComponentParameters(ModalInstance modal)
@@ -189,47 +219,23 @@
 
     private async Task CloseModal(ModalInstance modal, Enums.ModalResult result)
     {
-        modal.Visible = false;
-        
-        if (modal is ModalInstance<object> typedModal)
-        {
-            typedModal.TaskSource.SetResult(new ModalResult<object>
-            {
-                ResultType = result,
-                Data = modal.Result
-            });
-        }
-
-        await ModalService.CloseAsync(modal.Id);
+        await ModalService.CloseAsync(modal.Id, result);
     }
 
-    private string GetSizeString(ModalSize size) => size switch
+    private async Task HandleBackdropClick()
     {
-        ModalSize.Small => "small",
-        ModalSize.Large => "large",
-        ModalSize.XLarge => "xlarge",
-        ModalSize.Wide => "wide",
-        ModalSize.Full => "full",
-        _ => "medium"
-    };
-
-    private string GetVariantString(ModalVariant variant) => variant switch
-    {
-        ModalVariant.Confirmation => "confirmation",
-        ModalVariant.Destructive => "destructive",
-        ModalVariant.Success => "success",
-        ModalVariant.Warning => "warning",
-        ModalVariant.Info => "info",
-        ModalVariant.Glass => "glass",
-        ModalVariant.Protected => "protected",
-        _ => "default"
-    };
+        var topModal = ModalService.ActiveModals.LastOrDefault();
+        if (topModal?.Options.CloseOnBackdrop == true)
+        {
+            await HandleModalClose(topModal);
+        }
+    }
 
     private async Task OnKeyDownHandler(KeyboardEventArgs e)
     {
-        if (e.Key == "Escape" && _activeModals.Any())
+        if (e.Key == "Escape")
         {
-            var topModal = _activeModals.LastOrDefault();
+            var topModal = ModalService.ActiveModals.LastOrDefault();
             if (topModal?.Options.CloseOnEscape == true)
             {
                 await HandleModalClose(topModal);
@@ -237,57 +243,29 @@
         }
     }
 
-    [JSInvokable]
-    public async Task OnKeyDown(string key)
+    private string GetFullViewportStyles()
     {
-        // Legacy method for backwards compatibility
-        if (key == "Escape" && _activeModals.Any())
-        {
-            var topModal = _activeModals.LastOrDefault();
-            if (topModal?.Options.CloseOnEscape == true)
-            {
-                await HandleModalClose(topModal);
-            }
-        }
-    }
-
-
-    private string GetProviderStyles()
-    {
-        // Provide base positioning that JavaScript will enhance
-        var styles = new List<string>
-        {
-            "position: fixed",
-            "inset: 0",
-            "z-index: var(--z-modal-container, 1045)"
-        };
-        
-        if (_activeModals.Any())
-        {
-            styles.Add("pointer-events: auto");
-        }
-        else
-        {
-            styles.Add("pointer-events: none");
-        }
-        
-        return string.Join("; ", styles);
+        return @"
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            bottom: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            z-index: var(--z-modal-backdrop, 1040) !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            background: rgba(15, 23, 42, 0.7) !important;
+            backdrop-filter: blur(8px) !important;
+        ";
     }
 
     public void Dispose()
     {
-        ModalService.OnModalOpened -= OnModalOpened;
-        ModalService.OnModalClosed -= OnModalClosed;
-        
-        try
-        {
-            _jsModule?.DisposeAsync();
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[RModalProvider] Error disposing JavaScript module: {ex.Message}");
-        }
-        
-        _dotNetRef?.Dispose();
+        ModalService.OnModalOpened -= OnModalStateChanged;
+        ModalService.OnModalClosed -= OnModalStateChanged;
+        ModalService.OnAllModalsClosed -= OnAllModalsClosed;
     }
 }

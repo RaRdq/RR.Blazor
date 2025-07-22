@@ -38,6 +38,8 @@ public interface IModalService
     Task CloseAsync(string modalId, Enums.ModalResult result = Enums.ModalResult.None);
     Task CloseAllAsync();
     bool IsModalOpen(string modalId = null);
+    bool HasVisibleModals { get; }
+    IEnumerable<ModalInstance> ActiveModals { get; }
     
     // Events
     event Action<ModalInstance> OnModalOpened;

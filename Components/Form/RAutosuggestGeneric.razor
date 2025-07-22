@@ -1,0 +1,372 @@
+@** 
+<summary>
+Generic autosuggest component with dropdown suggestions and search functionality.
+Extensible foundation for text search, datepicker autosuggest, and custom implementations.
+</summary>
+<category>Form</category>
+<complexity>Complex</complexity>
+<ai-prompt>Create autosuggest input with dropdown suggestions</ai-prompt>
+<ai-common-use>search inputs, autocomplete fields, suggestion dropdowns</ai-common-use>
+<ai-avoid>Don't use for simple inputs without suggestions. Use RTextInput instead.</ai-avoid>
+**@
+
+@namespace RR.Blazor.Components
+@using RR.Blazor.Models
+@using RR.Blazor.Enums
+@using RR.Blazor.Attributes
+@using Microsoft.AspNetCore.Components.Web
+@typeparam TItem where TItem : notnull
+@inherits RInputBase
+@implements IDisposable
+
+@attribute [Component("RAutosuggestGeneric", Category = "Form", Complexity = ComponentComplexity.Complex)]
+@attribute [AIOptimized(Prompt = "Create autosuggest input with dropdown suggestions", 
+                       CommonUse = "search inputs, autocomplete fields, suggestion dropdowns", 
+                       AvoidUsage = "Don't use for simple inputs without suggestions")]
+
+<div class="@GetAutosuggestClasses()" 
+     tabindex="-1"
+     @onkeydown="HandleKeyDown">
+
+    <!-- Input Field -->
+    <RTextInput Value="@SearchQuery"
+               ValueChanged="@HandleValueChanged"
+               Type="@InputType"
+               Placeholder="@Placeholder"
+               Label="@Label"
+               HelpText="@HelpText" 
+               Icon="@Icon"
+               Size="@GetTextInputSize()"
+               Disabled="@Disabled"
+               ReadOnly="@ReadOnly"
+               Required="@Required"
+               Class="@GetInputClasses()"
+               StartIcon="@StartIcon"
+               EndIcon="@GetEndIcon()"
+               OnFocus="@HandleInputFocus"
+               OnBlur="@HandleInputBlur"
+               AdditionalAttributes="@GetInputAttributes()" />
+
+    <!-- Suggestions Dropdown -->
+    @if (IsOpen && FilteredItems.Any())
+    {
+        <div class="autosuggest-backdrop" @onclick="CloseDropdown"></div>
+        
+        <div class="autosuggest-viewport">
+            <div class="autosuggest-dropdown">
+                @if (ShowLoading && IsLoading)
+                {
+                    <div class="autosuggest-loading">
+                        <RSkeleton Height="2rem" />
+                        <RSkeleton Height="2rem" />
+                        <RSkeleton Height="2rem" />
+                    </div>
+                }
+                else if (FilteredItems.Any())
+                {
+                    @foreach (var (item, index) in FilteredItems.Take(MaxSuggestions).Select((item, idx) => (item, idx)))
+                    {
+                        <div class="autosuggest-item @GetItemClasses(index)"
+                             @onclick="() => HandleItemSelect(item)"
+                             @onmouseenter="() => SetSelectedIndex(index)"
+                             data-item-index="@index"
+                             role="option"
+                             aria-selected="@(SelectedIndex == index)">
+                            @if (ItemTemplate != null)
+                            {
+                                @ItemTemplate(item)
+                            }
+                            else
+                            {
+                                <div class="autosuggest-item-content">
+                                    @if (!string.IsNullOrEmpty(GetItemIcon(item)))
+                                    {
+                                        <i class="material-symbols-rounded autosuggest-item-icon">@GetItemIcon(item)</i>
+                                    }
+                                    <span class="autosuggest-item-text">@GetItemText(item)</span>
+                                </div>
+                            }
+                        </div>
+                    }
+                }
+                else if (!string.IsNullOrWhiteSpace(SearchQuery) && SearchQuery.Length >= MinSearchLength)
+                {
+                    <div class="autosuggest-empty">
+                        @if (EmptyTemplate != null)
+                        {
+                            @EmptyTemplate
+                        }
+                        else
+                        {
+                            <div class="autosuggest-empty-content">
+                                <i class="material-symbols-rounded">search_off</i>
+                                <span>No suggestions found</span>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private string searchQuery = string.Empty;
+    private bool isOpen = false;
+    private bool isLoading = false;
+    private int selectedIndex = -1;
+    private Timer debounceTimer;
+    private CancellationTokenSource cancellationTokenSource;
+
+    [Parameter] public TItem Value { get; set; }
+    [Parameter] public EventCallback<TItem> ValueChanged { get; set; }
+    [Parameter] public IEnumerable<TItem> Items { get; set; } = Enumerable.Empty<TItem>();
+    [Parameter] public Func<string, CancellationToken, Task<IEnumerable<TItem>>> SearchFunc { get; set; }
+    [Parameter] public Func<TItem, string> ItemTextSelector { get; set; } = item => item?.ToString() ?? string.Empty;
+    [Parameter] public Func<TItem, string> ItemIconSelector { get; set; }
+    [Parameter] public RenderFragment<TItem> ItemTemplate { get; set; }
+    [Parameter] public RenderFragment EmptyTemplate { get; set; }
+    [Parameter] public int MinSearchLength { get; set; } = 1;
+    [Parameter] public int DebounceDelay { get; set; } = 300;
+    [Parameter] public int MaxSuggestions { get; set; } = 10;
+    [Parameter] public bool ShowLoading { get; set; } = true;
+    [Parameter] public bool ClearOnSelect { get; set; } = false;
+    [Parameter] public bool OpenOnFocus { get; set; } = false;
+    [Parameter] public FieldType InputType { get; set; } = FieldType.Text;
+    [Parameter] public string StartIcon { get; set; }
+    [Parameter] public string EndIcon { get; set; }
+
+    // Input parameters
+    [Parameter] public string Placeholder { get; set; }
+    [Parameter] public string Label { get; set; }
+    [Parameter] public string HelpText { get; set; }
+    [Parameter] public string Icon { get; set; }
+    [Parameter] public FieldSize Size { get; set; } = FieldSize.Medium;
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public bool ReadOnly { get; set; }
+    [Parameter] public bool Required { get; set; }
+
+    // Events
+    [Parameter] public EventCallback<TItem> OnItemSelected { get; set; }
+    [Parameter] public EventCallback<string> OnSearchChanged { get; set; }
+
+    private string SearchQuery
+    {
+        get => searchQuery;
+        set
+        {
+            if (searchQuery != value)
+            {
+                searchQuery = value;
+                HandleSearch();
+            }
+        }
+    }
+
+    private bool IsOpen => isOpen && !Disabled && !ReadOnly;
+    private bool IsLoading => isLoading;
+    private int SelectedIndex => selectedIndex;
+    private IEnumerable<TItem> FilteredItems => Items ?? Enumerable.Empty<TItem>();
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        if (Value != null)
+        {
+            searchQuery = GetItemText(Value);
+        }
+    }
+
+    private async Task HandleValueChanged(string value)
+    {
+        SearchQuery = value;
+        await OnSearchChanged.InvokeAsync(value);
+    }
+
+    private async Task HandleInputFocus()
+    {
+        if (OpenOnFocus && !IsOpen && !string.IsNullOrWhiteSpace(SearchQuery))
+        {
+            await OpenDropdown();
+        }
+    }
+
+    private async Task HandleInputBlur()
+    {
+        // Delay closing to allow item selection
+        await Task.Delay(150);
+        await CloseDropdown();
+    }
+
+    private async Task HandleSearch()
+    {
+        cancellationTokenSource?.Cancel();
+        debounceTimer?.Dispose();
+
+        if (string.IsNullOrWhiteSpace(SearchQuery) || SearchQuery.Length < MinSearchLength)
+        {
+            await CloseDropdown();
+            return;
+        }
+
+        cancellationTokenSource = new CancellationTokenSource();
+        debounceTimer = new Timer(async _ =>
+        {
+            await InvokeAsync(async () =>
+            {
+                if (SearchFunc != null)
+                {
+                    isLoading = true;
+                    StateHasChanged();
+
+                    try
+                    {
+                        var results = await SearchFunc(SearchQuery, cancellationTokenSource.Token);
+                        Items = results ?? Enumerable.Empty<TItem>();
+                        await OpenDropdown();
+                    }
+                    catch (OperationCanceledException) { }
+                    finally
+                    {
+                        isLoading = false;
+                        StateHasChanged();
+                    }
+                }
+                else
+                {
+                    await OpenDropdown();
+                }
+            });
+        }, null, DebounceDelay, Timeout.Infinite);
+    }
+
+    private async Task HandleItemSelect(TItem item)
+    {
+        Value = item;
+        searchQuery = ClearOnSelect ? string.Empty : GetItemText(item);
+        await CloseDropdown();
+        await ValueChanged.InvokeAsync(item);
+        await OnItemSelected.InvokeAsync(item);
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (!IsOpen || !FilteredItems.Any()) return;
+
+        switch (e.Key)
+        {
+            case "ArrowDown":
+                selectedIndex = Math.Min(selectedIndex + 1, FilteredItems.Count() - 1);
+                StateHasChanged();
+                break;
+
+            case "ArrowUp":
+                selectedIndex = Math.Max(selectedIndex - 1, -1);
+                StateHasChanged();
+                break;
+
+            case "Enter":
+                if (selectedIndex >= 0 && selectedIndex < FilteredItems.Count())
+                {
+                    await HandleItemSelect(FilteredItems.ElementAt(selectedIndex));
+                }
+                break;
+
+            case "Escape":
+                await CloseDropdown();
+                break;
+        }
+    }
+
+
+    private async Task OpenDropdown()
+    {
+        if (!isOpen)
+        {
+            isOpen = true;
+            selectedIndex = -1;
+            StateHasChanged();
+        }
+    }
+
+    private async Task CloseDropdown()
+    {
+        if (isOpen)
+        {
+            isOpen = false;
+            selectedIndex = -1;
+            StateHasChanged();
+        }
+    }
+
+    private void SetSelectedIndex(int index)
+    {
+        selectedIndex = index;
+        StateHasChanged();
+    }
+
+    private string GetItemText(TItem item) => ItemTextSelector?.Invoke(item) ?? item?.ToString() ?? string.Empty;
+    private string GetItemIcon(TItem item) => ItemIconSelector?.Invoke(item) ?? string.Empty;
+
+    private string GetEndIcon()
+    {
+        if (IsLoading) return "refresh";
+        if (!string.IsNullOrEmpty(EndIcon)) return EndIcon;
+        return IsOpen ? "expand_less" : "expand_more";
+    }
+
+    private string GetAutosuggestClasses()
+    {
+        var classes = new List<string> { "autosuggest" };
+        
+        if (IsOpen) classes.Add("autosuggest-open");
+        if (IsLoading) classes.Add("autosuggest-loading");
+        if (Disabled) classes.Add("autosuggest-disabled");
+        if (!string.IsNullOrEmpty(Class)) classes.Add(Class);
+        
+        return string.Join(" ", classes);
+    }
+
+    private string GetInputClasses() => "autosuggest-input";
+
+    private string GetItemClasses(int index)
+    {
+        var classes = new List<string> { "autosuggest-item" };
+        if (index == selectedIndex) classes.Add("autosuggest-item-selected");
+        return string.Join(" ", classes);
+    }
+
+    private Dictionary<string, object> GetInputAttributes()
+    {
+        var attrs = new Dictionary<string, object>();
+        
+        if (IsOpen)
+        {
+            attrs.Add("aria-expanded", "true");
+            attrs.Add("aria-haspopup", "listbox");
+            attrs.Add("role", "combobox");
+        }
+        
+        return attrs;
+    }
+
+    private TextInputSize GetTextInputSize() => Size switch
+    {
+        FieldSize.Small => TextInputSize.Small,
+        FieldSize.Large => TextInputSize.Large,
+        _ => TextInputSize.Medium
+    };
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+    }
+
+    void IDisposable.Dispose()
+    {
+        debounceTimer?.Dispose();
+        cancellationTokenSource?.Cancel();
+        debounceTimer = null;
+        cancellationTokenSource = null;
+    }
+}

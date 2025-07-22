@@ -1,13 +1,14 @@
-@** 
-<summary>Generic choice component implementation with smart variant detection</summary>
+@**
+<summary>Universal choice system - works with both inline and dropdown modes</summary>
 <category>Form</category>
 <complexity>Complex</complexity>
-<ai-prompt>Create choice component that adapts between inline and dropdown modes</ai-prompt>
-<ai-common-use>option selection, filters, toggles, menus with smart layout</ai-common-use>
-<ai-avoid>Don't use for simple on/off toggles - use checkbox instead</ai-avoid>
-<ai-pattern name="smart-choice">Items="@options" for automatic detection</ai-pattern>
-<ai-pattern name="forced-inline">Variant="ChoiceVariant.Inline" Style="ChoiceStyle.Pills"</ai-pattern>
-<ai-pattern name="forced-dropdown">Variant="ChoiceVariant.Dropdown"</ai-pattern>
+<ai-prompt>Universal choice component that adapts between inline and dropdown variants</ai-prompt>
+<ai-common-use>role switching, status filters, option selection, context switching</ai-common-use>
+<ai-avoid>Don't use for simple on/off toggles (use RToggle) or complex forms</ai-avoid>
+<ai-pattern name="auto-detection">RChoice Items="@options" for smart variant detection</ai-pattern>
+<ai-pattern name="force-dropdown">RChoiceGeneric EffectiveVariant="ChoiceVariant.Dropdown"</ai-pattern>
+<ai-pattern name="force-inline">RChoiceGeneric EffectiveVariant="ChoiceVariant.Inline"</ai-pattern>
+<ai-pattern name="role-switcher">RChoiceGeneric with custom TriggerContent</ai-pattern>
 **@
 
 @attribute [Component("RChoiceGeneric", Category = "Form")]
@@ -17,52 +18,85 @@
 @inherits RChoiceBase
 @using Microsoft.AspNetCore.Components
 @using RR.Blazor.Components.Form
+@using RR.Blazor.Enums
 
 @if (EffectiveVariant == ChoiceVariant.Dropdown)
 {
     <!-- Dropdown Mode -->
-    <div class="choice choice-dropdown choice-auto @(IsOpen ? "choice-open" : "") @GetDropdownDensityClass() @base.Class">
-        <button class="choice-trigger touch-target"
-                @onclick="ToggleDropdown"
-                @onkeydown="OnKeyDown"
-                aria-haspopup="true"
-                aria-expanded="@IsOpen"
-                aria-label="@(AriaLabel ?? "Open dropdown")"
-                disabled="@Disabled">
-            @if (!string.IsNullOrEmpty(GetSelectedItemIcon()))
-            {
-                <i class="material-symbols-rounded">@GetSelectedItemIcon()</i>
-            }
-            @if (base.ChildContent != null)
-            {
-                @base.ChildContent
-            }
-            else
-            {
+    <div @ref="choiceElement" class="choice choice-dropdown @(IsOpen ? "choice-open" : "") @GetDropdownDensityClass() @base.Class">
+        
+        @if (TriggerContent != null)
+        {
+            <!-- Custom Trigger Content -->
+            <button class="choice-trigger touch-target"
+                    @onclick="ToggleDropdown"
+                    @onkeydown="OnKeyDown"
+                    aria-haspopup="true"
+                    aria-expanded="@IsOpen"
+                    aria-label="@(AriaLabel ?? "Open dropdown")"
+                    disabled="@Disabled">
+                @TriggerContent
+            </button>
+        }
+        else
+        {
+            <!-- Default Trigger -->
+            <button class="choice-trigger touch-target"
+                    @onclick="ToggleDropdown"
+                    @onkeydown="OnKeyDown"
+                    aria-haspopup="true"
+                    aria-expanded="@IsOpen"
+                    aria-label="@(AriaLabel ?? "Open dropdown")"
+                    disabled="@Disabled">
+                @if (!string.IsNullOrEmpty(GetSelectedItemIcon()))
+                {
+                    <i class="material-symbols-rounded">@GetSelectedItemIcon()</i>
+                }
                 <span>@GetSelectedItemLabel()</span>
-            }
-        </button>
-
+                <i class="material-symbols-rounded choice-chevron">expand_more</i>
+            </button>
+        }
+        
+        <!-- Backdrop -->
         <div class="choice-backdrop" @onclick="CloseDropdown"></div>
+        
+        <!-- Dropdown Content -->
         <div class="choice-viewport">
             <div class="choice-content">
                 @if (Items != null)
                 {
                     @foreach (var item in Items)
                     {
-                        <button class="choice-item @GetItemClass(item)"
-                                @onclick="() => OnItemSelected(item)"
-                                disabled="@IsItemDisabled(item)">
-                            @if (IsItemActive(item))
-                            {
-                                <i class="material-symbols-rounded">check</i>
-                            }
-                            else if (!string.IsNullOrEmpty(GetItemIcon(item)))
-                            {
-                                <i class="material-symbols-rounded">@GetItemIcon(item)</i>
-                            }
-                            <span>@GetItemLabel(item)</span>
-                        </button>
+                        @if (ItemTemplate != null)
+                        {
+                            <!-- Custom Item Template -->
+                            <button class="choice-item @GetItemClass(item)"
+                                    @onclick="() => OnItemSelected(item)"
+                                    disabled="@IsItemDisabled(item)"
+                                    title="@GetItemTitle(item)"
+                                    aria-label="@GetItemAriaLabel(item)">
+                                @ItemTemplate(item)
+                            </button>
+                        }
+                        else
+                        {
+                            <!-- Default Item Template -->
+                            <button class="choice-item @GetItemClass(item)"
+                                    @onclick="() => OnItemSelected(item)"
+                                    disabled="@IsItemDisabled(item)"
+                                    title="@GetItemTitle(item)"
+                                    aria-label="@GetItemAriaLabel(item)">
+                                @if (IsItemActive(item))
+                                {
+                                    <i class="material-symbols-rounded">check</i>
+                                }
+                                else if (!string.IsNullOrEmpty(GetItemIcon(item)))
+                                {
+                                    <i class="material-symbols-rounded">@GetItemIcon(item)</i>
+                                }
+                                <span>@GetItemLabel(item)</span>
+                            </button>
+                        }
                     }
                 }
             </div>
@@ -72,7 +106,7 @@
 else
 {
     <!-- Inline Mode -->
-    <div class="choice choice-inline @GetInlineClass() @base.Class">
+    <div class="choice @GetInlineClass() @base.Class">
         @if (Items != null)
         {
             @foreach (var item in Items)
@@ -97,7 +131,7 @@ else
                     @if (IsItemLoading(item))
                     {
                         <div class="choice-loading">
-                            <i class="material-symbols-rounded">hourglass_empty</i>
+                            <i class="material-symbols-rounded animate-spin">hourglass_empty</i>
                         </div>
                     }
                 </button>
@@ -106,8 +140,11 @@ else
     </div>
 }
 
+@inject IJSRuntime JS
+
 @code {
     private bool isOpen = false;
+    private ElementReference choiceElement;
 
     [Parameter] public IEnumerable<TValue> Items { get; set; }
     [Parameter] public TValue SelectedValue { get; set; }
@@ -121,27 +158,44 @@ else
     [Parameter] public Func<TValue, bool> ItemLoadingSelectorTyped { get; set; }
     [Parameter] public ChoiceVariant EffectiveVariant { get; set; } = ChoiceVariant.Inline;
     [Parameter] public ChoiceStyle Style { get; set; } = ChoiceStyle.Standard;
+    [Parameter] public RenderFragment TriggerContent { get; set; }
+    [Parameter] public RenderFragment<object> ItemTemplate { get; set; }
+    [Parameter] public EventCallback<TValue> OnItemClick { get; set; }
+    [Parameter] public bool Loading { get; set; } = false;
+    [Parameter] public string DropdownClass { get; set; }
+    [Parameter] public DropdownDirection DropdownDirection { get; set; } = DropdownDirection.Auto;
 
     private bool IsOpen => isOpen && !Disabled;
 
-
     private string GetInlineClass()
     {
-        var classes = new List<string> { "choice-switcher" };
+        var classes = new List<string>();
+        
+        // Add style classes
+        classes.Add(Style switch
+        {
+            ChoiceStyle.Standard => "choice-switcher",
+            ChoiceStyle.Pills => "choice-pills",
+            ChoiceStyle.Tabs => "choice-tabs", 
+            ChoiceStyle.Buttons => "choice-buttons",
+            ChoiceStyle.Compact => "choice-compact",
+            _ => "choice-switcher"
+        });
         
         // Add density classes
         classes.Add(Density switch
         {
             ComponentDensity.Compact => "choice-compact",
             ComponentDensity.Dense => "choice-dense",
-            ComponentDensity.Normal => "choice-normal", 
+            ComponentDensity.Normal => "choice-normal",
             ComponentDensity.Spacious => "choice-spacious",
             _ => "choice-normal"
         });
         
-        if (!string.IsNullOrEmpty(base.Class))
-            classes.Add(base.Class);
-        
+        // Add direction classes
+        if (Direction == ChoiceDirection.Vertical)
+            classes.Add("choice-vertical");
+            
         return string.Join(" ", classes);
     }
 
@@ -149,7 +203,6 @@ else
     {
         var classes = new List<string>();
         
-        // Add density classes
         classes.Add(Density switch
         {
             ComponentDensity.Compact => "choice-compact",
@@ -158,10 +211,6 @@ else
             ComponentDensity.Spacious => "choice-spacious",
             _ => "choice-normal"
         });
-        
-        // Add custom classes
-        if (!string.IsNullOrEmpty(base.Class))
-            classes.Add(base.Class);
         
         return string.Join(" ", classes);
     }
@@ -244,11 +293,25 @@ else
         }
     }
 
-    private Task OpenDropdown()
+    private async Task OpenDropdown()
     {
         isOpen = true;
         StateHasChanged();
-        return Task.CompletedTask;
+        
+        // Apply dynamic positioning after the dropdown is rendered
+        if (DropdownDirection == DropdownDirection.Auto)
+        {
+            await Task.Yield(); // Allow DOM to update
+            try
+            {
+                await JS.InvokeVoidAsync("RRBlazor.Choice.applyDynamicPositioning", choiceElement);
+            }
+            catch (Exception ex)
+            {
+                // Positioning failed, continue without it
+                System.Diagnostics.Debug.WriteLine($"Dynamic positioning failed: {ex.Message}");
+            }
+        }
     }
 
     private Task CloseDropdown()
@@ -262,6 +325,10 @@ else
     {
         if (IsItemDisabled(item) || IsItemLoading(item))
             return;
+
+        // Call item click event first
+        if (OnItemClick.HasDelegate)
+            await OnItemClick.InvokeAsync(item);
 
         SelectedValue = item;
         

@@ -38,6 +38,9 @@ public class AppNavItem : NavMenuItem
     /// <summary>Whether to show loading indicator when navigating</summary>
     public bool ShowLoadingIndicator { get; set; } = true;
     
+    /// <summary>Whether this item is disabled</summary>
+    public bool IsDisabled { get; set; }
+    
     /// <summary>Check if user can access this item</summary>
     public bool CanAccess(AppUser user, string[] userPermissions = null)
     {

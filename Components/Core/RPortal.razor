@@ -1,0 +1,58 @@
+@using Microsoft.AspNetCore.Components
+@using System.Threading
+@implements IAsyncDisposable
+@inject IJSRuntime JSRuntime
+
+@code {
+    [Parameter] public RenderFragment ChildContent { get; set; }
+    [Parameter] public string Target { get; set; } = "body";
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public string Style { get; set; } = "";
+
+    private ElementReference _portalRef;
+    private static IJSObjectReference? _sharedJsModule;
+    private readonly string _portalId = GeneratePortalId();
+    private bool _isInitialized = false;
+
+    // Ultra-lightweight ID generation (no GUID allocation)
+    private static int _portalCounter = 0;
+    private static string GeneratePortalId() => $"p{Interlocked.Increment(ref _portalCounter)}";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                // Reuse shared module instance for performance
+                _sharedJsModule ??= await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./js/portal.js");
+                
+                await _sharedJsModule.InvokeVoidAsync("createPortal", _portalRef, Target, _portalId, Class, Style);
+                _isInitialized = true;
+            }
+            catch
+            {
+                // Silent fail for performance - errors handled at portal level
+            }
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_sharedJsModule != null && _isInitialized)
+        {
+            try
+            {
+                await _sharedJsModule.InvokeVoidAsync("cleanupPortal", _portalId);
+            }
+            catch
+            {
+                // Silent cleanup for performance
+            }
+        }
+    }
+}
+
+<div @ref="_portalRef" id="@_portalId" style="display: none;">
+    @ChildContent
+</div>

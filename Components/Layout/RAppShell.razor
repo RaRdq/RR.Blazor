@@ -80,51 +80,51 @@ Ultra-clean, responsive, and customizable for any business application.
                 }
                 else
                 {
-                    <!-- Page Title & Breadcrumbs -->
+                    <!-- Page Header: Title and Breadcrumbs -->
                     <div class="page-header-content">
+                        @if (ShowBreadcrumbs && Breadcrumbs?.Any() == true)
+                        {
+                            <nav class="breadcrumbs-nav" aria-label="Breadcrumb">
+                                <ol class="breadcrumbs-list">
+                                @foreach (var (item, index) in GetVisibleBreadcrumbs().Select((item, index) => (item, index)))
+                                {
+                                    var isLast = index == GetVisibleBreadcrumbs().Count - 1;
+                                    var isFirst = index == 0;
+                                    
+                                    <li class="breadcrumb">
+                                        @if (!string.IsNullOrEmpty(item.Icon) && isFirst)
+                                        {
+                                            <i class="material-symbols-rounded breadcrumb-icon">@item.Icon</i>
+                                        }
+                                        
+                                        @if (isLast || string.IsNullOrEmpty(item.Href))
+                                        {
+                                            <span class="breadcrumb-current" aria-current="@(isLast ? "page" : null)">
+                                                @item.Text
+                                            </span>
+                                        }
+                                        else if (item.IsDisabled)
+                                        {
+                                            <span class="breadcrumb-disabled">@item.Text</span>
+                                        }
+                                        else
+                                        {
+                                            <a href="@item.Href" class="breadcrumb-link">@item.Text</a>
+                                        }
+                                        
+                                        @if (!isLast)
+                                        {
+                                            <span class="breadcrumb-sep" aria-hidden="true">/</span>
+                                        }
+                                    </li>
+                                }
+                                </ol>
+                            </nav>
+                        }
                         <div class="page-title-row">
                             @if (!string.IsNullOrEmpty(PageTitle))
                             {
                                 <h1 class="page-title">@PageTitle</h1>
-                            }
-                            @if (ShowBreadcrumbs && Breadcrumbs?.Any() == true)
-                            {
-                                <nav class="breadcrumb-list" aria-label="Breadcrumb">
-                                    <ol class="breadcrumb-list">
-                                    @foreach (var (item, index) in Breadcrumbs.Select((item, index) => (item, index)))
-                                    {
-                                        var isLast = index == Breadcrumbs.Count - 1;
-                                        
-                                        <li class="breadcrumb-item">
-                                            @if (!string.IsNullOrEmpty(item.Icon) && index == 0)
-                                            {
-                                                <i class="breadcrumb-icon material-symbols-rounded">@item.Icon</i>
-                                            }
-                                            
-                                            @if (isLast || string.IsNullOrEmpty(item.Href))
-                                            {
-                                                <span class="breadcrumb-text breadcrumb-current" 
-                                                      aria-current="@(isLast ? "page" : null)">
-                                                    @item.Text
-                                                </span>
-                                            }
-                                            else
-                                            {
-                                                <a href="@item.Href" class="breadcrumb-link">
-                                                    @item.Text
-                                                </a>
-                                            }
-                                            
-                                            @if (!isLast)
-                                            {
-                                                <span class="breadcrumb-separator" aria-hidden="true">
-                                                    <i class="material-symbols-rounded">chevron_right</i>
-                                                </span>
-                                            }
-                                        </li>
-                                    }
-                                    </ol>
-                                </nav>
                             }
                         </div>
                         @if (!string.IsNullOrEmpty(PageSubtitle))
@@ -141,85 +141,66 @@ Ultra-clean, responsive, and customizable for any business application.
             <div class="header-right">
                 @if (ShowSearch)
                 {
-                    <div class="app-search">
-                        @if (SearchCollapsible)
+                    @if (SearchCollapsible)
+                    {
+                        @if (searchExpanded)
                         {
-                            <div class="search-container @(searchExpanded ? "expanded" : "collapsed")">
-                                @if (searchExpanded)
-                                {
-                                    <div class="d-flex align-center gap-1 w-100 relative">
-                                        <RTextInput Type="FieldType.Search"
+                            <div class="app-search-expanded d-flex align-center gap-1">
+                                <RAutosuggestGeneric TItem="AppSearchResult" 
+                                                   Value="@selectedSearchResult"
+                                                   ValueChanged="@HandleSearchResultSelected"
+                                                   SearchFunc="@HandleSearchAsync"
+                                                   ItemTextSelector="@(result => result.Title)"
+                                                   ItemIconSelector="@(result => result.Icon)"
+                                                   ItemTemplate="@SearchResultTemplate"
                                                    Placeholder="Search..."
-                                                   Value="@searchQuery"
-                                                   ValueChanged="@(value => { searchQuery = value; HandleSearchChange(); })"
-                                                   Class="flex-1"
-                                                   Id="app-shell-search-input"
-                                                   OnKeyDown="@HandleSearchKeyDown" />
-                                        <RButton Icon="close" 
-                                                 Variant="ButtonVariant.Ghost" 
-                                                 Size="ButtonSize.Small"
-                                                 OnClick="CollapseSearch" 
-                                                 AriaLabel="Close search" 
-                                                 Class="shrink-0 touch-target" />
-                                    </div>
-                                }
-                                else
-                                {
-                                    <RButton Icon="search" 
-                                             Variant="ButtonVariant.Ghost" 
-                                             Size="ButtonSize.Small"
-                                             OnClick="@(async () => await ExpandSearch())" 
-                                             AriaLabel="Open search" 
-                                             Class="touch-target" />
-                                }
+                                                   StartIcon="search"
+                                                   MinSearchLength="1"
+                                                   DebounceDelay="300"
+                                                   MaxSuggestions="8"
+                                                   ShowLoading="true"
+                                                   OnItemSelected="@HandleSearchItemSelected"
+                                                   OnSearchChanged="@HandleSearchQueryChanged"
+                                                   Class="flex-1" />
+                                <RButton Icon="close" 
+                                         Variant="ButtonVariant.Ghost" 
+                                         Size="ButtonSize.Small"
+                                         OnClick="CollapseSearch" 
+                                         AriaLabel="Close search" 
+                                         Class="shrink-0 touch-target" />
                             </div>
                         }
                         else
                         {
-                            <div class="search-container expanded">
-                                <div class="d-flex align-center gap-1 w-100 relative">
-                                    <RTextInput Type="FieldType.Search"
+                            <RButton Icon="search" 
+                                     Variant="ButtonVariant.Ghost" 
+                                     Size="ButtonSize.Small"
+                                     OnClick="@ExpandSearch" 
+                                     AriaLabel="Open search" 
+                                     Class="touch-target" />
+                        }
+                    }
+                    else
+                    {
+                        <div class="app-search-fixed">
+                            <RAutosuggestGeneric TItem="AppSearchResult" 
+                                               Value="@selectedSearchResult"
+                                               ValueChanged="@HandleSearchResultSelected"
+                                               SearchFunc="@HandleSearchAsync"
+                                               ItemTextSelector="@(result => result.Title)"
+                                               ItemIconSelector="@(result => result.Icon)"
+                                               ItemTemplate="@SearchResultTemplate"
                                                Placeholder="Search..."
-                                               Value="@searchQuery"
-                                               ValueChanged="@(value => { searchQuery = value; HandleSearchChange(); })"
-                                               Class="flex-1"
                                                StartIcon="search"
-                                               OnKeyDown="@HandleSearchKeyDown" />
-                                </div>
-                            </div>
-                        }
-                        
-                        <!-- Search Results -->
-                        @if (showSearchResults && searchResults.Any())
-                        {
-                            <div class="search-dropdown"
-                                 role="listbox"
-                                 aria-label="Search results">
-                                @foreach (var (result, index) in searchResults.Take(8).Select((r, i) => (r, i)))
-                                {
-                                    <button class="search-result-item @(selectedResultIndex == index ? "selected" : "")"
-                                            @onclick="() => HandleSearchResultClick(result)"
-                                            role="option"
-                                            aria-selected="@(selectedResultIndex == index)"
-                                            tabindex="-1"
-                                            data-result-index="@index">
-                                        @if (!string.IsNullOrEmpty(result.Icon))
-                                        {
-                                            <i class="search-result-icon material-symbols-rounded">@result.Icon</i>
-                                        }
-                                        <div class="search-result-content">
-                                            <div class="search-result-title">@result.Title</div>
-                                            @if (!string.IsNullOrEmpty(result.Description))
-                                            {
-                                                <div class="search-result-description">@result.Description</div>
-                                            }
-                                        </div>
-                                        <span class="search-result-category">@result.Category</span>
-                                    </button>
-                                }
-                            </div>
-                        }
-                    </div>
+                                               MinSearchLength="1"
+                                               DebounceDelay="300"
+                                               MaxSuggestions="8"
+                                               ShowLoading="true"
+                                               OnItemSelected="@HandleSearchItemSelected"
+                                               OnSearchChanged="@HandleSearchQueryChanged"
+                                               Class="app-search-input" />
+                        </div>
+                    }
                 }
                 
                 @if (ShowNotifications)
@@ -368,13 +349,9 @@ Ultra-clean, responsive, and customizable for any business application.
     private bool disposed = false;
     private bool sidebarCollapsed = false;
     private bool sidebarOpen = true;
-    private string searchQuery = string.Empty;
-    private List<AppSearchResult> searchResults = new();
-    private bool showSearchResults = false;
     private bool showUserMenu = false;
     private bool searchExpanded = false;
-    private Timer searchDebounceTimer;
-    private int selectedResultIndex = -1;
+    private AppSearchResult selectedSearchResult;
     
     // ===== CORE PARAMETERS =====
     
@@ -593,6 +570,35 @@ Ultra-clean, responsive, and customizable for any business application.
             .ToList();
     }
     
+    private List<AppNavItem> GetVisibleBreadcrumbs()
+    {
+        if (Breadcrumbs == null || !Breadcrumbs.Any()) return new List<AppNavItem>();
+        
+        // For mobile: show first, last, and ellipsis if more than 4 items
+        if (IsMobile && Breadcrumbs.Count > 4)
+        {
+            var visibleItems = new List<AppNavItem>();
+            visibleItems.Add(Breadcrumbs.First());
+            
+            // Add ellipsis item if needed
+            if (Breadcrumbs.Count > 3)
+            {
+                visibleItems.Add(new AppNavItem { Text = "...", IsDisabled = true });
+            }
+            
+            // Add second to last item if different from first
+            if (Breadcrumbs.Count > 2)
+            {
+                visibleItems.Add(Breadcrumbs[Breadcrumbs.Count - 2]);
+            }
+            
+            visibleItems.Add(Breadcrumbs.Last());
+            return visibleItems;
+        }
+        
+        return Breadcrumbs;
+    }
+    
     private void ToggleSidebar()
     {
         if (IsMobile)
@@ -624,70 +630,6 @@ Ultra-clean, responsive, and customizable for any business application.
         return effectiveMode.ToString().ToLower();
     }
     
-    private async Task HandleSearchChange()
-    {
-        try
-        {
-            searchDebounceTimer?.Dispose();
-            
-            if (string.IsNullOrWhiteSpace(searchQuery))
-            {
-                showSearchResults = false;
-                searchResults.Clear();
-                selectedResultIndex = -1;
-                StateHasChanged();
-                return;
-            }
-            
-            searchDebounceTimer = new Timer(async _ =>
-            {
-                try
-                {
-                    if (!disposed)
-                    {
-                        await InvokeAsync(async () =>
-                        {
-                            if (!disposed)
-                            {
-                                searchResults = await SearchService.SearchAsync(searchQuery);
-                                showSearchResults = searchResults.Any();
-                                selectedResultIndex = -1; // Reset selection when new results load
-                                StateHasChanged();
-                            }
-                        });
-                    }
-                }
-                catch (ObjectDisposedException) { }
-                catch (Exception ex)
-                {
-                    Console.Error.WriteLine($"Search error: {ex.Message}");
-                }
-            }, null, 300, Timeout.Infinite);
-            
-            await SearchChanged.InvokeAsync(searchQuery);
-        }
-        catch (ObjectDisposedException) { }
-    }
-    
-    private async Task HandleSearchResultClick(AppSearchResult result)
-    {
-        showSearchResults = false;
-        searchQuery = string.Empty;
-        selectedResultIndex = -1;
-        
-        await SearchService.AddToRecentAsync(result);
-        
-        if (result.OnClick != null)
-        {
-            await result.OnClick();
-        }
-        else if (!string.IsNullOrEmpty(result.Url))
-        {
-            await JS.InvokeVoidAsync("window.location.href", result.Url);
-        }
-        
-        StateHasChanged();
-    }
     
     private async Task HandleNotificationsClick()
     {
@@ -699,107 +641,93 @@ Ultra-clean, responsive, and customizable for any business application.
         showUserMenu = !showUserMenu;
     }
     
+    
+    // ===== NEW SEARCH IMPLEMENTATION =====
+    
+    private RenderFragment<AppSearchResult> SearchResultTemplate => result => __builder =>
+    {
+        <div class="search-result-content">
+            @if (!string.IsNullOrEmpty(result.Icon))
+            {
+                <i class="material-symbols-rounded search-result-icon">@result.Icon</i>
+            }
+            <div class="search-result-text">
+                <div class="search-result-title">@result.Title</div>
+                @if (!string.IsNullOrEmpty(result.Description))
+                {
+                    <div class="search-result-description">@result.Description</div>
+                }
+            </div>
+            <span class="search-result-category">@result.Category</span>
+        </div>
+    };
+
+    private async Task<IEnumerable<AppSearchResult>> HandleSearchAsync(string query, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(query)) return Enumerable.Empty<AppSearchResult>();
+        
+        try
+        {
+            var results = await SearchService.SearchAsync(query, cancellationToken);
+            return results ?? Enumerable.Empty<AppSearchResult>();
+        }
+        catch (OperationCanceledException)
+        {
+            return Enumerable.Empty<AppSearchResult>();
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Search error: {ex.Message}");
+            return Enumerable.Empty<AppSearchResult>();
+        }
+    }
+
+    private async Task HandleSearchResultSelected(AppSearchResult result)
+    {
+        selectedSearchResult = result;
+        if (SearchCollapsible)
+        {
+            await CollapseSearch();
+        }
+    }
+
+    private async Task HandleSearchItemSelected(AppSearchResult result)
+    {
+        await SearchService.AddToRecentAsync(result);
+        
+        if (result.OnClick != null)
+        {
+            await result.OnClick();
+        }
+        else if (!string.IsNullOrEmpty(result.Url))
+        {
+            await JS.InvokeVoidAsync("window.location.href", result.Url);
+        }
+    }
+
+    private async Task HandleSearchQueryChanged(string query)
+    {
+        await SearchChanged.InvokeAsync(query);
+    }
+
     private async Task ExpandSearch()
     {
         searchExpanded = true;
         StateHasChanged();
         
-        // Focus the search input after it becomes visible
-        await Task.Delay(50); // Small delay to ensure DOM is updated
+        await Task.Delay(50);
         try
         {
-            await JS.InvokeVoidAsync("focusElement", "app-shell-search-input");
+            await JS.InvokeVoidAsync("focusElement", ".app-search-expanded .autosuggest-input input");
         }
-        catch
-        {
-            // Ignore focus errors
-        }
+        catch { }
     }
-    
-    private void CollapseSearch()
+
+    private async Task CollapseSearch()
     {
         searchExpanded = false;
-        searchQuery = string.Empty;
-        showSearchResults = false;
-        selectedResultIndex = -1;
-        searchDebounceTimer?.Dispose();
-        searchDebounceTimer = null;
-    }
-    
-    private async Task HandleSearchKeyDown(KeyboardEventArgs e)
-    {
-        if (!showSearchResults || !searchResults.Any()) return;
-        
-        switch (e.Key)
-        {
-            case "ArrowDown":
-                selectedResultIndex = Math.Min(selectedResultIndex + 1, searchResults.Count - 1);
-                await FocusSelectedResult();
-                StateHasChanged();
-                break;
-                
-            case "ArrowUp":
-                selectedResultIndex = Math.Max(selectedResultIndex - 1, -1);
-                if (selectedResultIndex == -1)
-                {
-                    await FocusSearchInput();
-                }
-                else
-                {
-                    await FocusSelectedResult();
-                }
-                StateHasChanged();
-                break;
-                
-            case "Enter":
-                if (selectedResultIndex >= 0 && selectedResultIndex < searchResults.Count)
-                {
-                    await HandleSearchResultClick(searchResults[selectedResultIndex]);
-                }
-                break;
-                
-            case "Escape":
-                CollapseSearch();
-                StateHasChanged();
-                break;
-        }
-    }
-    
-    private async Task FocusSelectedResult()
-    {
-        if (selectedResultIndex >= 0)
-        {
-            try
-            {
-                await JS.InvokeVoidAsync("focusElement", $"[data-result-index='{selectedResultIndex}']");
-            }
-            catch
-            {
-                // Ignore focus errors
-            }
-        }
-    }
-    
-    private async Task FocusSearchInput()
-    {
-        try
-        {
-            await JS.InvokeVoidAsync("focusElement", "app-shell-search-input");
-        }
-        catch
-        {
-            // Ignore focus errors
-        }
-    }
-    
-    private string GetSearchResultClasses(int index)
-    {
-        var baseClasses = "search-result-item";
-        if (selectedResultIndex == index)
-        {
-            baseClasses += " bg-surface";
-        }
-        return baseClasses;
+        selectedSearchResult = null;
+        StateHasChanged();
     }
     
     // ===== CSS CLASS GENERATORS =====
@@ -905,12 +833,7 @@ Ultra-clean, responsive, and customizable for any business application.
         {
             disposed = true;
             
-            try
-            {
-                searchDebounceTimer?.Dispose();
-                searchDebounceTimer = null;
-            }
-            catch { }
+            // Clean disposal handled by RAutosuggest component
             
             if (jsModule != null)
             {

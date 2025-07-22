@@ -1,0 +1,290 @@
+@use '../abstracts' as *;
+
+// Autosuggest component using CSS-only dropdown positioning
+.autosuggest {
+  @extend %interactive-base;
+  position: relative;
+  width: 100%;
+
+  // Input field container
+  &-input {
+    width: 100%;
+  }
+
+  // Backdrop (hidden by default)
+  &-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: transparent;
+    z-index: var(--z-backdrop, 999);
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  // Dropdown viewport - CSS-only positioning
+  &-viewport {
+    position: absolute;
+    top: calc(100% + var(--space-1));
+    left: 0;
+    right: 0;
+    z-index: var(--z-dropdown, 1000);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-var(--space-1)) scale(0.95);
+    transition: all var(--duration-fast) var(--ease-out);
+    max-height: 0;
+    overflow: hidden;
+    
+    // Container queries for smart positioning
+    @container (max-width: 100vw) {
+      // Ensure dropdown fits in viewport
+      max-width: 100vw;
+      left: max(-50vw, -100%);
+      right: max(-50vw, -100%);
+    }
+  }
+
+  // Open state modifiers
+  &-open {
+    .autosuggest-backdrop {
+      visibility: visible;
+      pointer-events: auto;
+    }
+
+    .autosuggest-viewport {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0) scale(1);
+      max-height: 20rem;
+    }
+  }
+
+  // Dropdown content
+  &-dropdown {
+    @extend %card-base-enhanced;
+    padding: var(--space-2) 0;
+    max-height: 20rem;
+    overflow-y: auto;
+    min-width: 200px;
+    
+    // Custom scrollbar for dropdown
+    &::-webkit-scrollbar {
+      width: 4px;
+    }
+    
+    &::-webkit-scrollbar-track {
+      background: var(--color-surface);
+    }
+    
+    &::-webkit-scrollbar-thumb {
+      background: var(--color-border);
+      border-radius: var(--radius-full);
+    }
+  }
+
+  // Suggestion items
+  &-item {
+    @extend %button-state-base;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    background: transparent;
+    border: none;
+    text-align: left;
+    cursor: pointer;
+    transition: all var(--duration-fast) var(--ease-out);
+
+    &:hover,
+    &-selected {
+      background: var(--color-surface);
+      color: var(--color-text);
+    }
+
+    &:active {
+      background: var(--color-surface-elevated);
+    }
+
+    // Item content layout
+    &-content {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      width: 100%;
+      min-width: 0;
+    }
+
+    &-icon {
+      @extend %icon-base;
+      font-size: var(--text-sm);
+      color: var(--color-text-secondary);
+      flex-shrink: 0;
+    }
+
+    &-text {
+      @extend %text-truncate;
+      font-size: var(--text-sm);
+      line-height: var(--leading-relaxed);
+      color: var(--color-text);
+      flex: 1;
+      min-width: 0;
+    }
+  }
+
+  // Loading state
+  &-loading {
+    padding: var(--space-2) var(--space-3);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  // Empty state
+  &-empty {
+    padding: var(--space-4) var(--space-3);
+    text-align: center;
+
+    &-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--space-2);
+      color: var(--color-text-secondary);
+
+      i {
+        font-size: var(--text-2xl);
+        opacity: 0.5;
+      }
+
+      span {
+        font-size: var(--text-sm);
+      }
+    }
+  }
+
+  // Disabled state
+  &-disabled {
+    opacity: var(--opacity-disabled);
+    pointer-events: none;
+  }
+
+  // Loading indicator on input
+  &-loading &-input {
+    .text-input {
+      // Add subtle loading animation
+      position: relative;
+      
+      &::after {
+        content: '';
+        position: absolute;
+        right: var(--space-3);
+        top: 50%;
+        transform: translateY(-50%);
+        width: 16px;
+        height: 16px;
+        border: 2px solid var(--color-border);
+        border-top-color: var(--color-primary);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+    }
+  }
+
+  // Size variants
+  &-small {
+    .autosuggest-item {
+      padding: var(--space-1-5) var(--space-2);
+      
+      &-text {
+        font-size: var(--text-xs);
+      }
+    }
+  }
+
+  &-large {
+    .autosuggest-item {
+      padding: var(--space-3) var(--space-4);
+      
+      &-text {
+        font-size: var(--text-base);
+      }
+    }
+  }
+
+  // Context-aware z-index management
+  .app-header & &-viewport {
+    z-index: calc(var(--z-header) + 25);
+  }
+
+  .modal & &-viewport {
+    z-index: var(--z-modal-dropdown, 10050);
+  }
+
+  .sidebar & &-viewport {
+    z-index: calc(var(--z-sidebar) + 10);
+  }
+}
+
+// Container overflow management
+:has(.autosuggest-open) {
+  overflow: visible;
+  
+  &[class*="grid"] {
+    isolation: isolate;
+  }
+}
+
+// Responsive adjustments
+@include responsive-max(sm) {
+  .autosuggest {
+    &-viewport {
+      left: -var(--space-2);
+      right: -var(--space-2);
+      max-height: 15rem;
+    }
+
+    &-dropdown {
+      max-height: 15rem;
+    }
+
+    &-item {
+      padding: var(--space-2-5) var(--space-2);
+      min-height: var(--touch-target-min);
+    }
+  }
+}
+
+// High contrast mode support
+@media (prefers-contrast: high) {
+  .autosuggest {
+    &-item {
+      &:hover,
+      &-selected {
+        outline: 2px solid var(--color-primary);
+        outline-offset: -2px;
+      }
+    }
+  }
+}
+
+// Reduced motion support
+@media (prefers-reduced-motion: reduce) {
+  .autosuggest {
+    &-viewport {
+      transition: opacity var(--duration-fast) var(--ease-out);
+      transform: none;
+    }
+
+    &-open &-viewport {
+      transform: none;
+    }
+
+    &-loading &-input .text-input::after {
+      animation: none;
+    }
+  }
+}

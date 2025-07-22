@@ -74,13 +74,21 @@ Supports header, media, content areas, loading states, elevation effects, and co
     @* Content *@
     @if (ChildContent != null || !string.IsNullOrEmpty(Content))
     {
-        <div class="@GetContentClasses()">
-            @if (!string.IsNullOrEmpty(Content))
-            {
-                <p class="@GetContentTextClasses()">@Content</p>
-            }
+        @if (NoPadding && string.IsNullOrEmpty(Content) && string.IsNullOrEmpty(BodyClass))
+        {
+            @* No wrapper div when NoPadding is true, no Content text, and no custom BodyClass *@
             @ChildContent
-        </div>
+        }
+        else
+        {
+            <div class="@GetContentClasses()">
+                @if (!string.IsNullOrEmpty(Content))
+                {
+                    <p class="@GetContentTextClasses()">@Content</p>
+                }
+                @ChildContent
+            </div>
+        }
     }
     
     @* Footer *@
@@ -193,6 +201,12 @@ Supports header, media, content areas, loading states, elevation effects, and co
     
     /// <summary>Additional CSS classes</summary>
     [Parameter] public string Class { get; set; }
+    
+    /// <summary>CSS classes for the card body/content wrapper - provides full control over content area styling</summary>
+    /// <ai-hint>Use to customize padding, layout, spacing of the card content area. Overrides default padding when specified.</ai-hint>
+    [Parameter]
+    [AIParameter(Hint = "Customize content area styling - padding, layout, spacing. Overrides defaults.", IsRequired = false)]
+    public string BodyClass { get; set; }
     
     /// <summary>Main content</summary>
     [Parameter] public RenderFragment ChildContent { get; set; }
@@ -403,13 +417,16 @@ Supports header, media, content areas, loading states, elevation effects, and co
     
     private string GetContentClasses()
     {
+        // If BodyClass is provided, use it as the complete class set for full user control
+        if (!string.IsNullOrEmpty(BodyClass))
+        {
+            return BodyClass;
+        }
+        
         var classes = new List<string>();
         
-        if (NoPadding)
-        {
-            classes.Add("pa-0");
-        }
-        else
+        // Apply default density padding when no custom BodyClass is specified
+        if (!NoPadding)
         {
             classes.Add(GetDensityPaddingClasses());
         }

@@ -419,21 +419,18 @@
       left: 0;
       right: 0;
       top: calc(100% + var(--space-1));
-      z-index: var(--z-popover, 1000);
+      z-index: var(--z-dropdown);
       visibility: hidden;
       opacity: 0;
       transform: translateY(-var(--space-2));
       transition: all var(--duration-fast) var(--ease-out);
       pointer-events: none;
       
-      // Higher z-index in header context
-      .app-header & {
-        z-index: calc(var(--z-header, 100) + 25);
-      }
-      
-      // Ensure dropdown appears above sidebar and navigation  
-      .app-sidebar & {
-        z-index: var(--z-dropdown-safe, 1200);
+      // Modal-aware layering - detect if inside modal context
+      .modal &, 
+      .modal-container &,
+      .modal-content & {
+        z-index: var(--z-modal-dropdown);
       }
       
       // Custom premium scrollbar
@@ -557,21 +554,9 @@
       }
     }
     
-    // Contextual positioning for different containers
-    // Higher z-index in header context
-    .app-header & {
-      .choice-viewport {
-        z-index: calc(var(--z-header) + 25);
-      }
-    }
-    
-    // Ensure dropdown appears above sidebar and navigation
+    // Legacy contextual positioning - now handled by standardized z-index system
+    // Position above when in sidebar footer or bottom area (context-preserved)
     .app-sidebar & {
-      .choice-viewport {
-        z-index: var(--z-dropdown-safe, 1200);
-      }
-      
-      // Position above when in sidebar footer or bottom area
       .shrink-0 &,
       [data-position="bottom"] & {
         .choice-viewport {
@@ -605,8 +590,8 @@
         flip-block,  // Try above if no room below
         flip-inline, // Try right if no room on left
         flip-both;   // Try opposite corner as last resort
-      // High z-index to escape any overflow constraints
-      z-index: var(--z-dropdown, 1000);
+      // Use standardized dropdown z-index
+      z-index: var(--z-dropdown);
       
       // Fallback for browsers without CSS Anchor support
       @supports not (anchor-name: --test) {
@@ -657,14 +642,16 @@
       left: 0;
       right: 0;
       bottom: 0;
-      z-index: calc(var(--z-dropdown, 1000) - 1);
+      z-index: var(--z-dropdown-backdrop);
       background: transparent;
       visibility: hidden;
       pointer-events: none;
       
-      // Higher backdrop in sidebar context
-      .app-sidebar & {
-        z-index: calc(var(--z-dropdown-safe, 1200) - 1);
+      // Modal-aware backdrop layering
+      .modal &, 
+      .modal-container &,
+      .modal-content & {
+        z-index: calc(var(--z-modal-dropdown) - 10);
       }
     }
     
@@ -674,23 +661,75 @@
       pointer-events: auto;
     }
     
-    // Auto-positioning variants
+    // Dynamic positioning system - optimized with mixins
+    @mixin dropdown-position($direction, $offset: var(--space-1)) {
+      @if $direction == 'up' {
+        top: auto;
+        bottom: 100%;
+        margin-top: 0;
+        margin-bottom: $offset;
+        transform: translateY($offset) scale(0.95);
+      } @else {
+        top: 100%;
+        bottom: auto;
+        margin-top: $offset;
+        margin-bottom: 0;
+        transform: translateY(-#{$offset}) scale(0.95);
+      }
+    }
+    
+    @mixin dropdown-horizontal($align) {
+      @if $align == 'start' {
+        left: 0;
+        right: auto;
+        transform-origin: left top;
+      } @else if $align == 'end' {
+        left: auto;
+        right: 0;
+        transform-origin: right top;
+      } @else {
+        left: 50%;
+        transform-origin: center top;
+      }
+    }
+    
+    // Apply positioning mixins
     &[data-position="up"] .choice-viewport,
-    &.choice-auto-up .choice-viewport {
-      top: auto;
-      bottom: 100%;
-      margin-top: 0;
-      margin-bottom: var(--space-1);
-      transform: translateY(var(--space-1)) scale(0.95);
+    &.choice-auto-up .choice-viewport,
+    &.choice-up .choice-viewport,
+    &.choice-upstart .choice-viewport,
+    &.choice-upend .choice-viewport {
+      @include dropdown-position('up');
     }
     
     &[data-position="down"] .choice-viewport,
-    &.choice-auto-down .choice-viewport {
-      top: 100%;
-      bottom: auto;
-      margin-top: var(--space-1);
-      margin-bottom: 0;
-      transform: translateY(-var(--space-1)) scale(0.95);
+    &.choice-auto-down .choice-viewport,
+    &.choice-down .choice-viewport,
+    &.choice-downstart .choice-viewport,
+    &.choice-downend .choice-viewport {
+      @include dropdown-position('down');
+    }
+    
+    // Horizontal alignment
+    &.choice-upstart .choice-viewport,
+    &.choice-downstart .choice-viewport {
+      @include dropdown-horizontal('start');
+    }
+    
+    &.choice-upend .choice-viewport,
+    &.choice-downend .choice-viewport {
+      @include dropdown-horizontal('end');
+    }
+    
+    // Center alignment with compound transforms
+    &.choice-up .choice-viewport {
+      @include dropdown-horizontal('center');
+      transform: translateX(-50%) translateY(var(--space-1)) scale(0.95);
+    }
+    
+    &.choice-down .choice-viewport {
+      @include dropdown-horizontal('center');
+      transform: translateX(-50%) translateY(-var(--space-1)) scale(0.95);
     }
     
     // CSS-only auto positioning using modern CSS features
@@ -753,7 +792,7 @@
     .dropdown-safe & {
       overflow: visible !important;
       position: relative;
-      z-index: 1;
+      z-index: var(--z-above);
     }
     
     // Content styling

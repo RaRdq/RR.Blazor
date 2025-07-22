@@ -19,18 +19,8 @@ public class ModalService(IJSRuntime jsRuntime) : IModalService, IDisposable
     public event Action OnAllModalsClosed;
 
     public bool HasVisibleModals => _activeModals.Any(m => m.Visible);
+    public IEnumerable<ModalInstance> ActiveModals => _activeModals.Where(m => m.Visible).ToList();
 
-    private async Task ManageBodyScrollLockAsync()
-    {
-        if (HasVisibleModals)
-        {
-            await jsRuntime.InvokeVoidAsync("document.body.classList.add", "modal-open");
-        }
-        else
-        {
-            await jsRuntime.InvokeVoidAsync("document.body.classList.remove", "modal-open");
-        }
-    }
 
     public async Task<ModalResult<T>> ShowAsync<T>(ModalOptions<T> options)
     {
@@ -68,7 +58,6 @@ public class ModalService(IJSRuntime jsRuntime) : IModalService, IDisposable
 
         _activeModals.Add(modalInstance);
         OnModalOpened?.Invoke(modalInstance);
-        await ManageBodyScrollLockAsync();
 
         if (options.AutoCloseDelay.HasValue)
         {
@@ -438,7 +427,6 @@ public class ModalService(IJSRuntime jsRuntime) : IModalService, IDisposable
             }
 
             OnModalClosed?.Invoke(modal);
-            await ManageBodyScrollLockAsync();
 
             if (!_activeModals.Any())
             {
@@ -458,7 +446,6 @@ public class ModalService(IJSRuntime jsRuntime) : IModalService, IDisposable
             OnModalClosed?.Invoke(modal);
         }
         
-        await ManageBodyScrollLockAsync();
         OnAllModalsClosed?.Invoke();
     }
 

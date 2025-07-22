@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
 using RR.Blazor.Attributes;
 using RR.Blazor.Enums;
+using System.Collections;
+using System.Reflection;
 
 namespace RR.Blazor.Components.Form;
 
@@ -33,7 +35,8 @@ public abstract class RChoiceBase : ComponentBase
 
 /// <summary>
 /// Smart choice component that automatically detects whether to use inline or dropdown mode
-/// Based on item count, content length, screen size, and other factors
+/// Based on item count, content length, screen size, and other factors.
+/// Also supports RSwitcher compatibility with automatic type inference.
 /// </summary>
 [Component("RChoice", Category = "Form")]
 [AIOptimized(Prompt = "Create smart choice component that auto-detects inline vs dropdown")]
@@ -51,6 +54,25 @@ public class RChoice : RChoiceBase
     [Parameter, AIParameter("Style variant for inline mode", "ChoiceStyle.Standard")]
     public ChoiceStyle Style { get; set; } = ChoiceStyle.Standard;
 
+    // RSwitcher compatibility parameters
+    [Parameter] public SwitcherVariant? SwitcherVariant { get; set; }
+    [Parameter] public ButtonSize? SwitcherSize { get; set; }
+    [Parameter] public bool Loading { get; set; }
+    [Parameter] public string LoadingText { get; set; } = "Loading...";
+    [Parameter] public EventCallback<object> OnSelectionChanged { get; set; }
+
+    private Type _valueType;
+    private bool _valueTypeResolved = false;
+
+    protected override void OnParametersSet()
+    {
+        if (!_valueTypeResolved)
+        {
+            _valueType = GetValueType();
+            _valueTypeResolved = true;
+        }
+    }
+
     protected override void BuildRenderTree(RenderTreeBuilder builder)
     {
         if (Items == null) return;
@@ -58,23 +80,35 @@ public class RChoice : RChoiceBase
         var itemsCollection = Items as System.Collections.IEnumerable ?? new[] { Items };
         var itemsList = itemsCollection.Cast<object>().ToList();
         
+        // Resolve value type if not already done
+        if (_valueType == null)
+        {
+            _valueType = GetValueType();
+        }
+
         // Smart detection logic
         var effectiveVariant = GetEffectiveVariant(itemsList);
-        var itemType = Items.GetType().IsGenericType 
-            ? Items.GetType().GetGenericArguments()[0] 
-            : typeof(object);
+        var effectiveStyle = GetEffectiveStyle();
+        var effectiveSize = GetEffectiveSize();
         
-        var genericChoiceType = typeof(RChoiceGeneric<>).MakeGenericType(itemType);
+        var genericChoiceType = typeof(RChoiceGeneric<>).MakeGenericType(_valueType);
         
         builder.OpenComponent(0, genericChoiceType);
         
         // Forward all base parameters
-        ForwardBaseParameters(builder, itemType);
+        ForwardBaseParameters(builder, _valueType, effectiveStyle, effectiveSize);
         
-        // Set computed variant
+        // Set computed variant and style
         builder.AddAttribute(1, "EffectiveVariant", effectiveVariant);
         builder.AddAttribute(2, "Items", Items);
         builder.AddAttribute(3, "SelectedValue", SelectedValue);
+        builder.AddAttribute(4, "Loading", Loading);
+        
+        // Handle OnSelectionChanged compatibility
+        if (OnSelectionChanged.HasDelegate)
+        {
+            builder.AddAttribute(7, "SelectedValueChangedObject", OnSelectionChanged);
+        }
         
         builder.CloseComponent();
     }
@@ -114,7 +148,7 @@ public class RChoice : RChoiceBase
         });
     }
     
-    private void ForwardBaseParameters(RenderTreeBuilder builder, Type itemType)
+    private void ForwardBaseParameters(RenderTreeBuilder builder, Type itemType, ChoiceStyle effectiveStyle, ChoiceSize effectiveSize)
     {
         // Forward events using object-based parameters - only add if they have delegates
         if (SelectedValueChanged.HasDelegate)
@@ -127,15 +161,86 @@ public class RChoice : RChoiceBase
         builder.AddAttribute(106, "ItemLoadingSelectorTyped", ItemLoadingSelector);
         builder.AddAttribute(107, "ShowLabels", ShowLabels);
         builder.AddAttribute(108, "ShowActiveIndicator", ShowActiveIndicator);
-        builder.AddAttribute(109, "Size", Size);
+        builder.AddAttribute(109, "Size", effectiveSize);
         builder.AddAttribute(110, "Density", Density);
         builder.AddAttribute(111, "Direction", Direction);
         builder.AddAttribute(112, "Disabled", Disabled);
         builder.AddAttribute(113, "CloseOnSelect", CloseOnSelect);
         builder.AddAttribute(114, "AriaLabel", AriaLabel);
-        builder.AddAttribute(115, "Style", Style);
+        builder.AddAttribute(115, "Style", effectiveStyle);
         builder.AddAttribute(116, "Class", Class);
         builder.AddAttribute(117, "ChildContent", ChildContent);
+    }
+
+    private Type GetValueType()
+    {
+        // Try to infer from SelectedValue first
+        if (SelectedValue != null)
+        {
+            return SelectedValue.GetType();
+        }
+
+        // Try to infer from Items collection
+        if (Items != null)
+        {
+            var enumerableType = Items.GetType();
+            
+            // Check for generic IEnumerable<T>
+            var genericInterface = enumerableType.GetInterfaces()
+                .FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IEnumerable<>));
+            
+            if (genericInterface != null)
+            {
+                return genericInterface.GetGenericArguments()[0];
+            }
+
+            // Fallback: check first item
+            if (Items is IEnumerable enumerable)
+            {
+                var firstItem = enumerable.Cast<object>().FirstOrDefault();
+                if (firstItem != null)
+                {
+                    return firstItem.GetType();
+                }
+            }
+        }
+
+        // Default to object
+        return typeof(object);
+    }
+
+    private ChoiceStyle GetEffectiveStyle()
+    {
+        // RSwitcher compatibility - SwitcherVariant takes precedence
+        if (SwitcherVariant.HasValue)
+        {
+            return SwitcherVariant.Value switch
+            {
+                Enums.SwitcherVariant.Tabs => ChoiceStyle.Tabs,
+                Enums.SwitcherVariant.Pills => ChoiceStyle.Pills,
+                Enums.SwitcherVariant.Buttons => ChoiceStyle.Buttons,
+                Enums.SwitcherVariant.Compact => ChoiceStyle.Compact,
+                _ => ChoiceStyle.Standard
+            };
+        }
+        
+        return Style;
+    }
+
+    private ChoiceSize GetEffectiveSize()
+    {
+        // RSwitcher compatibility - SwitcherSize takes precedence
+        if (SwitcherSize.HasValue)
+        {
+            return SwitcherSize.Value switch
+            {
+                ButtonSize.Small => ChoiceSize.Small,
+                ButtonSize.Large => ChoiceSize.Large,
+                _ => ChoiceSize.Medium
+            };
+        }
+        
+        return Size;
     }
 }
 
@@ -167,3 +272,4 @@ public enum ChoiceDirection
     Horizontal,
     Vertical
 }
+

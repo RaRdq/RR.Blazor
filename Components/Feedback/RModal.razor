@@ -2,15 +2,15 @@
 @using Microsoft.JSInterop
 @* RModal - Generic modal component with comprehensive configuration *@
 
-<div class="modal @Class @(Visible ? "modal--visible" : "modal--hidden")" @onclick="HandleBackdropClick" 
+@* Modal content only - backdrop and positioning handled by RModalProvider portal *@
+<div class="modal-content @GetSizeClass() @Class @(Visible ? "modal--visible" : "modal--hidden")" 
      role="dialog" 
      aria-modal="true" 
      aria-labelledby="@ModalTitleId" 
      aria-describedby="@(!string.IsNullOrEmpty(Subtitle) ? ModalDescriptionId : null)"
      @ref="modalElement"
+     @onclick:stopPropagation="true"
      tabindex="-1">
-    <div class="modal-backdrop" aria-hidden="true"></div>
-    <div class="modal-content @GetSizeClass()" @onclick:stopPropagation="true">
         @if (ShowHeader)
         {
             <div class="modal-header @GetModalHeaderClasses()">
@@ -187,96 +187,9 @@
     {
         if (!Processing)
         {
-            // Restore focus to previously focused element before closing
-            await RestoreFocus();
-            
             Visible = false;
             await VisibleChanged.InvokeAsync(false);
             await OnClose.InvokeAsync();
-        }
-    }
-    
-    protected override async Task OnParametersSetAsync()
-    {
-        if (Visible)
-        {
-            await SetupModalFocus();
-        }
-    }
-    
-    private async Task SetupModalFocus()
-    {
-        try
-        {
-            // Store reference to currently focused element
-            await JSRuntime.InvokeVoidAsync("eval", "window._previouslyFocusedElement = document.activeElement");
-            
-            // Add modal-open class to body for scroll lock and proper positioning
-            await JSRuntime.InvokeVoidAsync("eval", "document.body.classList.add('modal-open')");
-            
-            // Focus the modal after a brief delay to ensure it's rendered
-            await Task.Delay(100);
-            await modalElement.FocusAsync();
-            
-            // Set up keyboard event listener for escape key and store modal instance
-            await JSRuntime.InvokeVoidAsync("eval", @"
-                window._modalKeyHandler = function(e) {
-                    if (e.key === 'Escape' && window._modalInstance) {
-                        window._modalInstance.invokeMethodAsync('HandleEscapeKey');
-                    }
-                };
-                document.addEventListener('keydown', window._modalKeyHandler);
-                
-                window.setModalInstance = function(instance) {
-                    window._modalInstance = instance;
-                };
-            ");
-            
-            await JSRuntime.InvokeVoidAsync("setModalInstance", DotNetObjectReference.Create(this));
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error setting up modal focus: {ex.Message}");
-        }
-    }
-    
-    [JSInvokable]
-    public async Task HandleEscapeKey()
-    {
-        if (CloseOnEscape && !Processing)
-        {
-            await HandleClose();
-        }
-    }
-    
-    private async Task RestoreFocus()
-    {
-        try
-        {
-            // Remove modal-open class from body to restore scrolling
-            await JSRuntime.InvokeVoidAsync("eval", "document.body.classList.remove('modal-open')");
-            
-            // Remove keyboard event listener and cleanup
-            await JSRuntime.InvokeVoidAsync("eval", @"
-                if (window._modalKeyHandler) {
-                    document.removeEventListener('keydown', window._modalKeyHandler);
-                    window._modalKeyHandler = null;
-                }
-                window._modalInstance = null;
-                delete window.setModalInstance;
-            ");
-            
-            // Restore focus to previously focused element
-            await JSRuntime.InvokeVoidAsync("eval", @"
-                if (window._previouslyFocusedElement && window._previouslyFocusedElement.focus) {
-                    window._previouslyFocusedElement.focus();
-                }
-                window._previouslyFocusedElement = null;
-            ");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error restoring focus: {ex.Message}");
         }
     }
     
