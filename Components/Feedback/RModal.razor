@@ -1,16 +1,23 @@
 @using RR.Blazor.Enums
+@using RR.Blazor.Services
 @using Microsoft.JSInterop
+@implements IAsyncDisposable
+@inject ModalStackService ModalStack
 @* RModal - Generic modal component with comprehensive configuration *@
 
-@* Modal content only - backdrop and positioning handled by RModalProvider portal *@
-<div class="modal-content @GetSizeClass() @Class @(Visible ? "modal--visible" : "modal--hidden")" 
-     role="dialog" 
-     aria-modal="true" 
-     aria-labelledby="@ModalTitleId" 
-     aria-describedby="@(!string.IsNullOrEmpty(Subtitle) ? ModalDescriptionId : null)"
-     @ref="modalElement"
-     @onclick:stopPropagation="true"
-     tabindex="-1">
+@* Auto-portaled modal with backdrop and positioning *@
+@if (Visible)
+{
+    <div @ref="modalContainer" style="display: none;">
+        <div class="modal-backdrop" @onclick="HandleBackdropClick" @onkeydown="OnKeyDownHandler" tabindex="-1">
+            <div class="modal-content @GetSizeClass() @Class modal--visible" 
+                 role="dialog" 
+                 aria-modal="true" 
+                 aria-labelledby="@ModalTitleId" 
+                 aria-describedby="@(!string.IsNullOrEmpty(Subtitle) ? ModalDescriptionId : null)"
+                 @ref="modalElement"
+                 @onclick:stopPropagation="true"
+                 tabindex="-1">
         @if (ShowHeader)
         {
             <div class="modal-header @GetModalHeaderClasses()">
@@ -103,26 +110,144 @@
                 }
             </div>
         }
+            </div>
+        </div>
     </div>
-</div>
+}
 
 @code {
     [Parameter] public bool Visible { get; set; }
     [Parameter] public EventCallback<bool> VisibleChanged { get; set; }
+    
+
+    private ElementReference modalContainer;
+    private IJSObjectReference jsModule;
+    private IJSObjectReference focusTrapModule;
+    private static int portalCounter = 0;
+    private readonly string portalId = $"modal-auto-{System.Threading.Interlocked.Increment(ref portalCounter)}";
+    private bool isPortalCreated = false;
+    private bool previousVisible = false;
+    private int modalZIndex = 1000;
+    private bool focusTrapActive = false;
     [Parameter] public ModalSize Size { get; set; } = ModalSize.Medium;
     [Parameter] public ModalVariant Variant { get; set; } = ModalVariant.Default;
     [Parameter] public ComponentDensity Density { get; set; } = ComponentDensity.Normal;
     [Parameter] public string Class { get; set; }
     
-    // Accessibility properties
+
     private ElementReference modalElement;
     private ElementReference? previouslyFocusedElement;
     private string ModalTitleId { get; set; } = $"modal-title-{Guid.NewGuid():N}";
     private string ModalDescriptionId { get; set; } = $"modal-desc-{Guid.NewGuid():N}";
 
-    [Inject] private IJSRuntime JSRuntime { get; set; } = default!;
+[Inject] private IJSRuntime JSRuntime { get; set; } = default!;
     
-    // Header Configuration
+protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                jsModule = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./_content/RR.Blazor/js/portal.js");
+                focusTrapModule = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./_content/RR.Blazor/js/focus-trap.js");
+            }
+            catch (Exception ex)
+            {
+                return;
+            }
+        }
+        
+
+        if (jsModule != null && Visible != previousVisible)
+        {
+            
+            if (Visible && !isPortalCreated)
+            {
+
+                modalZIndex = await ModalStack.RegisterModalAsync(portalId);
+                
+
+                await Task.Delay(50);
+                await CreatePortal();
+                await CreateFocusTrap();
+            }
+            else if (!Visible && isPortalCreated)
+            {
+
+                await DestroyFocusTrap();
+                
+
+                await ModalStack.UnregisterModalAsync(portalId);
+                await CleanupPortal();
+            }
+            previousVisible = Visible;
+        }
+    }
+    
+private async Task CreatePortal()
+    {
+        if (jsModule == null || isPortalCreated)
+        {
+            return;
+        }
+        
+        try
+        {
+            var success = await jsModule.InvokeAsync<bool>("createPortal", modalContainer, "body", portalId, "modal-auto-portal", GetFullViewportStyles());
+            
+            if (success)
+            {
+
+                isPortalCreated = true;
+            }
+            else
+            {
+            }
+        }
+        catch (Exception ex)
+        {
+        }
+    }
+    
+private async Task CleanupPortal()
+    {
+        if (jsModule == null || !isPortalCreated)
+        {
+            return;
+        }
+        
+        try
+        {
+            var success = await jsModule.InvokeAsync<bool>("cleanupPortal", portalId);
+
+            isPortalCreated = false;
+        }
+        catch (Exception ex)
+        {
+        }
+    }
+    
+    private string GetFullViewportStyles()
+    {
+        return $@"
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            bottom: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            z-index: {modalZIndex} !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            background: rgba(15, 23, 42, 0.5) !important;
+            backdrop-filter: blur(4px) !important;
+            pointer-events: auto !important;
+        ";
+    }
+    
+
     [Parameter] public bool ShowHeader { get; set; } = true;
     
     /// <summary>
@@ -140,7 +265,7 @@
     [Parameter] public RenderFragment HeaderContent { get; set; }
     [Parameter] public bool ShowCloseButton { get; set; } = true;
     
-    // Footer Configuration
+
     [Parameter] public bool ShowFooter { get; set; } = true;
     [Parameter] public RenderFragment FooterContent { get; set; }
     [Parameter] public bool ShowCancelButton { get; set; } = true;
@@ -154,32 +279,48 @@
     [Parameter] public bool PrimaryButtonDisabled { get; set; }
     [Parameter] public ButtonSize ButtonSize { get; set; } = ButtonSize.Medium;
     
-    // Processing State
+
     [Parameter] public bool Processing { get; set; }
     [Parameter] public string ProcessingMessage { get; set; } = "Processing...";
     [Parameter] public string ProcessingButtonText { get; set; }
     [Parameter] public bool ShowProcessingOverlay { get; set; } = true;
     [Parameter] public bool ShowPrimaryButtonSpinner { get; set; } = true;
     
-    // Unsaved Changes
+
     [Parameter] public bool ShowUnsavedIndicator { get; set; }
     [Parameter] public bool HasUnsavedChanges { get; set; }
     
-    // Behavior Configuration
+
     [Parameter] public bool CloseOnBackdrop { get; set; } = true;
     [Parameter] public bool CloseOnEscape { get; set; } = true;
     
-    // Event Callbacks
+
     [Parameter] public EventCallback OnClose { get; set; }
     [Parameter] public EventCallback OnCancel { get; set; }
     [Parameter] public EventCallback OnPrimaryAction { get; set; }
     [Parameter] public RenderFragment ChildContent { get; set; }
     
-    private async Task HandleBackdropClick()
+private async Task HandleBackdropClick()
     {
         if (CloseOnBackdrop && !Processing && Variant != ModalVariant.Protected)
         {
-            await HandleClose();
+
+            if (ModalStack.IsTopModal(portalId))
+            {
+                await HandleClose();
+            }
+        }
+    }
+    
+    private async Task OnKeyDownHandler(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape" && CloseOnEscape && !Processing && Variant != ModalVariant.Protected)
+        {
+
+            if (ModalStack.IsTopModal(portalId))
+            {
+                await HandleClose();
+            }
         }
     }
     
@@ -298,21 +439,76 @@
         };
     }
 
-    public async ValueTask DisposeAsync()
+public async ValueTask DisposeAsync()
     {
         try
         {
-            if (Visible)
+            await DestroyFocusTrap();
+            await CleanupPortal();
+            
+            if (focusTrapModule != null)
             {
-                await RestoreFocus();
+                await focusTrapModule.DisposeAsync();
             }
             
-            // Ensure modal-open class is removed on disposal
-            await JSRuntime.InvokeVoidAsync("eval", "document.body.classList.remove('modal-open')");
+            if (jsModule != null)
+            {
+                await jsModule.DisposeAsync();
+            }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error during modal disposal: {ex.Message}");
+        }
+    }
+    
+    private async Task CreateFocusTrap()
+    {
+        if (focusTrapModule == null || focusTrapActive) return;
+        
+        try
+        {
+
+            await Task.Delay(100);
+            
+
+            var success = await focusTrapModule.InvokeAsync<bool>("createFocusTrap", modalElement, portalId);
+            
+            if (success)
+            {
+                focusTrapActive = true;
+            }
+            else
+            {
+            }
+        }
+        catch (Exception ex)
+        {
+        }
+    }
+    
+    private async Task DestroyFocusTrap()
+    {
+        if (focusTrapModule == null || !focusTrapActive) return;
+        
+        try
+        {
+            var success = await focusTrapModule.InvokeAsync<bool>("destroyFocusTrap", portalId);
+            focusTrapActive = false;
+        }
+        catch (Exception ex)
+        {
+        }
+    }
+
+    private async Task RestoreFocus()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("eval", "if (document.activeElement) { document.activeElement.blur(); }");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error restoring focus: {ex.Message}");
         }
     }
 }

@@ -12,29 +12,31 @@
         <div class="modal-backdrop" @onclick="HandleBackdropClick" @onkeydown="OnKeyDownHandler" @onkeydown:preventDefault="false" tabindex="-1">
             @foreach (var modal in ModalService.ActiveModals)
             {
-                <RModal 
-                    @key="modal.Id"
-                    Visible="@modal.Visible"
-                    Text="@modal.Options.Title"
-                    Subtitle="@modal.Options.Subtitle"
-                    Icon="@modal.Options.Icon"
-                    Size="@modal.Options.Size"
-                    Variant="@modal.Options.Variant"
-                    CloseOnBackdrop="@modal.Options.CloseOnBackdrop"
-                    CloseOnEscape="@modal.Options.CloseOnEscape"
-                    ShowCloseButton="@modal.Options.ShowCloseButton"
-                    ShowHeader="@modal.Options.ShowHeader"
-                    ShowFooter="@modal.Options.ShowFooter"
-                    OnClose="@(() => HandleModalClose(modal))"
-                    OnCancel="@(() => HandleModalCancel(modal))"
-                    OnPrimaryAction="@(() => HandlePrimaryAction(modal))"
-                    FooterContent="@(modal.Options.Buttons.Any() ? CreateModalFooter(modal) : null)">
-                    
-                    @if (modal.Options.ComponentType != null)
-                    {
-                        <DynamicComponent Type="modal.Options.ComponentType" Parameters="GetComponentParameters(modal)" />
-                    }
-                </RModal>
+                <div @onclick:stopPropagation="true" class="modal-content-wrapper">
+                    <RModal 
+                        @key="modal.Id"
+                        Visible="@modal.Visible"
+                        Text="@modal.Options.Title"
+                        Subtitle="@modal.Options.Subtitle"
+                        Icon="@modal.Options.Icon"
+                        Size="@modal.Options.Size"
+                        Variant="@modal.Options.Variant"
+                        CloseOnBackdrop="@modal.Options.CloseOnBackdrop"
+                        CloseOnEscape="@modal.Options.CloseOnEscape"
+                        ShowCloseButton="@modal.Options.ShowCloseButton"
+                        ShowHeader="@modal.Options.ShowHeader"
+                        ShowFooter="@modal.Options.ShowFooter"
+                        OnClose="@(() => HandleModalClose(modal))"
+                        OnCancel="@(() => HandleModalCancel(modal))"
+                        OnPrimaryAction="@(() => HandlePrimaryAction(modal))"
+                        FooterContent="@(modal.Options.Buttons.Any() ? CreateModalFooter(modal) : null)">
+                        
+                        @if (modal.Options.ComponentType != null)
+                        {
+                            <DynamicComponent Type="modal.Options.ComponentType" Parameters="GetComponentParameters(modal)" />
+                        }
+                    </RModal>
+                </div>
             }
         </div>
     </div>
@@ -60,55 +62,87 @@
         {
             try
             {
-                _jsModule = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./js/portal.js");
+                _jsModule = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./_content/RR.Blazor/js/portal.js");
+                Console.WriteLine($"[ModalProvider] JS Module loaded successfully");
             }
-            catch
+            catch (Exception ex)
             {
-                // Silent fail
+                Console.WriteLine($"[ModalProvider] ERROR: Failed to load JS module: {ex.Message}");
+                return;
             }
         }
 
-        if (ModalService.HasVisibleModals && !_isPortalCreated)
+        var hasVisibleModals = ModalService.HasVisibleModals;
+        var activeCount = ModalService.ActiveModals.Count();
+        Console.WriteLine($"[ModalProvider] HasVisibleModals: {hasVisibleModals}, ActiveCount: {activeCount}, PortalCreated: {_isPortalCreated}");
+        
+        if (hasVisibleModals && !_isPortalCreated)
         {
+            Console.WriteLine($"[ModalProvider] Creating portal for {activeCount} modals");
             await CreatePortal();
         }
-        else if (!ModalService.HasVisibleModals && _isPortalCreated)
+        else if (!hasVisibleModals && _isPortalCreated)
         {
+            Console.WriteLine($"[ModalProvider] Cleaning up portal");
             await CleanupPortal();
         }
     }
 
     private async Task CreatePortal()
     {
-        if (_jsModule != null && !_isPortalCreated)
+        if (_jsModule == null)
         {
-            try
+            Console.WriteLine($"[ModalProvider] ERROR: Cannot create portal - JS module not loaded");
+            return;
+        }
+        
+        if (_isPortalCreated)
+        {
+            Console.WriteLine($"[ModalProvider] Portal already created, skipping");
+            return;
+        }
+
+        try
+        {
+            Console.WriteLine($"[ModalProvider] Attempting to create portal with ID: {_portalId}");
+            var success = await _jsModule.InvokeAsync<bool>("createPortal", _modalContainer, "body", _portalId, "", GetFullViewportStyles());
+            
+            if (success)
             {
-                await _jsModule.InvokeVoidAsync("createPortal", _modalContainer, "body", _portalId, "", GetFullViewportStyles());
-                await JSRuntime.InvokeVoidAsync("document.body.classList.add", "modal-open");
+                await JSRuntime.InvokeVoidAsync("eval", "document.body.classList.add('modal-open'); document.body.style.setProperty('--scrollbar-width', (window.innerWidth - document.documentElement.clientWidth) + 'px');");
                 _isPortalCreated = true;
+                Console.WriteLine($"[ModalProvider] Portal created successfully!");
             }
-            catch
+            else
             {
-                // Silent fail
+                Console.WriteLine($"[ModalProvider] ERROR: Portal creation failed");
             }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ModalProvider] ERROR: Portal creation failed: {ex.Message}");
         }
     }
 
     private async Task CleanupPortal()
     {
-        if (_jsModule != null && _isPortalCreated)
+        if (_jsModule == null || !_isPortalCreated)
         {
-            try
-            {
-                await _jsModule.InvokeVoidAsync("cleanupPortal", _portalId);
-                await JSRuntime.InvokeVoidAsync("document.body.classList.remove", "modal-open");
-                _isPortalCreated = false;
-            }
-            catch
-            {
-                // Silent fail
-            }
+            Console.WriteLine($"[ModalProvider] Cleanup skipped - module: {_jsModule != null}, created: {_isPortalCreated}");
+            return;
+        }
+
+        try
+        {
+            Console.WriteLine($"[ModalProvider] Cleaning up portal: {_portalId}");
+            var success = await _jsModule.InvokeAsync<bool>("cleanupPortal", _portalId);
+            await JSRuntime.InvokeVoidAsync("eval", "document.body.classList.remove('modal-open'); document.body.style.removeProperty('--scrollbar-width');");
+            _isPortalCreated = false;
+            Console.WriteLine($"[ModalProvider] Portal cleanup completed: {success}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ModalProvider] ERROR: Portal cleanup failed: {ex.Message}");
         }
     }
 

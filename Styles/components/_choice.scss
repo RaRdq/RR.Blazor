@@ -1,6 +1,56 @@
 // Choice Component - Clean CSS-only positioning
 @use '../abstracts' as *;
 
+// Mixin for compact choice styles (reusable across responsive contexts)
+@mixin choice-compact-style() {
+  width: auto;
+  min-width: auto;
+  
+  .choice-trigger {
+    padding: var(--space-2);
+    min-width: var(--touch-target-min, 44px);
+    min-height: var(--touch-target-min, 44px);
+    border-radius: var(--radius-full);
+    gap: 0;
+    
+    // Hide text content in compact mode
+    .choice-text,
+    .choice-label {
+      display: none;
+    }
+    
+    // Keep only avatar/icon visible
+    .choice-avatar,
+    .choice-icon,
+    .material-symbols-rounded {
+      display: flex;
+      flex-shrink: 0;
+    }
+    
+    // Remove chevron in compact mode
+    &::after {
+      display: none;
+    }
+  }
+  
+  // Dropdown content adjustments for compact mode
+  .choice-viewport {
+    min-width: 200px;
+    width: auto;
+    left: auto;
+    right: 0;
+    transform-origin: top right;
+  }
+  
+  // Keep full content in dropdown items
+  .choice-content .choice-item {
+    .choice-text,
+    .choice-label {
+      display: block;
+    }
+  }
+}
+
 .choice {
   position: relative;
   width: 100%;
@@ -67,6 +117,85 @@
     .choice-item {
       flex: none;
       white-space: nowrap;
+    }
+  }
+  
+  // Compact variant for collapsed sidebar/mobile
+  &-compact {
+    @include choice-compact-style();
+  }
+  
+  // Avatar-only variant (extreme compact)
+  &-avatar-only {
+    @extend .choice-compact;
+    
+    .choice-trigger {
+      padding: var(--space-1);
+      width: var(--touch-target-min, 44px);
+      height: var(--touch-target-min, 44px);
+      border-radius: var(--radius-full);
+      
+      // Only show avatar
+      .choice-avatar {
+        width: 100%;
+        height: 100%;
+        
+        img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+      }
+    }
+  }
+  
+  // Auto-responsive behavior in sidebar contexts
+  .app-sidebar.collapsed &:not(.choice-force-full),
+  .sidebar-collapsed &:not(.choice-force-full) {
+    @include choice-compact-style();
+  }
+  
+  // Container query based responsive behavior
+  @container (max-width: 200px) {
+    &:not(.choice-force-full) {
+      @include choice-compact-style();
+    }
+  }
+  
+  @container (max-width: 100px) {
+    &:not(.choice-force-full) {
+      .choice-trigger {
+        padding: var(--space-1);
+        width: var(--touch-target-min, 44px);
+        height: var(--touch-target-min, 44px);
+        border-radius: var(--radius-full);
+        
+        .choice-avatar {
+          width: 100%;
+          height: 100%;
+          
+          img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+          }
+        }
+      }
+    }
+  }
+  
+  // Responsive behavior based on screen size
+  @include responsive-max(md) {
+    .app-sidebar &:not(.choice-force-full) {
+      @include choice-compact-style();
+    }
+  }
+  
+  @include responsive-max(sm) {
+    .app-sidebar &:not(.choice-force-full),
+    .nav-menu &:not(.choice-force-full),
+    .sidebar-footer &:not(.choice-force-full) {
+      @include choice-compact-style();
     }
   }
   
@@ -790,7 +919,7 @@
     &.has-dropdowns,
     .has-dropdowns &,
     .dropdown-safe & {
-      overflow: visible !important;
+      overflow: visible;
       position: relative;
       z-index: var(--z-above);
     }

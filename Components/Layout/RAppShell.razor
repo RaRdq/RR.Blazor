@@ -80,59 +80,30 @@ Ultra-clean, responsive, and customizable for any business application.
                 }
                 else
                 {
-                    <!-- Page Header: Title and Breadcrumbs -->
+                    <!-- Page Header: Title/Subtitle and Breadcrumbs in Row -->
                     <div class="page-header-content">
-                        @if (ShowBreadcrumbs && Breadcrumbs?.Any() == true)
-                        {
-                            <nav class="breadcrumbs-nav" aria-label="Breadcrumb">
-                                <ol class="breadcrumbs-list">
-                                @foreach (var (item, index) in GetVisibleBreadcrumbs().Select((item, index) => (item, index)))
+                        <div class="page-header-row">
+                            <div class="page-title-subtitle">
+                                @if (!string.IsNullOrEmpty(PageTitle))
                                 {
-                                    var isLast = index == GetVisibleBreadcrumbs().Count - 1;
-                                    var isFirst = index == 0;
-                                    
-                                    <li class="breadcrumb">
-                                        @if (!string.IsNullOrEmpty(item.Icon) && isFirst)
-                                        {
-                                            <i class="material-symbols-rounded breadcrumb-icon">@item.Icon</i>
-                                        }
-                                        
-                                        @if (isLast || string.IsNullOrEmpty(item.Href))
-                                        {
-                                            <span class="breadcrumb-current" aria-current="@(isLast ? "page" : null)">
-                                                @item.Text
-                                            </span>
-                                        }
-                                        else if (item.IsDisabled)
-                                        {
-                                            <span class="breadcrumb-disabled">@item.Text</span>
-                                        }
-                                        else
-                                        {
-                                            <a href="@item.Href" class="breadcrumb-link">@item.Text</a>
-                                        }
-                                        
-                                        @if (!isLast)
-                                        {
-                                            <span class="breadcrumb-sep" aria-hidden="true">/</span>
-                                        }
-                                    </li>
+                                    <h1 class="page-title">@PageTitle</h1>
                                 }
-                                </ol>
-                            </nav>
-                        }
-                        <div class="page-title-row">
-                            @if (!string.IsNullOrEmpty(PageTitle))
+                                @if (!string.IsNullOrEmpty(PageSubtitle))
+                                {
+                                    <p class="page-subtitle">@PageSubtitle</p>
+                                }
+                            </div>
+                            @if (ShowBreadcrumbs && GetBreadcrumbItems()?.Any() == true)
                             {
-                                <h1 class="page-title">@PageTitle</h1>
+                                <RBreadcrumbs Items="@GetBreadcrumbItems()" 
+                                              Size="@BreadcrumbsSize"
+                                              Separator="@(string.IsNullOrEmpty(BreadcrumbsSeparator) ? "/" : BreadcrumbsSeparator)" 
+                                              SeparatorIcon="@BreadcrumbsSeparatorIcon"
+                                              CollapsibleOnMobile="@BreadcrumbsCollapsibleOnMobile"
+                                              MaxVisibleItems="@BreadcrumbsMaxVisibleItems"
+                                              Class="@($"app-shell-breadcrumbs compact-spacing {BreadcrumbsClass}".Trim())" />
                             }
                         </div>
-                        @if (!string.IsNullOrEmpty(PageSubtitle))
-                        {
-                            <div class="page-subtitle-row">
-                                <p class="page-subtitle">@PageSubtitle</p>
-                            </div>
-                        }
                     </div>
                 }
             </div>
@@ -161,6 +132,7 @@ Ultra-clean, responsive, and customizable for any business application.
                                                    ShowLoading="true"
                                                    OnItemSelected="@HandleSearchItemSelected"
                                                    OnSearchChanged="@HandleSearchQueryChanged"
+                                                   OnBlur="@HandleSearchBlur"
                                                    Class="flex-1" />
                                 <RButton Icon="close" 
                                          Variant="ButtonVariant.Ghost" 
@@ -232,20 +204,18 @@ Ultra-clean, responsive, and customizable for any business application.
                 
                 @if (CurrentUser != null && ShowUserMenu && UserMenu != null)
                 {
-                    <div class="relative d-flex align-center" @onclick="ToggleUserMenu">
-                        <RButton Variant="ButtonVariant.Ghost" 
-                                 Size="ButtonSize.Small"
-                                 Class="touch-target">
-                            <div class="d-flex align-center gap-2">
+                    <div class="user-menu-container">
+                        <div class="user-menu-trigger touch-target" @onclick="ToggleUserMenu">
+                            <div class="user-menu-content">
                                 <RAvatar Text="@CurrentUser.GetInitials()" 
                                          ImageSrc="@CurrentUser.Avatar"
                                          Size="AvatarSize.Small"
                                          ShowStatus="true"
                                          Status="@(CurrentUser.IsOnline ? AvatarStatus.Online : AvatarStatus.Offline)" />
-                                <span class="text-sm font-medium text-truncate hidden md:inline">@CurrentUser.GetDisplayName()</span>
-                                <i class="material-symbols-rounded text-sm text-secondary transition-transform">@(showUserMenu ? "expand_less" : "expand_more")</i>
+                                <span class="user-display-name">@CurrentUser.GetDisplayName()</span>
+                                <i class="material-symbols-rounded user-menu-chevron" style="transform: @(showUserMenu ? "rotate(180deg)" : "rotate(0deg)")">expand_more</i>
                             </div>
-                        </RButton>
+                        </div>
                         @if (showUserMenu)
                         {
                             <div class="user-menu-dropdown">
@@ -346,14 +316,16 @@ Ultra-clean, responsive, and customizable for any business application.
 
 @code {
     private IJSObjectReference jsModule;
+    private DotNetObjectReference<RAppShell> dotNetRef;
     private bool disposed = false;
     private bool sidebarCollapsed = false;
     private bool sidebarOpen = true;
     private bool showUserMenu = false;
     private bool searchExpanded = false;
     private AppSearchResult selectedSearchResult;
+    private string currentSearchQuery = string.Empty;
     
-    // ===== CORE PARAMETERS =====
+
     
     /// <summary>App title (required)</summary>
     [Parameter, AIParameter("Application name displayed in header", "Your App Name")] 
@@ -370,7 +342,7 @@ Ultra-clean, responsive, and customizable for any business application.
     [Parameter, AIParameter("Theme preference", "light, dark, or system for auto-detection")] 
     public string Theme { get; set; } = "system";
     
-    // ===== LAYOUT CONTROL =====
+
     
     /// <summary>Layout features configuration</summary>
     [Parameter, AIParameter("Control app shell features", "AppShellFeatures.All for full features, AppShellFeatures.Minimal for basic layout")] 
@@ -385,7 +357,7 @@ Ultra-clean, responsive, and customizable for any business application.
     /// <summary>Sidebar collapsed by default</summary>
     [Parameter] public bool SidebarCollapsedDefault { get; set; } = false;
     
-    // ===== COMPUTED LAYOUT PROPERTIES =====
+
     
     private bool ShowSidebar => Features.HasFlag(AppShellFeatures.Sidebar);
     private bool ShowHeader => Features.HasFlag(AppShellFeatures.Header);
@@ -397,7 +369,7 @@ Ultra-clean, responsive, and customizable for any business application.
     private bool ShowSidebarToggle => Features.HasFlag(AppShellFeatures.SidebarToggle);
     private bool ShowBreadcrumbs => Features.HasFlag(AppShellFeatures.Breadcrumbs);
     
-    // ===== CONTENT PARAMETERS =====
+
     
     /// <summary>Page title for header</summary>
     [Parameter] public string PageTitle { get; set; } = string.Empty;
@@ -410,12 +382,31 @@ Ultra-clean, responsive, and customizable for any business application.
     public List<AppNavItem> NavigationItems { get; set; }
     
     /// <summary>Breadcrumb items</summary>
-    [Parameter] public List<AppNavItem> Breadcrumbs { get; set; }
+    [Parameter, AIParameter("Breadcrumb navigation items", "List of AppNavItem with Text, Href, Icon properties")] 
+    public List<AppNavItem> Breadcrumbs { get; set; }
+    
+    /// <summary>Breadcrumb size variant</summary>
+    [Parameter] public BreadcrumbSize BreadcrumbsSize { get; set; } = BreadcrumbSize.Default;
+    
+    /// <summary>Custom breadcrumb separator text</summary>
+    [Parameter] public string BreadcrumbsSeparator { get; set; }
+    
+    /// <summary>Custom breadcrumb separator icon</summary>
+    [Parameter] public string BreadcrumbsSeparatorIcon { get; set; }
+    
+    /// <summary>Whether breadcrumbs collapse on mobile</summary>
+    [Parameter] public bool BreadcrumbsCollapsibleOnMobile { get; set; } = true;
+    
+    /// <summary>Max breadcrumb items to show before collapsing</summary>
+    [Parameter] public int BreadcrumbsMaxVisibleItems { get; set; } = 0;
+    
+    /// <summary>Additional CSS classes for breadcrumbs</summary>
+    [Parameter] public string BreadcrumbsClass { get; set; }
     
     /// <summary>User permissions for nav filtering</summary>
     [Parameter] public string[] UserPermissions { get; set; }
     
-    // ===== RENDER FRAGMENTS =====
+
     
     /// <summary>Custom logo content</summary>
     [Parameter] public RenderFragment LogoContent { get; set; }
@@ -441,7 +432,7 @@ Ultra-clean, responsive, and customizable for any business application.
     /// <summary>Main content</summary>
     [Parameter] public RenderFragment ChildContent { get; set; }
     
-    // ===== STYLING PARAMETERS =====
+
     
     /// <summary>Custom CSS class for the app shell container</summary>
     [Parameter] public string Class { get; set; } = string.Empty;
@@ -458,7 +449,7 @@ Ultra-clean, responsive, and customizable for any business application.
     /// <summary>Custom CSS class for the main content area</summary>
     [Parameter] public string MainClass { get; set; } = string.Empty;
     
-    // ===== CONTENT WRAPPER PARAMETERS =====
+
     
     /// <summary>Automatically wrap content in RContent component for app-shell awareness</summary>
     [Parameter, AIParameter("Auto-wrap page content in RContent", "true for automatic app-shell positioning, false for manual control")] 
@@ -483,7 +474,7 @@ Ultra-clean, responsive, and customizable for any business application.
     /// <summary>Default CSS class for auto-wrapped content</summary>
     [Parameter] public string DefaultContentClass { get; set; } = string.Empty;
     
-    // ===== EVENT CALLBACKS =====
+
     
     /// <summary>Theme changed callback</summary>
     [Parameter] public EventCallback<string> ThemeChanged { get; set; }
@@ -500,16 +491,16 @@ Ultra-clean, responsive, and customizable for any business application.
     /// <summary>User menu clicked callback</summary>
     [Parameter] public EventCallback<AppUser> UserMenuClicked { get; set; }
     
-    // ===== COMPUTED PROPERTIES =====
+
     
     private bool IsMobile { get; set; } = false;
     
     protected override async Task OnInitializedAsync()
     {
-        // Initialize sidebar state
+
         sidebarCollapsed = SidebarCollapsedDefault;
         
-        // Load configuration defaults
+
         await ConfigService.LoadAsync();
         if (ConfigService.Current != null)
         {
@@ -518,14 +509,14 @@ Ultra-clean, responsive, and customizable for any business application.
                 PageTitle = config.Title;
         }
         
-        // Set up search provider
+
         if (NavigationItems?.Any() == true && ShowSearch)
         {
             var navProvider = new NavigationSearchProvider(NavigationItems);
             SearchService.RegisterSearchProvider(navProvider);
         }
         
-        // Default navigation if none provided
+
         NavigationItems ??= ShowSidebar ? GetDefaultNavigation() : null;
     }
     
@@ -540,10 +531,10 @@ Ultra-clean, responsive, and customizable for any business application.
                 {
                     await jsModule.InvokeVoidAsync("initialize");
                     
-                    // Update mobile state
+
                     IsMobile = await jsModule.InvokeAsync<bool>("isMobile");
                     
-                    // Mobile sidebar should be closed by default
+
                     if (IsMobile)
                     {
                         sidebarOpen = false;
@@ -554,7 +545,7 @@ Ultra-clean, responsive, and customizable for any business application.
             }
             catch (Exception ex)
             {
-                // Log warning instead of error since this is non-critical
+
                 Console.WriteLine($"Warning: App shell JS initialization failed: {ex.Message}");
             }
         }
@@ -570,33 +561,17 @@ Ultra-clean, responsive, and customizable for any business application.
             .ToList();
     }
     
-    private List<AppNavItem> GetVisibleBreadcrumbs()
+    private List<BreadcrumbItem> GetBreadcrumbItems()
     {
-        if (Breadcrumbs == null || !Breadcrumbs.Any()) return new List<AppNavItem>();
+        if (Breadcrumbs == null || !Breadcrumbs.Any()) return new List<BreadcrumbItem>();
         
-        // For mobile: show first, last, and ellipsis if more than 4 items
-        if (IsMobile && Breadcrumbs.Count > 4)
+        return Breadcrumbs.Select(item => new BreadcrumbItem
         {
-            var visibleItems = new List<AppNavItem>();
-            visibleItems.Add(Breadcrumbs.First());
-            
-            // Add ellipsis item if needed
-            if (Breadcrumbs.Count > 3)
-            {
-                visibleItems.Add(new AppNavItem { Text = "...", IsDisabled = true });
-            }
-            
-            // Add second to last item if different from first
-            if (Breadcrumbs.Count > 2)
-            {
-                visibleItems.Add(Breadcrumbs[Breadcrumbs.Count - 2]);
-            }
-            
-            visibleItems.Add(Breadcrumbs.Last());
-            return visibleItems;
-        }
-        
-        return Breadcrumbs;
+            Text = item.Text,
+            Href = item.Href,
+            Icon = item.Icon,
+            IsDisabled = item.IsDisabled
+        }).ToList();
     }
     
     private void ToggleSidebar()
@@ -636,13 +611,60 @@ Ultra-clean, responsive, and customizable for any business application.
         await NotificationsClicked.InvokeAsync();
     }
     
-    private void ToggleUserMenu()
+    private async Task ToggleUserMenu()
     {
         showUserMenu = !showUserMenu;
+        
+        if (showUserMenu)
+        {
+            await SetupUserMenuOutsideClick();
+        }
+        else
+        {
+            await RemoveUserMenuOutsideClick();
+        }
+    }
+    
+    [JSInvokable]
+    public async Task CloseUserMenu()
+    {
+        if (showUserMenu)
+        {
+            showUserMenu = false;
+            await RemoveUserMenuOutsideClick();
+            StateHasChanged();
+        }
+    }
+    
+    private async Task SetupUserMenuOutsideClick()
+    {
+        try
+        {
+            if (dotNetRef == null)
+                dotNetRef = DotNetObjectReference.Create(this);
+                
+            await JS.InvokeVoidAsync("RRBlazor.setupUserMenuOutsideClick", ".user-menu-container", dotNetRef);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to setup outside click handler: {ex.Message}");
+        }
+    }
+    
+    private async Task RemoveUserMenuOutsideClick()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("RRBlazor.removeUserMenuOutsideClick", ".user-menu-container");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to remove outside click handler: {ex.Message}");
+        }
     }
     
     
-    // ===== NEW SEARCH IMPLEMENTATION =====
+
     
     private RenderFragment<AppSearchResult> SearchResultTemplate => result => __builder =>
     {
@@ -707,7 +729,17 @@ Ultra-clean, responsive, and customizable for any business application.
 
     private async Task HandleSearchQueryChanged(string query)
     {
+        currentSearchQuery = query ?? string.Empty;
         await SearchChanged.InvokeAsync(query);
+    }
+
+    private async Task HandleSearchBlur()
+    {
+        await Task.Delay(200);
+        if (string.IsNullOrWhiteSpace(currentSearchQuery) && searchExpanded)
+        {
+            await CollapseSearch();
+        }
     }
 
     private async Task ExpandSearch()
@@ -727,10 +759,11 @@ Ultra-clean, responsive, and customizable for any business application.
     {
         searchExpanded = false;
         selectedSearchResult = null;
+        currentSearchQuery = string.Empty;
         StateHasChanged();
     }
     
-    // ===== CSS CLASS GENERATORS =====
+
     
     private string GetAppShellClasses()
     {
@@ -833,7 +866,13 @@ Ultra-clean, responsive, and customizable for any business application.
         {
             disposed = true;
             
-            // Clean disposal handled by RAutosuggest component
+
+            
+
+            await RemoveUserMenuOutsideClick();
+            
+            dotNetRef?.Dispose();
+            dotNetRef = null;
             
             if (jsModule != null)
             {

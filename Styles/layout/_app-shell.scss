@@ -224,7 +224,7 @@
     
     // Compact user menu - avatar only
     .user-display-name {
-      display: none !important;
+      display: none;
     }
   }
   
@@ -286,36 +286,69 @@
 
 // Page Header Content Styles
 .page-header-content {
-  @extend %flex-column;
-  gap: var(--space-0-5);
   min-width: 0;
   flex: 1;
   align-items: flex-start;
   justify-content: center;
   overflow: hidden;
-  
-  @include responsive-max(sm) {
-    gap: var(--space-0-25);
-  }
 }
 
-.page-title-row {
+.page-header-row {
   @extend %flex-row;
-  align-items: baseline;
+  align-items: center;
+  justify-content: flex-start;
   gap: var(--space-2);
   flex-wrap: nowrap;
   min-width: 0;
   width: 100%;
-  margin-top: 0;
   
-  @include responsive-max(md) {
+  // Desktop: normal spacing with breadcrumbs
+  @media (min-width: 1025px) {
+    gap: var(--space-2);
+  }
+  
+  // Tablet: reduce spacing, no breadcrumbs
+  @include responsive-max(lg) {
     gap: var(--space-1-5);
   }
   
+  // Small tablet/large mobile: tighter spacing
+  @include responsive-max(md) {
+    gap: var(--space-1);
+  }
+  
+  // Mobile: stack vertically if needed
   @include responsive-max(sm) {
-    flex-direction: column;
-    align-items: flex-start;
+    flex-wrap: wrap;
     gap: var(--space-0-5);
+  }
+  
+  // Very small mobile: minimal spacing
+  @include responsive-max(xs) {
+    gap: var(--space-0-25);
+    flex-wrap: wrap;
+  }
+}
+
+.page-title-subtitle {
+  @extend %flex-column;
+  gap: var(--space-0-25);
+  min-width: 0;
+  flex: 1;
+  align-items: flex-start;
+  
+  @include responsive-max(md) {
+    gap: var(--space-0-125);
+  }
+  
+  @include responsive-max(sm) {
+    gap: var(--space-0-125);
+    // Ensure title doesn't get too cramped
+    min-width: 200px;
+  }
+  
+  @include responsive-max(xs) {
+    min-width: 150px;
   }
 }
 
@@ -332,14 +365,6 @@
   }
 }
 
-.page-subtitle-row {
-  margin-top: 0;
-  width: 100%;
-  
-  @include responsive-max(sm) {
-    margin-top: 0;
-  }
-}
 
 .page-subtitle {
   margin: 0;
@@ -352,101 +377,35 @@
   }
 }
 
-// Clean Breadcrumb Styles for Top Bar
-.breadcrumbs-nav {
-  margin-bottom: var(--space-0-5);
-}
-
-.breadcrumbs-list {
-  display: flex;
-  align-items: center;
-  gap: var(--space-0-5);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  flex-wrap: nowrap;
-  overflow: hidden;
-  min-width: 0;
-  
-  @include responsive-max(sm) {
-    gap: var(--space-0-25);
-  }
-}
-
-.breadcrumb {
-  display: flex;
-  align-items: center;
-  gap: var(--space-0-25);
-  font-size: var(--text-xs);
-  line-height: 1;
-  flex-shrink: 1;
-  min-width: 0;
-  max-width: 12rem;
-  
-  @include responsive-max(sm) {
-    gap: var(--space-0-125);
-    max-width: 8rem;
-    
-    // Hide middle items on mobile - smart truncation
-    &:not(:first-child):not(:last-child):not(:nth-last-child(2)) {
-      display: none;
-    }
-  }
-}
-
-.breadcrumb-icon {
-  font-size: var(--text-xs);
-  color: var(--color-text-secondary);
+// App Shell Breadcrumbs Integration
+.app-shell-breadcrumbs {
   flex-shrink: 0;
-}
-
-.breadcrumb-link {
-  color: var(--color-text-secondary);
-  text-decoration: none;
-  transition: color var(--duration-fast) var(--ease-out);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
+  margin: 0;
   
-  &:hover {
-    color: var(--color-text-primary);
-    text-decoration: underline;
+  // Adaptive hiding priority: breadcrumbs are low priority on smaller screens
+  @include responsive-max(lg) {
+    display: none; // Hide on tablets and smaller (<=1024px)
   }
   
-  &:focus {
-    outline: 2px solid var(--color-primary);
-    outline-offset: 2px;
-    border-radius: var(--radius-xs);
+  // Show on desktop only (>1024px)
+  @media (min-width: 1025px) {
+    display: flex;
   }
-}
-
-.breadcrumb-current {
-  color: var(--color-text-primary);
-  font-weight: var(--font-medium);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
-}
-
-.breadcrumb-disabled {
-  color: var(--color-text-tertiary);
-  cursor: default;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
-}
-
-.breadcrumb-sep {
-  color: var(--color-text-tertiary);
-  font-size: var(--text-xs);
-  margin: 0 var(--space-0-25);
-  user-select: none;
   
-  @include responsive-max(sm) {
-    margin: 0 var(--space-0-125);
+  // Compact spacing for app shell breadcrumbs
+  &.compact-spacing {
+    ol {
+      gap: var(--space-0-5);
+    }
+    
+    li {
+      gap: var(--space-0-25);
+    }
+    
+    .breadcrumb-sep,
+    [aria-hidden="true"] {
+      margin: 0 var(--space-0-125);
+    }
   }
 }
 
@@ -737,6 +696,16 @@
   overflow-x: hidden;
   overflow-y: hidden;
   
+  // Auto-collapse on tablets (still visible but collapsed)
+  @include responsive-max(lg) {
+    width: var(--sidebar-width-collapsed, 4rem);
+    
+    // Force collapsed state for better UX
+    &:not(.open) {
+      width: var(--sidebar-width-collapsed, 4rem);
+    }
+  }
+  
   // Ensure all children respect sidebar width constraints
   > * {
     max-width: 100%;
@@ -763,10 +732,11 @@
     width: var(--sidebar-width-collapsed, 4rem);
   }
   
+  // Mobile: hide completely, show only via burger menu
   @include responsive-max(md) {
     transform: translateX(-100%);
-    width: 80%;
-    max-width: 340px;
+    width: 85%;
+    max-width: 320px;
     z-index: calc(var(--z-header) + 10);
     border-right: none;
     box-shadow: var(--shadow-xl);
@@ -774,7 +744,7 @@
     
     // Disable transform when modal is open to prevent stacking context issues
     body.modal-open & {
-      transform: none !important;
+      transform: none;
       visibility: hidden;
       
       &.open {
@@ -787,19 +757,19 @@
       pointer-events: auto;
       
       body.modal-open & {
-        transform: none !important;
+        transform: none;
       }
     }
   }
   
-  @include responsive-max(md) {
-    width: 85%;
-    max-width: 300px;
+  @include responsive-max(sm) {
+    width: 90%;
+    max-width: 280px;
   }
   
-  @include responsive-max(sm) {
-    width: 92%;
-    max-width: 280px;
+  @include responsive-max(xs) {
+    width: 95%;
+    max-width: 260px;
   }
   
   > .flex-1 {
@@ -832,6 +802,13 @@
   box-sizing: border-box;
   flex: 1;
   
+  // Mobile: ensure full width on small screens
+  @include responsive-max(md) {
+    margin-left: 0;
+    width: 100vw;
+    max-width: 100vw;
+  }
+  
   &.auto-wrap-content {
     display: flex;
     flex-direction: column;
@@ -844,24 +821,6 @@
     overflow-x: hidden;
     overflow-y: visible;
     box-sizing: border-box;
-    
-    @include responsive-max(xl) {
-      margin-left: 0;
-      width: 100vw;
-      max-width: 100vw;
-    }
-  }
-  
-  .app-shell.sidebar-collapsed & {
-    margin-left: 0;
-    width: 100%;
-    max-width: 100%;
-  }
-  
-  @include responsive-max(md) {
-    margin-left: 0;
-    width: 100vw;
-    max-width: 100vw;
   }
 }
 

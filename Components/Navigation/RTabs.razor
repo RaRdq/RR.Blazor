@@ -208,25 +208,25 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
         {
             try
             {
-                // Initialize tabs with scroll detection even if no tabs yet
+
                 await JSRuntime.InvokeVoidAsync("RRBlazor.initializeTabs", tabsElement, navContainer, navWrapper);
                 
                 if (tabs.Count > 0)
                 {
                     await UpdateIndicatorPosition();
-                    // Small delay to ensure DOM is fully rendered before scroll detection
+
                     await Task.Delay(50);
                     await UpdateScrollState();
                 }
             }
             catch
             {
-                // JavaScript initialization failed, continue without it
+
             }
         }
         else if (tabs.Count > 0)
         {
-            // Update scroll state on subsequent renders to handle dynamic content changes
+
             _ = InvokeAsync(async () =>
             {
                 try
@@ -236,7 +236,7 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
                 }
                 catch
                 {
-                    // Continue if JavaScript fails
+
                 }
             });
         }
@@ -246,11 +246,11 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
     {
         if (tab == null) return;
         
-        // Check if tab already exists
+
         var existingTab = tabs.FirstOrDefault(t => t.Id == tab.Id);
         if (existingTab != null)
         {
-            // Update existing tab
+
             existingTab.Text = tab.Text;
             existingTab.Icon = tab.Icon;
             existingTab.IconPosition = tab.IconPosition;
@@ -272,19 +272,19 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
         
         StateHasChanged();
         
-        // Update indicator position after state change (non-blocking)
+
         _ = InvokeAsync(async () =>
         {
             try
             {
                 await UpdateIndicatorPosition();
-                // Delay scroll state update to ensure DOM is fully updated
+
                 await Task.Delay(100);
                 await UpdateScrollState();
             }
             catch
             {
-                // Continue if JavaScript fails
+
             }
         });
     }
@@ -301,7 +301,7 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
         {
             tabs.Remove(tab);
             
-            // Select another tab if removing active tab
+
             if (ActiveTabId == tabId && tabs.Any())
             {
                 var index = tabs.FindIndex(t => t.Id == tabId);
@@ -325,16 +325,16 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
         
         var oldTabId = ActiveTabId;
         
-        // INSTANT UI UPDATE - No delays, user sees immediate feedback
+
         ActiveTabId = tabId;
         StateHasChanged();
         
-        // Background operations - non-blocking for instant UX
+
         _ = InvokeAsync(async () =>
         {
             try
             {
-                // Notify callbacks in background
+
                 await ActiveTabIdChanged.InvokeAsync(ActiveTabId);
                 await OnTabChanged.InvokeAsync(new TabChangedEventArgs
                 {
@@ -342,15 +342,15 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
                     NewTabId = ActiveTabId
                 });
                 
-                // Scroll to active tab if needed
+
                 await ScrollToTab(tabId);
                 
-                // Update indicator with smooth animation
+
                 await UpdateIndicatorPosition();
             }
             catch
             {
-                // Silently handle background operation failures
+
             }
         });
     }
@@ -428,7 +428,7 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
         }
         catch
         {
-            // Fallback if JS fails
+
         }
     }
     
@@ -436,7 +436,7 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
     {
         try
         {
-            // Only check scroll state if we have tabs to scroll
+
             if (tabs.Count <= 1)
             {
                 if (isScrollable || canScrollLeft || canScrollRight)
@@ -451,7 +451,7 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
             
             var scrollInfo = await JSRuntime.InvokeAsync<ScrollInfo>("RRBlazor.getTabScrollInfo", navWrapper);
             
-            // Only update state if values actually changed
+
             if (isScrollable != scrollInfo.IsScrollable || 
                 canScrollLeft != scrollInfo.CanScrollLeft || 
                 canScrollRight != scrollInfo.CanScrollRight)
@@ -464,7 +464,7 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
         }
         catch
         {
-            // Fallback if JS fails - ensure arrows are hidden
+
             if (isScrollable || canScrollLeft || canScrollRight)
             {
                 isScrollable = false;
@@ -484,7 +484,7 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
         }
         catch
         {
-            // Fallback if JS fails
+
         }
     }
     
@@ -497,7 +497,7 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
         }
         catch
         {
-            // Fallback if JS fails
+
         }
     }
     
@@ -510,7 +510,7 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
         }
         catch
         {
-            // Fallback if JS fails
+
         }
     }
     
@@ -518,13 +518,13 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
     {
         var classes = new List<string>();
         
-        // Size classes with density modifications
+
         classes.Add(GetTabSizeClasses());
         
-        // Density-specific padding
+
         classes.Add(GetTabDensityClasses());
         
-        // State classes
+
         if (tab.Id == ActiveTabId)
         {
             classes.Add("tabs-tab-active");
@@ -668,7 +668,7 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
     
     public void Dispose()
     {
-        // Cleanup if needed
+
     }
     
     public class RTabItemInfo

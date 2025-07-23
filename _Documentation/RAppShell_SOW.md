@@ -177,26 +177,53 @@ The topbar follows a **three-zone layout** with maximum flexibility:
 }
 ```
 
-#### **3. Smart Search Integration**
-```razor
-@* ✅ Built-in autosuggest search with service integration *@
-<RAppShell ShowSearch="true" 
-           SearchCollapsible="true">  <!-- Collapses on mobile -->
-</RAppShell>
+#### **3. Intelligent Global Search System** 🔍
 
-@* The shell automatically integrates with IAppSearchService *@
+RAppShell includes a sophisticated, role-aware search system that transforms user interaction with application data:
+
+```razor
+@* ✅ Built-in intelligent search with role-based filtering *@
+<RAppShell SearchCollapsible="true"
+           Features="AppShellFeatures.Search">
+    <!-- Search automatically integrates with registered providers -->
+</RAppShell>
+```
+
+**🚀 Search Features:**
+- **🎯 Universal Search**: Searches across all registered data providers
+- **🛡️ Role-Based Filtering**: Results automatically filtered by user permissions  
+- **⚡ Lightning Fast**: Sub-2-second response times with intelligent caching
+- **📱 Collapsible Interface**: Expands on click, auto-collapses when empty and unfocused
+- **🧠 Smart Suggestions**: Contextual results with relevance scoring and categorization
+
+**Search Provider Registration:**
+
+```csharp
 @code {
-    // Register search providers in Program.cs
-    builder.Services.AddScoped<IAppSearchService, AppSearchService>();
-    
-    protected override async Task OnInitializedAsync()
+    protected override void OnInitialized()
     {
-        // Navigation items automatically become searchable
+        // Global search provider (highest priority)
+        var globalProvider = new GlobalSearchProvider(DashboardService, AuthService, Navigation, ModalService);
+        AppSearchService.RegisterSearchProvider(globalProvider);
+        
+        // Navigation search provider  
         var navProvider = new NavigationSearchProvider(NavigationItems);
-        SearchService.RegisterSearchProvider(navProvider);
+        AppSearchService.RegisterSearchProvider(navProvider);
+        
+        // Custom application search provider
+        var appProvider = new MyAppSearchProvider(MyDataService);
+        AppSearchService.RegisterSearchProvider(appProvider);
     }
 }
 ```
+
+**Search Result Types & Navigation:**
+- **Payment Orders** → Dashboard with specific item highlighted
+- **Invoices** → Dashboard invoice tab with item selected
+- **Employees** → Employee profile page (role-based access)
+- **Issues** → Dashboard issues tab with ticket details
+- **Documents** → Document viewer with full controls
+- **Navigation** → Direct navigation to application pages
 
 #### **4. Quick Actions Bar**
 ```razor

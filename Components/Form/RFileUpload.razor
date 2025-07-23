@@ -200,7 +200,7 @@
 </div>
 
 @code {
-    // Core Parameters
+
     /// <summary>Component identifier</summary>
     [Parameter] [AIParameter("Unique identifier for the file upload component", Example = "document-upload")] public string ComponentId { get; set; } = $"file-upload-{Guid.NewGuid().ToString("N")[..8]}";
     
@@ -216,7 +216,7 @@
     /// <summary>Additional CSS classes</summary>
     [Parameter] public string Class { get; set; }
 
-    // File Configuration
+
     /// <summary>Allowed file types (extensions like .pdf, .jpg or MIME types)</summary>
     [Parameter] [AIParameter("Array of allowed file extensions or MIME types", Example = "new[] { \".pdf\", \".jpg\", \".png\" }")] public string[] AllowedTypes { get; set; }
     
@@ -232,7 +232,7 @@
     /// <summary>Allow duplicate files</summary>
     [Parameter] public bool AllowDuplicates { get; set; } = true;
 
-    // UI Configuration
+
     /// <summary>Show file preview/list</summary>
     [Parameter] public bool ShowPreview { get; set; } = true;
     
@@ -251,7 +251,7 @@
     /// <summary>Show browse button in drop zone</summary>
     [Parameter] public bool ShowBrowseButton { get; set; } = true;
 
-    // Text Configuration
+
     /// <summary>Upload area title text</summary>
     [Parameter] public string UploadText { get; set; }
     
@@ -279,14 +279,14 @@
     /// <summary>Start icon for button mode (deprecated - use Icon + IconPosition)</summary>
     [Parameter] public string StartIcon { get; set; }
 
-    // Data Binding
+
     /// <summary>Selected files collection</summary>
     [Parameter] public List<RFileInfo> Files { get; set; } = new();
     
     /// <summary>Callback when files change</summary>
     [Parameter] public EventCallback<List<RFileInfo>> FilesChanged { get; set; }
 
-    // Event Callbacks
+
     /// <summary>Called when files are selected</summary>
     [Parameter] public EventCallback<RFileUploadResult> OnFilesSelected { get; set; }
     
@@ -302,7 +302,7 @@
     /// <summary>Called for file validation (return null if valid, error message if invalid)</summary>
     [Parameter] public Func<IBrowserFile, Task<string>> CustomValidator { get; set; }
 
-    // Private State
+
     private List<RFileInfo> SelectedFiles => Files;
     private bool IsUploading => SelectedFiles.Any(f => f.Status == RFileUploadStatus.Uploading);
     private double OverallProgress => SelectedFiles.Count == 0 ? 0 : SelectedFiles.Average(f => f.UploadProgress);
@@ -320,7 +320,7 @@
             {
                 dotNetRef = DotNetObjectReference.Create(this);
                 
-                // Use standard module for basic functionality
+
                 jsModule = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./_content/RR.Blazor/js/file-upload.js");
                 
                 var settings = new
@@ -336,7 +336,7 @@
                 
                 await jsModule.InvokeVoidAsync("RRFileUpload.initialize", ComponentId, settings);
                 
-                // Subscribe to JS events
+
                 await JSRuntime.InvokeVoidAsync("addEventListener", ComponentId, "rr-files-selected", dotNetRef, "OnFilesSelectedFromJS");
                 await JSRuntime.InvokeVoidAsync("addEventListener", ComponentId, "rr-file-removed", dotNetRef, "OnFileRemovedFromJS");
             }
@@ -356,7 +356,7 @@
         {
             var fileInfo = await CreateFileInfo(file);
             
-            // Validate file
+
             var validationError = await ValidateFile(file);
             if (!string.IsNullOrEmpty(validationError))
             {
@@ -369,7 +369,7 @@
             newFiles.Add(fileInfo);
         }
 
-        // Update files collection
+
         if (!AllowDuplicates)
         {
             var existingNames = SelectedFiles.Select(f => f.Name).ToHashSet();
@@ -379,7 +379,7 @@
         SelectedFiles.AddRange(newFiles);
         result.Files = newFiles;
 
-        // Trigger events
+
         await FilesChanged.InvokeAsync(SelectedFiles);
         await OnFilesSelected.InvokeAsync(result);
         
@@ -400,13 +400,13 @@
             Status = RFileUploadStatus.Pending
         };
 
-        // Generate thumbnail for images if enabled
+
         if (fileInfo.IsImage && GenerateThumbnails && jsModule != null)
         {
             try
             {
-                // This would be implemented in JS and called back
-                // For now, we'll skip thumbnail generation in C# side
+
+
             }
             catch (Exception ex)
             {
@@ -419,13 +419,13 @@
 
     private async Task<string> ValidateFile(IBrowserFile file)
     {
-        // Size validation
+
         if (file.Size > MaxSize)
         {
             return $"File size ({FormatFileSize(file.Size)}) exceeds maximum allowed ({FormatFileSize(MaxSize)})";
         }
 
-        // Type validation
+
         if (AllowedTypes?.Length > 0)
         {
             var extension = Path.GetExtension(file.Name).ToLowerInvariant();
@@ -440,7 +440,7 @@
             }
         }
 
-        // Custom validation
+
         if (CustomValidator != null)
         {
             return await CustomValidator(file);
@@ -477,7 +477,7 @@
         }
         else if (e.Key == "Escape")
         {
-            // Clear focus from drop zone
+
             await JSRuntime.InvokeVoidAsync("eval", "document.activeElement.blur()");
         }
     }
@@ -507,7 +507,7 @@
         }
         else if (e.Key == "ArrowDown" || e.Key == "ArrowUp")
         {
-            // Navigate between file items using arrow keys
+
             var currentIndex = SelectedFiles.FindIndex(f => f.Id == fileId);
             if (currentIndex >= 0)
             {
@@ -541,11 +541,11 @@
         return $"{file.Name}, {FormatFileSize(file.Size)}, {status}{removeHint}";
     }
 
-    // JavaScript Callbacks
+
     [JSInvokable]
     public async Task OnFilesSelectedFromJS(object eventData)
     {
-        // Handle files selected via drag/drop or JS
+
         StateHasChanged();
     }
 
@@ -555,7 +555,7 @@
         await RemoveFile(fileId);
     }
 
-    // UI Helper Methods
+
     private string GetContainerClasses()
     {
         var classes = new List<string> { "r-file-upload" };
@@ -668,11 +668,11 @@
     /// <summary>Gets the effective icon, supporting both new and legacy patterns</summary>
     private string GetEffectiveIcon()
     {
-        // New unified pattern takes precedence
+
         if (!string.IsNullOrEmpty(Icon))
             return Icon;
             
-        // Legacy fallback for backward compatibility
+
         if (!string.IsNullOrEmpty(StartIcon))
             return StartIcon;
             

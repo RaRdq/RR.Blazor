@@ -191,19 +191,15 @@ Professional button component with enterprise variants, AI-optimized for rapid d
     {
         var classes = new List<string>();
         
-        // Size classes with density modifiers
         classes.Add(GetSizeClasses());
         
-        // Density-specific gap adjustments using helper
         classes.Add(DensityHelper.GetGap(Density));
         
-        // Border radius handled by SCSS
         if (!Rounded)
         {
             classes.Add("button-no-radius");
         }
         
-        // Variant-specific styles using utility classes
         switch (Variant)
         {
             case ButtonVariant.Primary:
@@ -263,7 +259,6 @@ Professional button component with enterprise variants, AI-optimized for rapid d
                 break;
         }
         
-        // Shadow/Elevation handled by SCSS
         if (Elevation >= 0)
         {
             classes.Add($"button-elevation-{Math.Min(24, Math.Max(0, Elevation))}");
@@ -273,7 +268,6 @@ Professional button component with enterprise variants, AI-optimized for rapid d
             classes.Add("button-no-shadow");
         }
         
-        // State classes handled by SCSS
         if (Disabled)
         {
             classes.Add("button-disabled");
@@ -289,15 +283,12 @@ Professional button component with enterprise variants, AI-optimized for rapid d
             classes.Add("button-full");
         }
         
-        // Remove excessive padding utility classes - SCSS handles proper spacing now
         
-        // Add icon-only class for fallback styling
         if (!string.IsNullOrEmpty(Icon) && string.IsNullOrEmpty(Text))
         {
             classes.Add("button-icon-only");
         }
         
-        // Add flex direction classes for icon positioning
         if (!string.IsNullOrEmpty(Icon) && !string.IsNullOrEmpty(Text))
         {
             switch (IconPosition)
@@ -309,8 +300,6 @@ Professional button component with enterprise variants, AI-optimized for rapid d
             }
         }
         
-        // Custom CSS classes
-        // Add badge-related classes for positioning
         if (ShowBadge && BadgeCount > 0)
         {
             classes.Add("button-with-badge");
@@ -330,7 +319,7 @@ Professional button component with enterprise variants, AI-optimized for rapid d
     }
     
     
-    private string GetIconClasses()
+    protected override string GetIconClasses()
     {
         var classes = new List<string> 
         { 
@@ -338,7 +327,6 @@ Professional button component with enterprise variants, AI-optimized for rapid d
             SizeHelper.GetButtonIconSize(Size, Density)
         };
         
-        // Position spacing - only add margin if there's text content
         if (!string.IsNullOrEmpty(Text))
         {
             switch (IconPosition)
@@ -363,40 +351,31 @@ Professional button component with enterprise variants, AI-optimized for rapid d
     
     private string GetTextClass() => $"button-text {SizeHelper.GetTextSize(Size, Density)}";
     
-    private async Task HandleClick(MouseEventArgs e)
+    protected override async Task HandleClick(MouseEventArgs e)
     {
         if (!Disabled && !Loading)
         {
-            // Handle confirmation if required
             if (RequiresConfirmation || !string.IsNullOrEmpty(ConfirmMessage))
             {
-                // Note: In a real implementation, this would integrate with RModal or a toast service
-                // For now, we'll use a basic confirmation and rely on the consuming application
-                // to inject IModalService or similar for proper confirmation dialogs
                 
                 var confirmed = await ConfirmAction();
                 if (!confirmed) return;
             }
             
-            // Handle navigation if Href is provided
             if (!string.IsNullOrEmpty(Href))
             {
                 if (Target == "_blank")
                 {
-                    // Open in new window/tab using JavaScript
                     await JSRuntime.InvokeVoidAsync("open", Href, "_blank");
                 }
                 else
                 {
-                    // Navigate in same window
                     if (Uri.IsWellFormedUriString(Href, UriKind.Absolute))
                     {
-                        // External URL - use JavaScript to navigate
                         await JSRuntime.InvokeVoidAsync("window.location.assign", Href);
                     }
                     else
                     {
-                        // Internal route - use NavigationManager
                         Navigation.NavigateTo(Href);
                     }
                 }
@@ -404,7 +383,6 @@ Professional button component with enterprise variants, AI-optimized for rapid d
             
             await OnClick.InvokeAsync(e);
             
-            // Show success message if provided
             if (!string.IsNullOrEmpty(SuccessMessage))
             {
                 await ShowSuccessMessage();
@@ -414,14 +392,11 @@ Professional button component with enterprise variants, AI-optimized for rapid d
     
     private async Task<bool> ConfirmAction()
     {
-        // Basic browser confirmation - in real usage, this should be replaced 
-        // with RModal integration via IModalService dependency injection
         return await Task.FromResult(true); // Always confirm for now
     }
     
     private async Task ShowSuccessMessage()
     {
-        // Basic implementation - in real usage, integrate with toast service
         await Task.Delay(100); // Placeholder for toast integration
     }
     
@@ -464,7 +439,6 @@ Professional button component with enterprise variants, AI-optimized for rapid d
     /// </summary>
     protected override string GetVariantClasses()
     {
-        // Use existing GetButtonClasses logic for variant styling
         return GetCompleteVariantClasses();
     }
     
@@ -487,7 +461,7 @@ Professional button component with enterprise variants, AI-optimized for rapid d
     /// <summary>
     /// Gets complete variant classes with theming
     /// </summary>
-    private string GetCompleteVariantClasses()
+    protected override string GetCompleteVariantClasses()
     {
         return Variant switch
         {

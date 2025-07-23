@@ -10,6 +10,7 @@ Modern Blazor component library with 65+ components, utility-first styling, and 
 
 - **Zero Configuration** - Works out-of-the-box with sensible defaults
 - **65+ Components** - Complete UI toolkit from buttons to data grids
+- **🔍 Intelligent Search System** - Built-in search with collapsible interface and role-based filtering
 - **Smart Type Detection** - Auto-detects generics, eliminating boilerplate
 - **3,300+ Utilities** - Comprehensive CSS utility classes
 - **Theme System** - Light/dark modes with CSS variables
@@ -42,7 +43,7 @@ builder.Services.AddRRBlazor();
 </RAppShell>
 ```
 
-**That's it!** RAppShell includes theme provider, modal provider, toast container, and styles.
+**That's it!** RAppShell includes theme provider, modal provider, toast container, intelligent search system, and styles.
 
 ### Alternative: Manual Setup
 
@@ -113,6 +114,52 @@ builder.Services.AddRRBlazor();
          OnClick="@(() => ToastService.ShowSuccess("Operation completed!"))" />
 ```
 
+### 🔍 Intelligent Search System
+
+RAppShell includes a built-in, role-aware search system with collapsible interface:
+
+```razor
+<!-- Automatic integration with RAppShell -->
+<RAppShell SearchCollapsible="true">
+    <!-- Search providers are registered automatically -->
+    @Body
+</RAppShell>
+```
+
+**Search Features:**
+- **🎯 Universal Search**: Searches across all registered data providers
+- **🛡️ Role-Based Filtering**: Results filtered by user permissions
+- **⚡ Lightning Fast**: Sub-2-second response times with intelligent caching
+- **📱 Collapsible Interface**: Expands on click, auto-collapses when empty
+- **🧠 Smart Suggestions**: Contextual results with relevance scoring
+
+**Search Provider Registration:**
+
+```csharp
+// Register custom search providers
+public class MySearchProvider : ISearchProvider
+{
+    public string Name => "MyData";
+    public int Priority => 10;
+    
+    public async Task<List<AppSearchResult>> SearchAsync(string query, CancellationToken cancellationToken = default)
+    {
+        // Your search implementation
+        return await MyDataService.SearchAsync(query);
+    }
+}
+
+// In your layout
+@inject IAppSearchService AppSearchService
+
+@code {
+    protected override void OnInitialized()
+    {
+        AppSearchService.RegisterSearchProvider(new MySearchProvider());
+    }
+}
+```
+
 ## Component Categories
 
 | Category | Components | Examples |
@@ -124,6 +171,7 @@ builder.Services.AddRRBlazor();
 | **Feedback** | 10 components | RModal, RToastContainer, RConfirmModal, RAlert |
 | **Navigation** | 5 components | RBreadcrumbs, RDropdown, RNavMenu, RTabs |
 | **Layout** | 3 components | RAppShell, RSection, RGrid |
+| **🔍 Search** | Built-in system | Global search, role-based filtering, collapsible interface |
 
 ## Styling System
 

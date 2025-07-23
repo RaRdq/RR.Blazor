@@ -742,6 +742,42 @@ window.RRBlazor = {
                 debugLogger.warn('Choice.applyDynamicPositioning error:', error);
             }
         }
+    },
+
+    // User menu dropdown management
+    setupUserMenuOutsideClick: function(userMenuContainerId, toggleCallback) {
+        debugLogger.log('Setting up user menu outside click handler for:', userMenuContainerId);
+        
+        const userMenuContainer = document.querySelector(userMenuContainerId);
+        if (!userMenuContainer) {
+            debugLogger.warn('User menu container not found:', userMenuContainerId);
+            return;
+        }
+
+        const outsideClickHandler = function(event) {
+            // Check if click is outside the user menu container
+            if (!userMenuContainer.contains(event.target)) {
+                debugLogger.log('Outside click detected, closing user menu');
+                toggleCallback.invokeMethodAsync('CloseUserMenu');
+            }
+        };
+
+        // Store handler reference for cleanup
+        userMenuContainer._outsideClickHandler = outsideClickHandler;
+        
+        // Add event listener to document
+        document.addEventListener('click', outsideClickHandler);
+        
+        debugLogger.log('User menu outside click handler attached');
+    },
+
+    removeUserMenuOutsideClick: function(userMenuContainerId) {
+        const userMenuContainer = document.querySelector(userMenuContainerId);
+        if (userMenuContainer && userMenuContainer._outsideClickHandler) {
+            document.removeEventListener('click', userMenuContainer._outsideClickHandler);
+            delete userMenuContainer._outsideClickHandler;
+            debugLogger.log('User menu outside click handler removed');
+        }
     }
 };
 

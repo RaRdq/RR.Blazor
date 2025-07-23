@@ -165,30 +165,30 @@
 </CascadingValue>
 
 @code {
-    // TModel-specific parameters (not inherited from base)
+
     [Parameter] [AIParameter("Data model bound to the form", Example = "userModel")] public TModel Model { get; set; } = default!;
     [Parameter] [AIParameter("Callback when model data changes", Example = "OnModelChanged")] public EventCallback<TModel> ModelChanged { get; set; }
     
-    // Additional content areas specific to generic form
+
     [Parameter] public RenderFragment? FormActions { get; set; }
     
-    // Strongly typed events (for explicit generic usage - backward compatibility)
+
     [Parameter] [AIParameter("Called when form is submitted with valid data", Example = "HandleValidSubmit")] public EventCallback<FormSubmissionEventArgs<TModel>> OnValidSubmitTyped { get; set; }
     [Parameter] [AIParameter("Called when form is submitted with invalid data", Example = "HandleInvalidSubmit")] public EventCallback<FormSubmissionEventArgs<TModel>> OnInvalidSubmitTyped { get; set; }
     [Parameter] [AIParameter("Called when form state changes (submitting, success, error)", Example = "OnFormStateChanged")] public EventCallback<FormStateChangedEventArgs> OnStateChangedTyped { get; set; }
     
-    // Object-based events (for smart wrapper compatibility) 
+
     [Parameter] public EventCallback<object> OnValidSubmitObject { get; set; }
     [Parameter] public EventCallback<object> OnInvalidSubmitObject { get; set; }
     [Parameter] public EventCallback<object> OnStateChangedObject { get; set; }
     
-    // Validation
+
     [Parameter] public FormValidationDelegate<TModel>? CustomValidatorTyped { get; set; }
     
-    // Styling
+
     [Parameter] public string? AriaLabel { get; set; }
 
-    // State
+
     public FormState State { get; private set; } = FormState.Ready;
     public bool IsFormValid 
     {
@@ -196,10 +196,10 @@
         {
             try
             {
-                // Check custom validation
+
                 var customValid = validationResult?.IsValid ?? true;
                 
-                // Check DataAnnotations validation
+
                 var dataAnnotationsValid = true;
                 if (ValidationMode == ValidationMode.DataAnnotations || ValidationMode == ValidationMode.Hybrid)
                 {
@@ -233,12 +233,12 @@
             throw new ArgumentNullException(nameof(Model), "Model is required for RForm component");
         }
         
-        // Initialize Options if null
+
         Options ??= new FormOptions();
         
         AriaLabel ??= Title ?? "Form";
         
-        // Initialize with a clean validation state - don't run validation until needed
+
         validationResult = new FormValidationResult { IsValid = true };
     }
     
@@ -246,7 +246,7 @@
     {
         if (firstRender)
         {
-            // No JS initialization needed for basic validation
+
             await Task.CompletedTask;
         }
     }
@@ -256,7 +256,7 @@
         HasAttemptedSubmit = true;
         await SetStateAsync(FormState.Validating);
         
-        // Perform validation
+
         var validation = await ValidateModelAsync();
         
         if (!validation.IsValid)
@@ -272,7 +272,7 @@
         {
             var args = new FormSubmissionEventArgs<TModel>(Model, validation);
             
-            // Handle callbacks - try object-based first (for smart wrapper), then strongly typed, then base class
+
             if (OnValidSubmitObject.HasDelegate)
             {
                 await OnValidSubmitObject.InvokeAsync(args);
@@ -306,7 +306,7 @@
             
             await SetStateAsync(FormState.Success);
             
-            // Show success message with timer
+
             if (!string.IsNullOrEmpty(Options.SuccessMessage))
             {
                 successMessageTimer?.Dispose();
@@ -321,12 +321,12 @@
             }
             else
             {
-                // Reset to ready state immediately if no success message
+
                 await Task.Delay(100);
                 await SetStateAsync(FormState.Ready);
             }
             
-            // Reset form if configured
+
             if (Options.ResetAfterSubmit)
             {
                 await ResetFormAsync();
@@ -347,7 +347,7 @@
         
         var args = new FormSubmissionEventArgs<TModel>(Model, validationResult);
         
-        // Handle callbacks - try object-based first (for smart wrapper), then strongly typed, then base class
+
         if (OnInvalidSubmitObject.HasDelegate)
         {
             await OnInvalidSubmitObject.InvokeAsync(args);
@@ -361,7 +361,7 @@
             await OnInvalidSubmit.InvokeAsync(args);
         }
         
-        // Focus first invalid field if configured
+
         if (Options.FocusFirstInvalidField)
         {
             await FocusFirstInvalidFieldAsync();
@@ -384,7 +384,7 @@
         
         try
         {
-            // DataAnnotations validation
+
             if (ValidationMode == ValidationMode.DataAnnotations || ValidationMode == ValidationMode.Hybrid)
             {
                 var context = new ValidationContext(Model);
@@ -409,14 +409,14 @@
                 }
             }
             
-            // Custom validation
+
             if (ValidationMode == ValidationMode.Custom || ValidationMode == ValidationMode.Hybrid)
             {
                 if (CustomValidatorTyped != null)
                 {
                     var customResult = await CustomValidatorTyped(Model);
                     
-                    // Merge custom validation results
+
                     foreach (var fieldError in customResult.FieldErrors)
                     {
                         foreach (var error in fieldError.Value)
@@ -444,11 +444,11 @@
             result.AddFormError("An error occurred during validation");
         }
         
-        // Update validation result
+
         var previousValid = validationResult?.IsValid ?? true;
         validationResult = result;
         
-        // Only trigger StateHasChanged if validation state actually changed
+
         if (previousValid != result.IsValid)
         {
             StateHasChanged();
@@ -489,7 +489,7 @@
         validationResult.Clear();
         await SetStateAsync(FormState.Ready);
         
-        // Reset model to default values
+
         var modelType = typeof(TModel);
         var newInstance = Activator.CreateInstance<TModel>();
         
@@ -514,7 +514,7 @@
         {
             if (validationResult.FieldErrors.Any())
             {
-                // Simple focus management without JS dependency
+
                 var firstFieldName = validationResult.FieldErrors.Keys.First();
                 var fieldSelector = $"#{FormId} input[data-field='{firstFieldName}'], #{FormId} select[data-field='{firstFieldName}'], #{FormId} textarea[data-field='{firstFieldName}']";
                 await JSRuntime.InvokeVoidAsync("eval", $"document.querySelector('{fieldSelector}')?.focus()");
@@ -567,7 +567,7 @@
     {
         var combined = new FormValidationResult();
         
-        // Add custom validation errors
+
         if (validationResult != null)
         {
             foreach (var fieldError in validationResult.FieldErrors)
@@ -587,7 +587,7 @@
             }
         }
         
-        // Add DataAnnotations validation errors
+
         if (ValidationMode == ValidationMode.DataAnnotations || ValidationMode == ValidationMode.Hybrid)
         {
             try
@@ -732,13 +732,13 @@
     {
         var errors = new List<string>();
         
-        // Add custom validation errors
+
         if (validationResult?.FormErrors != null)
         {
             errors.AddRange(validationResult.FormErrors);
         }
         
-        // Add DataAnnotations validation errors
+
         var editContext = new EditContext(Model);
         var validationMessages = editContext.GetValidationMessages();
         errors.AddRange(validationMessages);
