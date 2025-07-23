@@ -1,5 +1,4 @@
-// RR.Blazor Tabs Component JavaScript Module
-// Handles tab navigation, scrolling, and indicator positioning
+// Tab navigation and scrolling utilities
 
 export function getTabIndicatorPosition(tabElementId, wrapperElement) {
     const element = document.getElementById(tabElementId);
@@ -25,7 +24,6 @@ export function getTabScrollInfo(wrapperElement) {
     const scrollWidth = wrapperElement.scrollWidth;
     const clientWidth = wrapperElement.clientWidth;
     
-    // Add 5px threshold to avoid false positives from rounding errors
     const scrollThreshold = 5;
     const isScrollable = scrollWidth > clientWidth + scrollThreshold;
     
@@ -39,11 +37,9 @@ export function getTabScrollInfo(wrapperElement) {
 export function scrollTabsLeft(wrapperElement) {
     if (!wrapperElement) return;
     
-    // Enhanced scroll behavior - snap to tabs for professional feel
     const tabs = wrapperElement.querySelectorAll('[role="tab"]');
     const containerRect = wrapperElement.getBoundingClientRect();
     
-    // Find the first fully visible tab from the left
     let targetTab = null;
     for (let i = tabs.length - 1; i >= 0; i--) {
         const tabRect = tabs[i].getBoundingClientRect();
@@ -54,14 +50,12 @@ export function scrollTabsLeft(wrapperElement) {
     }
     
     if (targetTab) {
-        // Scroll to show the target tab with some padding
-        const targetLeft = targetTab.offsetLeft - 16; // 16px padding
+        const targetLeft = targetTab.offsetLeft - 16;
         wrapperElement.scrollTo({
             left: Math.max(0, targetLeft),
             behavior: 'smooth'
         });
     } else {
-        // Fallback to percentage-based scrolling
         const scrollAmount = wrapperElement.clientWidth * 0.7;
         wrapperElement.scrollBy({
             left: -scrollAmount,
@@ -73,11 +67,9 @@ export function scrollTabsLeft(wrapperElement) {
 export function scrollTabsRight(wrapperElement) {
     if (!wrapperElement) return;
     
-    // Enhanced scroll behavior - snap to tabs for professional feel
     const tabs = wrapperElement.querySelectorAll('[role="tab"]');
     const containerRect = wrapperElement.getBoundingClientRect();
     
-    // Find the first partially hidden tab from the right
     let targetTab = null;
     for (let i = 0; i < tabs.length; i++) {
         const tabRect = tabs[i].getBoundingClientRect();
@@ -88,14 +80,12 @@ export function scrollTabsRight(wrapperElement) {
     }
     
     if (targetTab) {
-        // Scroll to show the target tab with some padding
-        const targetLeft = targetTab.offsetLeft - 16; // 16px padding
+        const targetLeft = targetTab.offsetLeft - 16;
         wrapperElement.scrollTo({
             left: targetLeft,
             behavior: 'smooth'
         });
     } else {
-        // Fallback to percentage-based scrolling
         const scrollAmount = wrapperElement.clientWidth * 0.7;
         wrapperElement.scrollBy({
             left: scrollAmount,
@@ -113,11 +103,9 @@ export function scrollToTab(wrapperElement, tabElementId) {
     const wrapperRect = wrapperElement.getBoundingClientRect();
     const tabRect = tabElement.getBoundingClientRect();
     
-    // Calculate if tab is outside visible area
     const isTabVisible = tabRect.left >= wrapperRect.left && tabRect.right <= wrapperRect.right;
     
     if (!isTabVisible) {
-        // Calculate scroll position to center the tab
         const scrollLeft = wrapperElement.scrollLeft;
         const tabOffsetLeft = tabElement.offsetLeft;
         const wrapperWidth = wrapperElement.clientWidth;
@@ -133,19 +121,15 @@ export function scrollToTab(wrapperElement, tabElementId) {
 }
 
 export function initializeTabs(element, navContainer, navWrapper) {
-    // Add keyboard navigation
     const tabs = element.querySelectorAll('[role="tab"]');
     tabs.forEach(tab => {
         tab.addEventListener('keydown', (e) => {
-            // Handled in Blazor component
-        });
+            });
     });
     
-    // Update indicator position on window resize
     const updateIndicator = () => {
         const activeTab = element.querySelector('[role="tab"][aria-selected="true"]');
         if (activeTab) {
-            // Trigger update in Blazor component
             const event = new CustomEvent('rr-tab-indicator-update', {
                 detail: { tabId: activeTab.id }
             });
@@ -153,7 +137,6 @@ export function initializeTabs(element, navContainer, navWrapper) {
         }
     };
     
-    // Enhanced scroll state management
     const updateScrollState = () => {
         if (navWrapper) {
             const scrollInfo = getTabScrollInfo(navWrapper);
@@ -162,7 +145,6 @@ export function initializeTabs(element, navContainer, navWrapper) {
                 navElement.classList.toggle('tabs__nav--scrollable', scrollInfo.isScrollable);
             }
             
-            // Update arrow visibility
             const leftArrow = element.querySelector('.tabs__nav-arrow--left');
             const rightArrow = element.querySelector('.tabs__nav-arrow--right');
             
@@ -175,19 +157,15 @@ export function initializeTabs(element, navContainer, navWrapper) {
         }
     };
     
-    // Event listeners
     window.addEventListener('resize', updateIndicator);
     window.addEventListener('resize', updateScrollState);
     
-    // Scroll event listener for real-time arrow updates
     if (navWrapper) {
         navWrapper.addEventListener('scroll', updateScrollState);
     }
     
-    // Initial setup
     updateScrollState();
     
-    // Store cleanup function
     element._rrCleanup = () => {
         window.removeEventListener('resize', updateIndicator);
         window.removeEventListener('resize', updateScrollState);
@@ -197,7 +175,6 @@ export function initializeTabs(element, navContainer, navWrapper) {
     };
 }
 
-// Export all tab functions
 export default {
     getTabIndicatorPosition,
     getTabScrollInfo,

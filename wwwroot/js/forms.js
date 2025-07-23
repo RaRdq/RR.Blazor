@@ -1,5 +1,4 @@
-// RR.Blazor Forms Component JavaScript Module
-// Handles form field interactions, validation, and auto-resize functionality
+// Form field utilities and interactions
 
 export function autoResizeTextarea(element) {
     if (!element) return;
@@ -12,18 +11,16 @@ export function initializeFormField(element, options) {
     const input = element.querySelector('input, textarea, select');
     if (!input) return;
     
-    // Auto-resize textarea
     if (input.tagName === 'TEXTAREA' && options.autoResize) {
         const autoResize = () => autoResizeTextarea(input);
         input.addEventListener('input', autoResize);
-        autoResize(); // Initial resize
+        autoResize();
         
         element._rrCleanup = () => {
             input.removeEventListener('input', autoResize);
         };
     }
     
-    // Character count updates
     if (options.showCharacterCount && options.maxLength) {
         const updateCount = () => {
             const counter = element.querySelector('.rr-form-field__character-count');
@@ -31,7 +28,6 @@ export function initializeFormField(element, options) {
                 const count = input.value.length;
                 counter.textContent = `${count} / ${options.maxLength}`;
                 
-                // Update color based on percentage
                 const percentage = count / options.maxLength;
                 counter.classList.remove('text-error', 'text-warning', 'text-tertiary');
                 
@@ -46,10 +42,9 @@ export function initializeFormField(element, options) {
         };
         
         input.addEventListener('input', updateCount);
-        updateCount(); // Initial update
+        updateCount();
     }
     
-    // Note: Floating label support removed - using pure CSS approach
 }
 
 export function focusElement(elementId) {
@@ -63,7 +58,6 @@ export function copyToClipboard(text) {
     if (navigator.clipboard && window.isSecureContext) {
         return navigator.clipboard.writeText(text);
     } else {
-        // Fallback for older browsers or non-HTTPS contexts
         const textArea = document.createElement('textarea');
         textArea.value = text;
         textArea.style.position = 'fixed';
@@ -95,7 +89,6 @@ export function cleanupComponent(elementId) {
     }
 }
 
-// Export all form utilities
 export default {
     autoResizeTextarea,
     initializeFormField,

@@ -1,5 +1,4 @@
-// RR.Blazor Utilities JavaScript Module
-// General utility functions for DOM manipulation, scrolling, and file operations
+// General DOM and utility functions
 
 export function scrollIntoView(elementId, options = {}) {
     const element = document.getElementById(elementId);
@@ -121,7 +120,6 @@ export function removeOutsideClickHandler(containerId) {
     }
 }
 
-// Event listener management
 export function addEventListener(elementId, eventName, dotNetRef, methodName) {
     const element = document.getElementById(elementId);
     if (!element || !dotNetRef) return;
@@ -144,7 +142,6 @@ export function addEventListener(elementId, eventName, dotNetRef, methodName) {
 
     element.addEventListener(eventName, handler);
     
-    // Store cleanup function
     if (!element._rrEventCleanups) {
         element._rrEventCleanups = [];
     }
@@ -153,7 +150,6 @@ export function addEventListener(elementId, eventName, dotNetRef, methodName) {
     });
 }
 
-// Export all utilities
 export default {
     scrollIntoView,
     getElementDimensions,
