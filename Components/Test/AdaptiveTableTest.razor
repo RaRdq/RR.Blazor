@@ -1,0 +1,410 @@
+@page "/test/adaptive-tables"
+@using RR.Blazor.Components.Data
+@using RR.Blazor.Components.Core
+@using RR.Blazor.Components.Layout
+@using RR.Blazor.Enums
+
+@* Comprehensive Adaptive Smart Table System Test *@
+
+<div class="pa-6">
+    <h1 class="text-3xl font-bold mb-4">📱 Adaptive Smart Table Test</h1>
+    <p class="text-secondary mb-6">Testing smart tables across all screen sizes and container contexts</p>
+
+    @* Viewport Info *@
+    <div class="debug-info mb-6 pa-4 bg-surface rounded">
+        <h3 class="text-lg font-medium mb-2">🔍 Viewport Information</h3>
+        <div id="viewport-info" class="text-sm">
+            <p><strong>Current Size:</strong> <span id="viewport-size">Loading...</span></p>
+            <p><strong>Device Type:</strong> <span id="device-type">Loading...</span></p>
+            <p><strong>Orientation:</strong> <span id="orientation">Loading...</span></p>
+        </div>
+    </div>
+
+    @* Test in RTabs Container *@
+    <div class="test-section mb-8">
+        <h2 class="text-xl font-semibold mb-4">📑 Smart Tables in RTabs</h2>
+        <p class="text-secondary mb-4">Testing tables nested within tab containers for responsive behavior</p>
+        
+        <RTabs Variant="TabsVariant.Underline" Size="ButtonSize.Medium">
+            <RTabItem Text="Product Catalog" Icon="inventory">
+                <div class="pa-4">
+                    <h3 class="text-lg font-medium mb-4">Products - Auto Adaptive</h3>
+                    <RTable Items="@products"
+                            Title="Product Catalog"
+                            Subtitle="@($"{products.Count} items - Responsive Layout")"
+                            BulkOperationsEnabled="true"
+                            ExportEnabled="true"
+                            MultiSelection="true"
+                            SelectedItems="@selectedProducts"
+                            SelectedItemsChanged="@HandleProductSelectionChanged">
+                        <ColumnsContent>
+                            <RColumn Property="@((ProductModel p) => p.Name)" Header="Product Name" Sortable="true" />
+                            <RColumn Property="@((ProductModel p) => p.Price)" Header="Price" Format="c" Sortable="true" />
+                            <RColumn Property="@((ProductModel p) => p.Category)" Header="Category" Filterable="true" />
+                            <RColumn Property="@((ProductModel p) => p.Stock)" Header="Stock" />
+                            <RColumn Property="@((ProductModel p) => p.IsActive)" Header="Status" />
+                        </ColumnsContent>
+                    </RTable>
+                </div>
+            </RTabItem>
+            
+            <RTabItem Text="Employee Directory" Icon="people">
+                <div class="pa-4">
+                    <h3 class="text-lg font-medium mb-4">Employees - Compact Density</h3>
+                    <RTableGeneric TItem="EmployeeModel"
+                                  Items="@employees"
+                                  Title="Employee Directory"
+                                  Subtitle="@($"{employees.Count} employees")"
+                                  Density="ComponentDensity.Compact"
+                                  SingleSelection="true"
+                                  SelectedItem="@selectedEmployee"
+                                  SelectedItemChanged="@HandleEmployeeSelectionChanged">
+                        <ColumnsContent>
+                            <RColumn Property="@((EmployeeModel e) => e.FullName)" Header="Full Name" />
+                            <RColumn Property="@((EmployeeModel e) => e.Department)" Header="Department" />
+                            <RColumn Property="@((EmployeeModel e) => e.Salary)" Header="Salary" Format="c" />
+                            <RColumn Property="@((EmployeeModel e) => e.HireDate)" Header="Hire Date" Format="d" />
+                        </ColumnsContent>
+                    </RTableGeneric>
+                </div>
+            </RTabItem>
+            
+            <RTabItem Text="Dense Data" Icon="table_chart">
+                <div class="pa-4">
+                    <h3 class="text-lg font-medium mb-4">Large Dataset - Dense Layout</h3>
+                    <RTableGeneric TItem="DataModel"
+                                  Items="@largeDataset"
+                                  Title="Large Dataset Test"
+                                  Subtitle="@($"{largeDataset.Count} records")"
+                                  Density="ComponentDensity.Dense"
+                                  PageSize="10"
+                                  ExportEnabled="true">
+                        <ColumnsContent>
+                            <RColumn Property="@((DataModel d) => d.Id)" Header="ID" />
+                            <RColumn Property="@((DataModel d) => d.Name)" Header="Name" />
+                            <RColumn Property="@((DataModel d) => d.Value)" Header="Value" Format="n2" />
+                            <RColumn Property="@((DataModel d) => d.Category)" Header="Category" />
+                            <RColumn Property="@((DataModel d) => d.Status)" Header="Status" />
+                        </ColumnsContent>
+                    </RTableGeneric>
+                </div>
+            </RTabItem>
+            
+            <RTabItem Text="Nested Containers" Icon="account_tree">
+                <div class="pa-4">
+                    <h3 class="text-lg font-medium mb-4">Tables in Cards</h3>
+                    
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <RCard Text="Products Summary" 
+                               Icon="inventory"
+                               Variant="CardVariant.Outlined"
+                               Elevation="2">
+                            <ChildContent>
+                                <RTable Items="@products.Take(3).ToList()"
+                                        PageSize="5">
+                                    <ColumnsContent>
+                                        <RColumn Property="@((ProductModel p) => p.Name)" Header="Product" />
+                                        <RColumn Property="@((ProductModel p) => p.Price)" Format="c" Header="Price" />
+                                        <RColumn Property="@((ProductModel p) => p.Stock)" Header="Stock" />
+                                    </ColumnsContent>
+                                </RTable>
+                            </ChildContent>
+                        </RCard>
+                        
+                        <RCard Text="Employee Summary" 
+                               Icon="people"
+                               Variant="CardVariant.Outlined"
+                               Elevation="2">
+                            <ChildContent>
+                                <RTable Items="@employees.Take(3).ToList()"
+                                        PageSize="5">
+                                    <ColumnsContent>
+                                        <RColumn Property="@((EmployeeModel e) => e.FullName)" Header="Name" />
+                                        <RColumn Property="@((EmployeeModel e) => e.Department)" Header="Dept" />
+                                        <RColumn Property="@((EmployeeModel e) => e.Salary)" Format="c" Header="Salary" />
+                                    </ColumnsContent>
+                                </RTable>
+                            </ChildContent>
+                        </RCard>
+                    </div>
+                </div>
+            </RTabItem>
+        </RTabs>
+    </div>
+
+    @* Mobile-First Responsive Test *@
+    <div class="test-section mb-8">
+        <h2 class="text-xl font-semibold mb-4">📱 Mobile-First Responsive Design</h2>
+        <p class="text-secondary mb-4">Tables that adapt their layout based on screen size</p>
+        
+        <div class="space-y-6">
+            @* Mobile-optimized table *@
+            <div class="mobile-table-container">
+                <h3 class="text-lg font-medium mb-2">Mobile Optimized (&lt; 768px)</h3>
+                <RTable Items="@products.Take(5).ToList()"
+                        Title="Mobile Products"
+                        ExportEnabled="false">
+                    <ColumnsContent>
+                        <RColumn Property="@((ProductModel p) => p.Name)" Header="Product" />
+                        <RColumn Property="@((ProductModel p) => p.Price)" Format="c" Header="Price" />
+                        <RColumn Property="@((ProductModel p) => p.IsActive)" Header="Active" />
+                    </ColumnsContent>
+                </RTable>
+            </div>
+            
+            @* Tablet-optimized table *@
+            <div class="tablet-table-container">
+                <h3 class="text-lg font-medium mb-2">Tablet Optimized (768px - 1024px)</h3>
+                <RTable Items="@products"
+                        Title="Tablet Products"
+                        ExportEnabled="true">
+                    <ColumnsContent>
+                        <RColumn Property="@((ProductModel p) => p.Name)" Header="Product Name" Sortable="true" />
+                        <RColumn Property="@((ProductModel p) => p.Price)" Format="c" Header="Price" Sortable="true" />
+                        <RColumn Property="@((ProductModel p) => p.Category)" Header="Category" />
+                        <RColumn Property="@((ProductModel p) => p.Stock)" Header="Stock" />
+                        <RColumn Property="@((ProductModel p) => p.IsActive)" Header="Status" />
+                    </ColumnsContent>
+                </RTable>
+            </div>
+            
+            @* Desktop-optimized table *@
+            <div class="desktop-table-container">
+                <h3 class="text-lg font-medium mb-2">Desktop Optimized (> 1024px)</h3>
+                <RTable Items="@products"
+                        Title="Desktop Products"
+                        Subtitle="Full feature set with bulk operations"
+                        BulkOperationsEnabled="true"
+                        ExportEnabled="true"
+                        MultiSelection="true"
+                        SelectedItems="@selectedProducts"
+                        SelectedItemsChanged="@HandleProductSelectionChanged">
+                    <BulkOperations>
+                        <div class="d-flex gap-2">
+                            <RButton Text="Export Selected" Icon="download" Size="ButtonSize.Small" />
+                            <RButton Text="Delete Selected" Icon="delete" Size="ButtonSize.Small" Variant="ButtonVariant.Danger" />
+                        </div>
+                    </BulkOperations>
+                    <ColumnsContent>
+                        <RColumn Property="@((ProductModel p) => p.Name)" Header="Product Name" Sortable="true" />
+                        <RColumn Property="@((ProductModel p) => p.Price)" Format="c" Header="Price" Sortable="true" />
+                        <RColumn Property="@((ProductModel p) => p.Category)" Header="Category" Filterable="true" />
+                        <RColumn Property="@((ProductModel p) => p.Stock)" Header="Stock Level" />
+                        <RColumn Property="@((ProductModel p) => p.IsActive)" Header="Status" />
+                    </ColumnsContent>
+                </RTable>
+            </div>
+        </div>
+    </div>
+
+    @* Extreme Screen Size Tests *@
+    <div class="test-section mb-8">
+        <h2 class="text-xl font-semibold mb-4">🖥️ Extreme Screen Size Tests</h2>
+        <p class="text-secondary mb-4">Testing behavior at very small and very large screen sizes</p>
+        
+        <div class="space-y-6">
+            @* Ultra-wide (4K+) optimized *@
+            <div class="ultrawide-test">
+                <h3 class="text-lg font-medium mb-2">Ultra-Wide Display (>= 1920px)</h3>
+                <RTable Items="@largeDataset.Take(20).ToList()"
+                        Title="Ultra-Wide Dataset"
+                        Subtitle="Optimized for large displays"
+                        BulkOperationsEnabled="true"
+                        ExportEnabled="true"
+                        PageSize="15">
+                    <ColumnsContent>
+                        <RColumn Property="@((DataModel d) => d.Id)" Header="ID" />
+                        <RColumn Property="@((DataModel d) => d.Name)" Header="Full Name" />
+                        <RColumn Property="@((DataModel d) => d.Value)" Header="Value" Format="n2" />
+                        <RColumn Property="@((DataModel d) => d.Category)" Header="Category" />
+                        <RColumn Property="@((DataModel d) => d.Status)" Header="Status" />
+                        <RColumn Property="@((DataModel d) => d.CreatedDate)" Header="Created" Format="d" />
+                    </ColumnsContent>
+                </RTable>
+            </div>
+            
+            @* Mobile portrait (under 480px) *@
+            <div class="mobile-portrait-test" style="max-width: 320px; margin: 0 auto; border: 2px dashed var(--color-border); padding: 1rem;">
+                <h3 class="text-sm font-medium mb-2">Mobile Portrait Simulation (320px)</h3>
+                <RTable Items="@products.Take(3).ToList()"
+                        Title="Mobile View"
+                        ExportEnabled="false"
+                        PageSize="3">
+                    <ColumnsContent>
+                        <RColumn Property="@((ProductModel p) => p.Name)" Header="Product" />
+                        <RColumn Property="@((ProductModel p) => p.Price)" Format="c" Header="$" />
+                    </ColumnsContent>
+                </RTable>
+            </div>
+        </div>
+    </div>
+
+    @* Performance Test *@
+    <div class="test-section mb-8">
+        <h2 class="text-xl font-semibold mb-4">⚡ Performance & Stress Test</h2>
+        <p class="text-secondary mb-4">Testing with large datasets and complex layouts</p>
+        
+        <RButton Text="@(showPerformanceTest ? "Hide Performance Test" : "Show Performance Test")"
+                 Icon="@(showPerformanceTest ? "visibility_off" : "visibility")"
+                 OnClick="@(() => showPerformanceTest = !showPerformanceTest)"
+                 Variant="ButtonVariant.Primary"
+                 Class="mb-4" />
+        
+        @if (showPerformanceTest)
+        {
+            <RTable Items="@largeDataset"
+                    Title="Performance Test Dataset"
+                    Subtitle="@($"{largeDataset.Count} records")"
+                    BulkOperationsEnabled="true"
+                    ExportEnabled="true"
+                    MultiSelection="true"
+                    PageSize="25">
+                <ColumnsContent>
+                    <RColumn Property="@((DataModel d) => d.Id)" Header="ID" Sortable="true" />
+                    <RColumn Property="@((DataModel d) => d.Name)" Header="Name" Sortable="true" />
+                    <RColumn Property="@((DataModel d) => d.Value)" Header="Value" Format="n2" Sortable="true" />
+                    <RColumn Property="@((DataModel d) => d.Category)" Header="Category" Filterable="true" />
+                    <RColumn Property="@((DataModel d) => d.Status)" Header="Status" Filterable="true" />
+                    <RColumn Property="@((DataModel d) => d.CreatedDate)" Header="Created" Format="d" Sortable="true" />
+                </ColumnsContent>
+            </RTable>
+        }
+    </div>
+
+    @* Debug Information *@
+    <div class="debug-info mt-8 pa-4 bg-surface rounded">
+        <h3 class="text-lg font-medium mb-2">🔍 Debug Information</h3>
+        <div class="text-sm space-y-1">
+            <p><strong>Products Count:</strong> @products.Count</p>
+            <p><strong>Employees Count:</strong> @employees.Count</p>
+            <p><strong>Large Dataset Count:</strong> @largeDataset.Count</p>
+            <p><strong>Selected Products:</strong> @(selectedProducts?.Count ?? 0)</p>
+            <p><strong>Selected Employee:</strong> @(selectedEmployee?.FullName ?? "None")</p>
+            <p><strong>Performance Test Active:</strong> @showPerformanceTest</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    function getViewportInfo() {
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+        const orientation = width > height ? 'Landscape' : 'Portrait';
+        
+        let deviceType = 'Desktop';
+        if (width < 480) deviceType = 'Mobile Portrait';
+        else if (width < 768) deviceType = 'Mobile Landscape';
+        else if (width < 1024) deviceType = 'Tablet';
+        else if (width < 1920) deviceType = 'Desktop';
+        else deviceType = 'Ultra-Wide';
+        
+        document.getElementById('viewport-size').textContent = `${width} x ${height}px`;
+        document.getElementById('device-type').textContent = deviceType;
+        document.getElementById('orientation').textContent = orientation;
+    }
+    
+    window.addEventListener('load', getViewportInfo);
+    window.addEventListener('resize', getViewportInfo);
+</script>
+
+@code {
+    private List<ProductModel> products = new();
+    private List<EmployeeModel> employees = new();
+    private List<DataModel> largeDataset = new();
+    
+    private List<ProductModel>? selectedProducts = new();
+    private EmployeeModel? selectedEmployee;
+    private bool showPerformanceTest = false;
+
+    protected override void OnInitialized()
+    {
+        // Initialize products
+        products = new List<ProductModel>
+        {
+            new() { Id = 1, Name = "iPhone 15 Pro", Price = 999.99m, Category = "Electronics", Stock = 25, IsActive = true },
+            new() { Id = 2, Name = "MacBook Pro M3", Price = 1999.99m, Category = "Computers", Stock = 8, IsActive = true },
+            new() { Id = 3, Name = "AirPods Pro", Price = 249.99m, Category = "Audio", Stock = 50, IsActive = true },
+            new() { Id = 4, Name = "iPad Air", Price = 599.99m, Category = "Tablets", Stock = 15, IsActive = false },
+            new() { Id = 5, Name = "Apple Watch", Price = 399.99m, Category = "Wearables", Stock = 5, IsActive = true },
+            new() { Id = 6, Name = "Magic Keyboard", Price = 299.99m, Category = "Accessories", Stock = 12, IsActive = true },
+            new() { Id = 7, Name = "Studio Display", Price = 1599.99m, Category = "Monitors", Stock = 3, IsActive = true },
+            new() { Id = 8, Name = "Mac Mini", Price = 699.99m, Category = "Computers", Stock = 7, IsActive = true }
+        };
+
+        // Initialize employees
+        employees = new List<EmployeeModel>
+        {
+            new() { Id = 1, FullName = "Sarah Johnson", Department = "Engineering", Salary = 95000, HireDate = DateTime.Now.AddYears(-2) },
+            new() { Id = 2, FullName = "Michael Chen", Department = "Design", Salary = 75000, HireDate = DateTime.Now.AddYears(-1) },
+            new() { Id = 3, FullName = "Emily Rodriguez", Department = "Marketing", Salary = 65000, HireDate = DateTime.Now.AddMonths(-8) },
+            new() { Id = 4, FullName = "David Kim", Department = "Sales", Salary = 80000, HireDate = DateTime.Now.AddYears(-3) },
+            new() { Id = 5, FullName = "Lisa Wang", Department = "HR", Salary = 70000, HireDate = DateTime.Now.AddMonths(-6) },
+            new() { Id = 6, FullName = "James Smith", Department = "Finance", Salary = 85000, HireDate = DateTime.Now.AddYears(-4) }
+        };
+
+        // Generate large dataset for performance testing
+        var random = new Random();
+        var categories = new[] { "Electronics", "Software", "Hardware", "Services", "Consulting", "Support" };
+        var statuses = new[] { "Active", "Inactive", "Pending", "Archived", "Draft" };
+        
+        largeDataset = Enumerable.Range(1, 500)
+            .Select(i => new DataModel
+            {
+                Id = i,
+                Name = $"Item {i:D3} - {GetRandomName(random)}",
+                Value = (decimal)(random.NextDouble() * 10000),
+                Category = categories[random.Next(categories.Length)],
+                Status = statuses[random.Next(statuses.Length)],
+                CreatedDate = DateTime.Now.AddDays(-random.Next(365))
+            })
+            .ToList();
+    }
+
+    private string GetRandomName(Random random)
+    {
+        var firstNames = new[] { "Alpha", "Beta", "Gamma", "Delta", "Epsilon", "Zeta", "Eta", "Theta" };
+        var lastNames = new[] { "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight" };
+        return $"{firstNames[random.Next(firstNames.Length)]} {lastNames[random.Next(lastNames.Length)]}";
+    }
+
+    private void HandleProductSelectionChanged(object items)
+    {
+        selectedProducts = (List<ProductModel>)items;
+        StateHasChanged();
+    }
+
+    private void HandleEmployeeSelectionChanged(object item)
+    {
+        selectedEmployee = (EmployeeModel)item;
+        StateHasChanged();
+    }
+
+    public class ProductModel
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = "";
+        public decimal Price { get; set; }
+        public string Category { get; set; } = "";
+        public int Stock { get; set; }
+        public bool IsActive { get; set; }
+    }
+
+    public class EmployeeModel
+    {
+        public int Id { get; set; }
+        public string FullName { get; set; } = "";
+        public string Department { get; set; } = "";
+        public decimal Salary { get; set; }
+        public DateTime HireDate { get; set; }
+    }
+
+    public class DataModel
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = "";
+        public decimal Value { get; set; }
+        public string Category { get; set; } = "";
+        public string Status { get; set; } = "";
+        public DateTime CreatedDate { get; set; }
+    }
+}

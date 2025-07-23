@@ -56,7 +56,6 @@ Components that work independently without requiring other components:
 - **RRadio** - Radio button component with enterprise styling
 - **RTextArea** - Multi-line text input with auto-resize
 - **RDatePicker** - Date selection component
-- **RDatePickerBasic** - Simplified date picker
 - **RFileUpload** - File upload with drag-and-drop
 - **RSwitcher** - Toggle switches and radio groups
 

@@ -1,0 +1,842 @@
+@using RR.Blazor.Components.Data
+@using RR.Blazor.Components.Core
+@using RR.Blazor.Enums
+@using RR.Blazor.Models
+@using System.Linq.Expressions
+@typeparam TItem
+@inherits RTableBase
+@implements ITableParent
+
+@* Generic table implementation with strong typing - merged from RDataTableGeneric *@
+
+<CascadingValue Value="@GetTableContext()">
+    <CascadingValue Value="@((ITableParent)this)">
+        <div class="enhanced-table-container @Class @AdditionalClass">
+        <div class="bg-surface-elevated rounded-lg overflow-hidden shadow-sm @GetTableClass()">
+            @if (ShowHeader)
+            {
+                <div class="d-flex justify-between items-center pa-4 border-b">
+                    <div class="d-flex flex-col gap-1">
+                        @if (!string.IsNullOrEmpty(Title))
+                        {
+                            <h3 class="text-lg font-semibold text-primary ma-0 @(!string.IsNullOrEmpty(StartIcon) ? "d-flex items-center gap-2" : "")">
+                                @if (!string.IsNullOrEmpty(StartIcon))
+                                {
+                                    <i class="material-symbols-rounded text-xl">@StartIcon</i>
+                                }
+                                @Title
+                            </h3>
+                        }
+                        @if (!string.IsNullOrEmpty(GetSubtitleWithCounts()))
+                        {
+                            <p class="text-sm text-secondary ma-0">@GetSubtitleWithCounts()</p>
+                        }
+                    </div>
+                    @if (GetHeaderContent() != null)
+                    {
+                        <div class="d-flex gap-2">
+                            @GetHeaderContent()
+                        </div>
+                    }
+                </div>
+            }
+
+            @if (ShowFilters && Filters != null)
+            {
+                <div class="pa-4 border-b bg-surface-elevated">
+                    @Filters
+                </div>
+            }
+
+            <div class="table-content @(!string.IsNullOrEmpty(Height) ? "table-height-custom" : "")" @attributes="@(!string.IsNullOrEmpty(Height) ? new Dictionary<string, object> { ["style"] = $"height: {Height};" } : null)">
+                <table class="table-table @GetInternalTableClass()">
+                    @if (ShowTableHeader)
+                    {
+                        <thead class="bg-surface-elevated">
+                            <tr class="border-b">
+                                @if (MultiSelection || SingleSelection)
+                                {
+                                    <th class="table-header-cell w-12 text-center">
+                                        @if (MultiSelection)
+                                        {
+                                            <input type="checkbox" 
+                                                   class="align-middle"
+                                                   checked="@(Items?.Count > 0 && Items.All(i => SelectedItems.Contains(i)))"
+                                                   @onchange="@((e) => ToggleAllSelection((bool)e.Value!))" />
+                                        }
+                                    </th>
+                                }
+                                @if (ColumnsContent != null)
+                                {
+                                    @ColumnsContent
+                                }
+                                else if (GetEffectiveColumns().Any())
+                                {
+                                    @foreach (var column in GetEffectiveColumns().Where(c => !c.Hidden))
+                                    {
+                                        <th class="table-header-cell @(column.Sortable ? "table-header-sortable cursor-pointer hover:text-interactive transition-all" : "") @column.HeaderClass @(StickyColumns.Contains(column.Key) ? "sticky bg-surface-elevated shadow-sm" : "") @(ResizableColumns ? "resizable-column" : "") @GetColumnClasses(column)"
+                                            @onclick="() => column.Sortable ? OnSort.InvokeAsync(column.Key) : Task.CompletedTask">
+                                            @if (column.HeaderTemplate != null)
+                                            {
+                                                @column.HeaderTemplate
+                                            }
+                                            else
+                                            {
+                                                <div class="d-flex items-center justify-between gap-2">
+                                                    <div class="d-flex items-center gap-2">
+                                                        @column.Header
+                                                        @if (column.Sortable && SortColumn == column.Key)
+                                                        {
+                                                            <i class="material-symbols-rounded text-base text-secondary animate-scale-in">
+                                                                @(SortDescending ? "arrow_drop_down" : "arrow_drop_up")
+                                                            </i>
+                                                        }
+                                                    </div>
+                                                    @if (ResizableColumns)
+                                                    {
+                                                        <div class="column-resize-handle cursor-col-resize opacity-0 hover:opacity-100 transition-opacity"
+                                                             @onmousedown="@((e) => StartColumnResize(column.Key, e))"
+                                                             @onmousedown:preventDefault="true">
+                                                            <i class="material-symbols-rounded text-sm">drag_indicator</i>
+                                                        </div>
+                                                    }
+                                                </div>
+                                            }
+                                        </th>
+                                    }
+                                }
+                                else if (TableHeader != null)
+                                {
+                                    @TableHeader
+                                }
+                            </tr>
+                        </thead>
+                    }
+                    <tbody>
+                        @if (Items?.Any() == true)
+                        {
+                            @foreach (var item in Items)
+                            {
+                                @if (RowTemplate != null)
+                                {
+                                    @RowTemplate(item)
+                                }
+                                else
+                                {
+                                    <tr class="@GetEnhancedRowClass(item)" @onclick="() => HandleRowClick(item)">
+                                        @if (MultiSelection || SingleSelection)
+                                        {
+                                            <td class="table-cell w-12 text-center">
+                                                @if (MultiSelection)
+                                                {
+                                                    <input type="checkbox" 
+                                                           class="align-middle"
+                                                           checked="@SelectedItems.Contains(item)"
+                                                           @onchange="@((e) => ToggleItemSelection(item, (bool)e.Value!))" />
+                                                }
+                                                else if (SingleSelection)
+                                                {
+                                                    <input type="radio" 
+                                                           class="align-middle"
+                                                           name="table-selection"
+                                                           checked="@(SelectedItem?.Equals(item) == true)"
+                                                           @onchange="@((e) => { if ((bool)e.Value!) SelectedItem = item; })" />
+                                                }
+                                            </td>
+                                        }
+                                        @foreach (var column in GetEffectiveColumns().Where(c => !c.Hidden))
+                                        {
+                                            <td class="table-cell @column.CellClass @GetColumnClasses(column)">
+                                                @if (column.CellTemplate != null)
+                                                {
+                                                    @column.CellTemplate(item)
+                                                }
+                                                else
+                                                {
+                                                    @GetFormattedCellValue(item, column)
+                                                }
+                                            </td>
+                                        }
+                                    </tr>
+                                }
+                            }
+                        }
+                        else if (!Loading)
+                        {
+                            <tr class="empty-state-row">
+                                <td colspan="@GetColSpan()" class="empty-state">
+                                    @if (EmptyStateContent != null)
+                                    {
+                                        @EmptyStateContent
+                                    }
+                                    else
+                                    {
+                                        <h3>No data available</h3>
+                                        <p>@(EmptyMessage ?? DefaultEmptyMessage)</p>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            @if (Loading)
+            {
+                <div class="d-flex items-center justify-center pa-8">
+                    <div class="d-flex items-center gap-3">
+                        <div class="spinner"></div>
+                        <span class="text-secondary">@(LoadingMessage ?? "Loading...")</span>
+                    </div>
+                </div>
+            }
+
+            @if (ShowPagination && TotalItems > 0)
+            {
+                <div class="d-flex justify-between items-center pa-4 border-t">
+                    <div class="text-sm text-secondary">
+                        Showing @((CurrentPage - 1) * PageSize + 1) to @Math.Min(CurrentPage * PageSize, TotalItems) of @TotalItems entries
+                    </div>
+                    <div class="d-flex items-center gap-3">
+                        <RButton Variant="ButtonVariant.Ghost" 
+                                Size="ButtonSize.Medium" 
+                                Icon="chevron_left" IconPosition="IconPosition.Start" 
+                                OnClick="() => OnPageChange.InvokeAsync(CurrentPage - 1)" 
+                                Disabled="@(CurrentPage <= 1)" />
+                        <span class="text-sm font-medium pl-3 pr-3">Page @CurrentPage of @TotalPages</span>
+                        <RButton Variant="ButtonVariant.Ghost" 
+                                Size="ButtonSize.Medium" 
+                                Icon="chevron_right" IconPosition="IconPosition.Start" 
+                                OnClick="() => OnPageChange.InvokeAsync(CurrentPage + 1)" 
+                                Disabled="@(CurrentPage >= TotalPages)" />
+                    </div>
+                </div>
+            }
+
+            @if (GetFooterContent() != null)
+            {
+                <div class="pa-4 border-t bg-surface-elevated">
+                    @GetFooterContent()
+                </div>
+            }
+        </div>
+    </div>
+    </CascadingValue>
+</CascadingValue>
+
+@code {
+    // Core parameters merged from RDataTableGeneric
+    [Parameter] public List<TItem> Items { get; set; } = new();
+    [Parameter] public int Elevation { get; set; } = 2;
+
+    // Header parameters
+    [Parameter] public bool ShowHeader { get; set; } = true;
+    [Parameter] public string Icon { get; set; }
+
+    // Filter parameters
+    [Parameter] public bool ShowFilters { get; set; }
+    [Parameter] public RenderFragment Filters { get; set; }
+
+    // Table structure parameters
+    [Parameter] public bool ShowTableHeader { get; set; } = true;
+    [Parameter] public List<RDataTableColumn<TItem>> Columns { get; set; }
+    [Parameter] public RenderFragment TableHeader { get; set; }
+    [Parameter] public RenderFragment<TItem> RowTemplate { get; set; }
+    [Parameter] public bool Striped { get; set; }
+    [Parameter] public bool Hoverable { get; set; } = true;
+    [Parameter] public bool Dense { get; set; }
+    [Parameter] public ComponentDensity Density { get; set; } = ComponentDensity.Spacious;
+    [Parameter] public string RowClass { get; set; } = "";
+
+    // Content parameters
+    [Parameter] public RenderFragment EmptyStateContent { get; set; }
+
+    // Selection parameters (strongly-typed) - base class provides callbacks
+    [Parameter] public List<TItem> SelectedItems { get; set; } = new();
+    [Parameter] public TItem SelectedItem { get; set; }
+
+    // Strongly-typed callbacks for compatibility
+    [Parameter] public EventCallback<List<TItem>> SelectedItemsChangedTyped { get; set; }
+    [Parameter] public EventCallback<TItem> SelectedItemChangedTyped { get; set; }
+    [Parameter] public EventCallback<TItem> OnRowClickTyped { get; set; }
+    [Parameter] public Func<TItem, string> RowClassFuncTyped { get; set; }
+
+    // Sorting parameters
+    [Parameter] public bool AllowUnsorted { get; set; } = true;
+
+    // Advanced feature parameters
+    [Parameter] public bool FixedHeader { get; set; }
+    [Parameter] public float ItemSize { get; set; } = 50f;
+
+    // Pagination calculation
+    private int TotalPages => (int)Math.Ceiling(TotalItems / (double)PageSize);
+    
+    // Column management
+    private List<RDataTableColumn<TItem>> _childColumns = new();
+    private List<RDataTableColumn<TItem>>? _cachedEffectiveColumns;
+    private Type? _lastItemType;
+    private int _lastColumnsHash;
+    private int _lastChildColumnsCount;
+
+    private string DefaultEmptyMessage => "No data available";
+
+    protected override void OnInitialized()
+    {
+        _childColumns.Clear();
+        
+        if (TotalItems == 0 && Items?.Count > 0)
+        {
+            TotalItems = Items.Count;
+        }
+    }
+
+    public void AddColumn(RDataTableColumn<TItem> column)
+    {
+        _childColumns.Add(column);
+        InvalidateColumnCache();
+        InvokeAsync(StateHasChanged);
+    }
+    
+    public void UpdateColumn(RDataTableColumn<TItem> column)
+    {
+        var existingIndex = _childColumns.FindIndex(c => c.Key == column.Key);
+        if (existingIndex >= 0)
+        {
+            _childColumns[existingIndex] = column;
+        }
+        else
+        {
+            _childColumns.Add(column);
+        }
+        InvalidateColumnCache();
+        InvokeAsync(StateHasChanged);
+    }
+    
+    private void InvalidateColumnCache()
+    {
+        _cachedEffectiveColumns = null;
+        _lastItemType = null;
+        _lastColumnsHash = 0;
+        _lastChildColumnsCount = 0;
+    }
+    
+    private List<RDataTableColumn<TItem>> GetEffectiveColumns()
+    {
+        var currentItemType = typeof(TItem);
+        var currentColumnsHash = Columns?.GetHashCode() ?? 0;
+        var currentChildColumnsCount = _childColumns.Count;
+        
+        if (_cachedEffectiveColumns != null && 
+            _lastItemType == currentItemType &&
+            _lastColumnsHash == currentColumnsHash &&
+            _lastChildColumnsCount == currentChildColumnsCount)
+        {
+            return _cachedEffectiveColumns;
+        }
+        
+        List<RDataTableColumn<TItem>> effectiveColumns;
+        
+        if (Columns != null && Columns.Any())
+        {
+            effectiveColumns = Columns;
+        }
+        else if (_childColumns.Any())
+        {
+            effectiveColumns = _childColumns;
+        }
+        else
+        {
+            effectiveColumns = PropertyColumnGenerator.GenerateColumns<TItem>();
+        }
+        
+        _cachedEffectiveColumns = effectiveColumns;
+        _lastItemType = currentItemType;
+        _lastColumnsHash = currentColumnsHash;
+        _lastChildColumnsCount = currentChildColumnsCount;
+        
+        return effectiveColumns;
+    }
+
+    private object GetCellValue(TItem item, string propertyName)
+    {
+        if (item == null) return null;
+        
+        try
+        {
+            var property = typeof(TItem).GetProperty(propertyName);
+            return property?.GetValue(item);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private string GetTableClass()
+    {
+        var classes = new List<string>
+        {
+            "enhanced-table",
+            "table-professional-spacing",
+            "table-hover-enhanced"
+        };
+
+        return string.Join(" ", classes);
+    }
+
+    private string GetInternalTableClass()
+    {
+        var classes = new List<string> { "table", "w-full" };
+        
+        if (Dense) classes.Add("table-dense");
+        if (FixedHeader) classes.Add("table-fixed-header");
+        
+        classes.Add(GetTableDensityClasses());
+        
+        return string.Join(" ", classes);
+    }
+
+    private string GetTableDensityClasses()
+    {
+        return Density switch
+        {
+            ComponentDensity.Compact => "table-compact",
+            ComponentDensity.Dense => "table-dense",
+            ComponentDensity.Normal => "table-normal",
+            ComponentDensity.Spacious => "table-spacious",
+            _ => "table-spacious"  // Default to spacious for professional look
+        };
+    }
+
+    private string GetRowDensityClasses()
+    {
+        return Density switch
+        {
+            ComponentDensity.Compact => "pt-0 pb-0",
+            ComponentDensity.Dense => "pt-1 pb-1",
+            ComponentDensity.Normal => "pt-2 pb-2",
+            ComponentDensity.Spacious => "pt-3 pb-3",
+            _ => "pt-3 pb-3"  // Default to spacious
+        };
+    }
+
+    private string GetCellPaddingClasses()
+    {
+        return Density switch
+        {
+            ComponentDensity.Compact => "pt-1 pb-1 pl-2 pr-2",
+            ComponentDensity.Dense => "pt-2 pb-2 pl-3 pr-3",
+            ComponentDensity.Normal => "pt-3 pb-3 pl-4 pr-4",
+            ComponentDensity.Spacious => "pt-4 pb-4 pl-5 pr-5",
+            _ => "pt-4 pb-4 pl-5 pr-5"
+        };
+    }
+
+    private string GetSubtitleWithCounts()
+    {
+        if (!string.IsNullOrEmpty(Subtitle))
+            return Subtitle;
+
+        if (Items?.Any() == true)
+        {
+            var total = TotalItems > 0 ? TotalItems : Items.Count;
+            var selected = SelectedItems?.Count ?? 0;
+            
+            if (selected > 0)
+                return $"{total:N0} items • {selected:N0} selected";
+            else
+                return $"{total:N0} items";
+        }
+
+        return "";
+    }
+
+    private RenderFragment GetHeaderContent()
+    {
+        return @<div class="d-flex items-center gap-2">
+            @if (HeaderContent != null)
+            {
+                @HeaderContent
+            }
+            @if (BulkOperationsEnabled && BulkOperations != null && SelectedItems?.Any() == true)
+            {
+                @BulkOperations
+            }
+            @if (ExportEnabled)
+            {
+                <RButton Text="Export"
+                         Icon="download"
+                         IconPosition="IconPosition.Start"
+                         Variant="ButtonVariant.Outline"
+                         Size="ButtonSize.Small"
+                         OnClick="@HandleExport" />
+            }
+        </div>;
+    }
+
+    private RenderFragment GetFooterContent()
+    {
+        if (FooterContent != null)
+            return FooterContent;
+
+        if (Items?.Any() == true)
+        {
+            return @<div class="d-flex justify-between items-center text-sm text-secondary">
+                <div>
+                    @if (SelectedItems?.Any() == true)
+                    {
+                        <span class="text-primary font-medium">@SelectedItems.Count selected</span>
+                    }
+                </div>
+                <div>
+                    Last updated: @DateTime.Now.ToString("MMM dd, HH:mm")
+                </div>
+            </div>;
+        }
+
+        return null;
+    }
+
+    private string GetEnhancedRowClass(TItem item)
+    {
+        var classes = new List<string> { "border-b", "transition-colors" };
+        
+        if (Hoverable) classes.Add("hover:bg-surface-secondary");
+        if (Striped) classes.Add("odd:bg-surface-elevated");
+        if (Dense) classes.Add("pt-1 pb-1");
+        if (RowClickable) classes.Add("cursor-pointer hover:bg-surface-secondary");
+        
+        classes.Add(GetRowDensityClasses());
+
+        // Apply custom row class functions (both legacy and typed versions)
+        var customClass = RowClassFuncTyped?.Invoke(item) ?? RowClassFunc?.Invoke(item) ?? RowClass;
+        if (!string.IsNullOrEmpty(customClass))
+        {
+            classes.Add(customClass);
+        }
+
+        // Enhanced row states
+        if (SelectedItems?.Contains(item) == true)
+            classes.Add("table-row-selected table-row-selected-enhanced");
+
+        // Add hover enhancement
+        classes.Add("table-row-hover-enhanced");
+        
+        return string.Join(" ", classes.Where(c => !string.IsNullOrEmpty(c)));
+    }
+
+    private string GetColumnStyle(RDataTableColumn<TItem> column)
+    {
+        var styles = new List<string>();
+        
+        if (!string.IsNullOrEmpty(column.Width)) styles.Add($"--column-width: {column.Width}");
+        if (!string.IsNullOrEmpty(column.MinWidth)) styles.Add($"--column-min-width: {column.MinWidth}");
+        if (!string.IsNullOrEmpty(column.MaxWidth)) styles.Add($"--column-max-width: {column.MaxWidth}");
+        
+        return string.Join("; ", styles);
+    }
+
+    private string GetColumnClasses(RDataTableColumn<TItem> column)
+    {
+        var classes = new List<string>();
+        
+        if (!string.IsNullOrEmpty(column.Width)) 
+        {
+            var widthValue = column.Width.Replace("px", "").Replace("%", "p");
+            classes.Add($"w-{widthValue}");
+        }
+        if (!string.IsNullOrEmpty(column.MinWidth))
+        {
+            var minWidthValue = column.MinWidth.Replace("px", "").Replace("%", "p");
+            classes.Add($"min-w-{minWidthValue}");
+        }
+        if (!string.IsNullOrEmpty(column.MaxWidth))
+        {
+            var maxWidthValue = column.MaxWidth.Replace("px", "").Replace("%", "p");
+            classes.Add($"max-w-{maxWidthValue}");
+        }
+        
+        return string.Join(" ", classes);
+    }
+
+    private void StartColumnResize(string columnKey, Microsoft.AspNetCore.Components.Web.MouseEventArgs e)
+    {
+        // Column resize implementation stub
+    }
+
+    private object GetFormattedCellValue(TItem item, RDataTableColumn<TItem> column)
+    {
+        var value = column.ValueFunc?.Invoke(item) ?? GetCellValue(item, column.Key);
+        
+        if (value == null) return null;
+        
+        if (!string.IsNullOrEmpty(column.Format))
+        {
+            try
+            {
+                if (value is IFormattable formattable)
+                {
+                    return formattable.ToString(column.Format, null);
+                }
+            }
+            catch
+            {
+                // Fallback to default formatting
+            }
+        }
+        
+        return value;
+    }
+
+    private int GetColSpan()
+    {
+        var count = GetEffectiveColumns().Count(c => !c.Hidden);
+        if (MultiSelection || SingleSelection) count++;
+        return Math.Max(1, count);
+    }
+
+    public async Task CloseAllFilterDropdowns(string excludeColumnKey = "")
+    {
+        foreach (var column in GetEffectiveColumns())
+        {
+            if (column.Key != excludeColumnKey)
+            {
+                var columnComponent = _childColumns.FirstOrDefault(c => c.Key == column.Key);
+            }
+        }
+        await Task.CompletedTask;
+    }
+
+    public async Task OnColumnFilterChanged(RR.Blazor.Models.ColumnFilterEventArgs filterArgs)
+    {
+        if (string.IsNullOrEmpty(filterArgs.FilterValue))
+        {
+            ColumnFilters.Remove(filterArgs.ColumnKey);
+        }
+        else
+        {
+            ColumnFilters[filterArgs.ColumnKey] = filterArgs.FilterValue;
+        }
+        
+        await ColumnFiltersChanged.InvokeAsync(ColumnFilters);
+        await OnColumnFilter.InvokeAsync(filterArgs);
+        StateHasChanged();
+    }
+
+    private async Task ToggleAllSelection(bool selected)
+    {
+        if (Items == null) return;
+        
+        if (selected)
+        {
+            SelectedItems.Clear();
+            SelectedItems.AddRange(Items);
+        }
+        else
+        {
+            SelectedItems.Clear();
+        }
+        
+        await HandleSelectedItemsChanged(SelectedItems);
+    }
+
+    private async Task ToggleItemSelection(TItem item, bool selected)
+    {
+        if (selected)
+        {
+            if (!SelectedItems.Contains(item))
+            {
+                SelectedItems.Add(item);
+            }
+        }
+        else
+        {
+            SelectedItems.Remove(item);
+        }
+        
+        await HandleSelectedItemsChanged(SelectedItems);
+    }
+
+    // Event handlers for compatibility and type conversion
+    private async Task HandleSelectedItemsChanged(List<TItem> items)
+    {
+        SelectedItems = items;
+        await SelectedItemsChangedTyped.InvokeAsync(items);
+        
+        // Only invoke base callback if it's bound - avoid casting issues
+        if (base.SelectedItemsChanged.HasDelegate)
+        {
+            try
+            {
+                await base.SelectedItemsChanged.InvokeAsync((object)items);
+            }
+            catch (InvalidCastException)
+            {
+                // Fallback for type casting issues - create a generic object list
+                var objectList = items?.Cast<object>().ToList() ?? new List<object>();
+                await base.SelectedItemsChanged.InvokeAsync(objectList);
+            }
+        }
+    }
+
+    private async Task HandleSelectedItemChanged(TItem item)
+    {
+        SelectedItem = item;
+        await SelectedItemChanged.InvokeAsync(item);
+        await SelectedItemChangedTyped.InvokeAsync(item);
+        await base.SelectedItemChanged.InvokeAsync((object)item);
+    }
+
+    private async Task HandleRowClick(TItem item)
+    {
+        if (SingleSelection)
+        {
+            SelectedItem = item;
+            await HandleSelectedItemChanged(item);
+        }
+        else if (MultiSelection)
+        {
+            if (SelectedItems.Contains(item))
+            {
+                SelectedItems.Remove(item);
+            }
+            else
+            {
+                SelectedItems.Add(item);
+            }
+            await HandleSelectedItemsChanged(SelectedItems);
+        }
+        
+        await OnRowClick.InvokeAsync(item);
+        await OnRowClickTyped.InvokeAsync(item);
+        await base.OnRowClick.InvokeAsync((object)item);
+    }
+
+    private async Task HandleExport()
+    {
+        // TODO: Implement export functionality
+        await Task.CompletedTask;
+    }
+
+    private TableContext GetTableContext()
+    {
+        return new TableContext(typeof(TItem), $"generic-table-{GetHashCode()}", false);
+    }
+    
+    // ITableParent implementation
+    public Type ItemType => typeof(TItem);
+    
+    void ITableParent.AddColumn(object columnInfo)
+    {
+        if (columnInfo is Dictionary<string, object> info)
+        {
+            // Create RDataTableColumn from dictionary info
+            var column = new RDataTableColumn<TItem>
+            {
+                Key = info.GetValueOrDefault("Key", "")?.ToString() ?? "",
+                Header = info.GetValueOrDefault("Header", "")?.ToString() ?? "",
+                Format = info.GetValueOrDefault("Format")?.ToString(),
+                Sortable = (bool)(info.GetValueOrDefault("Sortable", false)),
+                Filterable = (bool)(info.GetValueOrDefault("Filterable", false)),
+                Width = info.GetValueOrDefault("Width")?.ToString(),
+                HeaderClass = info.GetValueOrDefault("HeaderClass")?.ToString() ?? "",
+                CellClass = info.GetValueOrDefault("CellClass")?.ToString() ?? ""
+            };
+            
+            // Handle Property expression if present
+            if (info.TryGetValue("Property", out var property) && property != null)
+            {
+                column.ValueFunc = CreateValueFuncFromProperty(property);
+            }
+            
+            AddColumn(column);
+            Console.WriteLine($"RTableGeneric: Added column {column.Key} from dictionary");
+        }
+        else if (columnInfo is RDataTableColumn<TItem> typedColumn)
+        {
+            AddColumn(typedColumn);
+        }
+        else
+        {
+            Console.WriteLine($"RTableGeneric: Invalid column type {columnInfo?.GetType().Name}");
+        }
+    }
+    
+    void ITableParent.UpdateColumn(object columnInfo)
+    {
+        if (columnInfo is Dictionary<string, object> info)
+        {
+            var key = info.GetValueOrDefault("Key", "")?.ToString() ?? "";
+            var existingIndex = _childColumns.FindIndex(c => c.Key == key);
+            if (existingIndex >= 0)
+            {
+                // Update existing column properties
+                var column = _childColumns[existingIndex];
+                column.Header = info.GetValueOrDefault("Header", column.Header)?.ToString() ?? column.Header;
+                column.Format = info.GetValueOrDefault("Format", column.Format)?.ToString() ?? column.Format;
+                column.Sortable = (bool)(info.GetValueOrDefault("Sortable", column.Sortable));
+                column.Filterable = (bool)(info.GetValueOrDefault("Filterable", column.Filterable));
+                column.Width = info.GetValueOrDefault("Width", column.Width)?.ToString() ?? column.Width;
+                column.HeaderClass = info.GetValueOrDefault("HeaderClass", column.HeaderClass)?.ToString() ?? column.HeaderClass;
+                column.CellClass = info.GetValueOrDefault("CellClass", column.CellClass)?.ToString() ?? column.CellClass;
+                
+                if (info.TryGetValue("Property", out var property) && property != null)
+                {
+                    column.ValueFunc = CreateValueFuncFromProperty(property);
+                }
+            }
+        }
+        else if (columnInfo is RDataTableColumn<TItem> typedColumn)
+        {
+            UpdateColumn(typedColumn);
+        }
+    }
+    
+    private Func<TItem, object> CreateValueFuncFromProperty(object property)
+    {
+        try
+        {
+            if (property is LambdaExpression lambda)
+            {
+                var compiled = lambda.Compile();
+                return item => compiled.DynamicInvoke(item);
+            }
+            
+            if (property is Delegate del)
+            {
+                return item => del.DynamicInvoke(item);
+            }
+            
+            Console.WriteLine($"RTableGeneric: Could not create value function from property type {property.GetType().Name}");
+            return item => null;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"RTableGeneric: Error creating value function: {ex.Message}");
+            return item => null;
+        }
+    }
+
+    // RDataTableColumn class definition moved from RDataTableGeneric
+    public class RDataTableColumn<T>
+    {
+        public string Key { get; set; } = "";
+        public string Header { get; set; } = "";
+        public bool Sortable { get; set; }
+        public RenderFragment<T> CellTemplate { get; set; }
+        public RenderFragment HeaderTemplate { get; set; }
+        public string Width { get; set; }
+        public string MinWidth { get; set; }
+        public string MaxWidth { get; set; }
+        public bool Resizable { get; set; }
+        public bool Hideable { get; set; } = true;
+        public bool Hidden { get; set; }
+        public string CellClass { get; set; } = "";
+        public string HeaderClass { get; set; } = "";
+        public Func<T, object> ValueFunc { get; set; }
+        public string Format { get; set; }
+        public bool Filterable { get; set; }
+        public RR.Blazor.Enums.FilterType FilterType { get; set; } = RR.Blazor.Enums.FilterType.Search;
+        public List<RR.Blazor.Models.FilterOption> FilterOptions { get; set; } = new();
+    }
+}

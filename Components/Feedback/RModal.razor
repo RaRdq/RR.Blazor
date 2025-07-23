@@ -9,7 +9,115 @@
 @if (Visible)
 {
     <div @ref="modalContainer" style="display: none;">
-        <div class="modal-backdrop" @onclick="HandleBackdropClick" @onkeydown="OnKeyDownHandler" tabindex="-1">
+        @if (UseOwnBackdrop)
+        {
+            <div class="modal-backdrop" @onclick="HandleBackdropClick" @onkeydown="OnKeyDownHandler" tabindex="-1">
+                <div class="modal-content @GetSizeClass() @Class modal--visible" 
+                     role="dialog" 
+                     aria-modal="true" 
+                     aria-labelledby="@ModalTitleId" 
+                     aria-describedby="@(!string.IsNullOrEmpty(Subtitle) ? ModalDescriptionId : null)"
+                     @ref="modalElement"
+                     @onclick:stopPropagation="true"
+                     tabindex="-1">
+                     
+                @if (ShowHeader)
+                {
+                    <div class="modal-header @GetModalHeaderClasses()">
+                        <div class="d-flex align-center @GetModalHeaderClasses()">
+                            @if (!string.IsNullOrEmpty(Icon))
+                            {
+                                <i class="material-symbols-rounded text-primary @GetIconSizeClass()" aria-hidden="true">@Icon</i>
+                            }
+                            <div class="d-flex flex-col">
+                                <h3 id="@ModalTitleId" class="modal-title ma-0 @GetTitleClasses()">@Text</h3>
+                                @if (!string.IsNullOrEmpty(Subtitle))
+                                {
+                                    <p id="@ModalDescriptionId" class="modal-subtitle ma-0 text-sm text-secondary">@Subtitle</p>
+                                }
+                            </div>
+                        </div>
+                        <div class="header-actions d-flex align-center gap-2">
+                            @HeaderContent
+                            @if (ShowCloseButton)
+                            {
+                                <button type="button" 
+                                        class="modal-close" 
+                                        @onclick="HandleClose" 
+                                        disabled="@Processing"
+                                        aria-label="Close dialog">
+                                    <i class="material-symbols-rounded" aria-hidden="true">close</i>
+                                </button>
+                            }
+                        </div>
+                    </div>
+                }
+                
+                <div class="modal-body @GetModalBodyClasses()">
+                    @if (Processing && ShowProcessingOverlay)
+                    {
+                        <div class="overlay-full overlay-light d-flex align-center justify-center z-modal">
+                            <div class="d-flex flex-col align-center @GetProcessingOverlayClasses() bg-surface-elevated rounded-lg shadow-lg">
+                                <div class="spinner-lg"></div>
+                                <p class="text-body-2 text-secondary ma-0">@ProcessingMessage</p>
+                            </div>
+                        </div>
+                    }
+                    @ChildContent
+                </div>
+                
+                @if (ShowFooter)
+                {
+                    <div class="modal-footer @GetModalFooterClasses()">
+                        @if (FooterContent != null)
+                        {
+                            @FooterContent
+                        }
+                        else
+                        {
+                            <RActionGroup Direction="ActionGroupDirection.Horizontal" 
+                                          Alignment="ActionGroupAlignment.End" 
+                                          Spacing="ActionGroupSpacing.Medium"
+                                          Density="@Density">
+                                @if (ShowCancelButton)
+                                {
+                                    <RButton Variant="ButtonVariant.Ghost" 
+                                            Size="@ButtonSize" 
+                                            Icon="@CancelIcon" IconPosition="IconPosition.Start" 
+                                            Class="@CancelButtonClass" 
+                                            OnClick="HandleCancel" 
+                                            Disabled="@Processing">
+                                        @CancelText
+                                    </RButton>
+                                }
+                                @if (ShowPrimaryButton)
+                                {
+                                    <RButton Variant="ButtonVariant.Primary" 
+                                            Size="@ButtonSize" 
+                                            Icon="@(Processing && ShowPrimaryButtonSpinner ? null : PrimaryIcon)" IconPosition="IconPosition.Start" 
+                                            Class="@PrimaryButtonClass" 
+                                            OnClick="HandlePrimaryAction" 
+                                            Disabled="@(Processing || PrimaryButtonDisabled)"
+                                            Loading="@(Processing && ShowPrimaryButtonSpinner)">
+                                        @(Processing && !string.IsNullOrEmpty(ProcessingButtonText) ? ProcessingButtonText : PrimaryText)
+                                    </RButton>
+                                }
+                            </RActionGroup>
+                            @if (ShowUnsavedIndicator && HasUnsavedChanges)
+                            {
+                                <div class="d-flex align-center gap-2 pa-3 bg-info-light text-info rounded-lg">
+                                    <i class="material-symbols-rounded">info</i>
+                                    <span class="text-sm">You have unsaved changes</span>
+                                </div>
+                            }
+                        }
+                    </div>
+                }
+                </div> @* Close modal-content *@
+            </div>  @* Close modal-backdrop *@
+        }
+        else
+        {
             <div class="modal-content @GetSizeClass() @Class modal--visible" 
                  role="dialog" 
                  aria-modal="true" 
@@ -18,106 +126,112 @@
                  @ref="modalElement"
                  @onclick:stopPropagation="true"
                  tabindex="-1">
-        @if (ShowHeader)
-        {
-            <div class="modal-header @GetModalHeaderClasses()">
-                <div class="d-flex align-center @GetModalHeaderClasses()">
-                    @if (!string.IsNullOrEmpty(Icon))
-                    {
-                        <i class="material-symbols-rounded text-primary @GetIconSizeClass()" aria-hidden="true">@Icon</i>
-                    }
-                    <div class="d-flex flex-col">
-                        <h3 id="@ModalTitleId" class="modal-title ma-0 @GetTitleClasses()">@Text</h3>
-                        @if (!string.IsNullOrEmpty(Subtitle))
-                        {
-                            <p id="@ModalDescriptionId" class="modal-subtitle ma-0 text-sm text-secondary">@Subtitle</p>
-                        }
-                    </div>
-                </div>
-                <div class="header-actions d-flex align-center gap-2">
-                    @HeaderContent
-                    @if (ShowCloseButton)
-                    {
-                        <button type="button" 
-                                class="modal-close" 
-                                @onclick="HandleClose" 
-                                disabled="@Processing"
-                                aria-label="Close dialog">
-                            <i class="material-symbols-rounded" aria-hidden="true">close</i>
-                        </button>
-                    }
-                </div>
-            </div>
-        }
-        
-        <div class="modal-body @GetModalBodyClasses()">
-            @if (Processing && ShowProcessingOverlay)
+                 
+            @if (ShowHeader)
             {
-                <div class="overlay-full overlay-light d-flex align-center justify-center z-modal">
-                    <div class="d-flex flex-col align-center @GetProcessingOverlayClasses() bg-surface-elevated rounded-lg shadow-lg">
-                        <div class="spinner-lg"></div>
-                        <p class="text-body-2 text-secondary ma-0">@ProcessingMessage</p>
+                <div class="modal-header @GetModalHeaderClasses()">
+                    <div class="d-flex align-center @GetModalHeaderClasses()">
+                        @if (!string.IsNullOrEmpty(Icon))
+                        {
+                            <i class="material-symbols-rounded text-primary @GetIconSizeClass()" aria-hidden="true">@Icon</i>
+                        }
+                        <div class="d-flex flex-col">
+                            <h3 id="@ModalTitleId" class="modal-title ma-0 @GetTitleClasses()">@Text</h3>
+                            @if (!string.IsNullOrEmpty(Subtitle))
+                            {
+                                <p id="@ModalDescriptionId" class="modal-subtitle ma-0 text-sm text-secondary">@Subtitle</p>
+                            }
+                        </div>
+                    </div>
+                    <div class="header-actions d-flex align-center gap-2">
+                        @HeaderContent
+                        @if (ShowCloseButton)
+                        {
+                            <button type="button" 
+                                    class="modal-close" 
+                                    @onclick="HandleClose" 
+                                    disabled="@Processing"
+                                    aria-label="Close dialog">
+                                <i class="material-symbols-rounded" aria-hidden="true">close</i>
+                            </button>
+                        }
                     </div>
                 </div>
             }
-            @ChildContent
-        </div>
-        
-        @if (ShowFooter)
-        {
-            <div class="modal-footer @GetModalFooterClasses()">
-                @if (FooterContent != null)
+            
+            <div class="modal-body @GetModalBodyClasses()">
+                @if (Processing && ShowProcessingOverlay)
                 {
-                    @FooterContent
-                }
-                else
-                {
-                    <RActionGroup Direction="ActionGroupDirection.Horizontal" 
-                                  Alignment="ActionGroupAlignment.End" 
-                                  Spacing="ActionGroupSpacing.Medium"
-                                  Density="@Density">
-                        @if (ShowCancelButton)
-                        {
-                            <RButton Variant="ButtonVariant.Ghost" 
-                                    Size="@ButtonSize" 
-                                    Icon="@CancelIcon" IconPosition="IconPosition.Start" 
-                                    Class="@CancelButtonClass" 
-                                    OnClick="HandleCancel" 
-                                    Disabled="@Processing">
-                                @CancelText
-                            </RButton>
-                        }
-                        @if (ShowPrimaryButton)
-                        {
-                            <RButton Variant="ButtonVariant.Primary" 
-                                    Size="@ButtonSize" 
-                                    Icon="@(Processing && ShowPrimaryButtonSpinner ? null : PrimaryIcon)" IconPosition="IconPosition.Start" 
-                                    Class="@PrimaryButtonClass" 
-                                    OnClick="HandlePrimaryAction" 
-                                    Disabled="@(Processing || PrimaryButtonDisabled)"
-                                    Loading="@(Processing && ShowPrimaryButtonSpinner)">
-                                @(Processing && !string.IsNullOrEmpty(ProcessingButtonText) ? ProcessingButtonText : PrimaryText)
-                            </RButton>
-                        }
-                    </RActionGroup>
-                    @if (ShowUnsavedIndicator && HasUnsavedChanges)
-                    {
-                        <div class="d-flex align-center gap-2 pa-3 bg-info-light text-info rounded-lg">
-                            <i class="material-symbols-rounded">info</i>
-                            <span class="text-sm">You have unsaved changes</span>
+                    <div class="overlay-full overlay-light d-flex align-center justify-center z-modal">
+                        <div class="d-flex flex-col align-center @GetProcessingOverlayClasses() bg-surface-elevated rounded-lg shadow-lg">
+                            <div class="spinner-lg"></div>
+                            <p class="text-body-2 text-secondary ma-0">@ProcessingMessage</p>
                         </div>
-                    }
+                    </div>
                 }
+                @ChildContent
             </div>
+            
+            @if (ShowFooter)
+            {
+                <div class="modal-footer @GetModalFooterClasses()">
+                    @if (FooterContent != null)
+                    {
+                        @FooterContent
+                    }
+                    else
+                    {
+                        <RActionGroup Direction="ActionGroupDirection.Horizontal" 
+                                      Alignment="ActionGroupAlignment.End" 
+                                      Spacing="ActionGroupSpacing.Medium"
+                                      Density="@Density">
+                            @if (ShowCancelButton)
+                            {
+                                <RButton Variant="ButtonVariant.Ghost" 
+                                        Size="@ButtonSize" 
+                                        Icon="@CancelIcon" IconPosition="IconPosition.Start" 
+                                        Class="@CancelButtonClass" 
+                                        OnClick="HandleCancel" 
+                                        Disabled="@Processing">
+                                    @CancelText
+                                </RButton>
+                            }
+                            @if (ShowPrimaryButton)
+                            {
+                                <RButton Variant="ButtonVariant.Primary" 
+                                        Size="@ButtonSize" 
+                                        Icon="@(Processing && ShowPrimaryButtonSpinner ? null : PrimaryIcon)" IconPosition="IconPosition.Start" 
+                                        Class="@PrimaryButtonClass" 
+                                        OnClick="HandlePrimaryAction" 
+                                        Disabled="@(Processing || PrimaryButtonDisabled)"
+                                        Loading="@(Processing && ShowPrimaryButtonSpinner)">
+                                    @(Processing && !string.IsNullOrEmpty(ProcessingButtonText) ? ProcessingButtonText : PrimaryText)
+                                </RButton>
+                            }
+                        </RActionGroup>
+                        @if (ShowUnsavedIndicator && HasUnsavedChanges)
+                        {
+                            <div class="d-flex align-center gap-2 pa-3 bg-info-light text-info rounded-lg">
+                                <i class="material-symbols-rounded">info</i>
+                                <span class="text-sm">You have unsaved changes</span>
+                            </div>
+                        }
+                    }
+                </div>
+            }
+            </div> @* Close modal-content *@
         }
-            </div>
-        </div>
     </div>
 }
 
 @code {
     [Parameter] public bool Visible { get; set; }
     [Parameter] public EventCallback<bool> VisibleChanged { get; set; }
+    
+    /// <summary>
+    /// Whether this modal should create its own backdrop. Set to false when used within RModalProvider.
+    /// </summary>
+    [Parameter] public bool UseOwnBackdrop { get; set; } = true;
     
 
     private ElementReference modalContainer;
@@ -158,7 +272,7 @@ protected override async Task OnAfterRenderAsync(bool firstRender)
         }
         
 
-        if (jsModule != null && Visible != previousVisible)
+        if (jsModule != null && Visible != previousVisible && UseOwnBackdrop)
         {
             
             if (Visible && !isPortalCreated)

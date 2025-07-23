@@ -384,6 +384,14 @@ export const RRFileUpload = {
         return iconMap[extension.toLowerCase()] || 'draft';
     },
 
+    // Trigger file selection
+    triggerFileSelect: function(inputId) {
+        const fileInput = document.getElementById(inputId);
+        if (fileInput) {
+            fileInput.click();
+        }
+    },
+
     // Cleanup component
     cleanup: function(elementId) {
         const element = document.getElementById(elementId);

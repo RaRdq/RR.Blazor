@@ -1,0 +1,353 @@
+@page "/test/smart-tables"
+@using RR.Blazor.Components.Data
+@using RR.Blazor.Components.Core
+@using RR.Blazor.Enums
+
+@* Comprehensive Smart Table System Test *@
+
+<div class="pa-6">
+    <h1 class="text-3xl font-bold mb-4">🤖 Smart Table Test</h1>
+    <p class="text-secondary mb-6">Comprehensive testing of RTable + RColumn smart synergy with all variations</p>
+
+    @* Test Selector *@
+    <div class="test-controls mb-6 pa-4 bg-surface rounded">
+        <RChoiceGeneric Items="@testOptions.Keys"
+                        SelectedValue="@selectedTest"
+                        SelectedValueChanged="@OnTestChangedCallback"
+                        ItemLabelSelectorTyped="@(item => testOptions[item.ToString()])"
+                        AriaLabel="Test Case" />
+    </div>
+
+    @if (selectedTest == "smart-auto")
+    {
+        <div class="test-section mb-8">
+            <h2 class="text-xl font-semibold mb-4">🧠 Smart Auto-Detection</h2>
+            <p class="text-secondary mb-4">RTable automatically detects item type, RColumn gets context via cascading</p>
+            
+            @* Products *@
+            <div class="mb-6">
+                <h3 class="text-lg font-medium mb-2">Product Catalog</h3>
+                <RTable Items="@products"
+                        BulkOperationsEnabled="true"
+                        ExportEnabled="true"
+                        MultiSelection="true"
+                        SelectedItems="@selectedProducts"
+                        SelectedItemsChanged="@HandleProductSelectionChanged">
+                    <ColumnsContent>
+                        <RColumn Property="@((ProductModel p) => p.Name)" Sortable="true" />
+                        <RColumn Property="@((ProductModel p) => p.Price)" Format="c" Sortable="true" />
+                        <RColumn Property="@((ProductModel p) => p.Category)" Filterable="true" />
+                        <RColumn Property="@((ProductModel p) => p.Stock)" />
+                        <RColumn Property="@((ProductModel p) => p.IsActive)" Header="Status" />
+                    </ColumnsContent>
+                </RTable>
+            </div>
+
+            @* Employees *@
+            <div class="mb-6">
+                <h3 class="text-lg font-medium mb-2">Employee Directory</h3>
+                <RTable Items="@employees"
+                        SingleSelection="true"
+                        SelectedItem="@selectedEmployee"
+                        SelectedItemChanged="@HandleEmployeeSelectionChanged">
+                    <ColumnsContent>
+                        <RColumn Property="@((EmployeeModel e) => e.FullName)" />
+                        <RColumn Property="@((EmployeeModel e) => e.Department)" />
+                        <RColumn Property="@((EmployeeModel e) => e.Salary)" Format="c" />
+                        <RColumn Property="@((EmployeeModel e) => e.HireDate)" Format="d" />
+                    </ColumnsContent>
+                </RTable>
+            </div>
+        </div>
+    }
+
+    @if (selectedTest == "explicit-generic")
+    {
+        <div class="test-section mb-8">
+            <h2 class="text-xl font-semibold mb-4">⚡ Explicit Generic Usage</h2>
+            <p class="text-secondary mb-4">RTableGeneric with explicit TItem, RColumn still gets smart context</p>
+            
+            <RTableGeneric TItem="ProductModel"
+                          Items="@products"
+                          Title="Products (Explicit Generic)"
+                          Subtitle="@($"{products.Count} items")"
+                          Density="ComponentDensity.Compact"
+                          ExportEnabled="true">
+                <ColumnsContent>
+                    <RColumn Property="@((ProductModel p) => p.Name)" Header="Product Name" Sortable="true" />
+                    <RColumn Property="@((ProductModel p) => p.Price)" Header="Price" Format="c" />
+                    <RColumn Property="@((ProductModel p) => p.Category)" Header="Category" />
+                    <RColumn Property="@((ProductModel p) => p.Id)" Header="Actions" />
+                </ColumnsContent>
+            </RTableGeneric>
+        </div>
+    }
+
+    @if (selectedTest == "all-states")
+    {
+        <div class="test-section mb-8">
+            <h2 class="text-xl font-semibold mb-4">🌐 All Data States</h2>
+            <p class="text-secondary mb-4">Testing different data states and configurations</p>
+            
+            <div class="mb-6">
+                <h3 class="text-lg font-medium mb-2">Small Dataset</h3>
+                <RTable Items="@products.Take(2).ToList()"
+                        Title="Small Product List"
+                        ExportEnabled="true"
+                        PageSize="3">
+                    <ColumnsContent>
+                        <RColumn Property="@((ProductModel p) => p.Name)" />
+                        <RColumn Property="@((ProductModel p) => p.Price)" Format="c" />
+                        <RColumn Property="@((ProductModel p) => p.Category)" />
+                    </ColumnsContent>
+                </RTable>
+            </div>
+            
+            <div class="mb-6">
+                <h3 class="text-lg font-medium mb-2">Large Dataset</h3>
+                <RTable Items="@products"
+                        Title="Full Product Catalog"
+                        ExportEnabled="true"
+                        PageSize="3">
+                    <ColumnsContent>
+                        <RColumn Property="@((ProductModel p) => p.Name)" />
+                        <RColumn Property="@((ProductModel p) => p.Price)" Format="c" />
+                        <RColumn Property="@((ProductModel p) => p.Stock)" />
+                    </ColumnsContent>
+                </RTable>
+            </div>
+        </div>
+    }
+
+    @if (selectedTest == "visual-states")
+    {
+        <div class="test-section mb-8">
+            <h2 class="text-xl font-semibold mb-4">🎨 Visual States & Densities</h2>
+            
+            @foreach (var density in allDensities)
+            {
+                <div class="mb-6">
+                    <h3 class="text-lg font-medium mb-2">@density.ToString() Density</h3>
+                    <RTableGeneric TItem="ProductModel"
+                                  Items="@products.Take(2).ToList()"
+                                  Title="@($"Products - {density}")"
+                                  Density="@density"
+                                  ExportEnabled="true">
+                        <ColumnsContent>
+                            <RColumn Property="@((ProductModel p) => p.Name)" />
+                            <RColumn Property="@((ProductModel p) => p.Price)" Format="c" />
+                            <RColumn Property="@((ProductModel p) => p.Category)" />
+                        </ColumnsContent>
+                    </RTableGeneric>
+                </div>
+            }
+
+            @* Special States *@
+            <div class="mb-6">
+                <h3 class="text-lg font-medium mb-2">Loading State</h3>
+                <RTable Items="@emptyProducts"
+                        Loading="true"
+                        Title="Loading..."
+                        LoadingMessage="Fetching data...">
+                    <ColumnsContent>
+                        <RColumn Property="@((ProductModel p) => p.Name)" />
+                        <RColumn Property="@((ProductModel p) => p.Price)" />
+                    </ColumnsContent>
+                </RTable>
+            </div>
+
+            <div class="mb-6">
+                <h3 class="text-lg font-medium mb-2">Empty State</h3>
+                <RTable Items="@emptyProducts"
+                        Title="No Products"
+                        EmptyMessage="No products match your criteria.">
+                    <ColumnsContent>
+                        <RColumn Property="@((ProductModel p) => p.Name)" />
+                        <RColumn Property="@((ProductModel p) => p.Price)" />
+                    </ColumnsContent>
+                </RTable>
+            </div>
+        </div>
+    }
+
+    @if (selectedTest == "interaction")
+    {
+        <div class="test-section mb-8">
+            <h2 class="text-xl font-semibold mb-4">👆 Interaction & Selection</h2>
+            
+            <RTable Items="@products"
+                    Title="Interactive Table"
+                    BulkOperationsEnabled="true"
+                    MultiSelection="true"
+                    RowClickable="true"
+                    SelectedItems="@selectedProducts"
+                    SelectedItemsChanged="@HandleProductSelectionChanged"
+                    OnRowClick="@HandleRowClick">
+                <BulkOperations>
+                    <div class="d-flex gap-2">
+                        <RButton Text="@($"Export {selectedProducts?.Count ?? 0} items")"
+                                 Icon="download"
+                                 Size="ButtonSize.Small"
+                                 Variant="ButtonVariant.Primary"
+                                 Disabled="@(selectedProducts?.Count == 0)" />
+                        <RButton Text="Delete Selected"
+                                 Icon="delete"
+                                 Size="ButtonSize.Small"
+                                 Variant="ButtonVariant.Danger"
+                                 Disabled="@(selectedProducts?.Count == 0)" />
+                    </div>
+                </BulkOperations>
+                <ColumnsContent>
+                    <RColumn Property="@((ProductModel p) => p.Name)" Sortable="true" />
+                    <RColumn Property="@((ProductModel p) => p.Price)" Format="c" />
+                    <RColumn Property="@((ProductModel p) => p.Stock)" />
+                </ColumnsContent>
+            </RTable>
+        </div>
+    }
+
+    @if (selectedTest == "reflection-fallback")
+    {
+        <div class="test-section mb-8">
+            <h2 class="text-xl font-semibold mb-4">⚠️ Reflection Fallback Test</h2>
+            <p class="text-secondary mb-4">RColumn without table context - should log warning and use reflection</p>
+            
+            @* Standalone column (this will trigger reflection fallback with warning) *@
+            <div class="mb-4">
+                <p class="text-warning mb-2">Check browser console for reflection fallback warnings:</p>
+                <table class="table-auto border">
+                    <thead>
+                        <tr>
+                            <RColumn Property="@((ProductModel p) => p.Name)" Header="Product (Reflection)" />
+                            <RColumn Property="@((ProductModel p) => p.Price)" Header="Price (Reflection)" />
+                        </tr>
+                    </thead>
+                </table>
+            </div>
+
+            @* Invalid column (this will show error state) *@
+            <div class="mb-4">
+                <p class="text-error mb-2">Column without proper context (should show error):</p>
+                <table class="table-auto border">
+                    <thead>
+                        <tr>
+                            <RColumn Header="Invalid Column" />
+                        </tr>
+                    </thead>
+                </table>
+            </div>
+        </div>
+    }
+
+    @* Debug Information *@
+    <div class="debug-info mt-8 pa-4 bg-surface rounded">
+        <h3 class="text-lg font-medium mb-2">🔍 Debug Information</h3>
+        <div class="text-sm space-y-1">
+            <p><strong>Selected Test:</strong> @selectedTest</p>
+            <p><strong>Products Count:</strong> @products.Count</p>
+            <p><strong>Employees Count:</strong> @employees.Count</p>
+            <p><strong>Selected Products:</strong> @(selectedProducts?.Count ?? 0)</p>
+            <p><strong>Selected Employee:</strong> @(selectedEmployee?.FullName ?? "None")</p>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string selectedTest = "smart-auto";
+    
+    private readonly Dictionary<string, string> testOptions = new()
+    {
+        { "smart-auto", "🧠 Smart Auto-Detection" },
+        { "explicit-generic", "⚡ Explicit Generic" },
+        { "all-states", "🌐 All States" },
+        { "visual-states", "🎨 Visual States" },
+        { "interaction", "👆 Interactions" },
+        { "reflection-fallback", "⚠️ Reflection Fallback" }
+    };
+    
+    private List<ProductModel> products = new();
+    private List<EmployeeModel> employees = new();
+    private List<ProductModel> emptyProducts = new();
+    
+    private List<ProductModel>? selectedProducts = new();
+    private EmployeeModel? selectedEmployee;
+    
+    private readonly List<ComponentDensity> allDensities = Enum.GetValues<ComponentDensity>().ToList();
+
+    protected override void OnInitialized()
+    {
+        products = new List<ProductModel>
+        {
+            new() { Id = 1, Name = "iPhone 15 Pro", Price = 999.99m, Category = "Electronics", Stock = 25, IsActive = true },
+            new() { Id = 2, Name = "MacBook Pro M3", Price = 1999.99m, Category = "Computers", Stock = 8, IsActive = true },
+            new() { Id = 3, Name = "AirPods Pro", Price = 249.99m, Category = "Audio", Stock = 50, IsActive = true },
+            new() { Id = 4, Name = "iPad Air", Price = 599.99m, Category = "Tablets", Stock = 15, IsActive = false },
+            new() { Id = 5, Name = "Apple Watch", Price = 399.99m, Category = "Wearables", Stock = 5, IsActive = true }
+        };
+
+        employees = new List<EmployeeModel>
+        {
+            new() { Id = 1, FullName = "Sarah Johnson", Department = "Engineering", Salary = 95000, HireDate = DateTime.Now.AddYears(-2) },
+            new() { Id = 2, FullName = "Michael Chen", Department = "Design", Salary = 75000, HireDate = DateTime.Now.AddYears(-1) },
+            new() { Id = 3, FullName = "Emily Rodriguez", Department = "Marketing", Salary = 65000, HireDate = DateTime.Now.AddMonths(-8) },
+            new() { Id = 4, FullName = "David Kim", Department = "Sales", Salary = 80000, HireDate = DateTime.Now.AddYears(-3) }
+        };
+    }
+
+    private void OnTestChanged(string test)
+    {
+        selectedTest = test;
+        StateHasChanged();
+    }
+
+    private Task OnTestChangedCallback(object test)
+    {
+        OnTestChanged(test?.ToString() ?? "smart-auto");
+        return Task.CompletedTask;
+    }
+
+
+    private async Task HandleRowClick(object item)
+    {
+        // Handle row click
+        await Task.CompletedTask;
+    }
+
+    private void HandleProductSelectionChanged(object items)
+    {
+        selectedProducts = (List<ProductModel>)items;
+        StateHasChanged();
+    }
+
+    private void HandleEmployeeSelectionChanged(object item)
+    {
+        selectedEmployee = (EmployeeModel)item;
+        StateHasChanged();
+    }
+
+    public class ProductModel
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = "";
+        public decimal Price { get; set; }
+        public string Category { get; set; } = "";
+        public int Stock { get; set; }
+        public bool IsActive { get; set; }
+    }
+
+    public class EmployeeModel
+    {
+        public int Id { get; set; }
+        public string FullName { get; set; } = "";
+        public string Department { get; set; } = "";
+        public decimal Salary { get; set; }
+        public DateTime HireDate { get; set; }
+    }
+
+    public class GenericItem
+    {
+        public string Name { get; set; } = "";
+        public string Value { get; set; } = "";
+        public string Status { get; set; } = "";
+    }
+}

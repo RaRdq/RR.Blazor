@@ -24,9 +24,9 @@
 **Purpose**: Foundational UI elements and theming
 - RActionGroup, RAvatar, RBadge, RButton, RButtonRefactored, RCard, RChip, RDivider, RHeaderCard, RSectionDivider, RStatus, RThemeProvider, RThemeSwitcher
 
-### Form Components (11) 
+### Form Components (10) 
 **Purpose**: Modern form controls with validation
-- RCheckbox, RDatePicker, RDatePickerBasic, RFileUpload, RFormGeneric, RFormSection, RRadio, RSelectField, RSwitcherGeneric, RTextInput, RToggleGeneric
+- RCheckbox, RDatePicker, RFileUpload, RFormGeneric, RFormSection, RRadio, RSelectField, RSwitcherGeneric, RTextInput, RToggleGeneric
 
 ### Data Components (7)
 **Purpose**: Data display and management

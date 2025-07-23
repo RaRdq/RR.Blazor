@@ -4,7 +4,7 @@
 <complexity>Complex</complexity>
 <ai-prompt>Create a date/time picker with calendar popup and validation</ai-prompt>
 <ai-common-use>date selection, appointment scheduling, event planning, form dates</ai-common-use>
-<ai-avoid>Don't use for simple date input - use RDatePickerBasic instead</ai-avoid>
+<ai-avoid>Use appropriate Size parameter for different complexity levels</ai-avoid>
 <ai-pattern name="date-only">@bind-value="selectedDate" ShowTime="false"</ai-pattern>
 <ai-pattern name="datetime">@bind-value="dateTime" ShowTime="true" Use24HourFormat="false"</ai-pattern>
 <ai-pattern name="date-range">@bind-value="startDate" @bind-EndValue="endDate" Range="true"</ai-pattern>
@@ -19,59 +19,48 @@
 @inject IJSRuntime JSRuntime
 @implements IAsyncDisposable
 
-<div class="rdatepicker @GetWrapperClasses()" @ref="elementRef">
-    @* Input Field *@
-    <div class="rdatepicker-trigger" @onclick="ToggleCalendar" @onkeydown="HandleKeyDown">
-        <input type="text" 
-               id="@InputId"
-               class="@GetInputClasses()" 
-               value="@GetDisplayValue()"
-               placeholder="@GetPlaceholder()"
-               readonly="true"
-               disabled="@Disabled"
-               @onfocus="HandleFocus"
-               @onblur="HandleBlur" />
-        
-        @if (!string.IsNullOrEmpty(GetEffectiveIcon()) && IconPosition == IconPosition.Start)
-        {
-            <div class="rdatepicker-icon rdatepicker-icon-start">
-                <i class="material-symbols-rounded @GetIconSizeClass()">@GetEffectiveIcon()</i>
-            </div>
-        }
-        
-        <div class="rdatepicker-icon rdatepicker-icon-end">
-            <i class="material-symbols-rounded @GetIconSizeClass()">@(ShowTime ? "schedule" : "calendar_month")</i>
-        </div>
-        
-        @if (ShowClearButton && HasValue())
-        {
-            <button type="button" 
-                    class="rdatepicker-clear touch-target"
-                    @onclick="ClearValue" 
-                    @onclick:stopPropagation="true">
-                <i class="material-symbols-rounded text-sm">close</i>
-            </button>
-        }
+<div class="datepicker @GetWrapperClasses()" @ref="elementRef">
+    @* Input Field - RR.Blazor RTextInput Pattern *@
+    <div class="datepicker-trigger" @onclick="ToggleCalendar">
+        <RTextInput Value="@GetDisplayValue()"
+                   ValueChanged="@(_ => { })"
+                   Type="FieldType.Text"
+                   Placeholder="@GetPlaceholder()"
+                   Label="@Label"
+                   Size="@GetTextInputSize()"
+                   Disabled="@Disabled"
+                   ReadOnly="true"
+                   Required="@Required"
+                   HasError="@HasError"
+                   ErrorMessage="@ErrorMessage"
+                   HelpText="@HelperText"
+                   Class="@GetTriggerInputClass()"
+                   StartIcon="@GetEffectiveStartIcon()"
+                   EndIcon="@GetEffectiveEndIcon()"
+                   OnFocus="@HandleInputFocus"
+                   OnBlur="@HandleInputBlur"
+                   OnEndIconClick="@HandleEndIconClick"
+                   AdditionalAttributes="@GetTriggerAttributes()" />
     </div>
     
     @* Calendar Popup *@
     @if (isOpen)
     {
-        <div class="rdatepicker-backdrop" @onclick="CloseCalendar"></div>
-        <div class="rdatepicker-popup @GetPopupPositionClass()">
+        <div class="datepicker-backdrop" @onclick="CloseCalendar"></div>
+        <div class="datepicker-popup @GetPopupPositionClass()">
             @* Calendar Header *@
-            <div class="rdatepicker-header">
-                <button type="button" class="rdatepicker-nav-btn" @onclick="PreviousMonth">
+            <div class="datepicker-header">
+                <button type="button" class="datepicker-nav-btn" @onclick="PreviousMonth">
                     <i class="material-symbols-rounded">chevron_left</i>
                 </button>
                 
-                <div class="rdatepicker-header-info">
-                    <button type="button" class="rdatepicker-month-year" @onclick="ToggleYearPicker">
+                <div class="datepicker-header-info">
+                    <button type="button" class="datepicker-month-year" @onclick="ToggleYearPicker">
                         @currentViewDate.ToString("MMMM yyyy", CultureInfo.CurrentCulture)
                     </button>
                 </div>
                 
-                <button type="button" class="rdatepicker-nav-btn" @onclick="NextMonth">
+                <button type="button" class="datepicker-nav-btn" @onclick="NextMonth">
                     <i class="material-symbols-rounded">chevron_right</i>
                 </button>
             </div>
@@ -79,12 +68,12 @@
             @if (showYearPicker)
             {
                 @* Year Picker *@
-                <div class="rdatepicker-year-picker">
+                <div class="datepicker-year-picker">
                     @for (var year = currentViewDate.Year - 10; year <= currentViewDate.Year + 10; year++)
                     {
                         var yearValue = year;
                         <button type="button" 
-                                class="rdatepicker-year-option @(year == currentViewDate.Year ? "rdatepicker-year-option-current" : "")"
+                                class="datepicker-year-option @(year == currentViewDate.Year ? "datepicker-year-option-current" : "")"
                                 @onclick="() => SelectYear(yearValue)">
                             @year
                         </button>
@@ -94,21 +83,21 @@
             else
             {
                 @* Calendar Grid *@
-                <div class="rdatepicker-calendar">
+                <div class="datepicker-calendar">
                     @* Day Headers *@
-                    <div class="rdatepicker-day-headers">
+                    <div class="datepicker-day-headers">
                         @foreach (var dayName in GetDayNames())
                         {
-                            <div class="rdatepicker-day-header">@dayName</div>
+                            <div class="datepicker-day-header">@dayName</div>
                         }
                     </div>
                     
                     @* Calendar Days *@
-                    <div class="rdatepicker-days">
+                    <div class="datepicker-days">
                         @foreach (var day in GetCalendarDays())
                         {
                             <button type="button" 
-                                    class="rdatepicker-day @GetDayClasses(day)"
+                                    class="datepicker-day @GetDayClasses(day)"
                                     disabled="@IsDateDisabled(day.Date)"
                                     @onclick="() => SelectDate(day.Date)"
                                     @onmouseenter="() => HandleDayHover(day.Date)">
@@ -121,10 +110,10 @@
                 @* Time Picker *@
                 @if (ShowTime)
                 {
-                    <div class="rdatepicker-time-picker">
-                        <div class="rdatepicker-time-section">
-                            <label class="rdatepicker-time-label">Hour</label>
-                            <select class="rdatepicker-time-select" 
+                    <div class="datepicker-time-picker">
+                        <div class="datepicker-time-section">
+                            <label class="datepicker-time-label">Hour</label>
+                            <select class="datepicker-time-select" 
                                     value="@selectedHour" 
                                     @onchange="HandleHourChange">
                                 @for (int h = 0; h < (Use24HourFormat ? 24 : 12); h++)
@@ -135,9 +124,9 @@
                             </select>
                         </div>
                         
-                        <div class="rdatepicker-time-section">
-                            <label class="rdatepicker-time-label">Minute</label>
-                            <select class="rdatepicker-time-select" 
+                        <div class="datepicker-time-section">
+                            <label class="datepicker-time-label">Minute</label>
+                            <select class="datepicker-time-select" 
                                     value="@selectedMinute" 
                                     @onchange="HandleMinuteChange">
                                 @for (int m = 0; m < 60; m += MinuteInterval)
@@ -149,9 +138,9 @@
                         
                         @if (!Use24HourFormat)
                         {
-                            <div class="rdatepicker-time-section">
-                                <label class="rdatepicker-time-label">Period</label>
-                                <select class="rdatepicker-time-select" 
+                            <div class="datepicker-time-section">
+                                <label class="datepicker-time-label">Period</label>
+                                <select class="datepicker-time-select" 
                                         value="@selectedPeriod" 
                                         @onchange="HandlePeriodChange">
                                     <option value="AM">AM</option>
@@ -163,22 +152,22 @@
                 }
                 
                 @* Footer Actions *@
-                <div class="rdatepicker-footer">
+                <div class="datepicker-footer">
                     @if (ShowTodayButton)
                     {
-                        <button type="button" class="rdatepicker-action-btn rdatepicker-action-btn-secondary" @onclick="SelectToday">
+                        <button type="button" class="datepicker-action-btn datepicker-action-btn-secondary" @onclick="SelectToday">
                             Today
                         </button>
                     }
                     
                     @if (Range && !string.IsNullOrEmpty(GetDisplayValue()))
                     {
-                        <button type="button" class="rdatepicker-action-btn rdatepicker-action-btn-secondary" @onclick="ClearValue">
+                        <button type="button" class="datepicker-action-btn datepicker-action-btn-secondary" @onclick="ClearValue">
                             Clear
                         </button>
                     }
                     
-                    <button type="button" class="rdatepicker-action-btn rdatepicker-action-btn-primary" @onclick="ApplySelection">
+                    <button type="button" class="datepicker-action-btn datepicker-action-btn-primary" @onclick="ApplySelection">
                         @(Range ? "Apply" : "Select")
                     </button>
                 </div>
@@ -452,23 +441,59 @@
     {
         switch (e.Key)
         {
-            case "Enter" or " ":
-                await ToggleCalendar();
+            case "Enter":
+            case " ":
+            case "ArrowDown":
+                if (!isOpen)
+                {
+                    await OpenCalendar();
+                }
                 break;
             case "Escape":
-                if (isOpen) await CloseCalendar();
+                if (isOpen) 
+                {
+                    await CloseCalendar();
+                }
+                break;
+            case "Tab":
+                if (isOpen)
+                {
+                    await CloseCalendar();
+                }
                 break;
         }
     }
 
-    private async Task HandleFocus(FocusEventArgs e)
+    private async Task HandleInputFocus()
     {
-
+        if (!Disabled && !ReadOnly && !isOpen)
+        {
+            await OpenCalendar();
+        }
     }
 
-    private async Task HandleBlur(FocusEventArgs e)
+    private async Task HandleInputBlur()
     {
+        // Delay to allow clicks on calendar to register first
+        await Task.Delay(150);
+        if (isOpen)
+        {
+            await CloseCalendar();
+        }
+    }
 
+    private async Task HandleEndIconClick()
+    {
+        if (ShowClearButton && HasValue())
+        {
+            // Clear button clicked
+            await ClearValue();
+        }
+        else
+        {
+            // Calendar icon clicked - toggle calendar
+            await ToggleCalendar();
+        }
     }
 
     private bool HasValue() => Value.HasValue || EndValue.HasValue;
@@ -561,115 +586,44 @@
 
     private string GetWrapperClasses()
     {
-        var classes = new List<string> { "rdatepicker" };
+        var classes = new List<string> { "datepicker" };
         
         if (!string.IsNullOrEmpty(Class))
             classes.Add(Class);
             
         if (HasError)
-            classes.Add("rdatepicker-error");
+            classes.Add("datepicker-error");
             
         if (isOpen)
-            classes.Add("rdatepicker-open");
+            classes.Add("datepicker-open");
             
         return string.Join(" ", classes);
     }
 
-    private string GetInputClasses()
-    {
-        var classes = new List<string>
-        {
-            "rdatepicker-input",
-            "w-full",
-            "border",
-            "rounded-md",
-            "bg-surface-elevated",
-            "text-primary",
-            "transition",
-            "focus:border-primary",
-            "focus:shadow-primary",
-            "cursor-pointer"
-        };
-
-        classes.Add(Size switch
-        {
-            FieldSize.Small => "pl-3 pr-3 pt-1 pb-1 text-sm h-8",
-            FieldSize.Medium => "pl-3 pr-3 pt-2 pb-2 text-base h-10",
-            FieldSize.Large => "pl-4 pr-4 pt-3 pb-3 text-lg h-12",
-            _ => "pl-3 pr-3 pt-2 pb-2 text-base h-10"
-        });
-
-        if (!string.IsNullOrEmpty(GetEffectiveIcon()) && IconPosition == IconPosition.Start)
-        {
-            classes.Add(Size switch
-            {
-                FieldSize.Small => "pl-8",
-                FieldSize.Medium => "pl-10",
-                FieldSize.Large => "pl-12",
-                _ => "pl-10"
-            });
-        }
-
-        classes.Add(Size switch
-        {
-            FieldSize.Small => "pr-16",
-            FieldSize.Medium => "pr-20",
-            FieldSize.Large => "pr-24",
-            _ => "pr-20"
-        });
-
-        if (HasError)
-        {
-            classes.AddRange(new[] { "border-error", "focus:border-error", "focus:shadow-error" });
-        }
-        else
-        {
-            classes.Add("border-medium");
-        }
-
-        if (Disabled)
-        {
-            classes.AddRange(new[] { "bg-disabled", "text-muted", "cursor-not-allowed" });
-        }
-        else
-        {
-            classes.Add("hover:border-strong");
-        }
-
-        return string.Join(" ", classes);
-    }
 
     private string GetPopupPositionClass()
     {
-        return "rdatepicker-popup-bottom"; // TODO: Add dynamic positioning
+        // JavaScript positioning handles dynamic classes via applyDynamicPositioning
+        // This method provides a fallback class for initial rendering
+        return "datepicker-popup-bottom";
     }
 
-    private string GetIconSizeClass()
-    {
-        return Size switch
-        {
-            FieldSize.Small => "text-sm",
-            FieldSize.Medium => "text-base",
-            FieldSize.Large => "text-lg",
-            _ => "text-base"
-        };
-    }
 
     private string GetDayClasses(CalendarDay day)
     {
-        var classes = new List<string> { "rdatepicker-day" };
+        var classes = new List<string> { "datepicker-day" };
 
         if (!day.IsCurrentMonth)
-            classes.Add("rdatepicker-day-other-month");
+            classes.Add("datepicker-day-other-month");
 
         if (day.IsToday)
-            classes.Add("rdatepicker-day-today");
+            classes.Add("datepicker-day-today");
 
         if (day.IsWeekend)
-            classes.Add("rdatepicker-day-weekend");
+            classes.Add("datepicker-day-weekend");
 
         if (IsDateDisabled(day.Date))
-            classes.Add("rdatepicker-day-disabled");
+            classes.Add("datepicker-day-disabled");
 
 
         if (Range)
@@ -678,35 +632,79 @@
             var end = tempEndDate ?? EndValue ?? hoverDate;
 
             if (start.HasValue && day.Date.Date == start.Value.Date)
-                classes.Add("rdatepicker-day-range-start");
+                classes.Add("datepicker-day-range-start");
 
             if (end.HasValue && day.Date.Date == end.Value.Date && start.HasValue && end.Value.Date != start.Value.Date)
-                classes.Add("rdatepicker-day-range-end");
+                classes.Add("datepicker-day-range-end");
 
             if (start.HasValue && end.HasValue && day.Date.Date > start.Value.Date && day.Date.Date < end.Value.Date)
-                classes.Add("rdatepicker-day-range-middle");
+                classes.Add("datepicker-day-range-middle");
         }
         else
         {
             if (Value.HasValue && day.Date.Date == Value.Value.Date)
-                classes.Add("rdatepicker-day-selected");
+                classes.Add("datepicker-day-selected");
         }
 
         return string.Join(" ", classes);
     }
 
-    /// <summary>Gets the effective icon, supporting both new and legacy patterns</summary>
-    private string GetEffectiveIcon()
+    /// <summary>Gets the effective start icon for RTextInput integration</summary>
+    private string GetEffectiveStartIcon()
     {
-
-        if (!string.IsNullOrEmpty(Icon))
+        if (!string.IsNullOrEmpty(Icon) && IconPosition == IconPosition.Start)
             return Icon;
             
-
         if (!string.IsNullOrEmpty(StartIcon))
             return StartIcon;
             
         return null;
+    }
+
+    /// <summary>Gets the effective end icon for RTextInput integration</summary>
+    private string GetEffectiveEndIcon()
+    {
+        // Show clear button if has value and clear button is enabled
+        if (ShowClearButton && HasValue())
+        {
+            return "close";
+        }
+        
+        // Otherwise show the calendar/time icon
+        return ShowTime ? "schedule" : "calendar_month";
+    }
+
+    /// <summary>Gets CSS class for the trigger input</summary>
+    private string GetTriggerInputClass()
+    {
+        return "datepicker-input";
+    }
+
+    /// <summary>Gets additional attributes for the trigger input</summary>
+    private Dictionary<string, object> GetTriggerAttributes()
+    {
+        var attrs = new Dictionary<string, object>
+        {
+            ["role"] = "button",
+            ["aria-label"] = Label ?? "Select date",
+            ["aria-expanded"] = isOpen.ToString().ToLower(),
+            ["aria-haspopup"] = "dialog",
+            ["tabindex"] = Disabled || ReadOnly ? -1 : 0
+        };
+
+        return attrs;
+    }
+
+    /// <summary>Converts FieldSize to TextInputSize for RTextInput compatibility</summary>
+    private TextInputSize GetTextInputSize()
+    {
+        return Size switch
+        {
+            FieldSize.Small => TextInputSize.Small,
+            FieldSize.Medium => TextInputSize.Medium,
+            FieldSize.Large => TextInputSize.Large,
+            _ => TextInputSize.Medium
+        };
     }
 
     private record CalendarDay
@@ -725,13 +723,25 @@
         {
             try
             {
-                jsModule = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./_content/RR.Blazor/js/rdatepicker.js");
-                await jsModule.InvokeVoidAsync("init", InputId, new { });
+                jsModule = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./_content/RR.Blazor/js/datepicker.js");
             }
             catch (Exception ex)
             {
-
                 Console.WriteLine($"RDatePicker JS initialization failed: {ex.Message}");
+            }
+        }
+        
+        // Apply positioning when popup opens
+        if (isOpen && jsModule != null)
+        {
+            try
+            {
+                await Task.Yield(); // Small delay for DOM updates
+                await jsModule.InvokeVoidAsync("RDatePicker.positionPopup", elementRef);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"RDatePicker positioning failed: {ex.Message}");
             }
         }
     }
@@ -742,7 +752,6 @@
         {
             if (jsModule != null)
             {
-                await jsModule.InvokeVoidAsync("RDatePicker.destroy", InputId);
                 await jsModule.DisposeAsync();
             }
         }
@@ -752,315 +761,4 @@
         }
     }
 }
-
-<style>
-.rdatepicker {
-    position: relative;
-    display: inline-block;
-    width: 100%;
-}
-
-.rdatepicker-trigger {
-    position: relative;
-    cursor: pointer;
-}
-
-.rdatepicker-input {
-    padding-right: 2.5rem !important;
-}
-
-.rdatepicker-icon {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    color: var(--color-text-tertiary);
-    pointer-events: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.rdatepicker-icon-start {
-    left: 0.75rem;
-}
-
-.rdatepicker-icon-end {
-    right: 2.5rem;
-}
-
-.rdatepicker-clear {
-    position: absolute;
-    top: 50%;
-    right: 0.5rem;
-    transform: translateY(-50%);
-    background: none;
-    border: none;
-    color: var(--color-text-tertiary);
-    cursor: pointer;
-    padding: 0.25rem;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s ease;
-}
-
-.rdatepicker-clear:hover {
-    background: var(--color-background-elevated);
-    color: var(--color-text-primary);
-}
-
-.rdatepicker-backdrop {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 999;
-    background: transparent;
-}
-
-.rdatepicker-popup {
-    position: absolute;
-    z-index: 1000;
-    background: var(--color-background-elevated);
-    border: 1px solid var(--color-border-light);
-    border-radius: 0.5rem;
-    box-shadow: var(--shadow-lg);
-    min-width: 320px;
-    max-width: 400px;
-}
-
-.rdatepicker-popup-bottom {
-    top: calc(100% + 0.5rem);
-    left: 0;
-}
-
-.rdatepicker-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 1rem;
-    border-bottom: 1px solid var(--color-border-light);
-}
-
-.rdatepicker-nav-btn {
-    background: none;
-    border: none;
-    padding: 0.5rem;
-    border-radius: 0.25rem;
-    cursor: pointer;
-    color: var(--color-text-secondary);
-    transition: all 0.2s ease;
-}
-
-.rdatepicker-nav-btn:hover {
-    background: var(--color-background-secondary);
-    color: var(--color-text-primary);
-}
-
-.rdatepicker-month-year {
-    background: none;
-    border: none;
-    font-weight: 600;
-    font-size: 1rem;
-    color: var(--color-text-primary);
-    cursor: pointer;
-    padding: 0.5rem;
-    border-radius: 0.25rem;
-    transition: all 0.2s ease;
-}
-
-.rdatepicker-month-year:hover {
-    background: var(--color-background-secondary);
-}
-
-.rdatepicker-year-picker {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 0.5rem;
-    padding: 1rem;
-    max-height: 200px;
-    overflow-y: auto;
-}
-
-.rdatepicker-year-option {
-    background: none;
-    border: none;
-    padding: 0.75rem;
-    border-radius: 0.25rem;
-    cursor: pointer;
-    color: var(--color-text-secondary);
-    transition: all 0.2s ease;
-    font-size: 0.875rem;
-}
-
-.rdatepicker-year-option:hover {
-    background: var(--color-background-secondary);
-    color: var(--color-text-primary);
-}
-
-.rdatepicker-year-option-current {
-    background: var(--color-interactive-primary);
-    color: white;
-}
-
-.rdatepicker-calendar {
-    padding: 1rem;
-}
-
-.rdatepicker-day-headers {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 0.25rem;
-    margin-bottom: 0.5rem;
-}
-
-.rdatepicker-day-header {
-    text-align: center;
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: var(--color-text-tertiary);
-    padding: 0.5rem;
-    text-transform: uppercase;
-}
-
-.rdatepicker-days {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 0.125rem;
-}
-
-.rdatepicker-day {
-    background: none;
-    border: none;
-    aspect-ratio: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.875rem;
-    cursor: pointer;
-    border-radius: 0.25rem;
-    color: var(--color-text-primary);
-    transition: all 0.2s ease;
-    position: relative;
-}
-
-.rdatepicker-day:hover:not(:disabled) {
-    background: var(--color-background-secondary);
-}
-
-.rdatepicker-day-other-month {
-    color: var(--color-text-tertiary);
-}
-
-.rdatepicker-day-today {
-    font-weight: 600;
-    color: var(--color-interactive-primary);
-}
-
-.rdatepicker-day-weekend {
-    color: var(--color-text-secondary);
-}
-
-.rdatepicker-day-disabled {
-    color: var(--color-text-disabled);
-    cursor: not-allowed;
-    opacity: 0.5;
-}
-
-.rdatepicker-day-selected {
-    background: var(--color-interactive-primary);
-    color: white;
-}
-
-.rdatepicker-day-range-start,
-.rdatepicker-day-range-end {
-    background: var(--color-interactive-primary);
-    color: white;
-}
-
-.rdatepicker-day-range-middle {
-    background: var(--color-interactive-primary);
-    color: white;
-    opacity: 0.7;
-}
-
-.rdatepicker-time-picker {
-    display: flex;
-    gap: 1rem;
-    padding: 1rem;
-    border-top: 1px solid var(--color-border-light);
-}
-
-.rdatepicker-time-section {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    flex: 1;
-}
-
-.rdatepicker-time-label {
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: var(--color-text-secondary);
-    text-transform: uppercase;
-}
-
-.rdatepicker-time-select {
-    padding: 0.5rem;
-    border: 1px solid var(--color-border-medium);
-    border-radius: 0.25rem;
-    background: var(--color-background-elevated);
-    color: var(--color-text-primary);
-    font-size: 0.875rem;
-}
-
-.rdatepicker-footer {
-    display: flex;
-    gap: 0.5rem;
-    padding: 1rem;
-    border-top: 1px solid var(--color-border-light);
-    justify-content: flex-end;
-}
-
-.rdatepicker-action-btn {
-    padding: 0.5rem 1rem;
-    border-radius: 0.25rem;
-    font-size: 0.875rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    border: 1px solid transparent;
-}
-
-.rdatepicker-action-btn-primary {
-    background: var(--color-interactive-primary);
-    color: white;
-}
-
-.rdatepicker-action-btn-primary:hover {
-    background: var(--color-interactive-primary-hover);
-}
-
-.rdatepicker-action-btn-secondary {
-    background: none;
-    color: var(--color-text-secondary);
-    border-color: var(--color-border-medium);
-}
-
-.rdatepicker-action-btn-secondary:hover {
-    background: var(--color-background-secondary);
-    color: var(--color-text-primary);
-}
-
-.rdatepicker-error .rdatepicker-input {
-    border-color: var(--color-error);
-}
-
-.rdatepicker-error .rdatepicker-input:focus {
-    border-color: var(--color-error);
-    box-shadow: 0 0 0 3px hsla(0, 84%, 60%, 0.1);
-}
-</style>
 

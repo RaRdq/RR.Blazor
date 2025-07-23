@@ -91,6 +91,7 @@ import * as ChoiceModule from './choice.js';
 import * as TabsModule from './tabs.js';
 import * as FormsModule from './forms.js';
 import * as UtilsModule from './utils.js';
+import * as DatePickerModule from './datepicker.js';
 
 window.RRTheme = ThemeModule;
 window.RChart = ChartModule;
@@ -98,6 +99,7 @@ window.RRChoice = ChoiceModule;
 window.RRTabs = TabsModule;
 window.RRForms = FormsModule;
 window.RRUtils = UtilsModule;
+window.RDatePicker = DatePickerModule.default;
 
 window.RRBlazor = {
     getTabIndicatorPosition: TabsModule.getTabIndicatorPosition,
@@ -132,6 +134,8 @@ window.RRBlazor = {
             case 'form-field':
                 FormsModule.initializeFormField(element, options);
                 break;
+            case 'datepicker':
+                return DatePickerModule.init(elementId, options);
         }
     },
     
@@ -146,6 +150,11 @@ window.RRBlazor = {
     adjustChoicePosition: ChoiceModule.adjustChoicePosition,
 
     Choice: ChoiceModule.Choice,
+    
+    initializeDatePicker: DatePickerModule.init,
+    positionDatePickerPopup: DatePickerModule.positionPopup,
+    formatDate: DatePickerModule.formatDate,
+    parseDate: DatePickerModule.parseDate,
 
     setupUserMenuOutsideClick: function(userMenuContainerId, toggleCallback) {
         debugLogger.log('Setting up user menu outside click handler for:', userMenuContainerId);

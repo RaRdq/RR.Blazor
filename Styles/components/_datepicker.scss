@@ -1,70 +1,352 @@
-// ===== RDATEPICKER COMPONENT =====
+// ===== datepicker COMPONENT =====
 // Date/time picker with calendar popup
 
 @use '../abstracts' as *;
 
-.rdatepicker {
+.datepicker {
   position: relative;
   display: inline-block;
   width: 100%;
+  
+  // Ensure proper stacking context for popup
+  &.datepicker-open {
+    z-index: var(--z-above);
+  }
 
   &-trigger {
     position: relative;
     cursor: pointer;
     width: 100%;
+    display: flex;
+    align-items: center;
+    
+    background: var(--color-surface-elevated);
+    border: var(--border-1) solid var(--color-border);
+    border-radius: var(--radius-lg);
+    transition: all var(--duration-fast) var(--ease-out);
+    
+    &:hover:not(.datepicker-disabled) {
+      border-color: var(--color-primary);
+      box-shadow: var(--shadow-sm);
+    }
+    
+    &:focus-within {
+      border-color: var(--color-primary);
+      box-shadow: var(--focus-shadow);
+      outline: var(--border-2) solid var(--color-primary-light);
+      outline-offset: var(--border-1);
+    }
+    
+    &.datepicker-disabled {
+      opacity: var(--opacity-disabled);
+      cursor: not-allowed;
+      background: var(--color-surface-muted);
+    }
   }
 
   &-input {
-    padding-right: 3rem; // Space for icons
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    padding: var(--space-3);
+    font-size: var(--text-sm);
+    font-weight: var(--font-medium);
+    color: var(--color-text);
     cursor: pointer;
     user-select: none;
+    
+    &::placeholder {
+      color: var(--color-text-muted);
+      opacity: 1;
+    }
     
     &:focus {
       cursor: text;
     }
+    
+    &:disabled {
+      cursor: not-allowed;
+      color: var(--color-text-muted);
+    }
+    
+    // Remove default browser styles
+    &::-webkit-input-placeholder { color: var(--color-text-muted); }
+    &::-moz-placeholder { color: var(--color-text-muted); opacity: 1; }
+    &:-ms-input-placeholder { color: var(--color-text-muted); }
+    &:-moz-placeholder { color: var(--color-text-muted); opacity: 1; }
   }
 
   &-icon {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    color: var(--color-text-subtle);
-    pointer-events: none;
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: var(--z-base);
-  &-start {
-      left: var(--space-3);
+    flex-shrink: 0;
+    color: var(--color-text-muted);
+    pointer-events: none;
+    transition: color var(--duration-fast);
+    
+    // Modern flexbox-based positioning instead of absolute
+    &-start {
+      margin-right: var(--space-2);
+      margin-left: var(--space-1);
     }
-  &-end {
-      right: 3rem;
+    
+    &-end {
+      margin-left: var(--space-2);
+      margin-right: var(--space-1);
+    }
+    
+    // Icon states
+    .datepicker-trigger:hover & {
+      color: var(--color-primary);
+    }
+    
+    .datepicker-trigger:focus-within & {
+      color: var(--color-primary);
+    }
+    
+    // Icon sizing
+    i {
+      font-size: var(--icon-base);
+      line-height: 1;
     }
   }
 
   &-clear {
-    position: absolute;
-    top: 50%;
-    right: var(--space-2);
-    transform: translateY(-50%);
-    background: none;
-    border: none;
-    color: var(--color-text-subtle);
-    cursor: pointer;
-    padding: var(--space-1);
-    border-radius: var(--radius-full);
+    @include button-reset;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: var(--transition-fast);
-    z-index: var(--z-above);
-
+    flex-shrink: 0;
+    width: var(--touch-target-min, 32px);
+    height: var(--touch-target-min, 32px);
+    background: transparent;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    border-radius: var(--radius-md);
+    transition: all var(--duration-fast) var(--ease-out);
+    margin-right: var(--space-1);
+    
     &:hover {
       background: var(--color-surface-elevated);
       color: var(--color-text);
+      transform: scale(1.05);
+    }
+    
+    &:active {
+      transform: scale(0.95);
+      background: var(--color-primary-light);
+      color: var(--color-primary);
+    }
+    
+    i {
+      font-size: var(--icon-sm);
+      line-height: 1;
     }
   }
 
+
+  &-popup {
+    position: fixed !important;
+    z-index: var(--z-datepicker);
+    background: var(--color-surface-elevated);
+    border: var(--border-1) solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-2xl);
+    backdrop-filter: blur(var(--blur-md));
+    min-width: 320px;
+    max-width: 400px;
+    overflow: hidden;
+    visibility: hidden;
+    opacity: 0;
+    transform: translateY(-var(--space-2));
+    transition: all var(--duration-fast) var(--ease-out);
+    pointer-events: none;
+    
+    // Ensure it stays above all content
+    isolation: isolate;
+
+    // Modal-aware layering - detect if inside modal context
+    .modal &, 
+    .modal-container &,
+    .modal-content & {
+      z-index: var(--z-modal-datepicker);
+    }
+
+    // Smooth entry animation
+    animation: datepicker-enter var(--duration-fast) var(--ease-out);
+    
+    // Clean default positioning
+    top: calc(100% + var(--space-2));
+    left: 0;
+    
+    // Clean positioning system - let JavaScript handle smart positioning
+    // Default to bottom-start, JS will adjust as needed
+    width: auto;
+    min-width: 320px;
+    max-width: min(400px, 90vw);
+    
+      
+    // Responsive constraints
+    max-width: min(400px, calc(100vw - 2rem));
+    max-height: min(400px, calc(100vh - 8rem));
+    overflow-y: auto;
+    
+    // Premium scrollbar styling
+    &::-webkit-scrollbar {
+      width: 6px;
+    }
+    
+    &::-webkit-scrollbar-track {
+      background: var(--color-surface);
+      border-radius: var(--radius-sm);
+    }
+    
+    &::-webkit-scrollbar-thumb {
+      background: var(--color-border);
+      border-radius: var(--radius-full);
+      transition: all var(--duration-fast);
+      
+      &:hover {
+        background: var(--color-primary);
+      }
+    }
+    
+    // Smart viewport adaptation
+    @media (max-width: 480px) {
+      left: auto;
+      right: 0;
+      max-width: calc(100vw - 1rem);
+    }
+  }
+  
+  // Anchor name for the trigger button
+  &-trigger {
+    anchor-name: --datepicker-trigger;
+  }
+
+  // Show popup when datepicker is open
+  &.datepicker-open {
+    .datepicker-popup {
+      visibility: visible;
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0);
+    }
+    
+    .datepicker-backdrop {
+      visibility: visible;
+      pointer-events: auto;
+    }
+  }
+
+  // Dynamic positioning system - optimized with mixins
+  @mixin datepicker-position($direction, $offset: var(--space-2)) {
+    @if $direction == 'up' {
+      top: auto;
+      bottom: 100%;
+      margin-top: 0;
+      margin-bottom: $offset;
+      transform: translateY($offset) scale(0.95);
+    } @else {
+      top: 100%;
+      bottom: auto;
+      margin-top: $offset;
+      margin-bottom: 0;
+      transform: translateY(-#{$offset}) scale(0.95);
+    }
+  }
+  
+  @mixin datepicker-horizontal($align) {
+    @if $align == 'start' {
+      left: 0;
+      right: auto;
+      transform-origin: left top;
+    } @else if $align == 'end' {
+      left: auto;
+      right: 0;
+      transform-origin: right top;
+    } @else {
+      left: 50%;
+      transform-origin: center top;
+    }
+  }
+  
+  // Apply positioning mixins
+  &.datepicker-top .datepicker-popup,
+  &.datepicker-topstart .datepicker-popup,
+  &.datepicker-topend .datepicker-popup {
+    @include datepicker-position('up');
+  }
+
+  &.datepicker-bottom .datepicker-popup,
+  &.datepicker-bottomstart .datepicker-popup,
+  &.datepicker-bottomend .datepicker-popup {
+    @include datepicker-position('down');
+  }
+
+  // Horizontal alignment
+  &.datepicker-topstart .datepicker-popup,
+  &.datepicker-bottomstart .datepicker-popup {
+    @include datepicker-horizontal('start');
+  }
+
+  &.datepicker-topend .datepicker-popup,
+  &.datepicker-bottomend .datepicker-popup {
+    @include datepicker-horizontal('end');
+  }
+
+  // Center alignment with compound transforms
+  &.datepicker-top.datepicker-center .datepicker-popup,
+  &.datepicker-top .datepicker-popup {
+    @include datepicker-horizontal('center');
+    transform: translateX(-50%) translateY(var(--space-2)) scale(0.95);
+  }
+
+  &.datepicker-bottom.datepicker-center .datepicker-popup,
+  &.datepicker-bottom .datepicker-popup {
+    @include datepicker-horizontal('center');
+    transform: translateX(-50%) translateY(-var(--space-2)) scale(0.95);
+  }
+
+  // Open state transforms
+  &.datepicker-open {
+    &.datepicker-top .datepicker-popup,
+    &.datepicker-topstart .datepicker-popup,
+    &.datepicker-topend .datepicker-popup {
+      transform: translateY(0) scale(1);
+    }
+
+    &.datepicker-bottom .datepicker-popup,
+    &.datepicker-bottomstart .datepicker-popup,
+    &.datepicker-bottomend .datepicker-popup {
+      transform: translateY(0) scale(1);
+    }
+
+    &.datepicker-center .datepicker-popup {
+      transform: translateX(-50%) scale(1);
+    }
+  }
+
+  // Container-agnostic positioning using :has() selector
+  :has(.datepicker.datepicker-open) {
+    // Ensure containing elements don't clip the popup
+    overflow: visible;
+    
+    // For grid containers, create new stacking context
+    &[class*="grid"] {
+      isolation: isolate;
+    }
+    
+    // For card containers, ensure proper layering
+    &.card {
+      overflow: visible;
+      isolation: isolate;
+    }
+  }
+
+  // Backdrop for closing dropdown - matching RChoice pattern
   &-backdrop {
     position: fixed;
     top: 0;
@@ -73,29 +355,39 @@
     bottom: 0;
     z-index: var(--z-dropdown-backdrop);
     background: transparent;
+    visibility: hidden;
+    pointer-events: none;
+    
+    // Modal-aware backdrop layering
+    .modal &, 
+    .modal-container &,
+    .modal-content & {
+      z-index: calc(var(--z-modal-dropdown) - 10);
+    }
+  }
+  
+  // Show backdrop only when datepicker is open
+  &.datepicker-open .datepicker-backdrop {
+    visibility: visible;
+    pointer-events: auto;
   }
 
-  &-popup {
-    position: absolute;
-    z-index: var(--z-dropdown);
-    background: var(--color-surface-elevated);
-    border: var(--border-1) solid var(--color-border);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-xl);
-    min-width: 320px;
-    max-width: 400px;
-    overflow: hidden;
+  // UTILITY CLASSES FOR POPUP-SAFE CONTAINERS
+  &.has-datepicker,
+  .has-datepicker &,
+  .popup-safe & {
+    overflow: visible;
+    position: relative;
+    z-index: var(--z-above);
+  }
 
-    // Animation
-    animation: dropdownSlideIn 0.15s ease-out;
-  &-bottom {
-      top: calc(100% + 0.5rem);
-      left: 0;
-    }
-  &-top {
-      bottom: calc(100% + 0.5rem);
-      left: 0;
-    }
+  // Generic dropdown-safe container classes matching RChoice
+  &.has-dropdowns,
+  .has-dropdowns &,
+  .dropdown-safe & {
+    overflow: visible;
+    position: relative;
+    z-index: var(--z-above);
   }
 
   // ===== CALENDAR HEADER =====
@@ -433,7 +725,7 @@
 
   // ===== ERROR STATE =====
   &-error {
-    .rdatepicker-input {
+    .datepicker-input {
       border-color: var(--color-error);
       
       &:focus {
@@ -442,96 +734,86 @@
       }
     }
 
-    .rdatepicker-icon {
+    .datepicker-icon {
       color: var(--color-error);
     }
   }
 
   // ===== DISABLED STATE =====
   &-disabled {
-    .rdatepicker-trigger {
+    .datepicker-trigger {
       cursor: not-allowed;
     }
 
-    .rdatepicker-input {
+    .datepicker-input {
       background: var(--color-surface);
       color: var(--color-text-subtle);
       cursor: not-allowed;
     }
 
-    .rdatepicker-icon {
+    .datepicker-icon {
       color: var(--color-text-subtle);
     }
   }
 
   // ===== SIZE VARIANTS =====
   &-small {
-    .rdatepicker-input {
+    .datepicker-input {
       height: 2rem;
       font-size: var(--text-sm);
       padding: var(--space-2) var(--space-3);
     }
 
-    .rdatepicker-icon {
+    .datepicker-icon {
       font-size: var(--text-sm);
     }
 
-    .rdatepicker-clear {
+    .datepicker-clear {
       padding: calc(var(--space-px) * 2);
     }
   }
   &-large {
-    .rdatepicker-input {
+    .datepicker-input {
       height: 3rem;
       font-size: var(--text-lg);
       padding: var(--space-4) var(--space-5);
     }
 
-    .rdatepicker-icon {
+    .datepicker-icon {
       font-size: var(--text-lg);
     }
   }
 }
 
 // ===== MOBILE-FIRST RESPONSIVE DESIGN =====
-// Mobile-first: Full viewport modal for small screens
+// Mobile: Enhance touch targets and optimize for small screens
 @include responsive-max(sm) {
-  .rdatepicker {
+  .datepicker {
     &-popup {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      bottom: auto;
-      right: auto;
-      transform: translate(-50%, -50%);
-      width: 90vw;
-      max-width: 320px;
-    }
-  }
-}
-
-// Medium screens and up: Standard positioning
-@include responsive-min(sm) {
-  .rdatepicker {
-    &-popup {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      bottom: auto;
-      right: auto;
-      transform: translate(-50%, -50%);
-      width: 90vw;
-      max-width: 320px;
+      // Use smart positioning on mobile too, but with mobile-optimized constraints
+      min-width: min(320px, 90vw);
+      max-width: 90vw;
       max-height: 80vh;
-      overflow-y: auto;
+      
+      // Ensure popup doesn't go off-screen on mobile
+      @supports not (anchor-name: --test) {
+        // Fallback positioning for mobile without anchor support
+        &.datepicker-center {
+          left: 50%;
+          transform: translateX(-50%);
+        }
+        
+        // Ensure mobile popups stay within viewport
+        left: max(var(--space-2), min(var(--space-2), calc(100vw - 320px - var(--space-2))));
+      }
     }
 
     &-days {
-      gap: var(--space-px);
+      gap: var(--space-1);
     }
 
     &-day {
-      min-height: 40px; // Larger touch targets on mobile
+      min-height: 44px; // Larger touch targets on mobile (WCAG AA)
       font-size: var(--text-base);
     }
 
@@ -543,10 +825,46 @@
     &-footer {
       flex-direction: column;
       
-      .rdatepicker-action-btn {
+      .datepicker-action-btn {
         width: 100%;
         justify-content: center;
       }
+    }
+    
+    // Mobile-specific backdrop behavior
+    &-backdrop {
+      // On mobile, backdrop should be slightly visible for better UX
+      background: rgba(0, 0, 0, 0.1);
+    }
+  }
+}
+
+// Medium screens and up: Full smart positioning
+@include responsive-min(md) {
+  .datepicker {
+    &-popup {
+      // Use full smart positioning capabilities on larger screens
+      min-width: 320px;
+      max-width: 400px;
+      
+      // Enhanced positioning for larger screens
+      @supports (anchor-name: --test) {
+        // Use CSS anchor positioning for optimal placement
+        position-try: 
+          flip-block flip-inline,
+          flip-block,
+          flip-inline;
+      }
+    }
+    
+    // Better spacing on larger screens
+    &-days {
+      gap: calc(var(--space-px) * 2);
+    }
+
+    &-day {
+      min-height: 40px;
+      font-size: var(--text-sm);
     }
   }
 }
@@ -556,7 +874,7 @@
 
 // ===== DARK THEME ADJUSTMENTS =====
 [data-theme="dark"] {
-  .rdatepicker {
+  .datepicker {
     &-popup {
       border-color: var(--color-border-strong);
       box-shadow: var(--shadow-2xl);
@@ -569,5 +887,28 @@
     &-time-select {
       background: var(--color-canvas);
     }
+  }
+}
+
+// ===== ANIMATION KEYFRAMES =====
+@keyframes datepicker-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-var(--space-1)) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes datepicker-exit {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-var(--space-1)) scale(0.98);
   }
 }

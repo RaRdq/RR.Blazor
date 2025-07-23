@@ -1,0 +1,738 @@
+@page "/test/data-display-showcase"
+@using RR.Blazor.Models
+@using RR.Blazor.Enums
+@inject IJSRuntime JS
+
+<PageTitle>Data & Display Components Showcase</PageTitle>
+
+<RAppShell Title="RR.Blazor Data & Display Components Showcase">
+    <RContent>
+        <div class="container-px-4">
+            <!-- Header Section -->
+            <RSection Text="Data & Display Components Showcase" Icon="dashboard" Class="mb-6">
+                <p class="text-muted mb-0">Comprehensive demonstration of RR.Blazor data visualization and display components with realistic business data.</p>
+            </RSection>
+
+            <!-- Data Components Section -->
+            <RSectionDivider Text="Data Components" Icon="table_chart" Size="SectionDividerSize.Large" Class="mb-4" />
+
+            <!-- Calendar Component -->
+            <RCard Text="RCalendar" Subtitle="Professional calendar with events and navigation" Variant="CardVariant.Elevated" Class="mb-4">
+                <div class="pa-4">
+                    <RCalendar Size="CalendarSize.Default" />
+                </div>
+            </RCard>
+
+            <!-- Data Table Components -->
+            <RCard Text="RDataTableGeneric" Subtitle="Generic data tables with auto-generated columns" Variant="CardVariant.Elevated" Class="mb-4">
+                <div class="pa-4">
+                    <h4 class="text-sm font-medium mb-3">Auto-Generated Table</h4>
+                    <RDataTableGeneric Items="@employeeData" />
+                    
+                    <RDivider Text="Custom Column Configuration" Class="mt-4 mb-3" />
+                    
+                    <h4 class="text-sm font-medium mb-3">Custom Columns (Conceptual - RDataTableColumnGeneric)</h4>
+                    <div class="bg-surface-variant pa-3 rounded">
+                        <p class="text-sm text-muted mb-2">RDataTableColumnGeneric allows custom column configuration:</p>
+                        <div class="font-mono text-xs bg-surface pa-2 rounded">
+                            &lt;RDataTableGeneric Items="@employeeData"&gt;<br/>
+                            &nbsp;&nbsp;&lt;RDataTableColumnGeneric Property="e =&gt; e.Name" Title="Employee Name" /&gt;<br/>
+                            &nbsp;&nbsp;&lt;RDataTableColumnGeneric Property="e =&gt; e.Department" Title="Dept" /&gt;<br/>
+                            &nbsp;&nbsp;&lt;RDataTableColumnGeneric Property="e =&gt; e.Salary" Title="Salary" /&gt;<br/>
+                            &lt;/RDataTableGeneric&gt;
+                        </div>
+                    </div>
+                    
+                    <RActionGroup Pattern="ActionGroupPattern.None" Class="mt-3" Alignment="ActionGroupAlignment.End">
+                        <RButton Text="Toggle Loading" Variant="ButtonVariant.Secondary" OnClick="@ToggleEmployeeLoading" />
+                        <RButton Text="Refresh Data" Variant="ButtonVariant.Primary" OnClick="@RefreshEmployeeData" />
+                    </RActionGroup>
+                </div>
+            </RCard>
+
+            <!-- Filter Bar -->
+            <RCard Text="RFilterBar" Subtitle="Advanced filtering with search and controls" Variant="CardVariant.Elevated" Class="mb-4">
+                <div class="pa-4">
+                    <RFilterBar />
+                    <RDivider Text="Filter Results" Class="mt-4 mb-3" />
+                    <REmptyState Text="Apply filters to see results" Icon="filter_list" />
+                </div>
+            </RCard>
+
+            <!-- List Components -->
+            <RCard Text="RList & RListItem" Subtitle="Structured lists with icons and actions" Variant="CardVariant.Elevated" Class="mb-4">
+                <div class="pa-4">
+                    <div class="d-grid grid-cols-1 grid-cols-md-2 gap-4">
+                        <!-- Standard List -->
+                        <div>
+                            <h4 class="text-sm font-medium mb-3">Navigation List</h4>
+                            <RList Title="Main Menu" Variant="ListVariant.Menu" Size="ListSize.Default">
+                                <RListItem Text="Dashboard" Icon="dashboard" OnClick="@HandleDashboardClick" />
+                                <RListItem Text="Reports" Icon="assessment" OnClick="@HandleReportsClick" />
+                                <RListItem Text="Settings" Icon="settings" OnClick="@HandleSettingsClick" />
+                                <RListItem Text="Help" Icon="help" Disabled="true" />
+                            </RList>
+                        </div>
+
+                        <!-- Action List -->
+                        <div>
+                            <h4 class="text-sm font-medium mb-3">Action Items</h4>
+                            <RList Title="Recent Activities" Variant="ListVariant.Default" Size="ListSize.Default">
+                                <RListItem Text="Payroll processed" Icon="check_circle" />
+                                <RListItem Text="New employee added" Icon="person_add" />
+                                <RListItem Text="Report generated" Icon="description" />
+                                <RListItem Text="System backup completed" Icon="backup" />
+                            </RList>
+                        </div>
+                    </div>
+                </div>
+            </RCard>
+
+            <!-- Virtual List -->
+            <RCard Text="RVirtualListGeneric" Subtitle="High-performance virtual scrolling for large datasets" Variant="CardVariant.Elevated" Class="mb-4">
+                <div class="pa-4">
+                    <RVirtualListGeneric Items="@virtualListItems" Loading="@isLoadingVirtual" Size="400px">
+                        <ItemTemplate Context="item">
+                            <div class="d-flex align-center pa-3 border-bottom">
+                                <RAvatar Text="@item.Initials" Size="AvatarSize.Small" Variant="AvatarVariant.Primary" />
+                                <div class="ml-3">
+                                    <div class="font-medium">@item.Name</div>
+                                    <div class="text-sm text-muted">@item.Description</div>
+                                </div>
+                                <div class="ml-auto">
+                                    <RBadge Text="@item.Status" Variant="@GetBadgeVariant(item.Status)" Size="BadgeSize.Small" />
+                                </div>
+                            </div>
+                        </ItemTemplate>
+                    </RVirtualListGeneric>
+                    
+                    <RActionGroup Pattern="ActionGroupPattern.None" Class="mt-3" Alignment="ActionGroupAlignment.End">
+                        <RButton Text="Generate More Items" Variant="ButtonVariant.Secondary" OnClick="@GenerateVirtualItems" />
+                        <RButton Text="Clear List" Variant="ButtonVariant.Outline" OnClick="@ClearVirtualItems" />
+                    </RActionGroup>
+                </div>
+            </RCard>
+
+            <!-- Display Components Section -->
+            <RSectionDivider Text="Display Components" Icon="visibility" Size="SectionDividerSize.Large" Class="mb-4 mt-6" />
+
+            <!-- Accordion -->
+            <RCard Text="RAccordion & RAccordionItem" Subtitle="Collapsible content sections" Variant="CardVariant.Elevated" Class="mb-4">
+                <div class="pa-4">
+                    <RAccordion Variant="AccordionVariant.Default">
+                        <RAccordionItem Text="Company Information" Icon="business">
+                            <div class="pa-4">
+                                <RInfoItem Text="Company Name" Value="TechCorp Solutions" Icon="business" Size="InfoItemSize.Medium" Class="mb-3" />
+                                <RInfoItem Text="Founded" Value="2015" Icon="event" Size="InfoItemSize.Medium" Class="mb-3" />
+                                <RInfoItem Text="Employees" Value="1,247" Icon="group" Size="InfoItemSize.Medium" Class="mb-3" />
+                                <RInfoItem Text="Revenue" Value="125.3M USD" Icon="attach_money" Size="InfoItemSize.Medium" />
+                            </div>
+                        </RAccordionItem>
+                        
+                        <RAccordionItem Text="Financial Metrics" Icon="trending_up">
+                            <div class="pa-4 d-grid grid-cols-1 grid-cols-md-2 gap-4">
+                                <RMetric Text="Quarterly Revenue" Value="@("32M USD")" Icon="trending_up" />
+                                <RMetric Text="Operating Costs" Value="@("18M USD")" Icon="trending_down" />
+                                <RMetric Text="Net Profit" Value="@("13M USD")" Icon="account_balance" />
+                                <RMetric Text="Growth Rate" Value="@("12.5%")" Icon="show_chart" />
+                            </div>
+                        </RAccordionItem>
+                        
+                        <RAccordionItem Text="System Status" Icon="computer">
+                            <div class="pa-4">
+                                <RProgressBar Value="95" Text="Server Uptime" Variant="ProgressVariant.Success" Class="mb-3" />
+                                <RProgressBar Value="78" Text="Database Performance" Variant="ProgressVariant.Primary" Class="mb-3" />
+                                <RProgressBar Value="45" Text="Storage Usage" Variant="ProgressVariant.Warning" />
+                            </div>
+                        </RAccordionItem>
+                    </RAccordion>
+                </div>
+            </RCard>
+
+            <!-- Charts Section -->
+            <div class="d-grid grid-cols-1 grid-cols-md-2 gap-4 mb-4">
+                <!-- Column Chart -->
+                <RCard Text="RColumnChart" Subtitle="Column chart with business data" Variant="CardVariant.Elevated">
+                    <div class="pa-4">
+                        <RColumnChart 
+                            Data="@monthlyRevenueData" 
+                            Title="Monthly Revenue"
+                            Icon="bar_chart"
+                            Size="ChartSize.Medium"
+                            Variant="ChartVariant.Default"
+                            Loading="@isLoadingCharts" />
+                    </div>
+                </RCard>
+
+                <!-- Pie Chart -->
+                <RCard Text="RPieChart" Subtitle="Department distribution visualization" Variant="CardVariant.Elevated">
+                    <div class="pa-4">
+                        <RPieChart 
+                            Data="@departmentData" 
+                            Title="Employee Distribution"
+                            Icon="pie_chart"
+                            Size="ChartSize.Medium"
+                            Variant="ChartVariant.Filled"
+                            Loading="@isLoadingCharts" />
+                    </div>
+                </RCard>
+            </div>
+
+            <!-- Generic Chart -->
+            <RCard Text="RChart" Subtitle="Generic chart container with custom content" Variant="CardVariant.Elevated" Class="mb-4">
+                <div class="pa-4">
+                    <RChart Title="Custom Analytics Dashboard" Icon="analytics" Size="ChartSize.Large" Variant="ChartVariant.Glass">
+                        <div class="d-grid grid-cols-1 grid-cols-md-3 gap-4 pa-4">
+                            <RStatsCard Text="Active Users" Value="2,341" Icon="people" OnClick="@HandleUsersStatsClick" />
+                            <RStatsCard Text="Revenue Today" Value="15,720 USD" Icon="attach_money" OnClick="@HandleRevenueStatsClick" />
+                            <RStatsCard Text="Conversion Rate" Value="3.2%" Icon="trending_up" OnClick="@HandleConversionStatsClick" />
+                        </div>
+                    </RChart>
+                </div>
+            </RCard>
+
+            <!-- Info Items & Summary Items -->
+            <div class="d-grid grid-cols-1 grid-cols-md-2 gap-4 mb-4">
+                <RCard Text="RInfoItem" Subtitle="Key-value information display" Variant="CardVariant.Elevated">
+                    <div class="pa-4">
+                        <RInfoItem Text="Employee ID" Value="EMP-001234" Icon="badge" Size="InfoItemSize.Medium" Class="mb-3" />
+                        <RInfoItem Text="Department" Value="Engineering" Icon="engineering" Size="InfoItemSize.Medium" Class="mb-3" />
+                        <RInfoItem Text="Location" Value="San Francisco, CA" Icon="location_on" Size="InfoItemSize.Medium" Class="mb-3" />
+                        <RInfoItem Text="Phone" Value="+1 (555) 123-4567" Icon="phone" Size="InfoItemSize.Medium" />
+                    </div>
+                </RCard>
+
+                <RCard Text="RSummaryItem" Subtitle="Summary information with emphasis" Variant="CardVariant.Elevated">
+                    <div class="pa-4">
+                        <RSummaryItem Text="Total Sales" Value="847,293 USD" Icon="point_of_sale" Size="SummaryItemSize.Large" Class="mb-3" />
+                        <RSummaryItem Text="Active Projects" Value="23" Icon="work" Size="SummaryItemSize.Medium" Class="mb-3" />
+                        <RSummaryItem Text="Team Members" Value="156" Icon="group" Size="SummaryItemSize.Medium" Class="mb-3" />
+                        <RSummaryItem Text="Success Rate" Value="94.2%" Icon="check_circle" Size="SummaryItemSize.Medium" />
+                    </div>
+                </RCard>
+            </div>
+
+            <!-- Progress & Loading States -->
+            <div class="d-grid grid-cols-1 grid-cols-md-2 gap-4 mb-4">
+                <RCard Text="RProgressBar" Subtitle="Progress indicators and loading states" Variant="CardVariant.Elevated">
+                    <div class="pa-4">
+                        <RProgressBar Value="@progressValue1" Text="Project Alpha" Variant="ProgressVariant.Primary" Size="ProgressSize.Medium" Class="mb-3" />
+                        <RProgressBar Value="@progressValue2" Text="Data Migration" Variant="ProgressVariant.Success" Size="ProgressSize.Medium" Class="mb-3" />
+                        <RProgressBar Value="@progressValue3" Text="System Upgrade" Variant="ProgressVariant.Warning" Size="ProgressSize.Medium" Class="mb-3" />
+                        <RProgressBar Value="@progressValue4" Text="Backup Process" Variant="ProgressVariant.Error" Size="ProgressSize.Medium" />
+                        
+                        <RActionGroup Pattern="ActionGroupPattern.None" Class="mt-4" Alignment="ActionGroupAlignment.Center">
+                            <RButton Text="Animate Progress" Variant="ButtonVariant.Primary" OnClick="@AnimateProgress" />
+                        </RActionGroup>
+                    </div>
+                </RCard>
+
+                <RCard Text="RSkeleton" Subtitle="Loading skeleton placeholders" Variant="CardVariant.Elevated">
+                    <div class="pa-4">
+                        @if (showSkeleton)
+                        {
+                            <RSkeleton>
+                                <div class="animation-pulse">
+                                    <div class="bg-surface-variant h-4 rounded mb-3"></div>
+                                    <div class="bg-surface-variant h-4 rounded w-75 mb-3"></div>
+                                    <div class="bg-surface-variant h-4 rounded w-50 mb-3"></div>
+                                    <div class="bg-surface-variant h-6 rounded w-100"></div>
+                                </div>
+                            </RSkeleton>
+                        }
+                        else
+                        {
+                            <div>
+                                <h4 class="font-medium mb-2">Content Loaded Successfully</h4>
+                                <p class="text-muted mb-3">This content has finished loading and is now displayed instead of the skeleton placeholder.</p>
+                                <RBadge Text="Loaded" Variant="BadgeVariant.Success" />
+                            </div>
+                        }
+                        
+                        <RActionGroup Pattern="ActionGroupPattern.None" Class="mt-4" Alignment="ActionGroupAlignment.Center">
+                            <RButton Text="Toggle Skeleton" Variant="ButtonVariant.Secondary" OnClick="@ToggleSkeleton" />
+                        </RActionGroup>
+                    </div>
+                </RCard>
+            </div>
+
+            <!-- Empty State & Timeline -->
+            <div class="d-grid grid-cols-1 grid-cols-md-2 gap-4 mb-4">
+                <RCard Text="REmptyState" Subtitle="Empty state messaging" Variant="CardVariant.Elevated">
+                    <div class="pa-4">
+                        <REmptyState Text="No data available" Icon="inbox">
+                            <p class="text-muted mt-2 mb-4">There are no items to display at this time. Try adjusting your filters or adding new content.</p>
+                            <RActionGroup Pattern="ActionGroupPattern.None" Alignment="ActionGroupAlignment.Center">
+                                <RButton Text="Add New Item" Variant="ButtonVariant.Primary" Icon="add" />
+                                <RButton Text="Reset Filters" Variant="ButtonVariant.Outline" Icon="filter_list_off" />
+                            </RActionGroup>
+                        </REmptyState>
+                    </div>
+                </RCard>
+
+                <RCard Text="RTimeline" Subtitle="Activity timeline visualization" Variant="CardVariant.Elevated">
+                    <div class="pa-4">
+                        <RTimeline Items="@timelineItems" Variant="TimelineVariant.Default" Loading="@isLoadingTimeline" />
+                        
+                        <RActionGroup Pattern="ActionGroupPattern.None" Class="mt-4" Alignment="ActionGroupAlignment.End">
+                            <RButton Text="Add Event" Variant="ButtonVariant.Outline" Size="ButtonSize.Small" OnClick="@AddTimelineEvent" />
+                            <RButton Text="Clear Timeline" Variant="ButtonVariant.Secondary" Size="ButtonSize.Small" OnClick="@ClearTimeline" />
+                        </RActionGroup>
+                    </div>
+                </RCard>
+            </div>
+
+            <!-- Performance Demonstration -->
+            <RCard Text="Performance Showcase" Subtitle="Large dataset handling and optimization patterns" Variant="CardVariant.Glass" Class="mb-4">
+                <div class="pa-4">
+                    <div class="d-grid grid-cols-1 grid-cols-md-3 gap-4 mb-4">
+                        <RMetric Text="Total Records" Value="@totalRecords.ToString("N0")" Icon="database" Loading="@isPerformanceTest" />
+                        <RMetric Text="Render Time" Value="@(renderTime.ToString("F2") + "ms")" Icon="speed" Loading="@isPerformanceTest" />
+                        <RMetric Text="Memory Usage" Value="@memoryUsage" Icon="memory" Loading="@isPerformanceTest" />
+                    </div>
+                    
+                    <RActionGroup Pattern="ActionGroupPattern.None" Alignment="ActionGroupAlignment.Center">
+                        <RButton Text="Load 1K Records" Variant="ButtonVariant.Primary" OnClick="@(() => LoadPerformanceData(1000))" Disabled="@isPerformanceTest" />
+                        <RButton Text="Load 10K Records" Variant="ButtonVariant.Primary" OnClick="@(() => LoadPerformanceData(10000))" Disabled="@isPerformanceTest" />
+                        <RButton Text="Load 100K Records" Variant="ButtonVariant.Primary" OnClick="@(() => LoadPerformanceData(100000))" Disabled="@isPerformanceTest" />
+                        <RButton Text="Clear Data" Variant="ButtonVariant.Secondary" OnClick="@ClearPerformanceData" Disabled="@isPerformanceTest" />
+                    </RActionGroup>
+                </div>
+            </RCard>
+
+            <!-- Interactive Demo Controls -->
+            <RCard Text="Interactive Demo Controls" Subtitle="Component state management and interaction patterns" Variant="CardVariant.Outlined" Class="mb-4">
+                <div class="pa-4">
+                    <div class="d-grid grid-cols-1 grid-cols-md-2 grid-cols-lg-4 gap-4">
+                        <RActionGroup Pattern="ActionGroupPattern.None" Direction="ActionGroupDirection.Vertical" FullWidth="true">
+                            <span class="text-sm font-medium mb-2">Loading States</span>
+                            <RButton Text="Toggle Charts" Variant="ButtonVariant.Outline" Size="ButtonSize.Small" OnClick="@ToggleChartsLoading" />
+                            <RButton Text="Toggle Timeline" Variant="ButtonVariant.Outline" Size="ButtonSize.Small" OnClick="@ToggleTimelineLoading" />
+                            <RButton Text="Toggle Virtual List" Variant="ButtonVariant.Outline" Size="ButtonSize.Small" OnClick="@ToggleVirtualLoading" />
+                        </RActionGroup>
+                        
+                        <RActionGroup Pattern="ActionGroupPattern.None" Direction="ActionGroupDirection.Vertical" FullWidth="true">
+                            <span class="text-sm font-medium mb-2">Data Operations</span>
+                            <RButton Text="Refresh All Data" Variant="ButtonVariant.Primary" Size="ButtonSize.Small" OnClick="@RefreshAllData" />
+                            <RButton Text="Generate Sample Data" Variant="ButtonVariant.Secondary" Size="ButtonSize.Small" OnClick="@GenerateSampleData" />
+                            <RButton Text="Clear All Data" Variant="ButtonVariant.Outline" Size="ButtonSize.Small" OnClick="@ClearAllData" />
+                        </RActionGroup>
+                        
+                        <RActionGroup Pattern="ActionGroupPattern.None" Direction="ActionGroupDirection.Vertical" FullWidth="true">
+                            <span class="text-sm font-medium mb-2">Animation Controls</span>
+                            <RButton Text="Animate Progress Bars" Variant="ButtonVariant.Success" Size="ButtonSize.Small" OnClick="@AnimateProgress" />
+                            <RButton Text="Update Charts" Variant="ButtonVariant.Success" Size="ButtonSize.Small" OnClick="@UpdateChartData" />
+                            <RButton Text="Reset Animations" Variant="ButtonVariant.Outline" Size="ButtonSize.Small" OnClick="@ResetAnimations" />
+                        </RActionGroup>
+                        
+                        <RActionGroup Pattern="ActionGroupPattern.None" Direction="ActionGroupDirection.Vertical" FullWidth="true">
+                            <span class="text-sm font-medium mb-2">Theme & Style</span>
+                            <RThemeSwitcher />
+                            <RButton Text="Toast Message" Variant="ButtonVariant.Info" Size="ButtonSize.Small" OnClick="@HandleToastClick" />
+                        </RActionGroup>
+                    </div>
+                </div>
+            </RCard>
+
+            <!-- Component Summary -->
+            <RCard Text="Components Showcase Summary" Subtitle="All DATA & DISPLAY components demonstrated" Variant="CardVariant.Glass" Class="mt-6">
+                <div class="pa-4">
+                    <div class="d-grid grid-cols-1 grid-cols-md-2 gap-4">
+                        <div>
+                            <h4 class="text-sm font-medium mb-3 text-primary">Data Components (7)</h4>
+                            <RList Size="ListSize.Compact" Variant="ListVariant.Default">
+                                <RListItem Text="RCalendar - Professional calendar component" Icon="calendar_today" />
+                                <RListItem Text="RDataTableGeneric - Auto-generated data tables" Icon="table_view" />
+                                <RListItem Text="RDataTableColumnGeneric - Custom table columns" Icon="view_column" />
+                                <RListItem Text="RFilterBar - Advanced filtering controls" Icon="filter_list" />
+                                <RListItem Text="RList - Structured list container" Icon="list" />
+                                <RListItem Text="RListItem - Individual list items" Icon="list_alt" />
+                                <RListItem Text="RVirtualListGeneric - High-performance virtual scrolling" Icon="view_list" />
+                            </RList>
+                        </div>
+                        <div>
+                            <h4 class="text-sm font-medium mb-3 text-secondary">Display Components (13)</h4>
+                            <RList Size="ListSize.Compact" Variant="ListVariant.Default">
+                                <RListItem Text="RAccordion - Accordion container" Icon="expand_more" />
+                                <RListItem Text="RAccordionItem - Individual accordion sections" Icon="expand_less" />
+                                <RListItem Text="RChart - Generic chart container" Icon="insert_chart" />
+                                <RListItem Text="RColumnChart - Column chart visualization" Icon="bar_chart" />
+                                <RListItem Text="REmptyState - Empty state messaging" Icon="inbox" />
+                                <RListItem Text="RInfoItem - Key-value information display" Icon="info" />
+                                <RListItem Text="RMetric - Metric value display" Icon="speed" />
+                                <RListItem Text="RPieChart - Pie chart visualization" Icon="pie_chart" />
+                                <RListItem Text="RProgressBar - Progress indicators" Icon="linear_scale" />
+                                <RListItem Text="RSkeleton - Loading placeholders" Icon="skeleton" />
+                                <RListItem Text="RStatsCard - Statistics cards" Icon="analytics" />
+                                <RListItem Text="RSummaryItem - Summary information" Icon="summarize" />
+                                <RListItem Text="RTimeline - Activity timeline" Icon="timeline" />
+                            </RList>
+                        </div>
+                    </div>
+                    
+                    <RDivider Class="mt-4 mb-4" />
+                    
+                    <div class="text-center">
+                        <RBadge Text="20 Components" Variant="BadgeVariant.Primary" Size="BadgeSize.Large" Class="mr-2" />
+                        <RBadge Text="Professional UI" Variant="BadgeVariant.Success" Size="BadgeSize.Large" Class="mr-2" />
+                        <RBadge Text="Utility-First Styling" Variant="BadgeVariant.Info" Size="BadgeSize.Large" />
+                    </div>
+                </div>
+            </RCard>
+
+        </div>
+    </RContent>
+</RAppShell>
+
+@code {
+    // Data Models
+    public class EmployeeData
+    {
+        public string Name { get; set; } = "";
+        public string Department { get; set; } = "";
+        public string Position { get; set; } = "";
+        public decimal Salary { get; set; }
+        public DateTime StartDate { get; set; }
+        public string Status { get; set; } = "";
+    }
+
+    public class VirtualListItem
+    {
+        public string Name { get; set; } = "";
+        public string Description { get; set; } = "";
+        public string Status { get; set; } = "";
+        public string Initials { get; set; } = "";
+    }
+
+    // Component State
+    private bool isLoadingEmployees = false;
+    private bool isLoadingCharts = false;
+    private bool isLoadingTimeline = false;
+    private bool isLoadingVirtual = false;
+    private bool showSkeleton = true;
+    private bool isPerformanceTest = false;
+
+    // Progress Values
+    private double progressValue1 = 75;
+    private double progressValue2 = 92;
+    private double progressValue3 = 43;
+    private double progressValue4 = 67;
+
+    // Performance Metrics
+    private int totalRecords = 0;
+    private double renderTime = 0;
+    private string memoryUsage = "0 MB";
+
+    // Data Collections
+    private List<EmployeeData> employeeData = new();
+    private List<VirtualListItem> virtualListItems = new();
+    private List<ChartDataPoint> monthlyRevenueData = new();
+    private List<ChartDataPoint> departmentData = new();
+    private List<TimelineItem> timelineItems = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await GenerateInitialData();
+    }
+
+    private async Task GenerateInitialData()
+    {
+        // Generate Employee Data with more diverse and realistic data
+        employeeData = new()
+        {
+            new() { Name = "Sarah Johnson", Department = "Engineering", Position = "Senior Developer", Salary = 95000, StartDate = new DateTime(2020, 3, 15), Status = "Active" },
+            new() { Name = "Michael Chen", Department = "Marketing", Position = "Marketing Manager", Salary = 78000, StartDate = new DateTime(2019, 7, 22), Status = "Active" },
+            new() { Name = "Emily Rodriguez", Department = "HR", Position = "HR Specialist", Salary = 62000, StartDate = new DateTime(2021, 1, 10), Status = "Active" },
+            new() { Name = "David Kim", Department = "Finance", Position = "Financial Analyst", Salary = 71000, StartDate = new DateTime(2020, 9, 8), Status = "On Leave" },
+            new() { Name = "Lisa Thompson", Department = "Engineering", Position = "DevOps Engineer", Salary = 89000, StartDate = new DateTime(2019, 11, 3), Status = "Active" },
+            new() { Name = "James Wilson", Department = "Sales", Position = "Account Executive", Salary = 83000, StartDate = new DateTime(2022, 2, 14), Status = "Active" },
+            new() { Name = "Anna Martinez", Department = "Design", Position = "UX Designer", Salary = 72000, StartDate = new DateTime(2021, 6, 1), Status = "Active" },
+            new() { Name = "Robert Taylor", Department = "Engineering", Position = "Software Architect", Salary = 115000, StartDate = new DateTime(2018, 4, 12), Status = "Active" },
+            new() { Name = "Jennifer White", Department = "Operations", Position = "Operations Manager", Salary = 85000, StartDate = new DateTime(2020, 10, 5), Status = "Inactive" },
+            new() { Name = "Carlos Mendoza", Department = "Sales", Position = "Sales Director", Salary = 98000, StartDate = new DateTime(2019, 8, 20), Status = "Active" }
+        };
+
+        // Generate Virtual List Items
+        await GenerateVirtualItems();
+
+        // Generate Chart Data - Monthly Revenue for 2024
+        monthlyRevenueData = new()
+        {
+            new() { Label = "Jan", Value = 450000 },
+            new() { Label = "Feb", Value = 520000 },
+            new() { Label = "Mar", Value = 480000 },
+            new() { Label = "Apr", Value = 610000 },
+            new() { Label = "May", Value = 580000 },
+            new() { Label = "Jun", Value = 670000 },
+            new() { Label = "Jul", Value = 720000 },
+            new() { Label = "Aug", Value = 685000 },
+            new() { Label = "Sep", Value = 750000 },
+            new() { Label = "Oct", Value = 820000 },
+            new() { Label = "Nov", Value = 890000 },
+            new() { Label = "Dec", Value = 950000 }
+        };
+
+        // Department distribution matching our employee data
+        departmentData = new()
+        {
+            new() { Label = "Engineering", Value = 30 }, // 3 employees
+            new() { Label = "Sales", Value = 20 }, // 2 employees  
+            new() { Label = "Marketing", Value = 10 }, // 1 employee
+            new() { Label = "HR", Value = 10 }, // 1 employee
+            new() { Label = "Finance", Value = 10 }, // 1 employee
+            new() { Label = "Design", Value = 10 }, // 1 employee
+            new() { Label = "Operations", Value = 10 } // 1 employee
+        };
+
+        // Generate Timeline Data
+        timelineItems = new()
+        {
+            new() { Title = "System Deployment", Description = "Production system successfully deployed", Timestamp = DateTime.Now.AddHours(-2), Status = "success" },
+            new() { Title = "Code Review", Description = "Feature branch code review completed", Timestamp = DateTime.Now.AddHours(-4), Status = "success" },
+            new() { Title = "Database Migration", Description = "Schema migration in progress", Timestamp = DateTime.Now.AddHours(-6), Status = "pending" },
+            new() { Title = "Testing Phase", Description = "QA testing scheduled for tomorrow", Timestamp = DateTime.Now.AddDays(1), Status = "default" }
+        };
+
+        StateHasChanged();
+    }
+
+    private async Task GenerateVirtualItems()
+    {
+        var random = new Random();
+        var names = new[] { "Alice", "Bob", "Charlie", "Diana", "Eve", "Frank", "Grace", "Henry", "Ivy", "Jack" };
+        var statuses = new[] { "Active", "Away", "Busy", "Offline" };
+        
+        virtualListItems.Clear();
+        for (int i = 0; i < 1000; i++)
+        {
+            var name = $"{names[random.Next(names.Length)]} {random.Next(100, 999)}";
+            virtualListItems.Add(new VirtualListItem
+            {
+                Name = name,
+                Description = $"Description for {name}",
+                Status = statuses[random.Next(statuses.Length)],
+                Initials = $"{name[0]}{name.Split(' ')[1][0]}"
+            });
+        }
+        
+        StateHasChanged();
+    }
+
+    private BadgeVariant GetBadgeVariant(string status) => status switch
+    {
+        "Active" => BadgeVariant.Success,
+        "Away" => BadgeVariant.Warning,
+        "Busy" => BadgeVariant.Danger,
+        "Offline" => BadgeVariant.Secondary,
+        "On Leave" => BadgeVariant.Warning,
+        "Inactive" => BadgeVariant.Secondary,
+        _ => BadgeVariant.Primary
+    };
+
+    // Event Handlers
+    private async Task ToggleEmployeeLoading()
+    {
+        isLoadingEmployees = !isLoadingEmployees;
+        StateHasChanged();
+        
+        if (isLoadingEmployees)
+        {
+            await Task.Delay(2000);
+            isLoadingEmployees = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task RefreshEmployeeData()
+    {
+        isLoadingEmployees = true;
+        StateHasChanged();
+        
+        await Task.Delay(1500);
+        await GenerateInitialData();
+        
+        isLoadingEmployees = false;
+        StateHasChanged();
+    }
+
+    private async Task ClearVirtualItems()
+    {
+        virtualListItems.Clear();
+        StateHasChanged();
+    }
+
+    private async Task ToggleSkeleton()
+    {
+        showSkeleton = !showSkeleton;
+        StateHasChanged();
+    }
+
+    private async Task AnimateProgress()
+    {
+        var random = new Random();
+        
+        for (int i = 0; i < 20; i++)
+        {
+            progressValue1 = random.Next(20, 100);
+            progressValue2 = random.Next(20, 100);
+            progressValue3 = random.Next(20, 100);
+            progressValue4 = random.Next(20, 100);
+            
+            StateHasChanged();
+            await Task.Delay(200);
+        }
+    }
+
+    private async Task AddTimelineEvent()
+    {
+        var newEvent = new TimelineItem
+        {
+            Title = $"New Event {timelineItems.Count + 1}",
+            Description = "Dynamically added timeline event",
+            Timestamp = DateTime.Now,
+            Status = "success"
+        };
+        
+        timelineItems.Insert(0, newEvent);
+        StateHasChanged();
+    }
+
+    private async Task ClearTimeline()
+    {
+        timelineItems.Clear();
+        StateHasChanged();
+    }
+
+    private async Task LoadPerformanceData(int recordCount)
+    {
+        isPerformanceTest = true;
+        totalRecords = recordCount;
+        var startTime = DateTime.Now;
+        
+        StateHasChanged();
+        
+        // Simulate data loading
+        await Task.Delay(recordCount / 1000 + 100);
+        
+        renderTime = (DateTime.Now - startTime).TotalMilliseconds;
+        memoryUsage = $"{recordCount * 0.1:F1} MB";
+        
+        isPerformanceTest = false;
+        StateHasChanged();
+    }
+
+    private async Task ClearPerformanceData()
+    {
+        totalRecords = 0;
+        renderTime = 0;
+        memoryUsage = "0 MB";
+        StateHasChanged();
+    }
+
+    private async Task ToggleChartsLoading()
+    {
+        isLoadingCharts = !isLoadingCharts;
+        StateHasChanged();
+        
+        if (isLoadingCharts)
+        {
+            await Task.Delay(2000);
+            isLoadingCharts = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ToggleTimelineLoading()
+    {
+        isLoadingTimeline = !isLoadingTimeline;
+        StateHasChanged();
+        
+        if (isLoadingTimeline)
+        {
+            await Task.Delay(1500);
+            isLoadingTimeline = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ToggleVirtualLoading()
+    {
+        isLoadingVirtual = !isLoadingVirtual;
+        StateHasChanged();
+        
+        if (isLoadingVirtual)
+        {
+            await Task.Delay(1000);
+            isLoadingVirtual = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task RefreshAllData()
+    {
+        await GenerateInitialData();
+        ShowToast("All data refreshed successfully!");
+    }
+
+    private async Task GenerateSampleData()
+    {
+        await GenerateVirtualItems();
+        ShowToast("Sample data generated!");
+    }
+
+    private async Task ClearAllData()
+    {
+        employeeData.Clear();
+        virtualListItems.Clear();
+        timelineItems.Clear();
+        monthlyRevenueData.Clear();
+        departmentData.Clear();
+        
+        StateHasChanged();
+        ShowToast("All data cleared!");
+    }
+
+    private async Task UpdateChartData()
+    {
+        var random = new Random();
+        
+        foreach (var item in monthlyRevenueData)
+        {
+            item.Value = random.Next(30000, 80000);
+        }
+        
+        foreach (var item in departmentData)
+        {
+            item.Value = random.Next(5, 50);
+        }
+        
+        StateHasChanged();
+        ShowToast("Chart data updated!");
+    }
+
+    private async Task ResetAnimations()
+    {
+        progressValue1 = 75;
+        progressValue2 = 92;
+        progressValue3 = 43;
+        progressValue4 = 67;
+        
+        StateHasChanged();
+        ShowToast("Animations reset!");
+    }
+
+    private async Task ShowToast(string message)
+    {
+        await JS.InvokeVoidAsync("console.log", $"Toast: {message}");
+        // Note: Actual toast implementation would require RToastContainer service
+    }
+
+    // Click event handlers
+    private async Task HandleDashboardClick() => await ShowToast("Dashboard clicked");
+    private async Task HandleReportsClick() => await ShowToast("Reports clicked"); 
+    private async Task HandleSettingsClick() => await ShowToast("Settings clicked");
+    private async Task HandleUsersStatsClick() => await ShowToast("Users stats clicked");
+    private async Task HandleRevenueStatsClick() => await ShowToast("Revenue stats clicked");
+    private async Task HandleConversionStatsClick() => await ShowToast("Conversion stats clicked");
+    private async Task HandleToastClick() => await ShowToast("Demo toast message!");
+}

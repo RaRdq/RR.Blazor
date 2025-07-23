@@ -30,8 +30,8 @@ public class RAutosuggest : ComponentBase
     [Parameter] public int DebounceDelay { get; set; } = 300;
     [Parameter] public int MaxSuggestions { get; set; } = 10;
     [Parameter] public bool ShowLoading { get; set; } = true;
-    [Parameter] public bool ClearOnSelect { get; set; } = false;
-    [Parameter] public bool OpenOnFocus { get; set; } = false;
+    [Parameter] public bool ClearOnSelect { get; set; }
+    [Parameter] public bool OpenOnFocus { get; set; }
     [Parameter] public bool Disabled { get; set; }
     [Parameter] public bool ReadOnly { get; set; }
     [Parameter] public bool Required { get; set; }

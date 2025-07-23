@@ -15,13 +15,9 @@ RDatePicker is a comprehensive date and time selection component for RR.Blazor t
 - **Accessibility**: Full keyboard navigation and screen reader support
 - **Theme Integration**: Automatic light/dark theme support
 
-## Component Variants
+## Component Overview
 
-### RDatePicker (Full-Featured)
-Complete date picker with calendar popup, range selection, and time picker.
-
-### RDatePickerBasic (Simplified)
-Lightweight version using native HTML date/datetime inputs for basic scenarios.
+RDatePicker is the unified, professional date picker component with calendar popup, range selection, and time picker functionality. It provides a complete solution for all date/time input needs in modern web applications.
 
 ## Basic Usage
 
@@ -294,7 +290,7 @@ Existing `RFormField` date inputs can be easily migrated to the modern R* compon
 **Performance issues:**
 - Limit date ranges with MinDate/MaxDate
 - Use appropriate MinuteInterval values
-- Consider RDatePickerBasic for simple scenarios
+- Use appropriate Size parameter for different contexts
 
 **Styling problems:**
 - Ensure RR.Blazor CSS is properly loaded

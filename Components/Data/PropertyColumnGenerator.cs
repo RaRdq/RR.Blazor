@@ -25,7 +25,7 @@ public static class PropertyColumnGenerator
     /// <summary>
     /// Generate column definitions from a model type using optimized caching
     /// </summary>
-    public static List<RDataTableGeneric<TItem>.RDataTableColumn<TItem>> GenerateColumns<TItem>()
+    public static List<RTableGeneric<TItem>.RDataTableColumn<TItem>> GenerateColumns<TItem>()
     {
         var itemType = typeof(TItem);
         
@@ -109,13 +109,13 @@ public static class PropertyColumnGenerator
     /// <summary>
     /// Build columns from cached metadata
     /// </summary>
-    private static List<RDataTableGeneric<TItem>.RDataTableColumn<TItem>> BuildColumnsFromMetadata<TItem>(List<ColumnMetadata> metadata)
+    private static List<RTableGeneric<TItem>.RDataTableColumn<TItem>> BuildColumnsFromMetadata<TItem>(List<ColumnMetadata> metadata)
     {
-        var columns = new List<RDataTableGeneric<TItem>.RDataTableColumn<TItem>>();
+        var columns = new List<RTableGeneric<TItem>.RDataTableColumn<TItem>>();
         
         foreach (var meta in metadata)
         {
-            var column = new RDataTableGeneric<TItem>.RDataTableColumn<TItem>
+            var column = new RTableGeneric<TItem>.RDataTableColumn<TItem>
             {
                 Key = meta.PropertyName,
                 Header = meta.DisplayName,

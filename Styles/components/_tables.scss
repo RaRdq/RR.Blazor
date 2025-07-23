@@ -1,0 +1,811 @@
+@use '../abstracts' as *;
+@use 'sass:map';
+
+// =============================================================================
+// TABLES - Complete table system for any domain (CRM, ERP, eCommerce, etc.)
+// Merged from: tables-base, tables-cells, tables-mobile, tables-utilities, enhanced-tables
+// =============================================================================
+
+// CSS Custom Properties for dynamic sizing
+.overflow-x-auto[style*="--table-height"] {
+  height: var(--table-height);
+}
+
+th[style*="--column-width"], td[style*="--column-width"] {
+  width: var(--column-width);
+}
+
+th[style*="--column-min-width"], td[style*="--column-min-width"] {
+  min-width: var(--column-min-width);
+}
+
+th[style*="--column-max-width"], td[style*="--column-max-width"] {
+  max-width: var(--column-max-width);
+}
+
+th[style*="--sticky-left"], td[style*="--sticky-left"] {
+  left: var(--sticky-left);
+  z-index: var(--sticky-z-index);
+}
+
+// Configuration Maps
+$table-sizes: (
+  'compact': (
+    'header-padding': var(--space-3) var(--space-4),
+    'cell-padding': var(--space-2) var(--space-3),
+    'font-size': var(--text-xs)
+  ),
+  'normal': (
+    'header-padding': var(--space-4) var(--space-6),
+    'cell-padding': var(--space-4) var(--space-3),
+    'font-size': var(--text-sm)
+  ),
+  'comfortable': (
+    'header-padding': var(--space-6) var(--space-8),
+    'cell-padding': var(--space-6) var(--space-4),
+    'font-size': var(--text-base)
+  )
+);
+
+$table-variants: (
+  'default': (
+    'border': var(--border-1) solid var(--color-border),
+    'shadow': var(--shadow-xl),
+    'header-bg': var(--glass-light-bg),
+    'row-hover': var(--glass-hover-bg)
+  ),
+  'bordered': (
+    'border': var(--border-1) solid var(--color-border),
+    'shadow': var(--shadow-md),
+    'header-bg': var(--color-surface),
+    'row-hover': var(--color-surface-elevated)
+  ),
+  'striped': (
+    'border': none,
+    'shadow': var(--shadow-sm),
+    'header-bg': var(--color-surface-elevated),
+    'row-hover': var(--color-surface-elevated)
+  )
+);
+
+// =============================================================================
+// BASE TABLE STRUCTURE
+// =============================================================================
+
+.table-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-feature-settings: "tnum";
+  
+  // Generate size variants
+  @each $size, $props in $table-sizes {
+    &.table-#{$size} {
+      font-size: map.get($props, 'font-size');
+      
+      .table-header-cell {
+        padding: map.get($props, 'header-padding');
+      }
+      
+      .table-cell {
+        padding: map.get($props, 'cell-padding');
+      }
+    }
+  }
+  
+  // Generate style variants
+  @each $variant, $props in $table-variants {
+    &.table-#{$variant} {
+      border: map.get($props, 'border');
+      box-shadow: map.get($props, 'shadow');
+      
+      .table-header-cell {
+        background: map.get($props, 'header-bg');
+      }
+      
+      tbody tr:hover {
+        background: map.get($props, 'row-hover');
+      }
+    }
+  }
+}
+
+// Header styling
+.table-header-cell {
+  text-align: left;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  border-bottom: var(--border-1) solid var(--color-surface-outline);
+  background: var(--color-surface-elevated);
+  position: relative;
+  
+  // Sortable headers
+  &.table-header-sortable {
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.2s ease;
+    
+    &:hover {
+      background: var(--color-surface-elevated);
+      color: var(--color-primary);
+    }
+  }
+}
+
+// Cell styling
+.table-cell {
+  border-bottom: var(--border-1) solid var(--color-surface-outline/5);
+  vertical-align: middle;
+  transition: all 0.2s ease;
+}
+
+// Row styling
+.table-row {
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background: var(--color-surface-elevated);
+  }
+  
+  &.table-row-selected {
+    background: var(--color-primary/10);
+    border-left: 3px solid var(--color-primary);
+  }
+}
+
+// =============================================================================
+// ENHANCED TABLE SYSTEM
+// =============================================================================
+
+.enhanced-table {
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  border: var(--border-1) solid var(--color-surface-outline/10);
+  background: var(--color-surface);
+
+  // Professional spacing fixes
+  .table-cell-professional {
+    padding: var(--space-4) var(--space-3);
+    vertical-align: middle;
+    border-bottom: 1px solid var(--color-surface-outline/5);
+    min-height: 60px;
+    line-height: 1.5;
+    
+    @media (max-width: 768px) {
+      padding: var(--space-3) var(--space-2);
+      min-height: 50px;
+    }
+  }
+
+  // Enhanced spacing
+  &.table-professional-spacing {
+    .table-header-cell {
+      padding: var(--space-5) var(--space-3);
+      font-weight: 600;
+      font-size: var(--text-sm);
+      letter-spacing: 0.025em;
+      text-transform: uppercase;
+      color: var(--color-text-secondary);
+      background: var(--color-surface-elevated);
+      border-bottom: 2px solid var(--color-surface-outline/10);
+    }
+
+    .table-cell {
+      padding: var(--space-4) var(--space-3);
+      min-height: 60px;
+      vertical-align: middle;
+      line-height: 1.5;
+    }
+  }
+
+  // Enhanced hover states
+  &.table-hover-enhanced {
+    tbody tr {
+      transition: all 0.2s ease;
+      
+      &:hover {
+        background: var(--color-surface-elevated);
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px var(--shadow-color/10);
+      }
+    }
+  }
+
+  // Enhanced selection states
+  .table-row-selected-enhanced {
+    background: var(--color-primary/5) !important;
+    border-left: 3px solid var(--color-primary);
+    
+    &:hover {
+      background: var(--color-primary/8) !important;
+    }
+
+    .table-cell {
+      background: transparent;
+    }
+  }
+}
+
+// =============================================================================
+// CELL TYPES
+// =============================================================================
+
+// Primary content cells
+.table-column-primary {
+  font-weight: 600;
+  color: var(--color-text-primary);
+  font-size: var(--text-base);
+  
+  &.table-cell {
+    background: var(--color-surface/50);
+  }
+}
+
+.table-column-secondary {
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+}
+
+// Action column styling
+.table-column-actions {
+  width: 120px;
+  text-align: center;
+  white-space: nowrap;
+  
+  .btn, .r-button {
+    min-width: auto;
+    padding: var(--space-2) var(--space-3);
+    
+    &:not(:disabled) {
+      background: var(--color-surface-elevated);
+      border: 1px solid var(--color-surface-outline);
+      color: var(--color-text-primary);
+      
+      &:hover {
+        background: var(--color-primary);
+        color: var(--color-primary-contrast);
+        border-color: var(--color-primary);
+        transform: translateY(-1px);
+      }
+    }
+  }
+}
+
+// Status cells
+.table-cell-status {
+  .badge, .r-badge {
+    min-width: 80px;
+    text-align: center;
+    font-weight: 500;
+    font-size: var(--text-xs);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+}
+
+// Specific cell types
+.table-cell-primary-title {
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.table-cell-primary-subtitle {
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+}
+
+.table-cell-badge {
+  .r-badge {
+    display: inline-flex;
+  }
+}
+
+.table-cell-compact {
+  padding: var(--space-2) var(--space-3);
+}
+
+.table-cell-content {
+  padding: var(--space-4) var(--space-6);
+}
+
+.table-cell-flex {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.table-cell-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+}
+
+.table-cell-muted {
+  color: var(--color-text-secondary);
+}
+
+// Specialized cell styling
+.table-cell--actions {
+  text-align: center;
+  width: 8rem;
+}
+
+.table-cell--currency {
+  text-align: right;
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+
+.table-cell--date {
+  font-size: var(--text-sm);
+}
+
+.table-cell--number {
+  text-align: right;
+  font-family: var(--font-mono);
+}
+
+.table-cell--status {
+  text-align: center;
+}
+
+// Amount display
+.table-amount-currency {
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+
+.table-amount-value {
+  text-align: right;
+}
+
+// Date display
+.table-date-primary {
+  font-weight: 500;
+}
+
+.table-date-secondary {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+}
+
+// =============================================================================
+// BULK OPERATIONS TOOLBAR
+// =============================================================================
+
+.bulk-operations-toolbar {
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-primary/20);
+  background: var(--glass-light-bg);
+  backdrop-filter: blur(12px);
+  
+  &.animate-slide-down {
+    animation: slideDown 0.3s ease-out;
+  }
+  
+  @keyframes slideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .bulk-operations-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-primary/10);
+    border-radius: var(--radius-full);
+  }
+
+  .bulk-actions-container {
+    .bulk-action-button {
+      transition: all 0.2s ease;
+      
+      &:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px var(--shadow-color/20);
+      }
+    }
+  }
+
+  // Progress bar styling
+  .progress-bar-container {
+    .progress-bar {
+      background: var(--color-surface-outline/20);
+      
+      .progress-fill {
+        background: linear-gradient(90deg, var(--color-primary), var(--color-primary-light));
+        box-shadow: 0 0 10px var(--color-primary/30);
+      }
+    }
+  }
+}
+
+// =============================================================================
+// MOBILE RESPONSIVE DESIGN
+// =============================================================================
+
+@media (max-width: 768px) {
+  // Enhanced table mobile
+  .enhanced-table {
+    .bulk-operations-toolbar {
+      .d-flex.items-center.justify-between {
+        flex-direction: column;
+        gap: var(--space-3);
+        align-items: stretch;
+        
+        .bulk-actions-container {
+          justify-content: center;
+        }
+      }
+    }
+    
+    .table-professional-spacing {
+      .table-header-cell {
+        padding: var(--space-3) var(--space-2);
+        font-size: var(--text-xs);
+      }
+      
+      .table-cell {
+        padding: var(--space-3) var(--space-2);
+        min-height: 50px;
+      }
+    }
+  }
+
+  // Mobile card layout
+  .table-mobile-cards {
+    .table-table {
+      display: none;
+    }
+  }
+
+  .table-mobile-card {
+    background: var(--color-surface-elevated);
+    border-radius: var(--radius-lg);
+    padding: var(--space-4);
+    margin-bottom: var(--space-4);
+    box-shadow: var(--shadow-sm);
+    border: var(--border-1) solid var(--color-surface-outline/10);
+    transition: all 0.2s ease;
+
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-lg);
+    }
+
+    &.table-mobile-card-selected {
+      border-color: var(--color-primary);
+      background: var(--color-primary/5);
+    }
+
+    &.table-mobile-card-inactive {
+      opacity: 0.6;
+    }
+  }
+
+  .table-mobile-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-3);
+
+    .table-mobile-card-header-title {
+      font-weight: 600;
+      color: var(--color-text-primary);
+    }
+
+    .table-mobile-card-header-status {
+      flex-shrink: 0;
+    }
+  }
+
+  .table-mobile-card-body {
+    & > * + * {
+      margin-top: var(--space-2);
+    }
+  }
+
+  .table-mobile-card-field {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    .table-mobile-card-field-label {
+      font-size: var(--text-sm);
+      font-weight: 500;
+      color: var(--color-text-secondary);
+    }
+
+    .table-mobile-card-field-value {
+      font-size: var(--text-sm);
+    }
+  }
+
+  .table-mobile-card-actions {
+    display: flex;
+    gap: var(--space-2);
+    margin-top: var(--space-4);
+    padding-top: var(--space-3);
+    border-top: var(--border-1) solid var(--color-surface-outline/10);
+  }
+
+  // Column priority system
+  .table-column-priority-high {
+    display: block;
+  }
+
+  .table-column-priority-medium {
+    display: none;
+  }
+
+  .table-column-priority-low {
+    display: none;
+  }
+}
+
+// =============================================================================
+// UTILITIES & HELPERS
+// =============================================================================
+
+// Row states
+.table-row-inactive {
+  opacity: 0.6;
+  
+  &:hover {
+    opacity: 0.8;
+  }
+}
+
+.table-row-selected {
+  background: var(--color-primary/10);
+  border-left: 3px solid var(--color-primary);
+}
+
+.table-row--highlighted {
+  background: var(--color-warning/10);
+}
+
+.table-row--striped {
+  &:nth-child(even) {
+    background: var(--color-surface-elevated/50);
+  }
+}
+
+// Action components
+.table-actions-container {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.table-actions-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.table-actions-button-primary {
+  background: var(--color-primary);
+  color: var(--color-primary-contrast);
+}
+
+.table-actions-button-danger {
+  background: var(--color-danger);
+  color: var(--color-danger-contrast);
+}
+
+.table-actions-button-text {
+  background: transparent;
+  color: var(--color-text-primary);
+}
+
+.table-actions-flex {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.table-action-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+}
+
+.table-action-create {
+  background: var(--color-primary);
+  color: var(--color-primary-contrast);
+}
+
+.table-action-dense {
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.table-action-export {
+  background: var(--color-surface-elevated);
+  color: var(--color-text-primary);
+  border: var(--border-1) solid var(--color-primary);
+}
+
+.table-action-group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.table-action-more {
+  background: var(--color-surface-elevated);
+  color: var(--color-text-secondary);
+}
+
+// Specialized utilities
+.table-auto-columns {
+  table-layout: auto;
+}
+
+.table-checkbox-column {
+  width: 40px;
+  text-align: center;
+}
+
+.table-filter-dense {
+  padding-top: var(--space-2);
+  padding-bottom: var(--space-2);
+}
+
+.table-search-dense {
+  padding-top: var(--space-2);
+  padding-bottom: var(--space-2);
+}
+
+.table-pagination-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: var(--radius-md);
+}
+
+.table-sort-indicator {
+  display: inline-flex;
+  align-items: center;
+  margin-left: var(--space-2);
+  font-size: var(--text-xs);
+}
+
+.table-scroll-indicator {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 100%;
+  width: 1rem;
+  background: linear-gradient(to left, var(--color-surface), transparent);
+}
+
+// =============================================================================
+// DOMAIN-SPECIFIC STYLING
+// =============================================================================
+
+.table-domain-crm {
+  .table-column-primary::before {
+    content: "👤";
+    margin-right: var(--space-2);
+    opacity: 0.7;
+  }
+}
+
+.table-domain-ecommerce {
+  .table-column-primary::before {
+    content: "🛍️";
+    margin-right: var(--space-2);
+    opacity: 0.7;
+  }
+}
+
+.table-domain-payroll {
+  .table-column-primary::before {
+    content: "💰";
+    margin-right: var(--space-2);
+    opacity: 0.7;
+  }
+}
+
+.table-domain-inventory {
+  .table-column-primary::before {
+    content: "📦";
+    margin-right: var(--space-2);
+    opacity: 0.7;
+  }
+}
+
+.table-domain-finance {
+  .table-column-primary::before {
+    content: "💼";
+    margin-right: var(--space-2);
+    opacity: 0.7;
+  }
+}
+
+// =============================================================================
+// PAGINATION ENHANCEMENTS
+// =============================================================================
+
+.enhanced-table {
+  .d-flex.justify-between {
+    // Professional pagination footer
+    background: var(--color-surface-elevated);
+    border-top: 1px solid var(--color-surface-outline/10);
+    padding: var(--space-4);
+    
+    // Better item count display
+    .text-sm.text-secondary {
+      font-weight: 500;
+      color: var(--color-text-primary);
+      
+      // Add visual enhancement
+      background: var(--color-surface/50);
+      padding: var(--space-2) var(--space-3);
+      border-radius: var(--radius-md);
+    }
+    
+    // Enhanced page controls
+    .d-flex.items-center.gap-3 {
+      .r-button {
+        min-width: 40px;
+        height: 40px;
+        
+        &:not(:disabled) {
+          background: var(--color-surface);
+          border: 1px solid var(--color-surface-outline);
+          
+          &:hover {
+            background: var(--color-primary);
+            color: var(--color-primary-contrast);
+            transform: translateY(-1px);
+          }
+        }
+      }
+      
+      // Page indicator styling
+      .text-sm.font-medium {
+        background: var(--color-primary/10);
+        color: var(--color-primary);
+        padding: var(--space-2) var(--space-4);
+        border-radius: var(--radius-full);
+        font-weight: 600;
+      }
+    }
+  }
+}
+
+// =============================================================================
+// DARK MODE SUPPORT
+// =============================================================================
+
+@media (prefers-color-scheme: dark) {
+  .enhanced-table {
+    .table-row-selected-enhanced {
+      background: var(--color-primary/10) !important;
+      border-left-color: var(--color-primary-light);
+    }
+    
+    .bulk-operations-toolbar {
+      background: var(--glass-dark-bg);
+      border-color: var(--color-primary/30);
+    }
+  }
+}

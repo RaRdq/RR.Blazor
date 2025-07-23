@@ -3,7 +3,10 @@ using Microsoft.AspNetCore.Components.Rendering;
 using RR.Blazor.Attributes;
 using RR.Blazor.Enums;
 using System.Collections;
-using System.Reflection;
+using static RR.Blazor.Enums.ChoiceVariant;
+using static RR.Blazor.Enums.ChoiceStyle;
+using static RR.Blazor.Enums.ChoiceSize;
+using static RR.Blazor.Enums.ChoiceDirection;
 
 namespace RR.Blazor.Components.Form;
 
@@ -20,11 +23,11 @@ public abstract class RChoiceBase : ComponentBase
     [Parameter] public Func<object, bool> ItemDisabledSelector { get; set; }
     [Parameter] public Func<object, bool> ItemLoadingSelector { get; set; }
     [Parameter] public bool ShowLabels { get; set; } = true;
-    [Parameter] public bool ShowActiveIndicator { get; set; } = false;
-    [Parameter] public ChoiceSize Size { get; set; } = ChoiceSize.Medium;
+    [Parameter] public bool ShowActiveIndicator { get; set; }
+    [Parameter] public ChoiceSize Size { get; set; } = Medium;
     [Parameter] public ComponentDensity Density { get; set; } = ComponentDensity.Normal;
-    [Parameter] public ChoiceDirection Direction { get; set; } = ChoiceDirection.Horizontal;
-    [Parameter] public bool Disabled { get; set; } = false;
+    [Parameter] public ChoiceDirection Direction { get; set; } = Horizontal;
+    [Parameter] public bool Disabled { get; set; }
     [Parameter] public bool CloseOnSelect { get; set; } = true;
     [Parameter] public string AriaLabel { get; set; }
     [Parameter] public int? MaxItemsInline { get; set; } = 5;
@@ -49,10 +52,10 @@ public class RChoice : RChoiceBase
     public object SelectedValue { get; set; }
     
     [Parameter, AIParameter("Force specific variant", "ChoiceVariant.Auto for smart detection")]
-    public ChoiceVariant Variant { get; set; } = ChoiceVariant.Auto;
+    public ChoiceVariant Variant { get; set; } = Auto;
     
     [Parameter, AIParameter("Style variant for inline mode", "ChoiceStyle.Standard")]
-    public ChoiceStyle Style { get; set; } = ChoiceStyle.Standard;
+    public ChoiceStyle Style { get; set; } = Standard;
 
     // RSwitcher compatibility parameters
     [Parameter] public SwitcherVariant? SwitcherVariant { get; set; }
@@ -62,7 +65,7 @@ public class RChoice : RChoiceBase
     [Parameter] public EventCallback<object> OnSelectionChanged { get; set; }
 
     private Type _valueType;
-    private bool _valueTypeResolved = false;
+    private bool _valueTypeResolved;
 
     protected override void OnParametersSet()
     {
@@ -116,25 +119,25 @@ public class RChoice : RChoiceBase
     private ChoiceVariant GetEffectiveVariant(List<object> items)
     {
         // Explicit variant takes precedence
-        if (Variant != ChoiceVariant.Auto)
+        if (Variant != Auto)
             return Variant;
         
         // Smart detection rules
         
         // Rule 1: Too many items? Use dropdown
         if (MaxItemsInline.HasValue && items.Count > MaxItemsInline.Value)
-            return ChoiceVariant.Dropdown;
+            return Dropdown;
         
         // Rule 2: Long text content? Use dropdown  
         if (MaxLabelLength.HasValue && HasLongLabels(items))
-            return ChoiceVariant.Dropdown;
+            return Dropdown;
         
         // Rule 3: Vertical direction with many items? Use dropdown
-        if (Direction == ChoiceDirection.Vertical && items.Count > 3)
-            return ChoiceVariant.Dropdown;
+        if (Direction == Vertical && items.Count > 3)
+            return Dropdown;
         
         // Rule 4: Default to inline for simple cases
-        return ChoiceVariant.Inline;
+        return Inline;
     }
     
     private bool HasLongLabels(List<object> items)
@@ -216,11 +219,11 @@ public class RChoice : RChoiceBase
         {
             return SwitcherVariant.Value switch
             {
-                Enums.SwitcherVariant.Tabs => ChoiceStyle.Tabs,
-                Enums.SwitcherVariant.Pills => ChoiceStyle.Pills,
-                Enums.SwitcherVariant.Buttons => ChoiceStyle.Buttons,
-                Enums.SwitcherVariant.Compact => ChoiceStyle.Compact,
-                _ => ChoiceStyle.Standard
+                Enums.SwitcherVariant.Tabs => Tabs,
+                Enums.SwitcherVariant.Pills => Pills,
+                Enums.SwitcherVariant.Buttons => Buttons,
+                Enums.SwitcherVariant.Compact => Compact,
+                _ => Standard
             };
         }
         
@@ -234,9 +237,9 @@ public class RChoice : RChoiceBase
         {
             return SwitcherSize.Value switch
             {
-                ButtonSize.Small => ChoiceSize.Small,
-                ButtonSize.Large => ChoiceSize.Large,
-                _ => ChoiceSize.Medium
+                ButtonSize.Small => Small,
+                ButtonSize.Large => Large,
+                _ => Medium
             };
         }
         
@@ -244,32 +247,4 @@ public class RChoice : RChoiceBase
     }
 }
 
-public enum ChoiceVariant
-{
-    Auto,       // Smart detection based on content and context
-    Inline,     // Always show as inline switcher
-    Dropdown    // Always show as dropdown
-}
-
-public enum ChoiceStyle
-{
-    Standard,   // Default styling
-    Compact,    // Compact layout with no gaps
-    Pills,      // Pill-shaped items
-    Tabs,       // Tab-style items
-    Buttons     // Button-style items
-}
-
-public enum ChoiceSize
-{
-    Small,
-    Medium,
-    Large
-}
-
-public enum ChoiceDirection
-{
-    Horizontal,
-    Vertical
-}
 

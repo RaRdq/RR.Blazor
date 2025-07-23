@@ -385,9 +385,9 @@ $componentConstraints = @{
         Description = 'RDataTableColumn must be used within RDataTable''s ColumnsContent'
     }
     'RDataTableColumnGeneric' = @{
-        RequiredParent = 'RDataTableGeneric'
+        RequiredParent = 'RTableGeneric'
         Context = 'ColumnsContent'
-        Description = 'RDataTableColumnGeneric must be used within RDataTableGeneric''s ColumnsContent'
+        Description = 'RDataTableColumnGeneric must be used within RTableGeneric''s ColumnsContent'
     }
     'RListItem' = @{
         RequiredParent = 'RList'
