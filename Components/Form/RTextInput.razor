@@ -244,8 +244,14 @@
         var newValue = e.Value?.ToString() ?? "";
         Value = newValue;
         
+        // Always fire ValueChanged for compatibility
         await ValueChanged.InvokeAsync(Value);
         
+        // Fire immediate callbacks if in immediate mode or if specifically requested
+        if (Immediate || OnInput.HasDelegate || OnTextInput.HasDelegate)
+        {
+            await HandleImmediateInput(e);
+        }
 
         await HandleUserInteraction(!string.IsNullOrEmpty(newValue));
     }
@@ -254,18 +260,24 @@
     {
         var newValue = e.Value?.ToString() ?? "";
         Value = newValue;
+        
+        // Always fire ValueChanged for compatibility
         await ValueChanged.InvokeAsync(newValue);
+        
+        // Fire regular change callbacks
+        await HandleRegularChange(e);
+        
         await HandleUserInteraction();
     }
     
     private async Task HandleFocus(FocusEventArgs e)
     {
-        await HandleFocusEvent(e, OnFocus);
+        await base.HandleFocus(e);
     }
     
     private async Task HandleBlur(FocusEventArgs e)
     {
-        await HandleBlurEvent(e, OnBlur);
+        await base.HandleBlur(e);
     }
     
     

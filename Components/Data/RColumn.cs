@@ -113,19 +113,13 @@ public class RColumn : RColumnBase
         
         // Let the table handle the complex type creation
         ParentTable.AddColumn(columnInfo);
-        
-        Console.WriteLine($"RColumn: Registered column {Key ?? GetPropertyName()} with simple approach");
     }
 
     protected override void OnInitialized()
     {
         base.OnInitialized();
         
-        // Debug logging for smart detection
-        if (TableContext != null)
-        {
-            Console.WriteLine($"RColumn: Smart detection active. Table: {TableContext.TableId}, ItemType: {TableContext.ItemType.Name}, IsSmartTable: {TableContext.IsSmartTable}");
-        }
+        // Smart detection context available if needed
     }
 
     protected override void OnParametersSet()

@@ -81,6 +81,34 @@ namespace RR.Blazor.Components.Form
         
         #endregion
         
+        #region Immediate Mode Parameters
+        
+        [Parameter]
+        [AIParameter("Enable immediate validation (like MudBlazor)", Example = "true")]
+        public bool Immediate { get; set; }
+        
+        [Parameter]
+        [AIParameter("Immediate mode debounce delay in milliseconds", Example = "300")]
+        public int ImmediateDebounce { get; set; } = 300;
+        
+        [Parameter]
+        [AIParameter("Immediate value changed callback")]
+        public EventCallback<ChangeEventArgs> OnInput { get; set; }
+        
+        [Parameter]
+        [AIParameter("Value changed callback (fired on blur/change)")]
+        public EventCallback<ChangeEventArgs> OnChange { get; set; }
+        
+        [Parameter]
+        [AIParameter("Immediate text value changed callback")]
+        public EventCallback<string> OnTextInput { get; set; }
+        
+        [Parameter]
+        [AIParameter("Text value changed callback (fired on blur/change)")]
+        public EventCallback<string> OnTextChanged { get; set; }
+        
+        #endregion
+        
         #region Events
         
         [Parameter] public EventCallback<FocusEventArgs> OnFocus { get; set; }
@@ -153,6 +181,46 @@ namespace RR.Blazor.Components.Form
         {
             // Override in derived classes for specific behavior
             await Task.CompletedTask;
+        }
+        
+        /// <summary>
+        /// Handle immediate mode input events with debouncing
+        /// </summary>
+        protected async Task HandleImmediateInput(ChangeEventArgs e)
+        {
+            if (OnInput.HasDelegate)
+                await OnInput.InvokeAsync(e);
+                
+            if (OnTextInput.HasDelegate)
+                await OnTextInput.InvokeAsync(e.Value?.ToString() ?? "");
+        }
+        
+        /// <summary>
+        /// Handle regular change events (blur/change)
+        /// </summary>
+        protected async Task HandleRegularChange(ChangeEventArgs e)
+        {
+            if (OnChange.HasDelegate)
+                await OnChange.InvokeAsync(e);
+                
+            if (OnTextChanged.HasDelegate)
+                await OnTextChanged.InvokeAsync(e.Value?.ToString() ?? "");
+        }
+        
+        /// <summary>
+        /// Handle focus event with immediate mode support
+        /// </summary>
+        protected async Task HandleFocus(FocusEventArgs e)
+        {
+            await HandleFocusEvent(e, OnFocus);
+        }
+        
+        /// <summary>
+        /// Handle blur event with immediate mode support
+        /// </summary>
+        protected async Task HandleBlur(FocusEventArgs e)
+        {
+            await HandleBlurEvent(e, OnBlur);
         }
         
         #endregion

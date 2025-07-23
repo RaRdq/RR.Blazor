@@ -41,12 +41,16 @@ public abstract class RTableBase : ComponentBase
     [Parameter] public bool SingleSelection { get; set; }
     [Parameter] public EventCallback<object> SelectedItemsChanged { get; set; }
     [Parameter] public EventCallback<object> SelectedItemChanged { get; set; }
+    [Parameter] public object SelectedItemsChangedTyped { get; set; }
+    [Parameter] public object SelectedItemChangedTyped { get; set; }
     #endregion
 
     #region Interaction
     [Parameter] public bool RowClickable { get; set; }
     [Parameter] public EventCallback<object> OnRowClick { get; set; }
+    [Parameter] public object OnRowClickTyped { get; set; }
     [Parameter] public Func<object, string> RowClassFunc { get; set; }
+    [Parameter] public object RowClassFuncTyped { get; set; }
     #endregion
 
     #region Sorting & Filtering
@@ -108,26 +112,79 @@ public abstract class RTableBase : ComponentBase
         builder.AddAttribute(22, nameof(OnRowClick), OnRowClick);
         builder.AddAttribute(23, nameof(RowClassFunc), RowClassFunc);
         
-        builder.AddAttribute(24, nameof(SortColumn), SortColumn);
-        builder.AddAttribute(25, nameof(SortDescending), SortDescending);
-        builder.AddAttribute(26, nameof(OnSort), OnSort);
-        builder.AddAttribute(27, nameof(ColumnFilters), ColumnFilters);
-        builder.AddAttribute(28, nameof(ColumnFiltersChanged), ColumnFiltersChanged);
-        builder.AddAttribute(29, nameof(OnColumnFilter), OnColumnFilter);
+        builder.AddAttribute(28, nameof(SortColumn), SortColumn);
+        builder.AddAttribute(29, nameof(SortDescending), SortDescending);
+        builder.AddAttribute(30, nameof(OnSort), OnSort);
+        builder.AddAttribute(31, nameof(ColumnFilters), ColumnFilters);
+        builder.AddAttribute(32, nameof(ColumnFiltersChanged), ColumnFiltersChanged);
+        builder.AddAttribute(33, nameof(OnColumnFilter), OnColumnFilter);
         
-        builder.AddAttribute(30, nameof(Height), Height);
-        builder.AddAttribute(31, nameof(Virtualize), Virtualize);
-        builder.AddAttribute(32, nameof(ResizableColumns), ResizableColumns);
-        builder.AddAttribute(33, nameof(StickyColumns), StickyColumns);
+        builder.AddAttribute(34, nameof(Height), Height);
+        builder.AddAttribute(35, nameof(Virtualize), Virtualize);
+        builder.AddAttribute(36, nameof(ResizableColumns), ResizableColumns);
+        builder.AddAttribute(37, nameof(StickyColumns), StickyColumns);
         
-        builder.AddAttribute(34, nameof(ColumnsContent), ColumnsContent);
-        builder.AddAttribute(35, nameof(EmptyMessage), EmptyMessage);
-        builder.AddAttribute(36, nameof(LoadingMessage), LoadingMessage);
-        builder.AddAttribute(37, nameof(FooterContent), FooterContent);
+        builder.AddAttribute(38, nameof(ColumnsContent), ColumnsContent);
+        builder.AddAttribute(39, nameof(EmptyMessage), EmptyMessage);
+        builder.AddAttribute(40, nameof(LoadingMessage), LoadingMessage);
+        builder.AddAttribute(41, nameof(FooterContent), FooterContent);
         
-        builder.AddAttribute(38, nameof(ExportFormats), ExportFormats);
-        builder.AddAttribute(39, nameof(ExportFileName), ExportFileName);
-        builder.AddAttribute(40, nameof(ExportMetadata), ExportMetadata);
+        builder.AddAttribute(42, nameof(ExportFormats), ExportFormats);
+        builder.AddAttribute(43, nameof(ExportFileName), ExportFileName);
+        builder.AddAttribute(44, nameof(ExportMetadata), ExportMetadata);
+    }
+
+    protected void ForwardBaseParametersExceptChildContent(RenderTreeBuilder builder)
+    {
+        builder.AddAttribute(1, nameof(AdditionalClass), AdditionalClass);
+        builder.AddAttribute(2, nameof(Loading), Loading);
+        builder.AddAttribute(3, nameof(Title), Title);
+        builder.AddAttribute(4, nameof(Subtitle), Subtitle);
+        builder.AddAttribute(5, nameof(StartIcon), StartIcon);
+        builder.AddAttribute(6, nameof(EndIcon), EndIcon);
+        builder.AddAttribute(7, nameof(HeaderContent), HeaderContent);
+        
+        builder.AddAttribute(8, nameof(BulkOperationsEnabled), BulkOperationsEnabled);
+        builder.AddAttribute(9, nameof(ExportEnabled), ExportEnabled);
+        builder.AddAttribute(10, nameof(BulkOperations), BulkOperations);
+        
+        builder.AddAttribute(11, nameof(ShowPagination), ShowPagination);
+        builder.AddAttribute(12, nameof(CurrentPage), CurrentPage);
+        builder.AddAttribute(13, nameof(PageSize), PageSize);
+        builder.AddAttribute(14, nameof(TotalItems), TotalItems);
+        builder.AddAttribute(15, nameof(OnPageChange), OnPageChange);
+        builder.AddAttribute(16, nameof(PageSizeOptions), PageSizeOptions);
+        
+        builder.AddAttribute(17, nameof(MultiSelection), MultiSelection);
+        builder.AddAttribute(18, nameof(SingleSelection), SingleSelection);
+        builder.AddAttribute(19, nameof(SelectedItemsChanged), SelectedItemsChanged);
+        builder.AddAttribute(20, nameof(SelectedItemChanged), SelectedItemChanged);
+        
+        builder.AddAttribute(21, nameof(RowClickable), RowClickable);
+        builder.AddAttribute(22, nameof(OnRowClick), OnRowClick);
+        builder.AddAttribute(23, nameof(RowClassFunc), RowClassFunc);
+        
+        builder.AddAttribute(28, nameof(SortColumn), SortColumn);
+        builder.AddAttribute(29, nameof(SortDescending), SortDescending);
+        builder.AddAttribute(30, nameof(OnSort), OnSort);
+        builder.AddAttribute(31, nameof(ColumnFilters), ColumnFilters);
+        builder.AddAttribute(32, nameof(ColumnFiltersChanged), ColumnFiltersChanged);
+        builder.AddAttribute(33, nameof(OnColumnFilter), OnColumnFilter);
+        
+        builder.AddAttribute(34, nameof(Height), Height);
+        builder.AddAttribute(35, nameof(Virtualize), Virtualize);
+        builder.AddAttribute(36, nameof(ResizableColumns), ResizableColumns);
+        builder.AddAttribute(37, nameof(StickyColumns), StickyColumns);
+        
+        builder.AddAttribute(38, nameof(ColumnsContent), ColumnsContent);
+        // NOTE: Intentionally NOT forwarding ChildContent - RTableGeneric doesn't support it
+        builder.AddAttribute(39, nameof(EmptyMessage), EmptyMessage);
+        builder.AddAttribute(40, nameof(LoadingMessage), LoadingMessage);
+        builder.AddAttribute(41, nameof(FooterContent), FooterContent);
+        
+        builder.AddAttribute(42, nameof(ExportFormats), ExportFormats);
+        builder.AddAttribute(43, nameof(ExportFileName), ExportFileName);
+        builder.AddAttribute(44, nameof(ExportMetadata), ExportMetadata);
     }
 }
 
@@ -141,6 +198,7 @@ public class RTable : RTableBase
     [Parameter] public object SelectedItems { get; set; }
     [Parameter] public object SelectedItem { get; set; }
     [Parameter] public object Columns { get; set; }
+    [Parameter] public RenderFragment ChildContent { get; set; }
 
     protected override void BuildRenderTree(RenderTreeBuilder builder)
     {
@@ -183,6 +241,9 @@ public class RTable : RTableBase
         // Create table context for child columns
         var tableContext = new TableContext(itemType, $"smart-table-{GetHashCode()}", true);
 
+        // Use ChildContent as ColumnsContent if provided (for compatibility)
+        var effectiveColumnsContent = ColumnsContent ?? ChildContent;
+
         // Provide context to child components
         builder.OpenComponent<CascadingValue<TableContext>>(0);
         builder.AddAttribute(1, "Value", tableContext);
@@ -193,8 +254,11 @@ public class RTable : RTableBase
 
             childBuilder.OpenComponent(0, genericTableType);
             
-            // Forward all base parameters
-            ForwardBaseParameters(childBuilder);
+            // Forward all base parameters EXCEPT ChildContent (RTableGeneric doesn't support it)
+            ForwardBaseParametersExceptChildContent(childBuilder);
+            
+            // Override ColumnsContent with effective content
+            childBuilder.AddAttribute(38, nameof(ColumnsContent), effectiveColumnsContent);
             
             // Forward specific parameters with type conversion
             childBuilder.AddAttribute(50, "Items", Items);

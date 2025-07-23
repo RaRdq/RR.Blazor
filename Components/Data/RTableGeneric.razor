@@ -61,7 +61,7 @@
                                         {
                                             <input type="checkbox" 
                                                    class="align-middle"
-                                                   checked="@(Items?.Count > 0 && Items.All(i => SelectedItems.Contains(i)))"
+                                                   checked="@(Items?.Count > 0 && Items.All(i => TypedSelectedItems.Contains(i)))"
                                                    @onchange="@((e) => ToggleAllSelection((bool)e.Value!))" />
                                         }
                                     </th>
@@ -131,7 +131,7 @@
                                                 {
                                                     <input type="checkbox" 
                                                            class="align-middle"
-                                                           checked="@SelectedItems.Contains(item)"
+                                                           checked="@TypedSelectedItems.Contains(item)"
                                                            @onchange="@((e) => ToggleItemSelection(item, (bool)e.Value!))" />
                                                 }
                                                 else if (SingleSelection)
@@ -139,8 +139,8 @@
                                                     <input type="radio" 
                                                            class="align-middle"
                                                            name="table-selection"
-                                                           checked="@(SelectedItem?.Equals(item) == true)"
-                                                           @onchange="@((e) => { if ((bool)e.Value!) SelectedItem = item; })" />
+                                                           checked="@(TypedSelectedItem?.Equals(item) == true)"
+                                                           @onchange="@((e) => { if ((bool)e.Value!) TypedSelectedItem = item; })" />
                                                 }
                                             </td>
                                         }
@@ -251,15 +251,20 @@
     // Content parameters
     [Parameter] public RenderFragment EmptyStateContent { get; set; }
 
-    // Selection parameters (strongly-typed) - base class provides callbacks
     [Parameter] public List<TItem> SelectedItems { get; set; } = new();
     [Parameter] public TItem SelectedItem { get; set; }
-
-    // Strongly-typed callbacks for compatibility
-    [Parameter] public EventCallback<List<TItem>> SelectedItemsChangedTyped { get; set; }
-    [Parameter] public EventCallback<TItem> SelectedItemChangedTyped { get; set; }
-    [Parameter] public EventCallback<TItem> OnRowClickTyped { get; set; }
-    [Parameter] public Func<TItem, string> RowClassFuncTyped { get; set; }
+    
+    private List<TItem> TypedSelectedItems 
+    { 
+        get => SelectedItems ?? new List<TItem>(); 
+        set => SelectedItems = value ?? new List<TItem>(); 
+    }
+    
+    private TItem TypedSelectedItem 
+    { 
+        get => SelectedItem; 
+        set => SelectedItem = value; 
+    }
 
     // Sorting parameters
     [Parameter] public bool AllowUnsorted { get; set; } = true;
@@ -440,7 +445,7 @@
         if (Items?.Any() == true)
         {
             var total = TotalItems > 0 ? TotalItems : Items.Count;
-            var selected = SelectedItems?.Count ?? 0;
+            var selected = TypedSelectedItems?.Count ?? 0;
             
             if (selected > 0)
                 return $"{total:N0} items • {selected:N0} selected";
@@ -458,7 +463,7 @@
             {
                 @HeaderContent
             }
-            @if (BulkOperationsEnabled && BulkOperations != null && SelectedItems?.Any() == true)
+            @if (BulkOperationsEnabled && BulkOperations != null && TypedSelectedItems?.Any() == true)
             {
                 @BulkOperations
             }
@@ -483,9 +488,9 @@
         {
             return @<div class="d-flex justify-between items-center text-sm text-secondary">
                 <div>
-                    @if (SelectedItems?.Any() == true)
+                    @if (TypedSelectedItems?.Any() == true)
                     {
-                        <span class="text-primary font-medium">@SelectedItems.Count selected</span>
+                        <span class="text-primary font-medium">@TypedSelectedItems.Count selected</span>
                     }
                 </div>
                 <div>
@@ -508,15 +513,27 @@
         
         classes.Add(GetRowDensityClasses());
 
-        // Apply custom row class functions (both legacy and typed versions)
-        var customClass = RowClassFuncTyped?.Invoke(item) ?? RowClassFunc?.Invoke(item) ?? RowClass;
+        // Apply custom row class function
+        string customClass = null;
+        if (RowClassFuncTyped is Func<TItem, string> typedFunc)
+        {
+            customClass = typedFunc.Invoke(item);
+        }
+        else if (RowClassFunc != null)
+        {
+            customClass = RowClassFunc.Invoke(item);
+        }
+        else
+        {
+            customClass = RowClass;
+        }
         if (!string.IsNullOrEmpty(customClass))
         {
             classes.Add(customClass);
         }
 
         // Enhanced row states
-        if (SelectedItems?.Contains(item) == true)
+        if (TypedSelectedItems?.Contains(item) == true)
             classes.Add("table-row-selected table-row-selected-enhanced");
 
         // Add hover enhancement
@@ -525,16 +542,6 @@
         return string.Join(" ", classes.Where(c => !string.IsNullOrEmpty(c)));
     }
 
-    private string GetColumnStyle(RDataTableColumn<TItem> column)
-    {
-        var styles = new List<string>();
-        
-        if (!string.IsNullOrEmpty(column.Width)) styles.Add($"--column-width: {column.Width}");
-        if (!string.IsNullOrEmpty(column.MinWidth)) styles.Add($"--column-min-width: {column.MinWidth}");
-        if (!string.IsNullOrEmpty(column.MaxWidth)) styles.Add($"--column-max-width: {column.MaxWidth}");
-        
-        return string.Join("; ", styles);
-    }
 
     private string GetColumnClasses(RDataTableColumn<TItem> column)
     {
@@ -559,10 +566,6 @@
         return string.Join(" ", classes);
     }
 
-    private void StartColumnResize(string columnKey, Microsoft.AspNetCore.Components.Web.MouseEventArgs e)
-    {
-        // Column resize implementation stub
-    }
 
     private object GetFormattedCellValue(TItem item, RDataTableColumn<TItem> column)
     {
@@ -581,7 +584,7 @@
             }
             catch
             {
-                // Fallback to default formatting
+                return value;
             }
         }
         
@@ -595,17 +598,6 @@
         return Math.Max(1, count);
     }
 
-    public async Task CloseAllFilterDropdowns(string excludeColumnKey = "")
-    {
-        foreach (var column in GetEffectiveColumns())
-        {
-            if (column.Key != excludeColumnKey)
-            {
-                var columnComponent = _childColumns.FirstOrDefault(c => c.Key == column.Key);
-            }
-        }
-        await Task.CompletedTask;
-    }
 
     public async Task OnColumnFilterChanged(RR.Blazor.Models.ColumnFilterEventArgs filterArgs)
     {
@@ -629,94 +621,99 @@
         
         if (selected)
         {
-            SelectedItems.Clear();
-            SelectedItems.AddRange(Items);
+            TypedSelectedItems = Items.ToList();
         }
         else
         {
-            SelectedItems.Clear();
+            TypedSelectedItems = new List<TItem>();
         }
         
-        await HandleSelectedItemsChanged(SelectedItems);
+        await HandleSelectedItemsChanged(TypedSelectedItems);
     }
 
     private async Task ToggleItemSelection(TItem item, bool selected)
     {
+        var currentSelection = TypedSelectedItems;
         if (selected)
         {
-            if (!SelectedItems.Contains(item))
+            if (!currentSelection.Contains(item))
             {
-                SelectedItems.Add(item);
+                currentSelection.Add(item);
             }
         }
         else
         {
-            SelectedItems.Remove(item);
+            currentSelection.Remove(item);
         }
         
-        await HandleSelectedItemsChanged(SelectedItems);
+        TypedSelectedItems = currentSelection;
+        await HandleSelectedItemsChanged(TypedSelectedItems);
     }
 
-    // Event handlers for compatibility and type conversion
     private async Task HandleSelectedItemsChanged(List<TItem> items)
     {
-        SelectedItems = items;
-        await SelectedItemsChangedTyped.InvokeAsync(items);
+        TypedSelectedItems = items;
         
-        // Only invoke base callback if it's bound - avoid casting issues
         if (base.SelectedItemsChanged.HasDelegate)
         {
-            try
-            {
-                await base.SelectedItemsChanged.InvokeAsync((object)items);
-            }
-            catch (InvalidCastException)
-            {
-                // Fallback for type casting issues - create a generic object list
-                var objectList = items?.Cast<object>().ToList() ?? new List<object>();
-                await base.SelectedItemsChanged.InvokeAsync(objectList);
-            }
+            var objectList = items?.Cast<object>().ToList() ?? new List<object>();
+            await base.SelectedItemsChanged.InvokeAsync(objectList);
+        }
+        
+        if (SelectedItemsChangedTyped is EventCallback<List<TItem>> typedCallback)
+        {
+            await typedCallback.InvokeAsync(items);
         }
     }
 
     private async Task HandleSelectedItemChanged(TItem item)
     {
-        SelectedItem = item;
-        await SelectedItemChanged.InvokeAsync(item);
-        await SelectedItemChangedTyped.InvokeAsync(item);
-        await base.SelectedItemChanged.InvokeAsync((object)item);
+        TypedSelectedItem = item;
+        
+        if (base.SelectedItemChanged.HasDelegate)
+        {
+            await base.SelectedItemChanged.InvokeAsync((object)item);
+        }
+        
+        if (SelectedItemChangedTyped is EventCallback<TItem> typedCallback)
+        {
+            await typedCallback.InvokeAsync(item);
+        }
     }
 
     private async Task HandleRowClick(TItem item)
     {
         if (SingleSelection)
         {
-            SelectedItem = item;
+            TypedSelectedItem = item;
             await HandleSelectedItemChanged(item);
         }
         else if (MultiSelection)
         {
-            if (SelectedItems.Contains(item))
+            var currentSelection = TypedSelectedItems;
+            if (currentSelection.Contains(item))
             {
-                SelectedItems.Remove(item);
+                currentSelection.Remove(item);
             }
             else
             {
-                SelectedItems.Add(item);
+                currentSelection.Add(item);
             }
-            await HandleSelectedItemsChanged(SelectedItems);
+            TypedSelectedItems = currentSelection;
+            await HandleSelectedItemsChanged(TypedSelectedItems);
         }
         
-        await OnRowClick.InvokeAsync(item);
-        await OnRowClickTyped.InvokeAsync(item);
-        await base.OnRowClick.InvokeAsync((object)item);
+        if (base.OnRowClick.HasDelegate)
+        {
+            await base.OnRowClick.InvokeAsync((object)item);
+        }
+        
+        if (OnRowClickTyped is EventCallback<TItem> typedCallback)
+        {
+            await typedCallback.InvokeAsync(item);
+        }
     }
 
-    private async Task HandleExport()
-    {
-        // TODO: Implement export functionality
-        await Task.CompletedTask;
-    }
 
     private TableContext GetTableContext()
     {
@@ -750,15 +747,10 @@
             }
             
             AddColumn(column);
-            Console.WriteLine($"RTableGeneric: Added column {column.Key} from dictionary");
         }
         else if (columnInfo is RDataTableColumn<TItem> typedColumn)
         {
             AddColumn(typedColumn);
-        }
-        else
-        {
-            Console.WriteLine($"RTableGeneric: Invalid column type {columnInfo?.GetType().Name}");
         }
     }
     
@@ -770,7 +762,6 @@
             var existingIndex = _childColumns.FindIndex(c => c.Key == key);
             if (existingIndex >= 0)
             {
-                // Update existing column properties
                 var column = _childColumns[existingIndex];
                 column.Header = info.GetValueOrDefault("Header", column.Header)?.ToString() ?? column.Header;
                 column.Format = info.GetValueOrDefault("Format", column.Format)?.ToString() ?? column.Format;
@@ -794,27 +785,18 @@
     
     private Func<TItem, object> CreateValueFuncFromProperty(object property)
     {
-        try
+        if (property is LambdaExpression lambda)
         {
-            if (property is LambdaExpression lambda)
-            {
-                var compiled = lambda.Compile();
-                return item => compiled.DynamicInvoke(item);
-            }
-            
-            if (property is Delegate del)
-            {
-                return item => del.DynamicInvoke(item);
-            }
-            
-            Console.WriteLine($"RTableGeneric: Could not create value function from property type {property.GetType().Name}");
-            return item => null;
+            var compiled = lambda.Compile();
+            return item => compiled.DynamicInvoke(item);
         }
-        catch (Exception ex)
+        
+        if (property is Delegate del)
         {
-            Console.WriteLine($"RTableGeneric: Error creating value function: {ex.Message}");
-            return item => null;
+            return item => del.DynamicInvoke(item);
         }
+        
+        return item => null;
     }
 
     // RDataTableColumn class definition moved from RDataTableGeneric

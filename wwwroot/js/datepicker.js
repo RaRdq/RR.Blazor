@@ -206,9 +206,25 @@ const RDatePicker = {
         // Remove open class to trigger CSS transitions
         instance.element.classList.remove('datepicker-open');
         
-        const trigger = instance.element.querySelector('.datepicker-trigger input');
+        // CRITICAL FIX: Restore modal overflow when datepicker closes
+        const trigger = instance.element.querySelector('.datepicker-trigger') || 
+                       instance.element.querySelector('.datepicker-trigger input');
         if (trigger) {
-            trigger.focus();
+            const modalElement = trigger.closest('.modal-content, .modal-body, .modal');
+            if (modalElement) {
+                // Restore original overflow settings
+                modalElement.style.overflow = '';
+                const modalBody = modalElement.closest('.modal-body') || modalElement.querySelector('.modal-body');
+                if (modalBody) {
+                    modalBody.style.overflow = '';
+                }
+            }
+            
+            // Focus the input if it exists
+            const input = instance.element.querySelector('.datepicker-trigger input');
+            if (input) {
+                input.focus();
+            }
         }
     },
 
@@ -354,11 +370,34 @@ const RDatePicker = {
         
         if (!popup || !trigger) return;
 
-        // Use RChoice's proven positioning approach
+        // Calculate available space for dynamic height
+        const triggerRect = trigger.getBoundingClientRect();
+        const viewportHeight = window.innerHeight;
+        const buffer = 20;
+        
+        // CRITICAL FIX: Check if we're inside a modal and adjust accordingly
+        const modalElement = trigger.closest('.modal-content, .modal-body, .modal');
+        const isInModal = modalElement !== null;
+        
+        // Calculate maximum available height based on position
+        const spaceBelow = viewportHeight - triggerRect.bottom - buffer;
+        const spaceAbove = triggerRect.top - buffer;
+        
+        // If in modal, use viewport space rather than modal constraints
+        const maxHeight = isInModal 
+            ? Math.max(spaceBelow, spaceAbove, 300) // Larger minimum in modal
+            : Math.max(spaceBelow, spaceAbove, 200); // Standard minimum
+        
+        // Use dynamic height - prefer full calendar height in modal
+        const dynamicHeight = isInModal 
+            ? Math.min(400, Math.max(350, maxHeight)) // Prefer larger calendar in modal
+            : Math.min(400, maxHeight);
+
+        // Use RChoice's proven positioning approach with dynamic height
         const positioning = this.positionDropdown(trigger, {
-            estimatedHeight: 400,
+            estimatedHeight: dynamicHeight,
             estimatedWidth: 320,
-            buffer: 20
+            buffer: buffer
         });
 
         // Apply positioning classes
@@ -369,20 +408,40 @@ const RDatePicker = {
         popup.style.top = `${positioning.top}px`;
         popup.style.left = `${positioning.left}px`;
         popup.style.width = `${positioning.width}px`;
-        popup.style.maxHeight = '400px';
-        popup.style.overflowY = 'auto';
+        
+        // CRITICAL FIX: Use calculated dynamic height instead of fixed 400px
+        popup.style.maxHeight = `${dynamicHeight}px`;
+        popup.style.height = 'auto';
+        popup.style.overflowY = dynamicHeight < 400 ? 'auto' : 'visible';
+        
         popup.style.visibility = 'visible';
         popup.style.opacity = '1';
         popup.style.pointerEvents = 'auto';
         
-        // CRITICAL: Remove any hardcoded z-index to let CSS variables work
-        popup.style.zIndex = '';
-        popup.style.removeProperty('z-index');
+        // Enhanced z-index for modal context
+        popup.style.zIndex = isInModal ? '10000' : '9999';
         
         // Clear conflicting styles
         popup.style.bottom = 'auto';
         popup.style.right = 'auto';
         popup.style.transform = '';
+        
+        // CRITICAL FIX: Ensure modal allows overflow when datepicker is open
+        if (isInModal && modalElement) {
+            modalElement.style.overflow = 'visible';
+            // Also check for modal-body parent
+            const modalBody = modalElement.closest('.modal-body') || modalElement.querySelector('.modal-body');
+            if (modalBody) {
+                modalBody.style.overflow = 'visible';
+            }
+        }
+        
+        console.log('RDatePicker positioning applied:', {
+            dynamicHeight: dynamicHeight,
+            spaceBelow: spaceBelow,
+            spaceAbove: spaceAbove,
+            positioning: positioning
+        });
     },
 
     // Position date picker using RChoice's proven logic

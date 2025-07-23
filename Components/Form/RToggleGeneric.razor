@@ -107,18 +107,29 @@
     [Parameter] public string? ValidationMessage { get; set; }
     [Parameter] public string? Class { get; set; }
     
+    private bool _internalState;
+    private bool _initialized = false;
+
+    protected override void OnParametersSet()
+    {
+        // Sync internal state with parameters on each render
+        var currentValue = ValueChanged.HasDelegate ? Value : Checked;
+        if (!_initialized || _internalState != currentValue)
+        {
+            _internalState = currentValue;
+            _initialized = true;
+        }
+    }
+    
     private bool InternalValue
     {
-        get => ValueChanged.HasDelegate ? Value : Checked;
+        get => _internalState;
         set
         {
-            if (ValueChanged.HasDelegate)
+            if (_internalState != value)
             {
-                Value = value;
-            }
-            else
-            {
-                Checked = value;
+                _internalState = value;
+                _ = OnValueChanged(); // Fire and forget - don't await to avoid blocking
             }
         }
     }
@@ -235,19 +246,21 @@
 
     private async Task OnValueChanged()
     {
+        var newValue = _internalState;
+        
         if (ValueChanged.HasDelegate)
         {
-            await ValueChanged.InvokeAsync(InternalValue);
+            await ValueChanged.InvokeAsync(newValue);
         }
         
         if (CheckedChanged.HasDelegate)
         {
-            await CheckedChanged.InvokeAsync(InternalValue);
+            await CheckedChanged.InvokeAsync(newValue);
         }
         
         if (OnClick.HasDelegate)
         {
-            await OnClick.InvokeAsync(InternalValue);
+            await OnClick.InvokeAsync(newValue);
         }
     }
 
