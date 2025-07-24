@@ -143,6 +143,10 @@ pwsh ./Scripts/TreeShakeOptimize.ps1 `
 # Multi-stage build with CSS optimization
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 WORKDIR /src
+
+# Install PowerShell (if not available)
+RUN apt-get update && apt-get install -y powershell
+
 COPY . .
 
 # Run CSS optimization
@@ -151,6 +155,81 @@ RUN cd RR.Blazor && pwsh ./Scripts/TreeShakeOptimize.ps1
 # Copy optimized CSS to final image
 FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final
 COPY --from=build /src/RR.Blazor/wwwroot/css/optimized/rr-blazor.min.css /app/wwwroot/css/
+```
+
+### CI/CD Integration
+
+#### GitHub Actions
+
+```yaml
+# .github/workflows/build.yml
+name: Build with CSS Tree-Shaking
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '9.0.x'
+        
+    - name: Setup PowerShell
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y powershell
+    
+    - name: Run CSS Tree-Shaking
+      run: |
+        cd RR.Blazor
+        pwsh ./Scripts/TreeShakeOptimize.ps1 -VerboseLogging
+        
+    - name: Upload Optimization Report
+      uses: actions/upload-artifact@v4
+      with:
+        name: css-optimization-report
+        path: RR.Blazor/wwwroot/css/optimized/optimization-report.json
+        
+    - name: Build Application
+      run: dotnet build --configuration Release
+```
+
+#### Azure DevOps
+
+```yaml
+# azure-pipelines.yml
+trigger:
+- main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+steps:
+- task: UseDotNet@2
+  inputs:
+    version: '9.0.x'
+
+- task: PowerShell@2
+  displayName: 'Run CSS Tree-Shaking'
+  inputs:
+    targetType: 'inline'
+    script: |
+      cd RR.Blazor
+      pwsh ./Scripts/TreeShakeOptimize.ps1 -VerboseLogging
+
+- task: PublishBuildArtifacts@1
+  displayName: 'Publish Optimization Report'
+  inputs:
+    PathtoPublish: 'RR.Blazor/wwwroot/css/optimized'
+    ArtifactName: 'css-optimization-results'
 ```
 
 ## Optimization Report
