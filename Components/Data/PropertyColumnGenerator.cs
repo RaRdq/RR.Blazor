@@ -167,11 +167,11 @@ public static class PropertyColumnGenerator
             
             if (metadata.IsEmail && !string.IsNullOrEmpty(formattedValue) && IsValidEmail(formattedValue))
             {
-                builder.AddMarkupContent(0, CreateSecureEmailLink(formattedValue));
+                CreateSecureEmailComponent(builder, formattedValue);
             }
             else if (metadata.IsUrl && !string.IsNullOrEmpty(formattedValue) && IsValidUrl(formattedValue))
             {
-                builder.AddMarkupContent(0, CreateSecureUrlLink(formattedValue));
+                CreateSecureUrlComponent(builder, formattedValue);
             }
             else
             {
@@ -245,9 +245,9 @@ public static class PropertyColumnGenerator
         if (type == typeof(string))
         {
             if (metadata.IsEmail)
-                return obj => CreateSecureEmailLink(obj?.ToString() ?? "");
+                return obj => HtmlEncoder.Default.Encode(obj?.ToString() ?? "");
             if (metadata.IsUrl)
-                return obj => CreateSecureUrlLink(obj?.ToString() ?? "");
+                return obj => HtmlEncoder.Default.Encode(obj?.ToString() ?? "");
             if (metadata.IsPhone)
                 return obj => FormatPhoneNumber(obj?.ToString() ?? "");
         }
@@ -391,39 +391,59 @@ public static class PropertyColumnGenerator
     }
 
     /// <summary>
-    /// Create secure email link with validation and encoding
+    /// Create secure email component with validation and encoding
     /// </summary>
-    private static string CreateSecureEmailLink(string email)
+    private static void CreateSecureEmailComponent(RenderTreeBuilder builder, string email)
     {
-        if (string.IsNullOrWhiteSpace(email)) return "";
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            return;
+        }
         
         // Validate email format
         if (!IsValidEmail(email))
         {
-            return HtmlEncoder.Default.Encode(email);
+            builder.AddContent(0, HtmlEncoder.Default.Encode(email));
+            return;
         }
         
         var encodedEmail = HtmlEncoder.Default.Encode(email);
         var encodedHref = UrlEncoder.Default.Encode($"mailto:{email}");
-        return $"<a href=\"{encodedHref}\">{encodedEmail}</a>";
+        
+        builder.OpenElement(0, "a");
+        builder.AddAttribute(1, "href", encodedHref);
+        builder.AddAttribute(2, "class", "text-primary hover:text-primary-dark transition-colors");
+        builder.AddContent(3, encodedEmail);
+        builder.CloseElement();
     }
     
     /// <summary>
-    /// Create secure URL link with validation and encoding
+    /// Create secure URL component with validation and encoding
     /// </summary>
-    private static string CreateSecureUrlLink(string url)
+    private static void CreateSecureUrlComponent(RenderTreeBuilder builder, string url)
     {
-        if (string.IsNullOrWhiteSpace(url)) return "";
+        if (string.IsNullOrWhiteSpace(url))
+        {
+            return;
+        }
         
         // Validate and sanitize URL
         if (!IsValidUrl(url))
         {
-            return HtmlEncoder.Default.Encode(url);
+            builder.AddContent(0, HtmlEncoder.Default.Encode(url));
+            return;
         }
         
         var encodedUrl = HtmlEncoder.Default.Encode(url);
         var encodedHref = UrlEncoder.Default.Encode(url);
-        return $"<a href=\"{encodedHref}\" target=\"_blank\" rel=\"noopener noreferrer\">{encodedUrl}</a>";
+        
+        builder.OpenElement(0, "a");
+        builder.AddAttribute(1, "href", encodedHref);
+        builder.AddAttribute(2, "target", "_blank");
+        builder.AddAttribute(3, "rel", "noopener noreferrer");
+        builder.AddAttribute(4, "class", "text-primary hover:text-primary-dark transition-colors");
+        builder.AddContent(5, encodedUrl);
+        builder.CloseElement();
     }
     
     /// <summary>

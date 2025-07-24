@@ -4,11 +4,15 @@
 
 **RR.Blazor** is a **lightweight, project-agnostic, generic Blazor component framework** designed to serve as the foundation for modern web applications. The framework prioritizes **minimal bundle size**, **maximum customizability**, and **utility-first composition** to deliver exceptional developer experience and performance.
 
+### 🌳 CSS Tree-Shaking Optimization
+**RR.Blazor** includes advanced CSS tree-shaking that automatically removes unused styles from production builds
+
 ## Essential Files
 
 ### Primary Documentation
-- `RR.Blazor/wwwroot/rr-ai-components.json` - Complete component API reference (66 components)
+- `RR.Blazor/wwwroot/rr-ai-components.json` - Complete component API reference (64 components)
 - `RR.Blazor/wwwroot/rr-ai-styles.json` - All utility classes with bracket notation (3,309 classes)
+- `RR.Blazor/Documentation/CSS-TREE-SHAKING.md` - CSS optimization guide and usage
 - `CLAUDE.md` - Project-specific implementation guidelines
 - `README.md` - Comprehensive feature overview
 

@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using RR.Blazor.Services;
 using RR.Blazor.Models;
+using RR.Blazor.Configuration;
 using System;
 
 namespace RR.Blazor.Extensions
@@ -41,6 +42,10 @@ namespace RR.Blazor.Extensions
             {
                 services.AddSingleton(options.Theme);
             }
+            
+            // Tree-shaking options (for configuration only)
+            var treeShakingOptions = new RRBlazorTreeShakingOptions();
+            services.AddSingleton(treeShakingOptions);
             
             return services;
         }
@@ -89,5 +94,40 @@ namespace RR.Blazor.Extensions
             Theme.AnimationsEnabled = enabled;
             return this;
         }
+        
+        /// <summary>Tree-shaking configuration (always enabled with golden ratio)</summary>
+        public TreeShakingOptions TreeShaking { get; set; } = new TreeShakingOptions();
+        
+        /// <summary>Configure tree-shaking settings</summary>
+        public RRBlazorOptions WithTreeShaking(Action<TreeShakingOptions> configure)
+        {
+            configure?.Invoke(TreeShaking);
+            return this;
+        }
+        
+        /// <summary>Disable tree-shaking optimization</summary>
+        public RRBlazorOptions DisableTreeShaking()
+        {
+            TreeShaking.Enabled = false;
+            return this;
+        }
+    }
+    
+    /// <summary>
+    /// Tree-shaking configuration options
+    /// </summary>
+    public class TreeShakingOptions
+    {
+        /// <summary>Enable tree-shaking optimization (default: true)</summary>
+        public bool Enabled { get; set; } = true;
+        
+        /// <summary>Enable in development environment (default: false)</summary>
+        public bool EnableInDevelopment { get; set; } = false;
+        
+        /// <summary>Output path for optimized CSS</summary>
+        public string OutputPath { get; set; } = "./wwwroot/css/optimized";
+        
+        /// <summary>Enable verbose logging</summary>
+        public bool VerboseLogging { get; set; } = false;
     }
 }

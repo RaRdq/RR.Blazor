@@ -1,6 +1,6 @@
 # RR.Blazor Components Organization
 
-This directory contains all 66 RR.Blazor components organized by category and structural relationships for better maintainability and discoverability. The components provide a comprehensive design system with 3,309 utility classes and 336 CSS variables.
+This directory contains all 64 RR.Blazor components organized by category and structural relationships for better maintainability and discoverability. The components provide a comprehensive design system with 3,309 utility classes and 336 CSS variables.
 
 ## R* Component Architecture
 

@@ -45,7 +45,7 @@ export function initializeTooltip(element, options = {}) {
     tooltip.className = 'chart-tooltip';
     tooltip.style.position = 'absolute';
     tooltip.style.pointerEvents = 'none';
-    tooltip.style.zIndex = '1000';
+    tooltip.style.zIndex = 'var(--z-tooltip)';
     document.body.appendChild(tooltip);
     
     const showTooltip = (event, content) => {

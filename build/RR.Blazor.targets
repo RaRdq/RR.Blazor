@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project>
+  
+  <!-- RR.Blazor CSS Tree-Shaking Integration -->
+  
+  <PropertyGroup>
+    <!-- Default settings for RR.Blazor optimization -->
+    <RRBlazorEnableTreeShaking Condition="'$(RRBlazorEnableTreeShaking)' == ''">true</RRBlazorEnableTreeShaking>
+    <RRBlazorEnableGoldenRatio Condition="'$(RRBlazorEnableGoldenRatio)' == ''">true</RRBlazorEnableGoldenRatio>
+    <RRBlazorOptimizeInDebug Condition="'$(RRBlazorOptimizeInDebug)' == ''">false</RRBlazorOptimizeInDebug>
+    <RRBlazorOutputPath Condition="'$(RRBlazorOutputPath)' == ''">$(MSBuildProjectDirectory)\wwwroot\css\optimized</RRBlazorOutputPath>
+    <RRBlazorScriptPath Condition="'$(RRBlazorScriptPath)' == ''">$(MSBuildThisFileDirectory)..\Scripts\BuildIntegration.ps1</RRBlazorScriptPath>
+    <RRBlazorVerbose Condition="'$(RRBlazorVerbose)' == ''">false</RRBlazorVerbose>
+  </PropertyGroup>
+
+  <!-- Determine if optimization should run -->
+  <PropertyGroup>
+    <ShouldRunRRBlazorOptimization Condition="'$(RRBlazorEnableTreeShaking)' != 'true'">false</ShouldRunRRBlazorOptimization>
+    <ShouldRunRRBlazorOptimization Condition="'$(Configuration)' == 'Debug' AND '$(RRBlazorOptimizeInDebug)' != 'true'">false</ShouldRunRRBlazorOptimization>
+    <ShouldRunRRBlazorOptimization Condition="'$(ShouldRunRRBlazorOptimization)' == ''">true</ShouldRunRRBlazorOptimization>
+  </PropertyGroup>
+
+  <!-- Create output directory -->
+  <Target Name="CreateRRBlazorOutputDirectory" BeforeTargets="RRBlazorOptimizeCSS">
+    <MakeDir Directories="$(RRBlazorOutputPath)" Condition="'$(ShouldRunRRBlazorOptimization)' == 'true'" />
+  </Target>
+
+  <!-- Main CSS optimization target -->
+  <Target Name="RRBlazorOptimizeCSS" 
+          AfterTargets="Build" 
+          Condition="'$(ShouldRunRRBlazorOptimization)' == 'true'">
+    
+    <Message Text="🚀 Running RR.Blazor CSS tree-shaking optimization..." Importance="high" />
+    <Message Text="   Configuration: $(Configuration)" Importance="normal" />
+    <Message Text="   Output Path: $(RRBlazorOutputPath)" Importance="normal" />
+    
+    <!-- Check if PowerShell Core is available -->
+    <PropertyGroup>
+      <PowerShellCommand Condition="'$(OS)' == 'Windows_NT'">pwsh</PowerShellCommand>
+      <PowerShellCommand Condition="'$(OS)' != 'Windows_NT'">pwsh</PowerShellCommand>
+    </PropertyGroup>
+    
+    <!-- Execute tree-shaking script -->
+    <Exec Command="$(PowerShellCommand) -ExecutionPolicy Bypass -File &quot;$(RRBlazorScriptPath)&quot; -BuildConfiguration $(Configuration) -ProjectPath &quot;$(MSBuildProjectDirectory)&quot; $(RRBlazorExtraArgs)"
+          ContinueOnError="false"
+          IgnoreExitCode="true"
+          ConsoleToMSBuild="true">
+      <Output TaskParameter="ConsoleOutput" PropertyName="RRBlazorOptimizationOutput" />
+      <Output TaskParameter="ExitCode" PropertyName="RRBlazorOptimizationExitCode" />
+    </Exec>
+    
+    <!-- Handle optimization results -->
+    <PropertyGroup>
+      <RRBlazorOptimizationSucceeded Condition="'$(RRBlazorOptimizationExitCode)' == '0'">true</RRBlazorOptimizationSucceeded>
+      <RRBlazorOptimizationSucceeded Condition="'$(RRBlazorOptimizationExitCode)' != '0'">false</RRBlazorOptimizationSucceeded>
+    </PropertyGroup>
+    
+    <!-- Log results -->
+    <Message Text="✅ RR.Blazor CSS optimization completed successfully" 
+             Importance="high" 
+             Condition="'$(RRBlazorOptimizationSucceeded)' == 'true'" />
+    
+    <Warning Text="⚠️ RR.Blazor CSS optimization completed with warnings (Exit Code: $(RRBlazorOptimizationExitCode))" 
+             Condition="'$(RRBlazorOptimizationSucceeded)' != 'true' AND '$(RRBlazorOptimizationExitCode)' != ''" />
+    
+    <Error Text="❌ RR.Blazor CSS optimization failed (Exit Code: $(RRBlazorOptimizationExitCode)). Check build output for details." 
+           Condition="'$(RRBlazorOptimizationSucceeded)' == 'false' AND '$(RRBlazorTreatOptimizationErrorsAsWarnings)' != 'true'" />
+    
+    <Warning Text="❌ RR.Blazor CSS optimization failed (Exit Code: $(RRBlazorOptimizationExitCode)) but treating as warning. Check build output for details." 
+             Condition="'$(RRBlazorOptimizationSucceeded)' == 'false' AND '$(RRBlazorTreatOptimizationErrorsAsWarnings)' == 'true'" />
+    
+    <!-- Display optimization output if verbose -->
+    <Message Text="$(RRBlazorOptimizationOutput)" 
+             Importance="normal" 
+             Condition="'$(RRBlazorVerbose)' == 'true' AND '$(RRBlazorOptimizationOutput)' != ''" />
+  </Target>
+
+  <!-- Clean target to remove optimized files -->
+  <Target Name="RRBlazorCleanOptimized" AfterTargets="Clean">
+    <Message Text="🧹 Cleaning RR.Blazor optimized CSS files..." Importance="normal" />
+    
+    <ItemGroup>
+      <RRBlazorOptimizedFiles Include="$(RRBlazorOutputPath)\**\*" />
+    </ItemGroup>
+    
+    <Delete Files="@(RRBlazorOptimizedFiles)" ContinueOnError="true" />
+    <RemoveDir Directories="$(RRBlazorOutputPath)" Condition="Exists('$(RRBlazorOutputPath)')" ContinueOnError="true" />
+    
+    <Message Text="✅ RR.Blazor optimized files cleaned" Importance="normal" />
+  </Target>
+
+  <!-- Development server integration -->
+  <Target Name="RRBlazorWatchOptimize" 
+          Condition="'$(DOTNET_RUNNING_IN_CONTAINER)' != 'true' AND '$(DOTNET_WATCH)' == '1' AND '$(RRBlazorEnableTreeShaking)' == 'true'">
+    
+    <Message Text="👀 RR.Blazor file watching enabled for CSS optimization" Importance="normal" />
+    
+    <!-- Set up file watching for relevant files -->
+    <ItemGroup>
+      <Watch Include="**\*.razor" />
+      <Watch Include="**\*.cs" Condition="'$(MSBuildProjectExtension)' == '.csproj'" />
+      <Watch Include="**\*.html" />
+      <Watch Include="Styles\**\*.scss" />
+      <Watch Include="wwwroot\component-registry.json" />
+    </ItemGroup>
+  </Target>
+
+  <!-- Pack target integration for NuGet packages -->
+  <Target Name="RRBlazorPackOptimized" BeforeTargets="GenerateNuspec" Condition="'$(ShouldRunRRBlazorOptimization)' == 'true'">
+    <Message Text="📦 Including RR.Blazor optimized CSS in package..." Importance="normal" />
+    
+    <ItemGroup>
+      <Content Include="$(RRBlazorOutputPath)\**\*" 
+               PackagePath="contentFiles\any\any\wwwroot\css\optimized\"
+               Pack="true" 
+               Condition="Exists('$(RRBlazorOutputPath)')" />
+    </ItemGroup>
+  </Target>
+
+  <!-- Publish target integration -->
+  <Target Name="RRBlazorPublishOptimized" AfterTargets="ComputeFilesToPublish" Condition="'$(ShouldRunRRBlazorOptimization)' == 'true'">
+    <Message Text="🚀 Including RR.Blazor optimized CSS in publish output..." Importance="normal" />
+    
+    <ItemGroup>
+      <RRBlazorOptimizedFilesToPublish Include="$(RRBlazorOutputPath)\**\*" Condition="Exists('$(RRBlazorOutputPath)')" />
+    </ItemGroup>
+    
+    <ItemGroup>
+      <ResolvedFileToPublish Include="@(RRBlazorOptimizedFilesToPublish)">
+        <RelativePath>wwwroot\css\optimized\%(RecursiveDir)%(Filename)%(Extension)</RelativePath>
+        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+        <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+      </ResolvedFileToPublish>
+    </ItemGroup>
+  </Target>
+
+  <!-- Docker integration -->
+  <Target Name="RRBlazorDockerOptimize" 
+          BeforeTargets="DockerBuild" 
+          Condition="'$(ShouldRunRRBlazorOptimization)' == 'true' AND '$(DockerfileContext)' != ''">
+    
+    <Message Text="🐳 Preparing RR.Blazor optimization for Docker build..." Importance="high" />
+    
+    <!-- Ensure optimization runs before Docker build -->
+    <CallTarget Targets="RRBlazorOptimizeCSS" />
+  </Target>
+
+  <!-- CI/CD integration helpers -->
+  <Target Name="RRBlazorCIInfo" Condition="'$(CI)' == 'true' OR '$(TF_BUILD)' == 'True' OR '$(GITHUB_ACTIONS)' == 'true'">
+    <Message Text="🔧 RR.Blazor CI/CD Integration Active" Importance="high" />
+    <Message Text="   Tree-Shaking: $(RRBlazorEnableTreeShaking)" Importance="normal" />
+    <Message Text="   Golden Ratio: $(RRBlazorEnableGoldenRatio)" Importance="normal" />
+    <Message Text="   Output Path: $(RRBlazorOutputPath)" Importance="normal" />
+    
+    <!-- Set extra verbose output for CI environments -->
+    <PropertyGroup>
+      <RRBlazorVerbose Condition="'$(CI)' == 'true'">true</RRBlazorVerbose>
+    </PropertyGroup>
+  </Target>
+
+  <!-- Performance monitoring -->
+  <Target Name="RRBlazorPerformanceReport" 
+          AfterTargets="RRBlazorOptimizeCSS" 
+          Condition="'$(RRBlazorOptimizationSucceeded)' == 'true' AND '$(RRBlazorShowPerformanceReport)' == 'true'">
+    
+    <PropertyGroup>
+      <RRBlazorReportPath>$(RRBlazorOutputPath)\optimization-report.json</RRBlazorReportPath>
+    </PropertyGroup>
+    
+    <!-- Read and display performance metrics -->
+    <ReadLinesFromFile File="$(RRBlazorReportPath)" Condition="Exists('$(RRBlazorReportPath)')">
+      <Output TaskParameter="Lines" PropertyName="RRBlazorReportContent" />
+    </ReadLinesFromFile>
+    
+    <Message Text="📊 RR.Blazor Performance Report available at: $(RRBlazorReportPath)" 
+             Importance="high" 
+             Condition="Exists('$(RRBlazorReportPath)')" />
+  </Target>
+
+</Project>

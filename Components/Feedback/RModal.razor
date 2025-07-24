@@ -11,7 +11,7 @@
     <div @ref="modalContainer" style="display: none;">
         @if (UseOwnBackdrop)
         {
-            <div class="modal-backdrop" @onclick="HandleBackdropClick" @onkeydown="OnKeyDownHandler" tabindex="-1">
+            <div class="modal-backdrop" @onclick="HandleBackdropClick" @onkeydown="OnKeyDownHandler" tabindex="-1" data-modal-backdrop="true">
                 <div class="modal-content @GetSizeClass() @Class modal--visible" 
                      role="dialog" 
                      aria-modal="true" 
@@ -418,6 +418,15 @@ private async Task HandleBackdropClick()
     {
         if (CloseOnBackdrop && !Processing && Variant != ModalVariant.Protected)
         {
+            // Check if any datepickers are open within this modal
+            var hasOpenDatePickers = await JSRuntime.InvokeAsync<bool>("eval", 
+                "document.querySelector('.modal-content .datepicker-open') !== null");
+            
+            if (hasOpenDatePickers)
+            {
+                // Don't close modal if datepickers are open - they handle their own backdrop clicks
+                return;
+            }
 
             if (ModalStack.IsTopModal(portalId))
             {
