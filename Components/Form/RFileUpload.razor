@@ -28,7 +28,6 @@
              role="button"
              aria-label="@GetDropZoneAriaLabel()"
              aria-describedby="@($"{ComponentId}-hint")"
-             @onclick="@(() => TriggerFileSelect())"
              @onkeydown="@HandleDropZoneKeyDown">
             <InputFile id="@InputId"
                        class="upload-area-input"
@@ -336,7 +335,6 @@
                 
                 await jsModule.InvokeVoidAsync("RRFileUpload.initialize", ComponentId, settings);
                 
-
                 await JSRuntime.InvokeVoidAsync("addEventListener", ComponentId, "rr-files-selected", dotNetRef, "OnFilesSelectedFromJS");
                 await JSRuntime.InvokeVoidAsync("addEventListener", ComponentId, "rr-file-removed", dotNetRef, "OnFileRemovedFromJS");
             }
@@ -349,8 +347,6 @@
 
     private async Task HandleFileChange(InputFileChangeEventArgs e)
     {
-        Console.WriteLine($"🔧 RFileUpload.HandleFileChange called with {e.FileCount} files");
-        await JSRuntime.InvokeVoidAsync("console.log", $"🔧 RFileUpload.HandleFileChange called with {e.FileCount} files");
         var result = new RFileUploadResult { Success = true };
         var newFiles = new List<RFileInfo>();
 
@@ -371,7 +367,6 @@
             newFiles.Add(fileInfo);
         }
 
-
         if (!AllowDuplicates)
         {
             var existingNames = SelectedFiles.Select(f => f.Name).ToHashSet();
@@ -381,12 +376,9 @@
         SelectedFiles.AddRange(newFiles);
         result.Files = newFiles;
 
-
         await FilesChanged.InvokeAsync(SelectedFiles);
-        Console.WriteLine($"🔧 RFileUpload: About to invoke OnFilesSelected with {result.Files?.Count ?? 0} files, Success: {result.Success}");
         await JSRuntime.InvokeVoidAsync("console.log", $"🔧 RFileUpload: About to invoke OnFilesSelected with {result.Files?.Count ?? 0} files, Success: {result.Success}");
         await OnFilesSelected.InvokeAsync(result);
-        Console.WriteLine($"🔧 RFileUpload: OnFilesSelected invoked successfully");
         await JSRuntime.InvokeVoidAsync("console.log", $"🔧 RFileUpload: OnFilesSelected invoked successfully");
         
         StateHasChanged();
@@ -411,8 +403,7 @@
         {
             try
             {
-
-
+                // TODO: 
             }
             catch (Exception ex)
             {
@@ -479,11 +470,11 @@
     {
         if (e.Key == "Enter" || e.Key == " " || e.Key == "Spacebar")
         {
-            await TriggerFileSelect();
+            // Use native click on the input element to avoid double prompts
+            await JSRuntime.InvokeVoidAsync("eval", $"document.getElementById('{InputId}').click()");
         }
         else if (e.Key == "Escape")
         {
-
             await JSRuntime.InvokeVoidAsync("eval", "document.activeElement.blur()");
         }
     }
@@ -716,7 +707,7 @@
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"RFileUpload disposal error: {ex.Message}");
+            // ignore dispose errors
         }
     }
 }

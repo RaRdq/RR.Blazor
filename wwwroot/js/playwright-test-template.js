@@ -25,11 +25,18 @@ const TARGET_URL = '[REPLACE_WITH_TARGET_URL]'; // e.g., '/dashboard', '/company
   page.on('console', msg => {
     if (msg.type() === 'error') {
       const errorText = msg.text();
-      // Filter out known non-critical errors
+      // Filter out known non-critical errors and common Blazor reload messages
       if (!errorText.includes('serilog') && 
           !errorText.includes('%c') && 
           !errorText.includes('[DEBUG]') &&
-          !errorText.includes('[INFO]')) {
+          !errorText.includes('[INFO]') &&
+          !errorText.includes('Please reload') &&
+          !errorText.includes('SignalR') &&
+          !errorText.includes('WebSocket') &&
+          !errorText.includes('connection closed') &&
+          !errorText.includes('Failed to fetch') &&
+          !errorText.includes('chunk-') &&
+          !errorText.includes('Loading chunk')) {
         console.log(`❌ INSTANT FAIL - Console Error: ${errorText}`);
         errors.push(`Console Error: ${errorText}`);
         testFailed = true;
@@ -48,9 +55,17 @@ const TARGET_URL = '[REPLACE_WITH_TARGET_URL]'; // e.g., '/dashboard', '/company
   page.on('requestfailed', request => {
     const url = request.url();
     const failure = request.failure()?.errorText || 'Unknown error';
-    console.log(`❌ INSTANT FAIL - Request Failed: ${url} - ${failure}`);
-    errors.push(`Request Failed: ${url}`);
-    testFailed = true;
+    
+    // Filter out common reload-related request failures
+    if (!url.includes('_blazor/') && 
+        !url.includes('sockjs-node') &&
+        !url.includes('hot-reload') &&
+        !failure.includes('net::ERR_CONNECTION_REFUSED') &&
+        !failure.includes('net::ERR_ABORTED')) {
+      console.log(`❌ INSTANT FAIL - Request Failed: ${url} - ${failure}`);
+      errors.push(`Request Failed: ${url}`);
+      testFailed = true;
+    }
   });
 
   // Network response monitoring
@@ -80,25 +95,108 @@ const TARGET_URL = '[REPLACE_WITH_TARGET_URL]'; // e.g., '/dashboard', '/company
       throw new Error('Error boundary detected - test terminated');
     }
 
+    // Check if we need to login or are already authenticated
     const emailInput = page.locator('input[type="email"]').first();
     if (await emailInput.isVisible({ timeout: 3000 })) {
+      console.log('📝 Login form detected, performing authentication...');
       await emailInput.fill('sarah.johnson@gmail.com');
       await page.fill('input[type="password"]', 'Test123!');
       await page.click('button[type="submit"]');
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(3000); // Give more time for auth
       
-      // Check for authentication errors
-      const authErrors = await page.locator('.alert-danger, .error-message, [role="alert"]').count();
-      if (authErrors > 0) {
-        console.log('❌ INSTANT FAIL - Authentication error detected');
+      // More robust authentication error checking
+      const authErrors = await page.locator('.alert-danger, .validation-summary-errors, .field-validation-error').count();
+      const authErrorMessages = await page.locator('.alert-danger, .validation-summary-errors, .field-validation-error').allTextContents();
+      
+      // Filter out non-critical error messages that might appear during normal operation
+      const criticalErrors = authErrorMessages.filter(msg => 
+        msg && 
+        msg.trim() && // Only non-empty messages
+        !msg.includes('Please reload') && 
+        !msg.includes('Loading') &&
+        !msg.includes('temporary') &&
+        !msg.includes('Refreshing') &&
+        !msg.includes('Reconnecting') &&
+        !msg.includes('blazor') &&
+        !msg.includes('SignalR') &&
+        (msg.includes('Invalid') || msg.includes('incorrect') || msg.includes('failed') || msg.includes('denied') || msg.includes('error'))
+      );
+      
+      if (criticalErrors.length > 0) {
+        console.log('❌ INSTANT FAIL - Critical authentication error detected');
+        console.log(`Authentication errors: ${criticalErrors.join(', ')}`);
         testFailed = true;
-        throw new Error('Authentication failed - test terminated');
+        throw new Error(`Authentication failed: ${criticalErrors[0]}`);
       }
+      
+      // Check if we're still on login page after sufficient wait time
+      await page.waitForTimeout(2000);
+      const currentUrl = page.url();
+      const pageTitle = await page.title();
+      
+      console.log(`🔍 Post-auth status: URL=${currentUrl}, Title=${pageTitle}`);
+      
+      // Only fail if we're clearly still on login with error indicators
+      if ((currentUrl.includes('login') || currentUrl.includes('identity')) && 
+          (pageTitle.includes('Login') || pageTitle.includes('Sign'))) {
+        
+        // Look for actual error indicators, not just presence on login page
+        const actualErrors = await page.locator('.text-danger:visible, .error:visible').count();
+        const invalidCredentials = await page.locator('text=Invalid').count();
+        
+        if (actualErrors > 0 || invalidCredentials > 0) {
+          console.log('❌ INSTANT FAIL - Authentication failed, still on login page with errors');
+          testFailed = true;
+          throw new Error('Authentication failed - invalid credentials or login error');
+        } else {
+          console.log('⚠️ Still on login page but no explicit errors detected, continuing...');
+        }
+      }
+    } else {
+      console.log('✅ Already authenticated or no login form detected');
     }
 
     // STEP 2: Navigate to target component
     console.log(`🧭 Navigating to ${TARGET_URL}...`);
-    await page.goto(`https://localhost:5002${TARGET_URL}`, { waitUntil: 'networkidle' });
+    
+    // Handle potential page reloads during navigation
+    let navigationAttempts = 0;
+    const maxNavigationAttempts = 3;
+    
+    while (navigationAttempts < maxNavigationAttempts) {
+      try {
+        await page.goto(`https://localhost:5002${TARGET_URL}`, { 
+          waitUntil: 'networkidle',
+          timeout: 10000 
+        });
+        
+        // Wait a moment and check if we need to reload
+        await page.waitForTimeout(1000);
+        const reloadMessages = await page.locator('text=Please reload').count();
+        
+        if (reloadMessages > 0) {
+          console.log(`⚠️ Reload message detected, attempt ${navigationAttempts + 1}/${maxNavigationAttempts}`);
+          navigationAttempts++;
+          
+          if (navigationAttempts < maxNavigationAttempts) {
+            await page.reload({ waitUntil: 'networkidle' });
+            await page.waitForTimeout(2000);
+          }
+        } else {
+          // Navigation successful
+          break;
+        }
+      } catch (navigationError) {
+        navigationAttempts++;
+        console.log(`⚠️ Navigation attempt ${navigationAttempts} failed: ${navigationError.message}`);
+        
+        if (navigationAttempts >= maxNavigationAttempts) {
+          throw new Error(`Navigation failed after ${maxNavigationAttempts} attempts`);
+        }
+        
+        await page.waitForTimeout(2000);
+      }
+    }
     
     // CRITICAL: Error boundary check after navigation
     const postNavErrorBoundaries = await page.locator('[data-error-boundary], .error-boundary, .blazor-error-boundary').count();

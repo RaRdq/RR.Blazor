@@ -13,8 +13,7 @@ RR.Blazor is available under a dual licensing model to serve both the open-sourc
 - Individual developers
 - Non-profit organizations
 - Educational institutions
-- Government entities
-- Companies, partnerships, or organizations with gross annual revenue less than $5,000,000 USD
+- Companies, partnerships, or organizations with gross annual revenue less than $5,000,000 USD per last fiscal year
 
 ---
 

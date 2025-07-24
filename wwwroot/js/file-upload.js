@@ -388,59 +388,9 @@ export const RRFileUpload = {
     triggerFileSelect: function(inputId) {
         const fileInput = document.getElementById(inputId);
         if (fileInput) {
-            // Check if we're inside a modal that might block the file dialog
-            const modal = fileInput.closest('.modal, [role="dialog"]');
-            if (modal) {
-                // Create a temporary portal outside the modal for file selection
-                const portal = document.createElement('div');
-                portal.style.position = 'fixed';
-                portal.style.left = '-9999px';
-                portal.style.top = '-9999px';
-                portal.style.opacity = '0';
-                portal.style.pointerEvents = 'none';
-                portal.style.zIndex = 'var(--z-max)'; // Above all modals
-                
-                // Clone the file input with same properties
-                const clonedInput = document.createElement('input');
-                clonedInput.type = 'file';
-                clonedInput.accept = fileInput.accept;
-                clonedInput.multiple = fileInput.multiple;
-                clonedInput.disabled = fileInput.disabled;
-                
-                portal.appendChild(clonedInput);
-                document.body.appendChild(portal);
-                
-                // Set up change event handler to forward to original input
-                clonedInput.addEventListener('change', (e) => {
-                    if (e.target.files && e.target.files.length > 0) {
-                        // Create a new file change event for the original input
-                        const changeEvent = new Event('change', { bubbles: true });
-                        
-                        // Replace the original input's files property
-                        Object.defineProperty(fileInput, 'files', {
-                            value: e.target.files,
-                            writable: false
-                        });
-                        
-                        // Dispatch the event on the original input
-                        fileInput.dispatchEvent(changeEvent);
-                    }
-                    
-                    // Clean up the portal
-                    document.body.removeChild(portal);
-                });
-                
-                // Also clean up if dialog is cancelled (no files selected)
-                clonedInput.addEventListener('cancel', () => {
-                    document.body.removeChild(portal);
-                });
-                
-                // Trigger the file dialog on the cloned input
-                clonedInput.click();
-            } else {
-                // Normal case - not in a modal
-                fileInput.click();
-            }
+            // Simple approach - just click the file input directly
+            // The complex modal handling was causing double file dialogs
+            fileInput.click();
         }
     },
 

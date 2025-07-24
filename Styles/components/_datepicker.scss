@@ -21,16 +21,23 @@
     }
   }
   
-  &.small #{&}-input {
-    height: 2rem;
-    font-size: var(--text-sm);
-    padding: var(--space-2) var(--space-3);
+  // Size variants are now handled by trigger classes
+  &.small {
+    #{&}-trigger {
+      padding: var(--space-2) var(--space-3);
+      min-height: var(--space-10);
+      font-size: var(--text-sm);
+      border-radius: var(--radius-md);
+    }
   }
   
-  &.large #{&}-input {
-    height: 3rem;
-    font-size: var(--text-lg);
-    padding: var(--space-4) var(--space-5);
+  &.large {
+    #{&}-trigger {
+      padding: var(--space-5) var(--space-5);
+      min-height: var(--space-16);
+      font-size: var(--text-lg);
+      border-radius: var(--radius-xl);
+    }
   }
   
   &.open #{&}-popup {
@@ -40,26 +47,70 @@
   }
 
   &-trigger {
+    @include input-base-styles;
     position: relative;
     display: flex;
     align-items: center;
     width: 100%;
-    background: var(--color-surface-elevated);
-    border: var(--border-1) solid var(--color-border);
-    border-radius: var(--radius-lg);
     cursor: pointer;
-    transition: all var(--duration-fast) var(--ease-out);
     
+    // Modern hover effect matching input system
     &:hover:not(.disabled) {
-      border-color: var(--color-primary);
-      box-shadow: var(--shadow-sm);
+      transform: translateY(-1px);
+      box-shadow: 0 8px 25px -8px var(--overlay-light);
+      border-color: var(--color-border);
+      filter: brightness(1.02) saturate(1.05);
     }
     
+    // Modern focus state matching input system
     &:focus-within {
       border-color: var(--color-primary);
-      box-shadow: var(--focus-shadow);
-      outline: var(--border-2) solid var(--color-primary-light);
-      outline-offset: var(--border-1);
+      background: var(--color-surface-elevated);
+      @include focus-shadow(var(--color-primary), 15%);
+      transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    // Size variants matching input system
+    &.small {
+      padding: var(--space-2) var(--space-3);
+      min-height: var(--space-10);
+      font-size: var(--text-sm);
+      border-radius: var(--radius-md);
+    }
+    
+    &.large {
+      padding: var(--space-5) var(--space-5);
+      min-height: var(--space-16);
+      font-size: var(--text-lg);
+      border-radius: var(--radius-xl);
+    }
+    
+    // Error state matching input system
+    &.error {
+      border-color: var(--color-error);
+      border-width: 2px;
+      background: color-mix(in srgb, var(--color-error) 3%, var(--color-surface-elevated));
+      box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-error) 20%, transparent);
+      
+      &:focus-within {
+        border-color: var(--color-error);
+        @include focus-shadow(var(--color-error), 25%);
+        box-shadow: 
+          0 0 0 3px color-mix(in srgb, var(--color-error) 20%, transparent),
+          0 4px 12px color-mix(in srgb, var(--color-error) 15%, transparent);
+      }
+    }
+    
+    // Success state matching input system
+    &.success {
+      border-color: var(--color-success);
+      background: color-mix(in srgb, var(--color-success) 3%, var(--color-surface-elevated));
+      box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-success) 20%, transparent);
+      
+      &:focus-within {
+        border-color: var(--color-success);
+        @include focus-shadow(var(--color-success), 15%);
+      }
     }
   }
 
@@ -68,14 +119,16 @@
     background: transparent;
     border: none;
     outline: none;
-    padding: var(--space-3);
-    font-size: var(--text-sm);
+    padding: 0;
+    font-size: inherit;
     font-weight: var(--font-medium);
     color: var(--color-text);
     cursor: pointer;
+    line-height: inherit;
     
     &::placeholder {
       color: var(--color-text-muted);
+      font-weight: var(--font-normal);
     }
     
     &:disabled {
@@ -83,8 +136,9 @@
       color: var(--color-text-muted);
     }
     
+    // Remove input-specific styling since trigger handles all styling
     &.error {
-      color: var(--color-error);
+      color: inherit;
     }
   }
 
@@ -94,22 +148,39 @@
     justify-content: center;
     color: var(--color-text-muted);
     transition: color var(--duration-fast);
+    flex-shrink: 0;
     
     &-start {
-      margin-left: var(--space-3);
       margin-right: var(--space-2);
+      width: var(--space-6);
+      height: var(--space-6);
     }
     
     &-end {
       margin-left: var(--space-2);
-      margin-right: var(--space-3);
       cursor: pointer;
       padding: var(--space-1);
       border-radius: var(--radius-sm);
+      width: var(--space-6);
+      height: var(--space-6);
       
       &:hover {
         background: var(--color-surface-elevated);
         color: var(--color-primary);
+        transform: scale(1.05);
+      }
+      
+      // Size-specific icon sizing
+      .rr-datepicker.small & {
+        width: var(--space-5);
+        height: var(--space-5);
+        font-size: var(--text-sm);
+      }
+      
+      .rr-datepicker.large & {
+        width: var(--space-7);
+        height: var(--space-7);
+        font-size: var(--text-lg);
       }
     }
   }
@@ -117,13 +188,13 @@
   &-backdrop {
     position: fixed;
     inset: 0;
-    z-index: 9989;
+    z-index: var(--z-popup-backdrop);
     background: transparent;
   }
 
   &-popup {
-    position: relative;
-    z-index: 9990;
+    position: fixed;
+    z-index: var(--z-popup);
     background: var(--color-surface-elevated);
     border: var(--border-1) solid var(--color-border);
     border-radius: var(--radius-md);
@@ -577,3 +648,4 @@
     background: var(--color-canvas);
   }
 }
+

@@ -241,7 +241,7 @@ RAppShell includes a sophisticated, role-aware search system that transforms use
                      Variant="ButtonVariant.Ghost"
                      Size="ButtonSize.Small" />
         </RActionGroup>
-        <RDivider Orientation="DividerOrientation.Vertical" />
+        <RDivider />
     </HeaderRight>
     <QuickActions>
         <RDropdown>
@@ -404,7 +404,7 @@ Perfect location for context switchers and user controls:
 
 #### **4. User Profile in Sidebar Footer**
 ```razor
-<RAppShell ShowUserMenu="false">  <!-- Disable header user menu -->
+<RAppShell>  <!-- Disable header user menu -->
     <SidebarFooter>
         <div class="pa-4 border-t border-light">
             <div class="d-flex align-center gap-3 mb-3">
@@ -561,7 +561,7 @@ RAppShell uses semantic CSS variables for complete customization:
             
             <RCard Title="Analytics Overview" 
                    Class="elevation-4 glass-medium">
-                <RChart Type="ChartType.Line" Data="@analyticsData" />
+                <RChart Type="ChartType.Line" />
             </RCard>
         </div>
     </ChildContent>
