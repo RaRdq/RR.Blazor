@@ -45,8 +45,43 @@ public abstract class RChoiceBase : ComponentBase
 [AIOptimized(Prompt = "Create smart choice component that auto-detects inline vs dropdown")]
 public class RChoice : RChoiceBase
 {
+    private object _items;
+    
     [Parameter, AIParameter("Collection of items to choose between", "new[] { \"Option1\", \"Option2\" }")]
-    public object Items { get; set; }
+    public object Items 
+    { 
+        get => _items;
+        set
+        {
+            if (value == null)
+            {
+                _items = new List<object>();
+                return;
+            }
+            
+            // Handle Dictionary<TKey, TValue> by extracting values
+            if (value is IDictionary dictionary)
+            {
+                var values = new List<object>();
+                foreach (var dictValue in dictionary.Values)
+                {
+                    values.Add(dictValue);
+                }
+                _items = values;
+                return;
+            }
+            
+            // Handle IEnumerable
+            if (value is IEnumerable enumerable && !(value is string))
+            {
+                _items = value;
+                return;
+            }
+            
+            // Handle single item
+            _items = new[] { value };
+        }
+    }
     
     [Parameter, AIParameter("Currently selected value", "selectedOption")]
     public object SelectedValue { get; set; }
@@ -67,6 +102,11 @@ public class RChoice : RChoiceBase
     private Type _valueType;
     private bool _valueTypeResolved;
 
+    public RChoice()
+    {
+        _items = new List<object>();
+    }
+
     protected override void OnParametersSet()
     {
         if (!_valueTypeResolved)
@@ -78,9 +118,9 @@ public class RChoice : RChoiceBase
 
     protected override void BuildRenderTree(RenderTreeBuilder builder)
     {
-        if (Items == null) return;
+        var itemsToUse = Items ?? new List<object>();
         
-        var itemsCollection = Items as System.Collections.IEnumerable ?? new[] { Items };
+        var itemsCollection = itemsToUse as System.Collections.IEnumerable ?? new[] { itemsToUse };
         var itemsList = itemsCollection.Cast<object>().ToList();
         
         // Resolve value type if not already done
@@ -103,7 +143,10 @@ public class RChoice : RChoiceBase
         
         // Set computed variant and style
         builder.AddAttribute(1, "EffectiveVariant", effectiveVariant);
-        builder.AddAttribute(2, "Items", Items);
+        
+        // Convert items to the correct generic type for RChoiceGeneric
+        var convertedItems = ConvertItemsToGenericType(itemsToUse, _valueType);
+        builder.AddAttribute(2, "Items", convertedItems);
         builder.AddAttribute(3, "SelectedValue", SelectedValue);
         builder.AddAttribute(4, "Loading", Loading);
         
@@ -114,6 +157,76 @@ public class RChoice : RChoiceBase
         }
         
         builder.CloseComponent();
+    }
+    
+    private object ConvertItemsToGenericType(object items, Type valueType)
+    {
+        if (items == null)
+        {
+            // Create empty list of the correct generic type
+            var listType = typeof(List<>).MakeGenericType(valueType);
+            return Activator.CreateInstance(listType);
+        }
+        
+        if (items is System.Collections.IEnumerable enumerable)
+        {
+            // Convert to generic List<TValue>
+            var listType = typeof(List<>).MakeGenericType(valueType);
+            var list = Activator.CreateInstance(listType) as System.Collections.IList;
+            
+            foreach (var item in enumerable)
+            {
+                if (item != null && valueType.IsAssignableFrom(item.GetType()))
+                {
+                    list.Add(item);
+                }
+                else if (item != null)
+                {
+                    // Try to convert the item to the target type
+                    try
+                    {
+                        var convertedItem = Convert.ChangeType(item, valueType);
+                        list.Add(convertedItem);
+                    }
+                    catch
+                    {
+                        // If conversion fails, add as string representation
+                        if (valueType == typeof(string))
+                        {
+                            list.Add(item.ToString());
+                        }
+                    }
+                }
+            }
+            
+            return list;
+        }
+        
+        // Single item - wrap in generic list
+        var singleItemListType = typeof(List<>).MakeGenericType(valueType);
+        var singleItemList = Activator.CreateInstance(singleItemListType) as System.Collections.IList;
+        
+        if (items != null && valueType.IsAssignableFrom(items.GetType()))
+        {
+            singleItemList.Add(items);
+        }
+        else if (items != null)
+        {
+            try
+            {
+                var convertedItem = Convert.ChangeType(items, valueType);
+                singleItemList.Add(convertedItem);
+            }
+            catch
+            {
+                if (valueType == typeof(string))
+                {
+                    singleItemList.Add(items.ToString());
+                }
+            }
+        }
+        
+        return singleItemList;
     }
     
     private ChoiceVariant GetEffectiveVariant(List<object> items)
@@ -186,7 +299,8 @@ public class RChoice : RChoiceBase
         // Try to infer from Items collection
         if (Items != null)
         {
-            var enumerableType = Items.GetType();
+            var itemsToUse = Items;
+            var enumerableType = itemsToUse.GetType();
             
             // Check for generic IEnumerable<T>
             var genericInterface = enumerableType.GetInterfaces()
@@ -198,7 +312,7 @@ public class RChoice : RChoiceBase
             }
 
             // Fallback: check first item
-            if (Items is IEnumerable enumerable)
+            if (itemsToUse is IEnumerable enumerable)
             {
                 var firstItem = enumerable.Cast<object>().FirstOrDefault();
                 if (firstItem != null)

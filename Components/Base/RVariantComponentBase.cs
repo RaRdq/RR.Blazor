@@ -63,7 +63,7 @@ namespace RR.Blazor.Components.Base
         {
             var variantName = Variant.ToString();
             
-            return variantName?.ToLower() switch
+            return variantName.ToLower() switch
             {
                 "primary" => "bg-primary text-primary-foreground",
                 "secondary" => "bg-secondary text-secondary-foreground",
@@ -86,7 +86,7 @@ namespace RR.Blazor.Components.Base
         {
             var variantName = Variant.ToString();
             
-            return variantName?.ToLower() switch
+            return variantName.ToLower() switch
             {
                 "primary" => "border-primary",
                 "secondary" => "border-secondary",
@@ -107,7 +107,7 @@ namespace RR.Blazor.Components.Base
         {
             var variantName = Variant.ToString();
             
-            return variantName?.ToLower() switch
+            return variantName.ToLower() switch
             {
                 "primary" => "text-primary",
                 "secondary" => "text-secondary",
@@ -127,7 +127,7 @@ namespace RR.Blazor.Components.Base
         {
             var variantName = Variant.ToString();
             
-            return variantName?.ToLower() switch
+            return variantName.ToLower() switch
             {
                 "primary" => "hover:bg-primary/90",
                 "secondary" => "hover:bg-secondary/90",
@@ -213,7 +213,7 @@ namespace RR.Blazor.Components.Base
         protected bool IsDestructiveVariant()
         {
             var variantName = Variant.ToString();
-            return variantName?.ToLower() is "danger" or "error" or "destructive";
+            return variantName.ToLower() is "danger" or "error" or "destructive";
         }
         
         /// <summary>
@@ -222,7 +222,7 @@ namespace RR.Blazor.Components.Base
         protected bool IsSubtleVariant()
         {
             var variantName = Variant.ToString();
-            return variantName?.ToLower() is "ghost" or "link" or "muted" or "subtle";
+            return variantName.ToLower() is "ghost" or "link" or "muted" or "subtle";
         }
         
         #endregion

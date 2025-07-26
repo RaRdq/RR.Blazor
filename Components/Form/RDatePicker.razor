@@ -31,15 +31,15 @@
             <i class="rr-datepicker-icon rr-datepicker-icon-start material-symbols-rounded">@GetStartIcon()</i>
         }
         
-        <i class="rr-datepicker-icon rr-datepicker-icon-end material-symbols-rounded" @onclick="HandleEndIconClick" @onclick:stopPropagation="true">
+        <i class="rr-datepicker-icon rr-datepicker-icon-end material-symbols-rounded" @onclick="HandleEndIconClick">
             @GetEndIcon()
         </i>
     </div>
     
     @if (isOpen)
     {
-        <div class="rr-datepicker-backdrop" @onclick="CloseCalendar"></div>
-        <div class="rr-datepicker-popup" @onclick:stopPropagation="true">
+        <div class="rr-datepicker-popup" 
+             @onclick:stopPropagation="true">
             <div class="rr-datepicker-header">
                 <button type="button" class="rr-datepicker-nav" @onclick="PreviousMonth">
                     <i class="material-symbols-rounded">chevron_left</i>
@@ -143,6 +143,7 @@
     private ElementReference elementRef;
     private bool isOpen;
     private bool showYearPicker;
+    private bool isOpening;
     private DateTime currentViewDate = DateTime.Today;
     private int selectedHour;
     private int selectedMinute;
@@ -161,7 +162,7 @@
     [Parameter] public string Placeholder { get; set; }
     [Parameter] public string Format { get; set; }
     [Parameter] public FieldSize Size { get; set; } = FieldSize.Medium;
-    [Parameter] public string Icon { get; set; }
+    [Parameter] public string Icon { get; set; } = "calendar_today";
     [Parameter] public IconPosition IconPosition { get; set; } = IconPosition.Start;
     [Parameter] public string Class { get; set; }
     
@@ -208,6 +209,9 @@
             try
             {
                 jsModule = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./_content/RR.Blazor/js/datepicker.js");
+                
+                // Setup click-outside event listener
+                await jsModule.InvokeVoidAsync("setupDatepickerEvents", elementRef, DotNetObjectReference.Create(this));
             }
             catch
             {
@@ -232,6 +236,9 @@
 
     private async Task OpenCalendar()
     {
+        if (isOpening) return; // Prevent double-opening
+        
+        isOpening = true;
         isOpen = true;
         
         if (Range)
@@ -248,20 +255,48 @@
             try
             {
                 await Task.Yield();
-                await jsModule.InvokeVoidAsync("positionPopup", elementRef);
+                await jsModule.InvokeVoidAsync("positionPopup", elementRef, true);
             }
             catch
             {
                 // Positioning failed - popup will use CSS fallback
             }
         }
+        
+        // Delay to prevent immediate closure from the same click event
+        await Task.Delay(100);
+        isOpening = false;
+        StateHasChanged();
     }
 
     private async Task CloseCalendar()
     {
+        if (isOpening) return; // Don't close while opening
+        
         isOpen = false;
         showYearPicker = false;
+        isOpening = false;
+        
+        // Cleanup JavaScript click-outside handling
+        if (jsModule != null)
+        {
+            try
+            {
+                await jsModule.InvokeVoidAsync("cleanupDatepicker", elementRef);
+            }
+            catch
+            {
+                // Cleanup failed - ignore
+            }
+        }
+        
         StateHasChanged();
+    }
+    
+    [JSInvokable]
+    public async Task HandleClickOutside()
+    {
+        await CloseCalendar();
     }
 
     private async Task SelectDate(DateTime date)
@@ -385,21 +420,17 @@
         }
     }
 
+    private bool isClickingTrigger;
+    
     private async Task HandleFocus()
     {
-        if (!isOpen && !Disabled)
-        {
-            await OpenCalendar();
-        }
+        // Don't auto-open on focus to prevent conflicts with click
     }
 
     private async Task HandleBlur()
     {
-        await Task.Delay(150);
-        if (isOpen)
-        {
-            await CloseCalendar();
-        }
+        // Don't auto-close on blur to prevent conflicts with click
+        await Task.CompletedTask;
     }
 
     private async Task HandleEndIconClick()
@@ -439,8 +470,13 @@
     {
         if (!string.IsNullOrEmpty(Placeholder)) return Placeholder;
         
-        var format = Format ?? GetDefaultFormat();
-        return Range ? $"Select range ({format})" : $"Select date ({format})";
+        if (Range)
+            return "Select date range...";
+        
+        if (ShowTime)
+            return "Select date and time...";
+            
+        return "Select date...";
     }
 
     private string GetDefaultFormat()

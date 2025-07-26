@@ -30,14 +30,14 @@ namespace RR.Blazor.Components.Base
         /// </summary>
         [Parameter] 
         [AIParameter("ARIA label for accessibility")]
-        public string? AriaLabel { get; set; }
+        public string AriaLabel { get; set; }
         
         /// <summary>
         /// Tab index for keyboard navigation
         /// </summary>
         [Parameter] 
         [AIParameter("Tab index for keyboard navigation")]
-        public int? TabIndex { get; set; }
+        public int TabIndex { get; set; }
         
         #endregion
         
@@ -107,8 +107,8 @@ namespace RR.Blazor.Components.Base
             if (!string.IsNullOrEmpty(AriaLabel))
                 attributes["aria-label"] = AriaLabel;
                 
-            if (TabIndex.HasValue)
-                attributes["tabindex"] = TabIndex.Value;
+            if (TabIndex != 0)
+                attributes["tabindex"] = TabIndex;
                 
             if (Disabled)
                 attributes["aria-disabled"] = "true";

@@ -1,6 +1,7 @@
 // Upload Components
-// File upload UI patterns for forms and workflows
+// Modern file upload UI patterns with preview system and smart drag handling
 @use '../abstracts' as *;
+
 
 // Upload progress bar fill support - data attribute based
 .upload-progress-bar-fill {
@@ -66,10 +67,12 @@
       background: var(--color-surface);
       cursor: pointer;
       
+      // Use existing RR.Blazor hover animations
+      @include hover-lift();
+      
       &:hover {
         border-color: var(--color-primary);
         background: var(--color-surface-elevated);
-        transform: translateY(-2px);
       }
       
       &-input {
@@ -183,6 +186,13 @@
           border-color: var(--color-border);
           background: var(--color-surface);
           transform: none;
+        }
+      }
+      
+      // Drag over states for smart overlay
+      &-dragover {
+        .upload-drag-overlay {
+          display: flex !important;
         }
       }
       
@@ -471,7 +481,303 @@
   // File preview and display patterns
   & {
     
-    // File preview card
+    // File preview grid container for multiple files
+    &-preview-grid {
+      display: grid;
+      gap: var(--space-4);
+      margin-top: var(--space-4);
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      
+      // Single file mode - full width card  
+      &.single-file {
+        grid-template-columns: 1fr;
+        max-width: 100%;
+      }
+      
+      // Modal responsive adjustments
+      @media (max-width: 768px) {
+        grid-template-columns: 1fr;
+        gap: var(--space-3);
+      }
+      
+      // For smaller modal widths, use smaller min card size
+      @media (max-width: 600px) {
+        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      }
+    }
+    
+    // Individual file preview card
+    &-preview-card {
+      @extend %card-base-enhanced;
+      @extend %focus-management-base;
+      overflow: hidden;
+      position: relative;
+      
+      // Animation on appearance
+      animation: slideUpSmooth var(--duration-normal) var(--ease-out) backwards;
+    }
+    
+    // File preview content container
+    &-preview-content {
+      @extend %flex-column;
+      padding: var(--space-4);
+      flex: 1;
+    }
+    
+    // Thumbnail container for images
+    &-preview-thumbnail {
+      position: relative;
+      width: 100%;
+      height: 120px;
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      margin-bottom: var(--space-3);
+      
+      &-image {
+        @extend %img-cover;
+      }
+      
+      &-overlay {
+        @include absolute-fill;
+        background: color-mix(in srgb, var(--color-background) 80%, transparent);
+        @extend %flex-center;
+        opacity: 0;
+        transition: var(--transition-normal);
+        
+        & i {
+          @extend %icon-container-md;
+          background: none;
+          color: var(--color-primary);
+        }
+      }
+      
+      &:hover &-overlay {
+        opacity: 1;
+      }
+    }
+    
+    // Icon container for non-image files
+    &-preview-icon-container {
+      @extend %flex-center;
+      height: 80px;
+      margin-bottom: var(--space-3);
+      
+      & i {
+        @extend %icon-container-lg;
+        background: none;
+        color: var(--color-primary);
+      }
+    }
+    
+    // File details section
+    &-preview-details {
+      @extend %flex-column;
+      gap: var(--space-1);
+      margin-bottom: var(--space-3);
+    }
+    
+    // File name styling
+    &-preview-name {
+      @extend %text-wrap;
+      color: var(--color-text);
+      font-weight: var(--font-medium);
+      font-size: var(--text-base);
+      margin: 0;
+      line-height: 1.3;
+    }
+    
+    // File size styling
+    &-preview-size {
+      color: var(--color-text-muted);
+      font-size: var(--text-sm);
+      margin: 0;
+    }
+    
+    // Error message styling
+    &-preview-error {
+      color: var(--color-error);
+      font-size: var(--text-sm);
+      margin: 0;
+      font-weight: var(--font-medium);
+    }
+    
+    // Actions section positioned at top-right of card
+    &-preview-actions {
+      position: absolute;
+      top: var(--space-2);
+      right: var(--space-2);
+      display: flex;
+      gap: var(--space-1);
+      z-index: 2;
+      opacity: 1; // Always visible as requested by user
+      transition: var(--transition-normal);
+      
+      // Enhanced visibility on hover
+      .file-preview-card:hover & {
+        opacity: 1;
+        transform: scale(1.05);
+      }
+      
+      // Always show if card is focused
+      .file-preview-card:focus-within & {
+        opacity: 1;
+      }
+    }
+    
+    // Individual action button
+    &-action-btn {
+      @extend %icon-button;
+      width: var(--space-8);
+      height: var(--space-8);
+      background: var(--color-surface-elevated);
+      border: var(--border-1) solid var(--color-border);
+      border-radius: var(--radius-lg);
+      backdrop-filter: blur(8px);
+      
+      &:hover {
+        background: var(--color-surface);
+        transform: scale(1.1);
+      }
+      
+      &.danger {
+        &:hover {
+          background: var(--color-error-bg);
+          border-color: var(--color-error);
+          color: var(--color-error);
+        }
+      }
+      
+      & i {
+        font-size: var(--text-sm);
+      }
+    }
+    
+    // Status area at bottom of card (separated from actions)
+    &-status-area {
+      padding: var(--space-3) var(--space-4);
+      background: var(--color-surface);
+      border-top: var(--border-1) solid var(--color-border);
+      border-bottom-left-radius: var(--radius-lg);
+      border-bottom-right-radius: var(--radius-lg);
+    }
+    
+    // Status indicators
+    &-preview-status {
+      @extend %flex-center;
+      
+      & i {
+        @extend %status-indicator-base;
+        background: none;
+        border: none;
+        
+        &.file-status-success {
+          color: var(--color-success);
+        }
+        
+        &.file-status-error {
+          color: var(--color-error);
+        }
+        
+        &.file-status-pending {
+          color: var(--color-text-muted);
+        }
+      }
+    }
+    
+    // Add more files card
+    &-add-more-card {
+      @extend %flex-center;
+      min-height: 200px;
+      border: 2px dashed var(--color-border);
+      border-radius: var(--radius-lg);
+      background: var(--color-surface);
+      cursor: pointer;
+      @include touch-interaction(default);
+      
+      &:hover {
+        border-color: var(--color-primary);
+        background: var(--color-surface-elevated);
+      }
+      
+      & label {
+        @extend %flex-column;
+        align-items: center;
+        gap: var(--space-2);
+        cursor: pointer;
+        text-align: center;
+        padding: var(--space-4);
+        
+        & i {
+          @extend %icon-container-md;
+          background: none;
+          color: var(--color-primary);
+        }
+        
+        & span {
+          color: var(--color-text);
+          font-weight: var(--font-medium);
+          font-size: var(--text-base);
+        }
+        
+        & small {
+          color: var(--color-text-muted);
+          font-size: var(--text-sm);
+        }
+      }
+    }
+    
+    // Replace file section for single file mode
+    &-replace-section {
+      margin-top: var(--space-4);
+      @extend %flex-center;
+      
+      & label {
+        @extend %button-base;
+        @include button-variant(var(--color-surface-elevated), var(--color-text), var(--color-border));
+        font-weight: var(--font-medium);
+        
+        & i {
+          font-size: var(--text-lg);
+        }
+      }
+    }
+    
+    // Remove button styling
+    .file-remove-btn {
+      opacity: 0.7;
+      transition: var(--transition-normal);
+      
+      &:hover {
+        opacity: 1;
+        background: var(--color-error-bg);
+        color: var(--color-error);
+      }
+    }
+    
+    // Progress bar in file cards
+    .file-upload-progress {
+      @extend %flex-column;
+      gap: var(--space-1);
+      width: 100%;
+      
+      .upload-progress-bar {
+        width: 100%;
+        height: var(--space-2);
+        background: var(--color-surface);
+        border-radius: var(--radius-full);
+        overflow: hidden;
+        border: var(--border-1) solid var(--color-border);
+      }
+      
+      .upload-progress-text {
+        color: var(--color-text-muted);
+        font-size: var(--text-sm);
+        text-align: center;
+        font-weight: var(--font-medium);
+      }
+    }
+
+    // File preview card (legacy - for non-grid layouts)
     &-preview {
       @include flex-between;
       align-items: center;

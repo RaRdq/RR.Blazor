@@ -4,14 +4,54 @@
     <!-- Enable component registry generation by default -->
     <GenerateComponentRegistry Condition="'$(GenerateComponentRegistry)' == ''">true</GenerateComponentRegistry>
     <ComponentRegistryOutputPath Condition="'$(ComponentRegistryOutputPath)' == ''">$(OutputPath)wwwroot/rr-ai-components.json</ComponentRegistryOutputPath>
-    <!-- Enable component validation by default -->
+    <!-- Auto-detect RR.Blazor usage and enable validation by default -->
+    <AutoDetectRRBlazorUsage Condition="'$(AutoDetectRRBlazorUsage)' == ''">true</AutoDetectRRBlazorUsage>
     <ValidateRRBlazorUsage Condition="'$(ValidateRRBlazorUsage)' == ''">false</ValidateRRBlazorUsage>
     <RRBlazorAnalyzersEnabled Condition="'$(RRBlazorAnalyzersEnabled)' == ''">false</RRBlazorAnalyzersEnabled>
   </PropertyGroup>
 
+  <!-- Auto-detect AddRRBlazor usage and enable validation -->
+  <Target Name="DetectRRBlazorUsage" 
+          BeforeTargets="GenerateRRBlazorComponentRegistry"
+          Condition="'$(AutoDetectRRBlazorUsage)' == 'true'">
+    
+    <PropertyGroup>
+      <_DetectionScript>$(MSBuildThisFileDirectory)Scripts\DetectRRBlazorUsage.ps1</_DetectionScript>
+    </PropertyGroup>
+    
+    <!-- Run detection script -->
+    <Exec Command="pwsh -ExecutionPolicy Bypass &quot;$(_DetectionScript)&quot; -ProjectPath &quot;$(MSBuildProjectDirectory)&quot; -OutputFormat msbuild"
+          Condition="Exists('$(_DetectionScript)')"
+          ContinueOnError="true"
+          ExitCode="$(_DetectionExitCode)"
+          ConsoleToMSBuild="true"
+          StandardOutputImportance="normal" />
+    
+    <!-- Auto-enable validation based on detection results -->
+    <PropertyGroup Condition="'$(_DetectionExitCode)' == '1' AND '$(ValidateRRBlazorUsage)' == 'false'">
+      <ValidateRRBlazorUsage>true</ValidateRRBlazorUsage>
+      <_AutoEnabledValidation>true</_AutoEnabledValidation>
+    </PropertyGroup>
+    
+    <!-- Respect DisableValidation() call -->
+    <PropertyGroup Condition="'$(_DetectionExitCode)' == '2'">
+      <ValidateRRBlazorUsage>false</ValidateRRBlazorUsage>
+      <_ValidationExplicitlyDisabled>true</_ValidationExplicitlyDisabled>
+    </PropertyGroup>
+    
+    <Message Text="🔍 RR.Blazor usage detected - validation enabled automatically" 
+             Importance="high" 
+             Condition="'$(_AutoEnabledValidation)' == 'true'" />
+             
+    <Message Text="🚫 RR.Blazor validation explicitly disabled via DisableValidation()" 
+             Importance="normal" 
+             Condition="'$(_ValidationExplicitlyDisabled)' == 'true'" />
+  </Target>
+
   <Target Name="GenerateRRBlazorComponentRegistry" 
           BeforeTargets="Build" 
-          Condition="'$(GenerateComponentRegistry)' == 'true'">
+          Condition="'$(GenerateComponentRegistry)' == 'true'"
+          DependsOnTargets="DetectRRBlazorUsage">
     
     <PropertyGroup>
       <_RRBlazorOutputDir>$(ComponentRegistryOutputPath.Substring(0, $(ComponentRegistryOutputPath.LastIndexOf('/'))))</_RRBlazorOutputDir>
@@ -64,23 +104,37 @@
           Condition="'$(ValidateRRBlazorUsage)' == 'true' AND '$(DesignTimeBuild)' != 'true'">
     
     <PropertyGroup>
-      <_ValidationScript>$(MSBuildThisFileDirectory)Scripts\ValidateComponentUsage.ps1</_ValidationScript>
+      <_ComponentValidationScript>$(MSBuildThisFileDirectory)Scripts\ValidateComponentUsage.ps1</_ComponentValidationScript>
+      <_ClassValidationScript>$(MSBuildThisFileDirectory)Scripts\ValidateClassUsage.ps1</_ClassValidationScript>
       <_SolutionPath>$([MSBuild]::GetDirectoryNameOfFileAbove($(MSBuildProjectDirectory), '*.sln'))\*.sln</_SolutionPath>
       <_AIDocsPath>$(MSBuildThisFileDirectory)wwwroot\rr-ai-docs.json</_AIDocsPath>
     </PropertyGroup>
 
     <Message Text="🔍 Validating RR.Blazor component usage..." Importance="high" />
     
-    <!-- Run validation script -->
-    <Exec Command="pwsh -ExecutionPolicy Bypass &quot;$(_ValidationScript)&quot; -SolutionPath &quot;$(_SolutionPath)&quot; -AIDocsPath &quot;$(_AIDocsPath)&quot; -OutputFormat msbuild"
-          Condition="Exists('$(_ValidationScript)') AND Exists('$(_AIDocsPath)')"
+    <!-- Run component validation script -->
+    <Exec Command="pwsh -ExecutionPolicy Bypass &quot;$(_ComponentValidationScript)&quot; -SolutionPath &quot;$(_SolutionPath)&quot; -AIDocsPath &quot;$(_AIDocsPath)&quot; -OutputFormat msbuild"
+          Condition="Exists('$(_ComponentValidationScript)') AND Exists('$(_AIDocsPath)')"
+          ContinueOnError="false"
+          ConsoleToMSBuild="true"
+          StandardOutputImportance="high"
+          StandardErrorImportance="high" />
+
+    <Message Text="🎨 Validating RR.Blazor CSS class usage..." Importance="high" />
+    
+    <!-- Run CSS class validation script -->
+    <Exec Command="pwsh -ExecutionPolicy Bypass &quot;$(_ClassValidationScript)&quot;"
+          Condition="Exists('$(_ClassValidationScript)')"
           ContinueOnError="false"
           ConsoleToMSBuild="true"
           StandardOutputImportance="high"
           StandardErrorImportance="high" />
           
-    <Warning Text="⚠️ RR.Blazor validation script not found. Run validation manually with: pwsh ValidateComponentUsage.ps1" 
-             Condition="!Exists('$(_ValidationScript)')" />
+    <Warning Text="⚠️ RR.Blazor component validation script not found. Run validation manually with: pwsh ValidateComponentUsage.ps1" 
+             Condition="!Exists('$(_ComponentValidationScript)')" />
+             
+    <Warning Text="⚠️ RR.Blazor CSS class validation script not found. Run validation manually with: pwsh ValidateClassUsage.ps1" 
+             Condition="!Exists('$(_ClassValidationScript)')" />
   </Target>
 
 </Project>

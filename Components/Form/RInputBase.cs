@@ -15,19 +15,19 @@ namespace RR.Blazor.Components.Form
         
         [Parameter]
         [AIParameter("Field label", Example = "\"Email Address\"")]
-        public string? Label { get; set; }
+        public string Label { get; set; } = "";
         
         [Parameter]
         [AIParameter("Placeholder text", Example = "\"Enter your email...\"")]
-        public string? Placeholder { get; set; }
+        public string Placeholder { get; set; } = "";
         
         [Parameter]
         [AIParameter("Help text displayed below the input", Example = "\"We'll never share your email\"")]
-        public string? HelpText { get; set; }
+        public string HelpText { get; set; } = "";
         
         [Parameter]
         [AIParameter("Field name for form submission", Example = "\"email\"")]
-        public string? FieldName { get; set; }
+        public string FieldName { get; set; } = "";
         
         [Parameter]
         [AIParameter("Whether the field is required")]
@@ -56,11 +56,11 @@ namespace RR.Blazor.Components.Form
         
         [Parameter]
         [AIParameter("Start icon name", Example = "\"search\"")]
-        public string? StartIcon { get; set; }
+        public string StartIcon { get; set; } = "";
         
         [Parameter]
         [AIParameter("End icon name", Example = "\"visibility\"")]
-        public string? EndIcon { get; set; }
+        public string EndIcon { get; set; } = "";
         
         
         #endregion
@@ -73,7 +73,7 @@ namespace RR.Blazor.Components.Form
         
         [Parameter]
         [AIParameter("Error message to display")]
-        public string? ErrorMessage { get; set; }
+        public string ErrorMessage { get; set; } = "";
         
         [Parameter]
         [AIParameter("Maximum character length")]
@@ -210,7 +210,7 @@ namespace RR.Blazor.Components.Form
         /// <summary>
         /// Handle focus event with immediate mode support
         /// </summary>
-        protected async Task HandleFocus(FocusEventArgs e)
+        protected virtual async Task HandleFocus(FocusEventArgs e)
         {
             await HandleFocusEvent(e, OnFocus);
         }
@@ -218,7 +218,7 @@ namespace RR.Blazor.Components.Form
         /// <summary>
         /// Handle blur event with immediate mode support
         /// </summary>
-        protected async Task HandleBlur(FocusEventArgs e)
+        protected virtual async Task HandleBlur(FocusEventArgs e)
         {
             await HandleBlurEvent(e, OnBlur);
         }

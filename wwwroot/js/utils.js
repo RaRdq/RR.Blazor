@@ -94,14 +94,20 @@ export function setupOutsideClickHandler(containerId, callback) {
         return;
     }
 
+    // Use passive event listening for better performance
     const outsideClickHandler = function(event) {
         if (!container.contains(event.target)) {
-            callback();
+            // Light debouncing only for rapid successive clicks (within 50ms)
+            const now = Date.now();
+            if (!outsideClickHandler._lastClick || now - outsideClickHandler._lastClick > 50) {
+                outsideClickHandler._lastClick = now;
+                callback();
+            }
         }
     };
 
     container._outsideClickHandler = outsideClickHandler;
-    document.addEventListener('click', outsideClickHandler);
+    document.addEventListener('click', outsideClickHandler, { passive: true });
     
     if (window.debugLogger) {
         window.debugLogger.log('Outside click handler attached for:', containerId);
@@ -120,18 +126,34 @@ export function removeOutsideClickHandler(containerId) {
     }
 }
 
-export function addEventListener(elementId, eventName, dotNetRef, methodName) {
+export function addEventListener(elementId, eventName, dotNetRef, methodName, options = {}) {
     const element = document.getElementById(elementId);
     if (!element || !dotNetRef) return;
+
+    // Optimize for common non-blocking events
+    const passiveEvents = ['scroll', 'wheel', 'touchstart', 'touchmove', 'touchend'];
+    const eventOptions = {
+        passive: passiveEvents.includes(eventName),
+        ...options
+    };
 
     const handler = function(e) {
         try {
             if (dotNetRef && typeof dotNetRef.invokeMethodAsync === 'function') {
-                dotNetRef.invokeMethodAsync(methodName, e.detail).catch(err => {
-                    if (!err.message?.includes('disposed')) {
-                        console.error('JSInterop error:', err);
-                    }
-                });
+                // Use requestIdleCallback for non-critical events to improve performance
+                const invoke = () => {
+                    dotNetRef.invokeMethodAsync(methodName, e.detail).catch(err => {
+                        if (!err.message?.includes('disposed')) {
+                            console.error('JSInterop error:', err);
+                        }
+                    });
+                };
+
+                if (window.requestIdleCallback && !['click', 'keydown', 'keyup'].includes(eventName)) {
+                    requestIdleCallback(invoke, { timeout: 100 });
+                } else {
+                    invoke();
+                }
             }
         } catch (error) {
             if (!error.message?.includes('disposed')) {
@@ -140,13 +162,13 @@ export function addEventListener(elementId, eventName, dotNetRef, methodName) {
         }
     };
 
-    element.addEventListener(eventName, handler);
+    element.addEventListener(eventName, handler, eventOptions);
     
     if (!element._rrEventCleanups) {
         element._rrEventCleanups = [];
     }
     element._rrEventCleanups.push(() => {
-        element.removeEventListener(eventName, handler);
+        element.removeEventListener(eventName, handler, eventOptions);
     });
 }
 

@@ -18,7 +18,7 @@ namespace RR.Blazor.Components.Form
     {
         [Parameter]
         [AIParameter("Input value of any supported type", Example = "\"Hello World\" or 42 or DateTime.Now")]
-        public object? Value { get; set; }
+        public object Value { get; set; }
         
         [Parameter]
         [AIParameter("Value changed callback")]
@@ -26,7 +26,7 @@ namespace RR.Blazor.Components.Form
         
         [Parameter]
         [AIParameter("Explicit field type override", Example = "FieldType.Email")]
-        public FieldType? InputType { get; set; }
+        public FieldType InputType { get; set; }
         
         [Parameter]
         [AIParameter("Enable automatic type conversion")]
@@ -96,7 +96,7 @@ namespace RR.Blazor.Components.Form
             builder.CloseComponent();
         }
         
-        private T? ConvertValue<T>(object? value)
+        private T ConvertValue<T>(object value)
         {
             if (value == null) return default(T);
             
@@ -117,7 +117,7 @@ namespace RR.Blazor.Components.Form
             }
         }
         
-        private async Task OnTypedValueChanged<T>(T? newValue)
+        private async Task OnTypedValueChanged<T>(T newValue)
         {
             Value = newValue;
             await ValueChanged.InvokeAsync(Value);
@@ -127,7 +127,7 @@ namespace RR.Blazor.Components.Form
         {
             var seq = startSequence;
             
-            if (InputType.HasValue) builder.AddAttribute(seq++, "InputType", InputType.Value);
+            if (InputType != FieldType.Text) builder.AddAttribute(seq++, "InputType", InputType);
             if (!string.IsNullOrEmpty(Label)) builder.AddAttribute(seq++, "Label", Label);
             if (!string.IsNullOrEmpty(Placeholder)) builder.AddAttribute(seq++, "Placeholder", Placeholder);
             if (!string.IsNullOrEmpty(HelpText)) builder.AddAttribute(seq++, "HelpText", HelpText);

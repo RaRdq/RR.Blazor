@@ -1,5 +1,6 @@
 // RR.Blazor Tooltip Component
 @use '../abstracts' as *;
+@use 'sass:map';
 
 // Tooltip base
 .tooltip {
@@ -8,13 +9,14 @@
   
   // Tooltip content
   &-content {
-    position: absolute;
+    position: fixed;
     background: var(--color-surface-elevated);
     color: var(--color-text);
-    padding: var(--space-2) var(--space-3);
+    padding: var(--space-3) var(--space-4);
     border-radius: var(--radius-md);
     font-size: var(--text-xs);
     font-weight: var(--font-medium);
+    line-height: 1.4;
     white-space: nowrap;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
     border: var(--border-1) solid var(--color-border);
@@ -24,9 +26,8 @@
     transition: all var(--duration-fast) var(--ease-out);
     pointer-events: none;
     
-    // Arrow
-    &::before {
-      content: '';
+    // Arrow using dedicated element
+    .tooltip-arrow {
       position: absolute;
       width: 8px;
       height: 8px;
@@ -42,59 +43,24 @@
     visibility: visible;
   }
   
-  // Semantic color variants
-  &-primary &-content {
-    background: var(--color-primary);
-    color: var(--color-text-inverse);
-    border-color: var(--color-primary);
-    
-    &::before {
-      background: var(--color-primary);
-      border-color: var(--color-primary);
-    }
-  }
-  
-  &-success &-content {
-    background: var(--color-success);
-    color: var(--color-text-inverse);
-    border-color: var(--color-success);
-    
-    &::before {
-      background: var(--color-success);
-      border-color: var(--color-success);
-    }
-  }
-  
-  &-warning &-content {
-    background: var(--color-warning);
-    color: var(--color-text-inverse);
-    border-color: var(--color-warning);
-    
-    &::before {
-      background: var(--color-warning);
-      border-color: var(--color-warning);
-    }
-  }
-  
-  &-error &-content {
-    background: var(--color-error);
-    color: var(--color-text-inverse);
-    border-color: var(--color-error);
-    
-    &::before {
-      background: var(--color-error);
-      border-color: var(--color-error);
-    }
-  }
-  
-  &-info &-content {
-    background: var(--color-info);
-    color: var(--color-text-inverse);
-    border-color: var(--color-info);
-    
-    &::before {
-      background: var(--color-info);
-      border-color: var(--color-info);
+  // Semantic color variants using maps
+  @each $variant, $color in (
+    primary: var(--color-primary),
+    success: var(--color-success),
+    warning: var(--color-warning),
+    error: var(--color-error),
+    info: var(--color-info),
+    neutral: var(--color-text-muted)
+  ) {
+    &-#{$variant} &-content {
+      background: #{$color};
+      color: var(--color-text-inverse);
+      border-color: #{$color};
+      
+      .tooltip-arrow {
+        background: #{$color};
+        border-color: #{$color};
+      }
     }
   }
   
@@ -104,81 +70,43 @@
     border: var(--border-2) dashed var(--color-border);
     backdrop-filter: blur(8px);
     
-    &::before {
+    .tooltip-arrow {
       background: transparent;
       border-color: var(--color-border);
     }
   }
   
-  &-neutral &-content {
-    background: var(--color-text-muted);
-    color: var(--color-text-inverse);
-    border-color: var(--color-text-muted);
-    
-    &::before {
-      background: var(--color-text-muted);
-      border-color: var(--color-text-muted);
-    }
-  }
-  
-  // Position variants
-  &-top &-content {
-    bottom: 100%;
-    left: 50%;
-    transform: translateX(-50%) translateY(-8px);
-    margin-bottom: 8px;
-    
-    &::before {
-      top: 100%;
-      left: 50%;
-      transform: translateX(-50%) rotate(45deg);
-      border-top: none;
-      border-left: none;
-    }
-  }
-  
-  &-bottom &-content {
-    top: 100%;
-    left: 50%;
-    transform: translateX(-50%) translateY(8px);
-    margin-top: 8px;
-    
-    &::before {
-      bottom: 100%;
-      left: 50%;
-      transform: translateX(-50%) rotate(45deg);
-      border-bottom: none;
-      border-right: none;
-    }
-  }
-  
-  &-left &-content {
-    right: 100%;
-    top: 50%;
-    transform: translateY(-50%) translateX(-8px);
-    margin-right: 8px;
-    
-    &::before {
-      left: 100%;
-      top: 50%;
-      transform: translateY(-50%) rotate(45deg);
-      border-left: none;
-      border-bottom: none;
-    }
-  }
-  
-  &-right &-content {
-    left: 100%;
-    top: 50%;
-    transform: translateY(-50%) translateX(8px);
-    margin-left: 8px;
-    
-    &::before {
-      right: 100%;
-      top: 50%;
-      transform: translateY(-50%) rotate(45deg);
-      border-right: none;
-      border-top: none;
+  // Position variants using maps
+  @each $position, $props in (
+    top: (translate: translateX(-50%) translateY(-8px), margin: margin-bottom, 
+          arrow-pos: (top: calc(100% - 4px), left: 50%), arrow-borders: (border-top: none, border-left: none)),
+    bottom: (translate: translateX(-50%) translateY(8px), margin: margin-top,
+             arrow-pos: (bottom: calc(100% - 4px), left: 50%), arrow-borders: (border-bottom: none, border-right: none)),
+    left: (translate: translateY(-50%) translateX(-8px), margin: margin-right,
+           arrow-pos: (left: calc(100% - 4px), top: 50%), arrow-borders: (border-left: none, border-bottom: none)),
+    right: (translate: translateY(-50%) translateX(8px), margin: margin-left,
+            arrow-pos: (right: calc(100% - 4px), top: 50%), arrow-borders: (border-right: none, border-top: none))
+  ) {
+    &-#{$position} &-content {
+      @if $position == top { bottom: 100%; left: 50%; }
+      @if $position == bottom { top: 100%; left: 50%; }
+      @if $position == left { right: 100%; top: 50%; }
+      @if $position == right { left: 100%; top: 50%; }
+      
+      transform: map.get($props, translate);
+      #{map.get($props, margin)}: 8px;
+      
+      .tooltip-arrow {
+        transform: translateX(-50%) rotate(45deg);
+        @if $position == left or $position == right { transform: translateY(-50%) rotate(45deg); }
+        
+        @each $property, $value in map.get($props, arrow-pos) {
+          #{$property}: #{$value};
+        }
+        @each $property, $value in map.get($props, arrow-borders) {
+          #{$property}: #{$value};
+        }
+      }
     }
   }
   
@@ -188,7 +116,7 @@
     color: var(--color-canvas);
     border-color: var(--color-text);
     
-    &::before {
+    .tooltip-arrow {
       background: var(--color-text);
       border-color: var(--color-text);
     }
@@ -196,9 +124,10 @@
   
   // Large variant
   &-large &-content {
-    padding: var(--space-3) var(--space-4);
+    padding: var(--space-4) var(--space-5);
     font-size: var(--text-sm);
+    line-height: 1.5;
     white-space: normal;
-    max-width: 20rem;
+    max-width: 24rem;
   }
 }

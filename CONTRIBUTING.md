@@ -134,10 +134,68 @@ Always check these before modifying:
 - [ ] Debug output included in PR/commit description
 
 ### For Human Developers
-1. Fork and clone the repository
+
+**Option 1: Direct Repository Access** (for core maintainers)
+1. Clone the repository directly
 2. Create feature branch: `feature/component-name`
 3. Follow AI agent checklist above
 4. Submit PR with clear description
+
+**Option 2: Fork-Based Development** (recommended for external contributors)
+1. Fork the repository to your GitHub account
+2. Clone your fork: `git clone https://github.com/YOUR-USERNAME/RR.Blazor.git`
+3. Create feature branch: `feature/component-name`
+4. Follow AI agent checklist above
+5. Push to your fork and submit PR with clear description
+
+## Pull Request Requirements
+
+### PR Policy
+- **All new features and fixes must be developed via Pull Requests**
+- No direct commits to main/master branch (except for RaRdq and his monkey)
+- PRs must pass all automated checks before merge
+- All PRs are **squashed on merge** to maintain clean commit history
+
+### PR Template Requirements
+When creating a PR, include:
+
+1. **Clear Description**: What does this PR accomplish?
+2. **QA Debug Output**: Include `window.RRDebug.analyze()` results for UI changes
+3. **Testing Evidence**: Screenshots, test results, or debug reports
+4. **Breaking Changes**: List any breaking changes and migration steps
+5. **Component Impact**: List which components are affected
+
+### Example PR Description
+```markdown
+## Summary
+Adds new RNotificationPanel component with toast notifications
+
+## QA Debug Output
+- Page Health Score: 92%
+- Component Health: 95%
+- WCAG 2.1 AA: ✅ Compliant
+- Responsive Design: ✅ All breakpoints tested
+
+## Testing
+- [ ] Unit tests passing
+- [ ] Manual testing on mobile/desktop
+- [ ] Accessibility compliance verified
+- [ ] Performance impact assessed
+
+## Breaking Changes
+None
+
+## Component Impact
+- New: RNotificationPanel
+- Updated: RToast (enhanced with panel integration)
+```
+
+### Merge Process
+1. PR submitted with all requirements met
+2. Automated checks must pass (tests, build, QA validation)
+3. Code review by maintainer
+4. **Squash and merge** - All commits in PR are squashed into single commit
+5. Feature branch automatically deleted after merge
 
 ## Testing Requirements
 

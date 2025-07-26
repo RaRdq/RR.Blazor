@@ -1,0 +1,360 @@
+@**
+<summary>Professional tooltip component with rich content support for links, buttons, and other R components</summary>
+<category>Feedback</category>
+<complexity>Simple</complexity>
+<ai-prompt>Create a tooltip component with rich content and positioning support</ai-prompt>
+<ai-common-use>help text, action hints, form validation, feature explanations</ai-common-use>
+<ai-avoid>Don't use for critical information that must always be visible</ai-avoid>
+<ai-pattern name="simple-tooltip">Text="Hover me" Content="Basic tooltip text"</ai-pattern>
+<ai-pattern name="rich-content">ContentFragment with HTML content and action links</ai-pattern>
+<ai-pattern name="positioned">Position="TooltipPosition.Bottom" Size="TooltipSize.Large"</ai-pattern>
+<ai-pattern name="semantic">Variant="TooltipVariant.Warning" for error states</ai-pattern>
+**@
+
+@attribute [Component("RTooltip", Category = "Feedback")]
+@attribute [AIOptimized(Prompt = "Create tooltip with rich content support")]
+
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.JSInterop
+@using RR.Blazor.Enums
+@using RR.Blazor.Components.Base
+@inherits RTextComponentBase
+@implements IAsyncDisposable
+
+<div class="@GetContainerClasses()" 
+     @attributes="AdditionalAttributes"
+     data-rr-component="tooltip"
+     data-tooltip-position="@GetDataAttribute(Position)"
+     data-tooltip-variant="@GetDataAttribute(Variant)"
+     data-tooltip-size="@GetDataAttribute(Size)">
+    
+    @* Trigger element *@
+    <div class="tooltip-trigger @GetTriggerClasses()" 
+         @ref="triggerElement"
+         @onmouseenter="@OnMouseEnter"
+         @onmouseleave="@OnMouseLeave"
+         @onclick="@OnClick"
+         @onfocus="@OnFocus"
+         @onblur="@OnBlur">
+        @if (ChildContent != null)
+        {
+            @ChildContent
+        }
+        else if (HasText)
+        {
+            <span class="@GetTextClasses()">@Text</span>
+        }
+    </div>
+    
+    @* Tooltip content *@
+    <div class="tooltip-content @GetContentClasses()" 
+         role="tooltip" 
+         aria-live="polite"
+         @ref="tooltipElement"
+         style="@GetTooltipStyles()">
+        @if (HasIcon)
+        {
+            <i class="@GetIconClasses() tooltip-icon">@Icon</i>
+        }
+        
+        <div class="tooltip-body">
+            @if (!string.IsNullOrEmpty(Content))
+            {
+                <span class="@GetTextClasses()">@Content</span>
+            }
+            else if (ContentFragment != null)
+            {
+                @ContentFragment
+            }
+        </div>
+        
+        @* Tooltip arrow *@
+        <div class="tooltip-arrow" aria-hidden="true"></div>
+    </div>
+</div>
+
+@code {
+    // Base class provides: Text, Icon, Disabled, Loading, Class, Style, Density, ChildContent, AdditionalAttributes
+    
+    [Inject] private IJSRuntime JSRuntime { get; set; } = default!;
+    
+    private ElementReference triggerElement;
+    private ElementReference tooltipElement;
+    private IJSObjectReference? tooltipModule;
+    private string? tooltipId;
+    private bool isVisible;
+    private Timer? showTimer;
+    private Timer? hideTimer;
+    
+    /// <summary>Simple tooltip content as string</summary>
+    [Parameter] [AIParameter("Simple tooltip text content", Example = "This is a helpful tooltip")] public string? Content { get; set; }
+    
+    /// <summary>Tooltip position relative to trigger</summary>
+    [Parameter] [AIParameter("Position of tooltip relative to trigger", Example = "TooltipPosition.Top")] public TooltipPosition Position { get; set; } = TooltipPosition.Top;
+    
+    /// <summary>Tooltip size variant</summary>
+    [Parameter] [AIParameter("Size variant for tooltip", Example = "TooltipSize.Large")] public TooltipSize Size { get; set; } = TooltipSize.Medium;
+    
+    /// <summary>Tooltip color and style variant</summary>
+    [Parameter] [AIParameter("Visual style variant", Example = "TooltipVariant.Warning")] public TooltipVariant Variant { get; set; } = TooltipVariant.Default;
+    
+    /// <summary>Delay before showing tooltip (in milliseconds)</summary>
+    [Parameter] [AIParameter("Delay in milliseconds before showing tooltip", Example = "500")] public int Delay { get; set; } = 500;
+    
+    /// <summary>Delay before hiding tooltip (in milliseconds)</summary>
+    [Parameter] public int HideDelay { get; set; } = 200;
+    
+    /// <summary>Whether to show on hover (default) or click</summary>
+    [Parameter] [AIParameter("How tooltip is triggered", Example = "TooltipTrigger.Hover")] public TooltipTrigger Trigger { get; set; } = TooltipTrigger.Hover;
+    
+    /// <summary>Z-index for tooltip positioning</summary>
+    [Parameter] public int ZIndex { get; set; } = 1000;
+    
+    /// <summary>Maximum width of tooltip content</summary>
+    [Parameter] public string? MaxWidth { get; set; }
+    
+    /// <summary>Rich content template for the tooltip content</summary>
+    [Parameter] [AIParameter("Rich HTML content for tooltip", Example = "ContentFragment with links and buttons")] public RenderFragment? ContentFragment { get; set; }
+
+    // Override base class abstract methods
+    protected override string GetTextSizeClasses() => Size switch
+    {
+        TooltipSize.Small => "text-xs",
+        TooltipSize.Medium => "text-sm", 
+        TooltipSize.Large => "text-base",
+        _ => "text-sm"
+    };
+    
+    protected override string GetIconSizeClasses() => Size switch
+    {
+        TooltipSize.Small => "text-sm",
+        TooltipSize.Medium => "text-base",
+        TooltipSize.Large => "text-lg", 
+        _ => "text-base"
+    };
+
+    private string GetContainerClasses()
+    {
+        return $"tooltip {GetBaseClasses()}";
+    }
+    
+    private string GetTriggerClasses()
+    {
+        var classes = new List<string> { "tooltip-trigger-element" };
+        
+        // Add density from base
+        classes.Add(GetDensityClasses());
+        
+        // Add trigger-specific class using switch expression
+        var triggerClass = Trigger switch
+        {
+            TooltipTrigger.Click => "tooltip-trigger-click",
+            TooltipTrigger.Focus => "tooltip-trigger-focus", 
+            TooltipTrigger.Manual => "tooltip-trigger-manual",
+            TooltipTrigger.Hover => "tooltip-trigger-hover",
+            _ => "tooltip-trigger-hover"
+        };
+        classes.Add(triggerClass);
+        
+        return string.Join(" ", classes);
+    }
+
+    private string GetContentClasses()
+    {
+        var classes = new List<string> 
+        { 
+            "tooltip-content-container",
+            GetPositionClass(),
+            GetSizeClass()
+        };
+
+        // Add variant class using switch expression
+        var variantClass = GetVariantClass();
+        if (variantClass != null)
+            classes.Add(variantClass);
+        
+        // Add density from base
+        classes.Add(GetDensityClasses());
+
+        return string.Join(" ", classes);
+    }
+
+    private string GetPositionClass() => Position switch
+    {
+        TooltipPosition.Top => "tooltip-top",
+        TooltipPosition.Bottom => "tooltip-bottom",
+        TooltipPosition.Left => "tooltip-left", 
+        TooltipPosition.Right => "tooltip-right",
+        _ => "tooltip-top"
+    };
+
+    private string GetSizeClass() => Size switch
+    {
+        TooltipSize.Small => "tooltip-small",
+        TooltipSize.Medium => "tooltip-medium",
+        TooltipSize.Large => "tooltip-large",
+        _ => "tooltip-medium"
+    };
+
+    private string? GetVariantClass() => Variant switch
+    {
+        TooltipVariant.Primary => "tooltip-primary",
+        TooltipVariant.Success => "tooltip-success", 
+        TooltipVariant.Warning => "tooltip-warning",
+        TooltipVariant.Error => "tooltip-error",
+        TooltipVariant.Info => "tooltip-info",
+        TooltipVariant.Ghost => "tooltip-ghost",
+        TooltipVariant.Neutral => "tooltip-neutral",
+        TooltipVariant.Dark => "tooltip-dark",
+        TooltipVariant.Default => null,
+        _ => null
+    };
+
+    private string GetDataAttribute<T>(T enumValue) where T : Enum => enumValue.ToString().ToLowerInvariant();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                tooltipId = $"tooltip-{Guid.NewGuid():N}";
+                tooltipModule = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./_content/RR.Blazor/js/tooltip-portal.js");
+            }
+            catch
+            {
+                // Ignore JS initialization errors
+            }
+        }
+    }
+
+    private async Task OnMouseEnter()
+    {
+        if (Trigger == TooltipTrigger.Hover && !Disabled)
+        {
+            await ShowTooltip();
+        }
+    }
+
+    private async Task OnMouseLeave()
+    {
+        if (Trigger == TooltipTrigger.Hover)
+        {
+            await HideTooltip();
+        }
+    }
+
+    private async Task OnClick()
+    {
+        if (Trigger == TooltipTrigger.Click && !Disabled)
+        {
+            if (isVisible)
+                await HideTooltip();
+            else
+                await ShowTooltip();
+        }
+    }
+
+    private async Task OnFocus()
+    {
+        if (Trigger == TooltipTrigger.Focus && !Disabled)
+        {
+            await ShowTooltip();
+        }
+    }
+
+    private async Task OnBlur()
+    {
+        if (Trigger == TooltipTrigger.Focus)
+        {
+            await HideTooltip();
+        }
+    }
+
+    private async Task ShowTooltip()
+    {
+        hideTimer?.Dispose();
+        
+        showTimer = new Timer(async _ =>
+        {
+            try
+            {
+                isVisible = true;
+                await InvokeAsync(StateHasChanged);
+                
+                // Small delay to ensure DOM update
+                await Task.Delay(1);
+                
+                if (tooltipModule != null)
+                {
+                    await tooltipModule.InvokeVoidAsync("createTooltipPortal", 
+                        tooltipElement, triggerElement, Position.ToString().ToLowerInvariant());
+                }
+            }
+            catch
+            {
+                // Fallback to CSS positioning on error
+                isVisible = true;
+                await InvokeAsync(StateHasChanged);
+            }
+        }, null, Delay, Timeout.Infinite);
+    }
+
+    private async Task HideTooltip()
+    {
+        showTimer?.Dispose();
+        
+        hideTimer = new Timer(async _ =>
+        {
+            try
+            {
+                if (tooltipModule != null && !string.IsNullOrEmpty(tooltipId))
+                {
+                    await tooltipModule.InvokeVoidAsync("destroyTooltipPortal", tooltipId);
+                }
+            }
+            catch
+            {
+                // Ignore cleanup errors
+            }
+            
+            isVisible = false;
+            await InvokeAsync(StateHasChanged);
+        }, null, HideDelay, Timeout.Infinite);
+    }
+
+    private string GetTooltipStyles()
+    {
+        var styles = new List<string>();
+        
+        if (!isVisible)
+            styles.Add("display: none");
+            
+        if (ZIndex > 0)
+            styles.Add($"z-index: {ZIndex}");
+            
+        if (!string.IsNullOrEmpty(MaxWidth))
+            styles.Add($"max-width: {MaxWidth}");
+            
+        return string.Join("; ", styles);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            showTimer?.Dispose();
+            hideTimer?.Dispose();
+            
+            if (tooltipModule != null)
+            {
+                await tooltipModule.DisposeAsync();
+            }
+        }
+        catch
+        {
+            // Ignore disposal errors
+        }
+    }
+}

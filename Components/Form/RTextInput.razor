@@ -120,10 +120,10 @@
             </div>
         }
         
-        @if (IsMultiLine && ShowCharacterCount && MaxLength > 0)
+        @if (IsMultiLine && ShowCharacterCount && MaxLength.HasValue)
         {
             <div class="@GetCharacterCountClasses()">
-                @((Value?.Length ?? 0).ToString("N0")) / @(MaxLength?.ToString("N0") ?? "0")
+                @((Value?.Length ?? 0).ToString("N0")) / @(MaxLength.Value.ToString("N0"))
             </div>
         }
         
@@ -156,7 +156,7 @@
     
     [Parameter] 
     [AIParameter("Input value", Example = "\"John Doe\"")]
-    public string? Value { get; set; }
+    public string Value { get; set; } = "";
     
     [Parameter] 
     [AIParameter("Value changed callback")]
@@ -254,6 +254,9 @@
         }
 
         await HandleUserInteraction(!string.IsNullOrEmpty(newValue));
+        
+        // Force state change to update parent component immediately on input
+        StateHasChanged();
     }
     
     private async Task HandleValueChange(ChangeEventArgs e)

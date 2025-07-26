@@ -11,8 +11,14 @@ namespace RR.Blazor.Enums
     public enum TooltipVariant
     {
         Default,
-        Dark,
-        Light
+        Primary,
+        Success,
+        Warning,
+        Error,
+        Info,
+        Ghost,
+        Neutral,
+        Dark
     }
     
     public enum TooltipSize
@@ -20,5 +26,13 @@ namespace RR.Blazor.Enums
         Small,
         Medium,
         Large
+    }
+    
+    public enum TooltipTrigger
+    {
+        Hover,
+        Click,
+        Focus,
+        Manual
     }
 }

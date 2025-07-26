@@ -98,6 +98,9 @@ namespace RR.Blazor.Extensions
         /// <summary>Tree-shaking configuration (always enabled with golden ratio)</summary>
         public TreeShakingOptions TreeShaking { get; set; } = new TreeShakingOptions();
         
+        /// <summary>Validation configuration</summary>
+        public ValidationOptions Validation { get; set; } = new ValidationOptions();
+        
         /// <summary>Configure tree-shaking settings</summary>
         public RRBlazorOptions WithTreeShaking(Action<TreeShakingOptions> configure)
         {
@@ -109,6 +112,20 @@ namespace RR.Blazor.Extensions
         public RRBlazorOptions DisableTreeShaking()
         {
             TreeShaking.Enabled = false;
+            return this;
+        }
+        
+        /// <summary>Configure validation settings</summary>
+        public RRBlazorOptions WithValidation(Action<ValidationOptions> configure)
+        {
+            configure?.Invoke(Validation);
+            return this;
+        }
+        
+        /// <summary>Disable validation during builds</summary>
+        public RRBlazorOptions DisableValidation()
+        {
+            Validation.Enabled = false;
             return this;
         }
     }
@@ -128,6 +145,30 @@ namespace RR.Blazor.Extensions
         public string OutputPath { get; set; } = "./wwwroot/css/optimized";
         
         /// <summary>Enable verbose logging</summary>
+        public bool VerboseLogging { get; set; } = false;
+    }
+    
+    /// <summary>
+    /// Validation configuration options
+    /// </summary>
+    public class ValidationOptions
+    {
+        /// <summary>Enable validation during builds (default: true)</summary>
+        public bool Enabled { get; set; } = true;
+        
+        /// <summary>Enable component parameter validation (default: true)</summary>
+        public bool ValidateComponents { get; set; } = true;
+        
+        /// <summary>Enable CSS class usage validation (default: true)</summary>
+        public bool ValidateClasses { get; set; } = true;
+        
+        /// <summary>Enable in development environment (default: true)</summary>
+        public bool EnableInDevelopment { get; set; } = true;
+        
+        /// <summary>Fail build on validation errors (default: false)</summary>
+        public bool FailBuildOnErrors { get; set; } = false;
+        
+        /// <summary>Enable verbose validation logging</summary>
         public bool VerboseLogging { get; set; } = false;
     }
 }

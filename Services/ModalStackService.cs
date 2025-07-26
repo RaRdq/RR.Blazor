@@ -28,8 +28,8 @@ public class ModalStackService(IJSRuntime jsRuntime)
 
         // Calculate z-index based on stack position
         var stackPosition = activeModals.IndexOf(modalId);
-        var baseZIndex = 1000; // --z-modal-backdrop base value
-        return baseZIndex + (stackPosition * 10);
+        var baseZIndex = 1050; // Start above all CSS modal z-index values (--z-modal-content: 1040)
+        return baseZIndex + (stackPosition * 50); // Larger gaps to avoid conflicts
     }
 
     /// <summary>

@@ -36,19 +36,54 @@ export const RRFileUpload = {
         element._rrFileUploadSettings = settings;
     },
 
-    // Setup drag and drop functionality
+    // Setup drag and drop functionality with smart preview mode
     setupDragDrop: function(element, settings) {
-        const dropZone = element.querySelector('.file-upload-area, .upload-zone');
+        const dropZone = element.querySelector('.upload-area, .file-preview-container');
         if (!dropZone) return;
 
         let dragCounter = 0;
+        const dragOverlay = element.querySelector('.upload-drag-overlay');
 
-        const addDragoverClass = () => {
-            dropZone.classList.add('upload-zone--dragover');
+        const showDragOverlay = () => {
+            if (dragOverlay) {
+                dragOverlay.classList.remove('hidden');
+                dragOverlay.style.animation = 'dragOverlay 0.2s ease-out';
+            }
+            dropZone.classList.add('upload-zone-dragover');
         };
 
-        const removeDragoverClass = () => {
-            dropZone.classList.remove('upload-zone--dragover');
+        const hideDragOverlay = () => {
+            if (dragOverlay) {
+                dragOverlay.classList.add('hidden');
+            }
+            dropZone.classList.remove('upload-zone-dragover');
+        };
+
+        const updateDragOverlayContent = (isMultiple, hasFiles) => {
+            if (!dragOverlay) return;
+            
+            const icon = dragOverlay.querySelector('.upload-drag-icon');
+            const text = dragOverlay.querySelector('.upload-drag-text');
+            const hint = dragOverlay.querySelector('.upload-drag-hint');
+            
+            if (hasFiles) {
+                if (isMultiple) {
+                    if (icon) icon.textContent = 'add';
+                    if (text) text.textContent = 'Add More Files';
+                    if (hint) {
+                        const remaining = Math.max(0, settings.maxFiles - this.getCurrentFileCount(element));
+                        hint.textContent = remaining > 0 ? `You can add up to ${remaining} more files` : 'Maximum files reached';
+                    }
+                } else {
+                    if (icon) icon.textContent = 'swap_horiz';
+                    if (text) text.textContent = 'Replace File';
+                    if (hint) hint.textContent = 'This will replace the current file';
+                }
+            } else {
+                if (icon) icon.textContent = 'cloud_upload';
+                if (text) text.textContent = isMultiple ? 'Drop Files Here' : 'Drop File Here';
+                if (hint) hint.textContent = 'Or click to browse';
+            }
         };
 
         // Prevent default drag behaviors
@@ -59,22 +94,26 @@ export const RRFileUpload = {
 
         // Highlight drop zone when dragging over it
         ['dragenter', 'dragover'].forEach(eventName => {
-            dropZone.addEventListener(eventName, () => {
-                addDragoverClass();
-                if (eventName === 'dragenter') dragCounter++;
+            dropZone.addEventListener(eventName, (e) => {
+                if (eventName === 'dragenter') {
+                    dragCounter++;
+                    const hasFiles = this.getCurrentFileCount(element) > 0;
+                    updateDragOverlayContent(settings.multiple !== false, hasFiles);
+                }
+                showDragOverlay();
             }, false);
         });
 
         ['dragleave', 'drop'].forEach(eventName => {
-            dropZone.addEventListener(eventName, () => {
+            dropZone.addEventListener(eventName, (e) => {
                 if (eventName === 'dragleave') {
                     dragCounter--;
                     if (dragCounter === 0) {
-                        removeDragoverClass();
+                        hideDragOverlay();
                     }
                 } else {
                     dragCounter = 0;
-                    removeDragoverClass();
+                    hideDragOverlay();
                 }
             }, false);
         });
@@ -391,6 +430,81 @@ export const RRFileUpload = {
             // Simple approach - just click the file input directly
             // The complex modal handling was causing double file dialogs
             fileInput.click();
+        }
+    },
+
+    // Get current file count from DOM
+    getCurrentFileCount: function(element) {
+        const fileCards = element.querySelectorAll('.file-preview-card');
+        return fileCards.length;
+    },
+
+    // Enhanced file removal with animation
+    removeFileWithAnimation: function(elementId, fileId) {
+        const element = document.getElementById(elementId);
+        if (!element) return;
+
+        const fileCard = element.querySelector(`[data-file-id="${fileId}"]`);
+        if (fileCard) {
+            // Add removal animation
+            fileCard.style.transform = 'scale(0.8)';
+            fileCard.style.opacity = '0';
+            fileCard.style.transition = 'all 0.2s ease-out';
+            
+            setTimeout(() => {
+                fileCard.remove();
+                
+                // Check if we need to show empty state
+                const remainingFiles = this.getCurrentFileCount(element);
+                if (remainingFiles === 0) {
+                    this.showEmptyState(element);
+                }
+            }, 200);
+        }
+
+        // Trigger removal event
+        const event = new CustomEvent('rr-file-removed', {
+            detail: { fileId }
+        });
+        element.dispatchEvent(event);
+    },
+
+    // Show empty state when all files removed
+    showEmptyState: function(element) {
+        const previewContainer = element.querySelector('.file-preview-container');
+        const uploadArea = element.querySelector('.upload-area');
+        
+        if (previewContainer && uploadArea) {
+            // Smooth transition back to empty drop zone
+            previewContainer.style.opacity = '0';
+            setTimeout(() => {
+                previewContainer.style.display = 'none';
+                uploadArea.style.display = 'block';
+                uploadArea.style.opacity = '0';
+                requestAnimationFrame(() => {
+                    uploadArea.style.transition = 'opacity 0.3s ease-in';
+                    uploadArea.style.opacity = '1';
+                });
+            }, 150);
+        }
+    },
+
+    // Show file preview state when files are added
+    showPreviewState: function(element) {
+        const previewContainer = element.querySelector('.file-preview-container');
+        const uploadArea = element.querySelector('.upload-area');
+        
+        if (previewContainer && uploadArea && uploadArea.style.display !== 'none') {
+            uploadArea.style.opacity = '0';
+            setTimeout(() => {
+                uploadArea.style.display = 'none';
+                previewContainer.style.display = 'block';
+                previewContainer.style.opacity = '0';
+                requestAnimationFrame(() => {
+                    previewContainer.style.transition = 'opacity 0.3s ease-in';
+                    previewContainer.style.opacity = '1';
+                });
+            }, 150);
         }
     },
 

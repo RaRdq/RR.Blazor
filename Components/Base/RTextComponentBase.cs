@@ -16,28 +16,28 @@ namespace RR.Blazor.Components.Base
         /// </summary>
         [Parameter] 
         [AIParameter("Primary text content", Example = "\"Button Text\"")]
-        public string? Text { get; set; }
+        public string Text { get; set; }
         
         /// <summary>
         /// Material icon name
         /// </summary>
         [Parameter] 
         [AIParameter("Material icon name", Example = "\"star\"")]
-        public string? Icon { get; set; }
+        public string Icon { get; set; }
         
         /// <summary>
         /// Subtitle or secondary text
         /// </summary>
         [Parameter] 
         [AIParameter("Subtitle or secondary text", Example = "\"Additional information\"")]
-        public string? Subtitle { get; set; }
+        public string Subtitle { get; set; }
         
         /// <summary>
         /// Title attribute for tooltips
         /// </summary>
         [Parameter] 
         [AIParameter("Title attribute for tooltips")]
-        public string? Title { get; set; }
+        public string Title { get; set; }
         
         #endregion
         

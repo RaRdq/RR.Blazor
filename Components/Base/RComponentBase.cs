@@ -14,13 +14,13 @@ namespace RR.Blazor.Components.Base
         /// Additional CSS classes to apply to the component
         /// </summary>
         [Parameter] 
-        public string? Class { get; set; }
+        public string Class { get; set; } = "";
         
         /// <summary>
         /// Additional CSS styles to apply to the component
         /// </summary>
         [Parameter] 
-        public string? Style { get; set; }
+        public string Style { get; set; } = "";
         
         /// <summary>
         /// Whether the component is disabled
@@ -32,7 +32,7 @@ namespace RR.Blazor.Components.Base
         /// Custom content to render inside the component
         /// </summary>
         [Parameter] 
-        public RenderFragment? ChildContent { get; set; }
+        public RenderFragment ChildContent { get; set; }
         
         /// <summary>
         /// Component density affecting spacing and sizing
@@ -44,7 +44,7 @@ namespace RR.Blazor.Components.Base
         /// Captures any additional HTML attributes
         /// </summary>
         [Parameter(CaptureUnmatchedValues = true)] 
-        public Dictionary<string, object>? AdditionalAttributes { get; set; }
+        public Dictionary<string, object> AdditionalAttributes { get; set; }
         
         #endregion
         

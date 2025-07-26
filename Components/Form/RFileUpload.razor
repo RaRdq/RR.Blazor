@@ -20,36 +20,185 @@
 @inject IJSRuntime JSRuntime
 
 <div id="@ComponentId" class="@GetContainerClasses()" data-rr-component="file-upload">
-    @* Main Upload Area *@
+    @* Main Upload Area - Smart State Transitions *@
     @if (DisplayMode == RFileUploadDisplayMode.DropZone)
     {
-        <div class="@GetUploadZoneClasses()" 
-             tabindex="0"
-             role="button"
-             aria-label="@GetDropZoneAriaLabel()"
-             aria-describedby="@($"{ComponentId}-hint")"
-             @onkeydown="@HandleDropZoneKeyDown">
-            <InputFile id="@InputId"
-                       class="upload-area-input"
-                       accept="@GetAcceptString()"
-                       multiple="@Multiple"
-                       disabled="@Disabled"
-                       OnChange="HandleFileChange" />
+        @if (!SelectedFiles.Any())
+        {
+            @* Empty state: Traditional drop zone *@
+            <div class="@GetUploadZoneClasses()" 
+                 tabindex="0"
+                 role="button"
+                 aria-label="@GetDropZoneAriaLabel()"
+                 aria-describedby="@($"{ComponentId}-hint")"
+                 @onkeydown="@HandleDropZoneKeyDown">
+                <InputFile id="@InputId"
+                           class="upload-area-input"
+                           accept="@GetAcceptString()"
+                           multiple="@Multiple"
+                           disabled="@Disabled"
+                           OnChange="HandleFileChange" />
 
-            <label for="@InputId" class="upload-area-label">
-                <i class="material-symbols-rounded">@GetUploadIcon()</i>
-                <h5 class="upload-area-text">@GetUploadText()</h5>
-                <p id="@($"{ComponentId}-hint")" class="upload-area-hint">@GetUploadHint()</p>
-                <p class="sr-only">Press Enter or Space to select files, or drag and drop files here</p>
-                @if (ShowBrowseButton)
-                {
-                    <RButton Text="@BrowseButtonText" 
-                             Variant="ButtonVariant.Secondary" 
-                             Size="ButtonSize.Small"
-                             class="mt-2" />
-                }
-            </label>
-        </div>
+                <label for="@InputId" class="upload-area-label">
+                    <i class="material-symbols-rounded">@GetUploadIcon()</i>
+                    <h5 class="upload-area-text">@GetUploadText()</h5>
+                    <p id="@($"{ComponentId}-hint")" class="upload-area-hint">@GetUploadHint()</p>
+                    <p class="sr-only">Press Enter or Space to select files, or drag and drop files here</p>
+                    @if (ShowBrowseButton)
+                    {
+                        <RButton Text="@BrowseButtonText" 
+                                 Variant="ButtonVariant.Secondary" 
+                                 Size="ButtonSize.Small"
+                                 OnClick="@TriggerFileSelect"
+                                 Disabled="@Disabled"
+                                 Class="mt-2" />
+                    }
+                </label>
+            </div>
+        }
+        else
+        {
+            @* Files uploaded state: Preview grid with smart drag overlay *@
+            <div class="@GetFilePreviewContainerClasses()" 
+                 tabindex="0"
+                 role="region"
+                 aria-label="@GetFilePreviewAriaLabel()"
+                 @onkeydown="@HandleDropZoneKeyDown">
+                
+                @* Hidden input for additional file selection *@
+                <InputFile id="@InputId"
+                           class="upload-area-input"
+                           accept="@GetAcceptString()"
+                           multiple="@Multiple"
+                           disabled="@Disabled"
+                           OnChange="HandleFileChange" />
+                
+                @* Smart drag overlay for add/replace modes *@
+                <div class="upload-drag-overlay hidden" id="@($"{ComponentId}-drag-overlay")">
+                    <div class="upload-drag-content">
+                        <i class="material-symbols-rounded upload-drag-icon">@GetDragOverIcon()</i>
+                        <h5 class="upload-drag-text">@GetDragOverText()</h5>
+                        <p class="upload-drag-hint">@GetDragOverHint()</p>
+                    </div>
+                </div>
+                
+                @* File preview grid *@
+                <div class="@GetFilePreviewGridClasses()">
+                    @foreach (var (file, index) in SelectedFiles.Select((f, i) => (f, i)))
+                    {
+                        <div class="file-preview-card" 
+                             data-file-id="@file.Id"
+                             tabindex="0"
+                             role="listitem"
+                             aria-label="@GetFilePreviewAriaLabel(file)"
+                             @onkeydown="@((e) => HandleFilePreviewKeyDown(e, file.Id))">
+                            
+                            @* File preview content *@
+                            <div class="file-preview-content">
+                                @if (file.IsImage && !string.IsNullOrEmpty(file.ThumbnailUrl))
+                                {
+                                    <div class="file-preview-thumbnail">
+                                        <img src="@file.ThumbnailUrl" alt="@file.Name" class="file-preview-image" />
+                                        <div class="file-preview-overlay">
+                                            <i class="material-symbols-rounded">@GetFileIcon(file.Extension)</i>
+                                        </div>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="file-preview-icon-container">
+                                        <i class="material-symbols-rounded file-preview-icon">@GetFileIcon(file.Extension)</i>
+                                    </div>
+                                }
+                                
+                                <div class="file-preview-details">
+                                    <p class="file-preview-name" title="@file.Name">@file.Name</p>
+                                    <p class="file-preview-size">@FormatFileSize(file.Size)</p>
+                                    
+                                    @if (file.Status == RFileUploadStatus.Failed && !string.IsNullOrEmpty(file.ErrorMessage))
+                                    {
+                                        <p class="file-preview-error">@file.ErrorMessage</p>
+                                    }
+                                </div>
+                            </div>
+                            
+                            @* Top-right action buttons *@
+                            <div class="file-preview-actions">
+                                @if (MaxFiles == 1)
+                                {
+                                    @* Single file mode: show replace button *@
+                                    <button type="button" 
+                                            class="file-preview-action-btn" 
+                                            title="Replace file"
+                                            aria-label="Replace file"
+                                            @onclick="@(() => ReplaceFile(file.Id))">
+                                        <i class="material-symbols-rounded">swap_horiz</i>
+                                    </button>
+                                }
+                                
+                                @if (AllowRemove && file.Status != RFileUploadStatus.Uploading)
+                                {
+                                    <button type="button" 
+                                            class="file-preview-action-btn danger" 
+                                            title="Remove file"
+                                            aria-label="@($"Remove {file.Name}")"
+                                            @onclick="@(() => RemoveFile(file.Id))">
+                                        <i class="material-symbols-rounded">delete</i>
+                                    </button>
+                                }
+                            </div>
+                            
+                            @* Status and progress at bottom of card *@
+                            <div class="file-preview-status-area">
+                                @if (ShowProgress && file.Status == RFileUploadStatus.Uploading)
+                                {
+                                    <div class="file-upload-progress" role="progressbar" 
+                                         aria-valuenow="@((int)file.UploadProgress)" 
+                                         aria-valuemin="0" 
+                                         aria-valuemax="100"
+                                         aria-label="Upload progress">
+                                        <div class="upload-progress-bar">
+                                            <div class="upload-progress-bar-fill" data-progress="@((int)file.UploadProgress)"></div>
+                                        </div>
+                                        <span class="upload-progress-text">@(Math.Round(file.UploadProgress))%</span>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="file-preview-status">
+                                        @if (file.Status == RFileUploadStatus.Completed)
+                                        {
+                                            <i class="material-symbols-rounded file-status-success" aria-label="Upload completed">check_circle</i>
+                                        }
+                                        else if (file.Status == RFileUploadStatus.Failed)
+                                        {
+                                            <i class="material-symbols-rounded file-status-error" aria-label="Upload failed">error</i>
+                                        }
+                                        else
+                                        {
+                                            <i class="material-symbols-rounded file-status-pending" aria-label="Ready for upload">schedule</i>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                    
+                    @* Add more files button - only in multi-file mode *@
+                    @if (MaxFiles > 1 && SelectedFiles.Count < MaxFiles)
+                    {
+                        <div class="file-add-more-card">
+                            <label for="@InputId" class="file-add-more-button">
+                                <i class="material-symbols-rounded">add</i>
+                                <span>Add More</span>
+                                <small>@GetAddMoreHint()</small>
+                            </label>
+                        </div>
+                    }
+                </div>
+                
+            </div>
+        }
     }
     else if (DisplayMode == RFileUploadDisplayMode.Button)
     {
@@ -111,8 +260,8 @@
     @* Error Display *@
     <div class="file-upload-errors hidden"></div>
 
-    @* File Preview/List *@
-    @if (ShowPreview && SelectedFiles.Any())
+    @* Legacy file preview for other display modes *@
+    @if (ShowPreview && SelectedFiles.Any() && DisplayMode != RFileUploadDisplayMode.DropZone)
     {
         <div class="file-attachments" role="list" aria-label="Selected files">
             @foreach (var (file, index) in SelectedFiles.Select((f, i) => (f, i)))
@@ -457,12 +606,38 @@
             StateHasChanged();
         }
     }
+    
+    private async Task ReplaceFile(string fileId)
+    {
+        // In single file mode, clear the existing file and trigger file selection
+        if (MaxFiles == 1)
+        {
+            SelectedFiles.Clear();
+            await FilesChanged.InvokeAsync(SelectedFiles);
+            StateHasChanged();
+        }
+        
+        // Trigger file selection for replacement
+        await TriggerFileSelect();
+    }
 
     private async Task TriggerFileSelect()
     {
-        if (jsModule != null)
+        try
         {
-            await jsModule.InvokeVoidAsync("RRFileUpload.triggerFileSelect", InputId);
+            if (jsModule != null)
+            {
+                await jsModule.InvokeVoidAsync("RRFileUpload.triggerFileSelect", InputId);
+            }
+            else
+            {
+                // Fallback if module not loaded yet
+                await JSRuntime.InvokeVoidAsync("eval", $"document.getElementById('{InputId}').click()");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"TriggerFileSelect error: {ex.Message}");
         }
     }
 
@@ -576,6 +751,71 @@
         }
         
         return string.Join(" ", classes);
+    }
+    
+    private string GetFilePreviewContainerClasses()
+    {
+        var classes = new List<string> { "file-preview-container" };
+        
+        if (DragDrop)
+        {
+            classes.Add("drag-drop-enabled");
+        }
+        
+        if (Disabled)
+        {
+            classes.Add("opacity-50");
+            classes.Add("cursor-not-allowed");
+        }
+        
+        return string.Join(" ", classes);
+    }
+    
+    private string GetFilePreviewGridClasses()
+    {
+        var classes = new List<string> { "file-preview-grid" };
+        
+        // Single file mode when MaxFiles is 1, otherwise multi-file mode
+        if (MaxFiles == 1)
+        {
+            classes.Add("single-file");
+        }
+        
+        return string.Join(" ", classes);
+    }
+    
+    private string GetFilePreviewAriaLabel()
+    {
+        var count = SelectedFiles.Count;
+        var fileText = count == 1 ? "file" : "files";
+        var actionText = Multiple ? "Drop files here to add more or click to browse" : "Drop file here to replace or click to browse";
+        return $"{count} {fileText} uploaded. {actionText}";
+    }
+    
+    private string GetDragOverIcon()
+    {
+        return Multiple ? "add" : "swap_horiz";
+    }
+    
+    private string GetDragOverText()
+    {
+        return Multiple ? "Add More Files" : "Replace File";
+    }
+    
+    private string GetDragOverHint()
+    {
+        if (Multiple)
+        {
+            var remaining = MaxFiles - SelectedFiles.Count;
+            return remaining > 0 ? $"You can add up to {remaining} more files" : "Maximum files reached";
+        }
+        return "This will replace the current file";
+    }
+    
+    private string GetAddMoreHint()
+    {
+        var remaining = MaxFiles - SelectedFiles.Count;
+        return remaining > 0 ? $"{remaining} more" : "Max reached";
     }
 
     private string GetButtonClasses()
