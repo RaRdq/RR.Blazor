@@ -508,6 +508,30 @@ export const RRFileUpload = {
         }
     },
 
+    // Setup event listeners for Blazor callbacks
+    setupBlazorEventListeners: function(elementId, dotNetObjectRef) {
+        const element = document.getElementById(elementId);
+        if (!element) return;
+
+        // Setup rr-files-selected event listener
+        const filesSelectedHandler = function(e) {
+            dotNetObjectRef.invokeMethodAsync('OnFilesSelectedFromJS', e.detail);
+        };
+        element.addEventListener('rr-files-selected', filesSelectedHandler);
+
+        // Setup rr-file-removed event listener
+        const fileRemovedHandler = function(e) {
+            dotNetObjectRef.invokeMethodAsync('OnFileRemovedFromJS', e.detail.fileId);
+        };
+        element.addEventListener('rr-file-removed', fileRemovedHandler);
+
+        // Store cleanup function for these specific listeners
+        element._rrBlazorEventCleanup = () => {
+            element.removeEventListener('rr-files-selected', filesSelectedHandler);
+            element.removeEventListener('rr-file-removed', fileRemovedHandler);
+        };
+    },
+
     // Cleanup component
     cleanup: function(elementId) {
         const element = document.getElementById(elementId);
@@ -515,6 +539,10 @@ export const RRFileUpload = {
             if (element._rrDropZoneCleanup) {
                 element._rrDropZoneCleanup();
                 delete element._rrDropZoneCleanup;
+            }
+            if (element._rrBlazorEventCleanup) {
+                element._rrBlazorEventCleanup();
+                delete element._rrBlazorEventCleanup;
             }
             delete element._rrFileUploadSettings;
         }

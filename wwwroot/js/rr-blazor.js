@@ -1,4 +1,4 @@
-// RR.Blazor JavaScript Core
+// RR.Blazor JavaScript Core - Unified Module System
 class DebugLogger {
     constructor(prefix = '[RR.Blazor]') {
         this.isDebugMode = this.detectDebugMode();
@@ -80,83 +80,300 @@ class DebugLogger {
 
 const debugLogger = new DebugLogger();
 
-window.RRDebugLogger = DebugLogger;
-window.debugLogger = debugLogger;
-
-import * as ThemeModule from './theme.js';
-
-import * as ChartModule from './chart.js';
-
-import * as ChoiceModule from './choice.js';
-import * as TabsModule from './tabs.js';
-import * as FormsModule from './forms.js';
-import * as UtilsModule from './utils.js';
-import * as DatePickerModule from './datepicker.js';
-
-window.RRTheme = ThemeModule;
-window.RChart = ChartModule;
-window.RRChoice = ChoiceModule;
-window.RRTabs = TabsModule;
-window.RRForms = FormsModule;
-window.RRUtils = UtilsModule;
-window.RDatePicker = DatePickerModule.default;
-
-window.RRBlazor = {
-    getTabIndicatorPosition: TabsModule.getTabIndicatorPosition,
-    getTabScrollInfo: TabsModule.getTabScrollInfo,
-    scrollTabsLeft: TabsModule.scrollTabsLeft,
+// Unified Module System for RR.Blazor
+class ModuleManager {
+    constructor() {
+        this.modules = new Map();
+        this.moduleUrls = {
+            portal: '/_content/RR.Blazor/js/portal.js',
+            tooltip: '/_content/RR.Blazor/js/tooltip.js',
+            choice: '/_content/RR.Blazor/js/choice.js',
+            datepicker: '/_content/RR.Blazor/js/datepicker.js',
+            modal: '/_content/RR.Blazor/js/modal.js',
+            forms: '/_content/RR.Blazor/js/forms.js',
+            utils: '/_content/RR.Blazor/js/utils.js',
+            tabs: '/_content/RR.Blazor/js/tabs.js',
+            theme: '/_content/RR.Blazor/js/theme.js',
+            chart: '/_content/RR.Blazor/js/chart.js'
+        };
+        this.loadingPromises = new Map();
+    }
     
-    scrollTabsRight: TabsModule.scrollTabsRight,
-    
-    scrollToTab: TabsModule.scrollToTab,
-    
-    autoResizeTextarea: FormsModule.autoResizeTextarea,
-    
-    focusElement: FormsModule.focusElement,
-    
-    scrollIntoView: UtilsModule.scrollIntoView,
-    
-    copyToClipboard: FormsModule.copyToClipboard,
-    
-    
-    getElementDimensions: UtilsModule.getElementDimensions,
-    
-    toggleClass: UtilsModule.toggleClass,
-    
-    initializeComponent: function(componentType, elementId, options = {}) {
-        const element = document.getElementById(elementId);
-        if (!element) return;
+    async getModule(moduleName) {
+        // Return cached module if available
+        if (this.modules.has(moduleName)) {
+            return this.modules.get(moduleName);
+        }
         
-        switch (componentType) {
-            case 'tabs':
-                TabsModule.initializeTabs(element, options);
-                break;
-            case 'form-field':
-                FormsModule.initializeFormField(element, options);
-                break;
-            case 'datepicker':
-                return DatePickerModule.init(elementId, options);
+        // Return existing loading promise if module is being loaded
+        if (this.loadingPromises.has(moduleName)) {
+            return this.loadingPromises.get(moduleName);
+        }
+        
+        // Start loading module
+        const url = this.moduleUrls[moduleName];
+        if (!url) {
+            throw new Error(`Module '${moduleName}' not found in registry`);
+        }
+        
+        debugLogger.log(`Loading module: ${moduleName}`);
+        
+        const loadPromise = import(url)
+            .then(module => {
+                this.modules.set(moduleName, module);
+                this.loadingPromises.delete(moduleName);
+                debugLogger.log(`Module loaded: ${moduleName}`);
+                return module;
+            })
+            .catch(error => {
+                this.loadingPromises.delete(moduleName);
+                debugLogger.error(`Failed to load module '${moduleName}':`, error);
+                throw error;
+            });
+            
+        this.loadingPromises.set(moduleName, loadPromise);
+        return loadPromise;
+    }
+    
+    async preloadModules(...moduleNames) {
+        debugLogger.log(`Preloading modules: ${moduleNames.join(', ')}`);
+        const promises = moduleNames.map(name => this.getModule(name));
+        return Promise.all(promises);
+    }
+}
+
+const moduleManager = new ModuleManager();
+
+// Create the unified RR.Blazor API
+window.RRBlazor = {
+    // Module manager instance
+    moduleManager,
+    debugLogger,
+    
+    // Portal Management System - Single source of truth
+    Portal: {
+        async create(element, options = {}) {
+            const portal = await moduleManager.getModule('portal');
+            // Access the singleton instance
+            const portalManager = portal.portalManager || window.RRPortalManager;
+            return portalManager.create(element, options);
+        },
+        
+        async destroy(portalId) {
+            const portal = await moduleManager.getModule('portal');
+            const portalManager = portal.portalManager || window.RRPortalManager;
+            return portalManager.destroy(portalId);
+        },
+        
+        async update(portalId, options) {
+            const portal = await moduleManager.getModule('portal');
+            const portalManager = portal.portalManager || window.RRPortalManager;
+            return portalManager.update(portalId, options);
+        },
+        
+        async position(portalId) {
+            const portal = await moduleManager.getModule('portal');
+            const portalManager = portal.portalManager || window.RRPortalManager;
+            return portalManager.position(portalId);
         }
     },
     
-    initializeTabs: TabsModule.initializeTabs,
-    initializeFormField: FormsModule.initializeFormField,
-    cleanupComponent: FormsModule.cleanupComponent,
+    // Tooltip API
+    Tooltip: {
+        async create(popupElement, triggerElement, position, portalId) {
+            const tooltip = await moduleManager.getModule('tooltip');
+            return tooltip.createTooltipPortal(popupElement, triggerElement, position, portalId);
+        },
+        
+        async destroy(portalId) {
+            const tooltip = await moduleManager.getModule('tooltip');
+            return tooltip.destroyTooltipPortal(portalId);
+        },
+        
+        async update(portalId, triggerElement, position) {
+            const tooltip = await moduleManager.getModule('tooltip');
+            return tooltip.updateTooltipPosition(portalId, triggerElement, position);
+        }
+    },
     
-    updateUrlWithoutScroll: UtilsModule.updateUrlWithoutScroll,
+    // Choice/Dropdown API
+    Choice: {
+        async createPortal(choiceElementId) {
+            const choice = await moduleManager.getModule('choice');
+            return choice.createChoicePortal(choiceElementId);
+        },
+        
+        async destroyPortal(portalId) {
+            const choice = await moduleManager.getModule('choice');
+            return choice.destroyChoicePortal(portalId);
+        },
+        
+        async registerClickOutside(choiceElementId, dotNetRef) {
+            const choice = await moduleManager.getModule('choice');
+            return choice.registerClickOutside(choiceElementId, dotNetRef);
+        },
+        
+        async calculatePosition(triggerElement, options) {
+            const choice = await moduleManager.getModule('choice');
+            return choice.Choice.calculateOptimalPosition(triggerElement, options);
+        }
+    },
     
-    adjustDropdownPosition: ChoiceModule.adjustDropdownPosition,
+    // Modal API
+    Modal: {
+        async lockScroll() {
+            const modal = await moduleManager.getModule('modal');
+            return modal.lockScroll();
+        },
+        
+        async unlockScroll() {
+            const modal = await moduleManager.getModule('modal');
+            return modal.unlockScroll();
+        },
+        
+        async register(modalId, options) {
+            const modal = await moduleManager.getModule('modal');
+            return modal.register(modalId, options);
+        },
+        
+        async unregister(modalId) {
+            const modal = await moduleManager.getModule('modal');
+            return modal.unregister(modalId);
+        }
+    },
     
-    adjustChoicePosition: ChoiceModule.adjustChoicePosition,
+    // Form utilities
+    Forms: {
+        async autoResizeTextarea(element) {
+            const forms = await moduleManager.getModule('forms');
+            return forms.autoResizeTextarea(element);
+        },
+        
+        async focusElement(element) {
+            const forms = await moduleManager.getModule('forms');
+            return forms.focusElement(element);
+        },
+        
+        async copyToClipboard(text) {
+            const forms = await moduleManager.getModule('forms');
+            return forms.copyToClipboard(text);
+        },
+        
+        async initializeFormField(element, options) {
+            const forms = await moduleManager.getModule('forms');
+            return forms.initializeFormField(element, options);
+        }
+    },
+    
+    // Tab utilities
+    Tabs: {
+        async getIndicatorPosition(element) {
+            const tabs = await moduleManager.getModule('tabs');
+            return tabs.getTabIndicatorPosition(element);
+        },
+        
+        async scrollToTab(element) {
+            const tabs = await moduleManager.getModule('tabs');
+            return tabs.scrollToTab(element);
+        },
+        
+        async initializeTabs(element, options) {
+            const tabs = await moduleManager.getModule('tabs');
+            return tabs.initializeTabs(element, options);
+        }
+    },
+    
+    // DatePicker API
+    DatePicker: {
+        async init(elementId, options) {
+            const datepicker = await moduleManager.getModule('datepicker');
+            return datepicker.init(elementId, options);
+        },
+        
+        async positionPopup(elementId) {
+            const datepicker = await moduleManager.getModule('datepicker');
+            return datepicker.positionPopup(elementId);
+        },
+        
+        async formatDate(date, format) {
+            const datepicker = await moduleManager.getModule('datepicker');
+            return datepicker.formatDate(date, format);
+        },
+        
+        async parseDate(dateString, format) {
+            const datepicker = await moduleManager.getModule('datepicker');
+            return datepicker.parseDate(dateString, format);
+        }
+    },
+    
+    // Utility functions
+    Utils: {
+        async scrollIntoView(element, options) {
+            const utils = await moduleManager.getModule('utils');
+            return utils.scrollIntoView(element, options);
+        },
+        
+        async getElementDimensions(element) {
+            const utils = await moduleManager.getModule('utils');
+            return utils.getElementDimensions(element);
+        },
+        
+        async toggleClass(element, className) {
+            const utils = await moduleManager.getModule('utils');
+            return utils.toggleClass(element, className);
+        },
+        
+        async downloadFile(content, filename, contentType) {
+            const utils = await moduleManager.getModule('utils');
+            return utils.downloadFile(content, filename, contentType);
+        },
+        
+        async updateUrlWithoutScroll(url) {
+            const utils = await moduleManager.getModule('utils');
+            return utils.updateUrlWithoutScroll(url);
+        }
+    },
+    
+    // Theme management
+    Theme: {
+        async apply(theme) {
+            const themeModule = await moduleManager.getModule('theme');
+            return themeModule.applyTheme(theme);
+        },
+        
+        async toggle() {
+            const themeModule = await moduleManager.getModule('theme');
+            return themeModule.toggleTheme();
+        },
+        
+        async getCurrent() {
+            const themeModule = await moduleManager.getModule('theme');
+            return themeModule.getCurrentTheme();
+        }
+    },
 
-    Choice: ChoiceModule.Choice,
+    // Generic component initialization
+    async initializeComponent(componentType, elementId, options = {}) {
+        const element = document.getElementById(elementId);
+        if (!element) {
+            debugLogger.warn(`Element not found: ${elementId}`);
+            return;
+        }
+        
+        switch (componentType) {
+            case 'tabs':
+                return this.Tabs.initializeTabs(element, options);
+            case 'form-field':
+                return this.Forms.initializeFormField(element, options);
+            case 'datepicker':
+                return this.DatePicker.init(elementId, options);
+            default:
+                debugLogger.warn(`Unknown component type: ${componentType}`);
+        }
+    },
     
-    initializeDatePicker: DatePickerModule.init,
-    positionDatePickerPopup: DatePickerModule.positionPopup,
-    formatDate: DatePickerModule.formatDate,
-    parseDate: DatePickerModule.parseDate,
-
-    setupUserMenuOutsideClick: function(userMenuContainerId, toggleCallback) {
+    // User menu outside click handler (specific implementation)
+    setupUserMenuOutsideClick(userMenuContainerId, toggleCallback) {
         debugLogger.log('Setting up user menu outside click handler for:', userMenuContainerId);
         
         const userMenuContainer = document.querySelector(userMenuContainerId);
@@ -166,34 +383,31 @@ window.RRBlazor = {
         }
 
         const outsideClickHandler = function(event) {
-                if (!userMenuContainer.contains(event.target)) {
+            if (!userMenuContainer.contains(event.target)) {
                 debugLogger.log('Outside click detected, closing user menu');
                 toggleCallback.invokeMethodAsync('CloseUserMenu');
             }
         };
 
         userMenuContainer._outsideClickHandler = outsideClickHandler;
-        
         document.addEventListener('click', outsideClickHandler);
-        
         debugLogger.log('User menu outside click handler attached');
     },
 
-    removeUserMenuOutsideClick: function(userMenuContainerId) {
+    removeUserMenuOutsideClick(userMenuContainerId) {
         const userMenuContainer = document.querySelector(userMenuContainerId);
         if (userMenuContainer && userMenuContainer._outsideClickHandler) {
             document.removeEventListener('click', userMenuContainer._outsideClickHandler);
             delete userMenuContainer._outsideClickHandler;
             debugLogger.log('User menu outside click handler removed');
         }
+    },
+    
+    // Preload commonly used modules for performance
+    async preloadCore() {
+        return moduleManager.preloadModules('portal', 'utils', 'forms');
     }
 };
-
-window.addEventListener = UtilsModule.addEventListener;
-
-
-window.updateUrlWithoutScroll = UtilsModule.updateUrlWithoutScroll;
-
 
 document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('[data-rr-component]').forEach(element => {
@@ -202,18 +416,36 @@ document.addEventListener('DOMContentLoaded', function() {
         RRBlazor.initializeComponent(componentType, element.id, options ? JSON.parse(options) : {});
     });
     
+    // Preload core modules for better performance
+    RRBlazor.preloadCore().catch(error => {
+        debugLogger.warn('Failed to preload core modules:', error);
+    });
 });
 
-window.RRBlazor.downloadContent = UtilsModule.downloadContent;
+// Ensure RRBlazor is available globally before any module loads
+window.RRBlazor = window.RRBlazor || RRBlazor;
 
-window.downloadFileFromStream = UtilsModule.downloadFileFromStream;
+// Export debug utilities
+window.RRDebugLogger = DebugLogger;
+window.debugLogger = debugLogger;
 
-window.downloadFile = UtilsModule.downloadFile;
+// Legacy compatibility - these will be removed in future versions
+window.RRDebug = {
+    logger: debugLogger,
+    report: async () => {
+        if (debugLogger.isDebugMode) {
+            const debugModule = await import('./page-debug.js');
+            return debugModule.generateReport();
+        }
+    }
+};
 
+// Load debug utilities in development mode
 if (debugLogger.isDebugMode) {
     import('./page-debug.js')
         .then(debugModule => {
-                debugLogger.log('🔧 Debug utilities loaded from module for development environment');
+            window.RRDebug.pageDebug = debugModule;
+            debugLogger.log('🔧 Debug utilities loaded for development environment');
         })
         .catch(error => {
             debugLogger.warn('Failed to load debug utilities:', error);

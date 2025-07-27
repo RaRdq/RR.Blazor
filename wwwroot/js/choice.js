@@ -98,7 +98,7 @@ export const Choice = {
             let top, left;
             
             if (optimal.direction === 'up') {
-                top = triggerRect.top - dropdownHeight - 4;
+                top = triggerRect.top - dropdownHeight;
             } else {
                 top = triggerRect.bottom + 4;
             }
@@ -169,96 +169,80 @@ export const Choice = {
     }
 };
 
-// Legacy dropdown positioning for backwards compatibility
-export function adjustDropdownPosition(dropdownElement) {
-    if (!dropdownElement) return;
-    
-    const viewport = dropdownElement.querySelector('.dropdown-viewport');
-    const content = dropdownElement.querySelector('.dropdown-content');
-    
-    if (!viewport || !content) return;
-    
-    const dropdownRect = dropdownElement.getBoundingClientRect();
-    const viewportHeight = window.innerHeight;
-    const viewportWidth = window.innerWidth;
-    
-    const spaceAbove = dropdownRect.top;
-    const spaceBelow = viewportHeight - dropdownRect.bottom;
-    
-    const originalDisplay = content.style.display;
-    content.style.visibility = 'hidden';
-    content.style.display = 'block';
-    const contentRect = content.getBoundingClientRect();
-    content.style.display = originalDisplay;
-    content.style.visibility = '';
-    
-    const contentHeight = contentRect.height || 250;
-    const shouldPositionAbove = spaceBelow < contentHeight && spaceAbove > spaceBelow;
-    
-    if (shouldPositionAbove) {
-        viewport.style.bottom = '100%';
-        viewport.style.top = 'auto';
-        viewport.style.marginBottom = '8px';
-        viewport.style.marginTop = '0';
-    } else {
-        viewport.style.top = '100%';
-        viewport.style.bottom = 'auto';
-        viewport.style.marginTop = '8px';
-        viewport.style.marginBottom = '0';
+// Portal management for choice dropdowns
+export async function createChoicePortal(choiceElementId) {
+    try {
+        const choice = document.querySelector(`[data-choice-id="${choiceElementId}"]`);
+        const viewport = choice?.querySelector('.choice-viewport');
+        const trigger = choice?.querySelector('.choice-trigger');
+        
+        if (!viewport || !trigger) return false;
+        
+        const portalId = await window.RRBlazor.Portal.create(viewport, {
+            id: `choice-${choiceElementId}`,
+            type: 'dropdown',
+            anchor: trigger,
+            className: 'choice-portal',
+            closeOnClickOutside: true,
+            onClickOutside: () => {
+                const event = new CustomEvent('choiceclickoutside', {
+                    detail: { choiceId: choiceElementId },
+                    bubbles: true
+                });
+                choice.dispatchEvent(event);
+            }
+        });
+        
+        if (portalId) {
+            viewport._portalId = portalId;
+            choice._portalId = portalId;
+            window.RRBlazor.Portal.position(portalId);
+        }
+        
+        return portalId;
+    } catch (error) {
+        console.error('[Choice] Portal creation failed:', error);
+        return false;
     }
-    
-    if (dropdownRect.right + 320 > viewportWidth) {
-        viewport.style.right = '0';
-        viewport.style.left = 'auto';
-    } else {
-        viewport.style.left = '0';
-        viewport.style.right = 'auto';
-    }
-    
-    const dropdown = dropdownElement;
-    dropdown.classList.remove('dropdown--position-above', 'dropdown--position-below');
-    dropdown.classList.add(shouldPositionAbove ? 'dropdown--position-above' : 'dropdown--position-below');
 }
 
-export function adjustChoicePosition(choiceElement) {
-    if (!choiceElement) return;
-    
-    const viewport = choiceElement.querySelector('.choice-viewport');
-    const trigger = choiceElement.querySelector('.choice-trigger');
-    
-    if (!viewport || !trigger) return;
-    
-    const triggerRect = trigger.getBoundingClientRect();
-    const viewportHeight = window.innerHeight;
-    const viewportWidth = window.innerWidth;
-    
-    const spaceAbove = triggerRect.top;
-    const spaceBelow = viewportHeight - triggerRect.bottom;
-    
-    const originalDisplay = viewport.style.display;
-    const originalVisibility = viewport.style.visibility;
-    viewport.style.visibility = 'hidden';
-    viewport.style.display = 'block';
-    const viewportRect = viewport.getBoundingClientRect();
-    viewport.style.display = originalDisplay;
-    viewport.style.visibility = originalVisibility;
-    
-    const contentHeight = viewportRect.height || 200;
-    const shouldPositionAbove = spaceBelow < contentHeight && spaceAbove > spaceBelow;
-    
-    choiceElement.classList.remove('choice-top', 'choice-bottom', 'choice-topend', 'choice-bottomend');
-    
-    const shouldAlignRight = triggerRect.right + 320 > viewportWidth;
-    
-    if (shouldPositionAbove) {
-        choiceElement.classList.add(shouldAlignRight ? 'choice-topend' : 'choice-top');
-    } else {
-        choiceElement.classList.add(shouldAlignRight ? 'choice-bottomend' : 'choice-bottom');
+export async function destroyChoicePortal(portalId) {
+    try {
+        return await window.RRBlazor.Portal.destroy(portalId);
+    } catch (error) {
+        console.error('[Choice] Portal cleanup failed:', error);
+        return false;
     }
 }
+
+// Register click-outside callback for Blazor component
+export function registerClickOutside(choiceElementId, dotNetRef) {
+    try {
+        const choice = document.querySelector(`[data-choice-id="${choiceElementId}"]`);
+        const portalId = choice?._portalId;
+        
+        if (portalId) {
+            window.RRBlazor.Portal.update(portalId, {
+                onClickOutside: () => dotNetRef.invokeMethodAsync('OnClickOutside')
+            });
+        }
+    } catch (error) {
+        console.error('[Choice] Click-outside registration failed:', error);
+    }
+}
+
+// Export for module usage
+window.RRChoice = {
+    createPortal: createChoicePortal,
+    destroyPortal: destroyChoicePortal,
+    registerClickOutside: registerClickOutside,
+    shouldOpenUpward: Choice.shouldOpenUpward,
+    calculateOptimalPosition: Choice.calculateOptimalPosition
+};
 
 export default {
     Choice,
-    adjustDropdownPosition,
-    adjustChoicePosition
+    createChoicePortal,
+    destroyChoicePortal,
+    registerClickOutside
 };

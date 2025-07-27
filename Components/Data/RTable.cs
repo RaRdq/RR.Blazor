@@ -67,6 +67,7 @@ public abstract class RTableBase : ComponentBase
     [Parameter] public bool Virtualize { get; set; }
     [Parameter] public bool ResizableColumns { get; set; }
     [Parameter] public List<string> StickyColumns { get; set; } = new();
+    [Parameter] public RR.Blazor.Enums.ComponentDensity Density { get; set; } = RR.Blazor.Enums.ComponentDensity.Normal;
     #endregion
 
     #region Content Areas
@@ -132,6 +133,7 @@ public abstract class RTableBase : ComponentBase
         builder.AddAttribute(42, nameof(ExportFormats), ExportFormats);
         builder.AddAttribute(43, nameof(ExportFileName), ExportFileName);
         builder.AddAttribute(44, nameof(ExportMetadata), ExportMetadata);
+        builder.AddAttribute(45, nameof(Density), Density);
     }
 
     protected void ForwardBaseParametersExceptChildContent(RenderTreeBuilder builder)
@@ -185,6 +187,7 @@ public abstract class RTableBase : ComponentBase
         builder.AddAttribute(42, nameof(ExportFormats), ExportFormats);
         builder.AddAttribute(43, nameof(ExportFileName), ExportFileName);
         builder.AddAttribute(44, nameof(ExportMetadata), ExportMetadata);
+        builder.AddAttribute(45, nameof(Density), Density);
     }
 }
 

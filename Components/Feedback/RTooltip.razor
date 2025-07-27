@@ -21,13 +21,15 @@
 @using RR.Blazor.Components.Base
 @inherits RTextComponentBase
 @implements IAsyncDisposable
+@inject IJSRuntime JS
 
 <div class="@GetContainerClasses()" 
      @attributes="AdditionalAttributes"
      data-rr-component="tooltip"
      data-tooltip-position="@GetDataAttribute(Position)"
      data-tooltip-variant="@GetDataAttribute(Variant)"
-     data-tooltip-size="@GetDataAttribute(Size)">
+     data-tooltip-size="@GetDataAttribute(Size)"
+     data-tooltip-id="@portalId">
     
     @* Trigger element *@
     <div class="tooltip-trigger @GetTriggerClasses()" 
@@ -51,7 +53,7 @@
     <div class="tooltip-content @GetContentClasses()" 
          role="tooltip" 
          aria-live="polite"
-         @ref="tooltipElement"
+         @ref="popupElement"
          style="@GetTooltipStyles()">
         @if (HasIcon)
         {
@@ -75,17 +77,12 @@
 </div>
 
 @code {
-    // Base class provides: Text, Icon, Disabled, Loading, Class, Style, Density, ChildContent, AdditionalAttributes
-    
-    [Inject] private IJSRuntime JSRuntime { get; set; } = default!;
-    
-    private ElementReference triggerElement;
-    private ElementReference tooltipElement;
-    private IJSObjectReference? tooltipModule;
-    private string? tooltipId;
-    private bool isVisible;
+    private bool isVisible = false;
     private Timer? showTimer;
     private Timer? hideTimer;
+    private string? portalId;
+    private ElementReference triggerElement;
+    private ElementReference popupElement;
     
     /// <summary>Simple tooltip content as string</summary>
     [Parameter] [AIParameter("Simple tooltip text content", Example = "This is a helpful tooltip")] public string? Content { get; set; }
@@ -109,15 +106,19 @@
     [Parameter] [AIParameter("How tooltip is triggered", Example = "TooltipTrigger.Hover")] public TooltipTrigger Trigger { get; set; } = TooltipTrigger.Hover;
     
     /// <summary>Z-index for tooltip positioning</summary>
-    [Parameter] public int ZIndex { get; set; } = 1000;
+    [Parameter] public int ZIndex { get; set; } = 0;
     
     /// <summary>Maximum width of tooltip content</summary>
     [Parameter] public string? MaxWidth { get; set; }
     
     /// <summary>Rich content template for the tooltip content</summary>
     [Parameter] [AIParameter("Rich HTML content for tooltip", Example = "ContentFragment with links and buttons")] public RenderFragment? ContentFragment { get; set; }
-
-    // Override base class abstract methods
+    
+    // Component style helper methods
+    protected string GetTextClasses() => $"{GetTextSizeClasses()} tooltip-text";
+    protected string GetIconClasses() => $"{GetIconSizeClasses()} tooltip-icon";
+    
+    // Component size helper methods - implement abstract methods from base class
     protected override string GetTextSizeClasses() => Size switch
     {
         TooltipSize.Small => "text-xs",
@@ -169,6 +170,12 @@
             GetSizeClass()
         };
 
+        // Add visibility class
+        if (isVisible)
+            classes.Add("tooltip-visible");
+        else
+            classes.Add("tooltip-hidden");
+
         // Add variant class using switch expression
         var variantClass = GetVariantClass();
         if (variantClass != null)
@@ -215,17 +222,11 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        await base.OnAfterRenderAsync(firstRender);
         if (firstRender)
         {
-            try
-            {
-                tooltipId = $"tooltip-{Guid.NewGuid():N}";
-                tooltipModule = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./_content/RR.Blazor/js/tooltip-portal.js");
-            }
-            catch
-            {
-                // Ignore JS initialization errors
-            }
+            portalId = $"tooltip-{Guid.NewGuid():N}";
+            // Module loading handled by centralized system
         }
     }
 
@@ -274,22 +275,34 @@
 
     private async Task ShowTooltip()
     {
+        // Cancel any pending hide operation
         hideTimer?.Dispose();
+        hideTimer = null;
+        
+        // If already showing, ignore
+        if (isVisible) return;
         
         showTimer = new Timer(async _ =>
         {
             try
             {
+                showTimer?.Dispose();
+                showTimer = null;
+                
                 isVisible = true;
                 await InvokeAsync(StateHasChanged);
                 
                 // Small delay to ensure DOM update
                 await Task.Delay(1);
                 
-                if (tooltipModule != null)
+                // Create portal and position tooltip
+                if (!string.IsNullOrEmpty(portalId))
                 {
-                    await tooltipModule.InvokeVoidAsync("createTooltipPortal", 
-                        tooltipElement, triggerElement, Position.ToString().ToLowerInvariant());
+                    await JS.InvokeVoidAsync("RRBlazor.Tooltip.create", 
+                        popupElement, 
+                        triggerElement, 
+                        Position.ToString().ToLowerInvariant(), 
+                        portalId);
                 }
             }
             catch
@@ -303,34 +316,40 @@
 
     private async Task HideTooltip()
     {
+        // Cancel any pending show operation
         showTimer?.Dispose();
+        showTimer = null;
+        
+        // If already hidden, ignore
+        if (!isVisible) return;
         
         hideTimer = new Timer(async _ =>
         {
             try
             {
-                if (tooltipModule != null && !string.IsNullOrEmpty(tooltipId))
-                {
-                    await tooltipModule.InvokeVoidAsync("destroyTooltipPortal", tooltipId);
-                }
+                hideTimer?.Dispose();
+                hideTimer = null;
+                
+                // Hide portal
+                await HideTooltipPortal();
+                
+                isVisible = false;
+                await InvokeAsync(StateHasChanged);
             }
             catch
             {
-                // Ignore cleanup errors
+                // Fallback to hide even on portal cleanup error
+                isVisible = false;
+                await InvokeAsync(StateHasChanged);
             }
-            
-            isVisible = false;
-            await InvokeAsync(StateHasChanged);
         }, null, HideDelay, Timeout.Infinite);
     }
 
     private string GetTooltipStyles()
     {
         var styles = new List<string>();
-        
-        if (!isVisible)
-            styles.Add("display: none");
             
+        // Only override z-index if explicitly set
         if (ZIndex > 0)
             styles.Add($"z-index: {ZIndex}");
             
@@ -340,17 +359,28 @@
         return string.Join("; ", styles);
     }
 
+
+    private async Task HideTooltipPortal()
+    {
+        if (!string.IsNullOrEmpty(portalId))
+        {
+            try
+            {
+                await JS.InvokeVoidAsync("RRBlazor.Tooltip.destroy", portalId);
+            }
+            catch
+            {
+                // Ignore portal cleanup errors
+            }
+        }
+    }
+
     public async ValueTask DisposeAsync()
     {
         try
         {
             showTimer?.Dispose();
             hideTimer?.Dispose();
-            
-            if (tooltipModule != null)
-            {
-                await tooltipModule.DisposeAsync();
-            }
         }
         catch
         {

@@ -21,57 +21,39 @@ const TARGET_URL = '[REPLACE_WITH_TARGET_URL]'; // e.g., '/dashboard', '/company
   const errors = [];
   const screenshots = [];
 
-  // INSTANT FAIL: Console error monitoring with zero tolerance
   page.on('console', msg => {
     if (msg.type() === 'error') {
       const errorText = msg.text();
-      // Filter out known non-critical errors and common Blazor reload messages
-      if (!errorText.includes('serilog') && 
-          !errorText.includes('%c') && 
-          !errorText.includes('[DEBUG]') &&
-          !errorText.includes('[INFO]') &&
-          !errorText.includes('Please reload') &&
-          !errorText.includes('SignalR') &&
-          !errorText.includes('WebSocket') &&
-          !errorText.includes('connection closed') &&
-          !errorText.includes('Failed to fetch') &&
-          !errorText.includes('chunk-') &&
+      if (!errorText.includes('serilog') && !errorText.includes('%c') && 
+          !errorText.includes('[DEBUG]') && !errorText.includes('[INFO]') &&
+          !errorText.includes('Please reload') && !errorText.includes('SignalR') &&
+          !errorText.includes('WebSocket') && !errorText.includes('connection closed') &&
+          !errorText.includes('Failed to fetch') && !errorText.includes('chunk-') &&
           !errorText.includes('Loading chunk')) {
-        console.log(`❌ INSTANT FAIL - Console Error: ${errorText}`);
         errors.push(`Console Error: ${errorText}`);
         testFailed = true;
       }
     }
   });
 
-  // INSTANT FAIL: Error boundary detection  
   page.on('pageerror', error => {
-    console.log(`❌ INSTANT FAIL - Page Error: ${error.message}`);
     errors.push(`Page Error: ${error.message}`);
     testFailed = true;
   });
 
-  // INSTANT FAIL: Request failure monitoring
   page.on('requestfailed', request => {
     const url = request.url();
     const failure = request.failure()?.errorText || 'Unknown error';
-    
-    // Filter out common reload-related request failures
-    if (!url.includes('_blazor/') && 
-        !url.includes('sockjs-node') &&
-        !url.includes('hot-reload') &&
-        !failure.includes('net::ERR_CONNECTION_REFUSED') &&
+    if (!url.includes('_blazor/') && !url.includes('sockjs-node') &&
+        !url.includes('hot-reload') && !failure.includes('net::ERR_CONNECTION_REFUSED') &&
         !failure.includes('net::ERR_ABORTED')) {
-      console.log(`❌ INSTANT FAIL - Request Failed: ${url} - ${failure}`);
       errors.push(`Request Failed: ${url}`);
       testFailed = true;
     }
   });
 
-  // Network response monitoring
   page.on('response', response => {
     if (response.status() >= 400) {
-      console.log(`⚠️ HTTP ${response.status()}: ${response.url()}`);
       errors.push(`HTTP ${response.status()}: ${response.url()}`);
       if (response.status() >= 500) {
         testFailed = true;
@@ -84,82 +66,52 @@ const TARGET_URL = '[REPLACE_WITH_TARGET_URL]'; // e.g., '/dashboard', '/company
     console.log('🔐 Authenticating...');
     await page.goto('https://localhost:5002', { waitUntil: 'networkidle' });
     
-    // Check for error boundaries immediately after navigation
     const errorBoundaries = await page.locator('[data-error-boundary], .error-boundary, .blazor-error-boundary').count();
     if (errorBoundaries > 0) {
-      console.log('❌ INSTANT FAIL - Error boundary detected on login page');
       testFailed = true;
       const screenshot = `_TestResults/Screenshots/${COMPONENT_NAME}-error-boundary-login.png`;
       await page.screenshot({ path: screenshot, fullPage: true });
       screenshots.push(screenshot);
-      throw new Error('Error boundary detected - test terminated');
+      throw new Error('Error boundary detected');
     }
 
     // Check if we need to login or are already authenticated
     const emailInput = page.locator('input[type="email"]').first();
     if (await emailInput.isVisible({ timeout: 3000 })) {
-      console.log('📝 Login form detected, performing authentication...');
       await emailInput.fill('sarah.johnson@gmail.com');
       await page.fill('input[type="password"]', 'Test123!');
       await page.click('button[type="submit"]');
-      await page.waitForTimeout(3000); // Give more time for auth
+      await page.waitForTimeout(3000);
       
-      // More robust authentication error checking
-      const authErrors = await page.locator('.alert-danger, .validation-summary-errors, .field-validation-error').count();
       const authErrorMessages = await page.locator('.alert-danger, .validation-summary-errors, .field-validation-error').allTextContents();
-      
-      // Filter out non-critical error messages that might appear during normal operation
       const criticalErrors = authErrorMessages.filter(msg => 
-        msg && 
-        msg.trim() && // Only non-empty messages
-        !msg.includes('Please reload') && 
-        !msg.includes('Loading') &&
-        !msg.includes('temporary') &&
-        !msg.includes('Refreshing') &&
-        !msg.includes('Reconnecting') &&
-        !msg.includes('blazor') &&
-        !msg.includes('SignalR') &&
+        msg && msg.trim() && !msg.includes('Please reload') && !msg.includes('Loading') &&
+        !msg.includes('temporary') && !msg.includes('Refreshing') && !msg.includes('Reconnecting') &&
+        !msg.includes('blazor') && !msg.includes('SignalR') &&
         (msg.includes('Invalid') || msg.includes('incorrect') || msg.includes('failed') || msg.includes('denied') || msg.includes('error'))
       );
       
       if (criticalErrors.length > 0) {
-        console.log('❌ INSTANT FAIL - Critical authentication error detected');
-        console.log(`Authentication errors: ${criticalErrors.join(', ')}`);
         testFailed = true;
         throw new Error(`Authentication failed: ${criticalErrors[0]}`);
       }
       
-      // Check if we're still on login page after sufficient wait time
       await page.waitForTimeout(2000);
       const currentUrl = page.url();
       const pageTitle = await page.title();
       
-      console.log(`🔍 Post-auth status: URL=${currentUrl}, Title=${pageTitle}`);
-      
-      // Only fail if we're clearly still on login with error indicators
       if ((currentUrl.includes('login') || currentUrl.includes('identity')) && 
           (pageTitle.includes('Login') || pageTitle.includes('Sign'))) {
-        
-        // Look for actual error indicators, not just presence on login page
         const actualErrors = await page.locator('.text-danger:visible, .error:visible').count();
         const invalidCredentials = await page.locator('text=Invalid').count();
         
         if (actualErrors > 0 || invalidCredentials > 0) {
-          console.log('❌ INSTANT FAIL - Authentication failed, still on login page with errors');
           testFailed = true;
-          throw new Error('Authentication failed - invalid credentials or login error');
-        } else {
-          console.log('⚠️ Still on login page but no explicit errors detected, continuing...');
+          throw new Error('Authentication failed');
         }
       }
-    } else {
-      console.log('✅ Already authenticated or no login form detected');
     }
 
-    // STEP 2: Navigate to target component
-    console.log(`🧭 Navigating to ${TARGET_URL}...`);
-    
-    // Handle potential page reloads during navigation
     let navigationAttempts = 0;
     const maxNavigationAttempts = 3;
     
@@ -170,43 +122,34 @@ const TARGET_URL = '[REPLACE_WITH_TARGET_URL]'; // e.g., '/dashboard', '/company
           timeout: 10000 
         });
         
-        // Wait a moment and check if we need to reload
         await page.waitForTimeout(1000);
         const reloadMessages = await page.locator('text=Please reload').count();
         
         if (reloadMessages > 0) {
-          console.log(`⚠️ Reload message detected, attempt ${navigationAttempts + 1}/${maxNavigationAttempts}`);
           navigationAttempts++;
-          
           if (navigationAttempts < maxNavigationAttempts) {
             await page.reload({ waitUntil: 'networkidle' });
             await page.waitForTimeout(2000);
           }
         } else {
-          // Navigation successful
           break;
         }
       } catch (navigationError) {
         navigationAttempts++;
-        console.log(`⚠️ Navigation attempt ${navigationAttempts} failed: ${navigationError.message}`);
-        
         if (navigationAttempts >= maxNavigationAttempts) {
           throw new Error(`Navigation failed after ${maxNavigationAttempts} attempts`);
         }
-        
         await page.waitForTimeout(2000);
       }
     }
     
-    // CRITICAL: Error boundary check after navigation
     const postNavErrorBoundaries = await page.locator('[data-error-boundary], .error-boundary, .blazor-error-boundary').count();
     if (postNavErrorBoundaries > 0) {
-      console.log('❌ INSTANT FAIL - Error boundary detected after navigation');
       testFailed = true;
       const screenshot = `_TestResults/Screenshots/${COMPONENT_NAME}-error-boundary-navigation.png`;
       await page.screenshot({ path: screenshot, fullPage: true });
       screenshots.push(screenshot);
-      throw new Error('Error boundary detected - test terminated');
+      throw new Error('Error boundary detected');
     }
 
     // STEP 3: Parameter conflict detection (common Blazor issue)
@@ -373,39 +316,66 @@ const TARGET_URL = '[REPLACE_WITH_TARGET_URL]'; // e.g., '/dashboard', '/company
     console.log(`❌ Test error: ${error.message}`);
     errors.push(`Test Error: ${error.message}`);
     testFailed = true;
-    const screenshot = `_TestResults/Screenshots/${COMPONENT_NAME}-general-error.png`;
-    await page.screenshot({ path: screenshot, fullPage: true });
-    screenshots.push(screenshot);
+    try {
+      const screenshot = `_TestResults/Screenshots/${COMPONENT_NAME}-general-error.png`;
+      await page.screenshot({ path: screenshot, fullPage: true });
+      screenshots.push(screenshot);
+    } catch (screenshotError) {
+      console.log(`⚠️ Could not take error screenshot: ${screenshotError.message}`);
+    }
   } finally {
     // MANDATORY: Report all errors and results before closing
     console.log('\n' + '='.repeat(60));
     
-    if (testFailed || errors.length > 0) {
-      console.log('🚨 TEST FAILED - ERRORS DETECTED:');
-      errors.forEach((error, index) => {
-        console.log(`${index + 1}. ${error}`);
-      });
-      
-      if (screenshots.length > 0) {
-        console.log('\n📸 Screenshots captured:');
-        screenshots.forEach(screenshot => console.log(`  • ${screenshot}`));
+    try {
+      if (testFailed || errors.length > 0) {
+        console.log('🚨 TEST FAILED - ERRORS DETECTED:');
+        errors.forEach((error, index) => {
+          console.log(`${index + 1}. ${error}`);
+        });
+        
+        if (screenshots.length > 0) {
+          console.log('\n📸 Screenshots captured:');
+          screenshots.forEach(screenshot => console.log(`  • ${screenshot}`));
+        }
+        
+        console.log(`\n❌ ${COMPONENT_NAME} test FAILED with ${errors.length} errors`);
+      } else {
+        console.log(`✅ ${COMPONENT_NAME} test PASSED - no errors detected`);
+        console.log('🎉 All interactions completed successfully');
+        
+        // Take a final success screenshot
+        try {
+          const successScreenshot = `_TestResults/Screenshots/${COMPONENT_NAME}-success.png`;
+          await page.screenshot({ path: successScreenshot, fullPage: true });
+          console.log(`📸 Success screenshot: ${successScreenshot}`);
+        } catch (screenshotError) {
+          console.log(`⚠️ Could not take success screenshot: ${screenshotError.message}`);
+        }
       }
-      
-      console.log(`\n❌ ${COMPONENT_NAME} test FAILED with ${errors.length} errors`);
-      
-      // Exit with error code for CI/CD integration
-      await browser.close();
-      process.exit(1);
-    } else {
-      console.log(`✅ ${COMPONENT_NAME} test PASSED - no errors detected`);
-      console.log('🎉 All interactions completed successfully');
-      
-      // Take a final success screenshot
-      const successScreenshot = `_TestResults/Screenshots/${COMPONENT_NAME}-success.png`;
-      await page.screenshot({ path: successScreenshot, fullPage: true });
-      console.log(`📸 Success screenshot: ${successScreenshot}`);
+    } catch (finalError) {
+      console.log(`⚠️ Error during final reporting: ${finalError.message}`);
     }
     
-    await browser.close();
+    // GUARANTEED browser closure regardless of any errors
+    try {
+      await browser.close();
+      console.log('🔒 Browser closed successfully');
+    } catch (closeError) {
+      console.log(`⚠️ Error closing browser: ${closeError.message}`);
+      // Force kill browser process if normal close fails
+      try {
+        await browser.close();
+      } catch (forceCloseError) {
+        console.log('🔥 Force closing browser after error');
+      }
+    }
+    
+    // Exit with appropriate code
+    if (testFailed || errors.length > 0) {
+      process.exit(1);
+    } else {
+      process.exit(0);
+    }
   }
 })();

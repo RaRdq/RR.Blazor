@@ -20,6 +20,14 @@
 @inject IJSRuntime JSRuntime
 
 <div id="@ComponentId" class="@GetContainerClasses()" data-rr-component="file-upload">
+    @* Persistent input element - NEVER recreated to preserve file selection *@
+    <InputFile id="@InputId"
+               class="upload-area-input"
+               accept="@GetAcceptString()"
+               multiple="@Multiple"
+               disabled="@Disabled"
+               OnChange="HandleFileChange" />
+    
     @* Main Upload Area - Smart State Transitions *@
     @if (DisplayMode == RFileUploadDisplayMode.DropZone)
     {
@@ -32,12 +40,6 @@
                  aria-label="@GetDropZoneAriaLabel()"
                  aria-describedby="@($"{ComponentId}-hint")"
                  @onkeydown="@HandleDropZoneKeyDown">
-                <InputFile id="@InputId"
-                           class="upload-area-input"
-                           accept="@GetAcceptString()"
-                           multiple="@Multiple"
-                           disabled="@Disabled"
-                           OnChange="HandleFileChange" />
 
                 <label for="@InputId" class="upload-area-label">
                     <i class="material-symbols-rounded">@GetUploadIcon()</i>
@@ -64,14 +66,6 @@
                  role="region"
                  aria-label="@GetFilePreviewAriaLabel()"
                  @onkeydown="@HandleDropZoneKeyDown">
-                
-                @* Hidden input for additional file selection *@
-                <InputFile id="@InputId"
-                           class="upload-area-input"
-                           accept="@GetAcceptString()"
-                           multiple="@Multiple"
-                           disabled="@Disabled"
-                           OnChange="HandleFileChange" />
                 
                 @* Smart drag overlay for add/replace modes *@
                 <div class="upload-drag-overlay hidden" id="@($"{ComponentId}-drag-overlay")">
@@ -203,13 +197,6 @@
     else if (DisplayMode == RFileUploadDisplayMode.Button)
     {
         <div class="flex flex-col gap-2">
-            <InputFile id="@InputId"
-                       class="file-upload-input"
-                       accept="@GetAcceptString()"
-                       multiple="@Multiple"
-                       disabled="@Disabled"
-                       OnChange="HandleFileChange" />
-
             <label for="@InputId" class="@GetButtonClasses()">
                 @if (!string.IsNullOrEmpty(GetEffectiveIcon()))
                 {
@@ -226,23 +213,10 @@
     }
     else if (DisplayMode == RFileUploadDisplayMode.Minimal)
     {
-        <InputFile id="@InputId"
-                   class="@GetMinimalClasses()"
-                   accept="@GetAcceptString()"
-                   multiple="@Multiple"
-                   disabled="@Disabled"
-                   OnChange="HandleFileChange" />
     }
     else if (DisplayMode == RFileUploadDisplayMode.Inline)
     {
         <div class="flex items-center gap-3">
-            <InputFile id="@InputId"
-                       class="file-upload-input"
-                       accept="@GetAcceptString()"
-                       multiple="@Multiple"
-                       disabled="@Disabled"
-                       OnChange="HandleFileChange" />
-
             <label for="@InputId" class="@GetInlineButtonClasses()">
                 <i class="material-symbols-rounded">attach_file</i>
                 Attach Files
@@ -484,8 +458,7 @@
                 
                 await jsModule.InvokeVoidAsync("RRFileUpload.initialize", ComponentId, settings);
                 
-                await JSRuntime.InvokeVoidAsync("addEventListener", ComponentId, "rr-files-selected", dotNetRef, "OnFilesSelectedFromJS");
-                await JSRuntime.InvokeVoidAsync("addEventListener", ComponentId, "rr-file-removed", dotNetRef, "OnFileRemovedFromJS");
+                await jsModule.InvokeVoidAsync("RRFileUpload.setupBlazorEventListeners", ComponentId, dotNetRef);
             }
             catch (Exception ex)
             {

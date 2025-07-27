@@ -64,27 +64,22 @@
             try
             {
                 _jsModule = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./_content/RR.Blazor/js/portal.js");
-                Console.WriteLine($"[ModalProvider] JS Module loaded successfully");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[ModalProvider] ERROR: Failed to load JS module: {ex.Message}");
                 return;
             }
         }
 
         var hasVisibleModals = ModalService.HasVisibleModals;
         var activeCount = ModalService.ActiveModals.Count();
-        Console.WriteLine($"[ModalProvider] HasVisibleModals: {hasVisibleModals}, ActiveCount: {activeCount}, PortalCreated: {_isPortalCreated}");
         
         if (hasVisibleModals && !_isPortalCreated)
         {
-            Console.WriteLine($"[ModalProvider] Creating portal for {activeCount} modals");
             await CreatePortal();
         }
         else if (!hasVisibleModals && _isPortalCreated)
         {
-            Console.WriteLine($"[ModalProvider] Cleaning up portal");
             await CleanupPortal();
         }
     }
@@ -93,46 +88,34 @@
     {
         if (_jsModule == null)
         {
-            Console.WriteLine($"[ModalProvider] ERROR: Cannot create portal - JS module not loaded");
             return;
         }
         
         if (_isPortalCreated)
         {
-            Console.WriteLine($"[ModalProvider] Portal already created, skipping");
             return;
         }
 
         try
         {
-            Console.WriteLine($"[ModalProvider] Attempting to create portal with ID: {_portalId}");
             var success = await _jsModule.InvokeAsync<bool>("createPortal", _modalContainer, "body", _portalId, "", GetFullViewportStyles());
             
             if (success)
             {
-                await JSRuntime.InvokeVoidAsync("eval", "document.body.classList.add('modal-open'); document.body.style.setProperty('--scrollbar-width', (window.innerWidth - document.documentElement.clientWidth) + 'px');");
+                await JSRuntime.InvokeVoidAsync("RRBlazor.Modal.lockScroll");
                 
                 // Focus the modal content wrapper for proper keyboard navigation
                 await Task.Yield(); // to ensure DOM is ready
-                await JSRuntime.InvokeVoidAsync("eval", @"
-                    const modalWrapper = document.querySelector('.modal-content-wrapper[tabindex=""0""]');
-                    if (modalWrapper) {
-                        modalWrapper.focus();
-                        modalWrapper.scrollTop = 0;
-                    }
-                ");
+                await JSRuntime.InvokeVoidAsync("RRBlazor.Modal.focusModal");
                 
                 _isPortalCreated = true;
-                Console.WriteLine($"[ModalProvider] Portal created successfully!");
             }
             else
             {
-                Console.WriteLine($"[ModalProvider] ERROR: Portal creation failed");
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[ModalProvider] ERROR: Portal creation failed: {ex.Message}");
         }
     }
 
@@ -140,21 +123,17 @@
     {
         if (_jsModule == null || !_isPortalCreated)
         {
-            Console.WriteLine($"[ModalProvider] Cleanup skipped - module: {_jsModule != null}, created: {_isPortalCreated}");
             return;
         }
 
         try
         {
-            Console.WriteLine($"[ModalProvider] Cleaning up portal: {_portalId}");
             var success = await _jsModule.InvokeAsync<bool>("cleanupPortal", _portalId);
-            await JSRuntime.InvokeVoidAsync("eval", "document.body.classList.remove('modal-open'); document.body.style.removeProperty('--scrollbar-width');");
+            await JSRuntime.InvokeVoidAsync("RRBlazor.Modal.unlockScroll");
             _isPortalCreated = false;
-            Console.WriteLine($"[ModalProvider] Portal cleanup completed: {success}");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[ModalProvider] ERROR: Portal cleanup failed: {ex.Message}");
         }
     }
 

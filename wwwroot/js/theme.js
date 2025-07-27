@@ -290,3 +290,13 @@ window.RRTheme = {
     document.documentElement.setAttribute('data-theme', themeMode);
     debugLogger.log('Initial theme applied:', themeMode);
 })();
+
+// Global exports for Blazor interop
+window.RRTheme = {
+    applyTheme,
+    setTheme,
+    registerSystemThemeListener,
+    disposeSystemThemeListener,
+    isCurrentlyDark,
+    getCurrentTheme
+};

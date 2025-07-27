@@ -24,6 +24,7 @@ public abstract class RColumnBase : ComponentBase
     [Parameter] public string? Width { get; set; }
     [Parameter] public string? HeaderClass { get; set; }
     [Parameter] public string? CellClass { get; set; }
+    [Parameter] public string? Class { get; set; }
     [Parameter] public bool Sticky { get; set; }
     [Parameter] public bool Visible { get; set; } = true;
     [Parameter] public RenderFragment? HeaderTemplate { get; set; }
@@ -40,9 +41,10 @@ public abstract class RColumnBase : ComponentBase
         builder.AddAttribute(7, nameof(Width), Width);
         builder.AddAttribute(8, nameof(HeaderClass), HeaderClass);
         builder.AddAttribute(9, nameof(CellClass), CellClass);
-        builder.AddAttribute(10, nameof(Sticky), Sticky);
-        builder.AddAttribute(11, nameof(Visible), Visible);
-        builder.AddAttribute(12, nameof(HeaderTemplate), HeaderTemplate);
+        builder.AddAttribute(10, nameof(Class), Class);
+        builder.AddAttribute(11, nameof(Sticky), Sticky);
+        builder.AddAttribute(12, nameof(Visible), Visible);
+        builder.AddAttribute(13, nameof(HeaderTemplate), HeaderTemplate);
     }
 }
 
@@ -65,7 +67,7 @@ public class RColumn : RColumnBase
     {
         // RColumn renders as th element directly for table header
         builder.OpenElement(0, "th");
-        builder.AddAttribute(1, "class", $"table-header-cell {HeaderClass}");
+        builder.AddAttribute(1, "class", $"table-header-cell {HeaderClass} {Class}".Trim());
         
         if (!string.IsNullOrEmpty(Width))
         {
@@ -107,6 +109,7 @@ public class RColumn : RColumnBase
             ["Width"] = Width,
             ["HeaderClass"] = HeaderClass,
             ["CellClass"] = CellClass,
+            ["Class"] = Class,
             ["Property"] = Property,
             ["Template"] = Template
         };

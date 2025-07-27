@@ -33,13 +33,9 @@
     }
   }
   
-  // Dropdown content adjustments for compact mode
+  // Dropdown content adjustments for compact mode - positioning handled by JS
   .choice-viewport {
-    min-width: 200px;
     width: auto;
-    left: auto;
-    right: 0;
-    transform-origin: top right;
   }
   
   // Keep full content in dropdown items
@@ -244,8 +240,8 @@
     gap: var(--space-2);
     padding: var(--space-2) var(--space-3);
     border-radius: var(--radius-md);
-    background: var(--color-surface-elevated);
-    border: var(--border-1) solid var(--color-border);
+    background: transparent; // Changed from var(--color-surface-elevated) to transparent
+    border: var(--border-1) solid transparent; // Changed border to transparent
     color: var(--color-text-muted);
     font-size: var(--text-sm);
     font-weight: var(--font-medium);
@@ -544,14 +540,10 @@
     }
     
     .choice-viewport {
-      position: absolute;
-      left: 0;
-      right: 0;
-      top: calc(100% + var(--space-1));
+      position: fixed;
       z-index: var(--z-popup);
       visibility: hidden;
       opacity: 0;
-      transform: translateY(-var(--space-2));
       transition: all var(--duration-fast) var(--ease-out);
       pointer-events: none;
       
@@ -594,9 +586,10 @@
       box-shadow: var(--shadow-xl);
       backdrop-filter: blur(var(--blur-md));
       width: 100%;
+      min-width: 100%; // Ensure full width of trigger
       max-height: min(320px, 50vh);
       overflow-y: auto;
-      padding: var(--space-1) 0;
+      padding: var(--space-1);
       
       // Premium scrollbar
       &::-webkit-scrollbar {
@@ -627,51 +620,30 @@
       .choice-item {
         border: none;
         background: transparent;
-        margin: 0 var(--space-1);
+        margin: 0;
         justify-content: flex-start;
         text-align: left;
-        padding: var(--space-3) var(--space-3);
+        padding: var(--space-2) var(--space-3);
         font-size: var(--text-sm);
-        font-weight: var(--font-medium);
+        font-weight: var(--font-normal);
         color: var(--color-text);
         transition: all var(--duration-fast) var(--ease-out);
         cursor: pointer;
-        border-radius: var(--radius-sm);
+        border-radius: 0;
         position: relative;
-        
-        // Add subtle border for better definition
-        &::after {
-          content: '';
-          position: absolute;
-          bottom: 0;
-          left: var(--space-3);
-          right: var(--space-3);
-          height: 1px;
-          background: var(--color-border);
-          opacity: 0.3;
-          transition: opacity var(--duration-fast);
-        }
-        
-        &:last-child::after {
-          display: none;
-        }
+        width: 100%;
+        box-sizing: border-box;
         
         &:hover {
           background: var(--color-primary-light);
-          transform: translateX(2px);
           color: var(--color-text);
-          margin: 0 var(--space-half);
-          border-radius: var(--radius-md);
-          
-          &::after {
-            opacity: 0;
-          }
+          position: relative;
+          z-index: 10; // Ensure hover item appears above other content
         }
         
         &:active {
-          background: var(--color-primary-light);
-          color: var(--color-primary);
-          transform: scale(0.98) translateX(2px);
+          background: var(--color-primary);
+          color: var(--color-text-inverse);
         }
         
         // Icon spacing
@@ -683,68 +655,9 @@
       }
     }
     
-    // Legacy contextual positioning - now handled by standardized z-index system
-    // Position above when in sidebar footer or bottom area (context-preserved)
-    .app-sidebar & {
-      .shrink-0 &,
-      [data-position="bottom"] & {
-        .choice-viewport {
-          top: auto;
-          bottom: calc(100% + var(--space-1));
-          transform: translateY(var(--space-2));
-        }
-        
-        &.choice-open .choice-viewport {
-          transform: translateY(0);
-        }
-      }
-    }
+    // Legacy contextual positioning removed - now handled by JS portal system
     
-    // Modern CSS-only positioning using CSS Anchor Positioning + Container Queries
-    // Generic one-size-fits-all solution that works in any container context
-    .choice-viewport {
-      // Use CSS Anchor Positioning for automatic alignment
-      position: absolute;
-      // Anchor to the trigger button
-      position-anchor: --choice-trigger;
-      // Position below trigger with smart overflow handling
-      top: calc(anchor(bottom) + var(--space-1));
-      left: anchor(left);
-      // Match trigger width, with min/max constraints
-      width: max(anchor-size(width), 200px);
-      min-width: 200px;
-      max-width: min(400px, 90vw);
-      // Smart positioning fallbacks using position-try
-      position-try: 
-        flip-block,  // Try above if no room below
-        flip-inline, // Try right if no room on left
-        flip-both;   // Try opposite corner as last resort
-      // Use standardized popup z-index
-      z-index: var(--z-popup);
-      
-      // Fallback for browsers without CSS Anchor support
-      @supports not (anchor-name: --test) {
-        // Use modern fixed positioning with container queries
-        position: fixed;
-        // Will be positioned relative to viewport edge using CSS transforms
-        top: 0;
-        left: 0;
-        // Use CSS container queries to detect overflow constraints
-        @container (max-width: 100vw) {
-          // Auto-adjust for viewport bounds
-          max-width: calc(100vw - 2rem);
-        }
-        @container (max-height: 100vh) {
-          // Auto-adjust for viewport height
-          max-height: calc(100vh - 4rem);
-        }
-      }
-    }
-    
-    // Anchor name for the trigger button
-    .choice-trigger {
-      anchor-name: --choice-trigger;
-    }
+    // Positioning handled by JS portal system
     
     // Backdrop for closing dropdown
     .choice-backdrop {
@@ -772,129 +685,7 @@
       pointer-events: auto;
     }
     
-    // Dynamic positioning system - optimized with mixins
-    @mixin dropdown-position($direction, $offset: var(--space-1)) {
-      @if $direction == 'up' {
-        top: auto;
-        bottom: 100%;
-        margin-top: 0;
-        margin-bottom: $offset;
-        transform: translateY($offset) scale(0.95);
-      } @else {
-        top: 100%;
-        bottom: auto;
-        margin-top: $offset;
-        margin-bottom: 0;
-        transform: translateY(-#{$offset}) scale(0.95);
-      }
-    }
-    
-    @mixin dropdown-horizontal($align) {
-      @if $align == 'start' {
-        left: 0;
-        right: auto;
-        transform-origin: left top;
-      } @else if $align == 'end' {
-        left: auto;
-        right: 0;
-        transform-origin: right top;
-      } @else {
-        left: 50%;
-        transform-origin: center top;
-      }
-    }
-    
-    // Apply positioning mixins
-    &[data-position="up"] .choice-viewport,
-    &.choice-auto-up .choice-viewport,
-    &.choice-up .choice-viewport,
-    &.choice-upstart .choice-viewport,
-    &.choice-upend .choice-viewport {
-      @include dropdown-position('up');
-    }
-    
-    &[data-position="down"] .choice-viewport,
-    &.choice-auto-down .choice-viewport,
-    &.choice-down .choice-viewport,
-    &.choice-downstart .choice-viewport,
-    &.choice-downend .choice-viewport {
-      @include dropdown-position('down');
-    }
-    
-    // Horizontal alignment
-    &.choice-upstart .choice-viewport,
-    &.choice-downstart .choice-viewport {
-      @include dropdown-horizontal('start');
-    }
-    
-    &.choice-upend .choice-viewport,
-    &.choice-downend .choice-viewport {
-      @include dropdown-horizontal('end');
-    }
-    
-    // Center alignment with compound transforms
-    &.choice-up .choice-viewport {
-      @include dropdown-horizontal('center');
-      transform: translateX(-50%) translateY(var(--space-1)) scale(0.95);
-    }
-    
-    &.choice-down .choice-viewport {
-      @include dropdown-horizontal('center');
-      transform: translateX(-50%) translateY(-var(--space-1)) scale(0.95);
-    }
-    
-    // CSS-only auto positioning using modern CSS features
-    &.choice-auto {
-      .choice-viewport {
-        // Default positioning (open downward)
-        top: calc(100% + var(--space-1));
-        bottom: auto;
-        left: 0;
-        right: 0;
-        
-        // Auto positioning using CSS anchor positioning and container queries
-        // Open upward when in bottom third of viewport
-        @container (block-size < 300px) {
-          top: auto;
-          bottom: calc(100% + var(--space-1));
-        }
-        
-        // Fallback for browsers without container query support
-        @supports not (container-type: size) {
-          // Use viewport intersection observer via CSS
-          @media screen and (max-height: 600px) {
-            // For small viewports, prefer upward opening
-            top: auto;
-            bottom: calc(100% + var(--space-1));
-          }
-        }
-      }
-    }
-    
-    // Auto horizontal positioning - prevent edge clipping
-    &.choice-auto,
-    & {
-      .choice-viewport {
-        // Ensure dropdown doesn't overflow viewport horizontally
-        max-width: min(100vw - 2rem, 320px);
-        
-        // Auto-adjust for right edge
-        @media screen and (max-width: 480px) {
-          left: auto;
-          right: 0;
-          transform-origin: top right;
-        }
-      }
-      
-      // For dropdowns near right edge of viewport
-      &:has(.choice-trigger:nth-last-child(-n+2)) {
-        .choice-viewport {
-          left: auto;
-          right: 0;
-          transform-origin: top right;
-        }
-      }
-    }
+    // All positioning logic removed - handled by JS portal system
     
     // Content styling
     .choice-content {
@@ -920,6 +711,8 @@
         &:hover {
           background: var(--state-hover-bg);
           transform: none;
+          position: relative;
+          z-index: 10; // Ensure hover item appears above other content
         }
         
         &:first-child {
@@ -954,13 +747,11 @@
         visibility: visible;
         opacity: 1;
         pointer-events: auto;
-        transform: translateY(0);
       }
       
       // Upward opening animation
       &[data-position="up"] .choice-viewport,
       &.choice-auto-up .choice-viewport {
-        transform: translateY(0);
       }
     }
     

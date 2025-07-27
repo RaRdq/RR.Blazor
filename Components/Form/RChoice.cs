@@ -46,6 +46,7 @@ public abstract class RChoiceBase : ComponentBase
 public class RChoice : RChoiceBase
 {
     private object _items;
+    private IDictionary _originalDictionary;
     
     [Parameter, AIParameter("Collection of items to choose between", "new[] { \"Option1\", \"Option2\" }")]
     public object Items 
@@ -56,18 +57,20 @@ public class RChoice : RChoiceBase
             if (value == null)
             {
                 _items = new List<object>();
+                _originalDictionary = null;
                 return;
             }
             
-            // Handle Dictionary<TKey, TValue> by extracting values
+            // Handle Dictionary<TKey, TValue> by extracting keys
             if (value is IDictionary dictionary)
             {
-                var values = new List<object>();
-                foreach (var dictValue in dictionary.Values)
+                _originalDictionary = dictionary;
+                var keys = new List<object>();
+                foreach (var key in dictionary.Keys)
                 {
-                    values.Add(dictValue);
+                    keys.Add(key);
                 }
-                _items = values;
+                _items = keys;
                 return;
             }
             
@@ -75,11 +78,13 @@ public class RChoice : RChoiceBase
             if (value is IEnumerable enumerable && !(value is string))
             {
                 _items = value;
+                _originalDictionary = null;
                 return;
             }
             
             // Handle single item
             _items = new[] { value };
+            _originalDictionary = null;
         }
     }
     
@@ -269,7 +274,22 @@ public class RChoice : RChoiceBase
         // Forward events using object-based parameters - only add if they have delegates
         if (SelectedValueChanged.HasDelegate)
             builder.AddAttribute(100, "SelectedValueChangedObject", SelectedValueChanged);
-        builder.AddAttribute(101, "ItemLabelSelectorTyped", ItemLabelSelector);
+        
+        // Smart ItemLabelSelector for dictionaries
+        var labelSelector = ItemLabelSelector;
+        if (labelSelector == null && _originalDictionary != null)
+        {
+            labelSelector = (item) =>
+            {
+                if (_originalDictionary.Contains(item))
+                {
+                    return _originalDictionary[item]?.ToString() ?? item?.ToString() ?? "";
+                }
+                return item?.ToString() ?? "";
+            };
+        }
+        
+        builder.AddAttribute(101, "ItemLabelSelectorTyped", labelSelector);
         builder.AddAttribute(102, "ItemIconSelectorTyped", ItemIconSelector);
         builder.AddAttribute(103, "ItemTitleSelectorTyped", ItemTitleSelector);
         builder.AddAttribute(104, "ItemAriaLabelSelectorTyped", ItemAriaLabelSelector);

@@ -236,10 +236,7 @@
 
     private async Task OpenCalendar()
     {
-        if (isOpening) return; // Prevent double-opening
-        
-        isOpening = true;
-        isOpen = true;
+        if (isOpen) return; // Already open
         
         if (Range)
         {
@@ -248,34 +245,30 @@
             isSelectingEndDate = false;
         }
         
+        // Set open state and render
+        isOpen = true;
         StateHasChanged();
+        
+        // Wait for DOM update
+        await Task.Yield();
         
         if (jsModule != null)
         {
             try
             {
-                await Task.Yield();
+                // Position popup and setup click handlers after DOM is ready
                 await jsModule.InvokeVoidAsync("positionPopup", elementRef, true);
             }
-            catch
+            catch (Exception ex)
             {
-                // Positioning failed - popup will use CSS fallback
             }
         }
-        
-        // Delay to prevent immediate closure from the same click event
-        await Task.Delay(100);
-        isOpening = false;
-        StateHasChanged();
     }
 
     private async Task CloseCalendar()
     {
-        if (isOpening) return; // Don't close while opening
-        
         isOpen = false;
         showYearPicker = false;
-        isOpening = false;
         
         // Cleanup JavaScript click-outside handling
         if (jsModule != null)
@@ -284,9 +277,8 @@
             {
                 await jsModule.InvokeVoidAsync("cleanupDatepicker", elementRef);
             }
-            catch
+            catch (Exception ex)
             {
-                // Cleanup failed - ignore
             }
         }
         

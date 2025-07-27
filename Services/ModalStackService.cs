@@ -20,11 +20,8 @@ public class ModalStackService(IJSRuntime jsRuntime)
             activeModals.Add(modalId);
         }
 
-        // Lock scroll only when first modal opens
-        if (activeModals.Count == 1 && !scrollLocked)
-        {
-            await LockScrollAsync();
-        }
+        // Register with JS modal manager
+        await jsRuntime.InvokeVoidAsync("RRBlazor.Modal.register", modalId);
 
         // Calculate z-index based on stack position
         var stackPosition = activeModals.IndexOf(modalId);
@@ -39,11 +36,8 @@ public class ModalStackService(IJSRuntime jsRuntime)
     {
         activeModals.Remove(modalId);
 
-        // Unlock scroll only when all modals are closed
-        if (activeModals.Count == 0 && scrollLocked)
-        {
-            await UnlockScrollAsync();
-        }
+        // Unregister with JS modal manager
+        await jsRuntime.InvokeVoidAsync("RRBlazor.Modal.unregister", modalId);
     }
 
     /// <summary>
@@ -67,33 +61,13 @@ public class ModalStackService(IJSRuntime jsRuntime)
         return activeModals.IndexOf(modalId);
     }
 
-    private async Task LockScrollAsync()
+    /// <summary>
+    /// Force unlock scroll (for cleanup scenarios)
+    /// </summary>
+    public async Task ForceUnlockAsync()
     {
-        try
-        {
-            await jsRuntime.InvokeVoidAsync("eval", 
-                "document.body.classList.add('modal-open'); " +
-                "document.body.style.setProperty('--scrollbar-width', (window.innerWidth - document.documentElement.clientWidth) + 'px');");
-            scrollLocked = true;
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error locking scroll: {ex.Message}");
-        }
-    }
-
-    private async Task UnlockScrollAsync()
-    {
-        try
-        {
-            await jsRuntime.InvokeVoidAsync("eval", 
-                "document.body.classList.remove('modal-open'); " +
-                "document.body.style.removeProperty('--scrollbar-width');");
-            scrollLocked = false;
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error unlocking scroll: {ex.Message}");
-        }
+        activeModals.Clear();
+        await jsRuntime.InvokeVoidAsync("RRBlazor.Modal.forceUnlock");
+        scrollLocked = false;
     }
 }

@@ -47,6 +47,82 @@ $table-sizes: (
   )
 );
 
+// Density configuration for ComponentDensity enum - Smart density system
+$table-densities: (
+  'compact': (
+    'header-padding': var(--space-2) var(--space-3),
+    'cell-padding': var(--space-1) var(--space-2),
+    'font-size': var(--text-xs),
+    'row-height': 32px,
+    'line-height': 1.2,
+    'icon-size': 16px,
+    'avatar-size': 24px,
+    'badge-scale': 0.85,
+    'action-btn-size': 28px,
+    'action-gap': var(--space-1),
+    'text-wrap': 'nowrap',
+    'text-overflow': 'ellipsis',
+    'multi-line': false,
+    'show-secondary': false,
+    'inline-actions': true,
+    'compact-date': true
+  ),
+  'dense': (
+    'header-padding': var(--space-3) var(--space-4),
+    'cell-padding': var(--space-2) var(--space-3),
+    'font-size': var(--text-sm),
+    'row-height': 40px,
+    'line-height': 1.3,
+    'icon-size': 18px,
+    'avatar-size': 32px,
+    'badge-scale': 0.9,
+    'action-btn-size': 32px,
+    'action-gap': var(--space-1),
+    'text-wrap': 'nowrap',
+    'text-overflow': 'ellipsis',
+    'multi-line': false,
+    'show-secondary': true,
+    'inline-actions': true,
+    'compact-date': true
+  ),
+  'normal': (
+    'header-padding': var(--space-4) var(--space-6),
+    'cell-padding': var(--space-3) var(--space-4),
+    'font-size': var(--text-sm),
+    'row-height': 48px,
+    'line-height': 1.5,
+    'icon-size': 20px,
+    'avatar-size': 40px,
+    'badge-scale': 1,
+    'action-btn-size': 36px,
+    'action-gap': var(--space-2),
+    'text-wrap': 'wrap',
+    'text-overflow': 'normal',
+    'multi-line': true,
+    'show-secondary': true,
+    'inline-actions': false,
+    'compact-date': false
+  ),
+  'spacious': (
+    'header-padding': var(--space-6) var(--space-8),
+    'cell-padding': var(--space-4) var(--space-6),
+    'font-size': var(--text-base),
+    'row-height': 60px,
+    'line-height': 1.6,
+    'icon-size': 24px,
+    'avatar-size': 48px,
+    'badge-scale': 1.1,
+    'action-btn-size': 40px,
+    'action-gap': var(--space-3),
+    'text-wrap': 'wrap',
+    'text-overflow': 'normal',
+    'multi-line': true,
+    'show-secondary': true,
+    'inline-actions': false,
+    'compact-date': false
+  )
+);
+
 $table-variants: (
   'default': (
     'border': var(--border-1) solid var(--color-border),
@@ -88,6 +164,128 @@ $table-variants: (
       
       .table-cell {
         padding: map.get($props, 'cell-padding');
+      }
+    }
+  }
+
+  // Generate density variants from ComponentDensity enum
+  @each $density, $props in $table-densities {
+    &.table-#{$density} {
+      font-size: map.get($props, 'font-size');
+      
+      .table-header-cell {
+        padding: map.get($props, 'header-padding');
+        line-height: map.get($props, 'line-height');
+        
+        // Smart text handling for headers
+        @if map.get($props, 'text-wrap') == 'nowrap' {
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+      }
+      
+      .table-cell {
+        padding: map.get($props, 'cell-padding');
+        height: map.get($props, 'row-height');
+        line-height: map.get($props, 'line-height');
+        
+        // Smart text wrapping based on density
+        @if map.get($props, 'text-wrap') == 'nowrap' {
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          
+          // Allow hover to show full text in compact modes
+          &:hover {
+            overflow: visible;
+            z-index: 10;
+            position: relative;
+            
+            > div {
+              background: var(--color-surface-elevated);
+              box-shadow: var(--shadow-lg);
+              padding: var(--space-2);
+              border-radius: var(--radius-sm);
+              white-space: normal;
+              word-break: break-word;
+            }
+          }
+        } @else {
+          white-space: normal;
+          word-break: break-word;
+        }
+        
+        // Smart icon sizing
+        .material-symbols-rounded {
+          font-size: map.get($props, 'icon-size');
+          width: map.get($props, 'icon-size');
+          height: map.get($props, 'icon-size');
+        }
+        
+        // Smart avatar sizing
+        .r-avatar {
+          width: map.get($props, 'avatar-size');
+          height: map.get($props, 'avatar-size');
+          font-size: calc(#{map.get($props, 'avatar-size')} * 0.4);
+        }
+        
+        // Smart badge scaling
+        .r-badge {
+          transform: scale(#{map.get($props, 'badge-scale')});
+          transform-origin: center left;
+        }
+        
+        // Smart secondary text visibility
+        @if map.get($props, 'show-secondary') == false {
+          .table-cell-secondary,
+          .text-secondary,
+          .table-cell-subtitle {
+            display: none;
+          }
+        }
+      }
+      
+      tr {
+        height: map.get($props, 'row-height');
+      }
+      
+      // Smart action buttons layout
+      .table-column-actions,
+      .table-actions-container {
+        gap: map.get($props, 'action-gap');
+        
+        .r-button,
+        .btn {
+          height: map.get($props, 'action-btn-size');
+          min-width: map.get($props, 'action-btn-size');
+          padding: 0 var(--space-2);
+          
+          // Icon-only buttons in compact modes
+          @if map.get($props, 'inline-actions') == true {
+            .button-text { display: none; }
+            padding: 0;
+            width: map.get($props, 'action-btn-size');
+          }
+        }
+      }
+      
+      // Smart date formatting
+      @if map.get($props, 'compact-date') == true {
+        .table-date-secondary { display: none; }
+        .table-date-primary { 
+          font-size: map.get($props, 'font-size');
+        }
+      }
+      
+      // Smart multi-line support
+      @if map.get($props, 'multi-line') == false {
+        .table-cell-multiline {
+          display: -webkit-box;
+          -webkit-line-clamp: 1;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
       }
     }
   }
@@ -788,6 +986,168 @@ $table-variants: (
 }
 
 // =============================================================================
+// SMART DENSITY SPECIFIC FEATURES
+// =============================================================================
+
+// Compact density optimizations
+.table-compact {
+  // Inline status indicators
+  .table-cell-status {
+    .r-badge {
+      min-width: auto;
+      padding: 0 var(--space-1);
+    }
+  }
+  
+  // Compact amount display
+  .table-amount-currency {
+    display: inline;
+    font-size: inherit;
+  }
+  
+  // Single line user info
+  .table-user-info {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    
+    .user-details {
+      display: flex;
+      gap: var(--space-2);
+      
+      .user-subtitle { display: none; }
+    }
+  }
+  
+  // Compact checkboxes
+  input[type="checkbox"],
+  input[type="radio"] {
+    width: 14px;
+    height: 14px;
+  }
+}
+
+// Dense density optimizations
+.table-dense {
+  // Condensed multi-column cells
+  .table-cell-multi {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    
+    > * {
+      flex: 0 0 auto;
+    }
+  }
+  
+  // Inline tags
+  .table-tags {
+    display: flex;
+    gap: var(--space-1);
+    
+    .r-chip {
+      padding: 0 var(--space-2);
+      height: 20px;
+      font-size: var(--text-xs);
+    }
+  }
+}
+
+// Normal density - balanced features
+.table-normal {
+  // Standard cell layouts with good readability
+  .table-cell-content {
+    max-width: 400px;
+  }
+  
+  // Visible secondary information
+  .table-cell-with-subtitle {
+    .subtitle {
+      margin-top: var(--space-1);
+      font-size: var(--text-xs);
+      color: var(--color-text-secondary);
+    }
+  }
+}
+
+// Spacious density - maximum clarity
+.table-spacious {
+  // Full content display
+  .table-cell-description {
+    max-width: 600px;
+    line-height: 1.6;
+  }
+  
+  // Enhanced visual hierarchy
+  .table-cell-primary {
+    font-size: var(--text-base);
+    font-weight: 600;
+    margin-bottom: var(--space-1);
+  }
+  
+  // Full action buttons with text
+  .table-actions-container {
+    .r-button {
+      min-width: 100px;
+      
+      .button-text { 
+        display: inline-block;
+        margin-left: var(--space-2);
+      }
+    }
+  }
+  
+  // Rich media previews
+  .table-cell-media {
+    img, video {
+      max-height: 60px;
+      border-radius: var(--radius-sm);
+    }
+  }
+}
+
+// =============================================================================
+// RESPONSIVE DENSITY ADJUSTMENTS
+// =============================================================================
+
+@media (max-width: 768px) {
+  // Force more compact display on mobile
+  .table-table {
+    &.table-normal,
+    &.table-spacious {
+      // Apply dense-like properties without @extend
+      font-size: var(--text-sm);
+      
+      .table-header-cell {
+        padding: var(--space-3) var(--space-4);
+        line-height: 1.3;
+      }
+      
+      .table-cell {
+        padding: var(--space-2) var(--space-3);
+        height: 40px;
+        line-height: 1.3;
+        
+        .material-symbols-rounded {
+          font-size: 18px;
+          width: 18px;
+          height: 18px;
+        }
+      }
+      
+      tr {
+        height: 40px;
+      }
+    }
+  }
+  
+  // Hide non-essential columns in compact mode
+  .table-compact {
+    .table-column-optional { display: none; }
+  }
+}
+
+// =============================================================================
 // DARK MODE SUPPORT
 // =============================================================================
 
@@ -801,6 +1161,13 @@ $table-variants: (
     .bulk-operations-toolbar {
       background: var(--glass-dark-bg);
       border-color: var(--color-primary/30);
+    }
+  }
+  
+  // Density-specific dark mode adjustments
+  .table-compact {
+    .table-cell:hover > div {
+      background: var(--color-surface-dark);
     }
   }
 }

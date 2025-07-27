@@ -23,7 +23,8 @@
 @if (EffectiveVariant == ChoiceVariant.Dropdown)
 {
     <!-- Dropdown Mode -->
-    <div @ref="choiceElement" class="choice choice-dropdown @(IsOpen ? "choice-open" : "") @GetDropdownDensityClass() @base.Class">
+    <div @ref="choiceElement" class="choice choice-dropdown @(IsOpen ? "choice-open" : "") @GetDropdownDensityClass() @Class" 
+         data-choice-id="@choiceElementId">
         
         @if (TriggerContent != null)
         {
@@ -53,15 +54,11 @@
                     <i class="material-symbols-rounded">@GetSelectedItemIcon()</i>
                 }
                 <span>@GetSelectedItemLabel()</span>
-                <i class="material-symbols-rounded choice-chevron">expand_more</i>
             </button>
         }
         
-        <!-- Backdrop -->
-        <div class="choice-backdrop" @onclick="CloseDropdown"></div>
-        
-        <!-- Dropdown Content -->
-        <div class="choice-viewport">
+        <!-- Dropdown Content (will be moved to portal when opened) -->
+        <div class="choice-viewport" @ref="viewportElement">
             <div class="choice-content">
                 @if (Items != null)
                 {
@@ -106,7 +103,7 @@
 else
 {
     <!-- Inline Mode -->
-    <div class="choice @GetInlineClass() @base.Class">
+    <div class="choice @GetInlineClass() @Class">
         @if (Items != null)
         {
             @foreach (var item in Items)
@@ -145,6 +142,9 @@ else
 @code {
     private bool isOpen;
     private ElementReference choiceElement;
+    private ElementReference viewportElement;
+    private string choiceElementId = Guid.NewGuid().ToString("N")[..8];
+    private string? currentPortalId;
 
     [Parameter] public IEnumerable<TValue> Items { get; set; }
     [Parameter] public TValue SelectedValue { get; set; }
@@ -162,7 +162,6 @@ else
     [Parameter] public RenderFragment<object> ItemTemplate { get; set; }
     [Parameter] public EventCallback<TValue> OnItemClick { get; set; }
     [Parameter] public bool Loading { get; set; }
-    [Parameter] public string DropdownClass { get; set; }
     [Parameter] public DropdownDirection DropdownDirection { get; set; } = DropdownDirection.Auto;
 
     private bool IsOpen => isOpen && !Disabled;
@@ -233,32 +232,32 @@ else
 
     private bool IsItemDisabled(TValue item)
     {
-        return ItemDisabledSelectorTyped?.Invoke(item) ?? base.ItemDisabledSelector?.Invoke(item) ?? false;
+        return ItemDisabledSelectorTyped?.Invoke(item) ?? false;
     }
 
     private bool IsItemLoading(TValue item)
     {
-        return ItemLoadingSelectorTyped?.Invoke(item) ?? base.ItemLoadingSelector?.Invoke(item) ?? false;
+        return ItemLoadingSelectorTyped?.Invoke(item) ?? false;
     }
 
     private string GetItemLabel(TValue item)
     {
-        return ItemLabelSelectorTyped?.Invoke(item) ?? base.ItemLabelSelector?.Invoke(item) ?? item?.ToString() ?? "";
+        return ItemLabelSelectorTyped?.Invoke(item) ?? item?.ToString() ?? "";
     }
 
     private string GetItemIcon(TValue item)
     {
-        return ItemIconSelectorTyped?.Invoke(item) ?? base.ItemIconSelector?.Invoke(item) ?? "";
+        return ItemIconSelectorTyped?.Invoke(item) ?? "";
     }
 
     private string GetItemTitle(TValue item)
     {
-        return ItemTitleSelectorTyped?.Invoke(item) ?? base.ItemTitleSelector?.Invoke(item) ?? GetItemLabel(item);
+        return ItemTitleSelectorTyped?.Invoke(item) ?? GetItemLabel(item);
     }
 
     private string GetItemAriaLabel(TValue item)
     {
-        return ItemAriaLabelSelectorTyped?.Invoke(item) ?? base.ItemAriaLabelSelector?.Invoke(item) ?? $"Select {GetItemLabel(item)}";
+        return ItemAriaLabelSelectorTyped?.Invoke(item) ?? $"Select {GetItemLabel(item)}";
     }
 
     private string GetSelectedItemLabel()
@@ -298,27 +297,60 @@ else
         isOpen = true;
         StateHasChanged();
         
-
-        if (DropdownDirection == DropdownDirection.Auto)
+        await Task.Yield(); // Allow DOM to update
+        
+        try
         {
-            await Task.Yield(); // Allow DOM to update
-            try
+            // Create portal using centralized system with click-outside handling
+            var portalResult = await JS.InvokeAsync<string>("RRBlazor.Choice.createPortal", choiceElementId);
+            if (!string.IsNullOrEmpty(portalResult))
             {
-                await JS.InvokeVoidAsync("RRBlazor.Choice.applyDynamicPositioning", choiceElement);
+                currentPortalId = portalResult;
+                
+                // Register event listener for click-outside events
+                await JS.InvokeVoidAsync("RRBlazor.Choice.registerClickOutside", choiceElementId, 
+                    DotNetObjectReference.Create(this));
             }
-            catch (Exception ex)
-            {
-
-                System.Diagnostics.Debug.WriteLine($"Dynamic positioning failed: {ex.Message}");
-            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Portal creation failed: {ex.Message}");
         }
     }
 
-    private Task CloseDropdown()
+    private async Task CloseDropdown()
     {
         isOpen = false;
         StateHasChanged();
-        return Task.CompletedTask;
+        
+        // Cleanup portal and unregister from popup-manager system
+        try
+        {
+            if (!string.IsNullOrEmpty(currentPortalId))
+            {
+                // Clean up portal using centralized system
+                await JS.InvokeVoidAsync("RRBlazor.Choice.destroyPortal", currentPortalId);
+                currentPortalId = null;
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Portal cleanup failed: {ex.Message}");
+        }
+    }
+
+    private async Task HandleClickOutside()
+    {
+        if (isOpen)
+        {
+            await CloseDropdown();
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnClickOutside()
+    {
+        await HandleClickOutside();
     }
 
     private async Task OnItemSelected(TValue item)
@@ -341,8 +373,6 @@ else
             await SelectedValueChangedObject.InvokeAsync(item);
         
 
-        if (base.SelectedValueChanged.HasDelegate)
-            await base.SelectedValueChanged.InvokeAsync(item);
         
         if (EffectiveVariant == ChoiceVariant.Dropdown && CloseOnSelect)
         {
