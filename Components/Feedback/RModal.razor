@@ -1,5 +1,6 @@
 @using RR.Blazor.Enums
 @using RR.Blazor.Services
+@using RR.Blazor.Utilities
 @using Microsoft.JSInterop
 @implements IAsyncDisposable
 @inject ModalStackService ModalStack
@@ -262,24 +263,21 @@
     [Parameter] public string Class { get; set; }
     
     /// <summary>
-    /// Animation style for modal appearance. Options: scaleIn (default), fadeIn, slideUp, slideDown, bounceIn, zoomIn, flipIn, swingIn
+    /// Animation style for modal appearance
     /// </summary>
-    [Parameter] public string Animation { get; set; } = "scaleIn";
+    [Parameter] public ModalAnimation Animation { get; set; } = ModalAnimation.Scale;
     
     /// <summary>
-    /// Duration of the modal animation in CSS time format (e.g., "0.3s", "300ms")
+    /// Speed/duration of the modal animation
     /// </summary>
-    [Parameter] public string AnimationDuration { get; set; } = "0.3s";
+    [Parameter] public AnimationSpeed AnimationSpeed { get; set; } = AnimationSpeed.Normal;
     
     /// <summary>
-    /// CSS timing function for the animation (e.g., "ease-out", "ease-in-out", "cubic-bezier(0.4, 0, 0.2, 1)")
+    /// Duration of the backdrop fade animation
     /// </summary>
-    [Parameter] public string AnimationTiming { get; set; } = "ease-out";
+    [Parameter] public AnimationSpeed BackdropAnimationSpeed { get; set; } = AnimationSpeed.Fast;
     
     /// <summary>
-    /// Duration of the backdrop fade animation in CSS time format (e.g., "0.2s", "200ms")
-    /// </summary>
-    [Parameter] public string BackdropAnimationDuration { get; set; } = "0.2s";
     
 
     private ElementReference modalElement;
@@ -686,32 +684,17 @@ private async Task HandleBackdropClick()
     
     private string GetAnimationStyles()
     {
-        // Map common animation names to existing keyframes
-        var animationName = Animation?.ToLower() switch
-        {
-            "fade" => "fadeIn",
-            "fadein" => "fadeIn",
-            "scale" => "scaleIn",
-            "scalein" => "scaleIn",
-            "slideup" => "slideUp",
-            "slidedown" => "slideDown",
-            "bounce" => "bounceIn",
-            "bouncein" => "bounceIn",
-            "zoom" => "zoomIn",
-            "zoomin" => "zoomIn",
-            "flip" => "flipIn",
-            "flipin" => "flipIn",
-            "swing" => "swingIn",
-            "swingin" => "swingIn",
-            _ => Animation // Use as-is if not a mapped name
-        };
+        var animationProperty = AnimationHelper.GetAnimationProperty(Animation, AnimationSpeed);
+        var duration = AnimationHelper.GetDuration(AnimationSpeed);
+        var timing = AnimationHelper.GetTimingFunction(AnimationSpeed);
         
-        return $"--modal-animation: {animationName}; --modal-duration: {AnimationDuration}; --modal-timing: {AnimationTiming};";
+        return $"--modal-animation: {animationProperty}; --modal-duration: {duration}; --modal-timing: {timing};";
     }
     
     private string GetBackdropAnimationStyles()
     {
-        return $"--modal-backdrop-duration: {BackdropAnimationDuration};";
+        var duration = AnimationHelper.GetDuration(BackdropAnimationSpeed);
+        return $"--modal-backdrop-duration: {duration};";
     }
 
 public async ValueTask DisposeAsync()
