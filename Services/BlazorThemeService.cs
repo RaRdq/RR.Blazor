@@ -148,7 +148,7 @@ public class BlazorThemeService : IThemeService, IAsyncDisposable
                 highContrast = theme.HighContrastMode || isHighContrast
             };
             
-            await jsRuntime.InvokeVoidAsync("RRTheme.applyTheme", themeData);
+            await jsRuntime.InvokeVoidAsync("window.RRBlazor.Theme.apply", themeData);
         }
         catch (Exception ex)
         {

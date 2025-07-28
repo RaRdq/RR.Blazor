@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
 using RR.Blazor.Attributes;
 using RR.Blazor.Enums;
+using RR.Blazor.Components.Base;
 using System.Collections;
 using static RR.Blazor.Enums.ChoiceVariant;
 using static RR.Blazor.Enums.ChoiceStyle;
@@ -15,6 +16,27 @@ namespace RR.Blazor.Components.Form;
 /// </summary>
 public abstract class RChoiceBase : ComponentBase
 {
+    #region Form Integration Parameters
+    
+    [Parameter] public string Label { get; set; } = "";
+    [Parameter] public string Placeholder { get; set; } = "";
+    [Parameter] public string HelpText { get; set; } = "";
+    [Parameter] public string FieldName { get; set; } = "";
+    [Parameter] public bool Required { get; set; }
+    [Parameter] public bool ReadOnly { get; set; }
+    [Parameter] public bool Loading { get; set; }
+    
+    #endregion
+    
+    #region Validation Parameters
+    
+    [Parameter] public bool HasError { get; set; }
+    [Parameter] public string ErrorMessage { get; set; } = "";
+    
+    #endregion
+    
+    #region Events
+    
     [Parameter] public EventCallback<object> SelectedValueChanged { get; set; }
     [Parameter] public Func<object, string> ItemLabelSelector { get; set; }
     [Parameter] public Func<object, string> ItemIconSelector { get; set; }
@@ -34,6 +56,8 @@ public abstract class RChoiceBase : ComponentBase
     [Parameter] public int? MaxLabelLength { get; set; } = 20;
     [Parameter] public string Class { get; set; }
     [Parameter] public RenderFragment ChildContent { get; set; }
+    
+    #endregion
 }
 
 /// <summary>
@@ -100,7 +124,6 @@ public class RChoice : RChoiceBase
     // RSwitcher compatibility parameters
     [Parameter] public SwitcherVariant? SwitcherVariant { get; set; }
     [Parameter] public ButtonSize? SwitcherSize { get; set; }
-    [Parameter] public bool Loading { get; set; }
     [Parameter] public string LoadingText { get; set; } = "Loading...";
     [Parameter] public EventCallback<object> OnSelectionChanged { get; set; }
 
@@ -114,6 +137,7 @@ public class RChoice : RChoiceBase
 
     protected override void OnParametersSet()
     {
+        base.OnParametersSet();
         if (!_valueTypeResolved)
         {
             _valueType = GetValueType();
@@ -306,6 +330,17 @@ public class RChoice : RChoiceBase
         builder.AddAttribute(115, "Style", effectiveStyle);
         builder.AddAttribute(116, "Class", Class);
         builder.AddAttribute(117, "ChildContent", ChildContent);
+        
+        // Forward form integration parameters
+        builder.AddAttribute(118, "Label", Label);
+        builder.AddAttribute(119, "Placeholder", Placeholder);
+        builder.AddAttribute(120, "HelpText", HelpText);
+        builder.AddAttribute(121, "FieldName", FieldName);
+        builder.AddAttribute(122, "Required", Required);
+        builder.AddAttribute(123, "ReadOnly", ReadOnly);
+        builder.AddAttribute(124, "Loading", Loading);
+        builder.AddAttribute(125, "HasError", HasError);
+        builder.AddAttribute(126, "ErrorMessage", ErrorMessage);
     }
 
     private Type GetValueType()

@@ -105,11 +105,11 @@ class PortalManager {
         
         // Setup event handlers
         if (options.onClickOutside || options.closeOnClickOutside) {
-            this.eventManager.setupClickOutside(portal, options.onClickOutside);
+            this.eventManager.setupClickOutside(portal, options.onClickOutside, options.dotNetRef, options.backdropCallbackMethod);
         }
         
         if (options.onEscape || options.closeOnEscape) {
-            this.eventManager.setupEscape(portal, options.onEscape);
+            this.eventManager.setupEscape(portal, options.onEscape, options.dotNetRef, options.escapeCallbackMethod);
         }
         
         return portalId;
@@ -120,11 +120,7 @@ class PortalManager {
         const portal = this.portals.get(portalId);
         if (!portal || !portal.anchor) return;
         
-        console.log('[DEBUG] position() called on portal:', portalId, 'type:', portal.type);
-        console.trace('[DEBUG] position() stack trace');
-        
         const elementToMeasure = portal.element || portal.container;
-        console.log('[DEBUG] Element to measure:', elementToMeasure.id, elementToMeasure.className);
         
         const position = this.positioningEngine.calculate(
             portal.anchor, 
@@ -625,7 +621,7 @@ class PortalEventManager {
         // Global click handler
         this.globalClickHandler = (event) => {
             this.handlers.forEach((handler, portalId) => {
-                if (handler.clickOutside) {
+                if (handler.clickOutside && !handler.isRecentlyCreated) {
                     const portal = handler.portal;
                     if (!portal.container.contains(event.target) && 
                         (!portal.anchor || !portal.anchor.contains(event.target))) {
@@ -673,6 +669,15 @@ class PortalEventManager {
             });
             portal.element.dispatchEvent(event);
         });
+        
+        handler.isRecentlyCreated = true;
+        const protectionDelay = 50;
+        setTimeout(() => {
+            if (this.handlers.has(portal.id)) {
+                handler.isRecentlyCreated = false;
+            }
+        }, protectionDelay);
+        
         this.handlers.set(portal.id, handler);
     }
     

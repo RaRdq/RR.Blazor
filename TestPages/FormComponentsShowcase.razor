@@ -303,8 +303,12 @@
                                               Type="FieldType.Password" 
                                               ShowPasswordToggle="true"
                                               Required="true" />
-                                    <RSelectField @bind-Value="userRegistrationModel.Role" 
-                                                Label="Role" />
+                                    <RChoice SelectedValue="@userRegistrationModel.Role" 
+                                           SelectedValueChanged="@((object value) => userRegistrationModel.Role = value?.ToString() ?? "")"
+                                           Label="Role" 
+                                           Items="@roleOptions" 
+                                           Variant="ChoiceVariant.Dropdown" 
+                                           Placeholder="Select a role..." />
                                 </RFormSection>
 
                                 <RFormSection Title="Preferences" Icon="tune" FieldColumns="1">
@@ -396,8 +400,18 @@
                                         FieldColumns="2">
                                 <RCheckbox @bind-Value="sectionModel.NotificationsEnabled" Text="Enable notifications" />
                                 <RCheckbox @bind-Value="sectionModel.AutoBackup" Text="Automatic backup" />
-                                <RSelectField @bind-Value="sectionModel.Theme" Label="Theme Preference" />
-                                <RSelectField @bind-Value="sectionModel.Language" Label="Language" />
+                                <RChoice SelectedValue="@sectionModel.Theme" 
+                                   SelectedValueChanged="@((object value) => sectionModel.Theme = value?.ToString() ?? "")"
+                                   Label="Theme Preference" 
+                                   Items="@themeOptions" 
+                                   Variant="ChoiceVariant.Dropdown" 
+                                   Placeholder="Choose theme..." />
+                                <RChoice SelectedValue="@sectionModel.Language" 
+                                       SelectedValueChanged="@((object value) => sectionModel.Language = value?.ToString() ?? "")"
+                                       Label="Language" 
+                                       Items="@languageOptions" 
+                                       Variant="ChoiceVariant.Dropdown" 
+                                       Placeholder="Select language..." />
                             </RFormSection>
 
                             <!-- Different Elevations -->
@@ -549,104 +563,206 @@
                 </ChildContent>
             </RCard>
 
-            <!-- RSelectField Component -->
-            <RCard Variant="CardVariant.Outlined" Text="RSelectField">
+            <!-- RChoice Component (Enhanced with Form Integration) -->
+            <RCard Variant="CardVariant.Outlined" Text="RChoice - Enhanced">
                 <ChildContent>
-                    <RSectionDivider Text="Select Field Component" 
-                                     Subtitle="Professional dropdown select component for single value selection" 
-                                     Icon="arrow_drop_down" />
+                    <RSectionDivider Text="Enhanced Choice Component" 
+                                     Subtitle="Smart choice component with form integration, validation, and auto-detection" 
+                                     Icon="dynamic_form" />
                     
                     <div class="space-y-6">
-                        <RFormSection Title="Select Field Examples" FieldColumns="2">
-                            <!-- Basic Select -->
+                        <RFormSection Title="Form Integration Examples" FieldColumns="2">
+                            <!-- Basic Choice with Label -->
                             <div class="space-y-2">
-                                <h5 class="font-medium">Country Selection</h5>
-                                <RSelectField @bind-Value="selectModel.Country" 
-                                            Label="Country" />
+                                <h5 class="font-medium">Country Selection (with Label)</h5>
+                                <RChoice SelectedValue="@selectModel.Country" 
+                                       SelectedValueChanged="@((object value) => selectModel.Country = value?.ToString() ?? "")"
+                                       Label="Country" 
+                                       Items="@countryOptions" 
+                                       Variant="ChoiceVariant.Dropdown" 
+                                       Placeholder="Select your country..." 
+                                       HelpText="Choose your primary country of residence" />
                             </div>
 
-                            <!-- Department Select -->
+                            <!-- Department Choice with Validation -->
                             <div class="space-y-2">
-                                <h5 class="font-medium">Department</h5>
-                                <RSelectField @bind-Value="selectModel.Department" 
-                                            Label="Department" />
+                                <h5 class="font-medium">Department (Required)</h5>
+                                <RChoice SelectedValue="@selectModel.Department" 
+                                       SelectedValueChanged="@((object value) => selectModel.Department = value?.ToString() ?? "")"
+                                       Label="Department" 
+                                       Items="@departmentOptions" 
+                                       Variant="ChoiceVariant.Dropdown" 
+                                       Required="true" 
+                                       Placeholder="Choose department..." 
+                                       HasError="@(string.IsNullOrEmpty(selectModel.Department))" 
+                                       ErrorMessage="@(string.IsNullOrEmpty(selectModel.Department) ? "Department is required" : "")" />
                             </div>
 
-                            <!-- Priority Select -->
+                            <!-- Priority Choice with Smart Detection -->
                             <div class="space-y-2">
-                                <h5 class="font-medium">Priority Level</h5>
-                                <RSelectField @bind-Value="selectModel.Priority" 
-                                            Label="Priority" />
+                                <h5 class="font-medium">Priority Level (Auto-Detection)</h5>
+                                <RChoice SelectedValue="@selectModel.Priority" 
+                                       SelectedValueChanged="@((object value) => selectModel.Priority = value?.ToString() ?? "")"
+                                       Label="Priority" 
+                                       Items="@priorityOptions" 
+                                       Variant="ChoiceVariant.Auto" 
+                                       Placeholder="Set priority level..." 
+                                       HelpText="Component automatically chooses inline vs dropdown based on options" />
                             </div>
 
-                            <!-- Status Select -->
+                            <!-- Status Choice with Icons -->
                             <div class="space-y-2">
-                                <h5 class="font-medium">Project Status</h5>
-                                <RSelectField @bind-Value="selectModel.Status" 
-                                            Label="Status" />
+                                <h5 class="font-medium">Project Status (with Icons)</h5>
+                                <RChoice SelectedValue="@selectModel.Status" 
+                                       SelectedValueChanged="@((object value) => selectModel.Status = value?.ToString() ?? "")"
+                                       Label="Status" 
+                                       Items="@statusOptionsWithIcons" 
+                                       Variant="ChoiceVariant.Dropdown" 
+                                       ItemIconSelector="x => GetStatusIcon(x.ToString())" 
+                                       Placeholder="Update status..." />
                             </div>
 
-                            <!-- Role Select -->
+                            <!-- Role Choice with Loading State -->
                             <div class="space-y-2">
-                                <h5 class="font-medium">User Role</h5>
-                                <RSelectField @bind-Value="selectModel.Role" 
-                                            Label="Role" />
+                                <h5 class="font-medium">User Role (Loading Demo)</h5>
+                                <RChoice SelectedValue="@selectModel.Role" 
+                                       SelectedValueChanged="@((object value) => selectModel.Role = value?.ToString() ?? "")"
+                                       Label="Role" 
+                                       Items="@roleOptions" 
+                                       Variant="ChoiceVariant.Dropdown" 
+                                       Loading="@roleChoiceLoading" 
+                                       Placeholder="Loading roles..." />
+                                <button @onclick="ToggleRoleLoading" class="btn btn-sm btn-outline-primary mt-1">
+                                    @(roleChoiceLoading ? "Stop Loading" : "Simulate Loading")
+                                </button>
                             </div>
 
-                            <!-- Category Select -->
+                            <!-- Category Choice with Error State -->
                             <div class="space-y-2">
-                                <h5 class="font-medium">Category</h5>
-                                <RSelectField @bind-Value="selectModel.Category" 
-                                            Label="Category" />
+                                <h5 class="font-medium">Category (Error Demo)</h5>
+                                <RChoice SelectedValue="@selectModel.Category" 
+                                       SelectedValueChanged="@((object value) => selectModel.Category = value?.ToString() ?? "")"
+                                       Label="Category" 
+                                       Items="@categoryOptions" 
+                                       Variant="ChoiceVariant.Dropdown" 
+                                       HasError="@categoryHasError" 
+                                       ErrorMessage="@(categoryHasError ? "Please select a valid category" : "")" 
+                                       Placeholder="Choose category..." />
+                                <button @onclick="ToggleCategoryError" class="btn btn-sm btn-outline-danger mt-1">
+                                    @(categoryHasError ? "Clear Error" : "Show Error")
+                                </button>
+                            </div>
+                        </RFormSection>
+                        
+                        <!-- Inline vs Dropdown Comparison -->
+                        <RFormSection Title="Smart Variant Detection" FieldColumns="2">
+                            <div class="space-y-2">
+                                <h5 class="font-medium">Few Options (Auto → Inline)</h5>
+                                <RChoice SelectedValue="@selectModel.Size" 
+                                       SelectedValueChanged="@((object value) => selectModel.Size = value?.ToString() ?? "")"
+                                       Label="Size" 
+                                       Items="@sizeOptions" 
+                                       Variant="ChoiceVariant.Auto" 
+                                       Placeholder="Pick size..." 
+                                       HelpText="Automatically chooses inline for few options" />
+                            </div>
+                            
+                            <div class="space-y-2">
+                                <h5 class="font-medium">Many Options (Auto → Dropdown)</h5>
+                                <RChoice SelectedValue="@selectModel.State" 
+                                       SelectedValueChanged="@((object value) => selectModel.State = value?.ToString() ?? "")"
+                                       Label="US State" 
+                                       Items="@usStates" 
+                                       Variant="ChoiceVariant.Auto" 
+                                       Placeholder="Select state..." 
+                                       HelpText="Automatically chooses dropdown for many options" />
                             </div>
                         </RFormSection>
                     </div>
                 </ChildContent>
             </RCard>
 
-            <!-- RSwitcherGeneric Component -->
-            <RCard Variant="CardVariant.Outlined" Text="RSwitcherGeneric">
+            <!-- RChoice Switcher Styles -->
+            <RCard Variant="CardVariant.Outlined" Text="RChoice - Switcher Styles">
                 <ChildContent>
-                    <RSectionDivider Text="Switcher Component" 
-                                     Subtitle="Professional switcher for multiple option selection with smart type detection" 
+                    <RSectionDivider Text="Switcher Functionality with RChoice" 
+                                     Subtitle="RChoice component with different styles for switcher-like behavior" 
                                      Icon="swap_horiz" />
                     
                     <div class="space-y-6">
-                        <!-- Switcher Examples -->
+                        <!-- Switcher Style Examples -->
                         <div class="space-y-4">
-                            <h4 class="text-lg font-semibold">Multi-Option Switchers</h4>
+                            <h4 class="text-lg font-semibold">Switcher Style Variants</h4>
                             
-                            <RFormSection Title="View Options" FieldColumns="2">
-                                <!-- View Mode Switcher -->
+                            <RFormSection Title="View Options & Switcher Styles" FieldColumns="2">
+                                <!-- Tabs Style -->
                                 <div class="space-y-2">
-                                    <h5 class="font-medium">View Mode</h5>
-                                    <RSelectField @bind-Value="switcherModel.ViewMode" 
-                                                  Items="viewModeOptions" 
-                                                  Label="View Mode" />
+                                    <h5 class="font-medium">View Mode (Tabs Style)</h5>
+                                    <RChoice SelectedValue="@switcherModel.ViewMode" 
+                                           SelectedValueChanged="@((object value) => switcherModel.ViewMode = value?.ToString() ?? "")"
+                                           Items="@viewModeOptions" 
+                                           Label="View Mode" 
+                                           Variant="ChoiceVariant.Inline" 
+                                           Style="ChoiceStyle.Tabs" />
+                                    <small class="text-muted">Selected: @switcherModel.ViewMode</small>
                                 </div>
 
-                                <!-- Theme Switcher -->
+                                <!-- Pills Style -->
                                 <div class="space-y-2">
-                                    <h5 class="font-medium">Theme Preference</h5>
-                                    <RSelectField @bind-Value="switcherModel.ThemeMode" 
-                                                  Items="themeModeOptions" 
-                                                  Label="Theme Mode" />
+                                    <h5 class="font-medium">Theme Mode (Pills Style)</h5>
+                                    <RChoice SelectedValue="@switcherModel.ThemeMode" 
+                                           SelectedValueChanged="@((object value) => switcherModel.ThemeMode = value?.ToString() ?? "")"
+                                           Items="@themeModeOptions" 
+                                           Label="Theme Mode" 
+                                           Variant="ChoiceVariant.Inline" 
+                                           Style="ChoiceStyle.Pills" />
+                                    <small class="text-muted">Selected: @switcherModel.ThemeMode</small>
                                 </div>
 
-                                <!-- Layout Switcher -->
+                                <!-- Buttons Style -->
                                 <div class="space-y-2">
-                                    <h5 class="font-medium">Layout Style</h5>
-                                    <RSelectField @bind-Value="switcherModel.LayoutStyle" 
-                                                  Items="layoutStyleOptions" 
-                                                  Label="Layout Style" />
+                                    <h5 class="font-medium">Layout Style (Buttons)</h5>
+                                    <RChoice SelectedValue="@switcherModel.LayoutStyle" 
+                                           SelectedValueChanged="@((object value) => switcherModel.LayoutStyle = value?.ToString() ?? "")"
+                                           Items="@layoutStyleOptions" 
+                                           Label="Layout Style" 
+                                           Variant="ChoiceVariant.Inline" 
+                                           Style="ChoiceStyle.Buttons" />
+                                    <small class="text-muted">Selected: @switcherModel.LayoutStyle</small>
                                 </div>
 
-                                <!-- Size Switcher -->
+                                <!-- Standard Style -->
                                 <div class="space-y-2">
-                                    <h5 class="font-medium">Display Size</h5>
-                                    <RSelectField @bind-Value="switcherModel.DisplaySize" 
-                                                  Items="displaySizeOptions" 
-                                                  Label="Display Size" />
+                                    <h5 class="font-medium">Display Size (Standard)</h5>
+                                    <RChoice SelectedValue="@switcherModel.DisplaySize" 
+                                           SelectedValueChanged="@((object value) => switcherModel.DisplaySize = value?.ToString() ?? "")"
+                                           Items="@displaySizeOptions" 
+                                           Label="Display Size" 
+                                           Variant="ChoiceVariant.Inline" 
+                                           Style="ChoiceStyle.Standard" />
+                                    <small class="text-muted">Selected: @switcherModel.DisplaySize</small>
+                                </div>
+                            </RFormSection>
+                            
+                            <!-- Interactive Demo -->
+                            <RFormSection Title="Interactive Switcher Demo" FieldColumns="1">
+                                <div class="space-y-3">
+                                    <h5 class="font-medium">Multi-Option Toggle Switcher</h5>
+                                    <RChoice SelectedValue="@switcherModel.ActiveTab" 
+                                           SelectedValueChanged="@((object value) => switcherModel.ActiveTab = value?.ToString() ?? "")"
+                                           Items="@tabOptions" 
+                                           Label="Active Tab" 
+                                           Variant="ChoiceVariant.Inline" 
+                                           Style="ChoiceStyle.Tabs" 
+                                           ShowLabels="true"
+                                           ShowActiveIndicator="true" />
+                                    
+                                    <div class="mt-4 p-4 bg-surface-elevated rounded">
+                                        <h6 class="font-medium mb-2">Content for "@switcherModel.ActiveTab"</h6>
+                                        <p class="text-muted">
+                                            @GetTabContent(switcherModel.ActiveTab)
+                                        </p>
+                                    </div>
                                 </div>
                             </RFormSection>
                         </div>
@@ -933,8 +1049,12 @@
                             <RTextInput @bind-Value="completeFormModel.Phone" 
                                       Label="Phone Number" 
                                       Type="FieldType.Tel" />
-                            <RSelectField @bind-Value="completeFormModel.PreferredContact" 
-                                        Label="Preferred Contact Method" />
+                            <RChoice SelectedValue="@completeFormModel.PreferredContact" 
+                                   SelectedValueChanged="@((object value) => completeFormModel.PreferredContact = value?.ToString() ?? "")"
+                                   Label="Preferred Contact Method" 
+                                   Items="@contactMethodOptions" 
+                                   Variant="ChoiceVariant.Dropdown" 
+                                   Placeholder="How would you like to be contacted?" />
                         </RFormSection>
 
                         <RFormSection Title="Employment Details" 
@@ -943,8 +1063,13 @@
                                     FieldColumns="2">
                             <RTextInput @bind-Value="completeFormModel.JobTitle" 
                                       Label="Job Title" />
-                            <RSelectField @bind-Value="completeFormModel.Department" 
-                                        Label="Department" />
+                            <RChoice SelectedValue="@completeFormModel.Department" 
+                                   SelectedValueChanged="@((object value) => completeFormModel.Department = value?.ToString() ?? "")"
+                                   Label="Department" 
+                                   Items="@departmentOptions" 
+                                   Variant="ChoiceVariant.Dropdown" 
+                                   Required="true" 
+                                   Placeholder="Select your department..." />
                             <RDatePicker @bind-Value="completeFormModel.StartDate" 
                                        Label="Start Date" 
                                        Icon="event" />
@@ -1079,11 +1204,41 @@
     // State for sections
     private bool advancedSectionExpanded = false;
 
-    // Switcher Options
+    // Choice Options Data
     private List<string> viewModeOptions = new() { "List", "Grid", "Card" };
     private List<string> themeModeOptions = new() { "Light", "Dark", "Auto" };
     private List<string> layoutStyleOptions = new() { "Comfortable", "Compact", "Dense" };
     private List<string> displaySizeOptions = new() { "Small", "Medium", "Large" };
+    private List<string> tabOptions = new() { "Overview", "Details", "Settings", "History" };
+    
+    // Enhanced RChoice Options
+    private List<string> roleOptions = new() { "Admin", "Manager", "Employee", "Contractor", "Intern" };
+    private List<string> themeOptions = new() { "Light", "Dark", "Auto", "High Contrast" };
+    private List<string> languageOptions = new() { "English", "Spanish", "French", "German", "Japanese" };
+    private List<string> countryOptions = new() { "United States", "Canada", "United Kingdom", "Germany", "France", "Japan", "Australia" };
+    private List<string> departmentOptions = new() { "Engineering", "Marketing", "Sales", "HR", "Finance", "Operations" };
+    private List<string> priorityOptions = new() { "Low", "Medium", "High", "Critical" };
+    private List<string> statusOptionsWithIcons = new() { "Draft", "In Progress", "Review", "Approved", "Rejected" };
+    private List<string> categoryOptions = new() { "Bug", "Feature", "Enhancement", "Documentation", "Question" };
+    private List<string> sizeOptions = new() { "Small", "Medium", "Large" };
+    private List<string> contactMethodOptions = new() { "Email", "Phone", "SMS", "Slack", "Teams" };
+    
+    // US States for dropdown demo
+    private List<string> usStates = new() 
+    { 
+        "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", "Connecticut", 
+        "Delaware", "Florida", "Georgia", "Hawaii", "Idaho", "Illinois", "Indiana", "Iowa", 
+        "Kansas", "Kentucky", "Louisiana", "Maine", "Maryland", "Massachusetts", "Michigan", 
+        "Minnesota", "Mississippi", "Missouri", "Montana", "Nebraska", "Nevada", "New Hampshire",
+        "New Jersey", "New Mexico", "New York", "North Carolina", "North Dakota", "Ohio", 
+        "Oklahoma", "Oregon", "Pennsylvania", "Rhode Island", "South Carolina", "South Dakota",
+        "Tennessee", "Texas", "Utah", "Vermont", "Virginia", "Washington", "West Virginia", 
+        "Wisconsin", "Wyoming" 
+    };
+    
+    // State for interactive demos
+    private bool roleChoiceLoading = false;
+    private bool categoryHasError = false;
 
     // Event Handlers
     private void OnUserRegistrationChanged(UserRegistrationModel model)
@@ -1119,6 +1274,44 @@
     private async Task OnCompleteFormSubmit(object args)
     {
         // Handle complete form submission
+    }
+    
+    // Helper methods for RChoice demos
+    private string GetStatusIcon(string status)
+    {
+        return status switch
+        {
+            "Draft" => "draft",
+            "In Progress" => "schedule",
+            "Review" => "rate_review",
+            "Approved" => "check_circle",
+            "Rejected" => "cancel",
+            _ => "help"
+        };
+    }
+    
+    private void ToggleRoleLoading()
+    {
+        roleChoiceLoading = !roleChoiceLoading;
+        StateHasChanged();
+    }
+    
+    private void ToggleCategoryError()
+    {
+        categoryHasError = !categoryHasError;
+        StateHasChanged();
+    }
+    
+    private string GetTabContent(string tabName)
+    {
+        return tabName switch
+        {
+            "Overview" => "This is the overview tab content with general information and summaries.",
+            "Details" => "Detailed information and specifications are shown in this section.",
+            "Settings" => "Configuration options and preferences can be managed here.",
+            "History" => "Historical data and activity logs are displayed in this area.",
+            _ => "Select a tab to view its content."
+        };
     }
 
     // Form Model Classes
@@ -1229,6 +1422,8 @@
         public string Status { get; set; } = "";
         public string Role { get; set; } = "";
         public string Category { get; set; } = "";
+        public string Size { get; set; } = "";
+        public string State { get; set; } = "";
     }
 
     public class SwitcherFormModel
@@ -1237,6 +1432,7 @@
         public string ThemeMode { get; set; } = "Auto";
         public string LayoutStyle { get; set; } = "Comfortable";
         public string DisplaySize { get; set; } = "Medium";
+        public string ActiveTab { get; set; } = "Overview";
     }
 
     public class TextInputFormModel

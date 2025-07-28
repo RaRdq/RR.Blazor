@@ -23,7 +23,7 @@ async function positionPopup(element, immediate = false) {
         
         const result = window.RRBlazor.Portal.create(popup, {
             id: portalId,
-            type: 'dropdown',
+            type: 'datepicker',
             anchor: trigger,
             className: 'datepicker-portal',
             width: 320,
@@ -48,20 +48,14 @@ async function positionPopup(element, immediate = false) {
 function cleanupDatepicker(element) {
     if (!element) return;
     
-    console.log('[datepicker] cleanupDatepicker called');
-    
     if (datepickerInstances.has(element)) {
         const portalId = datepickerInstances.get(element);
-        console.log('[datepicker] Destroying portal:', portalId);
         
         if (window.RRBlazor?.Portal) {
             window.RRBlazor.Portal.destroy(portalId);
         }
         
         datepickerInstances.delete(element);
-        console.log('[datepicker] Portal destroyed and removed from registry');
-    } else {
-        console.log('[datepicker] No portal found in registry for element');
     }
 }
 
@@ -76,4 +70,32 @@ function setupDatepickerEvents(element, dotNetRef) {
     });
 }
 
-export { positionPopup, cleanupDatepicker, setupDatepickerEvents };
+// Initialize datepicker with proper API calls
+async function initializeDatepicker(element, dotNetRef) {
+    if (!element || !dotNetRef) return;
+    
+    // Setup event listeners
+    setupDatepickerEvents(element, dotNetRef);
+    
+    // Store reference for cleanup
+    if (!element._datepickerInitialized) {
+        element._datepickerDotNetRef = dotNetRef;
+        element._datepickerInitialized = true;
+    }
+}
+
+// Open datepicker popup
+async function openDatepicker(element) {
+    if (!element) return;
+    
+    await positionPopup(element, true);
+}
+
+// Close datepicker popup
+async function closeDatepicker(element) {
+    if (!element) return;
+    
+    cleanupDatepicker(element);
+}
+
+export { positionPopup, cleanupDatepicker, setupDatepickerEvents, initializeDatepicker, openDatepicker, closeDatepicker };

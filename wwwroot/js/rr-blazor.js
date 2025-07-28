@@ -285,24 +285,29 @@ window.RRBlazor = {
     
     // DatePicker API
     DatePicker: {
-        async init(elementId, options) {
+        async initialize(element, dotNetRef) {
             const datepicker = await moduleManager.getModule('datepicker');
-            return datepicker.init(elementId, options);
+            return datepicker.initializeDatepicker(element, dotNetRef);
         },
         
-        async positionPopup(elementId) {
+        async open(element) {
             const datepicker = await moduleManager.getModule('datepicker');
-            return datepicker.positionPopup(elementId);
+            return datepicker.openDatepicker(element);
         },
         
-        async formatDate(date, format) {
+        async close(element) {
             const datepicker = await moduleManager.getModule('datepicker');
-            return datepicker.formatDate(date, format);
+            return datepicker.closeDatepicker(element);
         },
         
-        async parseDate(dateString, format) {
+        async positionPopup(element) {
             const datepicker = await moduleManager.getModule('datepicker');
-            return datepicker.parseDate(dateString, format);
+            return datepicker.positionPopup(element);
+        },
+        
+        async cleanup(element) {
+            const datepicker = await moduleManager.getModule('datepicker');
+            return datepicker.cleanupDatepicker(element);
         }
     },
     

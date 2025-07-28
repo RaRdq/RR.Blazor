@@ -9,18 +9,16 @@
 @* Auto-portaled modal with backdrop and positioning *@
 @if (Visible)
 {
-    @if (UseOwnBackdrop)
-        {
-            <div class="modal-backdrop" @onclick="HandleBackdropClick" @onkeydown="OnKeyDownHandler" tabindex="-1" data-modal-backdrop="true" style="@GetBackdropAnimationStyles()">
-                <div class="modal-content @GetSizeClass() @Class modal--visible" 
-                     role="dialog" 
-                     aria-modal="true" 
-                     aria-labelledby="@ModalTitleId" 
-                     aria-describedby="@(!string.IsNullOrEmpty(Subtitle) ? ModalDescriptionId : null)"
-                     @ref="modalElement"
-                     @onclick:stopPropagation="true"
-                     tabindex="-1"
-                     style="@GetAnimationStyles()">
+    <div class="modal-content @GetSizeClass() @Class modal--visible" 
+         role="dialog" 
+         aria-modal="true" 
+         aria-labelledby="@ModalTitleId" 
+         aria-describedby="@(!string.IsNullOrEmpty(Subtitle) ? ModalDescriptionId : null)"
+         @ref="modalElement"
+         @onclick:stopPropagation="true"
+         tabindex="-1"
+         style="@GetAnimationStyles()"
+         @onkeydown="OnKeyDownHandler">
                      
                 @if (ShowHeader)
                 {
@@ -44,7 +42,9 @@
                             {
                                 <button type="button" 
                                         class="modal-close" 
-                                        @onclick="HandleClose" 
+                                        @onclick="HandleClose"
+                                        @onclick:preventDefault="true"
+                                        @onclick:stopPropagation="true"
                                         disabled="@Processing"
                                         aria-label="Close dialog">
                                     <i class="material-symbols-rounded" aria-hidden="true" style="pointer-events: none;">close</i>
@@ -114,117 +114,7 @@
                         }
                     </div>
                 }
-                </div> @* Close modal-content *@
-            </div>  @* Close modal-backdrop *@
-        }
-        else
-        {
-            <div class="modal-content @GetSizeClass() @Class modal--visible" 
-                 role="dialog" 
-                 aria-modal="true" 
-                 aria-labelledby="@ModalTitleId" 
-                 aria-describedby="@(!string.IsNullOrEmpty(Subtitle) ? ModalDescriptionId : null)"
-                 @ref="modalElement"
-                 @onclick:stopPropagation="true"
-                 tabindex="-1"
-                 style="@GetAnimationStyles()">
-                 
-            @if (ShowHeader)
-            {
-                <div class="modal-header @GetModalHeaderClasses()">
-                    <div class="d-flex align-center @GetModalHeaderClasses()">
-                        @if (!string.IsNullOrEmpty(Icon))
-                        {
-                            <i class="material-symbols-rounded text-primary @GetIconSizeClass()" aria-hidden="true">@Icon</i>
-                        }
-                        <div class="d-flex flex-col">
-                            <h3 id="@ModalTitleId" class="modal-title ma-0 @GetTitleClasses()">@Text</h3>
-                            @if (!string.IsNullOrEmpty(Subtitle))
-                            {
-                                <p id="@ModalDescriptionId" class="modal-subtitle ma-0 text-sm text-secondary">@Subtitle</p>
-                            }
-                        </div>
-                    </div>
-                    <div class="header-actions d-flex align-center gap-2">
-                        @HeaderContent
-                        @if (ShowCloseButton)
-                        {
-                            <button type="button" 
-                                    class="modal-close" 
-                                    @onclick="HandleClose" 
-                                    @onclick:preventDefault="true"
-                                    @onclick:stopPropagation="true"
-                                    disabled="@Processing"
-                                    aria-label="Close dialog">
-                                <i class="material-symbols-rounded" aria-hidden="true" style="pointer-events: none;">close</i>
-                            </button>
-                        }
-                    </div>
-                </div>
-            }
-            
-            <div class="modal-body @GetModalBodyClasses()">
-                @if (Processing && ShowProcessingOverlay)
-                {
-                    <div class="overlay-full overlay-light d-flex align-center justify-center">
-                        <div class="d-flex flex-col align-center @GetProcessingOverlayClasses() bg-surface-elevated rounded-lg shadow-lg">
-                            <div class="spinner-lg"></div>
-                            <p class="text-body-2 text-secondary ma-0">@ProcessingMessage</p>
-                        </div>
-                    </div>
-                }
-                @ChildContent
-            </div>
-            
-            @if (ShowFooter)
-            {
-                <div class="modal-footer @GetModalFooterClasses()">
-                    @if (FooterContent != null)
-                    {
-                        @FooterContent
-                    }
-                    else
-                    {
-                        <RActionGroup Direction="ActionGroupDirection.Horizontal" 
-                                      Alignment="ActionGroupAlignment.End" 
-                                      Spacing="ActionGroupSpacing.Medium"
-                                      Density="@Density">
-                            @if (ShowCancelButton)
-                            {
-                                <RButton Variant="ButtonVariant.Ghost" 
-                                        Size="@ButtonSize" 
-                                        Icon="@CancelIcon" IconPosition="IconPosition.Start" 
-                                        Class="@CancelButtonClass" 
-                                        OnClick="HandleCancel" 
-                                        Disabled="@Processing">
-                                    @CancelText
-                                </RButton>
-                            }
-                            @if (ShowPrimaryButton)
-                            {
-                                <RButton Variant="ButtonVariant.Primary" 
-                                        Size="@ButtonSize" 
-                                        Icon="@(Processing && ShowPrimaryButtonSpinner ? null : PrimaryIcon)" IconPosition="IconPosition.Start" 
-                                        Class="@PrimaryButtonClass" 
-                                        OnClick="HandlePrimaryAction" 
-                                        Disabled="@(Processing || PrimaryButtonDisabled)"
-                                        Loading="@(Processing && ShowPrimaryButtonSpinner)">
-                                    @(Processing && !string.IsNullOrEmpty(ProcessingButtonText) ? ProcessingButtonText : PrimaryText)
-                                </RButton>
-                            }
-                        </RActionGroup>
-                        @if (ShowUnsavedIndicator && HasUnsavedChanges)
-                        {
-                            <div class="d-flex align-center gap-2 pa-3 bg-info-light text-info rounded-lg">
-                                <i class="material-symbols-rounded">info</i>
-                                <span class="text-sm">You have unsaved changes</span>
-                            </div>
-                        }
-                    }
-                </div>
-            }
-            </div> @* Close modal-content *@
-    }
+    </div> @* Close modal-content *@
 }
 
 @code {
@@ -232,9 +122,9 @@
     [Parameter] public EventCallback<bool> VisibleChanged { get; set; }
     
     /// <summary>
-    /// Whether this modal should create its own backdrop. Set to false when used within RModalProvider.
+    /// Whether this modal should create backdrop via portal system. Set to false only when used within RModalProvider.
     /// </summary>
-    [Parameter] public bool UseOwnBackdrop { get; set; } = true;
+    [Parameter] public bool UsePortalBackdrop { get; set; } = true;
     
 
     private IJSObjectReference jsModule;
@@ -268,14 +158,9 @@
     [Parameter] public ModalAnimation Animation { get; set; } = ModalAnimation.Scale;
     
     /// <summary>
-    /// Speed/duration of the modal animation
+    /// Speed/duration of the modal animation (controls both modal and backdrop)
     /// </summary>
     [Parameter] public AnimationSpeed AnimationSpeed { get; set; } = AnimationSpeed.Normal;
-    
-    /// <summary>
-    /// Duration of the backdrop fade animation
-    /// </summary>
-    [Parameter] public AnimationSpeed BackdropAnimationSpeed { get; set; } = AnimationSpeed.Fast;
     
     /// <summary>
     
@@ -303,7 +188,7 @@ protected override async Task OnAfterRenderAsync(bool firstRender)
         }
         
 
-        if (jsModule != null && Visible != previousVisible && UseOwnBackdrop)
+        if (jsModule != null && Visible != previousVisible && UsePortalBackdrop)
         {
             
             await stateLock.WaitAsync();
@@ -315,7 +200,8 @@ protected override async Task OnAfterRenderAsync(bool firstRender)
                     
                     modalZIndex = await ModalStack.RegisterModalAsync(portalId);
                     
-                    await Task.Delay(50);
+                    // Wait for DOM to be ready
+                    await Task.Yield();
                     
                     var portalCreated = await CreatePortal();
                     if (!portalCreated)
@@ -323,6 +209,7 @@ protected override async Task OnAfterRenderAsync(bool firstRender)
                         currentState = ModalState.Closed;
                         return;
                     }
+                    
                     
                     await CreateFocusTrap();
                     currentState = ModalState.Open;
@@ -355,8 +242,10 @@ protected override async Task OnAfterRenderAsync(bool firstRender)
                 stateLock.Release();
             }
         }
-        else if (Visible != previousVisible)
+        else if (Visible != previousVisible && !UsePortalBackdrop)
         {
+            // Handle non-portal modals (e.g., within RModalProvider)
+            previousVisible = Visible;
         }
     }
     
@@ -383,12 +272,19 @@ private async Task<bool> CreatePortal()
         
         try
         {
+            // Create DotNetObjectReference for callback communication
+            var dotNetRef = DotNetObjectReference.Create(this);
             
-            // Pass options as object with type='modal' to ensure proper portal creation
+            // Pass options with DotNetObjectReference for proper callback communication
             var options = new
             {
                 type = "modal",
-                backdrop = UseOwnBackdrop
+                backdrop = UsePortalBackdrop,  // Use portal backdrop system
+                closeOnClickOutside = CloseOnBackdrop,
+                closeOnEscape = CloseOnEscape,
+                dotNetRef = dotNetRef,
+                backdropCallbackMethod = "HandlePortalBackdropClick",
+                escapeCallbackMethod = "HandlePortalEscapeKey"
             };
             
             var result = await jsModule.InvokeAsync<string>("createPortal", modalElement, "body", portalId, "modal-auto-portal", GetFullViewportStyles(), options);
@@ -438,6 +334,9 @@ private async Task CleanupPortal()
             height: 100vh !important;
             z-index: {modalZIndex} !important;
             pointer-events: auto !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
         ";
     }
     
@@ -494,7 +393,22 @@ private async Task CleanupPortal()
     [Parameter] public EventCallback OnPrimaryAction { get; set; }
     [Parameter] public RenderFragment ChildContent { get; set; }
     
-private async Task HandleBackdropClick()
+// Backdrop clicks now handled by portal system via onClickOutside callback
+    // This ensures proper event handling order and prevents duplicate backdrop issues
+    
+    private async Task OnKeyDownHandler(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape" && CloseOnEscape && !Processing && Variant != ModalVariant.Protected && currentState == ModalState.Open)
+        {
+            if (ModalStack.IsTopModal(portalId))
+            {
+                await HandleClose();
+            }
+        }
+    }
+    
+    [JSInvokable]
+    public async Task HandlePortalBackdropClick()
     {
         if (CloseOnBackdrop && !Processing && Variant != ModalVariant.Protected && currentState == ModalState.Open)
         {
@@ -514,11 +428,11 @@ private async Task HandleBackdropClick()
         }
     }
     
-    private async Task OnKeyDownHandler(KeyboardEventArgs e)
+    [JSInvokable]
+    public async Task HandlePortalEscapeKey()
     {
-        if (e.Key == "Escape" && CloseOnEscape && !Processing && Variant != ModalVariant.Protected && currentState == ModalState.Open)
+        if (CloseOnEscape && !Processing && Variant != ModalVariant.Protected && currentState == ModalState.Open)
         {
-
             if (ModalStack.IsTopModal(portalId))
             {
                 await HandleClose();
@@ -528,49 +442,39 @@ private async Task HandleBackdropClick()
     
     private async Task HandleClose()
     {
-        
         if (!Processing)
         {
-            // If using own backdrop, check state; otherwise just close
-            if (!UseOwnBackdrop || currentState == ModalState.Open)
+            await stateLock.WaitAsync();
+            try
             {
-                await stateLock.WaitAsync();
-                try
+                // Don't close if already closing/closed
+                if (currentState == ModalState.Closing || currentState == ModalState.Closed)
                 {
-                    if (UseOwnBackdrop && currentState != ModalState.Open)
-                    {
-                        return;
-                    }
-                    
-                    if (UseOwnBackdrop)
-                    {
-                        currentState = ModalState.Closing;
-                    }
-                    
-                    if (Visible)
-                    {
-                        Visible = false;
-                        await VisibleChanged.InvokeAsync(false);
-                    }
-                    
-                    // Invoke OnClose callback after visibility change
-                    if (OnClose.HasDelegate)
-                    {
-                        await OnClose.InvokeAsync();
-                    }
-                    
+                    return;
                 }
-                finally
+                
+                // Set closing state for portal backdrop users
+                if (UsePortalBackdrop)
                 {
-                    stateLock.Release();
+                    currentState = ModalState.Closing;
+                }
+                
+                if (Visible)
+                {
+                    Visible = false;
+                    await VisibleChanged.InvokeAsync(false);
+                }
+                
+                // Invoke OnClose callback after visibility change
+                if (OnClose.HasDelegate)
+                {
+                    await OnClose.InvokeAsync();
                 }
             }
-            else
+            finally
             {
+                stateLock.Release();
             }
-        }
-        else
-        {
         }
     }
     
@@ -691,11 +595,7 @@ private async Task HandleBackdropClick()
         return $"--modal-animation: {animationProperty}; --modal-duration: {duration}; --modal-timing: {timing};";
     }
     
-    private string GetBackdropAnimationStyles()
-    {
-        var duration = AnimationHelper.GetDuration(BackdropAnimationSpeed);
-        return $"--modal-backdrop-duration: {duration};";
-    }
+    // Backdrop animation now handled by portal system CSS
 
 public async ValueTask DisposeAsync()
     {

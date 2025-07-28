@@ -31,7 +31,9 @@
             <i class="rr-datepicker-icon rr-datepicker-icon-start material-symbols-rounded">@GetStartIcon()</i>
         }
         
-        <i class="rr-datepicker-icon rr-datepicker-icon-end material-symbols-rounded" @onclick="HandleEndIconClick">
+        <i class="rr-datepicker-icon rr-datepicker-icon-end material-symbols-rounded" 
+           @onclick="HandleEndIconClick" 
+           @onclick:stopPropagation="true">
             @GetEndIcon()
         </i>
     </div>
@@ -151,7 +153,6 @@
     private DateTime? tempStartDate;
     private DateTime? tempEndDate;
     private bool isSelectingEndDate;
-    private IJSObjectReference jsModule;
 
     [Parameter] public DateTime? Value { get; set; }
     [Parameter] public EventCallback<DateTime?> ValueChanged { get; set; }
@@ -208,10 +209,20 @@
         {
             try
             {
-                jsModule = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./_content/RR.Blazor/js/datepicker.js");
-                
-                // Setup click-outside event listener
-                await jsModule.InvokeVoidAsync("setupDatepickerEvents", elementRef, DotNetObjectReference.Create(this));
+                // Use the unified RR.Blazor API instead of importing module directly
+                // This ensures proper module loading order and portal system availability
+                await JSRuntime.InvokeVoidAsync("eval", @"
+                    (async function() {
+                        // Wait for RRBlazor to be available
+                        if (window.RRBlazor?.DatePicker) {
+                            // Setup click-outside event listener using the unified API
+                            const datepicker = await window.RRBlazor.moduleManager.getModule('datepicker');
+                            if (datepicker && datepicker.setupDatepickerEvents) {
+                                datepicker.setupDatepickerEvents(arguments[0], arguments[1]);
+                            }
+                        }
+                    })
+                ", elementRef, DotNetObjectReference.Create(this));
             }
             catch
             {
@@ -252,16 +263,28 @@
         // Wait for DOM update
         await Task.Yield();
         
-        if (jsModule != null)
+        // Use unified RR.Blazor API for positioning
+        try
         {
-            try
-            {
-                // Position popup and setup click handlers after DOM is ready
-                await jsModule.InvokeVoidAsync("positionPopup", elementRef, true);
-            }
-            catch (Exception ex)
-            {
-            }
+            // Position popup and setup click handlers after DOM is ready using unified API
+            // Ensure portal system is loaded before calling datepicker positioning
+            await JSRuntime.InvokeVoidAsync("eval", @"
+                (async function() {
+                    if (window.RRBlazor?.moduleManager) {
+                        // Ensure portal module is loaded first
+                        await window.RRBlazor.moduleManager.getModule('portal');
+                        
+                        // Then get datepicker module and call positionPopup
+                        const datepicker = await window.RRBlazor.moduleManager.getModule('datepicker');
+                        if (datepicker && datepicker.positionPopup) {
+                            await datepicker.positionPopup(arguments[0], true);
+                        }
+                    }
+                })
+            ", elementRef);
+        }
+        catch (Exception ex)
+        {
         }
     }
 
@@ -270,16 +293,22 @@
         isOpen = false;
         showYearPicker = false;
         
-        // Cleanup JavaScript click-outside handling
-        if (jsModule != null)
+        // Cleanup JavaScript click-outside handling using unified API
+        try
         {
-            try
-            {
-                await jsModule.InvokeVoidAsync("cleanupDatepicker", elementRef);
-            }
-            catch (Exception ex)
-            {
-            }
+            await JSRuntime.InvokeVoidAsync("eval", @"
+                (async function() {
+                    if (window.RRBlazor?.moduleManager) {
+                        const datepicker = await window.RRBlazor.moduleManager.getModule('datepicker');
+                        if (datepicker && datepicker.cleanupDatepicker) {
+                            datepicker.cleanupDatepicker(arguments[0]);
+                        }
+                    }
+                })
+            ", elementRef);
+        }
+        catch (Exception ex)
+        {
         }
         
         StateHasChanged();
@@ -322,6 +351,14 @@
                     tempEndDate = date;
                 }
                 isSelectingEndDate = false;
+                
+                // Apply the range and close calendar after both dates are selected
+                Value = tempStartDate;
+                EndValue = tempEndDate;
+                await ValueChanged.InvokeAsync(Value);
+                await EndValueChanged.InvokeAsync(EndValue);
+                await OnDateSelected.InvokeAsync(Value);
+                await CloseCalendar();
             }
         }
         else
@@ -427,6 +464,14 @@
 
     private async Task HandleEndIconClick()
     {
+        // For range datepickers, always open calendar - users can clear dates within the popup
+        if (Range)
+        {
+            await ToggleCalendar();
+            return;
+        }
+        
+        // For single datepickers, prioritize clear button when values exist
         if (ShowClearButton && HasValue())
         {
             Value = null;
@@ -562,6 +607,16 @@
 
     private string GetEndIcon()
     {
+        // For range datepickers, prioritize calendar access over clear button
+        // Users need to be able to change the range even when values exist
+        if (Range)
+        {
+            if (!string.IsNullOrEmpty(Icon) && IconPosition == IconPosition.End)
+                return Icon;
+            return ShowTime ? "schedule" : "calendar_month";
+        }
+        
+        // For single datepickers, show clear button when values exist
         if (ShowClearButton && HasValue())
             return "close";
         
@@ -613,16 +668,23 @@
 
     public async ValueTask DisposeAsync()
     {
-        if (jsModule != null)
+        try
         {
-            try
-            {
-                await jsModule.DisposeAsync();
-            }
-            catch
-            {
-                // Module disposal failed - ignore
-            }
+            // Cleanup using unified API - no need to dispose modules as they're managed by moduleManager
+            await JSRuntime.InvokeVoidAsync("eval", @"
+                (async function() {
+                    if (window.RRBlazor?.moduleManager) {
+                        const datepicker = await window.RRBlazor.moduleManager.getModule('datepicker');
+                        if (datepicker && datepicker.cleanupDatepicker) {
+                            datepicker.cleanupDatepicker(arguments[0]);
+                        }
+                    }
+                })
+            ", elementRef);
+        }
+        catch
+        {
+            // Cleanup failed - ignore
         }
     }
 }

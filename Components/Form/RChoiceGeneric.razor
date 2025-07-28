@@ -20,9 +20,16 @@
 @using RR.Blazor.Components.Form
 @using RR.Blazor.Enums
 
-@if (EffectiveVariant == ChoiceVariant.Dropdown)
-{
-    <!-- Dropdown Mode -->
+<!-- Form wrapper with label and validation -->
+<div class="@GetFormWrapperClasses()">
+    @if (!string.IsNullOrEmpty(Label))
+    {
+        <label class="@GetLabelClasses()">@Label</label>
+    }
+    
+    @if (EffectiveVariant == ChoiceVariant.Dropdown)
+    {
+        <!-- Dropdown Mode -->
     <div @ref="choiceElement" class="choice choice-dropdown @(IsOpen ? "choice-open" : "") @GetDropdownDensityClass() @Class" 
          data-choice-id="@choiceElementId">
         
@@ -135,7 +142,22 @@ else
             }
         }
     </div>
-}
+    }
+    
+    <!-- Validation and Help Text -->
+    @if (HasError && !string.IsNullOrEmpty(ErrorMessage))
+    {
+        <div class="@GetErrorMessageClasses()">
+            <i class="material-symbols-rounded text-error mr-1">error</i>
+            @ErrorMessage
+        </div>
+    }
+    
+    @if (!string.IsNullOrEmpty(HelpText))
+    {
+        <div class="@GetHelpTextClasses()">@HelpText</div>
+    }
+</div>
 
 @inject IJSRuntime JS
 
@@ -161,7 +183,6 @@ else
     [Parameter] public RenderFragment TriggerContent { get; set; }
     [Parameter] public RenderFragment<object> ItemTemplate { get; set; }
     [Parameter] public EventCallback<TValue> OnItemClick { get; set; }
-    [Parameter] public bool Loading { get; set; }
     [Parameter] public DropdownDirection DropdownDirection { get; set; } = DropdownDirection.Auto;
 
     private bool IsOpen => isOpen && !Disabled;
@@ -401,4 +422,44 @@ else
                 break;
         }
     }
+    
+    #region Form Integration CSS Methods
+    
+    private string GetFormWrapperClasses()
+    {
+        var classes = new List<string> { "choice-form-wrapper" };
+        
+        if (!string.IsNullOrEmpty(Class))
+            classes.Add(Class);
+            
+        if (HasError)
+            classes.Add("choice-error");
+            
+        if (Disabled)
+            classes.Add("choice-disabled");
+            
+        return string.Join(" ", classes);
+    }
+    
+    private string GetLabelClasses()
+    {
+        var classes = new List<string> { "choice-label" };
+        
+        if (Required)
+            classes.Add("choice-label-required");
+            
+        return string.Join(" ", classes);
+    }
+    
+    private string GetErrorMessageClasses()
+    {
+        return "choice-error-message text-error text-sm mt-1 d-flex align-center";
+    }
+    
+    private string GetHelpTextClasses()
+    {
+        return "choice-help-text text-muted text-sm mt-1";
+    }
+    
+    #endregion
 }
