@@ -30,13 +30,14 @@
         <div class="pie-chart-svg-container" @ref="chartContainer">
             @if (Data != null && Data.Any())
             {
-                <svg class="pie-chart-svg w-full h-full" viewBox="0 0 @ViewBoxSize @ViewBoxSize">
+                <svg class="pie-chart-svg w-full h-full" viewBox="0 0 300 300">
                     @{
                         var total = Data.Sum(d => d.Value);
                         var startAngle = 0.0;
-                        var centerX = ViewBoxSize / 2;
-                        var centerY = ViewBoxSize / 2;
-                        var radius = (ViewBoxSize / 2) - 20;
+                        const int svgSize = 300;
+                        var centerX = svgSize / 2;
+                        var centerY = svgSize / 2;
+                        var radius = (svgSize / 2) - 20;
                         var innerRadius = IsDoughnut ? radius * InnerRadiusRatio : 0;
                     }
                     
@@ -89,7 +90,7 @@
                      role="button"
                      tabindex="0"
                      aria-label="@GetLegendAriaLabel(dataPoint, percentage)">
-                    <div class="chart-legend-indicator chart-legend-item" style="--legend-color: @(color);"></div>
+                    <div class="chart-legend-indicator chart-legend-item" style="--legend-color: @color;"></div>
                     <span class="chart-legend-label">@dataPoint.Label</span>
                     @if (ShowLegendValues)
                     {
@@ -242,28 +243,26 @@
     [Parameter] public EventCallback<ChartEventArgs> OnSliceHover { get; set; }
 
     private static readonly string[] DefaultColorPalette = {
-        "var(--color-interactive-primary)",
+        "var(--color-primary)",
         "var(--color-success)",
         "var(--color-warning)",
         "var(--color-error)",
         "var(--color-info)",
-        "var(--theme-accent-cyan)",
-        "var(--theme-accent-purple)",
-        "var(--color-text-secondary)"
+        "var(--color-primary-hover)",
+        "var(--color-primary-active)",
+        "var(--color-text-muted)"
     };
 
     private ElementReference chartContainer;
     private int selectedIndex = -1;
-    private const int ViewBoxSize = 300;
 
     private async Task HandleChartInit(ElementReference element)
     {
         chartContainer = element;
 
-
         if (Configuration.EnableAnimation)
         {
-            await JSRuntime.InvokeVoidAsync("RChart.animatePieChart", element);
+            await JSRuntime.InvokeVoidAsync("RRBlazor.Chart.animatePieChart", element);
         }
     }
 

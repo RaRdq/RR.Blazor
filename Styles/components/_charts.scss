@@ -5,6 +5,9 @@
   border-radius: var(--radius-lg);
   border: var(--border-1) solid var(--color-border);
   padding: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 
   &-header {
     display: flex;
@@ -29,8 +32,8 @@
     // Chart content goes here
     min-height: 200px;
     display: flex;
-    align-items: center;
-    justify-content: center;
+    flex-direction: column;
+    flex: 1;
   }
 
   &-footer {
@@ -227,6 +230,8 @@
     width: 100%;
     height: 100%;
     position: relative;
+    flex: 1;
+    min-height: 200px;
     
     canvas, svg {
       width: 100%;
@@ -310,10 +315,17 @@
 
   // Chart style variants
   &-glass {
-    @extend .glass-medium !optional;
+    background: var(--glass-bg-medium);
+    backdrop-filter: var(--glass-blur-md) var(--glass-saturate);
+    border: var(--border-1) solid var(--glass-border-medium);
+    box-shadow: var(--shadow-md);
     
     &:hover {
-      @extend .glass-interactive !optional;
+      background: var(--glass-bg-medium);
+      backdrop-filter: var(--glass-blur-md) var(--glass-saturate);
+      border: var(--border-1) solid var(--glass-border-medium);
+      box-shadow: var(--shadow-md);
+      transition: var(--transition-fast);
     }
   }
 
@@ -328,7 +340,8 @@
     box-shadow: var(--shadow-lg);
     
     &:hover {
-      @extend .hover-lift !optional;
+      transform: translateY(-1px);
+      transition: transform var(--duration-fast) var(--ease-out);
     }
   }
 }
@@ -336,7 +349,7 @@
 // Pie Chart Component
 // ============================================================================
 .pie-chart {
-  @extend .chart !optional;
+  @extend .chart;
   
   &-svg-container {
     display: flex;
@@ -349,7 +362,7 @@
   &-svg {
     max-width: 100%;
     max-height: 100%;
-    @extend .animate-scale-in !optional;
+    animation: scaleIn var(--duration-normal) var(--ease-out);
     
     .pie-slice {
       cursor: pointer;
@@ -368,13 +381,14 @@
         opacity: 0.8;
         transform: scale(1.05);
         filter: brightness(1.1);
-        @extend .hover-lift !optional;
+        transform: translateY(-1px);
+        transition: transform var(--duration-fast) var(--ease-out);
       }
       
       &.active {
         transform: scale(1.1);
         filter: brightness(1.2);
-        @extend .animate-pulse !optional;
+        animation: pulse calc(var(--duration-very-slow) * 2) cubic-bezier(0.4, 0, 0.6, 1) infinite;
       }
     }
   }
@@ -386,14 +400,14 @@
     transform: translate(-50%, -50%);
     text-align: center;
     pointer-events: none;
-    @extend .animate-fade-in !optional;
+    animation: fadeIn var(--duration-normal) var(--ease-out);
     animation-delay: calc(var(--duration-normal) * 2);
     
     .value {
       font-size: var(--text-3xl);
       font-weight: var(--font-bold);
       color: var(--color-text);
-      @extend .animate-slide-in-down !optional;
+      animation: slideInDown var(--duration-slow) ease-out;
       animation-delay: calc(var(--duration-normal) * 2.5);
     }
     
@@ -401,7 +415,7 @@
       font-size: var(--text-sm);
       color: var(--color-text-muted);
       margin-top: var(--space-1);
-      @extend .animate-fade-in !optional;
+      animation: fadeIn var(--duration-normal) var(--ease-out);
       animation-delay: calc(var(--duration-normal) * 3);
     }
   }
@@ -417,19 +431,23 @@
 // Column/Bar Chart Component
 // ============================================================================
 .column-chart {
-  @extend .chart !optional;
+  @extend .chart;
   
   &-container {
     padding: var(--space-4);
     position: relative;
-    @extend .animate-slide-in-bottom !optional;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    animation: slideInBottom var(--duration-slow) ease-out;
   }
 
   &-bars {
     display: flex;
     align-items: flex-end;
     gap: var(--space-2);
-    height: 100%;
+    flex: 1;
+    min-height: 150px;
     padding: var(--space-4) 0;
   }
 
@@ -439,16 +457,19 @@
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: flex-end;
+    height: 100%;
     transition: all var(--duration-fast) var(--ease-out);
     cursor: pointer;
     
     &:hover {
-      @extend .hover-lift !optional;
+      transform: translateY(-1px);
+      transition: transform var(--duration-fast) var(--ease-out);
       
       .column-chart-bar-fill {
         transform: scaleY(1.05);
         filter: brightness(1.1);
-        @extend .animate-breathe !optional;
+        animation: breathe calc(var(--duration-very-slow) * 3) ease-in-out infinite;
       }
       
       .column-chart-bar-value {
@@ -461,19 +482,26 @@
       .column-chart-bar-fill {
         transform: scaleY(1.1);
         filter: brightness(1.2);
-        @extend .animate-pulse !optional;
+        animation: pulse calc(var(--duration-very-slow) * 2) cubic-bezier(0.4, 0, 0.6, 1) infinite;
       }
     }
   }
 
   &-bar-fill {
     width: 100%;
-    min-height: 4px;
     background: var(--color-primary);
     border-radius: var(--radius-sm) var(--radius-sm) 0 0;
     transition: all var(--duration-fast) var(--ease-out);
     transform-origin: bottom;
-    @extend .animate-slide-in-bottom !optional;
+    animation: slideInBottom var(--duration-slow) ease-out;
+    
+    // Fallback height when no inline style
+    min-height: 4px;
+    
+    // Reset min-height when inline height is set
+    &[style*="height"] {
+      min-height: 0;
+    }
     
     // Stagger bar animation
     @for $i from 1 through 20 {
@@ -525,15 +553,8 @@
     text-align: center;
     word-wrap: break-word;
     max-width: 100%;
-    opacity: 0;
-    @extend .animate-fade-in !optional;
-    animation-delay: calc(var(--duration-normal) * 1.5);
-    
-    @for $i from 1 through 20 {
-      &:nth-child(#{$i}) {
-        animation-delay: calc(var(--duration-normal) * 1.5 + var(--duration-fast) * #{$i});
-      }
-    }
+    opacity: 1;
+    animation: fadeIn var(--duration-fast) var(--ease-out) 0.5s forwards;
   }
 
   &-axis {
@@ -576,6 +597,11 @@
       min-width: 4px;
       border-radius: var(--radius-sm) 0 0 var(--radius-sm);
       transform-origin: left;
+      
+      // Allow inline width override for horizontal bars
+      &[style*="width"] {
+        width: auto !important;
+      }
     }
     
     .column-chart-bar-label {
@@ -587,6 +613,126 @@
   }
 }
 
+// Line Chart Component
+// ============================================================================
+.line-chart {
+  @extend .chart;
+  
+  &-container {
+    padding: var(--space-4);
+    position: relative;
+    animation: fadeIn var(--duration-normal) var(--ease-out);
+  }
+
+  &-canvas {
+    width: 100%;
+    height: 100%;
+    position: relative;
+  }
+
+  &-svg {
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    animation: scaleIn var(--duration-normal) var(--ease-out);
+  }
+
+  &-grid {
+    &-line {
+      transition: opacity var(--duration-fast) var(--ease-out);
+      
+      &:hover {
+        opacity: 0.6;
+      }
+    }
+
+    &-label {
+      font-family: var(--font-family-mono);
+      font-size: 10px;
+      user-select: none;
+    }
+  }
+
+  &-line {
+    transition: all var(--duration-fast) var(--ease-out);
+    opacity: 0;
+    stroke-dasharray: 1000;
+    stroke-dashoffset: 1000;
+    animation: lineDrawIn var(--duration-slow) var(--ease-out) forwards;
+    
+    // Stagger line animation for multiple series
+    @for $i from 1 through 10 {
+      &-#{$i - 1} {
+        animation-delay: calc(var(--duration-fast) * #{$i});
+      }
+    }
+    
+    &:hover {
+      stroke-width: 4;
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+    }
+    
+    &-smooth {
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+  }
+
+  &-area {
+    &-fill {
+      opacity: 0;
+      animation: fadeIn var(--duration-normal) var(--ease-out) forwards;
+      animation-delay: var(--duration-slow);
+      transition: opacity var(--duration-fast) var(--ease-out);
+      
+      &:hover {
+        opacity: 0.4;
+      }
+    }
+  }
+
+  &-point {
+    transition: all var(--duration-fast) var(--ease-out);
+    opacity: 0;
+    transform: scale(0);
+    animation: scaleIn var(--duration-fast) var(--ease-out) forwards;
+    
+    // Stagger point animation
+    @for $series from 0 through 9 {
+      @for $point from 0 through 19 {
+        &-#{$series}-#{$point} {
+          animation-delay: calc(var(--duration-slow) + var(--duration-fast) * #{$series} + 50ms * #{$point});
+        }
+      }
+    }
+    
+    &:hover {
+      transform: scale(1.5);
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+      cursor: pointer;
+    }
+    
+    &:focus {
+      outline: 2px solid var(--color-focus);
+      outline-offset: 2px;
+    }
+    
+    &.active {
+      transform: scale(1.8);
+      filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.4));
+      animation: pulse calc(var(--duration-very-slow) * 2) cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+  }
+
+  &-axis {
+    stroke: var(--color-border);
+    stroke-width: 2;
+    opacity: 0;
+    animation: fadeIn var(--duration-normal) var(--ease-out) forwards;
+    animation-delay: var(--duration-fast);
+  }
+}
+
 // Chart Legend Component
 // ============================================================================
 .chart-legend {
@@ -594,7 +740,7 @@
   flex-wrap: wrap;
   gap: var(--space-3);
   padding: var(--space-3) 0;
-  @extend .animate-slide-in-down !optional;
+  animation: slideInDown var(--duration-slow) ease-out;
   animation-delay: var(--duration-normal);
   
   &-top {
@@ -602,7 +748,7 @@
     margin-bottom: var(--space-4);
     border-bottom: 1px solid var(--color-border);
     padding-bottom: var(--space-3);
-    @extend .animate-slide-in-top !optional;
+    animation: slideInTop var(--duration-slow) ease-out;
   }
   
   &-bottom {
@@ -610,7 +756,7 @@
     margin-top: var(--space-4);
     border-top: 1px solid var(--color-border);
     padding-top: var(--space-3);
-    @extend .animate-slide-in-bottom !optional;
+    animation: slideInBottom var(--duration-slow) ease-out;
   }
   
   &-left {
@@ -618,7 +764,7 @@
     margin-right: var(--space-4);
     border-right: 1px solid var(--color-border);
     padding-right: var(--space-3);
-    @extend .animate-slide-in-left !optional;
+    animation: slideInLeft var(--duration-slow) ease-out;
   }
   
   &-right {
@@ -626,7 +772,7 @@
     margin-left: var(--space-4);
     border-left: 1px solid var(--color-border);
     padding-left: var(--space-3);
-    @extend .animate-slide-in-right !optional;
+    animation: slideInRight var(--duration-slow) ease-out;
   }
 
   &-item {
@@ -638,7 +784,7 @@
     border-radius: var(--radius-sm);
     transition: all var(--duration-fast) var(--ease-out);
     opacity: 0;
-    @extend .animate-fade-in !optional;
+    animation: fadeIn var(--duration-normal) var(--ease-out);
     
     // Stagger legend items
     @for $i from 1 through 20 {
@@ -649,11 +795,12 @@
     
     &:hover {
       background: var(--color-surface-elevated);
-      @extend .hover-lift !optional;
+      transform: translateY(-1px);
+      transition: transform var(--duration-fast) var(--ease-out);
     }
     
     &.active {
-      @extend .animate-pulse !optional;
+      animation: pulse calc(var(--duration-very-slow) * 2) cubic-bezier(0.4, 0, 0.6, 1) infinite;
     }
     
     &.inactive {
@@ -671,7 +818,7 @@
     border-radius: var(--radius-full);
     flex-shrink: 0;
     transition: all var(--duration-fast) var(--ease-out);
-    @extend .animate-scale-in !optional;
+    animation: scaleIn var(--duration-normal) var(--ease-out);
     animation-delay: calc(var(--duration-normal) * 1.5);
     
     &-square {
@@ -713,7 +860,7 @@
   &.visible {
     opacity: 1;
     transform: translateY(0);
-    @extend .animate-slide-in-down !optional;
+    animation: slideInDown var(--duration-slow) ease-out;
   }
   
   &::after {
@@ -748,7 +895,7 @@
 // ============================================================================
 .chart-accessibility {
   &-table {
-    @extend .sr-only !optional;
+    @extend %sr-only;
     
     &.visible {
       position: static;
@@ -777,7 +924,7 @@
   }
   
   &-summary {
-    @extend .sr-only !optional;
+    @extend %sr-only;
     
     &.visible {
       position: static;

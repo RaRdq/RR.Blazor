@@ -88,6 +88,7 @@ class ModuleManager {
             portal: '/_content/RR.Blazor/js/portal.js',
             tooltip: '/_content/RR.Blazor/js/tooltip.js',
             choice: '/_content/RR.Blazor/js/choice.js',
+            autosuggest: '/_content/RR.Blazor/js/autosuggest.js',
             datepicker: '/_content/RR.Blazor/js/datepicker.js',
             modal: '/_content/RR.Blazor/js/modal.js',
             forms: '/_content/RR.Blazor/js/forms.js',
@@ -216,6 +217,39 @@ window.RRBlazor = {
         async calculatePosition(triggerElement, options) {
             const choice = await moduleManager.getModule('choice');
             return choice.Choice.calculateOptimalPosition(triggerElement, options);
+        }
+    },
+    
+    // Autosuggest API
+    Autosuggest: {
+        async createPortal(elementId, options) {
+            const autosuggest = await moduleManager.getModule('autosuggest');
+            return autosuggest.createAutosuggestPortal(elementId, options);
+        },
+        
+        async destroyPortal(portalId) {
+            const autosuggest = await moduleManager.getModule('autosuggest');
+            return autosuggest.destroyAutosuggestPortal(portalId);
+        },
+        
+        async registerClickOutside(elementId, dotNetRef) {
+            const autosuggest = await moduleManager.getModule('autosuggest');
+            return autosuggest.registerClickOutside(elementId, dotNetRef);
+        },
+        
+        async updatePosition(elementId) {
+            const autosuggest = await moduleManager.getModule('autosuggest');
+            return autosuggest.updateAutosuggestPosition(elementId);
+        },
+        
+        async getDirection(elementId) {
+            const autosuggest = await moduleManager.getModule('autosuggest');
+            return autosuggest.getAutosuggestDirection(elementId);
+        },
+        
+        async calculateOptimalPosition(triggerElement, options) {
+            const autosuggest = await moduleManager.getModule('autosuggest');
+            return autosuggest.calculateOptimalPosition(triggerElement, options);
         }
     },
     
@@ -356,6 +390,34 @@ window.RRBlazor = {
             return themeModule.getCurrentTheme();
         }
     },
+    
+    // Chart API
+    Chart: {
+        async animatePieChart(element) {
+            const chart = await moduleManager.getModule('chart');
+            return chart.animatePieChart(element);
+        },
+        
+        async animateColumnChart(element) {
+            const chart = await moduleManager.getModule('chart');
+            return chart.animateColumnChart(element);
+        },
+        
+        async initializeChart(element, options) {
+            const chart = await moduleManager.getModule('chart');
+            return chart.initializeChart(element, options);
+        },
+        
+        async initializeTooltip(element, options) {
+            const chart = await moduleManager.getModule('chart');
+            return chart.initializeTooltip(element, options);
+        },
+        
+        async exportChartData(element, format) {
+            const chart = await moduleManager.getModule('chart');
+            return chart.exportChartData(element, format);
+        }
+    },
 
     // Generic component initialization
     async initializeComponent(componentType, elementId, options = {}) {
@@ -372,6 +434,8 @@ window.RRBlazor = {
                 return this.Forms.initializeFormField(element, options);
             case 'datepicker':
                 return this.DatePicker.init(elementId, options);
+            case 'autosuggest':
+                return this.Autosuggest.createPortal(elementId, options);
             default:
                 debugLogger.warn(`Unknown component type: ${componentType}`);
         }
@@ -410,7 +474,7 @@ window.RRBlazor = {
     
     // Preload commonly used modules for performance
     async preloadCore() {
-        return moduleManager.preloadModules('portal', 'utils', 'forms');
+        return moduleManager.preloadModules('portal', 'utils', 'forms', 'autosuggest');
     }
 };
 
@@ -426,6 +490,37 @@ document.addEventListener('DOMContentLoaded', function() {
         debugLogger.warn('Failed to preload core modules:', error);
     });
 });
+
+// Direct tab methods for RTabs component
+RRBlazor.initializeTabs = async function(element, navContainer, navWrapper) {
+    const tabs = await moduleManager.getModule('tabs');
+    return tabs.initializeTabs(element, navContainer, navWrapper);
+};
+
+RRBlazor.getTabIndicatorPosition = async function(tabElementId, wrapperElement) {
+    const tabs = await moduleManager.getModule('tabs');
+    return tabs.getTabIndicatorPosition(tabElementId, wrapperElement);
+};
+
+RRBlazor.getTabScrollInfo = async function(wrapperElement) {
+    const tabs = await moduleManager.getModule('tabs');
+    return tabs.getTabScrollInfo(wrapperElement);
+};
+
+RRBlazor.scrollTabsLeft = async function(wrapperElement) {
+    const tabs = await moduleManager.getModule('tabs');
+    return tabs.scrollTabsLeft(wrapperElement);
+};
+
+RRBlazor.scrollTabsRight = async function(wrapperElement) {
+    const tabs = await moduleManager.getModule('tabs');
+    return tabs.scrollTabsRight(wrapperElement);
+};
+
+RRBlazor.scrollToTab = async function(wrapperElement, tabElementId) {
+    const tabs = await moduleManager.getModule('tabs');
+    return tabs.scrollToTab(wrapperElement, tabElementId);
+};
 
 // Ensure RRBlazor is available globally before any module loads
 window.RRBlazor = window.RRBlazor || RRBlazor;

@@ -30,6 +30,7 @@
 @using Microsoft.AspNetCore.Components.Web
 @using Microsoft.JSInterop
 @inherits RInputBase
+@implements IDisposable
 @inject IJSRuntime JSRuntime
 @attribute [Component("RTextInput", Category = "Form", Complexity = ComponentComplexity.Simple)]
 @attribute [AIOptimized(
@@ -56,7 +57,8 @@
         {
             <textarea id="@inputId"
                       class="@GetInputClasses()"
-                      value="@Value"
+                      @bind="@CurrentValue"
+                      @bind:event="oninput"
                       placeholder="@GetEffectivePlaceholder()"
                       disabled="@Disabled"
                       readonly="@ReadOnly"
@@ -65,8 +67,6 @@
                       maxlength="@MaxLength"
                       data-field="@GetEffectiveFieldName()"
                       data-has-value="@(HasValue().ToString().ToLower())"
-                      @oninput="@HandleInput"
-                      @onchange="@HandleValueChange"
                       @onfocus="@HandleFocus"
                       @onblur="@HandleBlur"
                       @onkeypress="@OnKeyPress"
@@ -80,7 +80,8 @@
                    max="@(Max?.ToString())"
                    step="@(Step?.ToString())"
                    class="@GetInputClasses()"
-                   value="@Value"
+                   @bind="@CurrentValue"
+                   @bind:event="oninput"
                    placeholder="@GetEffectivePlaceholder()"
                    disabled="@Disabled"
                    readonly="@ReadOnly"
@@ -88,8 +89,6 @@
                    autocomplete="@AutoComplete"
                    data-field="@GetEffectiveFieldName()"
                    data-has-value="@(HasValue().ToString().ToLower())"
-                   @oninput="@HandleInput"
-                   @onchange="@HandleValueChange"
                    @onfocus="@HandleFocus"
                    @onblur="@HandleBlur"
                    @onkeypress="@OnKeyPress"
@@ -208,9 +207,10 @@
     
     #endregion
     
-    #region Password State
+    #region Private Fields
     
     private bool showPassword;
+    private Timer? debounceTimer;
     
     private bool IsPasswordField => Type == FieldType.Password;
     
@@ -224,7 +224,6 @@
     private void TogglePasswordVisibility()
     {
         showPassword = !showPassword;
-        StateHasChanged();
     }
     
 
@@ -233,45 +232,49 @@
     
     #region Methods
     
-    private async Task OnInputChange(ChangeEventArgs e)
-    {
-        Value = e.Value?.ToString();
-        await ValueChanged.InvokeAsync(Value);
-    }
     
-    private async Task HandleInput(ChangeEventArgs e)
+    protected string CurrentValue
     {
-        var newValue = e.Value?.ToString() ?? "";
-        Value = newValue;
-        
-        // Always fire ValueChanged for compatibility
-        await ValueChanged.InvokeAsync(Value);
-        
-        // Fire immediate callbacks if in immediate mode or if specifically requested
-        if (Immediate || OnInput.HasDelegate || OnTextInput.HasDelegate)
+        get => Value ?? "";
+        set
         {
-            await HandleImmediateInput(e);
+            if (Value != value)
+            {
+                Value = value;
+                
+                // Fire immediate callbacks if in immediate mode
+                if (Immediate)
+                {
+                    _ = Task.Run(async () =>
+                    {
+                        await InvokeAsync(async () =>
+                        {
+                            await ValueChanged.InvokeAsync(Value);
+                            if (OnTextInput.HasDelegate)
+                                await OnTextInput.InvokeAsync(Value);
+                        });
+                    });
+                }
+                else
+                {
+                    // Debounce non-immediate mode
+                    debounceTimer?.Dispose();
+                    debounceTimer = new Timer(async _ =>
+                    {
+                        await InvokeAsync(async () =>
+                        {
+                            await ValueChanged.InvokeAsync(Value);
+                            if (OnTextChanged.HasDelegate)
+                                await OnTextChanged.InvokeAsync(Value);
+                        });
+                    }, null, ImmediateDebounce, Timeout.Infinite);
+                }
+                
+                _ = HandleUserInteraction(!string.IsNullOrEmpty(value));
+            }
         }
-
-        await HandleUserInteraction(!string.IsNullOrEmpty(newValue));
-        
-        // Force state change to update parent component immediately on input
-        StateHasChanged();
     }
     
-    private async Task HandleValueChange(ChangeEventArgs e)
-    {
-        var newValue = e.Value?.ToString() ?? "";
-        Value = newValue;
-        
-        // Always fire ValueChanged for compatibility
-        await ValueChanged.InvokeAsync(newValue);
-        
-        // Fire regular change callbacks
-        await HandleRegularChange(e);
-        
-        await HandleUserInteraction();
-    }
     
     private async Task HandleFocus(FocusEventArgs e)
     {
@@ -452,6 +455,15 @@
             ComponentDensity.Spacious => "absolute bottom-3 right-4 text-base text-secondary",
             _ => "absolute bottom-2 right-3 text-sm text-secondary"
         };
+    }
+    
+    #endregion
+    
+    #region IDisposable
+    
+    public void Dispose()
+    {
+        debounceTimer?.Dispose();
     }
     
     #endregion

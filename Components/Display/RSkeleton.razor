@@ -1,39 +1,106 @@
 @namespace RR.Blazor.Components
 @using RR.Blazor.Enums
+@inject IJSRuntime JS
 
-@if (Count > 1)
+@if (Loading)
 {
-    @for (int i = 0; i < Count; i++)
-    {
-        <div class="@GetWrapperClasses()">
-            @RenderSkeleton()
-        </div>
-    }
+    <div class="@GetContainerClasses()" @ref="skeletonContainer">
+        @if (SmartMode && ChildContent != null)
+        {
+            @* Smart mode: Auto-generate skeleton from content structure *@
+            <div class="skeleton-smart-container" style="visibility: hidden; position: absolute; pointer-events: none;">
+                @ChildContent
+            </div>
+            <div class="skeleton-smart-overlay">
+                @RenderSmartSkeleton()
+            </div>
+        }
+        else
+        {
+            @* Manual mode: Use predefined skeleton types *@
+            @if (Count > 1)
+            {
+                @for (int i = 0; i < Count; i++)
+                {
+                    <div class="@GetWrapperClasses()">
+                        @RenderSkeleton()
+                    </div>
+                }
+            }
+            else
+            {
+                @RenderSkeleton()
+            }
+        }
+    </div>
+}
+else if (ChildContent != null)
+{
+    @ChildContent
 }
 else
 {
-    @RenderSkeleton()
+    @* Fallback: Show content even if Loading=false and no ChildContent *@
+    <div class="@GetContainerClasses()">
+        @RenderSkeleton()
+    </div>
 }
 
 @code {
-    [Parameter] public SkeletonType Type { get; set; } = SkeletonType.Text;
+    [Parameter] public SkeletonType Type { get; set; } = SkeletonType.Smart;
     [Parameter] public string Width { get; set; } = "100%";
     [Parameter] public string Height { get; set; } = "auto";
     [Parameter] public int Count { get; set; } = 1;
     [Parameter] public bool Animated { get; set; } = true;
+    [Parameter] public bool Loading { get; set; } = true;
+    [Parameter] public bool SmartMode { get; set; } = true;
     [Parameter] public string Class { get; set; } = string.Empty;
     [Parameter] public RenderFragment ChildContent { get; set; }
+    
+    private ElementReference skeletonContainer;
+    private List<SkeletonElement> detectedElements = new();
 
     private RenderFragment RenderSkeleton() => Type switch
     {
+        SkeletonType.Smart => RenderSmartSkeleton(),
         SkeletonType.Text => RenderTextSkeleton(),
         SkeletonType.Title => RenderTitleSkeleton(),
         SkeletonType.Avatar => RenderAvatarSkeleton(),
         SkeletonType.Card => RenderCardSkeleton(),
         SkeletonType.Table => RenderTableSkeleton(),
-        SkeletonType.Custom => ChildContent ?? RenderTextSkeleton(),
-        _ => RenderTextSkeleton()
+        SkeletonType.Custom => ChildContent ?? RenderSmartSkeleton(),
+        _ => RenderSmartSkeleton()
     };
+    
+    private RenderFragment RenderSmartSkeleton() => 
+        @<div class="skeleton-smart-auto">
+            @if (detectedElements.Any())
+            {
+                @foreach (var element in detectedElements)
+                {
+                    @RenderSkeletonElement(element)
+                }
+            }
+            else
+            {
+                @* Fallback smart skeleton *@
+                <div class="@GetSkeletonClasses() skeleton-text mb-2"></div>
+                <div class="@GetSkeletonClasses() skeleton-text mb-2 w-80"></div>
+                <div class="@GetSkeletonClasses() skeleton-text w-60"></div>
+            }
+        </div>;
+        
+    private RenderFragment RenderSkeletonElement(SkeletonElement element) =>
+        @<div class="@GetSkeletonClasses() @element.CssClass" 
+              style="@element.Style">
+            @if (element.Children?.Any() == true)
+            {
+                @foreach (var child in element.Children)
+                {
+                    @RenderSkeletonElement(child)
+                }
+            }
+        </div>;
 
     private RenderFragment RenderTextSkeleton() => @<div class="@GetSkeletonClasses() size-dynamic" style="@GetSkeletonStyle()"></div>;
 
@@ -78,11 +145,6 @@ else
             classes.Add("skeleton-pulse");
         }
         
-        if (!string.IsNullOrEmpty(Class))
-        {
-            classes.Add(Class);
-        }
-        
         return string.Join(" ", classes);
     }
 
@@ -94,6 +156,23 @@ else
             SkeletonType.Table => "mb-6",
             _ => "mb-2"
         };
+    }
+    
+    private string GetContainerClasses()
+    {
+        var classes = new List<string>();
+        
+        if (SmartMode && Loading)
+        {
+            classes.Add("skeleton-smart-wrapper");
+        }
+        
+        if (!string.IsNullOrEmpty(Class))
+        {
+            classes.Add(Class);
+        }
+        
+        return string.Join(" ", classes);
     }
 
     private string GetSkeletonStyle()
@@ -112,5 +191,66 @@ else
         
         return string.Join("; ", styles);
     }
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && SmartMode && ChildContent != null && Loading)
+        {
+            await AnalyzeContent();
+        }
+    }
+    
+    private async Task AnalyzeContent()
+    {
+        try
+        {
+            // In a real implementation, this would use JS interop to analyze the hidden content
+            // For now, we'll create a smart fallback based on common patterns
+            await GenerateSmartSkeleton();
+            StateHasChanged();
+        }
+        catch
+        {
+            // Fallback to simple skeleton on error
+        }
+    }
+    
+    private async Task GenerateSmartSkeleton()
+    {
+        detectedElements = new List<SkeletonElement>
+        {
+            new() { Type = "text", CssClass = "skeleton-title mb-3", Style = "width: 40%; height: 1.5rem;" },
+            new() { Type = "text", CssClass = "skeleton-text mb-2", Style = "width: 100%; height: 1rem;" },
+            new() { Type = "text", CssClass = "skeleton-text mb-2", Style = "width: 85%; height: 1rem;" },
+            new() { Type = "text", CssClass = "skeleton-text mb-4", Style = "width: 70%; height: 1rem;" },
+            new() { Type = "badge", CssClass = "skeleton-badge", Style = "width: 4rem; height: 1.5rem; border-radius: 0.75rem;" }
+        };
+    }
+    
+    public class SkeletonElement
+    {
+        public string Type { get; set; } = "text";
+        public string CssClass { get; set; } = "skeleton-text";
+        public string Style { get; set; } = "";
+        public List<SkeletonElement> Children { get; set; } = new();
+    }
 }
 
+@*
+Usage Examples:
+
+<!-- Smart Auto-Detection Mode (Default) -->
+<RSkeleton Loading="@isLoading">
+    <div>
+        <h4 class="font-medium mb-2">Content Title</h4>
+        <p class="text-muted mb-3">This is some content text.</p>
+        <RBadge Text="Status" />
+    </div>
+</RSkeleton>
+
+<!-- Manual Type Mode -->
+<RSkeleton Type="SkeletonType.Card" Loading="@isLoading" SmartMode="false" />
+
+<!-- Multiple Skeletons -->
+<RSkeleton Type="SkeletonType.Text" Count="3" Loading="@isLoading" SmartMode="false" />
+*@

@@ -17,7 +17,8 @@ Extensible foundation for text search, datepicker autosuggest, and custom implem
 @using Microsoft.AspNetCore.Components.Web
 @typeparam TItem where TItem : notnull
 @inherits RInputBase
-@implements IDisposable
+@implements IAsyncDisposable
+@inject IJSRuntime JS
 
 @attribute [Component("RAutosuggestGeneric", Category = "Form", Complexity = ComponentComplexity.Complex)]
 @attribute [AIOptimized(Prompt = "Create autosuggest input with dropdown suggestions", 
@@ -26,6 +27,7 @@ Extensible foundation for text search, datepicker autosuggest, and custom implem
 
 <div class="@GetAutosuggestClasses()" 
      tabindex="-1"
+     data-autosuggest-id="@ElementId"
      @onkeydown="HandleKeyDown">
 
     <!-- Input Field -->
@@ -46,13 +48,13 @@ Extensible foundation for text search, datepicker autosuggest, and custom implem
                OnBlur="@HandleInputBlur"
                AdditionalAttributes="@GetInputAttributes()" />
 
-    <!-- Suggestions Dropdown -->
-    @if (IsOpen && FilteredItems.Any())
-    {
-        <div class="autosuggest-backdrop" @onclick="CloseDropdown"></div>
-        
-        <div class="autosuggest-viewport">
-            <div class="autosuggest-dropdown">
+    <!-- Suggestions Dropdown - Always rendered for portal movement -->
+    <div class="autosuggest-backdrop @(IsOpen ? "visible" : "hidden")" @onclick="CloseDropdown"></div>
+    
+    <div class="autosuggest-viewport @(IsOpen ? "visible" : "hidden")">
+        <div class="autosuggest-dropdown">
+            @if (IsOpen)
+            {
                 @if (ShowLoading && IsLoading)
                 {
                     <div class="autosuggest-loading">
@@ -104,9 +106,9 @@ Extensible foundation for text search, datepicker autosuggest, and custom implem
                         }
                     </div>
                 }
-            </div>
+            }
         </div>
-    }
+    </div>
 </div>
 
 @code {
@@ -116,6 +118,9 @@ Extensible foundation for text search, datepicker autosuggest, and custom implem
     private int selectedIndex = -1;
     private Timer debounceTimer;
     private CancellationTokenSource cancellationTokenSource;
+    private string portalId;
+    private IJSObjectReference jsModule;
+    private string currentDirection = "down";
 
     [Parameter] public TItem Value { get; set; }
     [Parameter] public EventCallback<TItem> ValueChanged { get; set; }
@@ -132,7 +137,7 @@ Extensible foundation for text search, datepicker autosuggest, and custom implem
     [Parameter] public bool ClearOnSelect { get; set; }
     [Parameter] public bool OpenOnFocus { get; set; }
     [Parameter] public FieldType InputType { get; set; } = FieldType.Text;
-
+    [Parameter] public string ElementId { get; set; } = $"autosuggest-{Guid.NewGuid():N}";
 
     [Parameter] public string Icon { get; set; }
 
@@ -164,6 +169,24 @@ Extensible foundation for text search, datepicker autosuggest, and custom implem
         if (Value != null)
         {
             searchQuery = GetItemText(Value);
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+        
+        if (firstRender)
+        {
+            try
+            {
+                jsModule = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/RR.Blazor/js/rr-blazor.js");
+            }
+            catch (Exception ex)
+            {
+                // Fallback for development/testing
+                Console.WriteLine($"Warning: Failed to load RR.Blazor JS module: {ex.Message}");
+            }
         }
     }
 
@@ -214,6 +237,10 @@ Extensible foundation for text search, datepicker autosuggest, and custom implem
                         var results = await SearchFunc(SearchQuery, cancellationTokenSource.Token);
                         Items = results ?? Enumerable.Empty<TItem>();
                         await OpenDropdown();
+                        
+                        // Update direction after results are loaded and dropdown repositions
+                        await Task.Yield();
+                        await UpdateCurrentDirection();
                     }
                     catch (OperationCanceledException) { }
                     finally
@@ -225,6 +252,10 @@ Extensible foundation for text search, datepicker autosuggest, and custom implem
                 else
                 {
                     await OpenDropdown();
+                    
+                    // Update direction after dropdown opens
+                    await Task.Yield();
+                    await UpdateCurrentDirection();
                 }
             });
         }, null, DebounceDelay, Timeout.Infinite);
@@ -276,6 +307,16 @@ Extensible foundation for text search, datepicker autosuggest, and custom implem
             isOpen = true;
             selectedIndex = -1;
             StateHasChanged();
+            
+            // Allow DOM to update before creating portal
+            await Task.Yield();
+            
+            // Create portal for positioning
+            await CreatePortal();
+            
+            // Update direction after portal is positioned
+            await Task.Yield(); // Allow portal positioning to complete
+            await UpdateCurrentDirection();
         }
     }
 
@@ -285,7 +326,48 @@ Extensible foundation for text search, datepicker autosuggest, and custom implem
         {
             isOpen = false;
             selectedIndex = -1;
+            
+            // Destroy portal
+            await DestroyPortal();
+            
             StateHasChanged();
+        }
+    }
+
+    private async Task CreatePortal()
+    {
+        if (jsModule == null || !string.IsNullOrEmpty(portalId)) return;
+        
+        try
+        {
+            portalId = await jsModule.InvokeAsync<string>("RRBlazor.Autosuggest.createPortal", ElementId);
+            
+            if (!string.IsNullOrEmpty(portalId))
+            {
+                await jsModule.InvokeVoidAsync("RRBlazor.Autosuggest.registerClickOutside", ElementId, 
+                    DotNetObjectReference.Create(this));
+                    
+                await UpdateCurrentDirection();
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Portal creation failed: {ex.Message}");
+        }
+    }
+
+    private async Task DestroyPortal()
+    {
+        if (jsModule == null || string.IsNullOrEmpty(portalId)) return;
+        
+        try
+        {
+            await jsModule.InvokeVoidAsync("RRBlazor.Autosuggest.destroyPortal", portalId);
+            portalId = null;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Portal cleanup failed: {ex.Message}");
         }
     }
 
@@ -307,8 +389,34 @@ Extensible foundation for text search, datepicker autosuggest, and custom implem
     {
         if (IsLoading) return "refresh";
         if (!string.IsNullOrEmpty(EndIcon)) return EndIcon;
-        return IsOpen ? "expand_less" : "expand_more";
+        
+        if (IsOpen)
+        {
+            return currentDirection == "up" ? "expand_less" : "expand_more";
+        }
+        
+        return "expand_more";
     }
+
+    private async Task UpdateCurrentDirection()
+    {
+        if (jsModule == null || string.IsNullOrEmpty(ElementId)) return;
+        
+        try
+        {
+            var newDirection = await jsModule.InvokeAsync<string>("RRBlazor.Autosuggest.getDirection", ElementId);
+            if (currentDirection != newDirection)
+            {
+                currentDirection = newDirection;
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Warning: Failed to get autosuggest direction: {ex.Message}");
+        }
+    }
+
 
     private string GetAutosuggestClasses()
     {
@@ -347,16 +455,38 @@ Extensible foundation for text search, datepicker autosuggest, and custom implem
 
     private TextInputSize GetTextInputSize() => Size;
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    [JSInvokable]
+    public async Task OnClickOutside()
     {
-        await base.OnAfterRenderAsync(firstRender);
+        if (IsOpen)
+        {
+            await CloseDropdown();
+        }
     }
 
-    void IDisposable.Dispose()
+    public async ValueTask DisposeAsync()
     {
+        // Clean up portal
+        await DestroyPortal();
+        
+        // Clean up timers and cancellation tokens
         debounceTimer?.Dispose();
         cancellationTokenSource?.Cancel();
         debounceTimer = null;
         cancellationTokenSource = null;
+        
+        // Dispose JS module
+        if (jsModule != null)
+        {
+            try
+            {
+                await jsModule.DisposeAsync();
+            }
+            catch { }
+            finally
+            {
+                jsModule = null;
+            }
+        }
     }
 }

@@ -1,0 +1,556 @@
+@* RLineChart - Specialized line chart component for time-series and trend data visualization *@
+@using RR.Blazor.Enums
+@using RR.Blazor.Models
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.JSInterop
+@inject IJSRuntime JSRuntime
+
+<RChart Title="@Title" 
+        Subtitle="@Subtitle"
+        Icon="@Icon"
+        Type="@(IsArea ? ChartType.Area : ChartType.Line)"
+        Size="@Size"
+        Variant="@Variant"
+        Theme="@Theme"
+        Loading="@Loading"
+        HasError="@HasError"
+        IsEmpty="@IsEmpty"
+        ShowLegend="@ShowLegend"
+        LegendPosition="@LegendPosition"
+        Class="@Class"
+        OnClick="@OnClick"
+        OnChartInit="@HandleChartInit"
+        Configuration="@Configuration">
+    
+    <HeaderContent>
+        @HeaderContent
+    </HeaderContent>
+    
+    <ChildContent>
+        <div class="line-chart-container @(IsArea ? "line-chart-area" : "")" @ref="chartContainer">
+            @if (Series != null && Series.Any() && Series.First().Data != null && Series.First().Data.Any())
+            {
+                <div class="line-chart-canvas">
+                    <svg class="line-chart-svg" viewBox="0 0 @CanvasWidth @CanvasHeight" preserveAspectRatio="xMidYMid meet">
+                        
+                        @* Grid lines *@
+                        @if (ShowGridLines)
+                        {
+                            <g class="line-chart-grid" style="pointer-events: none;">
+                                @* Horizontal grid lines *@
+                                @for (int i = 0; i <= GridLineCount; i++)
+                                {
+                                    var y = Padding + (i * (CanvasHeight - 2 * Padding) / GridLineCount);
+                                    <line x1="@Padding" y1="@y" x2="@(CanvasWidth - Padding)" y2="@y" 
+                                          class="line-chart-grid-line" stroke="var(--color-border)" stroke-width="1" opacity="0.3"/>
+                                    @if (ShowGridLabels)
+                                    {
+                                        var gridValue = MaxValue - (i * (MaxValue - MinValue) / GridLineCount);
+                                        @* Grid labels temporarily disabled due to Blazor SVG parsing issues *@
+                                    }
+                                }
+                                
+                                @* Vertical grid lines *@
+                                @if (Series.First().Data.Count > 1)
+                                {
+                                    @for (int i = 0; i < Series.First().Data.Count; i++)
+                                    {
+                                        var x = Padding + (i * (CanvasWidth - 2 * Padding) / (Series.First().Data.Count - 1));
+                                        <line x1="@x" y1="@Padding" x2="@x" y2="@(CanvasHeight - Padding)" 
+                                              class="line-chart-grid-line" stroke="var(--color-border)" stroke-width="1" opacity="0.2"/>
+                                        @if (ShowGridLabels && i % Math.Max(1, Series.First().Data.Count / 6) == 0)
+                                        {
+                                            @* Grid labels temporarily disabled due to Blazor SVG parsing issues *@
+                                        }
+                                    }
+                                }
+                            </g>
+                        }
+
+                        @* Data series *@
+                        @foreach (var (series, seriesIndex) in Series.Select((s, i) => (s, i)))
+                        {
+                            var color = GetSeriesColor(series, seriesIndex);
+                            var points = GetSeriesPoints(series);
+                            
+                            @if (IsArea)
+                            {
+                                @* Area fill *@
+                                var areaPath = GetAreaPath(points);
+                                <path d="@areaPath" 
+                                      fill="@(color)30" 
+                                      stroke="none" 
+                                      class="line-chart-area-fill" />
+                            }
+                            
+                            @* Line path *@
+                            var linePath = GetLinePath(points);
+                            <path d="@linePath" 
+                                  fill="none" 
+                                  stroke="@color" 
+                                  stroke-width="@LineWidth" 
+                                  stroke-linecap="round" 
+                                  stroke-linejoin="round"
+                                  class="line-chart-line line-chart-line-@seriesIndex @(IsSmooth ? "line-chart-smooth" : "")" />
+                            
+                            @* Data points *@
+                            @if (ShowDataPoints)
+                            {
+                                @foreach (var (point, pointIndex) in points.Select((p, i) => (p, i)))
+                                {
+                                    <circle cx="@point.X" cy="@point.Y" r="@PointRadius" 
+                                            fill="@color" 
+                                            stroke="var(--color-surface)" 
+                                            stroke-width="2"
+                                            class="line-chart-point line-chart-point-@seriesIndex-@pointIndex @(selectedSeriesIndex == seriesIndex && selectedPointIndex == pointIndex ? "active" : "")"
+                                            @onclick="@(async () => await HandlePointClick(series.Data[pointIndex], seriesIndex, pointIndex))"
+                                            @onmouseover="@(async () => await HandlePointHover(series.Data[pointIndex], seriesIndex, pointIndex))"
+                                            @onmouseout="@(async () => await HandlePointLeave())"
+                                            role="button"
+                                            tabindex="0"
+                                            aria-label="@GetPointAriaLabel(series.Data[pointIndex], series.Name)">
+                                        <title>@series.Name: @GetFormattedValue(series.Data[pointIndex].Value)</title>
+                                    </circle>
+                                }
+                            }
+                        }
+                        
+                        @* Axis lines *@
+                        @if (ShowAxis)
+                        {
+                            <g class="line-chart-axis" style="pointer-events: none;">
+                                <line x1="@Padding" y1="@(CanvasHeight - Padding)" x2="@(CanvasWidth - Padding)" y2="@(CanvasHeight - Padding)" 
+                                      stroke="var(--color-border)" stroke-width="2" class="line-chart-axis-x"/>
+                                <line x1="@Padding" y1="@Padding" x2="@Padding" y2="@(CanvasHeight - Padding)" 
+                                      stroke="var(--color-border)" stroke-width="2" class="line-chart-axis-y"/>
+                            </g>
+                        }
+                    </svg>
+                </div>
+            }
+        </div>
+    </ChildContent>
+    
+    <LegendContent>
+        @if (ShowLegend && Series != null && Series.Any())
+        {
+            @foreach (var (series, index) in Series.Select((s, i) => (s, i)))
+            {
+                var color = GetSeriesColor(series, index);
+                
+                <div class="chart-legend-item @(selectedSeriesIndex == index ? "active" : "")"
+                     @onclick="@(async () => await HandleLegendClick(series, index))"
+                     role="button"
+                     tabindex="0"
+                     aria-label="@GetLegendAriaLabel(series)">
+                    <div class="chart-legend-indicator chart-legend-indicator-line" 
+                         style="--legend-color: @(color);"></div>
+                    <span class="chart-legend-label">@series.Name</span>
+                    @if (ShowLegendValues)
+                    {
+                        <span class="chart-legend-value ml-auto">
+                            @GetFormattedValue(series.Data.Sum(d => d.Value))
+                        </span>
+                    }
+                </div>
+            }
+        }
+        @LegendContent
+    </LegendContent>
+    
+    <FooterContent>
+        @FooterContent
+    </FooterContent>
+    
+    <AccessibilityContent>
+        @if (Configuration.EnableAccessibility)
+        {
+            <table class="w-full">
+                <thead>
+                    <tr>
+                        <th class="text-left">Period</th>
+                        @if (Series != null)
+                        {
+                            @foreach (var series in Series)
+                            {
+                                <th class="text-right">@series.Name</th>
+                            }
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Series != null && Series.Any() && Series.First().Data != null)
+                    {
+                        @for (int i = 0; i < Series.First().Data.Count; i++)
+                        {
+                            <tr>
+                                <td>@Series.First().Data[i].Label</td>
+                                @foreach (var series in Series)
+                                {
+                                    <td class="text-right">@GetFormattedValue(series.Data[i].Value)</td>
+                                }
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        }
+        @AccessibilityContent
+    </AccessibilityContent>
+</RChart>
+
+@code {
+    /// <summary>Chart data series</summary>
+    [Parameter] 
+    [AIParameter("Array of data series for line chart", Example = "new[] { new ChartSeries { Name = \"Sales\", Data = salesData } }")] 
+    public IEnumerable<ChartSeries> Series { get; set; } = new List<ChartSeries>();
+    
+    /// <summary>Chart title</summary>
+    [Parameter] public string Title { get; set; }
+    
+    /// <summary>Chart subtitle</summary>
+    [Parameter] public string Subtitle { get; set; }
+    
+    /// <summary>Chart icon</summary>
+    [Parameter] public string Icon { get; set; } = "trending_up";
+    
+    /// <summary>Chart size</summary>
+    [Parameter] public ChartSize Size { get; set; } = ChartSize.Medium;
+    
+    /// <summary>Chart variant</summary>
+    [Parameter] public ChartVariant Variant { get; set; } = ChartVariant.Default;
+    
+    /// <summary>Chart theme</summary>
+    [Parameter] public ChartTheme Theme { get; set; } = ChartTheme.Auto;
+    
+    /// <summary>Whether to render as area chart</summary>
+    [Parameter] public bool IsArea { get; set; }
+    
+    /// <summary>Whether to use smooth curves</summary>
+    [Parameter] public bool IsSmooth { get; set; } = true;
+    
+    /// <summary>Whether to show data points</summary>
+    [Parameter] public bool ShowDataPoints { get; set; } = true;
+    
+    /// <summary>Whether to show axis lines</summary>
+    [Parameter] public bool ShowAxis { get; set; } = true;
+    
+    /// <summary>Whether to show grid lines</summary>
+    [Parameter] public bool ShowGridLines { get; set; } = true;
+    
+    /// <summary>Whether to show grid labels</summary>
+    [Parameter] public bool ShowGridLabels { get; set; } = true;
+    
+    /// <summary>Number of grid lines</summary>
+    [Parameter] public int GridLineCount { get; set; } = 5;
+    
+    /// <summary>Whether to show legend</summary>
+    [Parameter] public bool ShowLegend { get; set; } = true;
+    
+    /// <summary>Legend position</summary>
+    [Parameter] public ChartLegendPosition LegendPosition { get; set; } = ChartLegendPosition.Bottom;
+    
+    /// <summary>Whether to show values in legend</summary>
+    [Parameter] public bool ShowLegendValues { get; set; } = true;
+    
+    /// <summary>Color palette for series</summary>
+    [Parameter] public string[] ColorPalette { get; set; } = DefaultColorPalette;
+    
+    /// <summary>Value format string</summary>
+    [Parameter] public string ValueFormat { get; set; } = "N0";
+    
+    /// <summary>Line width in pixels</summary>
+    [Parameter] public int LineWidth { get; set; } = 3;
+    
+    /// <summary>Point radius in pixels</summary>
+    [Parameter] public int PointRadius { get; set; } = 4;
+    
+    /// <summary>Whether chart is loading</summary>
+    [Parameter] public bool Loading { get; set; }
+    
+    /// <summary>Whether chart has error</summary>
+    [Parameter] public bool HasError { get; set; }
+    
+    /// <summary>Whether chart is empty</summary>
+    [Parameter] public bool IsEmpty { get; set; }
+    
+    /// <summary>Chart configuration</summary>
+    [Parameter] public ChartConfiguration Configuration { get; set; } = new();
+    
+    /// <summary>Header content</summary>
+    [Parameter] public RenderFragment HeaderContent { get; set; }
+    
+    /// <summary>Footer content</summary>
+    [Parameter] public RenderFragment FooterContent { get; set; }
+    
+    /// <summary>Legend content</summary>
+    [Parameter] public RenderFragment LegendContent { get; set; }
+    
+    /// <summary>Accessibility content</summary>
+    [Parameter] public RenderFragment AccessibilityContent { get; set; }
+    
+    /// <summary>Additional CSS classes</summary>
+    [Parameter] public string Class { get; set; }
+    
+    /// <summary>Chart click handler</summary>
+    [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
+    
+    /// <summary>Point click handler</summary>
+    [Parameter] public EventCallback<ChartEventArgs> OnPointClick { get; set; }
+    
+    /// <summary>Point hover handler</summary>
+    [Parameter] public EventCallback<ChartEventArgs> OnPointHover { get; set; }
+
+    private static readonly string[] DefaultColorPalette = {
+        "var(--color-primary)",
+        "var(--color-success)",
+        "var(--color-warning)",
+        "var(--color-error)",
+        "var(--color-info)",
+        "var(--color-primary-hover)",
+        "var(--color-primary-active)",
+        "var(--color-text-muted)"
+    };
+
+    private ElementReference chartContainer;
+    private int selectedSeriesIndex = -1;
+    private int selectedPointIndex = -1;
+    
+    private int CanvasWidth => 400;
+    private int CanvasHeight => 300;
+    private int Padding => 50;
+    
+    private double MaxValue => Series?.SelectMany(s => s.Data ?? new List<ChartDataPoint>()).DefaultIfEmpty(new ChartDataPoint { Value = 0 }).Max(d => d.Value) ?? 0;
+    private double MinValue => Math.Min(0, Series?.SelectMany(s => s.Data ?? new List<ChartDataPoint>()).DefaultIfEmpty(new ChartDataPoint { Value = 0 }).Min(d => d.Value) ?? 0);
+
+    private async Task HandleChartInit(ElementReference element)
+    {
+        chartContainer = element;
+        if (Configuration.EnableAnimation)
+        {
+            await JSRuntime.InvokeVoidAsync("RRBlazor.Chart.animateLineChart", element);
+        }
+    }
+
+    private async Task HandlePointClick(ChartDataPoint dataPoint, int seriesIndex, int pointIndex)
+    {
+        selectedSeriesIndex = selectedSeriesIndex == seriesIndex && selectedPointIndex == pointIndex ? -1 : seriesIndex;
+        selectedPointIndex = selectedSeriesIndex == seriesIndex ? pointIndex : -1;
+        
+        if (OnPointClick.HasDelegate)
+        {
+            await OnPointClick.InvokeAsync(new ChartEventArgs
+            {
+                DataPoint = dataPoint,
+                Index = pointIndex,
+                SeriesIndex = seriesIndex,
+                EventType = "click"
+            });
+        }
+        
+        StateHasChanged();
+    }
+
+    private async Task HandlePointHover(ChartDataPoint dataPoint, int seriesIndex, int pointIndex)
+    {
+        if (OnPointHover.HasDelegate)
+        {
+            await OnPointHover.InvokeAsync(new ChartEventArgs
+            {
+                DataPoint = dataPoint,
+                Index = pointIndex,
+                SeriesIndex = seriesIndex,
+                EventType = "hover"
+            });
+        }
+    }
+
+    private async Task HandlePointLeave()
+    {
+        if (OnPointHover.HasDelegate)
+        {
+            await OnPointHover.InvokeAsync(new ChartEventArgs
+            {
+                EventType = "leave"
+            });
+        }
+    }
+
+    private async Task HandleLegendClick(ChartSeries series, int index)
+    {
+        selectedSeriesIndex = selectedSeriesIndex == index ? -1 : index;
+        selectedPointIndex = -1;
+        StateHasChanged();
+    }
+
+    private string GetSeriesColor(ChartSeries series, int index)
+    {
+        if (!string.IsNullOrEmpty(series.Color))
+        {
+            return series.Color;
+        }
+        
+        return ColorPalette[index % ColorPalette.Length];
+    }
+
+    private List<ChartPoint> GetSeriesPoints(ChartSeries series)
+    {
+        if (series.Data == null || !series.Data.Any()) return new List<ChartPoint>();
+        
+        var points = new List<ChartPoint>();
+        var dataCount = series.Data.Count;
+        var range = MaxValue - MinValue;
+        if (range == 0) range = 1; // Prevent division by zero
+        
+        for (int i = 0; i < dataCount; i++)
+        {
+            var dataPoint = series.Data.ElementAt(i);
+            var x = Padding + (i * (CanvasWidth - 2 * Padding) / Math.Max(1, dataCount - 1));
+            var normalizedValue = (dataPoint.Value - MinValue) / range;
+            var y = (CanvasHeight - Padding) - (normalizedValue * (CanvasHeight - 2 * Padding));
+            
+            points.Add(new ChartPoint { X = x, Y = y });
+        }
+        
+        return points;
+    }
+
+    private string GetLinePath(List<ChartPoint> points)
+    {
+        if (!points.Any()) return "";
+        
+        var path = $"M {points[0].X} {points[0].Y}";
+        
+        if (IsSmooth && points.Count > 2)
+        {
+            // Simple smooth curve using quadratic bezier
+            for (int i = 1; i < points.Count; i++)
+            {
+                var xc = (points[i].X + points[i - 1].X) / 2;
+                var yc = (points[i].Y + points[i - 1].Y) / 2;
+                path += $" Q {points[i - 1].X} {points[i - 1].Y} {xc} {yc}";
+            }
+            path += $" T {points.Last().X} {points.Last().Y}";
+        }
+        else
+        {
+            // Straight lines
+            for (int i = 1; i < points.Count; i++)
+            {
+                path += $" L {points[i].X} {points[i].Y}";
+            }
+        }
+        
+        return path;
+    }
+
+    private string GetAreaPath(List<ChartPoint> points)
+    {
+        if (!points.Any()) return "";
+        
+        var linePath = GetLinePath(points);
+        var baseY = CanvasHeight - Padding;
+        
+        // Close the path to create an area
+        return $"{linePath} L {points.Last().X} {baseY} L {points.First().X} {baseY} Z";
+    }
+
+    private string GetFormattedValue(double value)
+    {
+        return value.ToString(ValueFormat);
+    }
+
+    private string GetPointAriaLabel(ChartDataPoint dataPoint, string seriesName)
+    {
+        return $"{seriesName} - {dataPoint.Label}: {GetFormattedValue(dataPoint.Value)}";
+    }
+
+    private string GetLegendAriaLabel(ChartSeries series)
+    {
+        return $"Toggle {series.Name} series";
+    }
+
+    private class ChartPoint
+    {
+        public double X { get; set; }
+        public double Y { get; set; }
+    }
+}
+
+@*
+Usage Examples:
+
+<!-- Basic line chart -->
+<RLineChart Title="Monthly Sales Trend" 
+            Series="@salesSeries" 
+            Icon="trending_up" />
+
+<!-- Area chart -->
+<RLineChart Title="Revenue Growth" 
+            Series="@revenueSeries"
+            IsArea="true"
+            Icon="area_chart" />
+
+<!-- Multi-series line chart -->
+<RLineChart Title="Performance Comparison" 
+            Series="@comparisonSeries"
+            Size="ChartSize.Large"
+            ShowDataPoints="true"
+            IsSmooth="true" />
+
+<!-- Line chart with custom styling -->
+<RLineChart Title="Stock Price Movement" 
+            Series="@stockSeries"
+            Size="ChartSize.Large"
+            Variant="ChartVariant.Elevated"
+            ValueFormat="C2"
+            LineWidth="2"
+            PointRadius="3"
+            ShowGridLines="true"
+            ShowGridLabels="true"
+            ColorPalette="@customColors" />
+
+<!-- Interactive line chart -->
+<RLineChart Title="User Activity Trends" 
+            Series="@activitySeries"
+            OnPointClick="@HandlePointClick"
+            OnPointHover="@HandlePointHover"
+            ShowLegendValues="true"
+            ShowDataPoints="true" />
+
+<!-- Minimal line chart -->
+<RLineChart Series="@simpleSeries"
+            Variant="ChartVariant.Minimal"
+            ShowLegend="false"
+            ShowGridLines="false"
+            ShowAxis="false"
+            ShowDataPoints="false" />
+
+@code {
+    private List<ChartSeries> salesSeries = new()
+    {
+        new ChartSeries 
+        { 
+            Name = "Sales", 
+            Data = new List<ChartDataPoint>
+            {
+                new() { Label = "Jan", Value = 150 },
+                new() { Label = "Feb", Value = 230 },
+                new() { Label = "Mar", Value = 180 },
+                new() { Label = "Apr", Value = 270 },
+                new() { Label = "May", Value = 320 }
+            }
+        }
+    };
+
+    private async Task HandlePointClick(ChartEventArgs args)
+    {
+        // Handle point click
+    }
+
+    private async Task HandlePointHover(ChartEventArgs args)
+    {
+        // Handle point hover
+    }
+}
+*@

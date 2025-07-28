@@ -1,0 +1,336 @@
+@**
+<summary>
+Smart data display component that automatically detects between info and summary modes. Ultra-light unified replacement for RInfoItem and RSummaryItem with 5 distinct visual variants.
+</summary>
+<category>Display</category>
+<complexity>Advanced</complexity>
+<ai-prompt>Smart data display with automatic mode detection and visual variants</ai-prompt>
+<ai-common-use>dashboards, forms, data tables, metrics, key-value displays</ai-common-use>
+<ai-avoid>Don't use for navigation - use RButton instead. Avoid for complex layouts.</ai-avoid>
+<ai-pattern name="auto-detection">Mode="DataDisplayMode.Auto" for smart mode selection</ai-pattern>
+<ai-pattern name="business-metrics">Value="$125,000" Emphasis="DataDisplayEmphasis.Success" for financial data</ai-pattern>
+<ai-pattern name="premium-display">Variant="DataDisplayVariant.Premium" for glassmorphism effects</ai-pattern>
+**@
+@namespace RR.Blazor.Components.Display
+@using RR.Blazor.Enums
+@using RR.Blazor.Attributes
+@inherits RDataDisplayBase
+
+@attribute [Component("RDataDisplay", Category = "Display", Complexity = ComponentComplexity.Advanced)]
+@attribute [AIOptimized(Prompt = "Smart data display with automatic mode detection and visual variants",
+                       CommonUse = "dashboards, forms, data tables, metrics, key-value displays",
+                       AvoidUsage = "Don't use for navigation - use RButton instead")]
+
+<div class="@GetContainerClasses()">
+    @if (Variant == DataDisplayVariant.Card || Variant == DataDisplayVariant.Premium)
+    {
+        <div class="data-display-card @GetCardClasses()">
+            @RenderContent()
+        </div>
+    }
+    else
+    {
+        @RenderContent()
+    }
+</div>
+
+@code {
+    private DataDisplayMode _effectiveMode;
+    
+    protected override string GetTextSizeClasses()
+    {
+        return "text-base";
+    }
+    
+    protected override string GetIconSizeClasses()
+    {
+        return "text-base";
+    }
+    
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+        _effectiveMode = GetEffectiveMode();
+    }
+    
+    private RenderFragment RenderContent() => builder =>
+    {
+        if (Layout == DataDisplayLayout.Inline)
+        {
+            RenderInlineContent(builder);
+        }
+        else if (Layout == DataDisplayLayout.Horizontal)
+        {
+            RenderHorizontalContent(builder);
+        }
+        else
+        {
+            RenderVerticalContent(builder);
+        }
+    };
+    
+    private void RenderVerticalContent(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder)
+    {
+        var sequence = 0;
+        
+        // Label section
+        builder.OpenElement(sequence++, "div");
+        builder.AddAttribute(sequence++, "class", GetLabelClasses());
+        
+        if (!string.IsNullOrEmpty(Icon))
+        {
+            builder.OpenElement(sequence++, "i");
+            builder.AddAttribute(sequence++, "class", $"material-symbols-rounded {GetIconClasses()} mr-1");
+            builder.AddContent(sequence++, Icon);
+            builder.CloseElement();
+        }
+        
+        builder.OpenElement(sequence++, "span");
+        builder.AddContent(sequence++, Text);
+        builder.CloseElement();
+        
+        if (Required)
+        {
+            builder.OpenElement(sequence++, "span");
+            builder.AddAttribute(sequence++, "class", "text-error ml-1");
+            builder.AddContent(sequence++, "*");
+            builder.CloseElement();
+        }
+        
+        builder.CloseElement(); // Label div
+        
+        // Value section
+        builder.OpenElement(sequence++, "div");
+        builder.AddAttribute(sequence++, "class", GetValueClasses());
+        
+        if (Loading)
+        {
+            RenderLoadingState(builder, ref sequence);
+        }
+        else if (ValueContent != null)
+        {
+            builder.AddContent(sequence++, ValueContent);
+        }
+        else if (!string.IsNullOrEmpty(Value))
+        {
+            builder.AddContent(sequence++, Value);
+        }
+        
+        builder.CloseElement(); // Value div
+        
+        if (AdditionalContent != null)
+        {
+            builder.OpenElement(sequence++, "div");
+            builder.AddAttribute(sequence++, "class", "data-display-additional mt-1");
+            builder.AddContent(sequence++, AdditionalContent);
+            builder.CloseElement();
+        }
+        
+        if (ShowSeparator)
+        {
+            builder.OpenElement(sequence++, "div");
+            builder.AddAttribute(sequence++, "class", "data-display-separator-line mt-2");
+            builder.CloseElement();
+        }
+    }
+    
+    private void RenderHorizontalContent(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder)
+    {
+        var sequence = 0;
+        
+        builder.OpenElement(sequence++, "div");
+        builder.AddAttribute(sequence++, "class", "d-flex items-center justify-between gap-4");
+        
+        // Label section
+        builder.OpenElement(sequence++, "div");
+        builder.AddAttribute(sequence++, "class", $"{GetLabelClasses()} d-flex items-center gap-1");
+        
+        if (!string.IsNullOrEmpty(Icon))
+        {
+            builder.OpenElement(sequence++, "i");
+            builder.AddAttribute(sequence++, "class", $"material-symbols-rounded {GetIconClasses()}");
+            builder.AddContent(sequence++, Icon);
+            builder.CloseElement();
+        }
+        
+        builder.OpenElement(sequence++, "span");
+        builder.AddContent(sequence++, Text);
+        builder.CloseElement();
+        
+        if (Required)
+        {
+            builder.OpenElement(sequence++, "span");
+            builder.AddAttribute(sequence++, "class", "text-error ml-1");
+            builder.AddContent(sequence++, "*");
+            builder.CloseElement();
+        }
+        
+        builder.CloseElement(); // Label div
+        
+        // Value section
+        builder.OpenElement(sequence++, "div");
+        builder.AddAttribute(sequence++, "class", GetValueClasses());
+        
+        if (Loading)
+        {
+            RenderLoadingState(builder, ref sequence);
+        }
+        else if (ValueContent != null)
+        {
+            builder.AddContent(sequence++, ValueContent);
+        }
+        else if (!string.IsNullOrEmpty(Value))
+        {
+            builder.AddContent(sequence++, Value);
+        }
+        
+        builder.CloseElement(); // Value div
+        
+        builder.CloseElement(); // Container div
+        
+        if (AdditionalContent != null)
+        {
+            builder.OpenElement(sequence++, "div");
+            builder.AddAttribute(sequence++, "class", "data-display-additional mt-2");
+            builder.AddContent(sequence++, AdditionalContent);
+            builder.CloseElement();
+        }
+        
+        if (ShowSeparator)
+        {
+            builder.OpenElement(sequence++, "div");
+            builder.AddAttribute(sequence++, "class", "data-display-separator-line mt-2");
+            builder.CloseElement();
+        }
+    }
+    
+    private void RenderInlineContent(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder)
+    {
+        var sequence = 0;
+        
+        builder.OpenElement(sequence++, "div");
+        builder.AddAttribute(sequence++, "class", "d-flex items-center gap-2");
+        
+        if (!string.IsNullOrEmpty(Icon))
+        {
+            builder.OpenElement(sequence++, "i");
+            builder.AddAttribute(sequence++, "class", $"material-symbols-rounded {GetIconClasses()}");
+            builder.AddContent(sequence++, Icon);
+            builder.CloseElement();
+        }
+        
+        builder.OpenElement(sequence++, "span");
+        builder.AddAttribute(sequence++, "class", GetLabelClasses());
+        builder.AddContent(sequence++, Text);
+        
+        if (Required)
+        {
+            builder.OpenElement(sequence++, "span");
+            builder.AddAttribute(sequence++, "class", "text-error ml-1");
+            builder.AddContent(sequence++, "*");
+            builder.CloseElement();
+        }
+        
+        builder.AddContent(sequence++, ":");
+        builder.CloseElement();
+        
+        builder.OpenElement(sequence++, "span");
+        builder.AddAttribute(sequence++, "class", GetValueClasses());
+        
+        if (Loading)
+        {
+            RenderLoadingState(builder, ref sequence);
+        }
+        else if (ValueContent != null)
+        {
+            builder.AddContent(sequence++, ValueContent);
+        }
+        else if (!string.IsNullOrEmpty(Value))
+        {
+            builder.AddContent(sequence++, Value);
+        }
+        
+        builder.CloseElement();
+        
+        if (AdditionalContent != null)
+        {
+            builder.AddContent(sequence++, AdditionalContent);
+        }
+        
+        builder.CloseElement(); // Container div
+        
+        if (ShowSeparator)
+        {
+            builder.OpenElement(sequence++, "div");
+            builder.AddAttribute(sequence++, "class", "data-display-separator-line mt-1");
+            builder.CloseElement();
+        }
+    }
+    
+    private void RenderLoadingState(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder, ref int sequence)
+    {
+        builder.OpenElement(sequence++, "div");
+        builder.AddAttribute(sequence++, "class", "d-flex items-center gap-2");
+        
+        builder.OpenElement(sequence++, "div");
+        builder.AddAttribute(sequence++, "class", "spinner-border spinner-border-sm text-primary");
+        builder.CloseElement();
+        
+        builder.OpenElement(sequence++, "span");
+        builder.AddAttribute(sequence++, "class", "text-secondary text-sm");
+        builder.AddContent(sequence++, "Loading...");
+        builder.CloseElement();
+        
+        builder.CloseElement();
+    }
+    
+    private DataDisplayMode GetEffectiveMode()
+    {
+        if (Mode != DataDisplayMode.Auto)
+            return Mode;
+            
+        // Smart detection rules
+        
+        // Rule 1: Business metrics → Summary mode
+        if (IsBusinessMetric)
+            return DataDisplayMode.Summary;
+            
+        // Rule 2: Has emphasis variants → Summary mode  
+        if (Emphasis != DataDisplayEmphasis.Normal)
+            return DataDisplayMode.Summary;
+            
+        // Rule 3: Horizontal layout → Summary mode
+        if (Layout == DataDisplayLayout.Horizontal)
+            return DataDisplayMode.Summary;
+            
+        // Rule 4: Show separator → Summary mode
+        if (ShowSeparator)
+            return DataDisplayMode.Summary;
+            
+        // Rule 5: Required fields → Info mode
+        if (Required)
+            return DataDisplayMode.Info;
+            
+        // Default to Info mode for detailed display
+        return DataDisplayMode.Info;
+    }
+    
+    private string GetCardClasses()
+    {
+        var classes = new List<string>();
+        
+        classes.Add(Variant switch
+        {
+            DataDisplayVariant.Card => "bg-surface-elevated border border-light rounded-lg pa-4 shadow-sm",
+            DataDisplayVariant.Premium => "bg-glass border border-glass rounded-xl pa-6 shadow-xl backdrop-blur-md",
+            _ => ""
+        });
+        
+        if (_effectiveMode == DataDisplayMode.Summary)
+            classes.Add("data-display-summary-card");
+        else
+            classes.Add("data-display-info-card");
+            
+        return string.Join(" ", classes);
+    }
+}

@@ -122,9 +122,9 @@
     [Parameter] public EventCallback<bool> VisibleChanged { get; set; }
     
     /// <summary>
-    /// Whether this modal should create backdrop via portal system. Set to false only when used within RModalProvider.
+    /// Whether this modal should create a backdrop. When false, modal is rendered without backdrop (useful in RModalProvider).
     /// </summary>
-    [Parameter] public bool UsePortalBackdrop { get; set; } = true;
+    [Parameter] public bool UseBackdrop { get; set; } = true;
     
 
     private IJSObjectReference jsModule;
@@ -162,8 +162,53 @@
     /// </summary>
     [Parameter] public AnimationSpeed AnimationSpeed { get; set; } = AnimationSpeed.Normal;
     
-    /// <summary>
+    [Parameter] public bool ShowHeader { get; set; } = true;
     
+    /// <summary>
+    /// Primary text content displayed in the modal header
+    /// </summary>
+    [Parameter] public string Text { get; set; } = "";
+    
+    /// <summary>
+    /// Semantic alias for Text - more intuitive for modal titles
+    /// </summary>
+    [Parameter] public string Title { get => Text; set => Text = value; }
+    
+    [Parameter] public string Subtitle { get; set; }
+    [Parameter] public string Icon { get; set; }
+    [Parameter] public RenderFragment HeaderContent { get; set; }
+    [Parameter] public bool ShowCloseButton { get; set; } = true;
+    
+
+    [Parameter] public bool ShowFooter { get; set; } = true;
+    [Parameter] public RenderFragment FooterContent { get; set; }
+    [Parameter] public bool ShowCancelButton { get; set; } = true;
+    [Parameter] public string CancelText { get; set; } = "Cancel";
+    [Parameter] public string CancelIcon { get; set; }
+    [Parameter] public string CancelButtonClass { get; set; }
+    [Parameter] public bool ShowPrimaryButton { get; set; } = true;
+    [Parameter] public string PrimaryText { get; set; } = "Save";
+    [Parameter] public string PrimaryIcon { get; set; }
+    [Parameter] public string PrimaryButtonClass { get; set; }
+    [Parameter] public bool PrimaryButtonDisabled { get; set; }
+    [Parameter] public ButtonSize ButtonSize { get; set; } = ButtonSize.Medium;
+
+    [Parameter] public bool Processing { get; set; }
+    [Parameter] public string ProcessingMessage { get; set; } = "Processing...";
+    [Parameter] public string ProcessingButtonText { get; set; }
+    [Parameter] public bool ShowProcessingOverlay { get; set; } = true;
+    [Parameter] public bool ShowPrimaryButtonSpinner { get; set; } = true;
+
+    [Parameter] public bool ShowUnsavedIndicator { get; set; }
+    [Parameter] public bool HasUnsavedChanges { get; set; }
+
+    [Parameter] public bool CloseOnBackdrop { get; set; } = true;
+    [Parameter] public bool CloseOnEscape { get; set; } = true;
+
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+    [Parameter] public EventCallback OnPrimaryAction { get; set; }
+    [Parameter] public RenderFragment ChildContent { get; set; }
 
     private ElementReference modalElement;
     private ElementReference? previouslyFocusedElement;
@@ -188,8 +233,13 @@ protected override async Task OnAfterRenderAsync(bool firstRender)
         }
         
 
-        if (jsModule != null && Visible != previousVisible && UsePortalBackdrop)
+        if (jsModule != null && Visible != previousVisible && UseBackdrop)
         {
+            // Add defensive check - ensure no race conditions
+            if (currentState == ModalState.Closing && Visible)
+            {
+                return; // Don't reopen while closing
+            }
             
             await stateLock.WaitAsync();
             try
@@ -226,7 +276,18 @@ protected override async Task OnAfterRenderAsync(bool firstRender)
                         }
                         
                         await DestroyFocusTrap();
-                        await ModalStack.UnregisterModalAsync(portalId);
+                        
+                        // Ensure cleanup happens in correct order with error handling
+                        try
+                        {
+                            await ModalStack.UnregisterModalAsync(portalId);
+                        }
+                        catch (Exception ex)
+                        {
+                            // Log but continue with portal cleanup
+                        }
+                        
+                        // Always attempt portal cleanup even if modal stack fails
                         await CleanupPortal();
                         
                         currentState = ModalState.Closed;
@@ -242,7 +303,7 @@ protected override async Task OnAfterRenderAsync(bool firstRender)
                 stateLock.Release();
             }
         }
-        else if (Visible != previousVisible && !UsePortalBackdrop)
+        else if (Visible != previousVisible && !UseBackdrop)
         {
             // Handle non-portal modals (e.g., within RModalProvider)
             previousVisible = Visible;
@@ -279,7 +340,7 @@ private async Task<bool> CreatePortal()
             var options = new
             {
                 type = "modal",
-                backdrop = UsePortalBackdrop,  // Use portal backdrop system
+                backdrop = UseBackdrop,  // Use portal backdrop system
                 closeOnClickOutside = CloseOnBackdrop,
                 closeOnEscape = CloseOnEscape,
                 dotNetRef = dotNetRef,
@@ -306,19 +367,35 @@ private async Task<bool> CreatePortal()
     
 private async Task CleanupPortal()
     {
-        if (jsModule == null || !isPortalCreated)
+        // Always attempt cleanup even if state seems inconsistent
+        if (jsModule == null)
         {
             return;
         }
         
         try
         {
+            // Force cleanup regardless of isPortalCreated flag
             var success = await jsModule.InvokeAsync<bool>("cleanupPortal", portalId);
-
+            
+            // Also trigger orphaned cleanup as safety net
+            await jsModule.InvokeVoidAsync("RRBlazor.Portal.cleanupOrphanedBackdrops");
+            
+            // Reset state
             isPortalCreated = false;
+            
+            // Additional DOM cleanup via JavaScript for this specific modal
+            await jsModule.InvokeVoidAsync("eval", $@"
+                // Force removal of any remaining modal elements
+                document.querySelectorAll('[id*=""{portalId}""],[class*=""payroll-creation-modal""]').forEach(el => {{
+                    if (el.parentElement) el.parentElement.removeChild(el);
+                }});
+            ");
         }
         catch (Exception ex)
         {
+            // Even if JavaScript cleanup fails, reset our state
+            isPortalCreated = false;
         }
     }
     
@@ -339,62 +416,6 @@ private async Task CleanupPortal()
             justify-content: center !important;
         ";
     }
-    
-
-    [Parameter] public bool ShowHeader { get; set; } = true;
-    
-    /// <summary>
-    /// Primary text content displayed in the modal header
-    /// </summary>
-    [Parameter] public string Text { get; set; } = "";
-    
-    /// <summary>
-    /// Semantic alias for Text - more intuitive for modal titles
-    /// </summary>
-    [Parameter] public string Title { get => Text; set => Text = value; }
-    
-    [Parameter] public string Subtitle { get; set; }
-    [Parameter] public string Icon { get; set; }
-    [Parameter] public RenderFragment HeaderContent { get; set; }
-    [Parameter] public bool ShowCloseButton { get; set; } = true;
-    
-
-    [Parameter] public bool ShowFooter { get; set; } = true;
-    [Parameter] public RenderFragment FooterContent { get; set; }
-    [Parameter] public bool ShowCancelButton { get; set; } = true;
-    [Parameter] public string CancelText { get; set; } = "Cancel";
-    [Parameter] public string CancelIcon { get; set; }
-    [Parameter] public string CancelButtonClass { get; set; }
-    [Parameter] public bool ShowPrimaryButton { get; set; } = true;
-    [Parameter] public string PrimaryText { get; set; } = "Save";
-    [Parameter] public string PrimaryIcon { get; set; }
-    [Parameter] public string PrimaryButtonClass { get; set; }
-    [Parameter] public bool PrimaryButtonDisabled { get; set; }
-    [Parameter] public ButtonSize ButtonSize { get; set; } = ButtonSize.Medium;
-    
-
-    [Parameter] public bool Processing { get; set; }
-    [Parameter] public string ProcessingMessage { get; set; } = "Processing...";
-    [Parameter] public string ProcessingButtonText { get; set; }
-    [Parameter] public bool ShowProcessingOverlay { get; set; } = true;
-    [Parameter] public bool ShowPrimaryButtonSpinner { get; set; } = true;
-    
-
-    [Parameter] public bool ShowUnsavedIndicator { get; set; }
-    [Parameter] public bool HasUnsavedChanges { get; set; }
-    
-
-    [Parameter] public bool CloseOnBackdrop { get; set; } = true;
-    [Parameter] public bool CloseOnEscape { get; set; } = true;
-    
-
-    [Parameter] public EventCallback OnClose { get; set; }
-    [Parameter] public EventCallback OnCancel { get; set; }
-    [Parameter] public EventCallback OnPrimaryAction { get; set; }
-    [Parameter] public RenderFragment ChildContent { get; set; }
-    
-// Backdrop clicks now handled by portal system via onClickOutside callback
-    // This ensures proper event handling order and prevents duplicate backdrop issues
     
     private async Task OnKeyDownHandler(KeyboardEventArgs e)
     {
@@ -454,7 +475,7 @@ private async Task CleanupPortal()
                 }
                 
                 // Set closing state for portal backdrop users
-                if (UsePortalBackdrop)
+                if (UseBackdrop)
                 {
                     currentState = ModalState.Closing;
                 }
@@ -595,8 +616,6 @@ private async Task CleanupPortal()
         return $"--modal-animation: {animationProperty}; --modal-duration: {duration}; --modal-timing: {timing};";
     }
     
-    // Backdrop animation now handled by portal system CSS
-
 public async ValueTask DisposeAsync()
     {
         await stateLock.WaitAsync();

@@ -21,8 +21,8 @@
 #>
 
 param(
-    [Parameter(Mandatory = $true)]
-    [string]$ProjectPath,
+    [Parameter(Mandatory = $false)]
+    [string]$ProjectPath = "RR.Blazor",
     
     [Parameter(Mandatory = $false)]
     [string]$StylesOutputPath = "wwwroot/rr-ai-styles.json",
@@ -374,6 +374,117 @@ Write-Host "📂 Generating components documentation..." -ForegroundColor Yellow
 
 # [Component extraction code remains the same as it's already generic]
 function Extract-ComponentParameters {
+    param([string]$Content, [string]$ComponentName, [string]$ProjectPath)
+    
+    $parameters = New-Object System.Collections.ArrayList
+    
+    # Check if component inherits from a base class
+    $baseClassName = $null
+    if ($Content -match '@inherits\s+([^\s\r\n]+)') {
+        $baseClassName = $Matches[1].Trim()
+        Write-Host "  Component $ComponentName inherits from $baseClassName" -ForegroundColor DarkGray
+        
+        # Look for base class file
+        $baseClassFiles = Get-ChildItem -Path "$ProjectPath" -Filter "*$baseClassName.cs" -Recurse
+        if ($baseClassFiles.Count -gt 0) {
+            $baseClassFile = $baseClassFiles[0]
+            Write-Host "  Found base class file: $($baseClassFile.FullName)" -ForegroundColor DarkGray
+            $baseClassContent = Get-Content $baseClassFile.FullName -Raw -Encoding UTF8
+            
+            # Extract parameters from base class
+            $baseParameters = Extract-ParametersFromCSharp -Content $baseClassContent -ClassName $baseClassName
+            foreach ($param in $baseParameters) {
+                $parameters.Add($param) | Out-Null
+            }
+        }
+    }
+    
+    # Extract parameters from the component itself
+    $componentParameters = Extract-ParametersFromRazor -Content $Content -ComponentName $ComponentName
+    foreach ($param in $componentParameters) {
+        $parameters.Add($param) | Out-Null
+    }
+    
+    return $parameters
+}
+
+function Extract-ParametersFromCSharp {
+    param([string]$Content, [string]$ClassName)
+    
+    $parameters = New-Object System.Collections.ArrayList
+    $lines = $Content -split "`n"
+    
+    for ($i = 0; $i -lt $lines.Length; $i++) {
+        $line = $lines[$i].Trim()
+        
+        if ($line -match '\[Parameter') {
+            $fullParameterText = ""
+            $propertyFound = $false
+            
+            $description = ""
+            $aiHint = ""
+            
+            # Look backwards for XML documentation and AIParameter attributes
+            for ($k = $i - 1; $k -ge [Math]::Max(0, $i - 10); $k--) {
+                $docLine = $lines[$k].Trim()
+                if ($docLine -match '^$') { continue }
+                if ($docLine -match '///\s*<summary>(.*?)</summary>') {
+                    $description = $Matches[1].Trim()
+                    break
+                }
+                if ($docLine -match '///\s*(.+)') {
+                    $description = $Matches[1].Trim()
+                    break
+                }
+            }
+            
+            # Look forward for the actual property and AIParameter
+            for ($j = $i; $j -lt [Math]::Min($lines.Length, $i + 20); $j++) {
+                $currentLine = $lines[$j].Trim()
+                if ([string]::IsNullOrWhiteSpace($currentLine)) { continue }
+                
+                $fullParameterText = $fullParameterText + " " + $currentLine
+                
+                if ($currentLine -match 'public\s+[^{]+\{\s*get;\s*set;\s*\}') {
+                    $propertyFound = $true
+                    break
+                }
+            }
+            
+            if (-not $propertyFound) { continue }
+            
+            if ($fullParameterText -match 'public\s+(?:virtual\s+)?(?:override\s+)?(?:static\s+)?([^\s]+(?:<[^>]*>)?(?:\?)?)\s+(\w+)\s*\{\s*get;\s*set;\s*\}(?:\s*=\s*([^;]+))?;?') {
+                $paramType = $Matches[1].Trim()
+                $paramName = $Matches[2].Trim()
+                $defaultValue = if ($Matches[3]) { $Matches[3].Trim() } else { $null }
+                
+                # Extract AIParameter hint
+                if ($fullParameterText -match '\[.*?AIParameter\(\s*"([^"]*)"(?:\s*,\s*"([^"]*)")?\s*\)') {
+                    $aiHint = $Matches[1]
+                    if ($Matches[2]) {
+                        $aiHint += " - " + $Matches[2]
+                    }
+                }
+                
+                $param = [PSCustomObject]@{
+                    Name = $paramName
+                    Type = $paramType
+                    Description = $description
+                    AIHint = $aiHint
+                    SuggestedValues = @()
+                    IsRequired = $false
+                    DefaultValue = $defaultValue
+                }
+                
+                $parameters.Add($param) | Out-Null
+            }
+        }
+    }
+    
+    return $parameters
+}
+
+function Extract-ParametersFromRazor {
     param([string]$Content, [string]$ComponentName)
     
     $parameters = New-Object System.Collections.ArrayList
@@ -507,7 +618,7 @@ foreach ($file in $componentFiles) {
         }
     }
     
-    $parameters = Extract-ComponentParameters -Content $content -ComponentName $componentName
+    $parameters = Extract-ComponentParameters -Content $content -ComponentName $componentName -ProjectPath $ProjectPath
     
     $componentInfo = [ordered]@{
         "Purpose" = if ([string]::IsNullOrEmpty($purpose)) { "UI component" } else { $purpose }

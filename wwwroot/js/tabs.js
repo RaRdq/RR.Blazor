@@ -2,16 +2,21 @@
 
 export function getTabIndicatorPosition(tabElementId, wrapperElement) {
     const element = document.getElementById(tabElementId);
-    if (!element) {
+    if (!element || !wrapperElement) {
         return { left: 0, width: 0 };
     }
     
-    const rect = element.getBoundingClientRect();
-    const wrapperRect = wrapperElement ? wrapperElement.getBoundingClientRect() : element.parentElement.getBoundingClientRect();
+    // Get the position relative to the scrollable wrapper
+    const tabRect = element.getBoundingClientRect();
+    const wrapperRect = wrapperElement.getBoundingClientRect();
+    
+    // Calculate position accounting for scroll offset
+    const scrollLeft = wrapperElement.scrollLeft || 0;
+    const relativeLeft = tabRect.left - wrapperRect.left + scrollLeft;
     
     return {
-        left: rect.left - wrapperRect.left,
-        width: rect.width
+        left: relativeLeft,
+        width: tabRect.width
     };
 }
 
@@ -121,10 +126,13 @@ export function scrollToTab(wrapperElement, tabElementId) {
 }
 
 export function initializeTabs(element, navContainer, navWrapper) {
+    if (!element || !navWrapper) return;
+    
     const tabs = element.querySelectorAll('[role="tab"]');
     tabs.forEach(tab => {
         tab.addEventListener('keydown', (e) => {
-            });
+            // Keyboard navigation handled by Blazor
+        });
     });
     
     const updateIndicator = () => {
@@ -140,37 +148,65 @@ export function initializeTabs(element, navContainer, navWrapper) {
     const updateScrollState = () => {
         if (navWrapper) {
             const scrollInfo = getTabScrollInfo(navWrapper);
-            const navElement = element.querySelector('.tabs__nav');
+            const navElement = element.querySelector('.tabs-nav');
             if (navElement) {
-                navElement.classList.toggle('tabs__nav--scrollable', scrollInfo.isScrollable);
+                navElement.classList.toggle('tabs-nav-scrollable', scrollInfo.isScrollable);
             }
             
-            const leftArrow = element.querySelector('.tabs__nav-arrow--left');
-            const rightArrow = element.querySelector('.tabs__nav-arrow--right');
+            const leftArrow = element.querySelector('.tabs-nav-arrow-left');
+            const rightArrow = element.querySelector('.tabs-nav-arrow-right');
             
             if (leftArrow) {
-                leftArrow.classList.toggle('tabs__nav-arrow--visible', scrollInfo.canScrollLeft);
+                leftArrow.classList.toggle('tabs-nav-arrow-visible', scrollInfo.canScrollLeft);
             }
             if (rightArrow) {
-                rightArrow.classList.toggle('tabs__nav-arrow--visible', scrollInfo.canScrollRight);
+                rightArrow.classList.toggle('tabs-nav-arrow-visible', scrollInfo.canScrollRight);
             }
         }
     };
     
-    window.addEventListener('resize', updateIndicator);
-    window.addEventListener('resize', updateScrollState);
+    // Update on resize
+    let resizeScheduled = false;
+    const handleResize = () => {
+        if (!resizeScheduled) {
+            resizeScheduled = true;
+            requestAnimationFrame(() => {
+                updateIndicator();
+                updateScrollState();
+                resizeScheduled = false;
+            });
+        }
+    };
     
+    window.addEventListener('resize', handleResize);
+    
+    // Update on scroll
     if (navWrapper) {
         navWrapper.addEventListener('scroll', updateScrollState);
     }
     
-    updateScrollState();
+    // ResizeObserver for dynamic content changes
+    const resizeObserver = new ResizeObserver(() => {
+        updateScrollState();
+    });
     
+    if (navContainer) {
+        resizeObserver.observe(navContainer);
+    }
+    
+    // Initial update
+    requestAnimationFrame(() => {
+        updateScrollState();
+    });
+    
+    // Cleanup function
     element._rrCleanup = () => {
-        window.removeEventListener('resize', updateIndicator);
-        window.removeEventListener('resize', updateScrollState);
+        window.removeEventListener('resize', handleResize);
         if (navWrapper) {
             navWrapper.removeEventListener('scroll', updateScrollState);
+        }
+        if (resizeObserver) {
+            resizeObserver.disconnect();
         }
     };
 }

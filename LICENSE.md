@@ -47,12 +47,12 @@ SOFTWARE.
 - Investment funds, private equity, or financial institutions regardless of revenue
 
 **License Terms**: 
-- **One-time purchase**: $3,999 USD per organization (lifetime)
+- **One-time purchase**: $4,999 USD per organization domain (lifetime)
 - **Scope**: Covers unlimited usage across the entire organization
 - **Includes**: All current and future versions of RR.Blazor
 - **Commercial use**: Unrestricted commercial usage rights
 - **Redistribution**: Permitted within licensed organization only
-- **Modifications**: Permitted for internal use within licensed organization
+- **Modifications**: Permitted
 - **Support**: Priority support and direct communication channels
 
 **Commercial License Grant**:

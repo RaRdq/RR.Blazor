@@ -212,6 +212,13 @@ class PortalManager {
         } finally {
             // Always clean up references even if other operations fail
             this.portals.delete(portalId);
+            
+            // Run orphaned element cleanup as a safety net
+            try {
+                this.cleanupOrphanedBackdrops();
+            } catch (e) {
+                console.warn(`[PortalManager] Failed to run orphaned cleanup: ${e.message}`);
+            }
         }
         
         return true;
@@ -296,6 +303,7 @@ class PortalManager {
     
     removeBackdrop(portalId) {
         const portal = this.portals.get(portalId);
+        let backdropRemoved = false;
         
         // Strategy 1: Try to remove using stored reference
         if (portal && portal.backdropElement && portal.backdropElement.parentElement) {
@@ -307,13 +315,13 @@ class PortalManager {
                 }
                 portal.backdropElement = null;
                 portal.backdropZIndex = null;
-                return;
+                backdropRemoved = true;
             } catch (e) {
                 console.warn(`[PortalManager] Failed to remove backdrop using reference: ${e.message}`);
             }
         }
         
-        // Strategy 2: Try to remove by ID
+        // Strategy 2: Try to remove by ID (run regardless of Strategy 1 success)
         const backdrop = document.getElementById(`backdrop-${portalId}`);
         if (backdrop && backdrop.parentElement) {
             try {
@@ -323,23 +331,28 @@ class PortalManager {
                 if (!isNaN(zIndex)) {
                     this.zIndexManager.release('backdrop', zIndex);
                 }
-                return;
+                backdropRemoved = true;
             } catch (e) {
                 console.warn(`[PortalManager] Failed to remove backdrop by ID: ${e.message}`);
             }
         }
         
-        // Strategy 3: Remove all backdrops with matching data attribute
+        // Strategy 3: Remove all backdrops with matching data attribute (always run)
         const orphanedBackdrops = document.querySelectorAll(`[data-portal-id="${portalId}"]`);
         orphanedBackdrops.forEach(backdrop => {
             try {
                 if (backdrop.parentElement) {
                     backdrop.parentElement.removeChild(backdrop);
+                    backdropRemoved = true;
                 }
             } catch (e) {
                 console.warn(`[PortalManager] Failed to remove orphaned backdrop: ${e.message}`);
             }
         });
+        
+        if (!backdropRemoved) {
+            console.warn(`[PortalManager] No backdrop found or removed for portal: ${portalId}`);
+        }
     }
     
     // Get all portals of a specific type
@@ -366,8 +379,9 @@ class PortalManager {
         return false;
     }
     
-    // Cleanup method to remove all orphaned backdrops
+    // Cleanup method to remove all orphaned backdrops and modal elements
     cleanupOrphanedBackdrops() {
+        // Clean up orphaned backdrops
         const allBackdrops = document.querySelectorAll('.rr-portal-backdrop');
         
         allBackdrops.forEach(backdrop => {
@@ -382,6 +396,40 @@ class PortalManager {
                     console.warn(`[PortalManager] Removed orphaned backdrop: ${backdrop.id}`);
                 } catch (e) {
                     console.warn(`[PortalManager] Failed to remove orphaned backdrop: ${e.message}`);
+                }
+            }
+        });
+        
+        // Clean up orphaned portal containers
+        const allPortals = document.querySelectorAll('.rr-portal');
+        allPortals.forEach(portal => {
+            const portalId = portal.id.replace('portal-', '');
+            
+            if (!this.portals.has(portalId)) {
+                try {
+                    if (portal.parentElement) {
+                        portal.parentElement.removeChild(portal);
+                    }
+                    console.warn(`[PortalManager] Removed orphaned portal: ${portal.id}`);
+                } catch (e) {
+                    console.warn(`[PortalManager] Failed to remove orphaned portal: ${e.message}`);
+                }
+            }
+        });
+        
+        // Clean up any visible modal elements that don't belong to active portals
+        const orphanedModals = document.querySelectorAll('.modal-content:not([style*="display: none"])');
+        orphanedModals.forEach(modal => {
+            const portalContainer = modal.closest('.rr-portal');
+            if (!portalContainer) {
+                // Modal not in a portal container - likely orphaned
+                try {
+                    if (modal.parentElement) {
+                        modal.parentElement.removeChild(modal);
+                    }
+                    console.warn(`[PortalManager] Removed orphaned modal: ${modal.className}`);
+                } catch (e) {
+                    console.warn(`[PortalManager] Failed to remove orphaned modal: ${e.message}`);
                 }
             }
         });
