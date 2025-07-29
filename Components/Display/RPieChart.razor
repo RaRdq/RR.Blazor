@@ -47,7 +47,7 @@
                         var endAngle = startAngle + (percentage * 360);
                         var color = GetSliceColor(dataPoint, index);
                         
-                        <path class="pie-slice @(selectedIndex == index ? "active" : "")" 
+                        <path class="pie-slice @(selectedIndex == index ? "selected" : "")" 
                               d="@GetSlicePath(centerX, centerY, radius, innerRadius, startAngle, endAngle)"
                               fill="@color"
                               stroke="@(IsDoughnut ? "var(--color-background-elevated)" : "none")"
@@ -73,6 +73,22 @@
                         <div class="label">@CenterLabel</div>
                     </div>
                 }
+                
+                @* Tooltip *@
+                @if (showTooltip && hoveredDataPoint != null)
+                {
+                    <div class="chart-tooltip @(showTooltip ? "visible" : "")" style="top: @(tooltipY)px; left: @(tooltipX)px;">
+                        <div class="chart-tooltip-title">@hoveredDataPoint.Label</div>
+                        <div class="chart-tooltip-value">
+                            @GetFormattedValue(hoveredDataPoint.Value)
+                            @if (Data != null && Data.Any())
+                            {
+                                var percentage = hoveredDataPoint.Value / Data.Sum(d => d.Value);
+                                <span class="chart-tooltip-percentage">(@(percentage.ToString("P1")))</span>
+                            }
+                        </div>
+                    </div>
+                }
             }
         </div>
     </ChildContent>
@@ -85,12 +101,12 @@
                 var percentage = dataPoint.Value / Data.Sum(d => d.Value);
                 var color = GetSliceColor(dataPoint, index);
                 
-                <div class="chart-legend-item @(selectedIndex == index ? "active" : "")"
+                <div class="chart-legend-item"
                      @onclick="@(async () => await HandleLegendClick(dataPoint, index))"
                      role="button"
                      tabindex="0"
                      aria-label="@GetLegendAriaLabel(dataPoint, percentage)">
-                    <div class="chart-legend-indicator chart-legend-item" style="--legend-color: @color;"></div>
+                    <div class="chart-legend-indicator" style="background: @color;"></div>
                     <span class="chart-legend-label">@dataPoint.Label</span>
                     @if (ShowLegendValues)
                     {
@@ -255,6 +271,10 @@
 
     private ElementReference chartContainer;
     private int selectedIndex = -1;
+    private bool showTooltip = false;
+    private ChartDataPoint hoveredDataPoint = null;
+    private double tooltipX = 0;
+    private double tooltipY = 0;
 
     private async Task HandleChartInit(ElementReference element)
     {
@@ -285,6 +305,35 @@
 
     private async Task HandleSliceHover(ChartDataPoint dataPoint, int index)
     {
+        hoveredDataPoint = dataPoint;
+        showTooltip = true;
+        
+        // Calculate tooltip position based on slice center
+        if (Data != null && Data.Any())
+        {
+            var total = Data.Sum(d => d.Value);
+            var startAngle = 0.0;
+            
+            foreach (var (dp, i) in Data.Select((d, idx) => (d, idx)))
+            {
+                var percentage = dp.Value / total;
+                var endAngle = startAngle + (percentage * 360);
+                
+                if (i == index)
+                {
+                    var midAngle = (startAngle + endAngle) / 2;
+                    var angleRad = (midAngle - 90) * Math.PI / 180;
+                    var radius = 75; // Half of SVG size (150)
+                    
+                    tooltipX = 150 + radius * Math.Cos(angleRad);
+                    tooltipY = 150 + radius * Math.Sin(angleRad);
+                    break;
+                }
+                
+                startAngle = endAngle;
+            }
+        }
+        
         if (OnSliceHover.HasDelegate)
         {
             await OnSliceHover.InvokeAsync(new ChartEventArgs
@@ -294,10 +343,15 @@
                 EventType = "hover"
             });
         }
+        
+        StateHasChanged();
     }
 
     private async Task HandleSliceLeave()
     {
+        showTooltip = false;
+        hoveredDataPoint = null;
+        
         if (OnSliceHover.HasDelegate)
         {
             await OnSliceHover.InvokeAsync(new ChartEventArgs
@@ -305,6 +359,8 @@
                 EventType = "leave"
             });
         }
+        
+        StateHasChanged();
     }
 
     private async Task HandleLegendClick(ChartDataPoint dataPoint, int index)

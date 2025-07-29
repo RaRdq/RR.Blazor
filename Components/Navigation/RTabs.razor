@@ -201,6 +201,7 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
     private bool isScrollable = false;
     private bool canScrollLeft = false;
     private bool canScrollRight = false;
+    private bool isUpdatingIndicator = false;
     
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -244,11 +245,9 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
     {
         if (tab == null) return;
         
-
         var existingTab = tabs.FirstOrDefault(t => t.Id == tab.Id);
         if (existingTab != null)
         {
-
             existingTab.Text = tab.Text;
             existingTab.Icon = tab.Icon;
             existingTab.IconPosition = tab.IconPosition;
@@ -270,19 +269,17 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
         
         StateHasChanged();
         
-
         _ = InvokeAsync(async () =>
         {
             try
             {
-                await UpdateIndicatorPosition();
-
                 await Task.Yield();
                 await UpdateScrollState();
+                await Task.Yield();
+                await UpdateIndicatorPosition();
             }
             catch
             {
-
             }
         });
     }
@@ -323,16 +320,13 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
         
         var oldTabId = ActiveTabId;
         
-
         ActiveTabId = tabId;
         StateHasChanged();
         
-
         _ = InvokeAsync(async () =>
         {
             try
             {
-
                 await ActiveTabIdChanged.InvokeAsync(ActiveTabId);
                 await OnTabChanged.InvokeAsync(new TabChangedEventArgs
                 {
@@ -340,15 +334,13 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
                     NewTabId = ActiveTabId
                 });
                 
-
                 await ScrollToTab(tabId);
                 
-
+                await Task.Yield();
                 await UpdateIndicatorPosition();
             }
             catch
             {
-
             }
         });
     }
@@ -410,23 +402,33 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
     
     private async Task UpdateIndicatorPosition()
     {
-        if (string.IsNullOrEmpty(ActiveTabId) || Variant == TabsVariant.Card)
+        if (string.IsNullOrEmpty(ActiveTabId) || Variant == TabsVariant.Card || isUpdatingIndicator)
             return;
             
         try
         {
+            isUpdatingIndicator = true;
+            
             var activeTab = tabs.FirstOrDefault(t => t.Id == ActiveTabId);
             if (activeTab != null)
             {
                 var result = await JSRuntime.InvokeAsync<TabIndicatorPosition>("RRBlazor.getTabIndicatorPosition", $"tab-{ActiveTabId}", navWrapper);
-                indicatorLeft = result.Left;
-                indicatorWidth = result.Width;
-                StateHasChanged();
+                
+                // Only update if values have actually changed to prevent unnecessary re-renders
+                if (Math.Abs(indicatorLeft - result.Left) > 0.5 || Math.Abs(indicatorWidth - result.Width) > 0.5)
+                {
+                    indicatorLeft = result.Left;
+                    indicatorWidth = result.Width;
+                    StateHasChanged();
+                }
             }
         }
         catch
         {
-
+        }
+        finally
+        {
+            isUpdatingIndicator = false;
         }
     }
     

@@ -35,7 +35,44 @@ git submodule add https://github.com/RaRdq/RR.Blazor.git
 builder.Services.AddRRBlazor();
 ```
 
-### 3. Use RAppShell (Zero Hustle)
+### 3. Add CSS and JavaScript references
+
+Choose the appropriate file based on your Blazor hosting model:
+
+#### Blazor WebAssembly (WASM)
+```html
+<!-- wwwroot/index.html -->
+<head>
+    <link href="_content/RR.Blazor/css/main.css" rel="stylesheet" />
+</head>
+<body>
+    <script type="module" src="_content/RR.Blazor/js/rr-blazor.js"></script>
+</body>
+```
+
+#### Blazor Server
+```html
+<!-- Pages/_Host.cshtml or Pages/_Layout.cshtml -->
+<head>
+    <link href="_content/RR.Blazor/css/main.css" rel="stylesheet" />
+</head>
+<body>
+    <script type="module" src="_content/RR.Blazor/js/rr-blazor.js"></script>
+</body>
+```
+
+#### Blazor Web (Interactive Server/WASM)
+```razor
+<!-- Components/App.razor or layout components -->
+<head>
+    <link href="_content/RR.Blazor/css/main.css" rel="stylesheet" />
+</head>
+<body>
+    <script type="module" src="_content/RR.Blazor/js/rr-blazor.js"></script>
+</body>
+```
+
+### 4. Use RAppShell (Zero Hustle)
 
 ```razor
 <!-- MainLayout.razor - Complete app shell with everything included -->
@@ -52,11 +89,6 @@ builder.Services.AddRRBlazor();
 <!-- _Imports.razor -->
 @using RR.Blazor.Components
 @using RR.Blazor.Enums
-```
-
-```html
-<!-- index.html -->
-<link href="_content/RR.Blazor/css/main.css" rel="stylesheet" />
 ```
 
 ```razor

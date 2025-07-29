@@ -611,14 +611,10 @@ class PositioningEngine {
     }
     
     getMeasuredHeight(popup) {
-        console.log('[DEBUG] getMeasuredHeight called on:', popup.id, popup.className);
-        console.trace('[DEBUG] getMeasuredHeight stack trace');
-        
         let height = popup.offsetHeight || popup.clientHeight;
         
         // Force measurement for hidden elements
         if (!height) {
-            console.log('[DEBUG] Element has no height, forcing display measurement');
             const { display, visibility, position } = popup.style;
             popup.style.display = 'block';
             popup.style.visibility = 'hidden';
@@ -629,7 +625,6 @@ class PositioningEngine {
             popup.style.display = display;
             popup.style.visibility = visibility;
             popup.style.position = position;
-            console.log('[DEBUG] Restored display to:', display);
         }
         
         return height;

@@ -6,17 +6,20 @@ export function getTabIndicatorPosition(tabElementId, wrapperElement) {
         return { left: 0, width: 0 };
     }
     
+    // Force layout calculation to ensure accurate measurements
+    element.offsetHeight;
+    
     // Get the position relative to the scrollable wrapper
     const tabRect = element.getBoundingClientRect();
     const wrapperRect = wrapperElement.getBoundingClientRect();
     
-    // Calculate position accounting for scroll offset
+    // Calculate position accounting for scroll offset with rounding to prevent sub-pixel issues
     const scrollLeft = wrapperElement.scrollLeft || 0;
-    const relativeLeft = tabRect.left - wrapperRect.left + scrollLeft;
+    const relativeLeft = Math.round(tabRect.left - wrapperRect.left + scrollLeft);
     
     return {
         left: relativeLeft,
-        width: tabRect.width
+        width: Math.round(tabRect.width)
     };
 }
 

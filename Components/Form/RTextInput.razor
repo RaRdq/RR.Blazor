@@ -25,10 +25,6 @@
     <RTextInput @bind-Value="description" IsMultiLine="true" ShowCharacterCount="true" MaxLength="500" />
 *@
 
-@using RR.Blazor.Enums
-@using RR.Blazor.Models
-@using Microsoft.AspNetCore.Components.Web
-@using Microsoft.JSInterop
 @inherits RInputBase
 @implements IDisposable
 @inject IJSRuntime JSRuntime
@@ -242,34 +238,10 @@
             {
                 Value = value;
                 
-                // Fire immediate callbacks if in immediate mode
-                if (Immediate)
-                {
-                    _ = Task.Run(async () =>
-                    {
-                        await InvokeAsync(async () =>
-                        {
-                            await ValueChanged.InvokeAsync(Value);
-                            if (OnTextInput.HasDelegate)
-                                await OnTextInput.InvokeAsync(Value);
-                        });
-                    });
-                }
-                else
-                {
-                    // Debounce non-immediate mode
-                    debounceTimer?.Dispose();
-                    debounceTimer = new Timer(async _ =>
-                    {
-                        await InvokeAsync(async () =>
-                        {
-                            await ValueChanged.InvokeAsync(Value);
-                            if (OnTextChanged.HasDelegate)
-                                await OnTextChanged.InvokeAsync(Value);
-                        });
-                    }, null, ImmediateDebounce, Timeout.Infinite);
-                }
-                
+                // Fire ValueChanged only when needed, not on every keystroke  
+                if (ValueChanged.HasDelegate)
+                    _ = ValueChanged.InvokeAsync(Value);
+                    
                 _ = HandleUserInteraction(!string.IsNullOrEmpty(value));
             }
         }
@@ -284,6 +256,10 @@
     private async Task HandleBlur(FocusEventArgs e)
     {
         await base.HandleBlur(e);
+        
+        // Fire OnTextChanged callback if available (blur event only)
+        if (OnTextChanged.HasDelegate)
+            await OnTextChanged.InvokeAsync(Value);
     }
     
     
