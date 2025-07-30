@@ -202,6 +202,7 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
     private bool canScrollLeft = false;
     private bool canScrollRight = false;
     private bool isUpdatingIndicator = false;
+    private bool isUpdatingScrollState = false;
     
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -223,15 +224,18 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
                 // Silently handle initialization errors
             }
         }
-        else if (tabs.Count > 0)
+        else if (tabs.Count > 0 && !isUpdatingIndicator && !isUpdatingScrollState)
         {
-            // Update scroll state on every render when tabs exist
+            // Only update scroll state when not already updating to prevent render loops
             _ = InvokeAsync(async () =>
             {
                 try
                 {
-                    await Task.Yield(); // Allow DOM updates
-                    await UpdateScrollState();
+                    await Task.Delay(50); // Debounce to prevent excessive updates
+                    if (!isUpdatingIndicator && !isUpdatingScrollState) // Double-check to prevent race conditions
+                    {
+                        await UpdateScrollState();
+                    }
                 }
                 catch
                 {
@@ -269,14 +273,17 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
         
         StateHasChanged();
         
-        _ = InvokeAsync(async () =>
+        // Debounce updates to prevent render loops
+        _ = Task.Run(async () =>
         {
             try
             {
-                await Task.Yield();
-                await UpdateScrollState();
-                await Task.Yield();
-                await UpdateIndicatorPosition();
+                await Task.Delay(100); // Allow DOM to settle
+                await InvokeAsync(async () => 
+                {
+                    await UpdateScrollState();
+                    await UpdateIndicatorPosition();
+                });
             }
             catch
             {
@@ -323,21 +330,28 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
         ActiveTabId = tabId;
         StateHasChanged();
         
-        _ = InvokeAsync(async () =>
+        // Use Task.Run to prevent render loop
+        _ = Task.Run(async () =>
         {
             try
             {
-                await ActiveTabIdChanged.InvokeAsync(ActiveTabId);
-                await OnTabChanged.InvokeAsync(new TabChangedEventArgs
+                await InvokeAsync(async () =>
                 {
-                    OldTabId = oldTabId,
-                    NewTabId = ActiveTabId
+                    await ActiveTabIdChanged.InvokeAsync(ActiveTabId);
+                    await OnTabChanged.InvokeAsync(new TabChangedEventArgs
+                    {
+                        OldTabId = oldTabId,
+                        NewTabId = ActiveTabId
+                    });
                 });
                 
-                await ScrollToTab(tabId);
+                await Task.Delay(100); // Allow UI to update
                 
-                await Task.Yield();
-                await UpdateIndicatorPosition();
+                await InvokeAsync(async () =>
+                {
+                    await ScrollToTab(tabId);
+                    await UpdateIndicatorPosition();
+                });
             }
             catch
             {
@@ -434,8 +448,11 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
     
     private async Task UpdateScrollState()
     {
+        if (isUpdatingScrollState) return; // Prevent concurrent updates
+        
         try
         {
+            isUpdatingScrollState = true;
 
             if (tabs.Count <= 1)
             {
@@ -472,6 +489,10 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
                 canScrollRight = false;
                 StateHasChanged();
             }
+        }
+        finally
+        {
+            isUpdatingScrollState = false;
         }
     }
     
