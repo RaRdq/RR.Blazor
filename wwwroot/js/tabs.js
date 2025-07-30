@@ -185,7 +185,18 @@ export function initializeTabs(element, navContainer, navWrapper) {
     
     // Update on scroll
     if (navWrapper) {
-        navWrapper.addEventListener('scroll', updateScrollState);
+        let scrollTimeout;
+        navWrapper.addEventListener('scroll', () => {
+            updateScrollState();
+            
+            // Clear existing timeout
+            clearTimeout(scrollTimeout);
+            
+            // Update indicator after scroll ends
+            scrollTimeout = setTimeout(() => {
+                updateIndicator();
+            }, 150);
+        });
     }
     
     // ResizeObserver for dynamic content changes

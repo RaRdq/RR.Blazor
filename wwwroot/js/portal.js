@@ -139,7 +139,10 @@ class PortalManager {
     destroy(portalId) {
         const portal = this.portals.get(portalId);
         if (!portal) {
-            console.warn(`[PortalManager] Portal '${portalId}' not found`);
+            // Don't log for modal-auto-* portals as these are common during cleanup
+            if (!portalId.startsWith('modal-auto-')) {
+                console.warn(`[PortalManager] Portal '${portalId}' not found`);
+            }
             return false;
         }
         
@@ -410,7 +413,10 @@ class PortalManager {
                     if (portal.parentElement) {
                         portal.parentElement.removeChild(portal);
                     }
-                    console.warn(`[PortalManager] Removed orphaned portal: ${portal.id}`);
+                    // Only log for non-modal-auto portals to reduce noise
+                    if (!portal.id.includes('modal-auto-')) {
+                        console.warn(`[PortalManager] Removed orphaned portal: ${portal.id}`);
+                    }
                 } catch (e) {
                     console.warn(`[PortalManager] Failed to remove orphaned portal: ${e.message}`);
                 }
