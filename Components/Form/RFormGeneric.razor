@@ -190,27 +190,44 @@
 
 
     public FormState State { get; private set; } = FormState.Ready;
+    
+    // PERFORMANCE FIX: Cache validation results to prevent render loops
+    private bool? _cachedIsFormValid;
+    private int _validationVersion = 0;
+    private int _currentModelVersion = 0;
+    private FormValidationContext? _cachedValidationContext;
+    private int _contextVersion = 0;
+    
     public bool IsFormValid 
     {
         get
         {
+            // Return cached result if still valid
+            if (_cachedIsFormValid.HasValue && _validationVersion == _currentModelVersion)
+                return _cachedIsFormValid.Value;
+                
             try
             {
-
                 var customValid = validationResult?.IsValid ?? true;
-                
-
                 var dataAnnotationsValid = true;
+                
                 if (ValidationMode == ValidationMode.DataAnnotations || ValidationMode == ValidationMode.Hybrid)
                 {
                     var editContext = new EditContext(Model);
                     dataAnnotationsValid = editContext.Validate();
                 }
                 
-                return customValid && dataAnnotationsValid;
+                // Cache the result
+                var result = customValid && dataAnnotationsValid;
+                _cachedIsFormValid = result;
+                _validationVersion = _currentModelVersion;
+                
+                return result;
             }
             catch
             {
+                _cachedIsFormValid = false;
+                _validationVersion = _currentModelVersion;
                 return false;
             }
         }
@@ -233,13 +250,28 @@
             throw new ArgumentNullException(nameof(Model), "Model is required for RForm component");
         }
         
-
         Options ??= new FormOptions();
-        
         AriaLabel ??= Title ?? "Form";
-        
-
         validationResult = new FormValidationResult { IsValid = true };
+        
+        InvalidateValidationCache(); // Initialize cache state
+    }
+    
+    protected override void OnParametersSet()
+    {
+        // Invalidate validation cache when parameters change
+        InvalidateValidationCache();
+        base.OnParametersSet();
+    }
+    
+    /// <summary>
+    /// Invalidates the validation cache to force re-validation on next access
+    /// </summary>
+    private void InvalidateValidationCache()
+    {
+        _currentModelVersion++;
+        _cachedIsFormValid = null;
+        _cachedValidationContext = null;
     }
     
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -448,6 +480,8 @@
         var previousValid = validationResult?.IsValid ?? true;
         validationResult = result;
         
+        // PERFORMANCE FIX: Invalidate validation cache when result changes
+        InvalidateValidationCache();
 
         if (previousValid != result.IsValid)
         {
@@ -551,13 +585,21 @@
     
     private FormValidationContext GetFormValidationContext()
     {
-        return new FormValidationContext
+        // Return cached context if valid
+        if (_cachedValidationContext != null && _contextVersion == _currentModelVersion)
+            return _cachedValidationContext;
+            
+        // Create new context and cache it
+        _cachedValidationContext = new FormValidationContext
         {
             ValidationResult = GetCombinedValidationResult(),
             State = State,
             Options = Options,
             HasAttemptedSubmit = HasAttemptedSubmit
         };
+        _contextVersion = _currentModelVersion;
+        
+        return _cachedValidationContext;
     }
     
     /// <summary>
