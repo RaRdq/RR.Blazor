@@ -1,0 +1,308 @@
+@using RR.Blazor.Enums
+@using RR.Blazor.Models
+@using Microsoft.AspNetCore.Components.Rendering
+@typeparam TValue
+@inherits RFilterBase<TValue>
+
+@code {
+    [Parameter] public IEnumerable<FilterOption>? Options { get; set; }
+    [Parameter] public IEnumerable<TValue>? SimpleOptions { get; set; }
+    [Parameter] public Func<TValue, string>? DisplaySelector { get; set; }
+    [Parameter] public Func<TValue, string>? ValueSelector { get; set; }
+    [Parameter] public string EmptyText { get; set; } = "Select an option...";
+    [Parameter] public bool AllowClear { get; set; } = true;
+    
+    protected override FilterType FilterType => FilterType.Select;
+    
+    protected override List<FilterOperator> AvailableOperators => new()
+    {
+        FilterOperator.Equals,
+        FilterOperator.NotEquals,
+        FilterOperator.In,
+        FilterOperator.NotIn
+    };
+    
+    private List<FilterOption> EffectiveOptions => GetEffectiveOptions();
+    
+    protected override void RenderFilterInput(RenderTreeBuilder builder)
+    {
+        var sequence = 50;
+        
+        if (Operator is FilterOperator.In or FilterOperator.NotIn)
+        {
+            RenderMultiSelect(builder, sequence);
+        }
+        else
+        {
+            RenderSingleSelect(builder, sequence);
+        }
+    }
+    
+    private void RenderSingleSelect(RenderTreeBuilder builder, int sequence)
+    {
+        builder.OpenElement(sequence++, "select");
+        builder.AddAttribute(sequence++, "class", GetSelectClasses());
+        builder.AddAttribute(sequence++, "value", GetSelectValue(Value));
+        builder.AddAttribute(sequence++, "disabled", Disabled);
+        builder.AddAttribute(sequence++, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(
+            this, HandleSingleSelectChange));
+        
+        // Empty option
+        if (AllowClear || Value == null)
+        {
+            builder.OpenElement(sequence++, "option");
+            builder.AddAttribute(sequence++, "value", "");
+            builder.AddContent(sequence++, EmptyText);
+            builder.CloseElement();
+        }
+        
+        // Render grouped or flat options
+        RenderSelectOptions(builder, ref sequence, false);
+        
+        builder.CloseElement();
+    }
+    
+    private void RenderMultiSelect(RenderTreeBuilder builder, int sequence)
+    {
+        // Container
+        builder.OpenElement(sequence++, "div");
+        builder.AddAttribute(sequence++, "class", "multi-select-container");
+        
+        // Selected items display
+        var selectedValues = GetSelectedValues();
+        if (selectedValues.Any())
+        {
+            builder.OpenElement(sequence++, "div");
+            builder.AddAttribute(sequence++, "class", "selected-items d-flex flex-wrap gap-1 mb-2");
+            
+            foreach (var selectedValue in selectedValues)
+            {
+                RenderSelectedChip(builder, ref sequence, selectedValue);
+            }
+            
+            builder.CloseElement();
+        }
+        
+        // Dropdown
+        builder.OpenElement(sequence++, "select");
+        builder.AddAttribute(sequence++, "class", GetSelectClasses());
+        builder.AddAttribute(sequence++, "disabled", Disabled);
+        builder.AddAttribute(sequence++, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(
+            this, HandleMultiSelectChange));
+        
+        // Default option
+        builder.OpenElement(sequence++, "option");
+        builder.AddAttribute(sequence++, "value", "");
+        builder.AddContent(sequence++, selectedValues.Any() ? "Add another..." : EmptyText);
+        builder.CloseElement();
+        
+        // Available options (excluding already selected)
+        RenderSelectOptions(builder, ref sequence, true, selectedValues);
+        
+        builder.CloseElement();
+        
+        builder.CloseElement(); // container
+    }
+    
+    private void RenderSelectOptions(RenderTreeBuilder builder, ref int sequence, bool excludeSelected, IEnumerable<TValue>? selectedValues = null)
+    {
+        var groupedOptions = EffectiveOptions
+            .Where(opt => !excludeSelected || selectedValues == null || !selectedValues.Contains((TValue)opt.Value))
+            .GroupBy(opt => opt.Group ?? "")
+            .OrderBy(g => g.Key);
+        
+        foreach (var group in groupedOptions)
+        {
+            if (!string.IsNullOrEmpty(group.Key))
+            {
+                // Render optgroup
+                builder.OpenElement(sequence++, "optgroup");
+                builder.AddAttribute(sequence++, "label", group.Key);
+                
+                foreach (var option in group.OrderBy(o => o.Label))
+                {
+                    RenderOption(builder, ref sequence, option);
+                }
+                
+                builder.CloseElement();
+            }
+            else
+            {
+                // Render flat options
+                foreach (var option in group.OrderBy(o => o.Label))
+                {
+                    RenderOption(builder, ref sequence, option);
+                }
+            }
+        }
+    }
+    
+    private void RenderOption(RenderTreeBuilder builder, ref int sequence, FilterOption option)
+    {
+        builder.OpenElement(sequence++, "option");
+        builder.AddAttribute(sequence++, "value", GetSelectValue((TValue)option.Value));
+        builder.AddAttribute(sequence++, "disabled", option.IsDisabled);
+        builder.AddAttribute(sequence++, "title", option.Description);
+        builder.AddContent(sequence++, option.Label);
+        builder.CloseElement();
+    }
+    
+    private void RenderSelectedChip(RenderTreeBuilder builder, ref int sequence, TValue value)
+    {
+        var option = EffectiveOptions.FirstOrDefault(o => Equals(o.Value, value));
+        var displayText = option?.Label ?? GetDisplayText(value);
+        
+        builder.OpenElement(sequence++, "span");
+        builder.AddAttribute(sequence++, "class", "selected-chip badge badge-secondary d-flex items-center gap-1");
+        
+        builder.OpenElement(sequence++, "span");
+        builder.AddContent(sequence++, displayText);
+        builder.CloseElement();
+        
+        if (!Disabled)
+        {
+            builder.OpenElement(sequence++, "button");
+            builder.AddAttribute(sequence++, "type", "button");
+            builder.AddAttribute(sequence++, "class", "remove-chip-btn opacity-60 hover:opacity-100");
+            builder.AddAttribute(sequence++, "onclick", EventCallback.Factory.Create(this, () => RemoveSelectedValue(value)));
+            builder.AddAttribute(sequence++, "title", "Remove");
+            
+            builder.OpenElement(sequence++, "i");
+            builder.AddAttribute(sequence++, "class", "material-symbols-rounded text-xs");
+            builder.AddContent(sequence++, "close");
+            builder.CloseElement();
+            
+            builder.CloseElement();
+        }
+        
+        builder.CloseElement();
+    }
+    
+    private string GetSelectClasses()
+    {
+        var classes = new List<string>
+        {
+            "filter-select",
+            "form-select",
+            "border",
+            "border-border",
+            "rounded",
+            "px-3",
+            "py-1",
+            "bg-surface",
+            "text-foreground",
+            "focus:border-primary",
+            "focus:ring-1",
+            "focus:ring-primary/20",
+            "transition-colors"
+        };
+        
+        classes.Add(Density switch
+        {
+            ComponentDensity.Compact => "text-xs px-2 py-0.5",
+            ComponentDensity.Dense => "text-sm px-2 py-1",
+            ComponentDensity.Spacious => "text-base px-4 py-2",
+            _ => "text-sm px-3 py-1"
+        });
+        
+        if (Disabled)
+        {
+            classes.Add("opacity-60");
+            classes.Add("cursor-not-allowed");
+        }
+        
+        return string.Join(" ", classes);
+    }
+    
+    private List<FilterOption> GetEffectiveOptions()
+    {
+        if (Options != null)
+            return Options.ToList();
+        
+        if (SimpleOptions != null)
+        {
+            return SimpleOptions.Select(option => new FilterOption(
+                option!,
+                GetDisplayText(option),
+                false
+            )).ToList();
+        }
+        
+        return new List<FilterOption>();
+    }
+    
+    private string GetDisplayText(TValue? value)
+    {
+        if (value == null) return "";
+        
+        if (DisplaySelector != null)
+            return DisplaySelector(value);
+        
+        return value.ToString() ?? "";
+    }
+    
+    private string GetSelectValue(TValue? value)
+    {
+        if (value == null) return "";
+        
+        if (ValueSelector != null)
+            return ValueSelector(value);
+        
+        return value.ToString() ?? "";
+    }
+    
+    private IEnumerable<TValue> GetSelectedValues()
+    {
+        if (Value == null) return Enumerable.Empty<TValue>();
+        
+        // For multi-select, Value might be a collection or single value
+        if (Value is IEnumerable<TValue> collection)
+            return collection;
+        
+        return new[] { Value };
+    }
+    
+    private async Task HandleSingleSelectChange(ChangeEventArgs args)
+    {
+        var stringValue = args.Value?.ToString();
+        var selectedOption = EffectiveOptions.FirstOrDefault(o => GetSelectValue((TValue)o.Value) == stringValue);
+        
+        TValue? newValue = selectedOption != null ? (TValue)selectedOption.Value : default;
+        await HandleValueChange(newValue);
+    }
+    
+    private async Task HandleMultiSelectChange(ChangeEventArgs args)
+    {
+        var stringValue = args.Value?.ToString();
+        if (string.IsNullOrEmpty(stringValue)) return;
+        
+        var selectedOption = EffectiveOptions.FirstOrDefault(o => GetSelectValue((TValue)o.Value) == stringValue);
+        if (selectedOption == null) return;
+        
+        var currentSelected = GetSelectedValues().ToList();
+        var newValue = (TValue)selectedOption.Value;
+        
+        if (!currentSelected.Contains(newValue))
+        {
+            currentSelected.Add(newValue);
+            
+            // Update Value to be the collection
+            await HandleValueChange((TValue)(object)currentSelected);
+        }
+    }
+    
+    private async Task RemoveSelectedValue(TValue valueToRemove)
+    {
+        var currentSelected = GetSelectedValues().ToList();
+        currentSelected.Remove(valueToRemove);
+        
+        if (currentSelected.Any())
+        {
+            await HandleValueChange((TValue)(object)currentSelected);
+        }
+        else
+        {
+            await HandleValueChange(default);
+        }
+    }
+}

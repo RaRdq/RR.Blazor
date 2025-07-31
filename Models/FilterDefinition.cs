@@ -11,12 +11,6 @@ namespace RR.Blazor.Models
         public bool Required { get; set; }
     }
 
-    public class FilterOption
-    {
-        public string Value { get; set; } = "";
-        public string Label { get; set; } = "";
-        public bool IsSelected { get; set; }
-    }
 
     public class QuickFilter
     {

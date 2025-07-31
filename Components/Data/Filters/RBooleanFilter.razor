@@ -1,0 +1,192 @@
+@using RR.Blazor.Enums
+@using RR.Blazor.Models
+@using Microsoft.AspNetCore.Components.Rendering
+@inherits RFilterBase<bool?>
+
+@code {
+    [Parameter] public string TrueLabel { get; set; } = "True";
+    [Parameter] public string FalseLabel { get; set; } = "False";
+    [Parameter] public string AllLabel { get; set; } = "All";
+    
+    protected override FilterType FilterType => FilterType.Boolean;
+    
+    protected override List<FilterOperator> AvailableOperators => new()
+    {
+        FilterOperator.IsTrue,
+        FilterOperator.IsFalse,
+        FilterOperator.Equals // For tri-state (true/false/null)
+    };
+    
+    protected override void RenderFilterInput(RenderTreeBuilder builder)
+    {
+        var sequence = 50;
+        
+        if (Operator == FilterOperator.Equals)
+        {
+            RenderTriStateSelect(builder, sequence);
+        }
+        else
+        {
+            RenderOperatorDisplay(builder, sequence);
+        }
+    }
+    
+    private void RenderTriStateSelect(RenderTreeBuilder builder, int sequence)
+    {
+        builder.OpenElement(sequence++, "select");
+        builder.AddAttribute(sequence++, "class", GetSelectClasses());
+        builder.AddAttribute(sequence++, "value", GetSelectValue());
+        builder.AddAttribute(sequence++, "disabled", Disabled);
+        builder.AddAttribute(sequence++, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(
+            this, HandleTriStateChange));
+        
+        // All option (null)
+        builder.OpenElement(sequence++, "option");
+        builder.AddAttribute(sequence++, "value", "");
+        builder.AddContent(sequence++, AllLabel);
+        builder.CloseElement();
+        
+        // True option
+        builder.OpenElement(sequence++, "option");
+        builder.AddAttribute(sequence++, "value", "true");
+        builder.AddContent(sequence++, TrueLabel);
+        builder.CloseElement();
+        
+        // False option
+        builder.OpenElement(sequence++, "option");
+        builder.AddAttribute(sequence++, "value", "false");
+        builder.AddContent(sequence++, FalseLabel);
+        builder.CloseElement();
+        
+        builder.CloseElement();
+    }
+    
+    private void RenderOperatorDisplay(RenderTreeBuilder builder, int sequence)
+    {
+        var displayText = Operator switch
+        {
+            FilterOperator.IsTrue => $"Will show {TrueLabel.ToLower()} values",
+            FilterOperator.IsFalse => $"Will show {FalseLabel.ToLower()} values",
+            _ => "Boolean filter active"
+        };
+        
+        builder.OpenElement(sequence++, "input");
+        builder.AddAttribute(sequence++, "type", "text");
+        builder.AddAttribute(sequence++, "class", GetInputClasses());
+        builder.AddAttribute(sequence++, "value", displayText);
+        builder.AddAttribute(sequence++, "disabled", true);
+        builder.AddAttribute(sequence++, "readonly", true);
+        builder.CloseElement();
+    }
+    
+    private string GetSelectClasses()
+    {
+        var classes = new List<string>
+        {
+            "filter-select",
+            "form-select",
+            "border",
+            "border-border",
+            "rounded",
+            "px-3",
+            "py-1",
+            "bg-surface",
+            "text-foreground",
+            "focus:border-primary",
+            "focus:ring-1",
+            "focus:ring-primary/20",
+            "transition-colors"
+        };
+        
+        classes.Add(Density switch
+        {
+            ComponentDensity.Compact => "text-xs px-2 py-0.5",
+            ComponentDensity.Dense => "text-sm px-2 py-1",
+            ComponentDensity.Spacious => "text-base px-4 py-2",
+            _ => "text-sm px-3 py-1"
+        });
+        
+        if (Disabled)
+        {
+            classes.Add("opacity-60");
+            classes.Add("cursor-not-allowed");
+        }
+        
+        return string.Join(" ", classes);
+    }
+    
+    private string GetInputClasses()
+    {
+        var classes = new List<string>
+        {
+            "filter-input",
+            "form-input",
+            "border",
+            "border-border",
+            "rounded",
+            "px-3",
+            "py-1",
+            "bg-surface",
+            "text-foreground",
+            "opacity-60" // Always appears disabled since it's read-only
+        };
+        
+        classes.Add(Density switch
+        {
+            ComponentDensity.Compact => "text-xs px-2 py-0.5",
+            ComponentDensity.Dense => "text-sm px-2 py-1",
+            ComponentDensity.Spacious => "text-base px-4 py-2",
+            _ => "text-sm px-3 py-1"
+        });
+        
+        return string.Join(" ", classes);
+    }
+    
+    private string GetSelectValue()
+    {
+        return Value switch
+        {
+            true => "true",
+            false => "false",
+            null => ""
+        };
+    }
+    
+    private async Task HandleTriStateChange(ChangeEventArgs args)
+    {
+        var stringValue = args.Value?.ToString();
+        bool? boolValue = stringValue switch
+        {
+            "true" => true,
+            "false" => false,
+            _ => null
+        };
+        
+        await HandleValueChange(boolValue);
+    }
+    
+    protected override bool RequiresNoValue()
+    {
+        return Operator is FilterOperator.IsTrue or FilterOperator.IsFalse;
+    }
+    
+    protected override async Task HandleOperatorChange(ChangeEventArgs args)
+    {
+        if (Enum.TryParse<FilterOperator>(args.Value?.ToString(), out var newOperator))
+        {
+            var oldFilter = CurrentFilterState;
+            Operator = newOperator;
+            
+            // Auto-set value based on operator
+            if (newOperator == FilterOperator.IsTrue)
+                Value = true;
+            else if (newOperator == FilterOperator.IsFalse)
+                Value = false;
+            else if (newOperator == FilterOperator.Equals)
+                Value = null; // Reset to allow tri-state selection
+            
+            await OnOperatorChanged.InvokeAsync(newOperator);
+            await NotifyFilterChanged(oldFilter);
+        }
+    }
+}

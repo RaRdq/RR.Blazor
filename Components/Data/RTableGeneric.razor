@@ -1,18 +1,31 @@
 @using RR.Blazor.Components.Data
 @using RR.Blazor.Components.Core
+@using RR.Blazor.Components.Data.Filters
 @using RR.Blazor.Enums
 @using RR.Blazor.Models
+@using RR.Blazor.Models.Export
+@using RR.Blazor.Services
 @using System.Linq.Expressions
+@using System.Text
+@using Microsoft.JSInterop
+@using System.Diagnostics
 @typeparam TItem
 @inherits RTableBase
 @implements ITableParent
+@implements IAsyncDisposable
+@inject IJSRuntime JSRuntime
 
 @* Generic table implementation with strong typing - merged from RDataTableGeneric *@
 
 <CascadingValue Value="@GetTableContext()">
     <CascadingValue Value="@((ITableParent)this)">
-        <div class="enhanced-table-container @Class @AdditionalClass">
-        <div class="bg-surface-elevated rounded-lg overflow-hidden shadow-sm @GetTableClass()">
+        <div class="enhanced-table-container @Class @AdditionalClass @GetVariantClass() @GetElevationClass() @GetMobileClass()" 
+             data-table-id="@GetTableId()" 
+             data-enable-reordering="@EnableColumnReordering"
+             data-table-variant="@Variant.ToString().ToLowerInvariant()"
+             data-table-density="@TableDensity.ToString().ToLowerInvariant()"
+             style="@GetCustomStyles()">
+        <div class="@GetInternalContainerClass()">
             @if (ShowHeader)
             {
                 <div class="d-flex justify-between items-center pa-4 border-b">
@@ -32,24 +45,89 @@
                             <p class="text-sm text-secondary ma-0">@GetSubtitleWithCounts()</p>
                         }
                     </div>
-                    @if (GetHeaderContent() != null)
+                    @if (GetHeaderContent() != null || ShowColumnManager)
                     {
                         <div class="d-flex gap-2">
-                            @GetHeaderContent()
+                            @if (GetHeaderContent() != null)
+                            {
+                                @GetHeaderContent()
+                            }
+                            @if (ShowColumnManager && GetEffectiveColumns().Any())
+                            {
+                                <RTableColumnManager Columns="@GetEffectiveColumns()"
+                                                   Preferences="@ColumnPreferences"
+                                                   PreferencesChanged="@HandleColumnPreferencesChanged"
+                                                   OnColumnManagement="@OnColumnManagement"
+                                                   EnableReordering="@EnableColumnReordering"
+                                                   SupportsStickyColumns="true"
+                                                   TableId="@GetTableId()" />
+                            }
                         </div>
                     }
                 </div>
             }
 
-            @if (ShowFilters && Filters != null)
+            @if (ShowFilters)
             {
-                <div class="pa-4 border-b bg-surface-elevated">
-                    @Filters
-                </div>
+                @if (FilterMode == FilterMode.Simple && ShowGlobalSearch)
+                {
+                    <div class="pa-4 border-b bg-surface-elevated">
+                        <div class="d-flex items-center gap-4">
+                            <div class="d-flex items-center gap-2 flex-1">
+                                <i class="material-symbols-rounded text-secondary">search</i>
+                                <input type="text" 
+                                       class="form-input border-0 bg-transparent flex-1 text-sm focus:outline-none" 
+                                       placeholder="@GlobalSearchPlaceholder"
+                                       @oninput="@HandleGlobalSearch" />
+                            </div>
+                            @if (ActiveFilters.Any())
+                            {
+                                <div class="d-flex items-center gap-2">
+                                    <span class="text-sm text-secondary">Active filters:</span>
+                                    @foreach (var filter in ActiveFilters.Take(3))
+                                    {
+                                        <span class="badge badge-primary badge-sm d-flex items-center gap-1">
+                                            @GetFilterDisplayText(filter)
+                                            <button type="button" 
+                                                    class="opacity-60 hover:opacity-100"
+                                                    @onclick="@(() => RemoveFilter(filter.Key))">
+                                                <i class="material-symbols-rounded text-xs">close</i>
+                                            </button>
+                                        </span>
+                                    }
+                                    @if (ActiveFilters.Count > 3)
+                                    {
+                                        <span class="text-sm text-secondary">+@(ActiveFilters.Count - 3) more</span>
+                                    }
+                                    <button type="button" 
+                                            class="btn btn-ghost btn-sm text-xs"
+                                            @onclick="ClearAllFilters">
+                                        Clear all
+                                    </button>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+                else if (FilterMode == FilterMode.ColumnRow)
+                {
+                    @* Column row filtering will be rendered in the table header section *@
+                }
+                else if (Filters != null)
+                {
+                    <div class="pa-4 border-b bg-surface-elevated">
+                        @Filters
+                    </div>
+                }
             }
 
             <div class="table-content @(!string.IsNullOrEmpty(Height) ? "table-height-custom" : "")" @attributes="@(!string.IsNullOrEmpty(Height) ? new Dictionary<string, object> { ["style"] = $"height: {Height};" } : null)">
-                <table class="table-table @GetInternalTableClass()">
+                <table class="table-table @GetInternalTableClass()" 
+                       role="table" 
+                       aria-label="@(!string.IsNullOrEmpty(Title) ? Title : "Data table")"
+                       aria-describedby="@(!string.IsNullOrEmpty(Subtitle) ? $"table-desc-{GetTableId()}" : "")"
+                       aria-rowcount="@TotalItems"
+                       aria-colcount="@GetColSpan()">
                     @if (ShowTableHeader)
                     {
                         <thead class="bg-surface-elevated">
@@ -60,9 +138,10 @@
                                         @if (MultiSelection)
                                         {
                                             <input type="checkbox" 
-                                                   class="align-middle"
-                                                   checked="@(Items?.Count > 0 && Items.All(i => TypedSelectedItems.Contains(i)))"
-                                                   @onchange="@((e) => ToggleAllSelection((bool)e.Value!))" />
+                                                   class="form-checkbox align-middle transition-colors"
+                                                   checked="@_allCurrentPageSelected"
+                                                   @onchange="@((e) => ToggleCurrentPageSelection((bool)e.Value!))"
+                                                   style="@(_someCurrentPageSelected && !_allCurrentPageSelected ? "opacity: 0.5;" : "")" />
                                         }
                                     </th>
                                 }
@@ -74,11 +153,23 @@
                                 }
                                 else if (GetEffectiveColumns().Any())
                                 {
-                                    @foreach (var column in GetEffectiveColumns().Where(c => !c.Hidden))
+                                    @foreach (var column in GetVisibleEffectiveColumns())
                                     {
-                                        <th class="table-header-cell @(column.Sortable ? "table-header-sortable cursor-pointer hover:text-interactive transition-all" : "") @column.HeaderClass @(StickyColumns.Contains(column.Key) ? "sticky bg-surface-elevated shadow-sm" : "") @(ResizableColumns ? "resizable-column" : "") @GetColumnClasses(column) @GetSortHeaderClasses(column.Key)"
+                                        var columnClasses = GetColumnHeaderClasses(column);
+                                        <th class="@columnClasses"
+                                            role="columnheader"
+                                            scope="col"
+                                            aria-sort="@GetAriaSortValue(column.Key)"
+                                            tabindex="@(column.Sortable ? "0" : "-1")"
+                                            aria-label="@GetColumnAriaLabel(column)"
+                                            data-column-key="@column.Key"
+                                            data-resizable="@(column.Resizable && ResizableColumns)"
+                                            data-reorderable="@EnableColumnReordering"
+                                            data-min-width="@(column.MinWidth ?? "50")"
+                                            data-max-width="@(column.MaxWidth ?? "1000")"
+                                            style="@GetColumnStyles(column)"
                                             @onclick="@((e) => column.Sortable ? HandleColumnSort(column.Key, ((MouseEventArgs)e).ShiftKey) : Task.CompletedTask)"
-                                            @onclick:preventDefault="true">
+                                            @onkeydown="@((e) => HandleHeaderKeyDown(e, column))">
                                             @if (column.HeaderTemplate != null)
                                             {
                                                 @column.HeaderTemplate
@@ -105,7 +196,7 @@
                                                     @if (ResizableColumns)
                                                     {
                                                         <div class="column-resize-handle cursor-col-resize opacity-0 hover:opacity-100 transition-opacity"
-                                                             @onmousedown:preventDefault="true">
+                                                             @onmousedown:stopPropagation="true">
                                                             <i class="material-symbols-rounded text-sm">drag_indicator</i>
                                                         </div>
                                                     }
@@ -119,12 +210,34 @@
                                     @TableHeader
                                 }
                             </tr>
+                            
+                            @* Column Row Filters *@
+                            @if (ShowFilters && FilterMode == FilterMode.ColumnRow)
+                            {
+                                <tr class="filter-row bg-surface-elevated border-b">
+                                    @if (MultiSelection || SingleSelection)
+                                    {
+                                        <th class="table-header-cell w-12 text-center">
+                                            @* Empty cell for selection column *@
+                                        </th>
+                                    }
+                                    @foreach (var column in GetVisibleEffectiveColumns())
+                                    {
+                                        <th class="table-header-cell pa-2" style="@GetColumnStyles(column)">
+                                            @if (column.Filterable)
+                                            {
+                                                @RenderColumnFilter(column)
+                                            }
+                                        </th>
+                                    }
+                                </tr>
+                            }
                         </thead>
                     }
                     <tbody>
-                        @if (GetEffectiveItems()?.Any() == true)
+                        @if (GetCurrentPageItems()?.Any() == true)
                         {
-                            @foreach (var item in GetEffectiveItems())
+                            @foreach (var item in GetCurrentPageItems())
                             {
                                 @if (RowTemplate != null)
                                 {
@@ -139,23 +252,26 @@
                                                 @if (MultiSelection)
                                                 {
                                                     <input type="checkbox" 
-                                                           class="align-middle"
+                                                           class="form-checkbox align-middle transition-colors hover:border-primary focus:ring-2 focus:ring-primary/20"
                                                            checked="@TypedSelectedItems.Contains(item)"
-                                                           @onchange="@((e) => ToggleItemSelection(item, (bool)e.Value!))" />
+                                                           @onchange="@((e) => ToggleItemSelection(item, (bool)e.Value!))"
+                                                           @onclick:stopPropagation="true" />
                                                 }
                                                 else if (SingleSelection)
                                                 {
                                                     <input type="radio" 
-                                                           class="align-middle"
-                                                           name="table-selection"
+                                                           class="form-radio align-middle transition-colors hover:border-primary focus:ring-2 focus:ring-primary/20"
+                                                           name="@($"table-selection-{GetHashCode()}")"
                                                            checked="@(TypedSelectedItem?.Equals(item) == true)"
-                                                           @onchange="@((e) => { if (e.Value?.ToString() == "true") TypedSelectedItem = item; })" />
+                                                           @onchange="@((e) => { if (e.Value?.ToString() == "true") { TypedSelectedItem = item; _ = HandleSelectedItemChanged(item); } })"
+                                                           @onclick:stopPropagation="true" />
                                                 }
                                             </td>
                                         }
-                                        @foreach (var column in GetEffectiveColumns().Where(c => !c.Hidden))
+                                        @foreach (var column in GetVisibleEffectiveColumns())
                                         {
-                                            <td class="table-cell @column.CellClass @GetColumnClasses(column)">
+                                            <td class="table-cell @column.CellClass @GetColumnClasses(column)" 
+                                                style="@GetColumnStyles(column)">
                                                 @if (column.CellTemplate != null)
                                                 {
                                                     @column.CellTemplate(item)
@@ -173,16 +289,27 @@
                         else if (!Loading)
                         {
                             <tr class="empty-state-row">
-                                <td colspan="@GetColSpan()" class="empty-state">
-                                    @if (EmptyStateContent != null)
-                                    {
-                                        @EmptyStateContent
-                                    }
-                                    else
-                                    {
-                                        <h3>No data available</h3>
-                                        <p>@(EmptyMessage ?? DefaultEmptyMessage)</p>
-                                    }
+                                <td colspan="@GetColSpan()" class="p-0">
+                                    <div class="table-empty-state empty-state-no-data" role="status" aria-live="polite" aria-label="Table empty state">
+                                        @if (EmptyStateContent != null)
+                                        {
+                                            @EmptyStateContent
+                                        }
+                                        else
+                                        {
+                                            <div class="empty-icon" role="presentation" aria-hidden="true"></div>
+                                            <div class="empty-title" id="empty-title-@GetTableId()">@(string.IsNullOrEmpty(EmptyMessage) ? "No data available" : EmptyMessage)</div>
+                                            <div class="empty-description" id="empty-desc-@GetTableId()" aria-describedby="empty-title-@GetTableId()">
+                                                @(DefaultEmptyMessage ?? "There are no items to display. Try adjusting your filters or adding new data.")
+                                            </div>
+                                            @if (HeaderContent != null)
+                                            {
+                                                <div class="empty-actions" role="group" aria-label="Available actions">
+                                                    @HeaderContent
+                                                </div>
+                                            }
+                                        }
+                                    </div>
                                 </td>
                             </tr>
                         }
@@ -192,32 +319,96 @@
 
             @if (Loading)
             {
-                <div class="d-flex items-center justify-center pa-8">
-                    <div class="d-flex items-center gap-3">
-                        <div class="spinner"></div>
-                        <span class="text-secondary">@(LoadingMessage ?? "Loading...")</span>
-                    </div>
+                <div class="table-loading-skeleton" aria-live="polite" aria-busy="true" aria-label="@(LoadingMessage ?? "Loading table data")">
+                    @for (int i = 0; i < Math.Min(PageSize, 8); i++)
+                    {
+                        <div class="skeleton-row" role="presentation">
+                            @if (MultiSelection || SingleSelection)
+                            {
+                                <div class="skeleton-checkbox" role="presentation"></div>
+                            }
+                            @for (int j = 0; j < Math.Min(GetVisibleEffectiveColumns().Count, 6); j++)
+                            {
+                                <div class="skeleton-cell" role="presentation"></div>
+                            }
+                            @if (GetVisibleEffectiveColumns().Any(c => c.Key == "Actions" || c.Header?.Contains("Action") == true))
+                            {
+                                <div class="skeleton-actions" role="presentation">
+                                    <div class="skeleton-action" role="presentation"></div>
+                                    <div class="skeleton-action" role="presentation"></div>
+                                </div>
+                            }
+                        </div>
+                    }
                 </div>
             }
 
             @if (ShowPagination && (TotalItems > 0 || Items?.Any() == true))
             {
-                <div class="d-flex justify-between items-center pa-4 border-t">
-                    <div class="text-sm text-secondary">
-                        Showing @((CurrentPage - 1) * PageSize + 1) to @Math.Min(CurrentPage * PageSize, TotalItems) of @TotalItems entries
+                <div class="table-pagination d-flex justify-between items-center pa-4 border-t bg-surface-elevated">
+                    <div class="d-flex items-center gap-4">
+                        <div class="text-sm text-secondary">
+                            Showing @GetStartItem() to @GetEndItem() of @TotalItems entries
+                        </div>
+                        @if (TypedSelectedItems?.Any() == true)
+                        {
+                            <div class="text-sm font-medium text-primary">
+                                @TypedSelectedItems.Count selected
+                            </div>
+                        }
                     </div>
-                    <div class="d-flex items-center gap-3">
-                        <RButton Variant="ButtonVariant.Ghost" 
-                                Size="ButtonSize.Medium" 
-                                Icon="chevron_left" IconPosition="IconPosition.Start" 
-                                OnClick="() => OnPageChange.InvokeAsync(CurrentPage - 1)" 
-                                Disabled="@(CurrentPage <= 1)" />
-                        <span class="text-sm font-medium pl-3 pr-3">Page @CurrentPage of @TotalPages</span>
-                        <RButton Variant="ButtonVariant.Ghost" 
-                                Size="ButtonSize.Medium" 
-                                Icon="chevron_right" IconPosition="IconPosition.Start" 
-                                OnClick="() => OnPageChange.InvokeAsync(CurrentPage + 1)" 
-                                Disabled="@(CurrentPage >= TotalPages)" />
+                    <div class="d-flex items-center gap-4">
+                        @if (PageSizeOptions?.Any() == true)
+                        {
+                            <div class="d-flex items-center gap-2">
+                                <span class="text-sm text-secondary">Show:</span>
+                                <select class="form-select text-sm border border-border rounded px-2 py-1 bg-surface text-foreground focus:border-primary focus:ring-1 focus:ring-primary/20"
+                                        value="@_currentPageSize"
+                                        @onchange="@HandlePageSizeChange">
+                                    @foreach (var option in PageSizeOptions)
+                                    {
+                                        <option value="@option">@option</option>
+                                    }
+                                </select>
+                            </div>
+                        }
+                        <div class="d-flex items-center gap-2">
+                            <RButton Variant="ButtonVariant.Ghost" 
+                                    Size="ButtonSize.Small" 
+                                    Icon="first_page" 
+                                    OnClick="HandleFirstPage" 
+                                    Disabled="@(CurrentPage <= 1)"
+                                    Title="First page" />
+                            <RButton Variant="ButtonVariant.Ghost" 
+                                    Size="ButtonSize.Small" 
+                                    Icon="chevron_left" 
+                                    OnClick="HandlePreviousPage" 
+                                    Disabled="@(CurrentPage <= 1)"
+                                    Title="Previous page" />
+                            <div class="d-flex items-center gap-1 px-2">
+                                <span class="text-sm text-secondary">Page</span>
+                                <input type="number" 
+                                       class="page-input form-input w-16 text-center text-sm border border-border rounded px-1 py-1 bg-surface text-foreground focus:border-primary focus:ring-1 focus:ring-primary/20"
+                                       value="@_currentPageInput"
+                                       @onchange="@HandlePageInputChange"
+                                       @onkeypress="@HandlePageInputKeyPress"
+                                       min="1"
+                                       max="@TotalPages" />
+                                <span class="text-sm text-secondary">of @TotalPages</span>
+                            </div>
+                            <RButton Variant="ButtonVariant.Ghost" 
+                                    Size="ButtonSize.Small" 
+                                    Icon="chevron_right" 
+                                    OnClick="HandleNextPage" 
+                                    Disabled="@(CurrentPage >= TotalPages)"
+                                    Title="Next page" />
+                            <RButton Variant="ButtonVariant.Ghost" 
+                                    Size="ButtonSize.Small" 
+                                    Icon="last_page" 
+                                    OnClick="HandleLastPage" 
+                                    Disabled="@(CurrentPage >= TotalPages)"
+                                    Title="Last page" />
+                        </div>
                     </div>
                 </div>
             }
@@ -229,6 +420,8 @@
                 </div>
             }
         </div>
+
+
     </div>
     </CascadingValue>
 </CascadingValue>
@@ -236,23 +429,43 @@
 @code {
     // Core parameters merged from RDataTableGeneric
     [Parameter] public List<TItem> Items { get; set; } = new();
-    [Parameter] public int Elevation { get; set; } = 2;
+    
+    // Professional Styling Parameters - mapped from RTableBase (inherited from RTableBase)
+    [Parameter] public TableVariant Variant { get; set; } = TableVariant.Standard;
+    
 
     // Header parameters
     [Parameter] public bool ShowHeader { get; set; } = true;
     [Parameter] public string Icon { get; set; }
 
-    // Filter parameters
+    // Enhanced Filter parameters
     [Parameter] public bool ShowFilters { get; set; }
     [Parameter] public RenderFragment Filters { get; set; }
+    [Parameter] public FilterMode FilterMode { get; set; } = FilterMode.Smart;
+    [Parameter] public bool ShowGlobalSearch { get; set; } = true;
+    [Parameter] public string GlobalSearchPlaceholder { get; set; } = "Search all columns...";
+
+    // Mobile responsiveness parameters
+    [Parameter] public bool ResponsiveMode { get; set; } = true;
+    [Parameter] public string MobileBreakpoint { get; set; } = "768px";
+    [Parameter] public List<string> MobileHiddenColumns { get; set; } = new();
+    [Parameter] public RenderFragment<TItem> MobileRowTemplate { get; set; }
+    [Parameter] public bool MobileScrollMode { get; set; } = false;
+    [Parameter] public Dictionary<string, object> ActiveFilters { get; set; } = new();
+    [Parameter] public EventCallback<Dictionary<string, object>> ActiveFiltersChanged { get; set; }
+    [Parameter] public List<FilterTemplate> SavedFilters { get; set; } = new();
+    [Parameter] public EventCallback<FilterEventArgs> OnFilterChanged { get; set; }
+    [Parameter] public SmartFilterConfig SmartFilterConfig { get; set; } = new();
+    [Parameter] public bool EnableFilterTemplates { get; set; } = true;
+    [Parameter] public bool EnableFilterHistory { get; set; } = true;
+    [Parameter] public int MaxRecentFilters { get; set; } = 10;
 
     // Table structure parameters
     [Parameter] public bool ShowTableHeader { get; set; } = true;
     [Parameter] public List<RDataTableColumn<TItem>> Columns { get; set; }
     [Parameter] public RenderFragment TableHeader { get; set; }
     [Parameter] public RenderFragment<TItem> RowTemplate { get; set; }
-    [Parameter] public bool Striped { get; set; }
-    [Parameter] public bool Hoverable { get; set; } = true;
+    // Hover is already inherited from RTableBase
     // Density is already inherited from RTableBase
     [Parameter] public string RowClass { get; set; } = "";
 
@@ -275,16 +488,30 @@
     }
 
     // Sorting parameters
-    [Parameter] public bool AllowUnsorted { get; set; } = true;
-    // SortStates, SortStatesChanged, OnSortChanged, MultiColumnSort inherited from RTableBase
-    [Parameter] public int MaxSortLevels { get; set; } = 3;
+    // AllowUnsorted, SortStates, SortStatesChanged, OnSortChanged, MultiColumnSort, MaxSortLevels inherited from RTableBase
 
     // Advanced feature parameters
     [Parameter] public bool FixedHeader { get; set; }
     [Parameter] public float ItemSize { get; set; } = 50f;
 
+    // Simple Virtualization Parameters (without service bloat)
+    [Parameter] public bool EnableVirtualization { get; set; }
+    [Parameter] public int VirtualItemHeight { get; set; } = 48;
+    [Parameter] public int BufferSize { get; set; } = 10;
+
     // Pagination calculation
     private int TotalPages => (int)Math.Ceiling(TotalItems / (double)PageSize);
+    
+    // Enhanced pagination state
+    private int _currentPageInput = 1;
+    private int _currentPageSize = 10;
+    
+    // Selection state management
+    private bool _allCurrentPageSelected => GetCurrentPageItems().Any() && GetCurrentPageItems().All(item => TypedSelectedItems.Contains(item));
+    private bool _someCurrentPageSelected => GetCurrentPageItems().Any(item => TypedSelectedItems.Contains(item));
+    
+    // Page size management
+    [Parameter] public EventCallback<int> PageSizeChanged { get; set; }
     
     // Column management
     private List<RDataTableColumn<TItem>> _childColumns = new();
@@ -297,6 +524,14 @@
     private List<TItem> _originalItems = new();
     private List<TItem> _sortedItems = new();
 
+    // JavaScript interop
+    private IJSObjectReference? _jsModule;
+    private DotNetObjectReference<RTableGeneric<TItem>>? _dotNetRef;
+    
+    // Filtering state
+    private List<TItem> _filteredItems = new();
+    private string _globalSearchTerm = "";
+
     private string DefaultEmptyMessage => "No data available";
 
     protected override void OnInitialized()
@@ -307,11 +542,17 @@
         {
             TotalItems = Items.Count;
         }
+        
+        InitializeFiltering();
     }
 
     protected override void OnParametersSet()
     {
         base.OnParametersSet();
+        
+        // Sync input fields with current values
+        _currentPageInput = CurrentPage;
+        _currentPageSize = PageSize;
         
         // Ensure TotalItems is always set correctly
         if (TotalItems == 0 && Items?.Count > 0)
@@ -336,10 +577,22 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender && _childColumns.Any())
+        if (firstRender)
         {
-            // Force re-render after columns are registered
-            await InvokeAsync(StateHasChanged);
+            if (_childColumns.Any())
+            {
+                // Force re-render after columns are registered
+                await InvokeAsync(StateHasChanged);
+            }
+            
+            // Initialize column management
+            await InitializeColumnManagement();
+            
+            // Initialize mobile scroll behavior
+            if (MobileScrollMode)
+            {
+                await InitializeMobileScroll();
+            }
         }
     }
 
@@ -425,39 +678,92 @@
         }
     }
 
-    private string GetTableClass()
+    private string GetVariantClass()
+    {
+        return $"variant-{Variant.ToString().ToLowerInvariant().Replace("_", "-")}";
+    }
+
+    private string GetMobileClass()
+    {
+        return MobileScrollMode ? "table-mobile-scroll" : "";
+    }
+    
+    private string GetElevationClass()
+    {
+        return $"elevation-{TableElevation}";
+    }
+    
+    private string GetInternalContainerClass()
     {
         var classes = new List<string>
         {
             "enhanced-table",
-            "table-professional-spacing",
-            "table-hover-enhanced"
+            "table-professional-spacing"
         };
-
+        
+        if (EnableHoverEffects)
+            classes.Add("table-hover-enhanced");
+            
+        if (EnableAnimations)
+            classes.Add("table-animations-enabled");
+            
+        if (EnableGlassmorphism)
+            classes.Add("table-glassmorphism");
+            
         return string.Join(" ", classes);
     }
 
     private string GetInternalTableClass()
     {
-        var classes = new List<string> { "table", "w-full" };
+        var classes = new List<string> { "table-table", "w-full" };
         
-        if (FixedHeader) classes.Add("table-fixed-header");
+        if (FixedHeader) 
+            classes.Add("table-fixed-header");
         
-        classes.Add(GetTableDensityClasses());
+        // Use new professional density system
+        classes.Add(GetProfessionalDensityClasses());
         
         return string.Join(" ", classes);
     }
 
-    private string GetTableDensityClasses()
+    private string GetProfessionalDensityClasses()
     {
-        return Density switch
+        return TableDensity switch
         {
-            ComponentDensity.Compact => "table-compact",
-            ComponentDensity.Dense => "table-dense",
-            ComponentDensity.Normal => "table-normal",
-            ComponentDensity.Spacious => "table-spacious",
-            _ => "table-normal"  // Default to normal
+            RR.Blazor.Enums.TableDensity.UltraCompact => "table-density-ultra-compact",
+            RR.Blazor.Enums.TableDensity.Compact => "table-density-compact",
+            RR.Blazor.Enums.TableDensity.Dense => "table-density-dense",
+            RR.Blazor.Enums.TableDensity.Normal => "table-density-normal",
+            RR.Blazor.Enums.TableDensity.Comfortable => "table-density-comfortable",
+            RR.Blazor.Enums.TableDensity.Spacious => "table-density-spacious",
+            RR.Blazor.Enums.TableDensity.ExtraSpacious => "table-density-extra-spacious",
+            RR.Blazor.Enums.TableDensity.Custom => "table-density-custom",
+            _ => "table-density-normal"
         };
+    }
+    
+    private string GetCustomStyles()
+    {
+        var styles = new List<string>();
+        
+        if (TableDensity == RR.Blazor.Enums.TableDensity.Custom && CustomRowHeight > 0)
+        {
+            styles.Add($"--table-custom-row-height: {CustomRowHeight}px");
+        }
+        
+        if (CustomCssVariables?.Any() == true)
+        {
+            styles.AddRange(CustomCssVariables.Select(kvp => $"--{kvp.Key}: {kvp.Value}"));
+        }
+        
+        if (!EnableAnimations)
+        {
+            styles.Add("--table-transition: none");
+            styles.Add("--table-animation-scale: none");
+            styles.Add("--table-animation-slide: none");
+        }
+        
+        return styles.Any() ? string.Join("; ", styles) : "";
     }
 
     private string GetRowDensityClasses()
@@ -502,14 +808,6 @@
             {
                 @BulkOperations
             }
-            @if (ExportEnabled)
-            {
-                <RButton Text="Export"
-                         Icon="download"
-                         IconPosition="IconPosition.Start"
-                         Variant="ButtonVariant.Outline"
-                         Size="ButtonSize.Small" />
-            }
         </div>;
     }
 
@@ -540,9 +838,10 @@
     {
         var classes = new List<string> { "border-b", "transition-colors" };
         
-        if (Hoverable) classes.Add("hover:bg-surface-secondary");
-        if (Striped) classes.Add("odd:bg-surface-elevated");
-        if (RowClickable) classes.Add("cursor-pointer hover:bg-surface-secondary");
+        // Apply hover and striped settings properly
+        if (Hover) classes.Add("hover:bg-surface-elevated");
+        if (Striped) classes.Add("table-row--striped");
+        if (RowClickable) classes.Add("cursor-pointer");
         
         classes.Add(GetRowDensityClasses());
 
@@ -565,12 +864,11 @@
             classes.Add(customClass);
         }
 
-        // Enhanced row states
+        // Enhanced row states with proper utility classes
         if (TypedSelectedItems?.Contains(item) == true)
-            classes.Add("table-row-selected table-row-selected-enhanced");
-
-        // Add hover enhancement
-        classes.Add("table-row-hover-enhanced");
+            classes.Add("table-row-selected-enhanced");
+        else if (SingleSelection && TypedSelectedItem?.Equals(item) == true)
+            classes.Add("table-row-selected-enhanced");
         
         return string.Join(" ", classes.Where(c => !string.IsNullOrEmpty(c)));
     }
@@ -594,6 +892,14 @@
         {
             var maxWidthValue = column.MaxWidth.Replace("px", "").Replace("%", "p");
             classes.Add($"max-w-{maxWidthValue}");
+        }
+        
+        // Add sticky/pinned column classes
+        var prefs = ColumnPreferences.GetValueOrDefault(column.Key);
+        if (prefs?.IsPinned == true)
+        {
+            classes.Add("table-column-sticky");
+            classes.Add(prefs.PinPosition == StickyPosition.Right ? "table-column-sticky-right" : "table-column-sticky-left");
         }
         
         return string.Join(" ", classes);
@@ -626,7 +932,7 @@
 
     private int GetColSpan()
     {
-        var count = GetEffectiveColumns().Count(c => !c.Hidden);
+        var count = GetVisibleEffectiveColumns().Count();
         if (MultiSelection || SingleSelection) count++;
         return Math.Max(1, count);
     }
@@ -661,6 +967,35 @@
             TypedSelectedItems = new List<TItem>();
         }
         
+        await HandleSelectedItemsChanged(TypedSelectedItems);
+    }
+    
+    private async Task ToggleCurrentPageSelection(bool selected)
+    {
+        var currentPageItems = GetCurrentPageItems();
+        if (!currentPageItems.Any()) return;
+        
+        var currentSelection = TypedSelectedItems.ToList();
+        
+        if (selected)
+        {
+            foreach (var item in currentPageItems)
+            {
+                if (!currentSelection.Contains(item))
+                {
+                    currentSelection.Add(item);
+                }
+            }
+        }
+        else
+        {
+            foreach (var item in currentPageItems)
+            {
+                currentSelection.Remove(item);
+            }
+        }
+        
+        TypedSelectedItems = currentSelection;
         await HandleSelectedItemsChanged(TypedSelectedItems);
     }
 
@@ -755,7 +1090,7 @@
     
     private TableContext GetHeaderTableContext()
     {
-        return new TableContext(typeof(TItem), $"generic-table-{GetHashCode()}", false, true);
+        return new TableContext(typeof(TItem), $"generic-table-{GetHashCode()}", true, true);
     }
     
     // ITableParent implementation
@@ -846,9 +1181,84 @@
     // Sorting implementation
     private List<TItem> GetEffectiveItems()
     {
+        // Use filtered items if filtering is active, otherwise use sorted/original items
+        if (ActiveFilters.Any() || !string.IsNullOrWhiteSpace(_globalSearchTerm))
+        {
+            if (_filteredItems?.Any() == true)
+                return _filteredItems;
+        }
+        
         if (_sortedItems?.Any() == true)
             return _sortedItems;
         return Items ?? new List<TItem>();
+    }
+    
+    private List<TItem> GetCurrentPageItems()
+    {
+        var allItems = GetEffectiveItems();
+        if (!ShowPagination || PageSize <= 0) return allItems;
+        
+        var skip = (CurrentPage - 1) * PageSize;
+        return allItems.Skip(skip).Take(PageSize).ToList();
+    }
+    
+    private int GetStartItem()
+    {
+        if (TotalItems == 0) return 0;
+        return (CurrentPage - 1) * PageSize + 1;
+    }
+    
+    private int GetEndItem()
+    {
+        if (TotalItems == 0) return 0;
+        return Math.Min(CurrentPage * PageSize, TotalItems);
+    }
+    
+    private async Task HandleFirstPage() => await OnPageChange.InvokeAsync(1);
+    private async Task HandlePreviousPage() => await OnPageChange.InvokeAsync(Math.Max(1, CurrentPage - 1));
+    private async Task HandleNextPage() => await OnPageChange.InvokeAsync(Math.Min(TotalPages, CurrentPage + 1));
+    private async Task HandleLastPage() => await OnPageChange.InvokeAsync(TotalPages);
+    
+    private async Task HandlePageInputChange(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var newPage))
+        {
+            newPage = Math.Max(1, Math.Min(newPage, TotalPages));
+            _currentPageInput = newPage;
+            if (newPage != CurrentPage)
+            {
+                await OnPageChange.InvokeAsync(newPage);
+                StateHasChanged();
+            }
+        }
+    }
+    
+    private async Task HandlePageSizeChange(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var newPageSize))
+        {
+            _currentPageSize = newPageSize;
+            PageSize = newPageSize;
+            CurrentPage = 1;
+            _currentPageInput = 1;
+            await OnPageChange.InvokeAsync(1);
+            await PageSizeChanged.InvokeAsync(newPageSize);
+            StateHasChanged();
+        }
+    }
+    
+    private async Task HandlePageInputKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            var newPage = _currentPageInput;
+            newPage = Math.Max(1, Math.Min(newPage, TotalPages));
+            
+            if (newPage != CurrentPage)
+            {
+                await OnPageChange.InvokeAsync(newPage);
+            }
+        }
     }
     
     private TableSortState GetColumnSortState(string columnKey)
@@ -981,7 +1391,8 @@
         
         try
         {
-            var query = Items.AsQueryable();
+            var enumerable = Items.AsEnumerable();
+            IOrderedEnumerable<TItem>? orderedEnumerable = null;
             var isFirst = true;
             
             foreach (var sortState in SortStates.OrderBy(s => s.Priority))
@@ -994,16 +1405,15 @@
                     // Use custom comparer
                     if (isFirst)
                     {
-                        query = sortState.Direction == SortDirection.Ascending
-                            ? query.OrderBy(x => x, column.CustomComparer)
-                            : query.OrderByDescending(x => x, column.CustomComparer);
+                        orderedEnumerable = sortState.Direction == SortDirection.Ascending
+                            ? enumerable.OrderBy(x => x, column.CustomComparer)
+                            : enumerable.OrderByDescending(x => x, column.CustomComparer);
                     }
                     else
                     {
-                        var orderedQuery = (IOrderedQueryable<TItem>)query;
-                        query = sortState.Direction == SortDirection.Ascending
-                            ? orderedQuery.ThenBy(x => x, column.CustomComparer)
-                            : orderedQuery.ThenByDescending(x => x, column.CustomComparer);
+                        orderedEnumerable = sortState.Direction == SortDirection.Ascending
+                            ? orderedEnumerable!.ThenBy(x => x, column.CustomComparer)
+                            : orderedEnumerable!.ThenByDescending(x => x, column.CustomComparer);
                     }
                 }
                 else if (column.SortKeySelector != null)
@@ -1011,67 +1421,61 @@
                     // Use custom sort key selector
                     if (isFirst)
                     {
-                        query = sortState.Direction == SortDirection.Ascending
-                            ? query.OrderBy(column.SortKeySelector)
-                            : query.OrderByDescending(column.SortKeySelector);
+                        orderedEnumerable = sortState.Direction == SortDirection.Ascending
+                            ? enumerable.OrderBy(column.SortKeySelector)
+                            : enumerable.OrderByDescending(column.SortKeySelector);
                     }
                     else
                     {
-                        var orderedQuery = (IOrderedQueryable<TItem>)query;
-                        query = sortState.Direction == SortDirection.Ascending
-                            ? orderedQuery.ThenBy(column.SortKeySelector)
-                            : orderedQuery.ThenByDescending(column.SortKeySelector);
+                        orderedEnumerable = sortState.Direction == SortDirection.Ascending
+                            ? orderedEnumerable!.ThenBy(column.SortKeySelector)
+                            : orderedEnumerable!.ThenByDescending(column.SortKeySelector);
+                    }
+                }
+                else if (column.ValueFunc != null)
+                {
+                    // Use value function for sorting
+                    if (isFirst)
+                    {
+                        orderedEnumerable = sortState.Direction == SortDirection.Ascending
+                            ? enumerable.OrderBy(item => column.ValueFunc(item))
+                            : enumerable.OrderByDescending(item => column.ValueFunc(item));
+                    }
+                    else
+                    {
+                        orderedEnumerable = sortState.Direction == SortDirection.Ascending
+                            ? orderedEnumerable!.ThenBy(item => column.ValueFunc(item))
+                            : orderedEnumerable!.ThenByDescending(item => column.ValueFunc(item));
                     }
                 }
                 else
                 {
-                    // Use property-based sorting
+                    // Use property-based sorting with reflection
                     var propertyName = column.Key;
                     var property = typeof(TItem).GetProperty(propertyName);
                     if (property != null)
                     {
-                        var parameter = Expression.Parameter(typeof(TItem), "x");
-                        var propertyAccess = Expression.MakeMemberAccess(parameter, property);
-                        var orderByExpression = Expression.Lambda(propertyAccess, parameter);
+                        Func<TItem, object?> propertySelector = item => property.GetValue(item);
                         
-                        var methodName = isFirst 
-                            ? (sortState.Direction == SortDirection.Ascending ? "OrderBy" : "OrderByDescending")
-                            : (sortState.Direction == SortDirection.Ascending ? "ThenBy" : "ThenByDescending");
-                            
-                        var resultType = isFirst ? typeof(IOrderedQueryable<TItem>) : typeof(IOrderedQueryable<TItem>);
-                        var method = typeof(Queryable).GetMethods()
-                            .Where(m => m.Name == methodName && m.IsGenericMethodDefinition && m.GetParameters().Length == 2)
-                            .Single()
-                            .MakeGenericMethod(typeof(TItem), property.PropertyType);
-                            
-                        query = (IQueryable<TItem>)method.Invoke(null, new object[] { query, orderByExpression });
-                    }
-                    else if (column.ValueFunc != null)
-                    {
-                        // Use value function for sorting
-                        var items = query.ToList();
                         if (isFirst)
                         {
-                            items = sortState.Direction == SortDirection.Ascending
-                                ? items.OrderBy(item => column.ValueFunc(item)).ToList()
-                                : items.OrderByDescending(item => column.ValueFunc(item)).ToList();
+                            orderedEnumerable = sortState.Direction == SortDirection.Ascending
+                                ? enumerable.OrderBy(propertySelector)
+                                : enumerable.OrderByDescending(propertySelector);
                         }
                         else
                         {
-                            // For subsequent sorts, we need to maintain the ordered collection
-                            var orderedItems = (IOrderedEnumerable<TItem>)items;
-                            items = sortState.Direction == SortDirection.Ascending
-                                ? orderedItems.ThenBy(item => column.ValueFunc(item)).ToList()
-                                : orderedItems.ThenByDescending(item => column.ValueFunc(item)).ToList();
+                            orderedEnumerable = sortState.Direction == SortDirection.Ascending
+                                ? orderedEnumerable!.ThenBy(propertySelector)
+                                : orderedEnumerable!.ThenByDescending(propertySelector);
                         }
-                        query = items.AsQueryable();
                     }
                 }
                 
                 isFirst = false;
             }
             
-            _sortedItems = query.ToList();
+            _sortedItems = orderedEnumerable?.ToList() ?? Items.ToList();
         }
         catch (Exception ex)
         {
@@ -1080,5 +1484,856 @@
             Console.WriteLine($"Sorting error: {ex.Message}");
         }
     }
+    
+    private async Task InitializeColumnManagement()
+    {
+        try
+        {
+            // Comment out JavaScript module loading to prevent errors
+            // _jsModule = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./_content/RR.Blazor/js/column-management.js");
+            // _dotNetRef = DotNetObjectReference.Create(this);
+            
+            // if (ResizableColumns || EnableColumnReordering)
+            // {
+            //     await _jsModule.InvokeVoidAsync("RTableColumnManager.initialize", GetTableId(), _dotNetRef);
+            // }
+            
+            // Load saved preferences
+            // if (PersistColumnPreferences && !string.IsNullOrEmpty(GetTableId()))
+            // {
+            //     var savedPrefs = await _jsModule.InvokeAsync<Dictionary<string, ColumnPreferences>>(
+            //         "RTableColumnManager.loadColumnPreferences", GetTableId());
+            //     if (savedPrefs != null)
+            //     {
+            //         ColumnPreferences = savedPrefs;
+            //         await ColumnPreferencesChanged.InvokeAsync(ColumnPreferences);
+            //     }
+            // }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Column management initialization failed: {ex.Message}");
+        }
+    }
+    
+    private async Task InitializeMobileScroll()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("eval", $@"
+                (function() {{
+                    const container = document.querySelector('[data-table-id=""{GetTableId()}""]');
+                    if (container && container.classList.contains('table-mobile-scroll')) {{
+                        container.addEventListener('scroll', function() {{
+                            if (this.scrollLeft > 10) {{
+                                this.classList.add('scrolled');
+                            }} else {{
+                                this.classList.remove('scrolled');
+                            }}
+                        }});
+                    }}
+                }})();
+            ");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Mobile scroll initialization failed: {ex.Message}");
+        }
+    }
+    
+    private string GetTableId()
+    {
+        return !string.IsNullOrEmpty(TableId) ? TableId : $"table-{GetHashCode()}";
+    }
+    
+    private List<RDataTableColumn<TItem>> GetVisibleEffectiveColumns()
+    {
+        return GetEffectiveColumns()
+            .Where(c => !c.Hidden && IsColumnVisible(c.Key))
+            .OrderBy(c => GetColumnOrder(c.Key))
+            .ToList();
+    }
+    
+    private bool IsColumnVisible(string columnKey)
+    {
+        return ColumnPreferences.GetValueOrDefault(columnKey)?.Visible ?? true;
+    }
+    
+    private int GetColumnOrder(string columnKey)
+    {
+        return ColumnPreferences.GetValueOrDefault(columnKey)?.Order ?? 0;
+    }
+    
+    private string GetColumnHeaderClasses(RDataTableColumn<TItem> column)
+    {
+        var classes = new List<string>
+        {
+            "table-header-cell"
+        };
+        
+        if (column.Sortable)
+            classes.Add("table-header-sortable cursor-pointer hover:text-interactive transition-all");
+        
+        if (!string.IsNullOrEmpty(column.HeaderClass))
+            classes.Add(column.HeaderClass);
+        
+        if (StickyColumns.Contains(column.Key) || IsColumnPinned(column.Key))
+        {
+            classes.Add("table-column-sticky");
+            var pinPosition = GetColumnPinPosition(column.Key);
+            classes.Add(pinPosition == StickyPosition.Right ? "table-column-sticky-right" : "table-column-sticky-left");
+        }
+        
+        if (column.Resizable && ResizableColumns)
+            classes.Add("table-header-resizable");
+        
+        if (EnableColumnReordering)
+            classes.Add("table-header-reorderable");
+        
+        classes.Add(GetSortHeaderClasses(column.Key));
+        
+        return string.Join(" ", classes.Where(c => !string.IsNullOrEmpty(c)));
+    }
+    
+    private bool IsColumnPinned(string columnKey)
+    {
+        return ColumnPreferences.GetValueOrDefault(columnKey)?.IsPinned ?? false;
+    }
+    
+    private StickyPosition GetColumnPinPosition(string columnKey)
+    {
+        return ColumnPreferences.GetValueOrDefault(columnKey)?.PinPosition ?? StickyPosition.Left;
+    }
+    
+    private int CalculateStickyOffset(string currentColumnKey, StickyPosition position)
+    {
+        var visibleColumns = GetVisibleEffectiveColumns();
+        var currentIndex = visibleColumns.FindIndex(c => c.Key == currentColumnKey);
+        
+        if (currentIndex == -1) return 0;
+        
+        var offset = 0;
+        
+        // Add selection column width if it exists and we're calculating from left
+        if (position == StickyPosition.Left && (MultiSelection || SingleSelection))
+        {
+            offset += 48; // Standard checkbox/radio column width
+        }
+        
+        if (position == StickyPosition.Left)
+        {
+            // Calculate offset from left - sum width of all pinned columns to the left
+            for (int i = 0; i < currentIndex; i++)
+            {
+                var column = visibleColumns[i];
+                if (IsColumnPinned(column.Key) && GetColumnPinPosition(column.Key) == StickyPosition.Left)
+                {
+                    offset += GetColumnWidthInPixels(column);
+                }
+            }
+        }
+        else if (position == StickyPosition.Right)
+        {
+            // Calculate offset from right - sum width of all pinned columns to the right
+            for (int i = currentIndex + 1; i < visibleColumns.Count; i++)
+            {
+                var column = visibleColumns[i];
+                if (IsColumnPinned(column.Key) && GetColumnPinPosition(column.Key) == StickyPosition.Right)
+                {
+                    offset += GetColumnWidthInPixels(column);
+                }
+            }
+        }
+        
+        return offset;
+    }
+    
+    private int GetColumnWidthInPixels(RDataTableColumn<TItem> column)
+    {
+        var preferences = ColumnPreferences.GetValueOrDefault(column.Key);
+        var width = preferences?.Width ?? column.Width;
+        
+        if (string.IsNullOrEmpty(width))
+            return 150; // Default width
+        
+        // Parse width - handle px, %, em, rem, etc.
+        if (width.EndsWith("px"))
+        {
+            if (int.TryParse(width.Replace("px", ""), out var pixelWidth))
+                return pixelWidth;
+        }
+        
+        // For other units, return a reasonable default
+        return 150;
+    }
+    
+    private string GetColumnStyles(RDataTableColumn<TItem> column)
+    {
+        var styles = new List<string>();
+        
+        var preferences = ColumnPreferences.GetValueOrDefault(column.Key);
+        var width = preferences?.Width ?? column.Width;
+        
+        if (!string.IsNullOrEmpty(width))
+        {
+            styles.Add($"width: {width}");
+            styles.Add($"min-width: {width}");
+        }
+        
+        if (!string.IsNullOrEmpty(column.MinWidth))
+            styles.Add($"min-width: {column.MinWidth}");
+        
+        if (!string.IsNullOrEmpty(column.MaxWidth))
+            styles.Add($"max-width: {column.MaxWidth}");
+        
+        // Handle sticky positioning with proper calculation
+        if (IsColumnPinned(column.Key))
+        {
+            var position = GetColumnPinPosition(column.Key);
+            var stickyOffset = CalculateStickyOffset(column.Key, position);
+            
+            if (position == StickyPosition.Right)
+            {
+                styles.Add($"right: {stickyOffset}px");
+                styles.Add("z-index: 10");
+            }
+            else
+            {
+                styles.Add($"left: {stickyOffset}px");
+                styles.Add("z-index: 10");
+            }
+        }
+        
+        return string.Join("; ", styles);
+    }
+    
+    [JSInvokable]
+    public async Task OnColumnResized(ColumnResizeEventArgs args)
+    {
+        var currentPrefs = ColumnPreferences.GetValueOrDefault(args.ColumnKey) ?? new ColumnPreferences();
+        var newPrefs = currentPrefs with { Width = args.NewWidth };
+        ColumnPreferences[args.ColumnKey] = newPrefs;
+        
+        await ColumnPreferencesChanged.InvokeAsync(ColumnPreferences);
+        await OnColumnResize.InvokeAsync(args);
+        
+        // if (PersistColumnPreferences && _jsModule != null)
+        // {
+        //     await _jsModule.InvokeVoidAsync("RTableColumnManager.saveColumnPreferences", GetTableId(), ColumnPreferences);
+        // }
+    }
+    
+    [JSInvokable]
+    public async Task OnColumnReordered(int fromIndex, int toIndex)
+    {
+        var columns = GetVisibleEffectiveColumns();
+        if (fromIndex >= 0 && fromIndex < columns.Count && toIndex >= 0 && toIndex < columns.Count)
+        {
+            var fromColumn = columns[fromIndex];
+            var toColumn = columns[toIndex];
+            
+            // Update order preferences
+            var fromPrefs = ColumnPreferences.GetValueOrDefault(fromColumn.Key) ?? new ColumnPreferences();
+            var toPrefs = ColumnPreferences.GetValueOrDefault(toColumn.Key) ?? new ColumnPreferences();
+            
+            ColumnPreferences[fromColumn.Key] = fromPrefs with { Order = toIndex };
+            ColumnPreferences[toColumn.Key] = toPrefs with { Order = fromIndex };
+            
+            await ColumnPreferencesChanged.InvokeAsync(ColumnPreferences);
+            await OnColumnManagement.InvokeAsync(new ColumnManagementEventArgs
+            {
+                ColumnKey = fromColumn.Key,
+                Action = ColumnManagementAction.Reorder,
+                NewValue = toIndex,
+                OldValue = fromIndex
+            });
+            
+            // if (PersistColumnPreferences && _jsModule != null)
+            // {
+            //     await _jsModule.InvokeVoidAsync("RTableColumnManager.saveColumnPreferences", GetTableId(), ColumnPreferences);
+            // }
+            
+            StateHasChanged();
+        }
+    }
 
+    private async Task HandleColumnPreferencesChanged(Dictionary<string, ColumnPreferences> newPreferences)
+    {
+        ColumnPreferences = newPreferences;
+        await ColumnPreferencesChanged.InvokeAsync(ColumnPreferences);
+        
+        // if (PersistColumnPreferences && _jsModule != null)
+        // {
+        //     await _jsModule.InvokeVoidAsync("RTableColumnManager.saveColumnPreferences", GetTableId(), ColumnPreferences);
+        // }
+        
+        StateHasChanged();
+    }
+
+    private async Task HandleGlobalSearch(ChangeEventArgs e)
+    {
+        var searchTerm = e.Value?.ToString() ?? "";
+        _globalSearchTerm = searchTerm;
+        // Implement global search logic here
+        await Task.CompletedTask;
+    }
+
+    private string GetFilterDisplayText(object filter)
+    {
+        // Implement filter display text logic here
+        return filter?.ToString() ?? "";
+    }
+
+    private async Task RemoveFilter(string filterKey)
+    {
+        // Implement remove filter logic here
+        ActiveFilters.Remove(filterKey);
+        await ActiveFiltersChanged.InvokeAsync(ActiveFilters);
+    }
+
+    private async Task ClearAllFilters()
+    {
+        // Implement clear all filters logic here
+        ActiveFilters.Clear();
+        await ActiveFiltersChanged.InvokeAsync(ActiveFilters);
+    }
+
+    private void InitializeFiltering()
+    {
+    }
+
+    private RenderFragment RenderColumnFilter(RDataTableColumn<TItem> column)
+    {
+        return @<div class="column-filter-container">
+            @{
+                var filterType = GetColumnFilterType(column);
+            }
+            
+            @switch (filterType)
+            {
+                case FilterType.Text:
+                    <RTextFilter ColumnKey="@column.Key"
+                                Placeholder="@(column.FilterPlaceholder ?? $"Filter {column.Header}...")"
+                                Density="@Density"
+                                ShowOperatorSelection="@column.FilterShowOperatorSelection"
+                                ShowClearButton="@column.FilterShowClearButton"
+                                OnFilterChanged="@HandleColumnFilterChanged" />
+                    break;
+                    
+                case FilterType.Number:
+                    <RNumberFilter ColumnKey="@column.Key"
+                                  Placeholder="@(column.FilterPlaceholder ?? $"Filter {column.Header}...")"
+                                  Density="@Density"
+                                  MinValue="@(column.FilterMinValue as decimal?)"
+                                  MaxValue="@(column.FilterMaxValue as decimal?)"
+                                  OnFilterChanged="@HandleColumnFilterChanged" />
+                    break;
+                    
+                case FilterType.Date:
+                    <RDateFilter ColumnKey="@column.Key"
+                                Density="@Density"
+                                MinDate="@(column.FilterMinValue as DateTime?)"
+                                MaxDate="@(column.FilterMaxValue as DateTime?)"
+                                OnFilterChanged="@HandleColumnFilterChanged" />
+                    break;
+                    
+                case FilterType.Boolean:
+                    <RBooleanFilter ColumnKey="@column.Key"
+                                   Density="@Density"
+                                   OnFilterChanged="@HandleColumnFilterChanged" />
+                    break;
+                    
+                case FilterType.Select:
+                    <RSelectFilter TValue="string" ColumnKey="@column.Key"
+                                  Options="@GetFilterOptionsForColumn(column)"
+                                  Density="@Density"
+                                  EmptyText="@($"Select {column.Header}...")"
+                                  OnFilterChanged="@HandleColumnFilterChanged" />
+                    break;
+                    
+                default:
+                    <RTextFilter ColumnKey="@column.Key"
+                                Placeholder="@(column.FilterPlaceholder ?? $"Filter {column.Header}...")"
+                                Density="@Density"
+                                OnFilterChanged="@HandleColumnFilterChanged" />
+                    break;
+            }
+        </div>;
+    }
+    
+    private FilterType GetColumnFilterType(RDataTableColumn<TItem> column)
+    {
+        // Simple filter type detection based on property type
+        if (column.FilterType != FilterType.Auto)
+            return column.FilterType;
+            
+        // Basic type-based filter detection
+        var property = typeof(TItem).GetProperty(column.Key);
+        if (property == null) return FilterType.Text;
+        
+        var propertyType = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;
+        
+        return propertyType switch
+        {
+            Type t when t == typeof(string) => FilterType.Text,
+            Type t when t == typeof(int) || t == typeof(decimal) || t == typeof(double) || t == typeof(float) => FilterType.Number,
+            Type t when t == typeof(DateTime) || t == typeof(DateOnly) => FilterType.Date,
+            Type t when t == typeof(bool) => FilterType.Boolean,
+            _ => FilterType.Text
+        };
+    }
+    
+    private IEnumerable<FilterOption>? GetFilterOptionsForColumn(RDataTableColumn<TItem> column)
+    {
+        if (column.FilterOptions != null)
+        {
+            return column.FilterOptions.Select(o => new FilterOption(o, o?.ToString() ?? ""));
+        }
+        
+        // Simple auto-generation from unique column values
+        if (Items?.Any() == true)
+        {
+            var property = typeof(TItem).GetProperty(column.Key);
+            if (property != null)
+            {
+                var uniqueValues = Items
+                    .Select(item => property.GetValue(item))
+                    .Where(v => v != null)
+                    .Distinct()
+                    .Take(20) // Limit to prevent performance issues
+                    .ToList();
+                    
+                return uniqueValues.Select(v => new FilterOption(v, v?.ToString() ?? ""));
+            }
+        }
+        
+        return null;
+    }
+    
+    private async Task HandleColumnFilterChanged(FilterEventArgs args)
+    {
+        if (args.NewFilter != null)
+        {
+            ActiveFilters[args.ColumnKey] = args.NewFilter;
+        }
+        else
+        {
+            ActiveFilters.Remove(args.ColumnKey);
+        }
+        
+        await ActiveFiltersChanged.InvokeAsync(ActiveFilters);
+        await OnFilterChanged.InvokeAsync(args);
+        
+        // Apply filters to data
+        ApplyFilters();
+        StateHasChanged();
+    }
+    
+    private void ApplyFilters()
+    {
+        if (Items == null || !Items.Any())
+        {
+            _filteredItems = new List<TItem>();
+            return;
+        }
+        
+        var result = Items.AsEnumerable();
+        
+        // Apply global search if active
+        if (!string.IsNullOrWhiteSpace(_globalSearchTerm))
+        {
+            result = ApplyGlobalSearch(result, _globalSearchTerm);
+        }
+        
+        // Apply column filters
+        foreach (var filter in ActiveFilters.Values.OfType<FilterState>())
+        {
+            if (filter.IsActive)
+            {
+                result = ApplyColumnFilter(result, filter);
+            }
+        }
+        
+        _filteredItems = result.ToList();
+    }
+    
+    private IEnumerable<TItem> ApplyGlobalSearch(IEnumerable<TItem> items, string searchTerm)
+    {
+        if (string.IsNullOrWhiteSpace(searchTerm))
+            return items;
+        
+        var lowerSearchTerm = searchTerm.ToLowerInvariant();
+        
+        return items.Where(item =>
+        {
+            if (item == null) return false;
+            
+            // Search across all visible string properties
+            var properties = typeof(TItem).GetProperties()
+                .Where(p => p.PropertyType == typeof(string) || 
+                           Nullable.GetUnderlyingType(p.PropertyType) == typeof(string) ||
+                           p.PropertyType.IsValueType)
+                .ToList();
+            
+            foreach (var prop in properties)
+            {
+                try
+                {
+                    var value = prop.GetValue(item)?.ToString();
+                    if (!string.IsNullOrEmpty(value) && 
+                        value.ToLowerInvariant().Contains(lowerSearchTerm))
+                    {
+                        return true;
+                    }
+                }
+                catch
+                {
+                    // Skip properties that can't be read
+                }
+            }
+            
+            return false;
+        });
+    }
+    
+    private IEnumerable<TItem> ApplyColumnFilter(IEnumerable<TItem> items, FilterState filter)
+    {
+        if (filter.Value == null && !IsNoValueOperator(filter.Operator))
+            return items;
+        
+        return items.Where(item =>
+        {
+            var columnValue = GetColumnValue(item, filter.ColumnKey);
+            return EvaluateFilter(columnValue, filter);
+        });
+    }
+    
+    private object? GetColumnValue(TItem item, string columnKey)
+    {
+        if (item == null) return null;
+        
+        try
+        {
+            var property = typeof(TItem).GetProperty(columnKey);
+            return property?.GetValue(item);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+    
+    private bool EvaluateFilter(object? columnValue, FilterState filter)
+    {
+        return filter.Operator switch
+        {
+            // Text operators
+            FilterOperator.Contains => EvaluateTextContains(columnValue, filter.Value),
+            FilterOperator.StartsWith => EvaluateTextStartsWith(columnValue, filter.Value),
+            FilterOperator.EndsWith => EvaluateTextEndsWith(columnValue, filter.Value),
+            FilterOperator.Equals => EvaluateEquals(columnValue, filter.Value),
+            FilterOperator.NotEquals => !EvaluateEquals(columnValue, filter.Value),
+            FilterOperator.IsEmpty => columnValue == null || string.IsNullOrEmpty(columnValue.ToString()),
+            FilterOperator.IsNotEmpty => columnValue != null && !string.IsNullOrEmpty(columnValue.ToString()),
+            
+            // Number operators
+            FilterOperator.GreaterThan => EvaluateNumericComparison(columnValue, filter.Value, (a, b) => a > b),
+            FilterOperator.LessThan => EvaluateNumericComparison(columnValue, filter.Value, (a, b) => a < b),
+            FilterOperator.GreaterThanOrEqual => EvaluateNumericComparison(columnValue, filter.Value, (a, b) => a >= b),
+            FilterOperator.LessThanOrEqual => EvaluateNumericComparison(columnValue, filter.Value, (a, b) => a <= b),
+            FilterOperator.Between => EvaluateNumericBetween(columnValue, filter.Value, filter.SecondValue),
+            FilterOperator.NotBetween => !EvaluateNumericBetween(columnValue, filter.Value, filter.SecondValue),
+            
+            // Date operators
+            FilterOperator.On => EvaluateDateEquals(columnValue, filter.Value),
+            FilterOperator.Before => EvaluateDateComparison(columnValue, filter.Value, (a, b) => a < b),
+            FilterOperator.After => EvaluateDateComparison(columnValue, filter.Value, (a, b) => a > b),
+            FilterOperator.OnOrBefore => EvaluateDateComparison(columnValue, filter.Value, (a, b) => a <= b),
+            FilterOperator.OnOrAfter => EvaluateDateComparison(columnValue, filter.Value, (a, b) => a >= b),
+            FilterOperator.InRange => EvaluateDateBetween(columnValue, filter.Value, filter.SecondValue),
+            FilterOperator.Today => EvaluateDateEquals(columnValue, DateTime.Today),
+            FilterOperator.Yesterday => EvaluateDateEquals(columnValue, DateTime.Today.AddDays(-1)),
+            FilterOperator.ThisWeek => EvaluateDateInWeek(columnValue, DateTime.Today),
+            FilterOperator.LastWeek => EvaluateDateInWeek(columnValue, DateTime.Today.AddDays(-7)),
+            FilterOperator.ThisMonth => EvaluateDateInMonth(columnValue, DateTime.Today),
+            FilterOperator.LastMonth => EvaluateDateInMonth(columnValue, DateTime.Today.AddMonths(-1)),
+            FilterOperator.ThisYear => EvaluateDateInYear(columnValue, DateTime.Today),
+            FilterOperator.LastYear => EvaluateDateInYear(columnValue, DateTime.Today.AddYears(-1)),
+            
+            // Boolean operators
+            FilterOperator.IsTrue => EvaluateBooleanEquals(columnValue, true),
+            FilterOperator.IsFalse => EvaluateBooleanEquals(columnValue, false),
+            
+            _ => true // Default to showing the row
+        };
+    }
+    
+    private bool IsNoValueOperator(FilterOperator op) => op is
+        FilterOperator.IsEmpty or FilterOperator.IsNotEmpty or
+        FilterOperator.IsTrue or FilterOperator.IsFalse or
+        FilterOperator.Today or FilterOperator.Yesterday or
+        FilterOperator.ThisWeek or FilterOperator.LastWeek or
+        FilterOperator.ThisMonth or FilterOperator.LastMonth or
+        FilterOperator.ThisYear or FilterOperator.LastYear;
+    
+    #region Filter Evaluation Helpers
+    
+    private bool EvaluateTextContains(object? columnValue, object? filterValue)
+    {
+        var columnStr = columnValue?.ToString();
+        var filterStr = filterValue?.ToString();
+        
+        if (string.IsNullOrEmpty(columnStr) || string.IsNullOrEmpty(filterStr))
+            return false;
+        
+        return columnStr.Contains(filterStr, StringComparison.OrdinalIgnoreCase);
+    }
+    
+    private bool EvaluateTextStartsWith(object? columnValue, object? filterValue)
+    {
+        var columnStr = columnValue?.ToString();
+        var filterStr = filterValue?.ToString();
+        
+        if (string.IsNullOrEmpty(columnStr) || string.IsNullOrEmpty(filterStr))
+            return false;
+        
+        return columnStr.StartsWith(filterStr, StringComparison.OrdinalIgnoreCase);
+    }
+    
+    private bool EvaluateTextEndsWith(object? columnValue, object? filterValue)
+    {
+        var columnStr = columnValue?.ToString();
+        var filterStr = filterValue?.ToString();
+        
+        if (string.IsNullOrEmpty(columnStr) || string.IsNullOrEmpty(filterStr))
+            return false;
+        
+        return columnStr.EndsWith(filterStr, StringComparison.OrdinalIgnoreCase);
+    }
+    
+    private bool EvaluateEquals(object? columnValue, object? filterValue)
+    {
+        if (columnValue == null && filterValue == null) return true;
+        if (columnValue == null || filterValue == null) return false;
+        
+        return columnValue.Equals(filterValue) || 
+               columnValue.ToString()?.Equals(filterValue.ToString(), StringComparison.OrdinalIgnoreCase) == true;
+    }
+    
+    private bool EvaluateNumericComparison(object? columnValue, object? filterValue, Func<decimal, decimal, bool> comparison)
+    {
+        if (!TryConvertToDecimal(columnValue, out var columnDecimal) ||
+            !TryConvertToDecimal(filterValue, out var filterDecimal))
+            return false;
+        
+        return comparison(columnDecimal, filterDecimal);
+    }
+    
+    private bool EvaluateNumericBetween(object? columnValue, object? minValue, object? maxValue)
+    {
+        if (!TryConvertToDecimal(columnValue, out var columnDecimal) ||
+            !TryConvertToDecimal(minValue, out var minDecimal) ||
+            !TryConvertToDecimal(maxValue, out var maxDecimal))
+            return false;
+        
+        return columnDecimal >= minDecimal && columnDecimal <= maxDecimal;
+    }
+    
+    private bool EvaluateDateEquals(object? columnValue, object? filterValue)
+    {
+        if (!TryConvertToDateTime(columnValue, out var columnDate) ||
+            !TryConvertToDateTime(filterValue, out var filterDate))
+            return false;
+        
+        return columnDate.Date == filterDate.Date;
+    }
+    
+    private bool EvaluateDateComparison(object? columnValue, object? filterValue, Func<DateTime, DateTime, bool> comparison)
+    {
+        if (!TryConvertToDateTime(columnValue, out var columnDate) ||
+            !TryConvertToDateTime(filterValue, out var filterDate))
+            return false;
+        
+        return comparison(columnDate.Date, filterDate.Date);
+    }
+    
+    private bool EvaluateDateBetween(object? columnValue, object? startValue, object? endValue)
+    {
+        if (!TryConvertToDateTime(columnValue, out var columnDate) ||
+            !TryConvertToDateTime(startValue, out var startDate) ||
+            !TryConvertToDateTime(endValue, out var endDate))
+            return false;
+        
+        var date = columnDate.Date;
+        return date >= startDate.Date && date <= endDate.Date;
+    }
+    
+    private bool EvaluateDateInWeek(object? columnValue, DateTime referenceDate)
+    {
+        if (!TryConvertToDateTime(columnValue, out var columnDate))
+            return false;
+        
+        var startOfWeek = referenceDate.AddDays(-(int)referenceDate.DayOfWeek);
+        var endOfWeek = startOfWeek.AddDays(6);
+        
+        var date = columnDate.Date;
+        return date >= startOfWeek.Date && date <= endOfWeek.Date;
+    }
+    
+    private bool EvaluateDateInMonth(object? columnValue, DateTime referenceDate)
+    {
+        if (!TryConvertToDateTime(columnValue, out var columnDate))
+            return false;
+        
+        return columnDate.Year == referenceDate.Year && columnDate.Month == referenceDate.Month;
+    }
+    
+    private bool EvaluateDateInYear(object? columnValue, DateTime referenceDate)
+    {
+        if (!TryConvertToDateTime(columnValue, out var columnDate))
+            return false;
+        
+        return columnDate.Year == referenceDate.Year;
+    }
+    
+    private bool EvaluateBooleanEquals(object? columnValue, bool expectedValue)
+    {
+        if (columnValue is bool boolValue)
+            return boolValue == expectedValue;
+        
+        if (columnValue?.ToString() is string strValue)
+        {
+            if (bool.TryParse(strValue, out var parsedBool))
+                return parsedBool == expectedValue;
+            
+            // Handle common boolean string representations
+            var normalizedStr = strValue.ToLowerInvariant();
+            return expectedValue switch
+            {
+                true => normalizedStr is "yes" or "y" or "1" or "on" or "enabled" or "active",
+                false => normalizedStr is "no" or "n" or "0" or "off" or "disabled" or "inactive"
+            };
+        }
+        
+        return false;
+    }
+    
+    private bool TryConvertToDecimal(object? value, out decimal result)
+    {
+        result = 0;
+        
+        if (value == null) return false;
+        
+        if (value is decimal d)
+        {
+            result = d;
+            return true;
+        }
+        
+        if (value is int i)
+        {
+            result = i;
+            return true;
+        }
+        
+        if (value is double db)
+        {
+            result = (decimal)db;
+            return true;
+        }
+        
+        if (value is float f)
+        {
+            result = (decimal)f;
+            return true;
+        }
+        
+        return decimal.TryParse(value.ToString(), out result);
+    }
+    
+    private bool TryConvertToDateTime(object? value, out DateTime result)
+    {
+        result = default;
+        
+        if (value == null) return false;
+        
+        if (value is DateTime dt)
+        {
+            result = dt;
+            return true;
+        }
+        
+        if (value is DateTimeOffset dto)
+        {
+            result = dto.DateTime;
+            return true;
+        }
+        
+        return DateTime.TryParse(value.ToString(), out result);
+    }
+    
+    #endregion
+
+    #region Advanced Features
+
+
+
+    #endregion
+
+    // =============================================================================
+    // ACCESSIBILITY HELPER METHODS - WCAG 2.1 AA compliance
+    // =============================================================================
+    
+    private string GetAriaSortValue(string columnKey)
+    {
+        var sortState = GetColumnSortState(columnKey);
+        if (sortState == null || sortState.Direction == SortDirection.None)
+            return "none";
+        
+        return sortState.Direction == SortDirection.Ascending ? "ascending" : "descending";
+    }
+    
+    private string GetColumnAriaLabel(RDataTableColumn<TItem> column)
+    {
+        var label = column.Header ?? column.Key;
+        if (column.Sortable)
+        {
+            var sortState = GetColumnSortState(column.Key);
+            if (sortState?.Direction == SortDirection.Ascending)
+                label += ", sorted ascending";
+            else if (sortState?.Direction == SortDirection.Descending)
+                label += ", sorted descending";
+            else
+                label += ", sortable";
+        }
+        return label;
+    }
+    
+    private async Task HandleHeaderKeyDown(KeyboardEventArgs e, RDataTableColumn<TItem> column)
+    {
+        if (!column.Sortable) return;
+        
+        if (e.Key == "Enter" || e.Key == " ")
+        {
+            await HandleColumnSort(column.Key, e.ShiftKey);
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            // if (_jsModule != null)
+            // {
+            //     await _jsModule.InvokeVoidAsync("RTableColumnManager.dispose", GetTableId());
+            //     await _jsModule.DisposeAsync();
+            // }
+            
+            _dotNetRef?.Dispose();
+        }
+        catch
+        {
+            // Ignore disposal errors
+        }
+    }
 }

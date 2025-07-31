@@ -72,7 +72,35 @@ public abstract class RTableBase : ComponentBase
     [Parameter] public bool Virtualize { get; set; }
     [Parameter] public bool ResizableColumns { get; set; }
     [Parameter] public List<string> StickyColumns { get; set; } = new();
-    [Parameter] public RR.Blazor.Enums.ComponentDensity Density { get; set; } = RR.Blazor.Enums.ComponentDensity.Normal;
+    [Parameter] public Enums.ComponentDensity Density { get; set; } = Enums.ComponentDensity.Normal;
+    [Parameter] public bool Striped { get; set; }
+    [Parameter] public bool Hover { get; set; } = true;
+    [Parameter] public bool Sortable { get; set; } = true;
+    [Parameter] public bool AllowUnsorted { get; set; } = true;
+    #endregion
+
+    #region Professional Styling Parameters  
+    [Parameter] public Enums.TableVariant TableVariant { get; set; } = Enums.TableVariant.Standard;
+    [Parameter] public Enums.TableDensity TableDensity { get; set; } = Enums.TableDensity.Normal;
+    [Parameter] public int CustomRowHeight { get; set; } = 48;
+    [Parameter] public int TableElevation { get; set; } = 2;
+    [Parameter] public bool EnableGlassmorphism { get; set; }
+    [Parameter] public bool ShowBorders { get; set; } = true;
+    [Parameter] public bool EnableHoverEffects { get; set; } = true;
+    [Parameter] public bool EnableAnimations { get; set; } = true;
+    [Parameter] public string TableTheme { get; set; } = "auto";
+    [Parameter] public Dictionary<string, string> CustomCssVariables { get; set; } = new();
+    #endregion
+
+    #region Column Management
+    [Parameter] public bool ShowColumnManager { get; set; } = true;
+    [Parameter] public Dictionary<string, ColumnPreferences> ColumnPreferences { get; set; } = new();
+    [Parameter] public EventCallback<Dictionary<string, ColumnPreferences>> ColumnPreferencesChanged { get; set; }
+    [Parameter] public EventCallback<ColumnManagementEventArgs> OnColumnManagement { get; set; }
+    [Parameter] public EventCallback<ColumnResizeEventArgs> OnColumnResize { get; set; }
+    [Parameter] public bool EnableColumnReordering { get; set; }
+    [Parameter] public bool PersistColumnPreferences { get; set; } = true;
+    [Parameter] public string TableId { get; set; } = "";
     #endregion
 
     #region Content Areas
@@ -144,6 +172,32 @@ public abstract class RTableBase : ComponentBase
         builder.AddAttribute(48, nameof(ExportFileName), ExportFileName);
         builder.AddAttribute(49, nameof(ExportMetadata), ExportMetadata);
         builder.AddAttribute(50, nameof(Density), Density);
+        builder.AddAttribute(51, nameof(Striped), Striped);
+        builder.AddAttribute(52, nameof(Hover), Hover);
+        builder.AddAttribute(53, nameof(Sortable), Sortable);
+        builder.AddAttribute(54, nameof(AllowUnsorted), AllowUnsorted);
+        
+        // Column management parameters
+        builder.AddAttribute(55, nameof(ShowColumnManager), ShowColumnManager);
+        builder.AddAttribute(56, nameof(ColumnPreferences), ColumnPreferences);
+        builder.AddAttribute(57, nameof(ColumnPreferencesChanged), ColumnPreferencesChanged);
+        builder.AddAttribute(58, nameof(OnColumnManagement), OnColumnManagement);
+        builder.AddAttribute(59, nameof(OnColumnResize), OnColumnResize);
+        builder.AddAttribute(60, nameof(EnableColumnReordering), EnableColumnReordering);
+        builder.AddAttribute(61, nameof(PersistColumnPreferences), PersistColumnPreferences);
+        builder.AddAttribute(62, nameof(TableId), TableId);
+        
+        // Professional styling parameters
+        builder.AddAttribute(63, nameof(TableVariant), TableVariant);
+        builder.AddAttribute(64, nameof(TableDensity), TableDensity);
+        builder.AddAttribute(65, nameof(CustomRowHeight), CustomRowHeight);
+        builder.AddAttribute(66, nameof(TableElevation), TableElevation);
+        builder.AddAttribute(67, nameof(EnableGlassmorphism), EnableGlassmorphism);
+        builder.AddAttribute(68, nameof(ShowBorders), ShowBorders);
+        builder.AddAttribute(69, nameof(EnableHoverEffects), EnableHoverEffects);
+        builder.AddAttribute(70, nameof(EnableAnimations), EnableAnimations);
+        builder.AddAttribute(71, nameof(TableTheme), TableTheme);
+        builder.AddAttribute(72, nameof(CustomCssVariables), CustomCssVariables);
     }
 
     protected void ForwardBaseParametersExceptChildContent(RenderTreeBuilder builder)
@@ -203,6 +257,32 @@ public abstract class RTableBase : ComponentBase
         builder.AddAttribute(48, nameof(ExportFileName), ExportFileName);
         builder.AddAttribute(49, nameof(ExportMetadata), ExportMetadata);
         builder.AddAttribute(50, nameof(Density), Density);
+        builder.AddAttribute(51, nameof(Striped), Striped);
+        builder.AddAttribute(52, nameof(Hover), Hover);
+        builder.AddAttribute(53, nameof(Sortable), Sortable);
+        builder.AddAttribute(54, nameof(AllowUnsorted), AllowUnsorted);
+        
+        // Column management parameters
+        builder.AddAttribute(55, nameof(ShowColumnManager), ShowColumnManager);
+        builder.AddAttribute(56, nameof(ColumnPreferences), ColumnPreferences);
+        builder.AddAttribute(57, nameof(ColumnPreferencesChanged), ColumnPreferencesChanged);
+        builder.AddAttribute(58, nameof(OnColumnManagement), OnColumnManagement);
+        builder.AddAttribute(59, nameof(OnColumnResize), OnColumnResize);
+        builder.AddAttribute(60, nameof(EnableColumnReordering), EnableColumnReordering);
+        builder.AddAttribute(61, nameof(PersistColumnPreferences), PersistColumnPreferences);
+        builder.AddAttribute(62, nameof(TableId), TableId);
+        
+        // Professional styling parameters
+        builder.AddAttribute(63, nameof(TableVariant), TableVariant);
+        builder.AddAttribute(64, nameof(TableDensity), TableDensity);
+        builder.AddAttribute(65, nameof(CustomRowHeight), CustomRowHeight);
+        builder.AddAttribute(66, nameof(TableElevation), TableElevation);
+        builder.AddAttribute(67, nameof(EnableGlassmorphism), EnableGlassmorphism);
+        builder.AddAttribute(68, nameof(ShowBorders), ShowBorders);
+        builder.AddAttribute(69, nameof(EnableHoverEffects), EnableHoverEffects);
+        builder.AddAttribute(70, nameof(EnableAnimations), EnableAnimations);
+        builder.AddAttribute(71, nameof(TableTheme), TableTheme);
+        builder.AddAttribute(72, nameof(CustomCssVariables), CustomCssVariables);
     }
 }
 

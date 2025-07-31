@@ -1,0 +1,187 @@
+@use '../abstracts' as *;
+
+// =============================================================================
+// TABLE COLUMN MANAGEMENT - Professional column resizing, sticky columns, and management UI
+// Following RR.Blazor utility-first principles and container-agnostic design
+// =============================================================================
+
+// =============================================================================
+// COLUMN RESIZING SYSTEM
+// =============================================================================
+
+.table-header-resizable {
+  position: relative;
+  
+  .column-resize-handle {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    cursor: col-resize;
+    user-select: none;
+    opacity: 0;
+    transition: var(--table-transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-primary/10);
+    z-index: var(--z-10);
+    
+    &:hover,
+    &:active {
+      opacity: 1 !important;
+      background: var(--color-primary/20);
+    }
+    
+    .material-symbols-rounded {
+      font-size: var(--icon-sm);
+      color: var(--color-primary);
+      opacity: var(--opacity-70);
+    }
+  }
+  
+  &:hover .column-resize-handle {
+    opacity: 1;
+  }
+}
+
+// =============================================================================
+// STICKY COLUMN SYSTEM  
+// =============================================================================
+
+.table-column-sticky {
+  position: sticky;
+  z-index: var(--z-10);
+  background: var(--color-surface);
+  
+  &.table-column-sticky-left {
+    left: var(--sticky-left-position, 0);
+    border-right: var(--border-1) solid var(--color-border);
+    box-shadow: var(--shadow-sticky-right);
+  }
+  
+  &.table-column-sticky-right {
+    right: var(--sticky-right-position, 0);
+    border-left: var(--border-1) solid var(--color-border);
+    box-shadow: var(--shadow-sticky-left);
+  }
+}
+
+// =============================================================================
+// COLUMN REORDERING SYSTEM
+// =============================================================================
+
+.table-header-reorderable {
+  cursor: move;
+  transition: var(--table-transition);
+  
+  &.dragging {
+    opacity: var(--opacity-50);
+    transform: rotate(2deg);
+    z-index: var(--z-modal);
+  }
+  
+  &.drag-over {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px var(--color-primary/20);
+  }
+}
+
+// Drag preview animation
+.column-drag-preview {
+  animation: float 0.3s ease-in-out infinite;
+  transform-origin: center;
+}
+
+// =============================================================================
+// RESIZE INDICATOR
+// =============================================================================
+
+#column-resize-indicator {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--color-primary);
+  z-index: var(--z-max);
+  pointer-events: none;
+  box-shadow: 0 0 4px var(--color-primary/50);
+}
+
+// =============================================================================
+// COLUMN WIDTH UTILITIES
+// =============================================================================
+
+.table-column-width-auto { width: auto; }
+.table-column-width-50 { width: 50px; min-width: 50px; }
+.table-column-width-75 { width: 75px; min-width: 75px; }
+.table-column-width-100 { width: 100px; min-width: 100px; }
+.table-column-width-150 { width: 150px; min-width: 150px; }
+.table-column-width-200 { width: 200px; min-width: 200px; }
+.table-column-width-250 { width: 250px; min-width: 250px; }
+.table-column-width-300 { width: 300px; min-width: 300px; }
+
+// =============================================================================
+// RESPONSIVE DESIGN
+// =============================================================================
+
+@media (max-width: 768px) {
+  .table-column-sticky {
+    // Reduce shadows on mobile for performance
+    &.table-column-sticky-left {
+      box-shadow: var(--shadow-sticky-right-sm);
+    }
+    
+    &.table-column-sticky-right {
+      box-shadow: var(--shadow-sticky-left-sm);
+    }
+  }
+  
+  .column-resize-handle {
+    width: 6px; // Larger touch target on mobile
+  }
+}
+
+// =============================================================================
+// ACCESSIBILITY FEATURES
+// =============================================================================
+
+@media (prefers-contrast: high) {
+  .table-column-sticky {
+    &.table-column-sticky-left {
+      border-right-color: var(--color-text-primary);
+    }
+    
+    &.table-column-sticky-right {
+      border-left-color: var(--color-text-primary);
+    }
+  }
+  
+  .column-resize-handle {
+    background: var(--color-text-primary);
+    opacity: var(--opacity-30);
+    
+    &:hover {
+      opacity: var(--opacity-60);
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .column-resize-handle,
+  .column-drag-preview {
+    transition: none;
+    animation: none;
+  }
+}
+
+// =============================================================================
+// TOUCH-FRIENDLY INTERACTIONS
+// =============================================================================
+
+@media (pointer: coarse) {
+  .column-resize-handle {
+    width: 8px; // Even larger for touch devices
+  }
+}

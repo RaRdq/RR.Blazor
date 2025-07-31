@@ -16,18 +16,40 @@ public abstract class RColumnBase : ComponentBase
 {
     #region Core Configuration
     [Parameter] public string Key { get; set; } = "";
-    [Parameter] public string? Header { get; set; }
-    [Parameter] public string? Format { get; set; }
+    [Parameter] public string Header { get; set; }
+    [Parameter] public string Format { get; set; }
     [Parameter] public bool Sortable { get; set; }
     [Parameter] public bool Filterable { get; set; }
-    [Parameter] public FilterType FilterType { get; set; } = FilterType.Text;
-    [Parameter] public string? Width { get; set; }
-    [Parameter] public string? HeaderClass { get; set; }
-    [Parameter] public string? CellClass { get; set; }
-    [Parameter] public string? Class { get; set; }
+    [Parameter] public FilterType FilterType { get; set; } = FilterType.Auto;
+    [Parameter] public string Width { get; set; }
+    [Parameter] public string HeaderClass { get; set; }
+    [Parameter] public string CellClass { get; set; }
+    [Parameter] public string Class { get; set; }
     [Parameter] public bool Sticky { get; set; }
     [Parameter] public bool Visible { get; set; } = true;
-    [Parameter] public RenderFragment? HeaderTemplate { get; set; }
+    [Parameter] public RenderFragment HeaderTemplate { get; set; }
+    #endregion
+
+    #region Advanced Filtering Configuration
+    [Parameter] public List<FilterOperator> FilterOperators { get; set; } = new();
+    [Parameter] public object FilterMinValue { get; set; }
+    [Parameter] public object FilterMaxValue { get; set; }
+    [Parameter] public IEnumerable<object> FilterOptions { get; set; }
+    [Parameter] public string FilterPlaceholder { get; set; }
+    [Parameter] public bool FilterShowOperatorSelection { get; set; } = true;
+    [Parameter] public bool FilterShowClearButton { get; set; } = true;
+    [Parameter] public Func<object, string> FilterDisplaySelector { get; set; }
+    [Parameter] public Func<object, string> FilterValueSelector { get; set; }
+    [Parameter] public RenderFragment<object> FilterTemplate { get; set; }
+    #endregion
+
+    #region Column Management Features
+    [Parameter] public bool Resizable { get; set; } = true;
+    [Parameter] public string MinWidth { get; set; } = "50px";
+    [Parameter] public string MaxWidth { get; set; } = "1000px";
+    [Parameter] public StickyPosition StickyPosition { get; set; } = StickyPosition.Left;
+    [Parameter] public int Order { get; set; }
+    [Parameter] public bool Hideable { get; set; } = true;
     #endregion
 
     protected void ForwardBaseParameters(RenderTreeBuilder builder)
@@ -45,6 +67,14 @@ public abstract class RColumnBase : ComponentBase
         builder.AddAttribute(11, nameof(Sticky), Sticky);
         builder.AddAttribute(12, nameof(Visible), Visible);
         builder.AddAttribute(13, nameof(HeaderTemplate), HeaderTemplate);
+        
+        // Column management parameters
+        builder.AddAttribute(14, nameof(Resizable), Resizable);
+        builder.AddAttribute(15, nameof(MinWidth), MinWidth);
+        builder.AddAttribute(16, nameof(MaxWidth), MaxWidth);
+        builder.AddAttribute(17, nameof(StickyPosition), StickyPosition);
+        builder.AddAttribute(18, nameof(Order), Order);
+        builder.AddAttribute(19, nameof(Hideable), Hideable);
     }
 }
 
@@ -54,12 +84,12 @@ public abstract class RColumnBase : ComponentBase
 /// </summary>
 public class RColumn : RColumnBase
 {
-    [CascadingParameter] public TableContext? TableContext { get; set; }
-    [CascadingParameter] public RR.Blazor.Components.Data.ITableParent? ParentTable { get; set; }
-    [Inject] private ILogger<RColumn>? Logger { get; set; }
+    [CascadingParameter] public TableContext TableContext { get; set; }
+    [CascadingParameter] public ITableParent ParentTable { get; set; }
+    [Inject] private ILogger<RColumn> Logger { get; set; }
     
-    [Parameter] public LambdaExpression? Property { get; set; }
-    [Parameter] public object? Template { get; set; }
+    [Parameter] public LambdaExpression Property { get; set; }
+    [Parameter] public object Template { get; set; }
 
     private bool _isRegistered = false;
     
@@ -122,6 +152,25 @@ public class RColumn : RColumnBase
             columnInfo["Format"] = Format;
         columnInfo["Sortable"] = Sortable;
         columnInfo["Filterable"] = Filterable;
+        columnInfo["FilterType"] = FilterType;
+        if (FilterOperators?.Any() == true)
+            columnInfo["FilterOperators"] = FilterOperators;
+        if (FilterMinValue != null)
+            columnInfo["FilterMinValue"] = FilterMinValue;
+        if (FilterMaxValue != null)
+            columnInfo["FilterMaxValue"] = FilterMaxValue;
+        if (FilterOptions != null)
+            columnInfo["FilterOptions"] = FilterOptions;
+        if (!string.IsNullOrEmpty(FilterPlaceholder))
+            columnInfo["FilterPlaceholder"] = FilterPlaceholder;
+        columnInfo["FilterShowOperatorSelection"] = FilterShowOperatorSelection;
+        columnInfo["FilterShowClearButton"] = FilterShowClearButton;
+        if (FilterDisplaySelector != null)
+            columnInfo["FilterDisplaySelector"] = FilterDisplaySelector;
+        if (FilterValueSelector != null)
+            columnInfo["FilterValueSelector"] = FilterValueSelector;
+        if (FilterTemplate != null)
+            columnInfo["FilterTemplate"] = FilterTemplate;
         if (!string.IsNullOrEmpty(Width))
             columnInfo["Width"] = Width;
         if (!string.IsNullOrEmpty(HeaderClass))
@@ -134,6 +183,18 @@ public class RColumn : RColumnBase
             columnInfo["Property"] = Property;
         if (Template != null)
             columnInfo["Template"] = Template;
+        
+        // Column management properties
+        columnInfo["Resizable"] = Resizable;
+        if (!string.IsNullOrEmpty(MinWidth))
+            columnInfo["MinWidth"] = MinWidth;
+        if (!string.IsNullOrEmpty(MaxWidth))
+            columnInfo["MaxWidth"] = MaxWidth;
+        columnInfo["Sticky"] = Sticky;
+        columnInfo["StickyPosition"] = StickyPosition;
+        columnInfo["Order"] = Order;
+        columnInfo["Visible"] = Visible;
+        columnInfo["Hideable"] = Hideable;
         
         var propertyName = GetPropertyName();
         if (!string.IsNullOrEmpty(propertyName))

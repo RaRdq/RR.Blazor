@@ -1,0 +1,180 @@
+@using RR.Blazor.Components.Form
+@using RR.Blazor.Enums
+@using RR.Blazor.Models
+@inject IJSRuntime JSRuntime
+
+<RChoiceGeneric TValue="string"
+                Items="@(new[] { "manage" })"
+                EffectiveVariant="ChoiceVariant.Dropdown"
+                CloseOnSelect="false">
+    <TriggerContent>
+        <div class="d-flex items-center gap-2">
+            <span>Columns</span>
+            <i class="material-symbols-rounded">tune</i>
+        </div>
+    </TriggerContent>
+    
+    <ItemTemplate Context="item">
+        <div class="min-w-80 max-w-96" @onclick:stopPropagation="true">
+            <div class="p-4 border-b border-surface-outline">
+                <h4 class="text-base font-semibold mb-1">Manage Columns</h4>
+                <p class="text-sm text-secondary">Show, hide, resize, and reorder table columns</p>
+            </div>
+            
+            <div class="max-h-80 overflow-y-auto">
+                @foreach (var column in GetSortedColumns())
+                {
+                    <div class="p-3 border-b border-surface-outline/50 hover:bg-surface-elevated transition-colors">
+                        <div class="d-flex items-center justify-between gap-3">
+                            <div class="d-flex items-center gap-2 flex-1">
+                                @if (EnableReordering)
+                                {
+                                    <i class="material-symbols-rounded text-muted cursor-move" title="Drag to reorder">drag_indicator</i>
+                                }
+                                <div class="flex-1">
+                                    <div class="font-medium text-sm">@column.Header</div>
+                                    @if (!string.IsNullOrEmpty(column.Width) || column.Resizable || IsColumnPinned(column.Key))
+                                    {
+                                        <div class="text-xs text-secondary mt-1 d-flex gap-2">
+                                            @if (!string.IsNullOrEmpty(column.Width))
+                                            {
+                                                <span>@column.Width</span>
+                                            }
+                                            @if (column.Resizable)
+                                            {
+                                                <span>Resizable</span>
+                                            }
+                                            @if (IsColumnPinned(column.Key))
+                                            {
+                                                <span class="text-primary">Pinned @GetPinPosition(column.Key)</span>
+                                            }
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                            
+                            <div class="d-flex items-center gap-2">
+                                <input type="checkbox"
+                                       class="w-4 h-4"
+                                       checked="@IsColumnVisible(column.Key)"
+                                       @onchange="@((e) => ToggleColumnVisibility(column.Key, (bool)e.Value!))"
+                                       title="Show/Hide Column" />
+                                
+                                @if (column.Hideable && SupportsStickyColumns)
+                                {
+                                    <button class="p-1 rounded hover:bg-surface-elevated transition-colors @(IsColumnPinned(column.Key) ? "text-primary" : "text-muted")"
+                                            @onclick="@(() => ToggleColumnPin(column.Key))"
+                                            title="Pin/Unpin Column">
+                                        <i class="material-symbols-rounded text-base">push_pin</i>
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+            
+            <div class="p-4 border-t border-surface-outline">
+                <div class="d-flex justify-between gap-2">
+                    <button class="px-3 py-2 text-sm text-secondary hover:text-primary transition-colors"
+                            @onclick="ResetToDefaults">
+                        Reset to Defaults
+                    </button>
+                    <button class="px-4 py-2 bg-primary text-primary-contrast rounded text-sm font-medium hover:bg-primary-dark transition-colors"
+                            @onclick="SavePreferences">
+                        Save
+                    </button>
+                </div>
+            </div>
+        </div>
+    </ItemTemplate>
+</RChoiceGeneric>
+
+@code {
+    [Parameter] public object Columns { get; set; } = new List<object>();
+    [Parameter] public Dictionary<string, ColumnPreferences> Preferences { get; set; } = new();
+    [Parameter] public EventCallback<Dictionary<string, ColumnPreferences>> PreferencesChanged { get; set; }
+    [Parameter] public EventCallback<ColumnManagementEventArgs> OnColumnManagement { get; set; }
+    [Parameter] public bool EnableReordering { get; set; }
+    [Parameter] public bool SupportsStickyColumns { get; set; } = true;
+    [Parameter] public string TableId { get; set; } = "";
+    
+    private List<dynamic> GetSortedColumns()
+    {
+        if (Columns is IEnumerable<object> columnList)
+        {
+            return columnList.Cast<dynamic>()
+                .OrderBy(c => Preferences.GetValueOrDefault(c.Key as string)?.Order ?? c.Order)
+                .ToList();
+        }
+        return new List<dynamic>();
+    }
+    
+    private bool IsColumnVisible(string columnKey)
+    {
+        return Preferences.GetValueOrDefault(columnKey)?.Visible ?? true;
+    }
+    
+    private bool IsColumnPinned(string columnKey)
+    {
+        return Preferences.GetValueOrDefault(columnKey)?.IsPinned ?? false;
+    }
+    
+    private string GetPinPosition(string columnKey)
+    {
+        var prefs = Preferences.GetValueOrDefault(columnKey);
+        return prefs?.PinPosition.ToString() ?? "Left";
+    }
+    
+    private async Task ToggleColumnVisibility(string columnKey, bool visible)
+    {
+        var currentPrefs = Preferences.GetValueOrDefault(columnKey) ?? new ColumnPreferences();
+        var newPrefs = currentPrefs with { Visible = visible };
+        Preferences[columnKey] = newPrefs;
+        
+        await PreferencesChanged.InvokeAsync(Preferences);
+        await OnColumnManagement.InvokeAsync(new ColumnManagementEventArgs
+        {
+            ColumnKey = columnKey,
+            Action = visible ? ColumnManagementAction.Show : ColumnManagementAction.Hide,
+            NewValue = visible,
+            OldValue = currentPrefs.Visible
+        });
+    }
+    
+    private async Task ToggleColumnPin(string columnKey)
+    {
+        var currentPrefs = Preferences.GetValueOrDefault(columnKey) ?? new ColumnPreferences();
+        var isPinned = !currentPrefs.IsPinned;
+        var newPrefs = currentPrefs with { IsPinned = isPinned };
+        Preferences[columnKey] = newPrefs;
+        
+        await PreferencesChanged.InvokeAsync(Preferences);
+        await OnColumnManagement.InvokeAsync(new ColumnManagementEventArgs
+        {
+            ColumnKey = columnKey,
+            Action = isPinned ? ColumnManagementAction.Pin : ColumnManagementAction.Unpin,
+            NewValue = isPinned,
+            OldValue = currentPrefs.IsPinned
+        });
+    }
+    
+    private async Task ResetToDefaults()
+    {
+        Preferences.Clear();
+        await PreferencesChanged.InvokeAsync(Preferences);
+        
+        if (!string.IsNullOrEmpty(TableId))
+        {
+            await JSRuntime.InvokeVoidAsync("localStorage.removeItem", $"table-preferences-{TableId}");
+        }
+    }
+    
+    private async Task SavePreferences()
+    {
+        if (!string.IsNullOrEmpty(TableId))
+        {
+            await JSRuntime.InvokeVoidAsync("RTableColumnManager.saveColumnPreferences", TableId, Preferences);
+        }
+    }
+}

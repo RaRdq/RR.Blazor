@@ -1,0 +1,260 @@
+@using RR.Blazor.Enums
+@using RR.Blazor.Models
+@using Microsoft.AspNetCore.Components.Rendering
+@using System.Globalization
+@inherits RFilterBase<DateTime?>
+
+@code {
+    [Parameter] public DateTime? MinDate { get; set; }
+    [Parameter] public DateTime? MaxDate { get; set; }
+    [Parameter] public string DateFormat { get; set; } = "yyyy-MM-dd";
+    [Parameter] public bool ShowTime { get; set; } = false;
+    
+    protected override FilterType FilterType => FilterType.Date;
+    
+    protected override List<FilterOperator> AvailableOperators => new()
+    {
+        FilterOperator.On,
+        FilterOperator.Before,
+        FilterOperator.After,
+        FilterOperator.OnOrBefore,
+        FilterOperator.OnOrAfter,
+        FilterOperator.InRange,
+        FilterOperator.Today,
+        FilterOperator.Yesterday,
+        FilterOperator.ThisWeek,
+        FilterOperator.LastWeek,
+        FilterOperator.ThisMonth,
+        FilterOperator.LastMonth,
+        FilterOperator.ThisYear,
+        FilterOperator.LastYear,
+        FilterOperator.IsEmpty,
+        FilterOperator.IsNotEmpty
+    };
+    
+    protected override void RenderFilterInput(RenderTreeBuilder builder)
+    {
+        var sequence = 50;
+        
+        if (IsRelativeDateOperator())
+        {
+            RenderRelativeDatePlaceholder(builder, sequence);
+        }
+        else if (RequiresNoValue())
+        {
+            RenderNoValuePlaceholder(builder, sequence);
+        }
+        else if (Operator == FilterOperator.InRange)
+        {
+            RenderDateRangeInputs(builder, sequence);
+        }
+        else
+        {
+            RenderSingleDateInput(builder, sequence);
+        }
+    }
+    
+    private void RenderRelativeDatePlaceholder(RenderTreeBuilder builder, int sequence)
+    {
+        builder.OpenElement(sequence++, "input");
+        builder.AddAttribute(sequence++, "type", "text");
+        builder.AddAttribute(sequence++, "class", GetInputClasses());
+        builder.AddAttribute(sequence++, "value", GetRelativeDateDisplayText());
+        builder.AddAttribute(sequence++, "disabled", true);
+        builder.AddAttribute(sequence++, "readonly", true);
+        builder.CloseElement();
+    }
+    
+    private void RenderNoValuePlaceholder(RenderTreeBuilder builder, int sequence)
+    {
+        builder.OpenElement(sequence++, "input");
+        builder.AddAttribute(sequence++, "type", "text");
+        builder.AddAttribute(sequence++, "class", GetInputClasses());
+        builder.AddAttribute(sequence++, "value", GetNoValuePlaceholder());
+        builder.AddAttribute(sequence++, "disabled", true);
+        builder.AddAttribute(sequence++, "readonly", true);
+        builder.CloseElement();
+    }
+    
+    private void RenderSingleDateInput(RenderTreeBuilder builder, int sequence)
+    {
+        var inputType = ShowTime ? "datetime-local" : "date";
+        
+        builder.OpenElement(sequence++, "input");
+        builder.AddAttribute(sequence++, "type", inputType);
+        builder.AddAttribute(sequence++, "class", GetInputClasses());
+        builder.AddAttribute(sequence++, "value", FormatDateForInput(Value));
+        builder.AddAttribute(sequence++, "disabled", Disabled);
+        
+        if (MinDate.HasValue)
+            builder.AddAttribute(sequence++, "min", FormatDateForInput(MinDate));
+        if (MaxDate.HasValue)
+            builder.AddAttribute(sequence++, "max", FormatDateForInput(MaxDate));
+            
+        builder.AddAttribute(sequence++, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(
+            this, async args => await HandleDateInput(args, true)));
+        builder.CloseElement();
+    }
+    
+    private void RenderDateRangeInputs(RenderTreeBuilder builder, int sequence)
+    {
+        var inputType = ShowTime ? "datetime-local" : "date";
+        
+        // Container for range inputs
+        builder.OpenElement(sequence++, "div");
+        builder.AddAttribute(sequence++, "class", "d-flex items-center gap-2");
+        
+        // Start date input
+        builder.OpenElement(sequence++, "input");
+        builder.AddAttribute(sequence++, "type", inputType);
+        builder.AddAttribute(sequence++, "class", GetInputClasses());
+        builder.AddAttribute(sequence++, "value", FormatDateForInput(Value));
+        builder.AddAttribute(sequence++, "placeholder", "Start date");
+        builder.AddAttribute(sequence++, "disabled", Disabled);
+        
+        if (MinDate.HasValue)
+            builder.AddAttribute(sequence++, "min", FormatDateForInput(MinDate));
+        if (MaxDate.HasValue)
+            builder.AddAttribute(sequence++, "max", FormatDateForInput(MaxDate));
+            
+        builder.AddAttribute(sequence++, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(
+            this, async args => await HandleDateInput(args, true)));
+        builder.CloseElement();
+        
+        // Separator
+        builder.OpenElement(sequence++, "span");
+        builder.AddAttribute(sequence++, "class", "text-secondary text-sm");
+        builder.AddContent(sequence++, "to");
+        builder.CloseElement();
+        
+        // End date input
+        builder.OpenElement(sequence++, "input");
+        builder.AddAttribute(sequence++, "type", inputType);
+        builder.AddAttribute(sequence++, "class", GetInputClasses());
+        builder.AddAttribute(sequence++, "value", FormatDateForInput(SecondValue));
+        builder.AddAttribute(sequence++, "placeholder", "End date");
+        builder.AddAttribute(sequence++, "disabled", Disabled);
+        
+        if (MinDate.HasValue)
+            builder.AddAttribute(sequence++, "min", FormatDateForInput(MinDate));
+        if (MaxDate.HasValue)
+            builder.AddAttribute(sequence++, "max", FormatDateForInput(MaxDate));
+            
+        builder.AddAttribute(sequence++, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(
+            this, async args => await HandleDateInput(args, false)));
+        builder.CloseElement();
+        
+        builder.CloseElement(); // range container
+    }
+    
+    private string GetInputClasses()
+    {
+        var classes = new List<string>
+        {
+            "filter-input",
+            "form-input",
+            "border",
+            "border-border",
+            "rounded",
+            "px-3",
+            "py-1",
+            "bg-surface",
+            "text-foreground",
+            "focus:border-primary",
+            "focus:ring-1",
+            "focus:ring-primary/20",
+            "transition-colors"
+        };
+        
+        classes.Add(Density switch
+        {
+            ComponentDensity.Compact => "text-xs px-2 py-0.5",
+            ComponentDensity.Dense => "text-sm px-2 py-1",
+            ComponentDensity.Spacious => "text-base px-4 py-2",
+            _ => "text-sm px-3 py-1"
+        });
+        
+        if (Disabled)
+        {
+            classes.Add("opacity-60");
+            classes.Add("cursor-not-allowed");
+        }
+        
+        return string.Join(" ", classes);
+    }
+    
+    private string GetNoValuePlaceholder() => Operator switch
+    {
+        FilterOperator.IsEmpty => "Will show empty dates",
+        FilterOperator.IsNotEmpty => "Will show non-empty dates",
+        _ => ""
+    };
+    
+    private string GetRelativeDateDisplayText() => Operator switch
+    {
+        FilterOperator.Today => $"Today ({DateTime.Today:MMM dd, yyyy})",
+        FilterOperator.Yesterday => $"Yesterday ({DateTime.Today.AddDays(-1):MMM dd, yyyy})",
+        FilterOperator.ThisWeek => $"This week ({GetWeekStart(DateTime.Today):MMM dd} - {GetWeekEnd(DateTime.Today):MMM dd})",
+        FilterOperator.LastWeek => $"Last week ({GetWeekStart(DateTime.Today.AddDays(-7)):MMM dd} - {GetWeekEnd(DateTime.Today.AddDays(-7)):MMM dd})",
+        FilterOperator.ThisMonth => $"This month ({new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1):MMM yyyy})",
+        FilterOperator.LastMonth => $"Last month ({new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1).AddMonths(-1):MMM yyyy})",
+        FilterOperator.ThisYear => $"This year ({DateTime.Today.Year})",
+        FilterOperator.LastYear => $"Last year ({DateTime.Today.Year - 1})",
+        _ => ""
+    };
+    
+    private bool IsRelativeDateOperator() => Operator is
+        FilterOperator.Today or FilterOperator.Yesterday or
+        FilterOperator.ThisWeek or FilterOperator.LastWeek or
+        FilterOperator.ThisMonth or FilterOperator.LastMonth or
+        FilterOperator.ThisYear or FilterOperator.LastYear;
+    
+    private string? FormatDateForInput(DateTime? date)
+    {
+        if (!date.HasValue) return null;
+        
+        return ShowTime 
+            ? date.Value.ToString("yyyy-MM-ddTHH:mm") 
+            : date.Value.ToString("yyyy-MM-dd");
+    }
+    
+    private async Task HandleDateInput(ChangeEventArgs args, bool isFirstValue)
+    {
+        var stringValue = args.Value?.ToString();
+        DateTime? dateValue = null;
+        
+        if (!string.IsNullOrEmpty(stringValue))
+        {
+            if (ShowTime)
+            {
+                if (DateTime.TryParseExact(stringValue, "yyyy-MM-ddTHH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsedDateTime))
+                    dateValue = parsedDateTime;
+            }
+            else
+            {
+                if (DateTime.TryParseExact(stringValue, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsedDate))
+                    dateValue = parsedDate;
+            }
+        }
+        
+        if (isFirstValue)
+        {
+            await HandleValueChange(dateValue);
+        }
+        else
+        {
+            await HandleSecondValueChange(dateValue);
+        }
+    }
+    
+    private DateTime GetWeekStart(DateTime date)
+    {
+        var diff = (7 + (date.DayOfWeek - DayOfWeek.Monday)) % 7;
+        return date.AddDays(-1 * diff).Date;
+    }
+    
+    private DateTime GetWeekEnd(DateTime date)
+    {
+        return GetWeekStart(date).AddDays(6);
+    }
+}
