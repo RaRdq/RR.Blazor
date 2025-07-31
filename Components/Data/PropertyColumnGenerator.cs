@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Components.Rendering;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel;
 using RR.Blazor.Enums;
+using RR.Blazor.Models;
 using System.Text.RegularExpressions;
 
 namespace RR.Blazor.Components.Data;
@@ -20,11 +21,11 @@ public static class PropertyColumnGenerator
     /// <summary>
     /// Generate smart column definitions from a model type
     /// </summary>
-    public static List<RTableGeneric<TItem>.RDataTableColumn<TItem>> GenerateColumns<TItem>()
+    public static List<RDataTableColumn<TItem>> GenerateColumns<TItem>()
     {
         var itemType = typeof(TItem);
         
-        return (List<RTableGeneric<TItem>.RDataTableColumn<TItem>>)_columnCache.GetOrAdd(itemType, _ =>
+        return (List<RDataTableColumn<TItem>>)_columnCache.GetOrAdd(itemType, _ =>
         {
             var properties = itemType.GetProperties(BindingFlags.Public | BindingFlags.Instance)
                 .Where(p => p.CanRead && IsDisplayableProperty(p))
@@ -38,11 +39,11 @@ public static class PropertyColumnGenerator
     /// <summary>
     /// Create smart column that auto-detects UI elements
     /// </summary>
-    private static RTableGeneric<TItem>.RDataTableColumn<TItem> CreateSmartColumn<TItem>(PropertyInfo property)
+    private static RDataTableColumn<TItem> CreateSmartColumn<TItem>(PropertyInfo property)
     {
         var metadata = GetPropertyMetadata(property);
         
-        return new RTableGeneric<TItem>.RDataTableColumn<TItem>
+        return new RDataTableColumn<TItem>
         {
             Key = property.Name,
             Header = metadata.DisplayName,

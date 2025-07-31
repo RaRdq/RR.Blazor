@@ -13,7 +13,7 @@
     <div class="test-controls mb-6 pa-4 bg-surface rounded">
         <RChoiceGeneric Items="@testOptions.Keys"
                         SelectedValue="@selectedTest"
-                        SelectedValueChanged="@OnTestChangedCallback"
+                        SelectedValueChangedObject="@OnTestChangedCallback"
                         ItemLabelSelectorTyped="@(item => testOptions[item.ToString()])"
                         AriaLabel="Test Case" />
     </div>
@@ -31,14 +31,17 @@
                         BulkOperationsEnabled="true"
                         ExportEnabled="true"
                         MultiSelection="true"
+                        MultiColumnSort="true"
+                        MaxSortLevels="3"
                         SelectedItems="@selectedProducts"
                         SelectedItemsChanged="@HandleProductSelectionChanged">
                     <ColumnsContent>
-                        <RColumn Property="@((ProductModel p) => p.Name)" Sortable="true" />
-                        <RColumn Property="@((ProductModel p) => p.Price)" Format="c" Sortable="true" />
-                        <RColumn Property="@((ProductModel p) => p.Category)" Filterable="true" />
-                        <RColumn Property="@((ProductModel p) => p.Stock)" />
-                        <RColumn Property="@((ProductModel p) => p.IsActive)" Header="Status" />
+                        <RColumn Property="@((ProductModel p) => p.Name)" Header="Product Name" Sortable="true" />
+                        <RColumn Property="@((ProductModel p) => p.Price)" Header="Price" Format="c" Sortable="true" />
+                        <RColumn Property="@((ProductModel p) => p.Category)" Header="Category" Sortable="true" Filterable="true" />
+                        <RColumn Property="@((ProductModel p) => p.Stock)" Header="Stock" Sortable="true" />
+                        <RColumn Property="@((ProductModel p) => p.IsActive)" Header="Status" Sortable="true" />
+                        @* <RColumn Header="Actions" Template="@(CreateProductActionsTemplate())" Sortable="false" /> *@
                     </ColumnsContent>
                 </RTable>
             </div>
@@ -48,13 +51,16 @@
                 <h3 class="text-lg font-medium mb-2">Employee Directory</h3>
                 <RTable Items="@employees"
                         SingleSelection="true"
+                        MultiColumnSort="true"
+                        MaxSortLevels="2"
                         SelectedItem="@selectedEmployee"
                         SelectedItemChanged="@HandleEmployeeSelectionChanged">
                     <ColumnsContent>
-                        <RColumn Property="@((EmployeeModel e) => e.FullName)" />
-                        <RColumn Property="@((EmployeeModel e) => e.Department)" />
-                        <RColumn Property="@((EmployeeModel e) => e.Salary)" Format="c" />
-                        <RColumn Property="@((EmployeeModel e) => e.HireDate)" Format="d" />
+                        <RColumn Property="@((EmployeeModel e) => e.FullName)" Header="Full Name" Sortable="true" />
+                        <RColumn Property="@((EmployeeModel e) => e.Department)" Header="Department" Sortable="true" />
+                        <RColumn Property="@((EmployeeModel e) => e.Salary)" Header="Salary" Format="c" Sortable="true" />
+                        <RColumn Property="@((EmployeeModel e) => e.HireDate)" Header="Hire Date" Format="d" Sortable="true" />
+                        @* <RColumn Header="Actions" Template="@(CreateEmployeeActionsTemplate())" Sortable="false" /> *@
                     </ColumnsContent>
                 </RTable>
             </div>
@@ -206,6 +212,73 @@
         </div>
     }
 
+    @if (selectedTest == "sorting-test")
+    {
+        <div class="test-section mb-8">
+            <h2 class="text-xl font-semibold mb-4">🔄 Advanced Sorting Features</h2>
+            <p class="text-secondary mb-4">Test comprehensive sorting functionality with different data types and multi-column support</p>
+            
+            <div class="mb-4 pa-3 bg-surface-elevated rounded">
+                <h4 class="font-medium mb-2">Sorting Instructions:</h4>
+                <ul class="text-sm text-secondary space-y-1">
+                    <li>• <strong>Single Sort:</strong> Click any column header to sort ascending → descending → unsorted</li>
+                    <li>• <strong>Multi Sort:</strong> Hold <kbd class="px-1 py-0.5 bg-surface rounded text-xs">Shift</kbd> + click additional columns for multi-level sorting</li>
+                    <li>• <strong>Sort Priority:</strong> Numbers show sort order (1, 2, 3...)</li>
+                    <li>• <strong>Data Types:</strong> String, Number, Currency, Date, Boolean sorting</li>
+                </ul>
+            </div>
+            
+            <div class="mb-6">
+                <h3 class="text-lg font-medium mb-2">Product Catalog - Multi-Column Sorting</h3>
+                <RTable Items="@products"
+                        Title="Advanced Sorting Demo"
+                        Subtitle="Try sorting by multiple columns using Shift+Click"
+                        MultiColumnSort="true"
+                        MaxSortLevels="3"
+                        AllowUnsorted="true">
+                    <ColumnsContent>
+                        <RColumn Property="@((ProductModel p) => p.Name)" Header="Product Name (String)" Sortable="true" />
+                        <RColumn Property="@((ProductModel p) => p.Price)" Header="Price (Currency)" Format="c" Sortable="true" />
+                        <RColumn Property="@((ProductModel p) => p.Category)" Header="Category (String)" Sortable="true" />
+                        <RColumn Property="@((ProductModel p) => p.Stock)" Header="Stock (Number)" Sortable="true" />
+                        <RColumn Property="@((ProductModel p) => p.IsActive)" Header="Active (Boolean)" Sortable="true" />
+                    </ColumnsContent>
+                </RTable>
+            </div>
+            
+            <div class="mb-6">
+                <h3 class="text-lg font-medium mb-2">Employee Directory - Date & Currency Sorting</h3>
+                <RTable Items="@employees"
+                        Title="Date & Time Sorting"
+                        Subtitle="Test sorting with dates and salaries"
+                        MultiColumnSort="true"
+                        MaxSortLevels="2">
+                    <ColumnsContent>
+                        <RColumn Property="@((EmployeeModel e) => e.FullName)" Header="Name" Sortable="true" />
+                        <RColumn Property="@((EmployeeModel e) => e.Department)" Header="Department" Sortable="true" />
+                        <RColumn Property="@((EmployeeModel e) => e.Salary)" Header="Salary (Currency)" Format="c" Sortable="true" />
+                        <RColumn Property="@((EmployeeModel e) => e.HireDate)" Header="Hire Date (DateTime)" Format="d" Sortable="true" />
+                    </ColumnsContent>
+                </RTable>
+            </div>
+            
+            <div class="mb-6">
+                <h3 class="text-lg font-medium mb-2">Single Column Mode - Traditional Sorting</h3>
+                <p class="text-sm text-secondary mb-3">Multi-column sorting disabled - only one column can be sorted at a time</p>
+                <RTable Items="@products.Take(3).ToList()"
+                        Title="Single Column Sorting"
+                        MultiColumnSort="false"
+                        AllowUnsorted="false">
+                    <ColumnsContent>
+                        <RColumn Property="@((ProductModel p) => p.Name)" Header="Product" Sortable="true" />
+                        <RColumn Property="@((ProductModel p) => p.Price)" Header="Price" Format="c" Sortable="true" />
+                        <RColumn Property="@((ProductModel p) => p.Stock)" Header="Stock" Sortable="true" />
+                    </ColumnsContent>
+                </RTable>
+            </div>
+        </div>
+    }
+
     @if (selectedTest == "reflection-fallback")
     {
         <div class="test-section mb-8">
@@ -262,6 +335,7 @@
         { "all-states", "🌐 All States" },
         { "visual-states", "🎨 Visual States" },
         { "interaction", "👆 Interactions" },
+        { "sorting-test", "🔄 Advanced Sorting" },
         { "reflection-fallback", "⚠️ Reflection Fallback" }
     };
     
@@ -294,16 +368,11 @@
         };
     }
 
-    private void OnTestChanged(string test)
+    private async Task OnTestChangedCallback(object test)
     {
-        selectedTest = test;
+        selectedTest = test?.ToString() ?? "smart-auto";
         StateHasChanged();
-    }
-
-    private Task OnTestChangedCallback(object test)
-    {
-        OnTestChanged(test?.ToString() ?? "smart-auto");
-        return Task.CompletedTask;
+        await Task.CompletedTask;
     }
 
 
@@ -315,14 +384,115 @@
 
     private void HandleProductSelectionChanged(object items)
     {
-        selectedProducts = (List<ProductModel>)items;
+        if (items is List<ProductModel> typedItems)
+        {
+            selectedProducts = typedItems;
+        }
+        else if (items is IEnumerable<object> objectItems)
+        {
+            selectedProducts = objectItems.Cast<ProductModel>().ToList();
+        }
+        else
+        {
+            selectedProducts = new List<ProductModel>();
+        }
         StateHasChanged();
     }
 
     private void HandleEmployeeSelectionChanged(object item)
     {
-        selectedEmployee = (EmployeeModel)item;
+        if (item is EmployeeModel typedItem)
+        {
+            selectedEmployee = typedItem;
+        }
+        else
+        {
+            selectedEmployee = null;
+        }
         StateHasChanged();
+    }
+
+    // Action handlers for row controls
+    private void EditProduct(ProductModel product)
+    {
+        // Simulate edit action
+        Console.WriteLine($"Editing product: {product.Name}");
+    }
+
+    private void DeleteProduct(ProductModel product)
+    {
+        // Simulate delete action
+        Console.WriteLine($"Deleting product: {product.Name}");
+        products.Remove(product);
+        StateHasChanged();
+    }
+
+    private void ViewEmployee(EmployeeModel employee)
+    {
+        // Simulate view action
+        Console.WriteLine($"Viewing employee: {employee.FullName}");
+    }
+
+    private void EditEmployee(EmployeeModel employee)
+    {
+        // Simulate edit action
+        Console.WriteLine($"Editing employee: {employee.FullName}");
+    }
+
+    // Template creators for action columns
+    private RenderFragment<ProductModel> CreateProductActionsTemplate()
+    {
+        return item => builder =>
+        {
+            builder.OpenElement(0, "div");
+            builder.AddAttribute(1, "class", "d-flex gap-1");
+            
+            // Edit Button
+            builder.OpenComponent<RButton>(2);
+            builder.AddAttribute(3, "Icon", "edit");
+            builder.AddAttribute(4, "Size", ButtonSize.Small);
+            builder.AddAttribute(5, "Variant", ButtonVariant.Ghost);
+            builder.AddAttribute(6, "OnClick", EventCallback.Factory.Create<MouseEventArgs>(this, _ => EditProduct(item)));
+            builder.CloseComponent();
+            
+            // Delete Button
+            builder.OpenComponent<RButton>(7);
+            builder.AddAttribute(8, "Icon", "delete");
+            builder.AddAttribute(9, "Size", ButtonSize.Small);
+            builder.AddAttribute(10, "Variant", ButtonVariant.Ghost);
+            builder.AddAttribute(11, "Class", "text-error");
+            builder.AddAttribute(12, "OnClick", EventCallback.Factory.Create<MouseEventArgs>(this, _ => DeleteProduct(item)));
+            builder.CloseComponent();
+            
+            builder.CloseElement();
+        };
+    }
+
+    private RenderFragment<EmployeeModel> CreateEmployeeActionsTemplate()
+    {
+        return item => builder =>
+        {
+            builder.OpenElement(0, "div");
+            builder.AddAttribute(1, "class", "d-flex gap-1");
+            
+            // View Button
+            builder.OpenComponent<RButton>(2);
+            builder.AddAttribute(3, "Icon", "person");
+            builder.AddAttribute(4, "Size", ButtonSize.Small);
+            builder.AddAttribute(5, "Variant", ButtonVariant.Ghost);
+            builder.AddAttribute(6, "OnClick", EventCallback.Factory.Create<MouseEventArgs>(this, _ => ViewEmployee(item)));
+            builder.CloseComponent();
+            
+            // Edit Button
+            builder.OpenComponent<RButton>(7);
+            builder.AddAttribute(8, "Icon", "edit");
+            builder.AddAttribute(9, "Size", ButtonSize.Small);
+            builder.AddAttribute(10, "Variant", ButtonVariant.Ghost);
+            builder.AddAttribute(11, "OnClick", EventCallback.Factory.Create<MouseEventArgs>(this, _ => EditEmployee(item)));
+            builder.CloseComponent();
+            
+            builder.CloseElement();
+        };
     }
 
     public class ProductModel

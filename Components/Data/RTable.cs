@@ -57,6 +57,11 @@ public abstract class RTableBase : ComponentBase
     [Parameter] public string SortColumn { get; set; } = "";
     [Parameter] public bool SortDescending { get; set; }
     [Parameter] public EventCallback<string> OnSort { get; set; }
+    [Parameter] public List<TableSortState> SortStates { get; set; } = new();
+    [Parameter] public EventCallback<List<TableSortState>> SortStatesChanged { get; set; }
+    [Parameter] public EventCallback<SortEventArgs> OnSortChanged { get; set; }
+    [Parameter] public bool MultiColumnSort { get; set; } = true;
+    [Parameter] public int MaxSortLevels { get; set; } = 3;
     [Parameter] public Dictionary<string, string> ColumnFilters { get; set; } = new();
     [Parameter] public EventCallback<Dictionary<string, string>> ColumnFiltersChanged { get; set; }
     [Parameter] public EventCallback<ColumnFilterEventArgs> OnColumnFilter { get; set; }
@@ -116,24 +121,29 @@ public abstract class RTableBase : ComponentBase
         builder.AddAttribute(28, nameof(SortColumn), SortColumn);
         builder.AddAttribute(29, nameof(SortDescending), SortDescending);
         builder.AddAttribute(30, nameof(OnSort), OnSort);
-        builder.AddAttribute(31, nameof(ColumnFilters), ColumnFilters);
-        builder.AddAttribute(32, nameof(ColumnFiltersChanged), ColumnFiltersChanged);
-        builder.AddAttribute(33, nameof(OnColumnFilter), OnColumnFilter);
+        builder.AddAttribute(31, nameof(SortStates), SortStates);
+        builder.AddAttribute(32, nameof(SortStatesChanged), SortStatesChanged);
+        builder.AddAttribute(33, nameof(OnSortChanged), OnSortChanged);
+        builder.AddAttribute(34, nameof(MultiColumnSort), MultiColumnSort);
+        builder.AddAttribute(35, nameof(MaxSortLevels), MaxSortLevels);
+        builder.AddAttribute(36, nameof(ColumnFilters), ColumnFilters);
+        builder.AddAttribute(37, nameof(ColumnFiltersChanged), ColumnFiltersChanged);
+        builder.AddAttribute(38, nameof(OnColumnFilter), OnColumnFilter);
         
-        builder.AddAttribute(34, nameof(Height), Height);
-        builder.AddAttribute(35, nameof(Virtualize), Virtualize);
-        builder.AddAttribute(36, nameof(ResizableColumns), ResizableColumns);
-        builder.AddAttribute(37, nameof(StickyColumns), StickyColumns);
+        builder.AddAttribute(39, nameof(Height), Height);
+        builder.AddAttribute(40, nameof(Virtualize), Virtualize);
+        builder.AddAttribute(41, nameof(ResizableColumns), ResizableColumns);
+        builder.AddAttribute(42, nameof(StickyColumns), StickyColumns);
         
-        builder.AddAttribute(38, nameof(ColumnsContent), ColumnsContent);
-        builder.AddAttribute(39, nameof(EmptyMessage), EmptyMessage);
-        builder.AddAttribute(40, nameof(LoadingMessage), LoadingMessage);
-        builder.AddAttribute(41, nameof(FooterContent), FooterContent);
+        builder.AddAttribute(43, nameof(ColumnsContent), ColumnsContent);
+        builder.AddAttribute(44, nameof(EmptyMessage), EmptyMessage);
+        builder.AddAttribute(45, nameof(LoadingMessage), LoadingMessage);
+        builder.AddAttribute(46, nameof(FooterContent), FooterContent);
         
-        builder.AddAttribute(42, nameof(ExportFormats), ExportFormats);
-        builder.AddAttribute(43, nameof(ExportFileName), ExportFileName);
-        builder.AddAttribute(44, nameof(ExportMetadata), ExportMetadata);
-        builder.AddAttribute(45, nameof(Density), Density);
+        builder.AddAttribute(47, nameof(ExportFormats), ExportFormats);
+        builder.AddAttribute(48, nameof(ExportFileName), ExportFileName);
+        builder.AddAttribute(49, nameof(ExportMetadata), ExportMetadata);
+        builder.AddAttribute(50, nameof(Density), Density);
     }
 
     protected void ForwardBaseParametersExceptChildContent(RenderTreeBuilder builder)
@@ -169,25 +179,30 @@ public abstract class RTableBase : ComponentBase
         builder.AddAttribute(28, nameof(SortColumn), SortColumn);
         builder.AddAttribute(29, nameof(SortDescending), SortDescending);
         builder.AddAttribute(30, nameof(OnSort), OnSort);
-        builder.AddAttribute(31, nameof(ColumnFilters), ColumnFilters);
-        builder.AddAttribute(32, nameof(ColumnFiltersChanged), ColumnFiltersChanged);
-        builder.AddAttribute(33, nameof(OnColumnFilter), OnColumnFilter);
+        builder.AddAttribute(31, nameof(SortStates), SortStates);
+        builder.AddAttribute(32, nameof(SortStatesChanged), SortStatesChanged);
+        builder.AddAttribute(33, nameof(OnSortChanged), OnSortChanged);
+        builder.AddAttribute(34, nameof(MultiColumnSort), MultiColumnSort);
+        builder.AddAttribute(35, nameof(MaxSortLevels), MaxSortLevels);
+        builder.AddAttribute(36, nameof(ColumnFilters), ColumnFilters);
+        builder.AddAttribute(37, nameof(ColumnFiltersChanged), ColumnFiltersChanged);
+        builder.AddAttribute(38, nameof(OnColumnFilter), OnColumnFilter);
         
-        builder.AddAttribute(34, nameof(Height), Height);
-        builder.AddAttribute(35, nameof(Virtualize), Virtualize);
-        builder.AddAttribute(36, nameof(ResizableColumns), ResizableColumns);
-        builder.AddAttribute(37, nameof(StickyColumns), StickyColumns);
+        builder.AddAttribute(39, nameof(Height), Height);
+        builder.AddAttribute(40, nameof(Virtualize), Virtualize);
+        builder.AddAttribute(41, nameof(ResizableColumns), ResizableColumns);
+        builder.AddAttribute(42, nameof(StickyColumns), StickyColumns);
         
-        builder.AddAttribute(38, nameof(ColumnsContent), ColumnsContent);
+        builder.AddAttribute(43, nameof(ColumnsContent), ColumnsContent);
         // NOTE: Intentionally NOT forwarding ChildContent - RTableGeneric doesn't support it
-        builder.AddAttribute(39, nameof(EmptyMessage), EmptyMessage);
-        builder.AddAttribute(40, nameof(LoadingMessage), LoadingMessage);
-        builder.AddAttribute(41, nameof(FooterContent), FooterContent);
+        builder.AddAttribute(44, nameof(EmptyMessage), EmptyMessage);
+        builder.AddAttribute(45, nameof(LoadingMessage), LoadingMessage);
+        builder.AddAttribute(46, nameof(FooterContent), FooterContent);
         
-        builder.AddAttribute(42, nameof(ExportFormats), ExportFormats);
-        builder.AddAttribute(43, nameof(ExportFileName), ExportFileName);
-        builder.AddAttribute(44, nameof(ExportMetadata), ExportMetadata);
-        builder.AddAttribute(45, nameof(Density), Density);
+        builder.AddAttribute(47, nameof(ExportFormats), ExportFormats);
+        builder.AddAttribute(48, nameof(ExportFileName), ExportFileName);
+        builder.AddAttribute(49, nameof(ExportMetadata), ExportMetadata);
+        builder.AddAttribute(50, nameof(Density), Density);
     }
 }
 

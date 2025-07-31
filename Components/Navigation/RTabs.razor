@@ -327,26 +327,34 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
         
         var oldTabId = ActiveTabId;
         
+        // Update the ActiveTabId immediately
         ActiveTabId = tabId;
+        
+        // Invoke the two-way binding callback IMMEDIATELY for proper data binding
+        if (ActiveTabIdChanged.HasDelegate)
+        {
+            await ActiveTabIdChanged.InvokeAsync(ActiveTabId);
+        }
+        
+        // Trigger state change after binding update
         StateHasChanged();
         
-        // Use Task.Run to prevent render loop
+        // Invoke tab changed event
+        if (OnTabChanged.HasDelegate)
+        {
+            await OnTabChanged.InvokeAsync(new TabChangedEventArgs
+            {
+                OldTabId = oldTabId,
+                NewTabId = ActiveTabId
+            });
+        }
+        
+        // Update visual elements asynchronously to avoid blocking
         _ = Task.Run(async () =>
         {
             try
             {
-                await InvokeAsync(async () =>
-                {
-                    await ActiveTabIdChanged.InvokeAsync(ActiveTabId);
-                    await OnTabChanged.InvokeAsync(new TabChangedEventArgs
-                    {
-                        OldTabId = oldTabId,
-                        NewTabId = ActiveTabId
-                    });
-                });
-                
-                await Task.Delay(100); // Allow UI to update
-                
+                await Task.Delay(50); // Short delay for DOM to update
                 await InvokeAsync(async () =>
                 {
                     await ScrollToTab(tabId);
@@ -355,6 +363,7 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
             }
             catch
             {
+                // Silently handle visual update errors
             }
         });
     }

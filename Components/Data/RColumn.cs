@@ -55,64 +55,89 @@ public abstract class RColumnBase : ComponentBase
 public class RColumn : RColumnBase
 {
     [CascadingParameter] public TableContext? TableContext { get; set; }
-    [CascadingParameter] public ITableParent? ParentTable { get; set; }
+    [CascadingParameter] public RR.Blazor.Components.Data.ITableParent? ParentTable { get; set; }
     [Inject] private ILogger<RColumn>? Logger { get; set; }
     
-    [Parameter] public object? Property { get; set; }
+    [Parameter] public LambdaExpression? Property { get; set; }
     [Parameter] public object? Template { get; set; }
 
     private bool _isRegistered = false;
     
     protected override void BuildRenderTree(RenderTreeBuilder builder)
     {
-        // RColumn renders as th element directly for table header
-        builder.OpenElement(0, "th");
-        builder.AddAttribute(1, "class", $"table-header-cell {HeaderClass} {Class}".Trim());
-        
-        if (!string.IsNullOrEmpty(Width))
+        // When RColumn is used inside ColumnsContent, it should render a header cell
+        // When used elsewhere, it just registers with the parent table
+        if (ParentTable != null)
         {
-            builder.AddAttribute(2, "style", $"width: {Width}");
+            // Check if we should render as a header cell (when used in ColumnsContent)
+            // This is determined by context - if we're in a table header context, render
+            var shouldRenderHeader = TableContext?.IsHeaderContext ?? false;
+            
+            if (shouldRenderHeader)
+            {
+                // Render as table header cell
+                builder.OpenElement(0, "th");
+                builder.AddAttribute(1, "class", $"table-header-cell {HeaderClass} {(Sortable ? "table-header-sortable cursor-pointer hover:text-interactive transition-all" : "")}");
+                
+                if (HeaderTemplate != null)
+                {
+                    builder.AddContent(2, HeaderTemplate);
+                }
+                else
+                {
+                    builder.OpenElement(3, "div");
+                    builder.AddAttribute(4, "class", "d-flex items-center justify-between gap-2");
+                    
+                    builder.OpenElement(5, "div");
+                    builder.AddAttribute(6, "class", "d-flex items-center gap-2");
+                    builder.AddContent(7, Header ?? GetPropertyName());
+                    builder.CloseElement(); // inner div
+                    
+                    builder.CloseElement(); // outer div
+                }
+                
+                builder.CloseElement(); // th
+            }
         }
         
-        // Render header content
-        if (HeaderTemplate != null)
-        {
-            builder.AddContent(3, HeaderTemplate);
-        }
-        else
-        {
-            builder.AddContent(4, Header ?? GetPropertyName());
-        }
-        
-        builder.CloseElement();
-        
-        // Register this column with parent table only once
-        if (!_isRegistered)
-        {
-            RegisterWithParentTable();
-            _isRegistered = true;
-        }
+        // Registration happens in OnParametersSet after cascading parameters are available
     }
 
     private void RegisterWithParentTable()
     {
         if (ParentTable == null) return;
         
-        // Simple approach: Create generic dictionary with column info
-        var columnInfo = new Dictionary<string, object>
-        {
-            ["Key"] = Key ?? GetPropertyName(),
-            ["Header"] = Header ?? GetPropertyName(),
-            ["Format"] = Format,
-            ["Sortable"] = Sortable,
-            ["Filterable"] = Filterable,
-            ["Width"] = Width,
-            ["HeaderClass"] = HeaderClass,
-            ["CellClass"] = CellClass,
-            ["Class"] = Class,
-            ["Property"] = Property,
-            ["Template"] = Template
-        };
+        // Create a proper RDataTableColumn with reflection handling
+        var columnInfo = new Dictionary<string, object>();
+        
+        // Only add non-null values to avoid issues
+        var keyValue = !string.IsNullOrEmpty(Key) ? Key : GetPropertyName();
+        if (!string.IsNullOrEmpty(keyValue))
+            columnInfo["Key"] = keyValue;
+            
+        var headerValue = !string.IsNullOrEmpty(Header) ? Header : GetPropertyName();
+        if (!string.IsNullOrEmpty(headerValue))
+            columnInfo["Header"] = headerValue;
+        if (!string.IsNullOrEmpty(Format))
+            columnInfo["Format"] = Format;
+        columnInfo["Sortable"] = Sortable;
+        columnInfo["Filterable"] = Filterable;
+        if (!string.IsNullOrEmpty(Width))
+            columnInfo["Width"] = Width;
+        if (!string.IsNullOrEmpty(HeaderClass))
+            columnInfo["HeaderClass"] = HeaderClass;
+        if (!string.IsNullOrEmpty(CellClass))
+            columnInfo["CellClass"] = CellClass;
+        if (!string.IsNullOrEmpty(Class))
+            columnInfo["Class"] = Class;
+        if (Property != null)
+            columnInfo["Property"] = Property;
+        if (Template != null)
+            columnInfo["Template"] = Template;
+        
+        var propertyName = GetPropertyName();
+        if (!string.IsNullOrEmpty(propertyName))
+            columnInfo["PropertyName"] = propertyName;
         
         // Let the table handle the complex type creation
         ParentTable.AddColumn(columnInfo);
@@ -140,27 +165,40 @@ public class RColumn : RColumnBase
         {
             Header = GetPropertyName();
         }
+        
+        // Register with parent table after parameters are set and cascading values are available
+        if (!_isRegistered && ParentTable != null)
+        {
+            RegisterWithParentTable();
+            _isRegistered = true;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !_isRegistered && ParentTable != null)
+        {
+            // Last chance registration for late-binding scenarios
+            RegisterWithParentTable();
+            _isRegistered = true;
+        }
     }
 
     private string GetPropertyName()
     {
         if (Property == null) return "";
         
-        // Extract property name from expression
-        if (Property is LambdaExpression expression)
+        // Extract property name from lambda expression
+        if (Property.Body is MemberExpression memberExpression)
         {
-            if (expression.Body is MemberExpression memberExpression)
-            {
-                return memberExpression.Member.Name;
-            }
-            
-            if (expression.Body is UnaryExpression unaryExpression && 
-                unaryExpression.Operand is MemberExpression memberExpr)
-            {
-                return memberExpr.Member.Name;
-            }
+            return memberExpression.Member.Name;
         }
         
+        if (Property.Body is UnaryExpression unaryExpression && 
+            unaryExpression.Operand is MemberExpression memberExpr)
+        {
+            return memberExpr.Member.Name;
+        }
         return "";
     }
 }

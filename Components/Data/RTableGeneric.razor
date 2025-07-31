@@ -68,14 +68,17 @@
                                 }
                                 @if (ColumnsContent != null)
                                 {
-                                    @ColumnsContent
+                                    <CascadingValue Value="@GetHeaderTableContext()">
+                                        @ColumnsContent
+                                    </CascadingValue>
                                 }
                                 else if (GetEffectiveColumns().Any())
                                 {
                                     @foreach (var column in GetEffectiveColumns().Where(c => !c.Hidden))
                                     {
-                                        <th class="table-header-cell @(column.Sortable ? "table-header-sortable cursor-pointer hover:text-interactive transition-all" : "") @column.HeaderClass @(StickyColumns.Contains(column.Key) ? "sticky bg-surface-elevated shadow-sm" : "") @(ResizableColumns ? "resizable-column" : "") @GetColumnClasses(column)"
-                                            @onclick="() => column.Sortable ? OnSort.InvokeAsync(column.Key) : Task.CompletedTask">
+                                        <th class="table-header-cell @(column.Sortable ? "table-header-sortable cursor-pointer hover:text-interactive transition-all" : "") @column.HeaderClass @(StickyColumns.Contains(column.Key) ? "sticky bg-surface-elevated shadow-sm" : "") @(ResizableColumns ? "resizable-column" : "") @GetColumnClasses(column) @GetSortHeaderClasses(column.Key)"
+                                            @onclick="@((e) => column.Sortable ? HandleColumnSort(column.Key, ((MouseEventArgs)e).ShiftKey) : Task.CompletedTask)"
+                                            @onclick:preventDefault="true">
                                             @if (column.HeaderTemplate != null)
                                             {
                                                 @column.HeaderTemplate
@@ -85,11 +88,18 @@
                                                 <div class="d-flex items-center justify-between gap-2">
                                                     <div class="d-flex items-center gap-2">
                                                         @column.Header
-                                                        @if (column.Sortable && SortColumn == column.Key)
-                                                        {
-                                                            <i class="material-symbols-rounded text-base text-secondary animate-scale-in">
-                                                                @(SortDescending ? "arrow_drop_down" : "arrow_drop_up")
-                                                            </i>
+                                                        @{
+                                                            var sortState = GetColumnSortState(column.Key);
+                                                            if (column.Sortable && sortState != null && sortState.Direction != SortDirection.None)
+                                                            {
+                                                                <i class="material-symbols-rounded text-base text-primary animate-scale-in">
+                                                                    @(sortState.Direction == SortDirection.Descending ? "arrow_drop_down" : "arrow_drop_up")
+                                                                </i>
+                                                                if (SortStates.Count > 1 && sortState.Priority > 0)
+                                                                {
+                                                                    <span class="sort-priority-badge">@(sortState.Priority + 1)</span>
+                                                                }
+                                                            }
                                                         }
                                                     </div>
                                                     @if (ResizableColumns)
@@ -112,9 +122,9 @@
                         </thead>
                     }
                     <tbody>
-                        @if (Items?.Any() == true)
+                        @if (GetEffectiveItems()?.Any() == true)
                         {
-                            @foreach (var item in Items)
+                            @foreach (var item in GetEffectiveItems())
                             {
                                 @if (RowTemplate != null)
                                 {
@@ -139,7 +149,7 @@
                                                            class="align-middle"
                                                            name="table-selection"
                                                            checked="@(TypedSelectedItem?.Equals(item) == true)"
-                                                           @onchange="@((e) => { if ((bool)e.Value!) TypedSelectedItem = item; })" />
+                                                           @onchange="@((e) => { if (e.Value?.ToString() == "true") TypedSelectedItem = item; })" />
                                                 }
                                             </td>
                                         }
@@ -190,7 +200,7 @@
                 </div>
             }
 
-            @if (ShowPagination && TotalItems > 0)
+            @if (ShowPagination && (TotalItems > 0 || Items?.Any() == true))
             {
                 <div class="d-flex justify-between items-center pa-4 border-t">
                     <div class="text-sm text-secondary">
@@ -266,6 +276,8 @@
 
     // Sorting parameters
     [Parameter] public bool AllowUnsorted { get; set; } = true;
+    // SortStates, SortStatesChanged, OnSortChanged, MultiColumnSort inherited from RTableBase
+    [Parameter] public int MaxSortLevels { get; set; } = 3;
 
     // Advanced feature parameters
     [Parameter] public bool FixedHeader { get; set; }
@@ -280,6 +292,10 @@
     private Type? _lastItemType;
     private int _lastColumnsHash;
     private int _lastChildColumnsCount;
+    
+    // Sorting management
+    private List<TItem> _originalItems = new();
+    private List<TItem> _sortedItems = new();
 
     private string DefaultEmptyMessage => "No data available";
 
@@ -293,11 +309,45 @@
         }
     }
 
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+        
+        // Ensure TotalItems is always set correctly
+        if (TotalItems == 0 && Items?.Count > 0)
+        {
+            TotalItems = Items.Count;
+        }
+        
+        // Handle sorting if items or sort states changed
+        if (Items != null)
+        {
+            if (_originalItems != Items || !_originalItems.SequenceEqual(Items))
+            {
+                _originalItems = Items.ToList();
+                ApplySorting();
+            }
+            else if (SortStates?.Any() == true)
+            {
+                ApplySorting();
+            }
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && _childColumns.Any())
+        {
+            // Force re-render after columns are registered
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
     public void AddColumn(RDataTableColumn<TItem> column)
     {
         _childColumns.Add(column);
         InvalidateColumnCache();
-        InvokeAsync(StateHasChanged);
+        _ = InvokeAsync(StateHasChanged);
     }
     
     public void UpdateColumn(RDataTableColumn<TItem> column)
@@ -312,7 +362,7 @@
             _childColumns.Add(column);
         }
         InvalidateColumnCache();
-        InvokeAsync(StateHasChanged);
+        _ = InvokeAsync(StateHasChanged);
     }
     
     private void InvalidateColumnCache()
@@ -349,7 +399,7 @@
         }
         else
         {
-            effectiveColumns = PropertyColumnGenerator.GenerateColumns<TItem>();
+            effectiveColumns = PropertyColumnGenerator.GenerateColumns<TItem>().ToList();
         }
         
         _cachedEffectiveColumns = effectiveColumns;
@@ -703,6 +753,11 @@
         return new TableContext(typeof(TItem), $"generic-table-{GetHashCode()}", false);
     }
     
+    private TableContext GetHeaderTableContext()
+    {
+        return new TableContext(typeof(TItem), $"generic-table-{GetHashCode()}", false, true);
+    }
+    
     // ITableParent implementation
     public Type ItemType => typeof(TItem);
     
@@ -787,27 +842,243 @@
         
         return item => null;
     }
-
-    // RDataTableColumn class definition moved from RDataTableGeneric
-    public class RDataTableColumn<T>
+    
+    // Sorting implementation
+    private List<TItem> GetEffectiveItems()
     {
-        public string Key { get; set; } = "";
-        public string Header { get; set; } = "";
-        public bool Sortable { get; set; }
-        public RenderFragment<T> CellTemplate { get; set; }
-        public RenderFragment HeaderTemplate { get; set; }
-        public string Width { get; set; }
-        public string MinWidth { get; set; }
-        public string MaxWidth { get; set; }
-        public bool Resizable { get; set; }
-        public bool Hideable { get; set; } = true;
-        public bool Hidden { get; set; }
-        public string CellClass { get; set; } = "";
-        public string HeaderClass { get; set; } = "";
-        public Func<T, object> ValueFunc { get; set; }
-        public string Format { get; set; }
-        public bool Filterable { get; set; }
-        public RR.Blazor.Enums.FilterType FilterType { get; set; } = RR.Blazor.Enums.FilterType.Search;
-        public List<RR.Blazor.Models.FilterOption> FilterOptions { get; set; } = new();
+        if (_sortedItems?.Any() == true)
+            return _sortedItems;
+        return Items ?? new List<TItem>();
     }
+    
+    private TableSortState GetColumnSortState(string columnKey)
+    {
+        return SortStates?.FirstOrDefault(s => s.ColumnKey == columnKey);
+    }
+    
+    private string GetSortHeaderClasses(string columnKey)
+    {
+        var sortState = GetColumnSortState(columnKey);
+        var classes = new List<string>();
+        
+        if (sortState?.Direction != SortDirection.None)
+        {
+            classes.Add("table-header-active-sort");
+        }
+        
+        if (SortStates?.Count > 1 && sortState != null)
+        {
+            classes.Add("table-header-multi-sort");
+        }
+        
+        return string.Join(" ", classes);
+    }
+    
+    private async Task HandleColumnSort(string columnKey, bool isMultiSort)
+    {
+        if (!MultiColumnSort || !isMultiSort)
+        {
+            // Single column sort or multi-sort disabled
+            var currentState = GetColumnSortState(columnKey);
+            var newDirection = GetNextSortDirection(currentState?.Direction ?? SortDirection.None);
+            
+            if (newDirection == SortDirection.None && !AllowUnsorted)
+                newDirection = SortDirection.Ascending;
+                
+            SortStates = newDirection == SortDirection.None 
+                ? new List<TableSortState>()
+                : new List<TableSortState> { new(columnKey, newDirection, 0) };
+        }
+        else
+        {
+            // Multi-column sort
+            var existingSort = SortStates.FirstOrDefault(s => s.ColumnKey == columnKey);
+            if (existingSort != null)
+            {
+                // Update existing sort
+                var newDirection = GetNextSortDirection(existingSort.Direction);
+                if (newDirection == SortDirection.None)
+                {
+                    SortStates.Remove(existingSort);
+                    // Reorder priorities
+                    for (int i = 0; i < SortStates.Count; i++)
+                        SortStates[i].Priority = i;
+                }
+                else
+                {
+                    existingSort.Direction = newDirection;
+                }
+            }
+            else
+            {
+                // Add new sort
+                if (SortStates.Count >= MaxSortLevels)
+                {
+                    // Remove oldest sort (highest priority number)
+                    var oldestSort = SortStates.OrderByDescending(s => s.Priority).First();
+                    SortStates.Remove(oldestSort);
+                    // Reorder priorities
+                    for (int i = 0; i < SortStates.Count; i++)
+                        SortStates[i].Priority = i;
+                }
+                SortStates.Add(new TableSortState(columnKey, SortDirection.Ascending, SortStates.Count));
+            }
+        }
+        
+        // Apply sorting and notify
+        ApplySorting();
+        
+        // Notify parent components
+        await SortStatesChanged.InvokeAsync(SortStates);
+        await OnSortChanged.InvokeAsync(new SortEventArgs 
+        { 
+            ColumnKey = columnKey, 
+            IsMultiSort = isMultiSort,
+            CurrentSortStates = SortStates.ToList()
+        });
+        
+        // Legacy compatibility
+        if (SortStates.Any())
+        {
+            var primarySort = SortStates.OrderBy(s => s.Priority).First();
+            SortColumn = primarySort.ColumnKey;
+            SortDescending = primarySort.Direction == SortDirection.Descending;
+            await OnSort.InvokeAsync(primarySort.ColumnKey);
+        }
+        else
+        {
+            SortColumn = "";
+            SortDescending = false;
+        }
+        
+        StateHasChanged();
+    }
+    
+    private SortDirection GetNextSortDirection(SortDirection current)
+    {
+        return current switch
+        {
+            SortDirection.None => SortDirection.Ascending,
+            SortDirection.Ascending => SortDirection.Descending,
+            SortDirection.Descending => AllowUnsorted ? SortDirection.None : SortDirection.Ascending,
+            _ => SortDirection.Ascending
+        };
+    }
+    
+    private void ApplySorting()
+    {
+        if (Items == null || !Items.Any())
+        {
+            _sortedItems = new List<TItem>();
+            return;
+        }
+        
+        if (!SortStates?.Any() == true)
+        {
+            _sortedItems = Items.ToList();
+            return;
+        }
+        
+        try
+        {
+            var query = Items.AsQueryable();
+            var isFirst = true;
+            
+            foreach (var sortState in SortStates.OrderBy(s => s.Priority))
+            {
+                var column = GetEffectiveColumns().FirstOrDefault(c => c.Key == sortState.ColumnKey);
+                if (column == null) continue;
+                
+                if (column.CustomComparer != null)
+                {
+                    // Use custom comparer
+                    if (isFirst)
+                    {
+                        query = sortState.Direction == SortDirection.Ascending
+                            ? query.OrderBy(x => x, column.CustomComparer)
+                            : query.OrderByDescending(x => x, column.CustomComparer);
+                    }
+                    else
+                    {
+                        var orderedQuery = (IOrderedQueryable<TItem>)query;
+                        query = sortState.Direction == SortDirection.Ascending
+                            ? orderedQuery.ThenBy(x => x, column.CustomComparer)
+                            : orderedQuery.ThenByDescending(x => x, column.CustomComparer);
+                    }
+                }
+                else if (column.SortKeySelector != null)
+                {
+                    // Use custom sort key selector
+                    if (isFirst)
+                    {
+                        query = sortState.Direction == SortDirection.Ascending
+                            ? query.OrderBy(column.SortKeySelector)
+                            : query.OrderByDescending(column.SortKeySelector);
+                    }
+                    else
+                    {
+                        var orderedQuery = (IOrderedQueryable<TItem>)query;
+                        query = sortState.Direction == SortDirection.Ascending
+                            ? orderedQuery.ThenBy(column.SortKeySelector)
+                            : orderedQuery.ThenByDescending(column.SortKeySelector);
+                    }
+                }
+                else
+                {
+                    // Use property-based sorting
+                    var propertyName = column.Key;
+                    var property = typeof(TItem).GetProperty(propertyName);
+                    if (property != null)
+                    {
+                        var parameter = Expression.Parameter(typeof(TItem), "x");
+                        var propertyAccess = Expression.MakeMemberAccess(parameter, property);
+                        var orderByExpression = Expression.Lambda(propertyAccess, parameter);
+                        
+                        var methodName = isFirst 
+                            ? (sortState.Direction == SortDirection.Ascending ? "OrderBy" : "OrderByDescending")
+                            : (sortState.Direction == SortDirection.Ascending ? "ThenBy" : "ThenByDescending");
+                            
+                        var resultType = isFirst ? typeof(IOrderedQueryable<TItem>) : typeof(IOrderedQueryable<TItem>);
+                        var method = typeof(Queryable).GetMethods()
+                            .Where(m => m.Name == methodName && m.IsGenericMethodDefinition && m.GetParameters().Length == 2)
+                            .Single()
+                            .MakeGenericMethod(typeof(TItem), property.PropertyType);
+                            
+                        query = (IQueryable<TItem>)method.Invoke(null, new object[] { query, orderByExpression });
+                    }
+                    else if (column.ValueFunc != null)
+                    {
+                        // Use value function for sorting
+                        var items = query.ToList();
+                        if (isFirst)
+                        {
+                            items = sortState.Direction == SortDirection.Ascending
+                                ? items.OrderBy(item => column.ValueFunc(item)).ToList()
+                                : items.OrderByDescending(item => column.ValueFunc(item)).ToList();
+                        }
+                        else
+                        {
+                            // For subsequent sorts, we need to maintain the ordered collection
+                            var orderedItems = (IOrderedEnumerable<TItem>)items;
+                            items = sortState.Direction == SortDirection.Ascending
+                                ? orderedItems.ThenBy(item => column.ValueFunc(item)).ToList()
+                                : orderedItems.ThenByDescending(item => column.ValueFunc(item)).ToList();
+                        }
+                        query = items.AsQueryable();
+                    }
+                }
+                
+                isFirst = false;
+            }
+            
+            _sortedItems = query.ToList();
+        }
+        catch (Exception ex)
+        {
+            // Fallback to original items on sorting error
+            _sortedItems = Items.ToList();
+            Console.WriteLine($"Sorting error: {ex.Message}");
+        }
+    }
+
 }
