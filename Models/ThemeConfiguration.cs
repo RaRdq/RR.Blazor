@@ -46,6 +46,9 @@ public class ThemeConfiguration
     // Component overrides
     public Dictionary<string, string> CustomVariables { get; set; } = new();
     
+    // Custom theme files (name -> scss file path)
+    public Dictionary<string, string> CustomThemes { get; set; } = new();
+    
     // Default theme configuration
     public static ThemeConfiguration Default => new()
     {

@@ -1,0 +1,176 @@
+@use '../../abstracts' as *;
+
+// =============================================================================
+// TABLE MIXINS - Reusable patterns for table system
+// =============================================================================
+
+// Base cell styling
+@mixin table-cell-base($padding: var(--space-3) var(--space-4)) {
+  padding: $padding;
+  vertical-align: middle;
+  transition: var(--transition-colors);
+  border-bottom: var(--border-1) solid var(--surface-outline-5);
+}
+
+// Base header styling
+@mixin table-header-base {
+  text-align: left;
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  border-bottom: var(--border-1) solid var(--surface-outline);
+  background: var(--surface-elevated);
+  position: relative;
+}
+
+// Standard hover state
+@mixin table-hover-state($bg: var(--surface-hover), $transform: translateY(-1px)) {
+  &:hover {
+    background: $bg;
+    @if $transform {
+      transform: $transform;
+      box-shadow: var(--shadow-md);
+    }
+  }
+}
+
+// Selection state
+@mixin table-selection-state($bg: var(--primary-10), $border-width: 3px) {
+  background: $bg;
+  border-left: $border-width solid var(--primary);
+}
+
+// Focus state with accessibility
+@mixin table-focus-state {
+  &:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: -2px;
+    box-shadow: 0 0 0 4px var(--primary-20);
+    position: relative;
+    z-index: 1;
+  }
+}
+
+// Truncate text with tooltip support
+@mixin table-text-truncate {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 0; // Enable ellipsis in table cells
+  
+  &[title]:hover::after {
+    content: attr(title);
+    position: absolute;
+    background: var(--surface-elevated);
+    color: var(--text-primary);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-xl);
+    z-index: var(--z-tooltip);
+    white-space: normal;
+    max-width: 300px;
+    word-wrap: break-word;
+    border: 1px solid var(--border);
+    font-size: var(--text-sm);
+    margin-top: var(--space-2);
+  }
+}
+
+// Responsive density adjustments
+@mixin table-responsive-density($padding, $height, $font-size: var(--text-sm)) {
+  padding: $padding;
+  height: $height;
+  font-size: $font-size;
+  line-height: 1.2;
+}
+
+// Sticky column shadows
+@mixin sticky-column-shadow($direction: left) {
+  @if $direction == left {
+    box-shadow: var(--shadow-sticky-right);
+  } @else {
+    box-shadow: var(--shadow-sticky-left);
+  }
+  
+  @media (max-width: 768px) {
+    @if $direction == left {
+      box-shadow: var(--shadow-sticky-right-sm);
+    } @else {
+      box-shadow: var(--shadow-sticky-left-sm);
+    }
+  }
+}
+
+// Action button base
+@mixin table-action-button {
+  @extend %button-base;
+  transition: var(--transition-transform);
+  
+  &:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+  }
+}
+
+// Loading skeleton base
+@mixin table-skeleton {
+  @extend %loading-skeleton-base;
+  border-radius: var(--radius-sm);
+  height: 16px;
+  position: relative;
+  overflow: hidden;
+}
+
+// Touch-friendly targets
+@mixin table-touch-target {
+  @include touch-friendly;
+  min-height: var(--touch-target-min);
+  
+  @media (pointer: coarse) {
+    padding: var(--space-3) var(--space-4);
+  }
+}
+
+// Scroll shadow indicators
+@mixin scroll-shadow-indicator($direction: horizontal) {
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    pointer-events: none;
+    z-index: var(--z-floating);
+    transition: opacity var(--duration-normal) var(--ease-out);
+    
+    @if $direction == horizontal {
+      top: 0;
+      bottom: 0;
+      width: 20px;
+    } @else {
+      left: 0;
+      right: 0;
+      height: 20px;
+    }
+  }
+  
+  @if $direction == horizontal {
+    &::before {
+      left: 0;
+      background: linear-gradient(to right, var(--surface-elevated), transparent);
+      opacity: 0;
+    }
+    
+    &::after {
+      right: 0;
+      background: linear-gradient(to left, var(--surface-elevated), transparent);
+      opacity: 1;
+    }
+    
+    &.scrolled-left::before { opacity: 1; }
+    &.scrolled-right::after { opacity: 0; }
+  }
+}
+
+// Glass effect for tables
+@mixin table-glass-effect {
+  @include glass-enhanced;
+  backdrop-filter: var(--glass-blur-md) var(--glass-saturate) var(--glass-brightness);
+}

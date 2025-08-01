@@ -95,7 +95,8 @@ class ModuleManager {
             utils: '/_content/RR.Blazor/js/utils.js',
             tabs: '/_content/RR.Blazor/js/tabs.js',
             theme: '/_content/RR.Blazor/js/theme.js',
-            chart: '/_content/RR.Blazor/js/chart.js'
+            chart: '/_content/RR.Blazor/js/chart.js',
+            table: '/_content/RR.Blazor/js/table-scroll.js'
         };
         this.loadingPromises = new Map();
     }
@@ -416,6 +417,27 @@ window.RRBlazor = {
         async exportChartData(element, format) {
             const chart = await moduleManager.getModule('chart');
             return chart.exportChartData(element, format);
+        }
+    },
+    
+    // Table API
+    Table: {
+        async initialize(tableId) {
+            const table = await moduleManager.getModule('table');
+            const manager = table.RTableScrollManager || window.RTableScrollManager;
+            return manager.initialize(tableId);
+        },
+        
+        async dispose(tableId) {
+            const table = await moduleManager.getModule('table');
+            const manager = table.RTableScrollManager || window.RTableScrollManager;
+            return manager.dispose(tableId);
+        },
+        
+        async refresh(tableId) {
+            const table = await moduleManager.getModule('table');
+            const manager = table.RTableScrollManager || window.RTableScrollManager;
+            return manager.refresh(tableId);
         }
     },
 

@@ -1,0 +1,202 @@
+@use '../../abstracts' as *;
+
+// =============================================================================
+// TABLE ACCESSIBILITY - WCAG 2.1 AA compliance features
+// =============================================================================
+
+.enhanced-table-container {
+  // High contrast mode support
+  @media (prefers-contrast: high) {
+    --table-border: var(--text-primary);
+    --table-header-border: var(--text-primary);
+    --table-cell-border: var(--text-primary);
+    --table-row-selected-border: var(--text-primary);
+    
+    .table-header-cell {
+      border: 2px solid var(--text-primary);
+      background: var(--canvas);
+      color: var(--text-primary);
+    }
+    
+    .table-cell {
+      border: 1px solid var(--text-primary);
+    }
+    
+    tbody tr:hover {
+      background: var(--text-primary);
+      color: var(--canvas);
+    }
+  }
+  
+  // Reduced motion support
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+    
+    .skeleton-cell::after {
+      animation: none;
+    }
+    
+    .empty-icon {
+      animation: none;
+    }
+  }
+  
+  // Enhanced focus management
+  .table-header-cell {
+    &:focus-visible {
+      outline: 3px solid var(--primary);
+      outline-offset: 2px;
+      background: var(--primary-light);
+      z-index: var(--z-floating);
+      position: relative;
+    }
+    
+    // Screen reader support
+    &[aria-sort="ascending"]::after {
+      content: " (sorted ascending)";
+      position: absolute;
+      left: -10000px;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+    }
+    
+    &[aria-sort="descending"]::after {
+      content: " (sorted descending)";
+      position: absolute;
+      left: -10000px;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+    }
+  }
+  
+  .table-cell {
+    &:focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: -2px;
+      box-shadow: 0 0 0 4px var(--primary-20);
+      z-index: var(--z-floating);
+      position: relative;
+    }
+  }
+  
+  // Enhanced keyboard navigation
+  tbody tr {
+    &:focus-visible {
+      outline: 3px solid var(--primary);
+      outline-offset: 2px;
+      z-index: var(--z-floating);
+      position: relative;
+    }
+    
+    &[aria-selected="true"] {
+      background: var(--primary-light) !important;
+      border-left: 4px solid var(--primary);
+      
+      .table-cell {
+        background: transparent;
+      }
+    }
+  }
+  
+  // Checkbox and radio accessibility
+  input[type="checkbox"],
+  input[type="radio"] {
+    &:focus-visible {
+      outline: 3px solid var(--primary);
+      outline-offset: 2px;
+    }
+    
+    // High contrast mode
+    @media (prefers-contrast: high) {
+      border: 2px solid var(--text-primary);
+      
+      &:checked {
+        background: var(--text-primary);
+        border-color: var(--text-primary);
+      }
+    }
+  }
+  
+  // Loading state accessibility
+  .table-loading-skeleton {
+    &[aria-live="polite"] {
+      .skeleton-row:first-child::before {
+        content: "Loading table data";
+        position: absolute;
+        left: -10000px;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+      }
+    }
+  }
+  
+  // Empty state accessibility
+  .table-empty-state {
+    &[role="status"] {
+      .empty-title::before {
+        content: "No data available. ";
+        position: absolute;
+        left: -10000px;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+      }
+    }
+  }
+}
+
+// Smart text handling for accessibility
+.table-header-cell {
+  &.table-header-resizable {
+    // Show full text on focus for truncated headers
+    &:focus-within {
+      overflow: visible;
+      z-index: var(--z-floating);
+      position: relative;
+      
+      &::after {
+        content: attr(title);
+        position: absolute;
+        top: 100%;
+        left: 0;
+        background: var(--surface-elevated);
+        color: var(--text-primary);
+        padding: var(--space-2) var(--space-3);
+        border-radius: var(--radius-sm);
+        box-shadow: var(--shadow-lg);
+        white-space: normal;
+        max-width: 300px;
+        z-index: var(--z-tooltip);
+        border: 1px solid var(--border);
+      }
+    }
+  }
+}
+
+// Enhanced hover tooltip for truncated content
+.table-cell {
+  &[title]:hover::after {
+    content: attr(title);
+    position: absolute;
+    background: var(--surface-elevated);
+    color: var(--text-primary);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-xl);
+    z-index: var(--z-tooltip);
+    white-space: normal;
+    max-width: 300px;
+    word-wrap: break-word;
+    border: 1px solid var(--border);
+    font-size: var(--text-sm);
+    margin-top: var(--space-2);
+  }
+}

@@ -1,0 +1,231 @@
+@use '../../abstracts' as *;
+@use 'table-mixins' as mixins;
+
+// =============================================================================
+// TABLE STATES - Loading, empty, and interactive states
+// =============================================================================
+
+// Loading skeleton
+.table-loading-skeleton {
+  .skeleton-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    padding: var(--space-3) var(--space-4);
+    
+    .skeleton-cell {
+      @include mixins.table-skeleton;
+      animation: pulse 1.5s ease-in-out infinite;
+      
+      // Shimmer effect overlay
+      &::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          var(--surface-elevated-lighter),
+          transparent
+        );
+        animation: shimmer 2s infinite;
+      }
+      
+      // Different widths for variety
+      &:nth-child(1) { flex: 0 0 120px; }
+      &:nth-child(2) { flex: 0 0 200px; }
+      &:nth-child(3) { flex: 0 0 80px; }
+      &:nth-child(4) { flex: 0 0 150px; }
+      &:nth-child(5) { flex: 0 0 100px; }
+      &:nth-child(n+6) { flex: 0 0 120px; }
+    }
+    
+    .skeleton-checkbox {
+      width: 16px;
+      height: 16px;
+      border-radius: var(--radius-sm);
+      flex: 0 0 16px;
+    }
+    
+    .skeleton-actions {
+      display: flex;
+      gap: var(--space-2);
+      flex: 0 0 auto;
+      
+      .skeleton-action {
+        width: 32px;
+        height: 32px;
+        border-radius: var(--radius-md);
+        background: var(--surface-elevated);
+        animation: pulse 1.5s ease-in-out infinite;
+      }
+    }
+  }
+}
+
+// Empty state
+.table-empty-state {
+  text-align: center;
+  padding: var(--space-12) var(--space-8);
+  
+  .empty-icon {
+    font-size: var(--icon-4xl);
+    color: var(--text-muted);
+    margin-bottom: var(--space-4);
+    opacity: var(--opacity-60);
+    animation: float 3s ease-in-out infinite;
+  }
+  
+  .empty-title {
+    font-size: var(--text-xl);
+    font-weight: var(--font-semibold);
+    color: var(--text-primary);
+    margin-bottom: var(--space-2);
+  }
+  
+  .empty-description {
+    font-size: var(--text-base);
+    color: var(--text-secondary);
+    max-width: 400px;
+    margin: 0 auto var(--space-6);
+    line-height: 1.6;
+  }
+  
+  .empty-actions {
+    display: flex;
+    gap: var(--space-3);
+    justify-content: center;
+    flex-wrap: wrap;
+    
+    .r-button {
+      min-width: 120px;
+    }
+  }
+}
+
+// Empty state variants
+.empty-state-no-data .empty-icon::before { content: "📊"; }
+.empty-state-no-results .empty-icon::before { content: "🔍"; }
+.empty-state-no-items .empty-icon::before { content: "📋"; }
+.empty-state-error {
+  .empty-icon {
+    color: var(--error);
+    &::before { content: "⚠️"; }
+  }
+  .empty-title {
+    color: var(--error);
+  }
+}
+
+// Row states
+.table-row-inactive {
+  opacity: var(--opacity-60);
+  
+  &:hover {
+    opacity: var(--opacity-80);
+  }
+}
+
+.table-row-selected {
+  @include mixins.table-selection-state;
+}
+
+.table-row--highlighted {
+  background: var(--warning-10);
+}
+
+.table-row--striped {
+  &:nth-child(even) {
+    background: var(--surface-elevated-50);
+  }
+}
+
+// Enhanced selection state
+.table-row-selected-enhanced {
+  @include mixins.table-selection-state(var(--primary-5));
+  
+  &:hover {
+    background: var(--primary-8) !important;
+  }
+
+  .table-cell {
+    background: transparent;
+  }
+}
+
+// Hover states
+.table-hover-enhanced tbody tr {
+  transition: var(--transition-all);
+  
+  &:hover {
+    background: var(--surface-elevated);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px var(--shadow-color-10);
+  }
+}
+
+// Sort indicators
+.table-header-sortable {
+  position: relative;
+  
+  &:hover {
+    background: var(--surface-elevated);
+    
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: var(--primary-5);
+      opacity: 0;
+      transition: opacity var(--duration-fast) var(--ease-out);
+    }
+    
+    &:hover::before {
+      opacity: 1;
+    }
+  }
+  
+  &.table-header-active-sort {
+    background: var(--primary-5);
+    color: var(--primary);
+    font-weight: var(--font-semibold);
+    
+    .material-symbols-rounded {
+      color: var(--primary);
+      transform: scale(1.1);
+    }
+  }
+  
+  &.table-header-multi-sort {
+    border-left: 3px solid var(--primary-30);
+  }
+}
+
+// Sort priority badge
+.sort-priority-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 var(--space-1);
+  background: var(--primary);
+  color: var(--primary-contrast);
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  line-height: 1;
+  margin-left: var(--space-1);
+  animation: scaleIn var(--duration-fast) var(--ease-out);
+}
+
+// Focus states
+.table-cell {
+  @include mixins.table-focus-state;
+}

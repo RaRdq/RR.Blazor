@@ -334,6 +334,64 @@ Compatible with all modern browsers.
 - [Utility Classes](wwwroot/rr-ai-styles.json) - Complete styling reference
 - [Contributing Guide](CONTRIBUTING.md) - Development guidelines
 
+## 🎨 Custom Theming
+
+RR.Blazor includes a powerful theming system that allows complete visual customization through SCSS variables.
+
+### Quick Start
+
+```powershell
+# Generate a theme template
+pwsh RR.Blazor/Scripts/GenerateTheme.ps1 -ThemeName "my-brand"
+```
+
+```csharp
+// Register theme in Program.cs
+builder.Services.AddRRBlazor(options =>
+{
+    options.WithCustomTheme("my-brand", "Themes/my-brand.scss");
+});
+```
+
+```razor
+<!-- Use your theme -->
+<RThemeProvider Theme="my-brand">
+    <Router AppAssembly="@typeof(App).Assembly">
+        <!-- Your app content -->
+    </Router>
+</RThemeProvider>
+```
+
+### Theme Examples
+
+```scss
+// Themes/corporate-theme.scss
+:root[data-theme="corporate-theme"] {
+  // Override existing themes (extends default/dark)
+  --theme-primary: #003d82;        // Corporate blue
+  --theme-surface: #ffffff;        // Clean white surfaces
+  --theme-text: #172b4d;          // Professional text
+  
+  // Create entirely new theme
+  --theme-canvas: linear-gradient(135deg, #f7f9fb 0%, #e8ecf1 100%);
+  --theme-shadow-md: 0 4px 8px -2px rgba(9, 30, 66, 0.08);
+  
+  // Full customization - override any variable
+  --radius-md: 8px;               // Border radius
+  --space-4: 1.25rem;             // Spacing
+  --font-family-primary: 'Inter'; // Typography
+  --button-height: 48px;          // Component sizing
+}
+```
+
+**Features:**
+- 🔒 **Security-First**: Path traversal protection, input sanitization
+- ⚡ **Build-Time Compilation**: Zero runtime overhead
+- 🎯 **Complete Control**: Override any CSS variable
+- 📦 **VS Code Integration**: IntelliSense and snippets included
+
+See [Docs/THEMING.md](Docs/THEMING.md) for complete guide.
+
 ## Contributing
 
 1. **Add as submodule** to your working project

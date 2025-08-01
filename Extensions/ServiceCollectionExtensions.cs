@@ -2,7 +2,10 @@ using Microsoft.Extensions.DependencyInjection;
 using RR.Blazor.Services;
 using RR.Blazor.Models;
 using RR.Blazor.Configuration;
+using RR.Blazor.Interfaces;
 using System;
+using System.Collections.Generic;
+using System.IO;
 
 namespace RR.Blazor.Extensions
 {
@@ -25,6 +28,10 @@ namespace RR.Blazor.Extensions
             services.AddScoped<IModalService, ModalService>();
             services.AddScoped<IThemeService, BlazorThemeService>();
             services.AddScoped<IAppSearchService, AppSearchService>();
+            
+            // Theme services
+            services.AddScoped<IThemeCompiler, LibSassThemeCompiler>();
+            services.AddScoped<ICustomThemeProvider, CustomThemeProvider>();
             
             // Toast service with configuration from options
             services.AddRRToast(toastOptions =>
@@ -127,6 +134,54 @@ namespace RR.Blazor.Extensions
         {
             Validation.Enabled = false;
             return this;
+        }
+        
+        /// <summary>Add a custom theme from SCSS file</summary>
+        public RRBlazorOptions WithCustomTheme(string themeName, string scssFilePath)
+        {
+            ValidateTheme(themeName, scssFilePath);
+            
+            Theme.CustomThemes ??= new Dictionary<string, string>();
+            Theme.CustomThemes[themeName] = scssFilePath;
+            return this;
+        }
+        
+        /// <summary>Add multiple custom themes</summary>
+        public RRBlazorOptions WithCustomThemes(Dictionary<string, string> themes)
+        {
+            ArgumentNullException.ThrowIfNull(themes);
+            
+            Theme.CustomThemes ??= new Dictionary<string, string>();
+            foreach (var theme in themes)
+            {
+                ValidateTheme(theme.Key, theme.Value);
+                Theme.CustomThemes[theme.Key] = theme.Value;
+            }
+            return this;
+        }
+        
+        /// <summary>Validate theme configuration</summary>
+        private static void ValidateTheme(string themeName, string scssFilePath)
+        {
+            // Validate theme name
+            if (string.IsNullOrWhiteSpace(themeName))
+                throw new ArgumentException("Theme name cannot be null or empty", nameof(themeName));
+            
+            if (themeName.Length > 50)
+                throw new ArgumentException("Theme name cannot exceed 50 characters", nameof(themeName));
+            
+            if (!System.Text.RegularExpressions.Regex.IsMatch(themeName, @"^[a-zA-Z0-9_-]+$"))
+                throw new ArgumentException("Theme name must contain only alphanumeric characters, hyphens, and underscores", nameof(themeName));
+            
+            // Validate file path
+            if (string.IsNullOrWhiteSpace(scssFilePath))
+                throw new ArgumentException("SCSS file path cannot be null or empty", nameof(scssFilePath));
+            
+            if (!scssFilePath.EndsWith(".scss", StringComparison.OrdinalIgnoreCase))
+                throw new ArgumentException("Theme file must have .scss extension", nameof(scssFilePath));
+            
+            if (scssFilePath.Contains("..") || Path.IsPathRooted(scssFilePath) && !Path.IsPathFullyQualified(scssFilePath))
+                throw new ArgumentException("Invalid file path. Use relative paths within project", nameof(scssFilePath));
         }
     }
     
