@@ -1,0 +1,255 @@
+@**
+<summary>
+Error boundary component for isolating component failures and providing graceful fallback UI.
+Captures unhandled exceptions in child components and displays user-friendly error messages.
+</summary>
+<category>Feedback</category>
+<complexity>Medium</complexity>
+<ai-prompt>Create error boundary for component isolation with retry and error details</ai-prompt>
+<ai-common-use>wrapping critical components, form containers, dashboard sections, modals</ai-common-use>
+<ai-avoid>Don't wrap every small component - use for logical boundaries</ai-avoid>
+**@
+
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.Components
+@using Microsoft.Extensions.Logging
+@using Microsoft.JSInterop
+@inherits ErrorBoundaryBase
+@inject ILogger<RErrorBoundary> Logger
+@inject IJSRuntime JS
+
+@if (hasError)
+{
+    <RAlert Type="AlertType.Error" 
+            Variant="AlertVariant.Filled"
+            Size="AlertSize.Medium"
+            Title="@ErrorTitle"
+            Message="@ErrorMessage"
+            ContentAlignment="AlertContentAlignment.Center"
+            Dismissible="@AllowRetry"
+            OnDismiss="@ResetError">
+        
+        <ChildContent>
+            
+            @if ((showTechnicalDetails || IsDevelopment) && !string.IsNullOrEmpty(technicalDetails))
+            {
+                <div class="mt-4 pa-3 bg-surface-elevated rounded border border-light">
+                    <h5 class="text-body-2 font-medium mb-2 text-error">Technical Details:</h5>
+                    <pre class="text-xs text-muted font-monospace overflow-auto whitespace-pre-wrap max-h-96">@technicalDetails</pre>
+                </div>
+            }
+            
+            @if (IsDevelopment && currentException != null)
+            {
+                <div class="mt-4 pa-3 bg-error-light rounded border border-error">
+                    <h5 class="text-body-2 font-medium mb-2 text-error">Full Stack Trace (Development Only):</h5>
+                    <pre class="text-xs text-muted font-monospace overflow-auto whitespace-pre-wrap max-h-96">@currentException.ToString()</pre>
+                </div>
+            }
+            
+            @if (CustomErrorContent != null)
+            {
+                <div class="mt-3">
+                    @CustomErrorContent(currentException)
+                </div>
+            }
+        </ChildContent>
+        
+        <Actions>
+            <div class="d-flex justify-content-center gap-2 w-100">
+                @if (AllowRetry)
+                {
+                    <RButton Text="Try Again" 
+                             Variant="ButtonVariant.Error" 
+                             Size="ButtonSize.Medium"
+                             OnClick="@ResetError" />
+                }
+                
+                @if (!string.IsNullOrEmpty(technicalDetails) || currentException != null)
+                {
+                    <RButton Text="Copy Details" 
+                             Icon="content_copy"
+                             Variant="ButtonVariant.Ghost" 
+                             Size="ButtonSize.Medium"
+                             OnClick="@CopyErrorDetails"
+                             Class="text-error" />
+                }
+                
+                @if (!IsDevelopment && ShowDetails && !string.IsNullOrEmpty(technicalDetails))
+                {
+                    <RButton Text="@(showTechnicalDetails ? "Hide Details" : "Show Details")" 
+                             Variant="ButtonVariant.Ghost" 
+                             Size="ButtonSize.Medium"
+                             OnClick="@ToggleTechnicalDetails"
+                             Class="text-error" />
+                }
+            </div>
+        </Actions>
+    </RAlert>
+}
+else
+{
+    @ChildContent
+}
+
+@code {
+    private bool hasError = false;
+    private Exception? currentException = null;
+    private string technicalDetails = string.Empty;
+    private bool showTechnicalDetails = false;
+
+    /// <summary>Custom error title</summary>
+    [Parameter] public string ErrorTitle { get; set; } = "Something went wrong";
+
+    /// <summary>Custom error message</summary>
+    [Parameter] public string ErrorMessage { get; set; } = "An unexpected error occurred. Please try again or contact support if the problem persists.";
+
+    /// <summary>Whether to show retry button</summary>
+    [Parameter] public bool AllowRetry { get; set; } = true;
+
+    /// <summary>Whether to show technical details toggle</summary>
+    [Parameter] public bool ShowDetails { get; set; } = false;
+    
+    /// <summary>Whether we're in development environment</summary>
+    private bool IsDevelopment => Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development" ||
+                                 Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") == "Development" ||
+                                 string.IsNullOrEmpty(Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"));
+
+    /// <summary>Custom error content render fragment</summary>
+    [Parameter] public RenderFragment<Exception>? CustomErrorContent { get; set; }
+
+    /// <summary>Error occurred event</summary>
+    [Parameter] public EventCallback<Exception> OnError { get; set; }
+
+    /// <summary>Error reset event</summary>
+    [Parameter] public EventCallback OnReset { get; set; }
+
+    /// <summary>Component name for logging context</summary>
+    [Parameter] public string ComponentName { get; set; } = "Unknown Component";
+
+    protected override async Task OnErrorAsync(Exception exception)
+    {
+        hasError = true;
+        currentException = exception;
+        
+        // Generate technical details for debugging
+        technicalDetails = GenerateTechnicalDetails(exception);
+        
+        // Log error with proper context
+        Logger.LogError(exception, "Error boundary caught exception in {ComponentName}: {Message}", 
+            ComponentName, exception.Message);
+        
+        // Force state update to ensure UI shows error
+        await InvokeAsync(StateHasChanged);
+        
+        // Notify parent component
+        if (OnError.HasDelegate)
+        {
+            await OnError.InvokeAsync(exception);
+        }
+    }
+
+    private async Task ResetError()
+    {
+        hasError = false;
+        currentException = null;
+        technicalDetails = string.Empty;
+        showTechnicalDetails = false;
+        
+        // Reset the error boundary
+        Recover();
+        
+        // Notify parent component
+        if (OnReset.HasDelegate)
+        {
+            await OnReset.InvokeAsync();
+        }
+        
+        StateHasChanged();
+    }
+
+    private void ToggleTechnicalDetails()
+    {
+        showTechnicalDetails = !showTechnicalDetails;
+        StateHasChanged();
+    }
+
+    private async Task CopyErrorDetails()
+    {
+        try
+        {
+            var detailsToCopy = GenerateFullErrorDetails();
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", detailsToCopy);
+            
+            // Optionally, we could show a success snackbar here
+            Logger.LogInformation("Error details copied to clipboard");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to copy error details to clipboard");
+        }
+    }
+
+    private string GenerateFullErrorDetails()
+    {
+        var details = new List<string>
+        {
+            $"=== ERROR REPORT ===",
+            $"Component: {ComponentName}",
+            $"Timestamp: {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC",
+            $"Error ID: {Guid.NewGuid():N}",
+            "",
+            "=== TECHNICAL DETAILS ===",
+            technicalDetails
+        };
+
+        if (currentException != null)
+        {
+            details.Add("");
+            details.Add("=== FULL STACK TRACE ===");
+            details.Add(currentException.ToString());
+        }
+
+        return string.Join(Environment.NewLine, details);
+    }
+
+    private string GenerateTechnicalDetails(Exception exception)
+    {
+        var details = new List<string>
+        {
+            $"Exception Type: {exception.GetType().FullName}",
+            $"Message: {exception.Message}",
+            $"Component: {ComponentName}",
+            $"Timestamp: {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC",
+            $"Error ID: {Guid.NewGuid():N}"
+        };
+
+        if (exception.InnerException != null)
+        {
+            details.Add($"Inner Exception: {exception.InnerException.GetType().FullName}");
+            details.Add($"Inner Message: {exception.InnerException.Message}");
+        }
+
+        if (IsDevelopment)
+        {
+            details.Add($"Source: {exception.Source}");
+            if (!string.IsNullOrEmpty(exception.StackTrace))
+            {
+                details.Add($"Stack Trace Preview: {exception.StackTrace.Split('\n').FirstOrDefault()?.Trim()}");
+            }
+        }
+
+        return string.Join(Environment.NewLine, details);
+    }
+
+    protected override void OnInitialized()
+    {
+        // Set component name from parent if not provided
+        if (ComponentName == "Unknown Component")
+        {
+            var parentType = GetType().Assembly.GetTypes()
+                .FirstOrDefault(t => t.Name.Contains("Parent") || t.Name.Contains("Container"));
+            ComponentName = parentType?.Name ?? "RErrorBoundary";
+        }
+    }
+}

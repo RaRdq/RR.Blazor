@@ -22,4 +22,11 @@ namespace RR.Blazor.Enums
         Medium,
         Large
     }
+    
+    public enum AlertContentAlignment
+    {
+        Start,
+        Center,
+        End
+    }
 }
