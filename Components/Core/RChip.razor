@@ -14,23 +14,24 @@ Supports removable chips, selection indicators, icons, and multiple variants.
 **@
 @using RR.Blazor.Enums
 
-<span class="@GetChipClasses()" @onclick="HandleClick">
+<span class="@GetChipClasses() d-inline-flex align-center rounded-full px-3 py-1 text-sm font-medium transition-all" @onclick="HandleClick">
     @if (!string.IsNullOrEmpty(Icon) && IconPosition == IconPosition.Start)
     {
-        <i class="material-symbols-rounded chip-icon chip-icon-start">@Icon</i>
+        <i class="material-symbols-rounded chip-icon chip-icon-start text-sm mr-1">@Icon</i>
     }
     
     <span class="chip-label">@Text</span>
     
     @if (!string.IsNullOrEmpty(Icon) && IconPosition == IconPosition.End && !Closeable)
     {
-        <i class="material-symbols-rounded chip-icon chip-icon-end">@Icon</i>
+        <i class="material-symbols-rounded chip-icon chip-icon-end text-sm ml-1">@Icon</i>
     }
     
     @if (Closeable)
     {
-        <button class="chip-close" @onclick:stopPropagation="true" @onclick="HandleClose" aria-label="Remove @Text">
-            <i class="material-symbols-rounded">close</i>
+        <button class="chip-close absolute right-1 top-1-2 w-5 h-5 d-flex align-center justify-center rounded-full hover-bg-surface-elevated transition-colors" 
+                @onclick:stopPropagation="true" @onclick="HandleClose" aria-label="Remove @Text">
+            <i class="material-symbols-rounded text-xs">close</i>
         </button>
     }
 </span>
@@ -53,28 +54,31 @@ Supports removable chips, selection indicators, icons, and multiple variants.
     {
         var classes = new List<string> { "chip" };
         
-        classes.Add($"chip-{Variant.ToString().ToLower()}");
+        // Variant utility classes
+        classes.Add(GetVariantUtilityClasses());
         
-        classes.Add($"chip-{Size.ToString().ToLower()}");
+        // Size utility classes
+        classes.Add(GetSizeUtilityClasses());
         
+        // State utility classes
         if (Clickable && !Disabled)
         {
-            classes.Add("chip-clickable");
+            classes.Add("chip-clickable cursor-pointer hover-scale-sm hover-glow-sm");
         }
         
         if (Selected)
         {
-            classes.Add("chip-selected");
+            classes.Add("chip-selected bg-primary text-on-primary shadow-md");
         }
         
         if (Closeable)
         {
-            classes.Add("chip-closeable");
+            classes.Add("chip-closeable pr-8");
         }
         
         if (Disabled)
         {
-            classes.Add("chip-disabled");
+            classes.Add("chip-disabled opacity-50 cursor-not-allowed");
         }
         
         if (!string.IsNullOrEmpty(Class))
@@ -83,6 +87,30 @@ Supports removable chips, selection indicators, icons, and multiple variants.
         }
         
         return string.Join(" ", classes);
+    }
+
+    private string GetVariantUtilityClasses()
+    {
+        return Variant switch
+        {
+            ChipVariant.Primary => "chip-primary bg-primary text-on-primary",
+            ChipVariant.Secondary => "chip-secondary bg-surface text-secondary border border-light",
+            ChipVariant.Success => "chip-success bg-success text-on-success",
+            ChipVariant.Warning => "chip-warning bg-warning text-on-warning",
+            ChipVariant.Danger => "chip-error bg-error text-on-error",
+            ChipVariant.Info => "chip-info bg-info text-on-info",
+            _ => "chip-default bg-surface text-muted border border-light"
+        };
+    }
+
+    private string GetSizeUtilityClasses()
+    {
+        return Size switch
+        {
+            ChipSize.Small => "chip-small px-2 py-0-5 text-xs min-h-6",
+            ChipSize.Large => "chip-large px-4 py-2 text-base min-h-10",
+            _ => "px-3 py-1 text-sm min-h-8" // Medium is default
+        };
     }
 
     private async Task HandleClick()

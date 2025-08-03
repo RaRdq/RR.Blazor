@@ -9,6 +9,44 @@
   // Input field container
   &-input {
     width: 100%;
+    
+    // Fix for input group with end icon (chevron/dropdown)
+    .input-group {
+      position: relative;
+      width: 100%;
+      
+      .relative {
+        position: relative;
+        width: 100%;
+      }
+      
+      // Fix mispositioned chevron/dropdown icon for autosuggest
+      .input-group-icon-end {
+        position: absolute;
+        right: var(--space-3);
+        top: 50%;
+        transform: translateY(-50%);
+        pointer-events: none !important;
+        z-index: 10;
+        width: var(--icon-base);
+        height: var(--icon-base);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--color-text-secondary);
+        
+        // Ensure icon stays within input bounds
+        i {
+          font-size: var(--text-lg);
+          line-height: 1;
+        }
+      }
+      
+      // Ensure input has proper padding for icon
+      input {
+        padding-right: calc(var(--space-12) + var(--space-2)) !important;
+      }
+    }
   }
 
   // Backdrop (managed by portal system)
@@ -33,12 +71,20 @@
     transition: opacity var(--duration-fast) var(--ease-out),
                 visibility var(--duration-fast) var(--ease-out);
     pointer-events: none;
+    max-height: min(20rem, 50vh);
+    overflow: visible;
     
     // Modal-aware layering
     .modal &, 
     .modal-container &,
     .modal-content & {
       z-index: var(--z-modal-popup);
+    }
+    
+    // Prevent pushing content
+    &[data-portal-id] {
+      position: fixed !important;
+      margin: 0 !important;
     }
   }
 
@@ -240,6 +286,40 @@
   
   &[class*="grid"] {
     isolation: isolate;
+  }
+}
+
+// Fix for autosuggest in constrained containers
+.autosuggest {
+  // Prevent the autosuggest from pushing content off screen
+  &-expanded,
+  &.expanded {
+    max-width: 100%;
+    
+    .autosuggest-input {
+      max-width: 100%;
+    }
+  }
+  
+  // When inside flex containers, prevent overflow
+  .d-flex &,
+  .flex &,
+  [class*="flex"] & {
+    min-width: 0;
+    flex: 1 1 auto;
+    
+    &-expanded,
+    &.expanded {
+      flex: 1 1 auto;
+      max-width: 100%;
+    }
+  }
+  
+  // Fix for RAppShell header constraints
+  .header-right & {
+    flex: 1 1 auto;
+    max-width: var(--space-96);
+    min-width: 0;
   }
 }
 

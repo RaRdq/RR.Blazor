@@ -9,7 +9,7 @@
 @* Auto-portaled modal with backdrop and positioning *@
 @if (Visible)
 {
-    <div class="modal-content @GetSizeClass() @Class modal--visible" 
+    <div class="modal-content @GetSizeClass() @Class @GetVisibilityClass() @GetAnimationClass()" 
          role="dialog" 
          aria-modal="true" 
          aria-labelledby="@ModalTitleId" 
@@ -23,7 +23,7 @@
                 @if (ShowHeader)
                 {
                     <div class="modal-header @GetModalHeaderClasses()">
-                        <div class="d-flex align-center @GetModalHeaderClasses()">
+                        <div class="d-flex items-center @GetModalHeaderClasses()">
                             @if (!string.IsNullOrEmpty(Icon))
                             {
                                 <i class="material-symbols-rounded text-primary @GetIconSizeClass()" aria-hidden="true">@Icon</i>
@@ -32,11 +32,11 @@
                                 <h3 id="@ModalTitleId" class="modal-title ma-0 @GetTitleClasses()">@Text</h3>
                                 @if (!string.IsNullOrEmpty(Subtitle))
                                 {
-                                    <p id="@ModalDescriptionId" class="modal-subtitle ma-0 text-sm text-secondary">@Subtitle</p>
+                                    <p id="@ModalDescriptionId" class="modal-subtitle ma-0 text-sm text-muted">@Subtitle</p>
                                 }
                             </div>
                         </div>
-                        <div class="header-actions d-flex align-center gap-2">
+                        <div class="header-actions d-flex items-center gap-2">
                             @HeaderContent
                             @if (ShowCloseButton)
                             {
@@ -57,10 +57,10 @@
                 <div class="modal-body @GetModalBodyClasses()">
                     @if (Processing && ShowProcessingOverlay)
                     {
-                        <div class="overlay-full overlay-light d-flex align-center justify-center">
-                            <div class="d-flex flex-col align-center @GetProcessingOverlayClasses() bg-surface-elevated rounded-lg shadow-lg">
+                        <div class="overlay-full overlay-light d-flex items-center justify-center">
+                            <div class="d-flex flex-col items-center @GetProcessingOverlayClasses() bg-surface-elevated rounded-lg shadow-lg">
                                 <div class="spinner-lg"></div>
-                                <p class="text-body-2 text-secondary ma-0">@ProcessingMessage</p>
+                                <p class="text-base text-muted ma-0">@ProcessingMessage</p>
                             </div>
                         </div>
                     }
@@ -106,7 +106,7 @@
                             </RActionGroup>
                             @if (ShowUnsavedIndicator && HasUnsavedChanges)
                             {
-                                <div class="d-flex align-center gap-2 pa-3 bg-info-light text-info rounded-lg">
+                                <div class="d-flex items-center gap-2 pa-3 bg-info-light text-info rounded-lg">
                                     <i class="material-symbols-rounded">info</i>
                                     <span class="text-sm">You have unsaved changes</span>
                                 </div>
@@ -402,20 +402,29 @@ private async Task CleanupPortal()
     private string GetFullViewportStyles()
     {
         return $@"
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            right: 0 !important;
-            bottom: 0 !important;
-            width: 100vw !important;
-            height: 100vh !important;
             z-index: {modalZIndex} !important;
-            pointer-events: auto !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
         ";
     }
+    
+    private string GetModalContainerClasses()
+    {
+        var positionClass = "modal-center"; // default center positioning
+        var backdropClass = Variant == ModalVariant.Glass ? "modal-backdrop-glass" : "modal-backdrop-dark";
+        var sizeClass = GetSizeClass();
+        var animationSpeedClass = GetAnimationSpeedClass();
+        var protectedClass = Variant == ModalVariant.Protected ? "modal-protected" : "";
+        
+        return $"modal-container modal-backdrop {backdropClass} {positionClass} {sizeClass} {animationSpeedClass} {protectedClass}".Trim();
+    }
+    
+    private string GetAnimationSpeedClass() => AnimationSpeed switch
+    {
+        AnimationSpeed.UltraFast => "modal-animate-fast",
+        AnimationSpeed.Fast => "modal-animate-fast", 
+        AnimationSpeed.Slow => "modal-animate-slow",
+        AnimationSpeed.VerySlow => "modal-animate-slow",
+        _ => "" // normal speed uses default
+    };
     
     private async Task OnKeyDownHandler(KeyboardEventArgs e)
     {
@@ -530,6 +539,21 @@ private async Task CleanupPortal()
         ModalSize.Wide => "modal-wide",
         ModalSize.Full => "modal-full",
         _ => "modal-medium" // default medium size
+    };
+    
+    private string GetVisibilityClass() => Visible ? "modal-visible" : "modal-hidden";
+    
+    private string GetAnimationClass() => Animation switch
+    {
+        ModalAnimation.Fade => "modal-fade-in",
+        ModalAnimation.SlideUp => "modal-slide-up",
+        ModalAnimation.SlideUpSmooth => "modal-slide-up",
+        ModalAnimation.SlideDown => "modal-slide-down",
+        ModalAnimation.SlideLeft => "modal-slide-left",
+        ModalAnimation.SlideRight => "modal-slide-right",
+        ModalAnimation.DropdownSlideIn => "modal-slide-down",
+        ModalAnimation.None => "",
+        _ => "modal-scale-in" // default scale animation for Scale, Bounce, Zoom, Flip, Swing
     };
 
     private string GetModalHeaderClasses()

@@ -37,7 +37,7 @@ Supports header, media, content areas, loading states, elevation effects, and co
         <div class="@GetHeaderClasses()">
             @if (!string.IsNullOrEmpty(Icon))
             {
-                <i class="material-symbols-rounded mr-3 @GetIconSizeClass()">@Icon</i>
+                <i class="material-symbols-rounded mr-3 @GetIconSizeClass() icon-dynamic">@Icon</i>
             }
             
             <div class="grow">
@@ -261,71 +261,93 @@ Supports header, media, content areas, loading states, elevation effects, and co
     {
         var classes = new List<string>
         {
-            "relative",
+            "card",
+            "position-relative",
             "bg-surface-elevated",
-            "border",
             "rounded-lg",
             "overflow-hidden",
-            "transition"
+            "transition-all"
         };
         
+        // Apply elevation utilities
         if (Elevation >= 0)
         {
-            classes.Add($"elevation-{Math.Min(24, Math.Max(0, Elevation))}");
+            classes.Add($"elevation-{Math.Min(16, Math.Max(0, Elevation))}");
         }
         else
         {
+            // Default elevations per variant
             switch (Variant)
             {
                 case CardVariant.Default:
-                    classes.AddRange(new[] { "border-light", "shadow-sm" });
+                    classes.AddRange(new[] { "border border-light", "elevation-2" });
                     break;
                     
                 case CardVariant.Outlined:
-                    classes.AddRange(new[] { "border-light", "shadow-none" });
+                    classes.AddRange(new[] { "border border-light", "elevation-0" });
                     break;
                     
                 case CardVariant.Elevated:
-                    classes.AddRange(new[] { "border-light", "shadow-lg" });
+                    classes.AddRange(new[] { "border border-light", "elevation-8" });
                     break;
                     
                 case CardVariant.Glass:
-                    classes.AddRange(new[] { "border-light", "backdrop-blur-sm", "bg-overlay" });
+                    classes.AddRange(new[] { "glass-light", "backdrop-blur-sm", "border border-glass" });
                     break;
                     
                 case CardVariant.Flat:
-                    classes.AddRange(new[] { "border-none", "shadow-none" });
+                    classes.AddRange(new[] { "elevation-0" });
                     break;
             }
         }
         
+        // Interactive states with utilities
         if (Clickable && !Disabled)
         {
+            classes.Add("cursor-pointer");
+            
             if (Elevation >= 0)
             {
-                var hoverElevation = Math.Min(24, Elevation + 2);
-                classes.AddRange(new[] { "cursor-pointer", $"hover:elevation-{hoverElevation}", "hover:-translate-y-1" });
+                var hoverElevation = Math.Min(16, Elevation + 2);
+                classes.Add($"hover:elevation-{hoverElevation}");
             }
             else
             {
-                classes.AddRange(new[] { "cursor-pointer", "hover:shadow-md", "hover:-translate-y-1" });
+                // Default hover elevations
+                switch (Variant)
+                {
+                    case CardVariant.Default:
+                        classes.Add("hover:elevation-4");
+                        break;
+                    case CardVariant.Outlined:
+                        classes.Add("hover:elevation-2");
+                        break;
+                    case CardVariant.Elevated:
+                        classes.Add("hover:elevation-12");
+                        break;
+                    case CardVariant.Glass:
+                        classes.Add("hover:glass-medium");
+                        break;
+                }
             }
+            
+            classes.Add("hover-lift-sm");
+            classes.Add("active-scale-sm");
         }
-        
         
         if (Selected)
         {
-            classes.AddRange(new[] { "border-primary", "shadow-primary" });
+            classes.AddRange(new[] { "border-2 border-primary", "elevation-4" });
         }
         
         if (Disabled)
         {
-            classes.AddRange(new[] { "opacity-50", "cursor-not-allowed" });
+            classes.Add("state-disabled");
         }
         
         if (Loading)
         {
-            classes.Add("card-loading");
+            classes.Add("state-loading");
         }
         
         if (!string.IsNullOrEmpty(Class))
@@ -469,7 +491,7 @@ Supports header, media, content areas, loading states, elevation effects, and co
     
     private string GetLoadingOverlayClasses()
     {
-        return "absolute inset-0 bg-overlay flex items-center justify-center z-10";
+        return "absolute inset-0 bg-overlay flex items-center justify-center z-10 state-loading-overlay";
     }
     
     private string GetRibbonClasses()

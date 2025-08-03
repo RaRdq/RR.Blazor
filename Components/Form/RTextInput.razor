@@ -103,7 +103,7 @@
                         @onclick="TogglePasswordVisibility"
                         title="@(showPassword ? "Hide password" : "Show password")"
                         aria-label="@(showPassword ? "Hide password" : "Show password")"
-                        class="touch-target min-h-11 min-w-11">
+                        class="touch-target hover-scale-sm active-scale-sm transition-transform opacity-75 hover:opacity-100">
                     <i class="material-symbols-rounded">@(showPassword ? "visibility_off" : "visibility")</i>
                 </button>
             </div>
@@ -124,7 +124,7 @@
         
         @if (Loading)
         {
-            <div class="absolute inset-0 d-flex items-center justify-center bg-surface bg-opacity-75">
+            <div class="absolute inset-0 d-flex items-center justify-center bg-surface opacity-75">
                 <i class="material-symbols-rounded text-primary animate-spin">progress_activity</i>
             </div>
         }
@@ -133,7 +133,7 @@
     @if (IsInErrorState && !string.IsNullOrEmpty(GetEffectiveErrorMessage()))
     {
         <div class="@GetErrorMessageClasses()">
-            <i class="material-symbols-rounded text-error mr-1">error</i>
+            <i class="material-symbols-rounded text-error text-sm mr-1">error</i>
             @GetEffectiveErrorMessage()
         </div>
     }
@@ -292,60 +292,77 @@
     {
         var classes = new List<string>
         {
-            "input",
-            "w-full"
+            "input",  // Base input component class for essentials
+            "w-full",
+            "border",
+            "rounded-lg",
+            "transition-all",
+            "outline-none",
+            "focus:outline-none"
         };
         
-
-        classes.AddRange(GetVariantClasses());
+        // Base styling with utilities
+        classes.Add("bg-surface-elevated");
+        classes.Add("text-primary");
         
-
-        var sizeClass = Size switch
-        {
-            TextInputSize.Small => "input-sm",
-            TextInputSize.Large => "input-lg",
-            _ => ""
-        };
+        // Variant-specific utilities
+        classes.AddRange(GetVariantUtilities());
         
-        var densityClass = Density switch
-        {
-            ComponentDensity.Compact => "input-compact",
-            ComponentDensity.Dense => "input-dense", 
-            ComponentDensity.Spacious => "input-spacious",
-            ComponentDensity.Normal => "input-normal",
-            _ => "input-normal"
-        };
+        // Size and density utilities
+        classes.Add(GetSizeDensityUtilities());
         
-        if (!string.IsNullOrEmpty(sizeClass))
-            classes.Add(sizeClass);
-        if (!string.IsNullOrEmpty(densityClass))
-            classes.Add(densityClass);
-        
-
+        // Icon padding utilities
         if (!string.IsNullOrEmpty(StartIcon))
         {
-            classes.Add("input-with-start-icon");
+            classes.Add("pl-12");  // Space for start icon
         }
         if (!string.IsNullOrEmpty(EndIcon) || (IsPasswordField && ShowPasswordToggle))
         {
-            classes.Add("input-with-end-icon");
+            classes.Add("pr-12");  // Space for end icon
         }
         
-
+        // State utilities
         if (HasError)
         {
             classes.Add("input-error");
+            classes.Add("border-error");
+            classes.Add("border-2");
+            classes.Add("bg-error-light");
         }
+        else
+        {
+            classes.Add("border-light");
+            classes.Add("hover:border-secondary");
+            classes.Add("focus:border-primary");
+            classes.Add("focus:border-2");
+        }
+        
+        // Focus ring utilities
+        classes.Add("focus:ring-2");
+        classes.Add("focus:ring-primary");
+        classes.Add("focus:ring-opacity-25");
         
         if (Disabled)
         {
-            classes.Add("opacity-50");
-            classes.Add("cursor-not-allowed");
+            classes.Add("state-disabled");
         }
         
         if (ReadOnly)
         {
             classes.Add("cursor-default");
+            classes.Add("opacity-80");
+        }
+        
+        if (Loading)
+        {
+            classes.Add("state-loading");
+        }
+        
+        // Hover effects
+        if (!Disabled && !ReadOnly)
+        {
+            classes.Add("hover:shadow-sm");
+            classes.Add("hover:-translate-y-px");
         }
         
         return string.Join(" ", classes.Where(c => !string.IsNullOrEmpty(c)));
@@ -356,15 +373,41 @@
         return IsFloatingLabel() ? "" : Placeholder ?? "";
     }
     
-    private List<string> GetVariantClasses()
+    private List<string> GetVariantUtilities()
     {
         return Variant switch
         {
-            TextInputVariant.Outlined => new List<string> { "input-outlined" },
-            TextInputVariant.Filled => new List<string> { "input-filled" },
-            TextInputVariant.Clean => new List<string> { "input-clean" },
-            TextInputVariant.Glass => new List<string> { "input-glass" },
+            TextInputVariant.Outlined => new List<string> { "bg-transparent", "border-2" },
+            TextInputVariant.Filled => new List<string> { "bg-surface", "border-transparent" },
+            TextInputVariant.Clean => new List<string> { "bg-surface", "border-transparent", "hover:bg-surface-elevated" },
+            TextInputVariant.Glass => new List<string> { "glass-light", "backdrop-blur-sm", "bg-overlay" },
             _ => new List<string>()
+        };
+    }
+    
+    private string GetSizeDensityUtilities()
+    {
+        return (Size, Density) switch
+        {
+            // Small size variations
+            (TextInputSize.Small, ComponentDensity.Compact) => "px-2 py-1 text-xs",
+            (TextInputSize.Small, ComponentDensity.Dense) => "px-3 py-1 text-sm",
+            (TextInputSize.Small, ComponentDensity.Normal) => "px-3 py-2 text-sm",
+            (TextInputSize.Small, ComponentDensity.Spacious) => "px-4 py-2 text-sm",
+            
+            // Medium size variations (default)
+            (TextInputSize.Medium, ComponentDensity.Compact) => "px-3 py-1 text-sm",
+            (TextInputSize.Medium, ComponentDensity.Dense) => "px-3 py-2 text-base",
+            (TextInputSize.Medium, ComponentDensity.Normal) => "px-4 py-3 text-base",
+            (TextInputSize.Medium, ComponentDensity.Spacious) => "px-5 py-4 text-base",
+            
+            // Large size variations
+            (TextInputSize.Large, ComponentDensity.Compact) => "px-3 py-2 text-base",
+            (TextInputSize.Large, ComponentDensity.Dense) => "px-4 py-2 text-lg",
+            (TextInputSize.Large, ComponentDensity.Normal) => "px-5 py-3 text-lg",
+            (TextInputSize.Large, ComponentDensity.Spacious) => "px-6 py-4 text-lg",
+            
+            _ => "px-4 py-3 text-base" // Default to medium/normal
         };
     }
     
@@ -372,32 +415,37 @@
     
     private string GetStartIconContainerClasses()
     {
-        return "input-group-icon";
+        return "input-group-icon text-secondary";
     }
     
     private string GetEndIconContainerClasses()
     {
-        return "input-group-icon-end";
+        return "input-group-icon-end text-secondary";
     }
     
     private string GetIconClasses()
     {
-        return "text-lg text-secondary";
+        return Size switch
+        {
+            TextInputSize.Small => "text-sm",
+            TextInputSize.Large => "text-xl",
+            _ => "text-lg"
+        };
     }
     
     private string GetLabelClasses()
     {
-        return "input-group-label";
+        return "block text-sm font-medium text-secondary uppercase tracking-wide mb-1";
     }
     
     private string GetErrorMessageClasses()
     {
-        return "input-group-error";
+        return "d-flex align-center gap-1 text-error text-sm mt-1";
     }
     
     private string GetHelpTextClasses()
     {
-        return "input-group-help";
+        return "text-secondary text-sm mt-1";
     }
     
     private string GetPasswordToggleButtonClasses()

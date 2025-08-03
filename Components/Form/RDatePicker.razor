@@ -551,27 +551,46 @@
 
     private IEnumerable<CalendarDay> GetCalendarDays()
     {
-        var firstDayOfMonth = new DateTime(currentViewDate.Year, currentViewDate.Month, 1);
+        var safeCurrentViewDate = currentViewDate;
+        
+        if (safeCurrentViewDate.Year < 1100 || safeCurrentViewDate.Year > 3100)
+        {
+            safeCurrentViewDate = DateTime.Today;
+        }
+        
+        var firstDayOfMonth = new DateTime(safeCurrentViewDate.Year, safeCurrentViewDate.Month, 1);
         var lastDayOfMonth = firstDayOfMonth.AddMonths(1).AddDays(-1);
         var firstDayOfWeek = CultureInfo.CurrentCulture.DateTimeFormat.FirstDayOfWeek;
         
         var startDate = firstDayOfMonth;
-        while (startDate.DayOfWeek != firstDayOfWeek)
+        var attempts = 0;
+        while (startDate.DayOfWeek != firstDayOfWeek && attempts < 7)
+        {
+            if (startDate.Year < 1100) break;
             startDate = startDate.AddDays(-1);
+            attempts++;
+        }
 
         var endDate = lastDayOfMonth;
-        while (endDate.DayOfWeek != (DayOfWeek)(((int)firstDayOfWeek + 6) % 7))
+        attempts = 0;
+        while (endDate.DayOfWeek != (DayOfWeek)(((int)firstDayOfWeek + 6) % 7) && attempts < 7)
+        {
+            if (endDate.Year > 3100) break;
             endDate = endDate.AddDays(1);
+            attempts++;
+        }
 
         for (var date = startDate; date <= endDate; date = date.AddDays(1))
         {
             yield return new CalendarDay
             {
                 Date = date,
-                IsCurrentMonth = date.Month == currentViewDate.Month,
+                IsCurrentMonth = date.Month == safeCurrentViewDate.Month,
                 IsToday = date.Date == DateTime.Today,
                 IsWeekend = date.DayOfWeek == DayOfWeek.Saturday || date.DayOfWeek == DayOfWeek.Sunday
             };
+            
+            if (date.Year > 3100) break;
         }
     }
 

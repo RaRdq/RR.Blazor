@@ -1,5 +1,54 @@
 @use '../abstracts' as *;
 
+// App Shell Container Context Settings
+.app-shell {
+  // Default container context for the app shell
+  --container-padding: var(--space-md);
+  --container-gap: var(--space-sm);
+  
+  // Shell-specific responsive adjustments
+  @include responsive-max(md) {
+    --container-padding: calc(var(--container-padding, var(--space-md)) * 0.75);
+    --container-gap: calc(var(--container-gap, var(--space-sm)) * 0.75);
+  }
+  
+  @include responsive-between(md, lg) {
+    --container-padding: calc(var(--container-padding, var(--space-md)) * 0.875);
+  }
+}
+
+// Sidebar Container Context
+.sidebar {
+  // Sidebar sets compact context for navigation
+  --container-padding: var(--space-sm);
+  --container-gap: var(--space-xs);
+  
+  &[data-collapsed="true"] {
+    --container-padding: var(--space-xs);
+    --container-gap: 0;
+  }
+  
+  &[data-expanded="true"] {
+  }
+}
+
+// Main Content Container Context
+.main-content {
+  --container-padding: var(--space-lg);
+  --container-gap: var(--space-md);
+  
+  // Responsive adjustments for main content
+  @include responsive-max(md) {
+    --container-padding: var(--space-md);
+    --container-gap: var(--space-sm);
+  }
+}
+
+// Header Container Context
+.header {
+  --container-padding: var(--space-md);
+  --container-gap: var(--space-sm);
+}
 
 .sidebar-logo {
   display: flex;
@@ -107,6 +156,97 @@
 
 .shell-transition { transition: var(--app-shell-transition); }
 .shell-transition-fast { transition: all var(--shell-transition-fast) var(--ease-out); }
+
+// Container-aware utilities
+.container-aware {
+  padding: var(--container-padding, var(--space-6));
+  gap: var(--container-gap, var(--space-4));
+}
+
+.container-responsive {
+  @include responsive-container-context;
+}
+
+// App Shell Search Utilities
+.app-search {
+  display: flex;
+  align-items: center;
+  position: relative;
+  
+  // Fixed search (always visible)
+  &.search-fixed {
+    flex: 1;
+    min-width: 0;
+    max-width: 28rem; // max-w-md equivalent
+    
+    .search-input {
+      width: 100%;
+    }
+  }
+  
+  // Collapsible search (responsive)
+  &.search-collapsible {
+    // Collapsed state (icon only)
+    &:not(.search-expanded) {
+      flex: none;
+      
+      .search-input {
+        display: none;
+      }
+      
+      .search-toggle {
+        display: flex;
+      }
+    }
+    
+    // Expanded state (full input)
+    &.search-expanded {
+      flex: 1;
+      min-width: 0;
+      gap: var(--space-1);
+      
+      .search-input {
+        display: flex;
+        flex: 1;
+        min-width: 0;
+      }
+      
+      .search-toggle {
+        display: none;
+      }
+      
+      .search-close {
+        display: flex;
+        flex: none;
+      }
+    }
+  }
+  
+  // Search input wrapper
+  .search-input {
+    position: relative;
+  }
+  
+  // Toggle button (expand search)
+  .search-toggle {
+    display: none;
+    flex: none;
+  }
+  
+  // Close button (collapse search)
+  .search-close {
+    display: none;
+    flex: none;
+  }
+}
+
+// Responsive behavior for mobile
+@include responsive-max(md) {
+  .app-search.search-fixed {
+    max-width: none;
+    flex: 1;
+  }
+}
 
 @media print {
   .print-hide-shell { display: none; }

@@ -30,13 +30,13 @@
     @if (EffectiveVariant == ChoiceVariant.Dropdown)
     {
         <!-- Dropdown Mode -->
-    <div @ref="choiceElement" class="choice choice-dropdown @(IsOpen ? "choice-open" : "") @GetDropdownDensityClass() @Class" 
+    <div @ref="choiceElement" class="choice choice-dropdown relative @(IsOpen ? "choice-open" : "") @GetDropdownDensityClass() @Class" 
          data-choice-id="@choiceElementId">
         
         @if (TriggerContent != null)
         {
             <!-- Custom Trigger Content -->
-            <button class="choice-trigger touch-target"
+            <button class="choice-trigger touch-target w-full d-flex align-center justify-between px-3 py-2 bg-surface border border-light rounded-md text-left hover-border-primary focus-ring transition-all"
                     @onclick="ToggleDropdown"
                     @onkeydown="OnKeyDown"
                     aria-haspopup="true"
@@ -49,7 +49,7 @@
         else
         {
             <!-- Default Trigger -->
-            <button class="choice-trigger touch-target"
+            <button class="choice-trigger touch-target w-full d-flex align-center justify-between px-3 py-2 bg-surface border border-light rounded-md text-left hover-border-primary focus-ring transition-all"
                     @onclick="ToggleDropdown"
                     @onkeydown="OnKeyDown"
                     aria-haspopup="true"
@@ -189,59 +189,70 @@ else
 
     private string GetInlineClass()
     {
-        var classes = new List<string>();
+        var classes = new List<string> { "choice-inline" };
         
-
+        // Style utility classes
         classes.Add(Style switch
         {
-            ChoiceStyle.Standard => "choice-switcher",
-            ChoiceStyle.Pills => "choice-pills",
-            ChoiceStyle.Tabs => "choice-tabs", 
-            ChoiceStyle.Buttons => "choice-buttons",
-            ChoiceStyle.Compact => "choice-compact",
-            _ => "choice-switcher"
+            ChoiceStyle.Standard => "choice-switcher d-flex gap-1 p-1 bg-surface rounded-lg",
+            ChoiceStyle.Pills => "choice-pills d-flex gap-2",
+            ChoiceStyle.Tabs => "choice-tabs d-flex border-b border-light", 
+            ChoiceStyle.Buttons => "choice-buttons d-flex gap-1",
+            ChoiceStyle.Compact => "choice-compact d-flex gap-0-5",
+            _ => "choice-switcher d-flex gap-1 p-1 bg-surface rounded-lg"
         });
         
-
+        // Density utility classes
         classes.Add(Density switch
         {
-            ComponentDensity.Compact => "choice-compact",
-            ComponentDensity.Dense => "choice-dense",
-            ComponentDensity.Normal => "choice-normal",
-            ComponentDensity.Spacious => "choice-spacious",
-            _ => "choice-normal"
+            ComponentDensity.Compact => "choice-compact gap-0-5 p-0-5",
+            ComponentDensity.Dense => "choice-dense gap-1 p-1",
+            ComponentDensity.Normal => "choice-normal gap-2 p-2",
+            ComponentDensity.Spacious => "choice-spacious gap-3 p-3",
+            _ => "choice-normal gap-2 p-2"
         });
         
-
+        // Direction utility classes
         if (Direction == ChoiceDirection.Vertical)
-            classes.Add("choice-vertical");
+            classes.Add("choice-vertical flex-col");
             
         return string.Join(" ", classes);
     }
 
     private string GetDropdownDensityClass()
     {
-        var classes = new List<string>();
-        
-        classes.Add(Density switch
+        return Density switch
         {
-            ComponentDensity.Compact => "choice-compact",
-            ComponentDensity.Dense => "choice-dense", 
-            ComponentDensity.Normal => "choice-normal",
-            ComponentDensity.Spacious => "choice-spacious",
-            _ => "choice-normal"
-        });
-        
-        return string.Join(" ", classes);
+            ComponentDensity.Compact => "choice-compact py-1 px-2 text-sm",
+            ComponentDensity.Dense => "choice-dense py-2 px-3 text-sm", 
+            ComponentDensity.Normal => "choice-normal py-3 px-4 text-base",
+            ComponentDensity.Spacious => "choice-spacious py-4 px-6 text-lg",
+            _ => "choice-normal py-3 px-4 text-base"
+        };
     }
 
     private string GetItemClass(TValue item)
     {
-        var classes = new List<string> { "choice-item" };
+        var classes = new List<string> { "choice-item", "d-flex", "align-center", "gap-2", "px-3", "py-2", "text-sm", "cursor-pointer", "transition-all", "hover-bg-surface-elevated" };
         
-        if (IsItemActive(item)) classes.Add("choice-item-active");
-        if (IsItemDisabled(item)) classes.Add("choice-item-disabled");
-        if (IsItemLoading(item)) classes.Add("choice-item-loading");
+        if (IsItemActive(item)) 
+        {
+            classes.Add("choice-item-active bg-primary text-on-primary font-medium");
+        }
+        else
+        {
+            classes.Add("text-secondary hover-text-primary");
+        }
+        
+        if (IsItemDisabled(item)) 
+        {
+            classes.Add("choice-item-disabled opacity-50 cursor-not-allowed hover-bg-transparent");
+        }
+        
+        if (IsItemLoading(item)) 
+        {
+            classes.Add("choice-item-loading opacity-75");
+        }
         
         return string.Join(" ", classes);
     }
@@ -427,38 +438,38 @@ else
     
     private string GetFormWrapperClasses()
     {
-        var classes = new List<string> { "choice-form-wrapper" };
+        var classes = new List<string> { "choice-form-wrapper", "form-field" };
         
         if (!string.IsNullOrEmpty(Class))
             classes.Add(Class);
             
         if (HasError)
-            classes.Add("choice-error");
+            classes.Add("choice-error form-field-error border-error");
             
         if (Disabled)
-            classes.Add("choice-disabled");
+            classes.Add("choice-disabled opacity-50 cursor-not-allowed");
             
         return string.Join(" ", classes);
     }
     
     private string GetLabelClasses()
     {
-        var classes = new List<string> { "choice-label" };
+        var classes = new List<string> { "choice-label", "form-label", "text-sm", "font-medium", "text-secondary", "mb-2" };
         
         if (Required)
-            classes.Add("choice-label-required");
+            classes.Add("choice-label-required form-label-required");
             
         return string.Join(" ", classes);
     }
     
     private string GetErrorMessageClasses()
     {
-        return "choice-error-message text-error text-sm mt-1 d-flex align-center";
+        return "choice-error-message form-field-error text-error text-sm mt-1 d-flex align-center gap-1";
     }
     
     private string GetHelpTextClasses()
     {
-        return "choice-help-text text-muted text-sm mt-1";
+        return "choice-help-text form-field-help text-muted text-sm mt-1";
     }
     
     #endregion

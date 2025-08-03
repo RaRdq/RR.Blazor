@@ -22,7 +22,7 @@ Supports multiple variants, sizes, and interactive states with enterprise-grade 
                        CommonUse = "status indicators, counts, labels, notifications", 
                        AvoidUsage = "Don't use for navigation - use RButton instead")]
 
-<span class="@GetBadgeClasses()" @onclick="HandleClick" @attributes="AdditionalAttributes">
+<span class="@GetBadgeClasses() rounded-full d-inline-flex align-center justify-center font-medium" @onclick="HandleClick" @attributes="AdditionalAttributes">
     @if (!string.IsNullOrEmpty(Icon))
     {
         <i class="material-symbols-rounded @GetIconClasses()">@Icon</i>
@@ -82,18 +82,18 @@ Supports multiple variants, sizes, and interactive states with enterprise-grade 
 
     private string GetBadgeClasses()
     {
-        var classes = new List<string>
-        {
-            "badge"
-        };
+        var classes = new List<string> { "badge" };
         
-        classes.Add(GetVariantClasses());
+        // Variant utility classes
+        classes.Add(GetVariantUtilityClasses());
         
-        classes.Add(GetSizeClasses());
+        // Size and density utility classes
+        classes.Add(GetSizeUtilityClasses());
         
+        // Interactive utility classes
         if (Clickable || OnClick.HasDelegate)
         {
-            classes.Add("badge-clickable");
+            classes.Add("badge-clickable cursor-pointer hover-scale-sm transition-transform");
         }
         
         if (!string.IsNullOrEmpty(Class))
@@ -104,62 +104,62 @@ Supports multiple variants, sizes, and interactive states with enterprise-grade 
         return string.Join(" ", classes.Where(c => !string.IsNullOrEmpty(c)));
     }
     
-    private string GetSizeClasses()
+    private string GetSizeUtilityClasses()
     {
         var sizeClass = Size switch
         {
-            BadgeSize.Small => "badge-small",
-            BadgeSize.Large => "badge-large",
-            _ => "" // Medium is default, no extra class needed
+            BadgeSize.Small => "badge-sm text-xs px-2 py-0-5 min-h-5",
+            BadgeSize.Large => "badge-lg text-sm px-3 py-1 min-h-8",
+            _ => "text-xs px-2 py-1 min-h-6" // Medium is default
         };
         
         var densityClass = Density switch
         {
-            ComponentDensity.Compact => "badge-compact",
-            ComponentDensity.Dense => "badge-dense", 
-            ComponentDensity.Spacious => "badge-spacious",
+            ComponentDensity.Compact => "badge-compact px-1 py-0-5",
+            ComponentDensity.Dense => "badge-dense px-2 py-0-5", 
+            ComponentDensity.Spacious => "badge-spacious px-4 py-2",
             _ => ""
         };
         
         return $"{sizeClass} {densityClass}".Trim();
     }
     
-    
-    private string GetVariantClasses()
+    private string GetVariantUtilityClasses()
     {
         return Variant switch
         {
-            BadgeVariant.Primary => "badge-primary",
-            BadgeVariant.Success => "badge-success", 
-            BadgeVariant.Warning => "badge-warning",
-            BadgeVariant.Danger => "badge-error",
-            BadgeVariant.Error => "badge-error",
-            BadgeVariant.Info => "badge-info",
-            BadgeVariant.Outline => "badge-outline",
-            _ => "badge-secondary"
+            BadgeVariant.Primary => "badge-primary bg-primary text-on-primary",
+            BadgeVariant.Success => "badge-success bg-success text-on-success", 
+            BadgeVariant.Warning => "badge-warning bg-warning text-on-warning",
+            BadgeVariant.Danger => "badge-error bg-error text-on-error",
+            BadgeVariant.Error => "badge-error bg-error text-on-error",
+            BadgeVariant.Info => "badge-info bg-info text-on-info",
+            BadgeVariant.Outline => "badge-outline border border-primary text-primary bg-transparent",
+            _ => "badge-secondary bg-surface text-secondary"
         };
     }
 
     private string GetIconClasses()
     {
-        var baseSizeClasses = Size switch
+        var iconSizeClass = Size switch
         {
             BadgeSize.Small => "text-sm",
             BadgeSize.Large => "text-lg",
             _ => "text-base"
         };
         
-        return Density switch
+        var densityIconClass = Density switch
         {
-            ComponentDensity.Compact => GetCompactIconClasses(),
-            ComponentDensity.Dense => GetDenseIconClasses(),
-            ComponentDensity.Normal => baseSizeClasses,
-            ComponentDensity.Spacious => GetSpaciousIconClasses(),
-            _ => baseSizeClasses
+            ComponentDensity.Compact => GetCompactIconUtilityClass(),
+            ComponentDensity.Dense => GetDenseIconUtilityClass(),
+            ComponentDensity.Spacious => GetSpaciousIconUtilityClass(),
+            _ => iconSizeClass
         };
+        
+        return $"material-symbols-rounded {densityIconClass} mr-1";
     }
     
-    private string GetCompactIconClasses()
+    private string GetCompactIconUtilityClass()
     {
         return Size switch
         {
@@ -170,7 +170,7 @@ Supports multiple variants, sizes, and interactive states with enterprise-grade 
         };
     }
     
-    private string GetDenseIconClasses()
+    private string GetDenseIconUtilityClass()
     {
         return Size switch
         {
@@ -181,7 +181,7 @@ Supports multiple variants, sizes, and interactive states with enterprise-grade 
         };
     }
     
-    private string GetSpaciousIconClasses()
+    private string GetSpaciousIconUtilityClass()
     {
         return Size switch
         {

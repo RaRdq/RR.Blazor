@@ -38,22 +38,22 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
         else
         {
         <!-- Tab Navigation with Scroll Arrows -->
-        <nav class="tabs-nav tabs-nav-@Variant.ToString().ToLower() @(isScrollable ? "tabs-nav-scrollable" : "")" role="tablist" aria-label="@AriaLabel">
+        <nav class="tabs-nav position-relative d-flex @GetNavClasses()" role="tablist" aria-label="@AriaLabel">
         <!-- Left Scroll Arrow -->
         <button type="button" 
-                class="tabs-nav-arrow tabs-nav-arrow-left touch-target @(canScrollLeft && isScrollable ? "tabs-nav-arrow-visible" : "")"
+                class="tabs-nav-arrow tabs-nav-arrow-left @GetScrollArrowClasses(canScrollLeft)"
                 @onclick="ScrollLeft"
                 aria-label="Scroll tabs left">
             <i class="material-symbols-rounded">chevron_left</i>
         </button>
         
         <!-- Scrollable Tab Container -->
-        <div class="tabs-nav-container" @ref="navContainer">
-            <div class="tabs-nav-wrapper" @ref="navWrapper">
+        <div class="tabs-nav-container flex-1 position-relative" @ref="navContainer">
+            <div class="tabs-nav-wrapper d-flex gap-2" @ref="navWrapper">
                 <!-- Animated Indicator -->
                 @if (Variant != TabsVariant.Card)
                 {
-                    <div class="tabs-indicator position-dynamic" style="@GetIndicatorStyle()"></div>
+                    <div class="tabs-indicator" style="@GetIndicatorStyle()"></div>
                 }
                 
                 <!-- Tab Headers -->
@@ -61,7 +61,7 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
                 {
                     <button type="button"
                             id="tab-@tab.Id"
-                            class="tabs-tab touch-target @GetTabClasses(tab)"
+                            class="@GetTabClasses(tab)"
                             role="tab"
                             aria-selected="@(tab.Id == ActiveTabId)"
                             aria-controls="panel-@tab.Id"
@@ -73,7 +73,7 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
                         
                         @if (!string.IsNullOrEmpty(tab.Icon) && tab.IconPosition == IconPosition.Start)
                         {
-                            <i class="material-symbols-rounded tabs-tab-icon tabs-tab-icon-start @GetTabIconSize()">@tab.Icon</i>
+                            <i class="material-symbols-rounded @GetTabIconSize() mr-2">@tab.Icon</i>
                         }
                         
                         @if (!string.IsNullOrEmpty(tab.Text))
@@ -83,20 +83,20 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
                         
                         @if (tab.BadgeCount > 0)
                         {
-                            <span class="tabs-tab-badge @GetBadgeVariant(tab.BadgeVariant)">
+                            <span class="tabs-tab-badge ml-2 px-2 py-1 text-xs rounded-full @GetBadgeVariant(tab.BadgeVariant)">
                                 @(tab.BadgeCount > 99 ? "99+" : tab.BadgeCount.ToString())
                             </span>
                         }
                         
                         @if (!string.IsNullOrEmpty(tab.Icon) && tab.IconPosition == IconPosition.End)
                         {
-                            <i class="material-symbols-rounded tabs-tab-icon tabs-tab-icon-end @GetTabIconSize()">@tab.Icon</i>
+                            <i class="material-symbols-rounded @GetTabIconSize() ml-2">@tab.Icon</i>
                         }
                         
                         @if (tab.Closable)
                         {
                             <button type="button" 
-                                    class="tabs-tab-close touch-target"
+                                    class="ml-2 p-1 rounded hover-scale-sm active-scale-sm transition-transform"
                                     @onclick="() => CloseTab(tab.Id)"
                                     @onclick:stopPropagation="true">
                                 <i class="material-symbols-rounded text-xs">close</i>
@@ -109,7 +109,7 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
                 @if (ShowAddButton)
                 {
                     <button type="button" 
-                            class="tabs-tab tabs-tab-add-button touch-target"
+                            class="touch-target px-3 py-2 rounded-md hover-lift-sm transition-all border border-dashed border-secondary"
                             @onclick="HandleAddTab">
                         <i class="material-symbols-rounded text-sm">add</i>
                     </button>
@@ -119,7 +119,7 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
         
         <!-- Right Scroll Arrow -->
         <button type="button" 
-                class="tabs-nav-arrow tabs-nav-arrow-right touch-target @(canScrollRight && isScrollable ? "tabs-nav-arrow-visible" : "")"
+                class="tabs-nav-arrow tabs-nav-arrow-right @GetScrollArrowClasses(canScrollRight)"
                 @onclick="ScrollRight"
                 aria-label="Scroll tabs right">
             <i class="material-symbols-rounded">chevron_right</i>
@@ -127,7 +127,7 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
     </nav>
     
         <!-- Tab Content -->
-        <div class="tabs-content @(NoPadding ? "tabs-content-no-padding" : "")">
+        <div class="tabs-content flex-1 position-relative @GetContentClasses()">
             @foreach (var tab in tabs)
             {
                 <div id="panel-@tab.Id"
@@ -545,84 +545,58 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
     {
         var classes = new List<string>();
         
-
-        classes.Add(GetTabSizeClasses());
+        // Base classes
+        classes.Add("tabs-tab touch-target d-flex align-center justify-center gap-2");
         
-
-        classes.Add(GetTabDensityClasses());
+        // Size and density utilities
+        classes.Add(GetTabSizeUtilities());
         
-
+        // Common interaction utilities
+        classes.Add("rounded-lg transition-all cursor-pointer border border-transparent");
+        
+        // Background and hover states
+        classes.Add("bg-transparent hover:bg-surface-elevated");
+        
+        // Active state
         if (tab.Id == ActiveTabId)
         {
             classes.Add("tabs-tab-active");
         }
+        else
+        {
+            classes.Add("hover-lift-sm text-secondary hover:text-primary");
+        }
         
+        // Disabled state utilities
         if (tab.IsDisabled)
         {
-            classes.Add("tabs-tab-disabled");
+            classes.Add("state-disabled");
         }
         
         return string.Join(" ", classes.Where(c => !string.IsNullOrEmpty(c)));
     }
 
-    private string GetTabSizeClasses()
+    private string GetTabSizeUtilities()
     {
-        var baseSizeClasses = Size switch
+        // Combine size and density into utility classes
+        return (Size, Density) switch
         {
-            ButtonSize.Small => "tabs-tab-small",
-            ButtonSize.Large => "tabs-tab-large",
-            _ => ""
-        };
-
-        return Density switch
-        {
-            ComponentDensity.Compact => ApplyCompactTabSizing(),
-            ComponentDensity.Dense => ApplyDenseTabSizing(),
-            ComponentDensity.Normal => baseSizeClasses,
-            ComponentDensity.Spacious => ApplySpacious​TabSizing(),
-            _ => baseSizeClasses
-        };
-    }
-
-    private string ApplyCompactTabSizing()
-    {
-        return Size switch
-        {
-            ButtonSize.Small => "tabs-tab-xs",
-            ButtonSize.Large => "tabs-tab-small",
-            _ => "tabs-tab-compact"
-        };
-    }
-
-    private string ApplyDenseTabSizing()
-    {
-        return Size switch
-        {
-            ButtonSize.Small => "tabs-tab-xs",
-            ButtonSize.Large => "tabs-tab-medium",
-            _ => "tabs-tab-dense"
-        };
-    }
-
-    private string ApplySpacious​TabSizing()
-    {
-        return Size switch
-        {
-            ButtonSize.Small => "tabs-tab-medium",
-            ButtonSize.Large => "tabs-tab-xl",
-            _ => "tabs-tab-spacious"
-        };
-    }
-
-    private string GetTabDensityClasses()
-    {
-        return Density switch
-        {
-            ComponentDensity.Compact => "pt-1 pb-1 pl-2 pr-2",
-            ComponentDensity.Dense => "pt-2 pb-2 pl-3 pr-3",
-            ComponentDensity.Normal => "pt-3 pb-3 pl-4 pr-4",
-            ComponentDensity.Spacious => "pt-4 pb-4 pl-6 pr-6",
-            _ => "pt-3 pb-3 pl-4 pr-4"
+            (ButtonSize.Small, ComponentDensity.Compact) => "px-2 py-1 text-xs gap-1",
+            (ButtonSize.Small, ComponentDensity.Dense) => "px-3 py-1 text-sm gap-1",
+            (ButtonSize.Small, ComponentDensity.Normal) => "px-3 py-2 text-sm gap-2",
+            (ButtonSize.Small, ComponentDensity.Spacious) => "px-4 py-2 text-sm gap-2",
+            
+            (ButtonSize.Medium, ComponentDensity.Compact) => "px-3 py-1 text-sm gap-1",
+            (ButtonSize.Medium, ComponentDensity.Dense) => "px-3 py-2 text-base gap-2",
+            (ButtonSize.Medium, ComponentDensity.Normal) => "px-4 py-3 text-base gap-2",
+            (ButtonSize.Medium, ComponentDensity.Spacious) => "px-6 py-4 text-base gap-3",
+            
+            (ButtonSize.Large, ComponentDensity.Compact) => "px-3 py-2 text-base gap-2",
+            (ButtonSize.Large, ComponentDensity.Dense) => "px-4 py-2 text-base gap-2",
+            (ButtonSize.Large, ComponentDensity.Normal) => "px-5 py-3 text-lg gap-3",
+            (ButtonSize.Large, ComponentDensity.Spacious) => "px-6 py-4 text-lg gap-3",
+            
+            _ => "px-4 py-3 text-base gap-2" // Default medium/normal
         };
     }
     
@@ -690,7 +664,83 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
     
     private string GetTabsClasses()
     {
-        return Class ?? "";
+        var classes = new List<string> { "d-flex flex-col w-full" };
+        
+        // Variant-specific container classes
+        classes.Add(Variant switch
+        {
+            TabsVariant.Elevated => "elevation-4 rounded-lg",
+            TabsVariant.Card => "bg-transparent",
+            _ => "bg-surface-elevated rounded-lg"
+        });
+        
+        if (!string.IsNullOrEmpty(Class))
+            classes.Add(Class);
+            
+        return string.Join(" ", classes);
+    }
+    
+    private string GetNavClasses()
+    {
+        var classes = new List<string> { "pa-2" };
+        
+        return Variant switch
+        {
+            TabsVariant.Pills => "bg-surface rounded-full p-1 m-2",
+            TabsVariant.Card => "bg-transparent px-0 py-2 gap-1",
+            TabsVariant.Underline => "bg-transparent px-0 py-0 border-b border-light",
+            TabsVariant.Segment => "bg-surface rounded-lg p-1",
+            _ => "bg-surface-elevated rounded-t-lg"
+        };
+    }
+    
+    private string GetContentClasses()
+    {
+        var classes = new List<string> { "bg-surface-elevated" };
+        
+        if (!NoPadding)
+        {
+            classes.Add("pa-6");
+        }
+        
+        // Variant-specific content styling
+        if (Variant == TabsVariant.Card)
+        {
+            classes.Add("border border-light rounded-b-lg rounded-tr-lg");
+        }
+        else if (Variant != TabsVariant.Underline)
+        {
+            classes.Add("rounded-b-lg");
+        }
+        
+        return string.Join(" ", classes);
+    }
+    
+    private string GetScrollArrowClasses(bool canScroll)
+    {
+        var classes = new List<string>
+        {
+            "position-absolute",
+            "w-10 h-10",
+            "rounded-full",
+            "d-flex align-center justify-center",
+            "bg-surface-elevated",
+            "elevation-4",
+            "hover-lift",
+            "transition-all",
+            "z-3"
+        };
+        
+        if (canScroll && isScrollable)
+        {
+            classes.Add("tabs-nav-arrow-visible");
+        }
+        else
+        {
+            classes.Add("opacity-0 pointer-events-none");
+        }
+        
+        return string.Join(" ", classes);
     }
     
     public void Dispose()

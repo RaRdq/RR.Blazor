@@ -137,8 +137,9 @@ Supports images, initials, icons, status badges, and notification counts with re
     
     private string GetAvatarClasses()
     {
-        var classes = new List<string>();
+        var classes = new List<string> { "avatar" };
         
+        // Size utility classes
         classes.Add(Size switch
         {
             AvatarSize.ExtraSmall => "avatar-xs",
@@ -149,36 +150,22 @@ Supports images, initials, icons, status badges, and notification counts with re
             _ => "avatar-md"
         });
         
-        switch (Variant)
+        // Variant utility classes
+        classes.Add(Variant switch
         {
-            case AvatarVariant.Default:
-                classes.Add("avatar-default");
-                break;
-                
-            case AvatarVariant.Primary:
-                classes.Add("avatar-primary");
-                break;
-                
-            case AvatarVariant.Success:
-                classes.Add("avatar-success");
-                break;
-                
-            case AvatarVariant.Warning:
-                classes.Add("avatar-warning");
-                break;
-                
-            case AvatarVariant.Error:
-                classes.Add("avatar-error");
-                break;
-                
-            case AvatarVariant.Gradient:
-                classes.Add("avatar-primary"); // Use primary for gradient
-                break;
-        }
+            AvatarVariant.Default => "avatar-default",
+            AvatarVariant.Primary => "avatar-primary",
+            AvatarVariant.Success => "avatar-success",
+            AvatarVariant.Warning => "avatar-warning",
+            AvatarVariant.Error => "avatar-error",
+            AvatarVariant.Gradient => "avatar-primary",
+            _ => "avatar-default"
+        });
         
+        // Interactive utility classes
         if (IsClickable)
         {
-            classes.Add("cursor-pointer");
+            classes.Add("cursor-pointer hover-scale-sm transition-transform");
         }
         
         if (!string.IsNullOrEmpty(Class))
@@ -191,12 +178,12 @@ Supports images, initials, icons, status badges, and notification counts with re
     
     private string GetImageClasses()
     {
-        return "w-full h-full object-cover";
+        return "avatar-image w-full h-full object-cover rounded-full";
     }
     
     private string GetIconClasses()
     {
-        return Size switch
+        var iconSizeClass = Size switch
         {
             AvatarSize.ExtraSmall => "text-xs",
             AvatarSize.Small => "text-sm",
@@ -205,35 +192,52 @@ Supports images, initials, icons, status badges, and notification counts with re
             AvatarSize.ExtraLarge => "text-3xl",
             _ => "text-lg"
         };
+        
+        return $"material-symbols-rounded {iconSizeClass} text-center";
     }
     
     private string GetTextClasses()
     {
-        return "font-bold text-uppercase";
+        var textSizeClass = Size switch
+        {
+            AvatarSize.ExtraSmall => "text-2xs",
+            AvatarSize.Small => "text-xs",
+            AvatarSize.Medium => "text-sm",
+            AvatarSize.Large => "text-base",
+            AvatarSize.ExtraLarge => "text-lg",
+            _ => "text-sm"
+        };
+        
+        return $"avatar-text font-bold text-transform-uppercase {textSizeClass} text-center";
     }
     
     private string GetStatusClasses()
     {
-        var classes = new List<string>
+        var statusClass = Status switch
         {
-            "avatar-status"
+            AvatarStatus.Online => "avatar-status-online bg-success",
+            AvatarStatus.Away => "avatar-status-away bg-warning",
+            AvatarStatus.Busy => "avatar-status-away bg-warning",
+            AvatarStatus.Offline => "avatar-status-offline bg-error",
+            _ => "avatar-status-offline bg-error"
         };
         
-        classes.Add(Status switch
-        {
-            AvatarStatus.Online => "avatar-status-online",
-            AvatarStatus.Away => "avatar-status-away", 
-            AvatarStatus.Busy => "avatar-status-away", // Use away styling for busy
-            AvatarStatus.Offline => "avatar-status-offline",
-            _ => "avatar-status-offline"
-        });
-        
-        return string.Join(" ", classes);
+        return $"avatar-status absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-surface {statusClass}";
     }
     
     private string GetBadgeClasses()
     {
-        return "avatar-badge";
+        var badgeSizeClass = Size switch
+        {
+            AvatarSize.ExtraSmall => "text-2xs min-w-4 h-4",
+            AvatarSize.Small => "text-xs min-w-5 h-5",
+            AvatarSize.Medium => "text-xs min-w-6 h-6",
+            AvatarSize.Large => "text-sm min-w-7 h-7",
+            AvatarSize.ExtraLarge => "text-sm min-w-8 h-8",
+            _ => "text-xs min-w-6 h-6"
+        };
+        
+        return $"avatar-badge absolute -top-1 -right-1 bg-error text-on-error rounded-full {badgeSizeClass} d-flex align-center justify-center font-bold";
     }
     
     private async Task HandleClick(MouseEventArgs e)

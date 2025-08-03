@@ -121,7 +121,7 @@
                 }
             }
 
-            <div class="table-content @(!string.IsNullOrEmpty(Height) ? "table-height-custom" : "")" @attributes="@(!string.IsNullOrEmpty(Height) ? new Dictionary<string, object> { ["style"] = $"height: {Height};" } : null)">
+            <div class="table-content @GetTableContentClasses()" @attributes="@(!string.IsNullOrEmpty(Height) ? new Dictionary<string, object> { ["style"] = $"height: {Height};" } : null)">
                 <table class="table-table @GetInternalTableClass()" 
                        role="table" 
                        aria-label="@(!string.IsNullOrEmpty(Title) ? Title : "Data table")"
@@ -290,21 +290,21 @@
                         {
                             <tr class="empty-state-row">
                                 <td colspan="@GetColSpan()" class="p-0">
-                                    <div class="table-empty-state empty-state-no-data" role="status" aria-live="polite" aria-label="Table empty state">
+                                    <div class="table-empty" role="status" aria-live="polite" aria-label="Table empty state">
                                         @if (EmptyStateContent != null)
                                         {
                                             @EmptyStateContent
                                         }
                                         else
                                         {
-                                            <div class="empty-icon" role="presentation" aria-hidden="true"></div>
-                                            <div class="empty-title" id="empty-title-@GetTableId()">@(string.IsNullOrEmpty(EmptyMessage) ? "No data available" : EmptyMessage)</div>
-                                            <div class="empty-description" id="empty-desc-@GetTableId()" aria-describedby="empty-title-@GetTableId()">
+                                            <div class="table-empty-icon">📊</div>
+                                            <div class="table-empty-title" id="empty-title-@GetTableId()">@(string.IsNullOrEmpty(EmptyMessage) ? "No data available" : EmptyMessage)</div>
+                                            <div class="table-empty-description" id="empty-desc-@GetTableId()" aria-describedby="empty-title-@GetTableId()">
                                                 @(DefaultEmptyMessage ?? "There are no items to display. Try adjusting your filters or adding new data.")
                                             </div>
                                             @if (HeaderContent != null)
                                             {
-                                                <div class="empty-actions" role="group" aria-label="Available actions">
+                                                <div class="table-actions table-actions-center" role="group" aria-label="Available actions">
                                                     @HeaderContent
                                                 </div>
                                             }
@@ -319,24 +319,21 @@
 
             @if (Loading)
             {
-                <div class="table-loading-skeleton" aria-live="polite" aria-busy="true" aria-label="@(LoadingMessage ?? "Loading table data")">
+                <div class="table-loading" aria-live="polite" aria-busy="true" aria-label="@(LoadingMessage ?? "Loading table data")">
                     @for (int i = 0; i < Math.Min(PageSize, 8); i++)
                     {
-                        <div class="skeleton-row" role="presentation">
+                        <div class="table-skeleton-row" role="presentation">
                             @if (MultiSelection || SingleSelection)
                             {
-                                <div class="skeleton-checkbox" role="presentation"></div>
+                                <div class="table-skeleton-cell table-col-w-12" role="presentation"></div>
                             }
                             @for (int j = 0; j < Math.Min(GetVisibleEffectiveColumns().Count, 6); j++)
                             {
-                                <div class="skeleton-cell" role="presentation"></div>
+                                <div class="table-skeleton-cell" role="presentation"></div>
                             }
                             @if (GetVisibleEffectiveColumns().Any(c => c.Key == "Actions" || c.Header?.Contains("Action") == true))
                             {
-                                <div class="skeleton-actions" role="presentation">
-                                    <div class="skeleton-action" role="presentation"></div>
-                                    <div class="skeleton-action" role="presentation"></div>
-                                </div>
+                                <div class="table-skeleton-cell table-col-w-24" role="presentation"></div>
                             }
                         </div>
                     }
@@ -492,6 +489,7 @@
 
     // Advanced feature parameters
     [Parameter] public bool FixedHeader { get; set; }
+    [Parameter] public bool FixedLayout { get; set; } = false;
     [Parameter] public float ItemSize { get; set; } = 50f;
 
     // Simple Virtualization Parameters (without service bloat)
@@ -685,7 +683,15 @@
 
     private string GetMobileClass()
     {
-        return MobileScrollMode ? "table-mobile-scroll" : "";
+        var classes = new List<string>();
+        
+        if (MobileScrollMode)
+            classes.Add("table-mobile-scroll");
+            
+        if (ResponsiveMode)
+            classes.Add("table-responsive");
+            
+        return string.Join(" ", classes);
     }
     
     private string GetElevationClass()
@@ -698,17 +704,55 @@
         var classes = new List<string>
         {
             "enhanced-table",
-            "table-professional-spacing"
+            "table-rounded",
+            GetTableShadowClass()
         };
         
-        if (EnableHoverEffects)
-            classes.Add("table-hover-enhanced");
+        // Apply border styling based on variant
+        if (Variant == TableVariant.Bordered)
+            classes.Add("table-bordered");
+        else if (Variant == TableVariant.Minimal)
+            classes.Add("table-borderless");
+        else
+            classes.Add("table-dividers-horizontal");
+        
+        // Apply glassmorphism if enabled
+        if (EnableGlassmorphism || Variant == TableVariant.Glass)
+            classes.Add("table-glass");
             
-        if (EnableAnimations)
-            classes.Add("table-animations-enabled");
+        // Apply striped pattern if configured
+        if (Striped || Variant == TableVariant.Striped)
+            classes.Add("table-striped");
             
-        if (EnableGlassmorphism)
-            classes.Add("table-glassmorphism");
+        // Disable animations for reduced motion
+        if (!EnableAnimations)
+            classes.Add("table-no-motion");
+            
+        return string.Join(" ", classes);
+    }
+    
+    private string GetTableShadowClass()
+    {
+        return TableElevation switch
+        {
+            0 => "table-shadow-none",
+            1 => "table-shadow-sm",
+            2 => "table-shadow",
+            3 => "table-shadow-lg",
+            4 => "table-shadow-xl",
+            _ => "table-shadow"
+        };
+    }
+    
+    private string GetTableContentClasses()
+    {
+        var classes = new List<string>();
+        
+        if (!string.IsNullOrEmpty(Height))
+            classes.Add("table-height-custom");
+            
+        if (ResponsiveMode || MobileScrollMode)
+            classes.Add("table-responsive");
             
         return string.Join(" ", classes);
     }
@@ -718,27 +762,34 @@
         var classes = new List<string> { "table-table", "w-full" };
         
         if (FixedHeader) 
-            classes.Add("table-fixed-header");
+            classes.Add("table-header-sticky");
         
-        // Use new professional density system
-        classes.Add(GetProfessionalDensityClasses());
+        // Use utility-first density system with backward compatibility
+        classes.Add(GetUtilityDensityClass());
+        
+        // Add responsive behavior
+        if (ResponsiveMode)
+            classes.Add("table-responsive");
+            
+        // Add layout type
+        classes.Add(FixedLayout ? "table-fixed-layout" : "table-auto-layout");
         
         return string.Join(" ", classes);
     }
 
-    private string GetProfessionalDensityClasses()
+    private string GetUtilityDensityClass()
     {
         return TableDensity switch
         {
-            RR.Blazor.Enums.TableDensity.UltraCompact => "table-density-ultra-compact",
-            RR.Blazor.Enums.TableDensity.Compact => "table-density-compact",
-            RR.Blazor.Enums.TableDensity.Dense => "table-density-dense",
-            RR.Blazor.Enums.TableDensity.Normal => "table-density-normal",
-            RR.Blazor.Enums.TableDensity.Comfortable => "table-density-comfortable",
-            RR.Blazor.Enums.TableDensity.Spacious => "table-density-spacious",
-            RR.Blazor.Enums.TableDensity.ExtraSpacious => "table-density-extra-spacious",
-            RR.Blazor.Enums.TableDensity.Custom => "table-density-custom",
-            _ => "table-density-normal"
+            RR.Blazor.Enums.TableDensity.UltraCompact => "table-ultra-compact",
+            RR.Blazor.Enums.TableDensity.Compact => "table-compact",
+            RR.Blazor.Enums.TableDensity.Dense => "table-compact", // Map Dense to Compact for utilities
+            RR.Blazor.Enums.TableDensity.Normal => "table-normal",
+            RR.Blazor.Enums.TableDensity.Comfortable => "table-comfortable",
+            RR.Blazor.Enums.TableDensity.Spacious => "table-spacious",
+            RR.Blazor.Enums.TableDensity.ExtraSpacious => "table-spacious", // Map to spacious for utilities
+            RR.Blazor.Enums.TableDensity.Custom => "table-density-custom", // Keep custom as-is for backward compatibility
+            _ => "table-normal"
         };
     }
     
@@ -766,17 +817,6 @@
         return styles.Any() ? string.Join("; ", styles) : "";
     }
 
-    private string GetRowDensityClasses()
-    {
-        // Empty string since density is handled by SCSS now
-        return "";
-    }
-
-    private string GetCellPaddingClasses()
-    {
-        // Empty string since density is handled by SCSS now
-        return "";
-    }
 
     private string GetSubtitleWithCounts()
     {
@@ -838,12 +878,14 @@
     {
         var classes = new List<string> { "border-b", "transition-colors" };
         
-        // Apply hover and striped settings properly
-        if (Hover) classes.Add("hover:bg-surface-elevated");
-        if (Striped) classes.Add("table-row--striped");
-        if (RowClickable) classes.Add("cursor-pointer");
+        // Apply hover effects using utility classes
+        if (Hover)
+        {
+            classes.Add(EnableHoverEffects ? "table-row-hover-elevated" : "table-row-hover");
+        }
         
-        classes.Add(GetRowDensityClasses());
+        // Apply clickable cursor
+        if (RowClickable) classes.Add("cursor-pointer");
 
         // Apply custom row class function
         string customClass = null;
@@ -864,13 +906,37 @@
             classes.Add(customClass);
         }
 
-        // Enhanced row states with proper utility classes
+        // Apply selection states using utility classes
         if (TypedSelectedItems?.Contains(item) == true)
-            classes.Add("table-row-selected-enhanced");
+            classes.Add("table-row-selected");
         else if (SingleSelection && TypedSelectedItem?.Equals(item) == true)
-            classes.Add("table-row-selected-enhanced");
+            classes.Add("table-row-selected");
+            
+        // Apply inactive state if item has an "Active" or "IsActive" property that's false
+        if (IsItemInactive(item))
+            classes.Add("table-row-inactive");
         
         return string.Join(" ", classes.Where(c => !string.IsNullOrEmpty(c)));
+    }
+    
+    private bool IsItemInactive(TItem item)
+    {
+        if (item == null) return false;
+        
+        try
+        {
+            var activeProperty = typeof(TItem).GetProperty("Active") ?? typeof(TItem).GetProperty("IsActive");
+            if (activeProperty?.PropertyType == typeof(bool))
+            {
+                return !(bool)(activeProperty.GetValue(item) ?? true);
+            }
+        }
+        catch
+        {
+            // Ignore reflection errors
+        }
+        
+        return false;
     }
 
 
@@ -1571,28 +1637,77 @@
             "table-header-cell"
         };
         
+        // Apply sortable styling using utility classes
         if (column.Sortable)
-            classes.Add("table-header-sortable cursor-pointer hover:text-interactive transition-all");
+            classes.Add("table-header-sortable cursor-pointer");
         
+        // Add custom header class if provided
         if (!string.IsNullOrEmpty(column.HeaderClass))
             classes.Add(column.HeaderClass);
         
+        // Apply sticky positioning
         if (StickyColumns.Contains(column.Key) || IsColumnPinned(column.Key))
         {
-            classes.Add("table-column-sticky");
-            var pinPosition = GetColumnPinPosition(column.Key);
-            classes.Add(pinPosition == StickyPosition.Right ? "table-column-sticky-right" : "table-column-sticky-left");
+            classes.Add("table-header-sticky");
         }
         
-        if (column.Resizable && ResizableColumns)
-            classes.Add("table-header-resizable");
+        // Add sort state classes
+        var sortState = GetColumnSortState(column.Key);
+        if (sortState?.Direction != SortDirection.None)
+        {
+            classes.Add("table-header-sorted");
+        }
         
-        if (EnableColumnReordering)
-            classes.Add("table-header-reorderable");
+        // Apply width utilities
+        classes.Add(GetColumnWidthUtilityClass(column));
         
-        classes.Add(GetSortHeaderClasses(column.Key));
+        // Apply alignment utilities
+        classes.Add(GetColumnAlignmentUtilityClass(column));
         
         return string.Join(" ", classes.Where(c => !string.IsNullOrEmpty(c)));
+    }
+    
+    private string GetColumnWidthUtilityClass(RDataTableColumn<TItem> column)
+    {
+        if (!string.IsNullOrEmpty(column.Width))
+        {
+            // Convert common widths to utility classes
+            return column.Width switch
+            {
+                "48px" or "w-12" => "table-col-w-12",
+                "64px" or "w-16" => "table-col-w-16",
+                "80px" or "w-20" => "table-col-w-20",
+                "96px" or "w-24" => "table-col-w-24",
+                "128px" or "w-32" => "table-col-w-32",
+                "160px" or "w-40" => "table-col-w-40",
+                "192px" or "w-48" => "table-col-w-48",
+                "224px" or "w-56" => "table-col-w-56",
+                "256px" or "w-64" => "table-col-w-64",
+                "auto" => "table-col-w-auto",
+                "25%" => "table-col-w-1/4",
+                "33.333%" or "33%" => "table-col-w-1/3",
+                "50%" => "table-col-w-1/2",
+                "66.666%" or "66%" => "table-col-w-2/3",
+                "75%" => "table-col-w-3/4",
+                "100%" => "table-col-w-full",
+                _ => ""
+            };
+        }
+        return "";
+    }
+    
+    private string GetColumnAlignmentUtilityClass(RDataTableColumn<TItem> column)
+    {
+        // Apply common alignment patterns based on column key or type
+        return column.Key.ToLowerInvariant() switch
+        {
+            "actions" or "action" => "table-cell-center table-col-w-24",
+            "id" or "index" or "#" => "table-cell-center table-col-w-16",
+            var key when key.Contains("amount") || key.Contains("price") || key.Contains("cost") => "table-cell-right",
+            var key when key.Contains("date") || key.Contains("time") => "table-cell-center",
+            var key when key.Contains("status") || key.Contains("state") => "table-cell-center",
+            _ => "table-cell-left"
+        };
     }
     
     private bool IsColumnPinned(string columnKey)

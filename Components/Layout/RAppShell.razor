@@ -44,9 +44,9 @@ Ultra-clean, responsive, and customizable for any business application.
                 @if (ShowSidebar && ShowSidebarToggle)
                 {
                     <RButton Icon="@GetToggleIcon()" 
-                             Variant="ButtonVariant.Ghost"
-                             Size="ButtonSize.Medium"
-                             OnClick="ToggleSidebar"
+                             Variant="@ButtonVariant.Ghost"
+                             Size="@ButtonSize.Medium"
+                             OnClick="@ToggleSidebar"
                              AriaLabel="Toggle sidebar"
                              Class="shrink-0 touch-target" />
                 }
@@ -112,11 +112,10 @@ Ultra-clean, responsive, and customizable for any business application.
             <div class="header-right">
                 @if (ShowSearch)
                 {
-                    @if (SearchCollapsible)
-                    {
-                        @if (searchExpanded)
-                        {
-                            <div class="app-search-expanded d-flex align-center gap-1">
+                    <div class="app-search @GetSearchClasses()">
+                        <!-- Search Input Container -->
+                        <div class="search-input-container @(searchExpanded ? "expanded" : "")">
+                            <div class="search-input">
                                 <RAutosuggestGeneric TItem="AppSearchResult" 
                                                    Value="@selectedSearchResult"
                                                    ValueChanged="@HandleSearchResultSelected"
@@ -130,59 +129,40 @@ Ultra-clean, responsive, and customizable for any business application.
                                                    DebounceDelay="300"
                                                    MaxSuggestions="8"
                                                    ShowLoading="true"
+                                                   ShowDropdownIcon="true"
                                                    OnItemSelected="@HandleSearchItemSelected"
                                                    OnSearchChanged="@HandleSearchQueryChanged"
-                                                   OnBlur="@HandleSearchBlur"
-                                                   Class="flex-1" />
-                                <RButton Icon="close" 
-                                         Variant="ButtonVariant.Ghost" 
-                                         Size="ButtonSize.Small"
-                                         OnClick="CollapseSearch" 
-                                         AriaLabel="Close search" 
-                                         Class="shrink-0 touch-target" />
+                                                   OnBlur="@(SearchCollapsible ? HandleSearchBlur : null)"
+                                                   Class="w-full" />
                             </div>
-                        }
-                        else
-                        {
-                            <RButton Icon="search" 
-                                     Variant="ButtonVariant.Ghost" 
-                                     Size="ButtonSize.Small"
-                                     OnClick="@ExpandSearch" 
-                                     AriaLabel="Open search" 
-                                     Class="touch-target" />
-                        }
-                    }
-                    else
-                    {
-                        <div class="app-search-fixed">
-                            <RAutosuggestGeneric TItem="AppSearchResult" 
-                                               Value="@selectedSearchResult"
-                                               ValueChanged="@HandleSearchResultSelected"
-                                               SearchFunc="@HandleSearchAsync"
-                                               ItemTextSelector="@(result => result.Title)"
-                                               ItemIconSelector="@(result => result.Icon)"
-                                               ItemTemplate="@SearchResultTemplate"
-                                               Placeholder="Search..."
-                                               StartIcon="search"
-                                               MinSearchLength="1"
-                                               DebounceDelay="300"
-                                               MaxSuggestions="8"
-                                               ShowLoading="true"
-                                               OnItemSelected="@HandleSearchItemSelected"
-                                               OnSearchChanged="@HandleSearchQueryChanged"
-                                               Class="app-search-input" />
                         </div>
-                    }
+                        
+                        <!-- Search Toggle Button (expand search) -->
+                        <RButton Icon="search" 
+                                 Variant="@ButtonVariant.Ghost" 
+                                 Size="@ButtonSize.Small"
+                                 OnClick="@ExpandSearch" 
+                                 AriaLabel="Open search" 
+                                 Class="@($"search-toggle-btn touch-target {(!searchExpanded ? "" : "d-none")}")" />
+                        
+                        <!-- Search Close Button (collapse search) -->
+                        <RButton Icon="close" 
+                                 Variant="@ButtonVariant.Ghost" 
+                                 Size="@ButtonSize.Small"
+                                 OnClick="@CollapseSearch" 
+                                 AriaLabel="Close search" 
+                                 Class="@($"search-close-btn shrink-0 touch-target {(searchExpanded ? "" : "d-none")}")" />
+                    </div>
                 }
                 
                 @if (ShowNotifications)
                 {
                     <RButton Icon="notifications" 
-                             Variant="ButtonVariant.Ghost" 
-                             Size="ButtonSize.Small"
+                             Variant="@ButtonVariant.Ghost" 
+                             Size="@ButtonSize.Small"
                              ShowBadge="@(NotificationCount > 0)"
                              BadgeCount="@NotificationCount"
-                             OnClick="HandleNotificationsClick"
+                             OnClick="@HandleNotificationsClick"
                              AriaLabel="Notifications" 
                              Class="touch-target" />
                 }
@@ -204,25 +184,37 @@ Ultra-clean, responsive, and customizable for any business application.
                 
                 @if (CurrentUser != null && ShowUserMenu && UserMenu != null)
                 {
-                    <div class="user-menu-container">
-                        <div class="user-menu-trigger touch-target" @onclick="ToggleUserMenu">
-                            <div class="user-menu-content">
-                                <RAvatar Text="@CurrentUser.GetInitials()" 
-                                         ImageSrc="@CurrentUser.Avatar"
-                                         Size="AvatarSize.Small"
-                                         ShowStatus="true"
-                                         Status="@(CurrentUser.IsOnline ? AvatarStatus.Online : AvatarStatus.Offline)" />
-                                <span class="user-display-name">@CurrentUser.GetDisplayName()</span>
-                                <i class="material-symbols-rounded user-menu-chevron" style="transform: @(showUserMenu ? "rotate(180deg)" : "rotate(0deg)")">expand_more</i>
+                    <RChoice Items="@(new[] { "usermenu" })"
+                             SelectedValue="@(showUserMenu ? "usermenu" : null)"
+                             Variant="@ChoiceVariant.Dropdown"
+                             Class="user-menu-dropdown">
+                        <ChildContent>
+                            <div class="d-flex align-center gap-2 pa-2 rounded cursor-pointer touch-target"
+                                 @onclick="@(() => showUserMenu = !showUserMenu)">
+                                <div class="position-relative">
+                                    <RAvatar Text="@CurrentUser.GetInitials()" 
+                                             ImageSrc="@CurrentUser.Avatar"
+                                             Size="@AvatarSize.Small"
+                                             ShowStatus="true"
+                                             Status="@(CurrentUser.IsOnline ? AvatarStatus.Online : AvatarStatus.Offline)" />
+                                </div>
+                                <span class="text-sm font-medium text-primary d-none d-sm-inline">@CurrentUser.GetDisplayName()</span>
+                                @if (showUserMenu)
+                                {
+                                    <i class="material-symbols-rounded text-secondary transition-transform">expand_less</i>
+                                }
+                                else
+                                {
+                                    <i class="material-symbols-rounded text-secondary transition-transform">expand_more</i>
+                                }
                             </div>
-                        </div>
-                        @if (showUserMenu)
-                        {
-                            <div class="user-menu-dropdown">
+                            
+                            @if (showUserMenu)
+                            {
                                 @UserMenu
-                            </div>
-                        }
-                    </div>
+                            }
+                        </ChildContent>
+                    </RChoice>
                 }
             </div>
         </header>
@@ -261,7 +253,7 @@ Ultra-clean, responsive, and customizable for any business application.
                     <div class="d-flex align-center gap-3">
                         <RAvatar Text="@CurrentUser.GetInitials()" 
                                  ImageSrc="@CurrentUser.Avatar"
-                                 Size="AvatarSize.Small"
+                                 Size="@AvatarSize.Small"
                                  ShowStatus="true"
                                  Status="@(CurrentUser.IsOnline ? AvatarStatus.Online : AvatarStatus.Offline)" />
                         @if (!sidebarCollapsed)
@@ -611,57 +603,8 @@ Ultra-clean, responsive, and customizable for any business application.
         await NotificationsClicked.InvokeAsync();
     }
     
-    private async Task ToggleUserMenu()
-    {
-        showUserMenu = !showUserMenu;
-        
-        if (showUserMenu)
-        {
-            await SetupUserMenuOutsideClick();
-        }
-        else
-        {
-            await RemoveUserMenuOutsideClick();
-        }
-    }
     
-    [JSInvokable]
-    public async Task CloseUserMenu()
-    {
-        if (showUserMenu)
-        {
-            showUserMenu = false;
-            await RemoveUserMenuOutsideClick();
-            StateHasChanged();
-        }
-    }
     
-    private async Task SetupUserMenuOutsideClick()
-    {
-        try
-        {
-            if (dotNetRef == null)
-                dotNetRef = DotNetObjectReference.Create(this);
-                
-            await JS.InvokeVoidAsync("RRBlazor.setupUserMenuOutsideClick", ".user-menu-container", dotNetRef);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Failed to setup outside click handler: {ex.Message}");
-        }
-    }
-    
-    private async Task RemoveUserMenuOutsideClick()
-    {
-        try
-        {
-            await JS.InvokeVoidAsync("RRBlazor.removeUserMenuOutsideClick", ".user-menu-container");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Failed to remove outside click handler: {ex.Message}");
-        }
-    }
     
     
 
@@ -750,7 +693,7 @@ Ultra-clean, responsive, and customizable for any business application.
         await Task.Delay(50);
         try
         {
-            await JS.InvokeVoidAsync("focusElement", ".app-search-expanded .autosuggest-input input");
+            await JS.InvokeVoidAsync("focusElement", ".app-search.search-expanded .search-input input");
         }
         catch { }
     }
@@ -806,10 +749,18 @@ Ultra-clean, responsive, and customizable for any business application.
     
     private string GetSearchClasses()
     {
-        var classes = new List<string> { "app-search" };
+        var classes = new List<string>();
         
         if (SearchCollapsible)
+        {
             classes.Add("search-collapsible");
+            if (searchExpanded)
+                classes.Add("search-expanded");
+        }
+        else
+        {
+            classes.Add("search-fixed");
+        }
             
         return string.Join(" ", classes);
     }
@@ -869,7 +820,6 @@ Ultra-clean, responsive, and customizable for any business application.
 
             
 
-            await RemoveUserMenuOutsideClick();
             
             dotNetRef?.Dispose();
             dotNetRef = null;

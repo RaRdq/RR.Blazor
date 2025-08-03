@@ -30,6 +30,7 @@ public class RAutosuggest : ComponentBase
     [Parameter] public int DebounceDelay { get; set; } = 300;
     [Parameter] public int MaxSuggestions { get; set; } = 10;
     [Parameter] public bool ShowLoading { get; set; } = true;
+    [Parameter] public bool ShowDropdownIcon { get; set; } = true;
     [Parameter] public bool ClearOnSelect { get; set; }
     [Parameter] public bool OpenOnFocus { get; set; }
     [Parameter] public bool Disabled { get; set; }
@@ -74,21 +75,22 @@ public class RAutosuggest : ComponentBase
         builder.AddAttribute(18, "DebounceDelay", DebounceDelay);
         builder.AddAttribute(19, "MaxSuggestions", MaxSuggestions);
         builder.AddAttribute(20, "ShowLoading", ShowLoading);
-        builder.AddAttribute(21, "ClearOnSelect", ClearOnSelect);
-        builder.AddAttribute(22, "OpenOnFocus", OpenOnFocus);
-        builder.AddAttribute(23, "Disabled", Disabled);
-        builder.AddAttribute(24, "ReadOnly", ReadOnly);
-        builder.AddAttribute(25, "Required", Required);
-        builder.AddAttribute(26, "OnItemSelected", CreateItemSelectedCallback(componentType));
-        builder.AddAttribute(27, "OnSearchChanged", OnSearchChanged);
-        builder.AddAttribute(28, "Class", Class);
+        builder.AddAttribute(21, "ShowDropdownIcon", ShowDropdownIcon);
+        builder.AddAttribute(22, "ClearOnSelect", ClearOnSelect);
+        builder.AddAttribute(23, "OpenOnFocus", OpenOnFocus);
+        builder.AddAttribute(24, "Disabled", Disabled);
+        builder.AddAttribute(25, "ReadOnly", ReadOnly);
+        builder.AddAttribute(26, "Required", Required);
+        builder.AddAttribute(27, "OnItemSelected", CreateItemSelectedCallback(componentType));
+        builder.AddAttribute(28, "OnSearchChanged", OnSearchChanged);
+        builder.AddAttribute(29, "Class", Class);
         
         // Add additional attributes
         if (AdditionalAttributes != null)
         {
             foreach (var attr in AdditionalAttributes)
             {
-                builder.AddAttribute(29, attr.Key, attr.Value);
+                builder.AddAttribute(30, attr.Key, attr.Value);
             }
         }
         

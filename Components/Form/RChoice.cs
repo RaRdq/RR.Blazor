@@ -61,18 +61,45 @@ public abstract class RChoiceBase : ComponentBase
 }
 
 /// <summary>
-/// Smart choice component that automatically detects whether to use inline or dropdown mode
-/// Based on item count, content length, screen size, and other factors.
-/// Also supports RSwitcher compatibility with automatic type inference.
+/// Universal smart choice component that automatically detects between inline and dropdown modes.
+/// Replaces RSwitcher with enhanced capabilities including form integration, custom selectors, and portal positioning.
+/// 
+/// AI GUIDANCE:
+/// - Use for 2-20 exclusive options (status, roles, modes, filters, view switching)
+/// - ChoiceVariant.Auto intelligently chooses inline vs dropdown based on item count and label length
+/// - Supports RSwitcher migration with SwitcherVariant/SwitcherSize compatibility parameters
+/// - For boolean toggles use RToggle, for large datasets use searchable components
+/// 
+/// SMART DETECTION RULES:
+/// - Auto mode switches to dropdown when: >5 items (MaxItemsInline), long labels (MaxLabelLength>20), vertical direction with >3 items
+/// - Otherwise uses inline mode with configurable styles (Standard, Pills, Tabs, Buttons, Compact)
+/// 
+/// COMMON PATTERNS:
+/// - Status selection: RChoice Items="@statuses" Variant="ChoiceVariant.Auto" ItemIconSelector for icons
+/// - View switching: Style="ChoiceStyle.Tabs" for tab-like behavior  
+/// - Filters: Style="ChoiceStyle.Pills" Density="ComponentDensity.Compact"
+/// - Settings: Use with form integration (Label, Required, HelpText, ErrorMessage)
+/// 
+/// DROPDOWN FEATURES:
+/// - Advanced portal positioning with edge detection and viewport awareness
+/// - Click-outside handling and keyboard navigation (Space, Enter, Escape)
+/// - Custom trigger content and item templates supported
+/// 
+/// TYPE HANDLING:
+/// - Automatically handles Dictionary<TKey,TValue> by extracting keys and using values as labels
+/// - Supports complex objects with ItemLabelSelector, ItemIconSelector, ItemDisabledSelector
+/// - Generic type inference from Items collection or SelectedValue
 /// </summary>
 [Component("RChoice", Category = "Form")]
-[AIOptimized(Prompt = "Create smart choice component that auto-detects inline vs dropdown")]
+[AIOptimized(Prompt = "Universal choice component with smart inline/dropdown detection", 
+            CommonUse = "status selection, view switching, filters, multi-option toggles, dropdown menus", 
+            AvoidUsage = "Don't use for boolean toggles (use RToggle), large datasets (use searchable), immediate actions (use buttons)")]
 public class RChoice : RChoiceBase
 {
     private object _items;
     private IDictionary _originalDictionary;
     
-    [Parameter, AIParameter("Collection of items to choose between", "new[] { \"Option1\", \"Option2\" }")]
+    [Parameter, AIParameter("Collection of items to choose between - supports arrays, lists, dictionaries", "new[] { \"Option1\", \"Option2\" }")]
     public object Items 
     { 
         get => _items;
@@ -112,13 +139,13 @@ public class RChoice : RChoiceBase
         }
     }
     
-    [Parameter, AIParameter("Currently selected value", "selectedOption")]
+    [Parameter, AIParameter("Currently selected value from Items collection", "selectedOption")]
     public object SelectedValue { get; set; }
     
-    [Parameter, AIParameter("Force specific variant", "ChoiceVariant.Auto for smart detection")]
+    [Parameter, AIParameter("Auto detects inline vs dropdown, or force specific mode", "ChoiceVariant.Auto")]
     public ChoiceVariant Variant { get; set; } = Auto;
     
-    [Parameter, AIParameter("Style variant for inline mode", "ChoiceStyle.Standard")]
+    [Parameter, AIParameter("Visual style for inline mode: Standard, Pills, Tabs, Buttons, Compact", "ChoiceStyle.Standard")]
     public ChoiceStyle Style { get; set; } = Standard;
 
     // RSwitcher compatibility parameters

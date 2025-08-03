@@ -63,6 +63,8 @@ class AutosuggestPositioning {
                 className: 'autosuggest-portal',
                 buffer: 8,
                 minWidth: 200,
+                maxHeight: 'min(20rem, 50vh)',
+                constrainToViewport: true,
                 zIndex: this.getContextualZIndex(autosuggestElement)
             });
 
@@ -149,6 +151,13 @@ class AutosuggestPositioning {
         if (modalAncestor) {
             return 'var(--z-modal-popup)'; // 1100
         }
+        
+        // Check if inside app shell header
+        const appShellHeader = element.closest('.app-header, .header-right');
+        if (appShellHeader) {
+            return 'var(--z-header-popup, var(--z-popup))'; // 900+
+        }
+        
         return 'var(--z-popup)'; // 900
     }
 
@@ -250,15 +259,21 @@ export function calculateOptimalPosition(triggerElement, options = {}) {
         const dropdownHeight = options.estimatedHeight || 300;
         const buffer = options.buffer || 8;
         
-        const spaceBelow = viewportHeight - triggerRect.bottom - buffer;
-        const spaceAbove = triggerRect.top - buffer;
+        // Check if in app header
+        const isInHeader = triggerElement.closest('.app-header, .header-right');
+        const headerHeight = isInHeader ? 64 : 0; // Standard header height
         
-        const direction = spaceBelow < dropdownHeight && spaceAbove > dropdownHeight ? 'up' : 'down';
+        const spaceBelow = viewportHeight - triggerRect.bottom - buffer;
+        const spaceAbove = triggerRect.top - buffer - headerHeight;
+        
+        // Smart direction detection even in header
+        const direction = (spaceBelow < dropdownHeight && spaceAbove > dropdownHeight) ? 'up' : 'down';
         
         return {
             direction,
             position: 'start',
-            spaces: { above: spaceAbove, below: spaceBelow }
+            spaces: { above: spaceAbove, below: spaceBelow },
+            maxHeight: isInHeader ? Math.min(dropdownHeight, spaceBelow - 8) : dropdownHeight
         };
     } catch (error) {
         debugLogger.error('[Autosuggest] calculateOptimalPosition error:', error);
