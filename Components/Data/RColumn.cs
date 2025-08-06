@@ -79,14 +79,14 @@ public abstract class RColumnBase : ComponentBase
 }
 
 /// <summary>
-/// Smart RColumn wrapper with automatic type detection via cascading context.
-/// Usage: <RColumn Property="@(p => p.Name)" Header="Product Name" />
+/// Smart RColumnDynamic wrapper with automatic type detection via cascading context.
+/// Usage: <RColumnDynamic Property="@(p => p.Name)" Header="Product Name" />
 /// </summary>
-public class RColumn : RColumnBase
+public class RColumnDynamic : RColumnBase
 {
     [CascadingParameter] public TableContext TableContext { get; set; }
     [CascadingParameter] public ITableParent ParentTable { get; set; }
-    [Inject] private ILogger<RColumn> Logger { get; set; }
+    [Inject] private ILogger<RColumnDynamic> Logger { get; set; }
     
     [Parameter] public LambdaExpression Property { get; set; }
     [Parameter] public object Template { get; set; }
@@ -137,7 +137,7 @@ public class RColumn : RColumnBase
     {
         if (ParentTable == null) return;
         
-        // Create a proper RDataTableColumn with reflection handling
+        // Create a dictionary for column information
         var columnInfo = new Dictionary<string, object>();
         
         // Only add non-null values to avoid issues
@@ -147,38 +147,18 @@ public class RColumn : RColumnBase
             
         var headerValue = !string.IsNullOrEmpty(Header) ? Header : GetPropertyName();
         if (!string.IsNullOrEmpty(headerValue))
-            columnInfo["Header"] = headerValue;
+            columnInfo["Title"] = headerValue;
         if (!string.IsNullOrEmpty(Format))
             columnInfo["Format"] = Format;
         columnInfo["Sortable"] = Sortable;
         columnInfo["Filterable"] = Filterable;
         columnInfo["FilterType"] = FilterType;
-        if (FilterOperators?.Any() == true)
-            columnInfo["FilterOperators"] = FilterOperators;
-        if (FilterMinValue != null)
-            columnInfo["FilterMinValue"] = FilterMinValue;
-        if (FilterMaxValue != null)
-            columnInfo["FilterMaxValue"] = FilterMaxValue;
-        if (FilterOptions != null)
-            columnInfo["FilterOptions"] = FilterOptions;
-        if (!string.IsNullOrEmpty(FilterPlaceholder))
-            columnInfo["FilterPlaceholder"] = FilterPlaceholder;
-        columnInfo["FilterShowOperatorSelection"] = FilterShowOperatorSelection;
-        columnInfo["FilterShowClearButton"] = FilterShowClearButton;
-        if (FilterDisplaySelector != null)
-            columnInfo["FilterDisplaySelector"] = FilterDisplaySelector;
-        if (FilterValueSelector != null)
-            columnInfo["FilterValueSelector"] = FilterValueSelector;
-        if (FilterTemplate != null)
-            columnInfo["FilterTemplate"] = FilterTemplate;
         if (!string.IsNullOrEmpty(Width))
             columnInfo["Width"] = Width;
         if (!string.IsNullOrEmpty(HeaderClass))
             columnInfo["HeaderClass"] = HeaderClass;
         if (!string.IsNullOrEmpty(CellClass))
             columnInfo["CellClass"] = CellClass;
-        if (!string.IsNullOrEmpty(Class))
-            columnInfo["Class"] = Class;
         if (Property != null)
             columnInfo["Property"] = Property;
         if (Template != null)
@@ -191,7 +171,6 @@ public class RColumn : RColumnBase
         if (!string.IsNullOrEmpty(MaxWidth))
             columnInfo["MaxWidth"] = MaxWidth;
         columnInfo["Sticky"] = Sticky;
-        columnInfo["StickyPosition"] = StickyPosition;
         columnInfo["Order"] = Order;
         columnInfo["Visible"] = Visible;
         columnInfo["Hideable"] = Hideable;
@@ -200,7 +179,7 @@ public class RColumn : RColumnBase
         if (!string.IsNullOrEmpty(propertyName))
             columnInfo["PropertyName"] = propertyName;
         
-        // Let the table handle the complex type creation
+        // Let the table handle the column creation with ColumnDefinition
         ParentTable.AddColumn(columnInfo);
     }
 

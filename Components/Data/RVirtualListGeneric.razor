@@ -152,7 +152,6 @@
     [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object> AdditionalAttributes { get; set; }
     
     private ElementReference loadMoreTrigger;
-    private IJSObjectReference intersectionObserver;
     private bool isLoadingMore = false;
     private bool observerInitialized = false;
     
@@ -211,14 +210,10 @@
         
         try
         {
-            var module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/RR.Blazor/js/intersection-observer.js");
-            
-            await module.InvokeVoidAsync("observe", 
+            await JS.InvokeVoidAsync("RRBlazor.IntersectionObserver.observe", 
                 loadMoreTrigger, 
                 DotNetObjectReference.Create(this),
                 new { rootMargin = "100px" });
-                
-            intersectionObserver = module;
             observerInitialized = true;
         }
         catch (Exception ex)
@@ -271,17 +266,6 @@
     
     public async ValueTask DisposeAsync()
     {
-        if (intersectionObserver != null)
-        {
-            try
-            {
-                await intersectionObserver.InvokeVoidAsync("disconnect");
-                await intersectionObserver.DisposeAsync();
-            }
-            catch (Exception)
-            {
-
-            }
-        }
+        await Task.CompletedTask;
     }
 }

@@ -287,10 +287,96 @@ public abstract class RTableBase : ComponentBase
 }
 
 /// <summary>
-/// Smart table wrapper with automatic type detection.
-/// Usage: &lt;RTable Items="@products" Title="Product Catalog" Domain="TableDomain.Ecommerce" /&gt;
+/// Smart table component that automatically detects item type from Items parameter
+/// Usage: &lt;RTable Items="@employees"&gt;
+///           &lt;RColumn For="@(e => e.Name)" /&gt;
+///        &lt;/RTable&gt;
 /// </summary>
 public class RTable : RTableBase
+{
+    [Parameter] public object Items { get; set; }
+    [Parameter] public object SelectedItems { get; set; }
+    [Parameter] public object SelectedItem { get; set; }
+    [Parameter] public object Columns { get; set; }
+    [Parameter] public RenderFragment ChildContent { get; set; }
+
+    protected override void BuildRenderTree(RenderTreeBuilder builder)
+    {
+        if (Items == null)
+        {
+            // Render empty state
+            builder.OpenElement(0, "div");
+            builder.AddAttribute(1, "class", "table-empty-state pa-6 text-center");
+            builder.OpenElement(2, "div");
+            builder.AddAttribute(3, "class", "text-secondary");
+            builder.AddContent(4, EmptyMessage ?? "No data available");
+            builder.CloseElement();
+            builder.CloseElement();
+            return;
+        }
+
+        // Auto-detect item type from Items collection
+        var itemsType = Items.GetType();
+        Type itemType;
+
+        if (itemsType.IsGenericType && itemsType.GetGenericTypeDefinition() == typeof(List<>))
+        {
+            itemType = itemsType.GetGenericArguments()[0];
+        }
+        else if (itemsType.IsArray)
+        {
+            itemType = itemsType.GetElementType();
+        }
+        else if (itemsType.GetInterfaces().Any(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IEnumerable<>)))
+        {
+            itemType = itemsType.GetInterfaces()
+                .First(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IEnumerable<>))
+                .GetGenericArguments()[0];
+        }
+        else
+        {
+            itemType = typeof(object);
+        }
+
+        // Create table context for child columns
+        var tableContext = new TableContext(itemType, $"smart-table-{GetHashCode()}", true);
+
+        // Use ChildContent as ColumnsContent if provided (for compatibility)
+        var effectiveColumnsContent = ColumnsContent ?? ChildContent;
+
+        // Provide context to child components
+        builder.OpenComponent<CascadingValue<TableContext>>(0);
+        builder.AddAttribute(1, "Value", tableContext);
+        builder.AddAttribute(2, "ChildContent", (RenderFragment)(childBuilder =>
+        {
+            // Create RTableGeneric<T> dynamically
+            var genericTableType = typeof(RTableGeneric<>).MakeGenericType(itemType);
+
+            childBuilder.OpenComponent(0, genericTableType);
+            
+            // Forward all base parameters EXCEPT ChildContent (RTableGeneric doesn't support it)
+            ForwardBaseParametersExceptChildContent(childBuilder);
+            
+            // Override ColumnsContent with effective content
+            childBuilder.AddAttribute(38, nameof(ColumnsContent), effectiveColumnsContent);
+            
+            // Forward specific parameters with type conversion
+            childBuilder.AddAttribute(50, "Items", Items);
+            childBuilder.AddAttribute(51, "SelectedItems", SelectedItems);
+            childBuilder.AddAttribute(52, "SelectedItem", SelectedItem);
+            childBuilder.AddAttribute(53, "Columns", Columns);
+            
+            childBuilder.CloseComponent();
+        }));
+        builder.CloseComponent();
+    }
+}
+
+/// <summary>
+/// Smart table wrapper with automatic type detection.
+/// Usage: &lt;RTableAuto Items="@products" Title="Product Catalog" Domain="TableDomain.Ecommerce" /&gt;
+/// </summary>
+public class RTableAuto : RTableBase
 {
     [Parameter] public object Items { get; set; }
     [Parameter] public object SelectedItems { get; set; }

@@ -165,7 +165,7 @@ class TableScrollInstance {
     
     setupHeaderFocusHandling() {
         try {
-            const headers = this.scrollContainer.querySelectorAll('.table-header-cell[data-column-key]');
+            const headers = this.scrollContainer.querySelectorAll('.r-table-header-cell[data-column-key]');
             
             headers.forEach(header => {
                 header.addEventListener('focus', this.handleHeaderFocus, { passive: true });
@@ -214,7 +214,7 @@ class TableScrollInstance {
             }
             
             // Clean up header focus handlers
-            const headers = this.scrollContainer.querySelectorAll('.table-header-cell[data-column-key]');
+            const headers = this.scrollContainer.querySelectorAll('.r-table-header-cell[data-column-key]');
             headers.forEach(header => {
                 header.removeEventListener('focus', this.handleHeaderFocus);
             });

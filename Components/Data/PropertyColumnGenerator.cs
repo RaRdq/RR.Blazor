@@ -7,6 +7,8 @@ using System.ComponentModel;
 using RR.Blazor.Enums;
 using RR.Blazor.Models;
 using System.Text.RegularExpressions;
+using System.Linq.Expressions;
+using RR.Blazor.Services;
 
 namespace RR.Blazor.Components.Data;
 
@@ -21,11 +23,11 @@ public static class PropertyColumnGenerator
     /// <summary>
     /// Generate smart column definitions from a model type
     /// </summary>
-    public static List<RDataTableColumn<TItem>> GenerateColumns<TItem>()
+    public static List<ColumnDefinition<TItem>> GenerateColumns<TItem>() where TItem : class
     {
         var itemType = typeof(TItem);
         
-        return (List<RDataTableColumn<TItem>>)_columnCache.GetOrAdd(itemType, _ =>
+        return (List<ColumnDefinition<TItem>>)_columnCache.GetOrAdd(itemType, _ =>
         {
             var properties = itemType.GetProperties(BindingFlags.Public | BindingFlags.Instance)
                 .Where(p => p.CanRead && IsDisplayableProperty(p))
@@ -39,17 +41,60 @@ public static class PropertyColumnGenerator
     /// <summary>
     /// Create smart column that auto-detects UI elements
     /// </summary>
-    private static RDataTableColumn<TItem> CreateSmartColumn<TItem>(PropertyInfo property)
+    private static ColumnDefinition<TItem> CreateSmartColumn<TItem>(PropertyInfo property) where TItem : class
     {
         var metadata = GetPropertyMetadata(property);
         
-        return new RDataTableColumn<TItem>
+        // Create property expression for type-safe access
+        var parameter = Expression.Parameter(typeof(TItem), "item");
+        var propertyAccess = Expression.Property(parameter, property);
+        var converted = Expression.Convert(propertyAccess, typeof(object));
+        var lambda = Expression.Lambda<Func<TItem, object>>(converted, parameter);
+        
+        return new ColumnDefinition<TItem>
         {
             Key = property.Name,
-            Header = metadata.DisplayName,
+            Title = metadata.DisplayName,
+            Property = lambda,
             Sortable = metadata.IsSortable,
-            CellTemplate = CreateSmartCellTemplate<TItem>(property, metadata)
+            Filterable = true,
+            Searchable = true,
+            Template = DetectColumnTemplate(property, metadata),
+            CustomTemplate = CreateSmartCellTemplate<TItem>(property, metadata),
+            Format = GetDefaultFormat(property, metadata)
         };
+    }
+    
+    /// <summary>
+    /// Detect the best built-in template based on property metadata
+    /// </summary>
+    private static ColumnTemplate DetectColumnTemplate(PropertyInfo property, PropertyMetadata metadata)
+    {
+        if (metadata.IsEmail) return ColumnTemplate.Email;
+        if (metadata.IsUrl) return ColumnTemplate.Link;
+        if (metadata.IsPhone) return ColumnTemplate.Phone;
+        if (metadata.IsBoolean) return ColumnTemplate.Boolean;
+        if (metadata.IsDate) return property.PropertyType == typeof(DateTime) || property.PropertyType == typeof(DateTime?) 
+            ? ColumnTemplate.DateTime : ColumnTemplate.Date;
+        if (metadata.IsMoney) return ColumnTemplate.Currency;
+        if (metadata.IsStatus) return ColumnTemplate.Status;
+        if (metadata.IsAction) return ColumnTemplate.Actions;
+        
+        return ColumnTemplate.Text;
+    }
+    
+    /// <summary>
+    /// Get default format string based on property type
+    /// </summary>
+    private static string GetDefaultFormat(PropertyInfo property, PropertyMetadata metadata)
+    {
+        if (metadata.IsMoney) return "C2";
+        if (metadata.IsDate) 
+        {
+            return property.PropertyType == typeof(DateTime) || property.PropertyType == typeof(DateTime?)
+                ? "MMM dd, yyyy HH:mm" : "MMM dd, yyyy";
+        }
+        return null;
     }
 
     /// <summary>

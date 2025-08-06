@@ -343,10 +343,55 @@ else
                 await JS.InvokeVoidAsync("RRBlazor.Choice.registerClickOutside", choiceElementId, 
                     DotNetObjectReference.Create(this));
             }
+            else
+            {
+                // Portal creation failed, fall back to CSS-only positioning
+                await HandlePortalFallback();
+            }
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Portal creation failed: {ex.Message}");
+            await HandlePortalFallback();
+        }
+    }
+    
+    private async Task HandlePortalFallback()
+    {
+        try
+        {
+            // Add fallback CSS class for CSS-only positioning
+            await JS.InvokeVoidAsync("eval", $@"
+                const element = document.querySelector('[data-choice-id=""{choiceElementId}""]');
+                if (element) {{
+                    element.classList.add('choice-fallback-positioning');
+                    const viewport = element.querySelector('.choice-viewport');
+                    if (viewport) {{
+                        viewport.style.position = 'absolute';
+                        viewport.style.top = '100%';
+                        viewport.style.left = '0';
+                        viewport.style.zIndex = '900';
+                    }}
+                }}
+            ");
+            
+            // Register basic click-outside using document events
+            await JS.InvokeVoidAsync("eval", $@"
+                const handleClickOutside = (e) => {{
+                    const element = document.querySelector('[data-choice-id=""{choiceElementId}""]');
+                    if (element && !element.contains(e.target)) {{
+                        DotNet.invokeMethodAsync('RR.Blazor', 'HandleClickOutside_{choiceElementId}');
+                    }}
+                }};
+                document.addEventListener('click', handleClickOutside);
+                window.choiceClickHandlers = window.choiceClickHandlers || {{}};
+                window.choiceClickHandlers['{choiceElementId}'] = handleClickOutside;
+            ");
+        }
+        catch (Exception fallbackEx)
+        {
+            System.Diagnostics.Debug.WriteLine($"Fallback positioning failed: {fallbackEx.Message}");
+            // Ultimate fallback: just show the dropdown inline
         }
     }
 

@@ -203,6 +203,24 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
     private bool canScrollRight = false;
     private bool isUpdatingIndicator = false;
     private bool isUpdatingScrollState = false;
+    private bool wasActiveTabIdSetExternally = false;
+    
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        // Track if ActiveTabId was set externally (from parameter)
+        wasActiveTabIdSetExternally = !string.IsNullOrEmpty(ActiveTabId);
+    }
+    
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+        // If ActiveTabId was set from outside, mark it as externally set
+        if (!string.IsNullOrEmpty(ActiveTabId))
+        {
+            wasActiveTabIdSetExternally = true;
+        }
+    }
     
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -266,7 +284,10 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
             tabs.Add(tab);
         }
         
-        if (string.IsNullOrEmpty(ActiveTabId) && tabs.Count >= 1)
+        // Only set default tab if:
+        // 1. ActiveTabId is not set AND
+        // 2. It wasn't set externally (from URL or parent component)
+        if (string.IsNullOrEmpty(ActiveTabId) && !wasActiveTabIdSetExternally && tabs.Count >= 1)
         {
             ActiveTabId = tabs[0].Id;
         }
@@ -329,6 +350,7 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
         
         // Update the ActiveTabId immediately
         ActiveTabId = tabId;
+        wasActiveTabIdSetExternally = true; // Mark as set so it won't be overridden
         
         // Invoke the two-way binding callback IMMEDIATELY for proper data binding
         if (ActiveTabIdChanged.HasDelegate)
@@ -669,7 +691,7 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
         // Variant-specific container classes
         classes.Add(Variant switch
         {
-            TabsVariant.Elevated => "elevation-4 rounded-lg",
+            TabsVariant.Elevated => "shadow-4 rounded-lg",
             TabsVariant.Card => "bg-transparent",
             _ => "bg-surface-elevated rounded-lg"
         });
@@ -725,7 +747,7 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
             "rounded-full",
             "d-flex align-center justify-center",
             "bg-surface-elevated",
-            "elevation-4",
+            "shadow-4",
             "hover-lift",
             "transition-all",
             "z-3"

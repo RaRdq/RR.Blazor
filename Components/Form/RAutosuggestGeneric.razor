@@ -119,7 +119,6 @@ Extensible foundation for text search, datepicker autosuggest, and custom implem
     private Timer debounceTimer;
     private CancellationTokenSource cancellationTokenSource;
     private string portalId;
-    private IJSObjectReference jsModule;
     private string currentDirection = "down";
 
     [Parameter] public TItem Value { get; set; }
@@ -172,23 +171,6 @@ Extensible foundation for text search, datepicker autosuggest, and custom implem
         }
     }
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        await base.OnAfterRenderAsync(firstRender);
-        
-        if (firstRender)
-        {
-            try
-            {
-                jsModule = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/RR.Blazor/js/rr-blazor.js");
-            }
-            catch (Exception ex)
-            {
-                // Fallback for development/testing
-                Console.WriteLine($"Warning: Failed to load RR.Blazor JS module: {ex.Message}");
-            }
-        }
-    }
 
     private async Task HandleValueChanged(string value)
     {
@@ -336,15 +318,15 @@ Extensible foundation for text search, datepicker autosuggest, and custom implem
 
     private async Task CreatePortal()
     {
-        if (jsModule == null || !string.IsNullOrEmpty(portalId)) return;
+        if (!string.IsNullOrEmpty(portalId)) return;
         
         try
         {
-            portalId = await jsModule.InvokeAsync<string>("RRBlazor.Autosuggest.createPortal", ElementId);
+            portalId = await JS.InvokeAsync<string>("RRBlazor.Autosuggest.createPortal", ElementId);
             
             if (!string.IsNullOrEmpty(portalId))
             {
-                await jsModule.InvokeVoidAsync("RRBlazor.Autosuggest.registerClickOutside", ElementId, 
+                await JS.InvokeVoidAsync("RRBlazor.Autosuggest.registerClickOutside", ElementId, 
                     DotNetObjectReference.Create(this));
                     
                 await UpdateCurrentDirection();
@@ -358,11 +340,11 @@ Extensible foundation for text search, datepicker autosuggest, and custom implem
 
     private async Task DestroyPortal()
     {
-        if (jsModule == null || string.IsNullOrEmpty(portalId)) return;
+        if (string.IsNullOrEmpty(portalId)) return;
         
         try
         {
-            await jsModule.InvokeVoidAsync("RRBlazor.Autosuggest.destroyPortal", portalId);
+            await JS.InvokeVoidAsync("RRBlazor.Autosuggest.destroyPortal", portalId);
             portalId = null;
         }
         catch (Exception ex)
@@ -402,11 +384,11 @@ Extensible foundation for text search, datepicker autosuggest, and custom implem
 
     private async Task UpdateCurrentDirection()
     {
-        if (jsModule == null || string.IsNullOrEmpty(ElementId)) return;
+        if (string.IsNullOrEmpty(ElementId)) return;
         
         try
         {
-            var newDirection = await jsModule.InvokeAsync<string>("RRBlazor.Autosuggest.getDirection", ElementId);
+            var newDirection = await JS.InvokeAsync<string>("RRBlazor.Autosuggest.getDirection", ElementId);
             if (currentDirection != newDirection)
             {
                 currentDirection = newDirection;
@@ -477,18 +459,5 @@ Extensible foundation for text search, datepicker autosuggest, and custom implem
         debounceTimer = null;
         cancellationTokenSource = null;
         
-        // Dispose JS module
-        if (jsModule != null)
-        {
-            try
-            {
-                await jsModule.DisposeAsync();
-            }
-            catch { }
-            finally
-            {
-                jsModule = null;
-            }
-        }
     }
 }

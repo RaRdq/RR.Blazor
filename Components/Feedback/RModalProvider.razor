@@ -8,7 +8,7 @@
 
 @if (ModalService.HasVisibleModals)
 {
-    <div @ref="_modalContainer" style="display: none;">
+    <div @ref="_modalContainer" class="d-none">
         <div class="modal-backdrop" @onclick="HandleBackdropClick" @onkeydown="OnKeyDownHandler" @onkeydown:preventDefault="false" tabindex="-1">
             @foreach (var modal in ModalService.ActiveModals)
             {
@@ -45,7 +45,6 @@
 
 @code {
     private ElementReference _modalContainer;
-    private IJSObjectReference _jsModule;
     private static int _portalCounter = 0;
     private readonly string _portalId = $"modal-{System.Threading.Interlocked.Increment(ref _portalCounter)}";
     private bool _isPortalCreated = false;
@@ -59,17 +58,6 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
-        {
-            try
-            {
-                _jsModule = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./_content/RR.Blazor/js/portal.js");
-            }
-            catch (Exception ex)
-            {
-                return;
-            }
-        }
 
         var hasVisibleModals = ModalService.HasVisibleModals;
         var activeCount = ModalService.ActiveModals.Count();
@@ -86,10 +74,6 @@
 
     private async Task CreatePortal()
     {
-        if (_jsModule == null)
-        {
-            return;
-        }
         
         if (_isPortalCreated)
         {
@@ -98,7 +82,9 @@
 
         try
         {
-            var success = await _jsModule.InvokeAsync<bool>("createPortal", _modalContainer, "body", _portalId, "", GetFullViewportStyles());
+            var options = new { type = "modal", backdrop = true };
+            var result = await JSRuntime.InvokeAsync<string>("RRBlazor.Portal.create", _modalContainer, options);
+            var success = !string.IsNullOrEmpty(result);
             
             if (success)
             {
@@ -121,14 +107,14 @@
 
     private async Task CleanupPortal()
     {
-        if (_jsModule == null || !_isPortalCreated)
+        if (!_isPortalCreated)
         {
             return;
         }
 
         try
         {
-            var success = await _jsModule.InvokeAsync<bool>("cleanupPortal", _portalId);
+            await JSRuntime.InvokeVoidAsync("RRBlazor.Portal.destroy", _portalId);
             await JSRuntime.InvokeVoidAsync("RRBlazor.Modal.unlockScroll");
             _isPortalCreated = false;
         }
@@ -310,13 +296,5 @@
         ModalService.OnModalClosed -= OnModalStateChanged;
         ModalService.OnAllModalsClosed -= OnAllModalsClosed;
         
-        if (_jsModule != null)
-        {
-            try
-            {
-                await _jsModule.DisposeAsync();
-            }
-            catch { }
-        }
     }
 }

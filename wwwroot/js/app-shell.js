@@ -17,6 +17,7 @@ export function initialize() {
     setupResponsive();
     
     setupAccessibility();
+    
 }
 
 
@@ -78,6 +79,7 @@ function setupClickOutside() {
         if (!dropdown) {
             closeAllDropdowns();
         }
+        
     });
 }
 
@@ -193,6 +195,27 @@ export function focusElement(selector) {
     }
 }
 
+export function focusSearchInput(searchId) {
+    try {
+        // Try to find the autosuggest input by the provided ID
+        const autosuggestContainer = document.querySelector(`[data-autosuggest-id="${searchId}"]`);
+        if (autosuggestContainer) {
+            const input = autosuggestContainer.querySelector('input[type="text"], input[type="search"]');
+            if (input) {
+                input.focus();
+                input.select();
+                return true;
+            }
+        }
+        
+        // Fallback to generic search
+        return focusElement('input[placeholder*="Search"]');
+    } catch (error) {
+        console.warn('Focus search input failed:', error);
+        return false;
+    }
+}
+
 function toggleSidebar() {
     const sidebar = document.querySelector('.sidebar');
     const toggleButton = document.querySelector('.header__toggle, [aria-label="Toggle sidebar"]');
@@ -221,6 +244,7 @@ function closeAllDropdowns() {
         }
     });
 }
+
 
 function navigateTo(url) {
     if (isValidUrl(url)) {
@@ -306,6 +330,8 @@ export function copyToClipboard(text) {
 export function updateUrlWithoutScroll(newUrl) {
     return RRBlazor.updateUrlWithoutScroll(newUrl);
 }
+
+
 
 window.RRAppShell = {
     isMobile,

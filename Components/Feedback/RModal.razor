@@ -47,7 +47,7 @@
                                         @onclick:stopPropagation="true"
                                         disabled="@Processing"
                                         aria-label="Close dialog">
-                                    <i class="material-symbols-rounded" aria-hidden="true" style="pointer-events: none;">close</i>
+                                    <i class="material-symbols-rounded icon-no-pointer" aria-hidden="true">close</i>
                                 </button>
                             }
                         </div>
@@ -127,10 +127,9 @@
     [Parameter] public bool UseBackdrop { get; set; } = true;
     
 
-    private IJSObjectReference jsModule;
-    private IJSObjectReference focusTrapModule;
     private static int portalCounter = 0;
     private readonly string portalId = $"modal-auto-{System.Threading.Interlocked.Increment(ref portalCounter)}";
+    private string? actualPortalId = null;
     private bool isPortalCreated = false;
     private bool previousVisible = false;
     private int modalZIndex = 1000;
@@ -219,21 +218,9 @@
     
 protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
-        {
-            try
-            {
-                jsModule = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./_content/RR.Blazor/js/portal.js");
-                focusTrapModule = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./_content/RR.Blazor/js/focus-trap.js");
-            }
-            catch (Exception ex)
-            {
-                return;
-            }
-        }
         
 
-        if (jsModule != null && Visible != previousVisible && UseBackdrop)
+        if (Visible != previousVisible && UseBackdrop)
         {
             // Add defensive check - ensure no race conditions
             if (currentState == ModalState.Closing && Visible)
@@ -326,7 +313,7 @@ protected override async Task OnAfterRenderAsync(bool firstRender)
 private async Task<bool> CreatePortal()
     {
         
-        if (jsModule == null || isPortalCreated)
+        if (isPortalCreated)
         {
             return false;
         }
@@ -348,9 +335,9 @@ private async Task<bool> CreatePortal()
                 escapeCallbackMethod = "HandlePortalEscapeKey"
             };
             
-            var result = await jsModule.InvokeAsync<string>("createPortal", modalElement, "body", portalId, "modal-auto-portal", GetFullViewportStyles(), options);
+            var result = await JSRuntime.InvokeAsync<string>("RRBlazor.Portal.create", modalElement, options);
             
-            
+            actualPortalId = result;
             var success = !string.IsNullOrEmpty(result);
             if (success)
             {
@@ -367,34 +354,29 @@ private async Task<bool> CreatePortal()
     
 private async Task CleanupPortal()
     {
-        // Always attempt cleanup even if state seems inconsistent
-        if (jsModule == null)
-        {
-            return;
-        }
-        
         try
         {
-            // Force cleanup regardless of isPortalCreated flag
-            var success = await jsModule.InvokeAsync<bool>("cleanupPortal", portalId);
+            // Use the actual portal ID returned from create
+            if (!string.IsNullOrEmpty(actualPortalId))
+            {
+                await JSRuntime.InvokeVoidAsync("RRBlazor.Portal.destroy", actualPortalId);
+            }
             
-            // Also trigger orphaned cleanup as safety net
-            await jsModule.InvokeVoidAsync("RRBlazor.Portal.cleanupOrphanedBackdrops");
+            // Also trigger orphaned cleanup as safety net for backdrop cleanup
+            try
+            {
+                await JSRuntime.InvokeVoidAsync("eval", "window.RRPortalManager?.cleanupOrphanedBackdrops?.()");
+            }
+            catch { }
             
             // Reset state
+            actualPortalId = null;
             isPortalCreated = false;
-            
-            // Additional DOM cleanup via JavaScript for this specific modal
-            await jsModule.InvokeVoidAsync("eval", $@"
-                // Force removal of any remaining modal elements
-                document.querySelectorAll('[id*=""{portalId}""],[class*=""payroll-creation-modal""]').forEach(el => {{
-                    if (el.parentElement) el.parentElement.removeChild(el);
-                }});
-            ");
         }
         catch (Exception ex)
         {
             // Even if JavaScript cleanup fails, reset our state
+            actualPortalId = null;
             isPortalCreated = false;
         }
     }
@@ -653,16 +635,6 @@ public async ValueTask DisposeAsync()
             await DestroyFocusTrap();
             await CleanupPortal();
             
-            if (focusTrapModule != null)
-            {
-                await focusTrapModule.DisposeAsync();
-            }
-            
-            if (jsModule != null)
-            {
-                await jsModule.DisposeAsync();
-            }
-            
             currentState = ModalState.Closed;
         }
         catch (Exception ex)
@@ -677,22 +649,17 @@ public async ValueTask DisposeAsync()
     
     private async Task CreateFocusTrap()
     {
-        if (focusTrapModule == null || focusTrapActive) return;
+        if (focusTrapActive) return;
         
         try
         {
-
             await Task.Delay(100);
             
-
-            var success = await focusTrapModule.InvokeAsync<bool>("createFocusTrap", modalElement, portalId);
+            var success = await JSRuntime.InvokeAsync<bool>("RRBlazor.FocusTrap.create", modalElement, portalId);
             
             if (success)
             {
                 focusTrapActive = true;
-            }
-            else
-            {
             }
         }
         catch (Exception ex)
@@ -702,11 +669,11 @@ public async ValueTask DisposeAsync()
     
     private async Task DestroyFocusTrap()
     {
-        if (focusTrapModule == null || !focusTrapActive) return;
+        if (!focusTrapActive) return;
         
         try
         {
-            var success = await focusTrapModule.InvokeAsync<bool>("destroyFocusTrap", portalId);
+            var success = await JSRuntime.InvokeAsync<bool>("RRBlazor.FocusTrap.destroy", portalId);
             focusTrapActive = false;
         }
         catch (Exception ex)

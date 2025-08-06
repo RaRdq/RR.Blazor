@@ -96,7 +96,8 @@ class ModuleManager {
             tabs: '/_content/RR.Blazor/js/tabs.js',
             theme: '/_content/RR.Blazor/js/theme.js',
             chart: '/_content/RR.Blazor/js/chart.js',
-            table: '/_content/RR.Blazor/js/table-scroll.js'
+            table: '/_content/RR.Blazor/js/table-scroll.js',
+            fileUpload: '/_content/RR.Blazor/js/file-upload.js'
         };
         this.loadingPromises = new Map();
     }
@@ -201,18 +202,34 @@ window.RRBlazor = {
     // Choice/Dropdown API
     Choice: {
         async createPortal(choiceElementId) {
-            const choice = await moduleManager.getModule('choice');
-            return choice.createChoicePortal(choiceElementId);
+            try {
+                const choice = await moduleManager.getModule('choice');
+                if (!choice) throw new Error('Choice module failed to load');
+                return choice.createChoicePortal(choiceElementId);
+            } catch (error) {
+                debugLogger.error('Portal creation failed:', error);
+                return null;
+            }
         },
         
         async destroyPortal(portalId) {
-            const choice = await moduleManager.getModule('choice');
-            return choice.destroyChoicePortal(portalId);
+            try {
+                const choice = await moduleManager.getModule('choice');
+                if (!choice) return;
+                return choice.destroyChoicePortal(portalId);
+            } catch (error) {
+                debugLogger.error('Portal destruction failed:', error);
+            }
         },
         
         async registerClickOutside(choiceElementId, dotNetRef) {
-            const choice = await moduleManager.getModule('choice');
-            return choice.registerClickOutside(choiceElementId, dotNetRef);
+            try {
+                const choice = await moduleManager.getModule('choice');
+                if (!choice) return;
+                return choice.registerClickOutside(choiceElementId, dotNetRef);
+            } catch (error) {
+                debugLogger.error('Click outside registration failed:', error);
+            }
         },
         
         async calculatePosition(triggerElement, options) {
@@ -542,6 +559,38 @@ RRBlazor.scrollTabsRight = async function(wrapperElement) {
 RRBlazor.scrollToTab = async function(wrapperElement, tabElementId) {
     const tabs = await moduleManager.getModule('tabs');
     return tabs.scrollToTab(wrapperElement, tabElementId);
+};
+
+window.RRFileUpload = {
+    initialize: async function(elementId, settings) {
+        const fileUpload = await moduleManager.getModule('fileUpload');
+        return fileUpload.RRFileUpload.initialize(elementId, settings);
+    },
+    
+    setupBlazorEventListeners: async function(elementId, dotNetObjectRef) {
+        const fileUpload = await moduleManager.getModule('fileUpload');
+        return fileUpload.RRFileUpload.setupBlazorEventListeners(elementId, dotNetObjectRef);
+    },
+    
+    triggerFileSelect: async function(inputId) {
+        const fileUpload = await moduleManager.getModule('fileUpload');
+        return fileUpload.RRFileUpload.triggerFileSelect(inputId);
+    },
+    
+    updateProgress: async function(elementId, fileId, progress) {
+        const fileUpload = await moduleManager.getModule('fileUpload');
+        return fileUpload.RRFileUpload.updateProgress(elementId, fileId, progress);
+    },
+    
+    removeFile: async function(elementId, fileId) {
+        const fileUpload = await moduleManager.getModule('fileUpload');
+        return fileUpload.RRFileUpload.removeFile(elementId, fileId);
+    },
+    
+    cleanup: async function(elementId) {
+        const fileUpload = await moduleManager.getModule('fileUpload');
+        return fileUpload.RRFileUpload.cleanup(elementId);
+    }
 };
 
 // Ensure RRBlazor is available globally before any module loads

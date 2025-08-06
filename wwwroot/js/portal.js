@@ -105,11 +105,13 @@ class PortalManager {
         
         // Setup event handlers
         if (options.onClickOutside || options.closeOnClickOutside) {
-            this.eventManager.setupClickOutside(portal, options.onClickOutside, options.dotNetRef, options.backdropCallbackMethod);
+            const callbackMethod = options.backdropCallbackMethod || 'HandleClickOutside';
+            this.eventManager.setupClickOutside(portal, options.onClickOutside, options.dotNetRef, callbackMethod);
         }
         
         if (options.onEscape || options.closeOnEscape) {
-            this.eventManager.setupEscape(portal, options.onEscape, options.dotNetRef, options.escapeCallbackMethod);
+            const callbackMethod = options.escapeCallbackMethod || 'HandleEscape';
+            this.eventManager.setupEscape(portal, options.onEscape, options.dotNetRef, callbackMethod);
         }
         
         return portalId;
@@ -241,11 +243,13 @@ class PortalManager {
         
         // Update event handlers if provided
         if (options.onClickOutside) {
-            this.eventManager.setupClickOutside(portal, options.onClickOutside);
+            const callbackMethod = options.backdropCallbackMethod || 'HandleClickOutside';
+            this.eventManager.setupClickOutside(portal, options.onClickOutside, options.dotNetRef, callbackMethod);
         }
         
         if (options.onEscape) {
-            this.eventManager.setupEscape(portal, options.onEscape);
+            const callbackMethod = options.escapeCallbackMethod || 'HandleEscape';
+            this.eventManager.setupEscape(portal, options.onEscape, options.dotNetRef, callbackMethod);
         }
         
         return true;
@@ -707,17 +711,29 @@ class PortalEventManager {
         document.addEventListener('keydown', this.globalEscapeHandler, true);
     }
     
-    setupClickOutside(portal, callback) {
+    setupClickOutside(portal, callback, dotNetRef, callbackMethod) {
         const handler = this.handlers.get(portal.id) || {};
         handler.portal = portal;
-        handler.clickOutside = callback || (() => {
-            // Default: trigger custom event
-            const event = new CustomEvent('portalclickoutside', {
-                detail: { portalId: portal.id },
-                bubbles: true
+        
+        // If dotNetRef is provided, create a callback that invokes the method
+        if (dotNetRef && callbackMethod) {
+            handler.clickOutside = async () => {
+                try {
+                    await dotNetRef.invokeMethodAsync(callbackMethod);
+                } catch (error) {
+                    console.warn(`[PortalEventManager] Failed to invoke ${callbackMethod}:`, error);
+                }
+            };
+        } else {
+            handler.clickOutside = callback || (() => {
+                // Default: trigger custom event
+                const event = new CustomEvent('portalclickoutside', {
+                    detail: { portalId: portal.id },
+                    bubbles: true
+                });
+                portal.element.dispatchEvent(event);
             });
-            portal.element.dispatchEvent(event);
-        });
+        }
         
         handler.isRecentlyCreated = true;
         const protectionDelay = 50;
@@ -730,17 +746,29 @@ class PortalEventManager {
         this.handlers.set(portal.id, handler);
     }
     
-    setupEscape(portal, callback) {
+    setupEscape(portal, callback, dotNetRef, callbackMethod) {
         const handler = this.handlers.get(portal.id) || {};
         handler.portal = portal;
-        handler.escape = callback || (() => {
-            // Default: trigger custom event
-            const event = new CustomEvent('portalescape', {
-                detail: { portalId: portal.id },
-                bubbles: true
+        
+        // If dotNetRef is provided, create a callback that invokes the method
+        if (dotNetRef && callbackMethod) {
+            handler.escape = async () => {
+                try {
+                    await dotNetRef.invokeMethodAsync(callbackMethod);
+                } catch (error) {
+                    console.warn(`[PortalEventManager] Failed to invoke ${callbackMethod}:`, error);
+                }
+            };
+        } else {
+            handler.escape = callback || (() => {
+                // Default: trigger custom event
+                const event = new CustomEvent('portalescape', {
+                    detail: { portalId: portal.id },
+                    bubbles: true
+                });
+                portal.element.dispatchEvent(event);
             });
-            portal.element.dispatchEvent(event);
-        });
+        }
         this.handlers.set(portal.id, handler);
     }
     

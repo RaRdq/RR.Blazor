@@ -431,7 +431,6 @@
     private int CompletedUploads => SelectedFiles.Count(f => f.Status == RFileUploadStatus.Completed);
     private int TotalUploads => SelectedFiles.Count;
     
-    private IJSObjectReference jsModule;
     private DotNetObjectReference<RFileUpload> dotNetRef;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -443,8 +442,6 @@
                 dotNetRef = DotNetObjectReference.Create(this);
                 
 
-                jsModule = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./_content/RR.Blazor/js/file-upload.js");
-                
                 var settings = new
                 {
                     allowedTypes = AllowedTypes ?? Array.Empty<string>(),
@@ -456,9 +453,9 @@
                     generateThumbnails = GenerateThumbnails
                 };
                 
-                await jsModule.InvokeVoidAsync("RRFileUpload.initialize", ComponentId, settings);
+                await JSRuntime.InvokeVoidAsync("RRFileUpload.initialize", ComponentId, settings);
                 
-                await jsModule.InvokeVoidAsync("RRFileUpload.setupBlazorEventListeners", ComponentId, dotNetRef);
+                await JSRuntime.InvokeVoidAsync("RRFileUpload.setupBlazorEventListeners", ComponentId, dotNetRef);
             }
             catch (Exception ex)
             {
@@ -521,7 +518,7 @@
         };
 
 
-        if (fileInfo.IsImage && GenerateThumbnails && jsModule != null)
+        if (fileInfo.IsImage && GenerateThumbnails)
         {
             try
             {
@@ -598,15 +595,7 @@
     {
         try
         {
-            if (jsModule != null)
-            {
-                await jsModule.InvokeVoidAsync("RRFileUpload.triggerFileSelect", InputId);
-            }
-            else
-            {
-                // Fallback if module not loaded yet
-                await JSRuntime.InvokeVoidAsync("eval", $"document.getElementById('{InputId}').click()");
-            }
+            await JSRuntime.InvokeVoidAsync("RRFileUpload.triggerFileSelect", InputId);
         }
         catch (Exception ex)
         {
@@ -910,11 +899,7 @@
     {
         try
         {
-            if (jsModule != null)
-            {
-                await jsModule.InvokeVoidAsync("RRFileUpload.cleanup", ComponentId);
-                await jsModule.DisposeAsync();
-            }
+            await JSRuntime.InvokeVoidAsync("RRFileUpload.cleanup", ComponentId);
             
             dotNetRef?.Dispose();
         }

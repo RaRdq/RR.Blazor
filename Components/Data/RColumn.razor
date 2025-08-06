@@ -1,0 +1,327 @@
+@using Microsoft.AspNetCore.Components
+@using RR.Blazor.Models
+@using RR.Blazor.Enums
+@using System.Linq.Expressions
+@using System.Reflection
+@typeparam TItem where TItem : class
+
+@* 
+    RColumn<T> - Type-safe column definition for RTable
+    
+    Usage:
+    <RColumn For="@(e => e.Name)" />
+    <RColumn For="@(e => e.Email)" Template="Email" />
+    <RColumn For="@(e => e.Salary)" Template="Currency" Format="C2" />
+    <RColumn For="@(e => e.Status)" Template="Status" />
+    <RColumn For="@(e => e.StartDate)" Template="Date" Format="MMM dd, yyyy" />
+    
+    Custom template:
+    <RColumn For="@(e => e.IsActive)" Title="Status">
+        <Template>
+            @if (context.IsActive)
+            {
+                <span class="badge badge-success">Active</span>
+            }
+            else
+            {
+                <span class="badge badge-danger">Inactive</span>
+            }
+        </Template>
+    </RColumn>
+    
+    Actions column:
+    <RColumn Title="Actions" Width="100px" Sortable="false">
+        <Template>
+            <button @onclick="@(() => EditItem(context))">Edit</button>
+            <button @onclick="@(() => DeleteItem(context))">Delete</button>
+        </Template>
+    </RColumn>
+*@
+
+@code {
+    [CascadingParameter] private TableContext TableContext { get; set; }
+    [CascadingParameter] private ITableParent TableParent { get; set; }
+    
+    #region Parameters
+    
+    // Property binding
+    [Parameter] public Expression<Func<TItem, object>> For { get; set; }
+    [Parameter] public string Property { get; set; }
+    
+    // Display
+    [Parameter] public string Title { get; set; }
+    [Parameter] public string Format { get; set; }
+    [Parameter] public string EmptyText { get; set; } = "-";
+    [Parameter] public Func<TItem, string> Formatter { get; set; }
+    
+    // Templates
+    [Parameter] public ColumnTemplate Template { get; set; } = ColumnTemplate.Auto;
+    [Parameter] public RenderFragment<TItem> CustomTemplate { get; set; }
+    [Parameter] public RenderFragment HeaderTemplate { get; set; }
+    
+    // Sorting & Filtering
+    [Parameter] public bool? Sortable { get; set; }
+    [Parameter] public bool? Filterable { get; set; }
+    [Parameter] public bool? Searchable { get; set; }
+    [Parameter] public FilterType FilterType { get; set; } = FilterType.Auto;
+    
+    // Layout
+    [Parameter] public string Width { get; set; }
+    [Parameter] public string MinWidth { get; set; }
+    [Parameter] public string MaxWidth { get; set; }
+    [Parameter] public ColumnAlign Align { get; set; } = ColumnAlign.Auto;
+    
+    // Styling
+    [Parameter] public string HeaderClass { get; set; }
+    [Parameter] public string CellClass { get; set; }
+    [Parameter] public Func<TItem, string> CellClassFunc { get; set; }
+    
+    // Visibility & Export
+    [Parameter] public bool Visible { get; set; } = true;
+    [Parameter] public bool Exportable { get; set; } = true;
+    [Parameter] public string ExportHeader { get; set; }
+    [Parameter] public Func<TItem, object> ExportValue { get; set; }
+    
+    // Order
+    [Parameter] public int Order { get; set; }
+    
+    // For custom templates (compatibility with RColumn)
+    [Parameter] public RenderFragment<TItem> ChildContent { get; set; }
+    
+    #endregion
+    
+    private string _columnKey;
+    private Type _propertyType;
+    private PropertyInfo _propertyInfo;
+    
+    protected override void OnInitialized()
+    {
+        if (TableContext == null || TableParent == null)
+            throw new InvalidOperationException("RColumn must be used inside an RTable component");
+        
+        // Validate that TItem matches the table's item type
+        if (TableContext.ItemType != typeof(TItem))
+            throw new InvalidOperationException($"RColumn<{typeof(TItem).Name}> cannot be used in a table of type {TableContext.ItemType.Name}");
+        
+        ExtractColumnInfo();
+        RegisterColumn();
+    }
+    
+    private void ExtractColumnInfo()
+    {
+        if (For != null)
+        {
+            // Extract property info from expression
+            var memberExpr = GetMemberExpression(For.Body);
+            if (memberExpr == null)
+                throw new ArgumentException("For must be a simple property access expression");
+            
+            _propertyInfo = memberExpr.Member as PropertyInfo;
+            _columnKey = _propertyInfo.Name;
+            _propertyType = _propertyInfo.PropertyType;
+            
+            // Auto-generate title if not provided
+            if (string.IsNullOrEmpty(Title))
+            {
+                Title = GenerateDisplayName(_columnKey);
+            }
+        }
+        else if (!string.IsNullOrEmpty(Property))
+        {
+            // Direct property name binding
+            _columnKey = Property;
+            _propertyInfo = typeof(TItem).GetProperty(Property);
+            if (_propertyInfo != null)
+            {
+                _propertyType = _propertyInfo.PropertyType;
+            }
+            
+            if (string.IsNullOrEmpty(Title))
+            {
+                Title = GenerateDisplayName(_columnKey);
+            }
+        }
+        else if (!string.IsNullOrEmpty(Title))
+        {
+            // Custom column without property binding (e.g., Actions)
+            _columnKey = Title.Replace(" ", "");
+        }
+        else
+        {
+            throw new InvalidOperationException("RColumn must have either For, Property, or Title specified");
+        }
+    }
+    
+    private void RegisterColumn()
+    {
+        var column = new ColumnDefinition<TItem>
+        {
+            Key = _columnKey,
+            Title = Title,
+            Property = For,
+            Format = Format,
+            EmptyText = EmptyText,
+            Formatter = Formatter,
+            Template = Template,
+            CustomTemplate = CustomTemplate ?? ChildContent,
+            HeaderTemplate = HeaderTemplate,
+            Sortable = Sortable ?? IsSortableType(),
+            Filterable = Filterable ?? IsFilterableType(),
+            Searchable = Searchable ?? IsSearchableType(),
+            FilterType = FilterType,
+            Width = Width,
+            MinWidth = MinWidth,
+            MaxWidth = MaxWidth,
+            Align = Align,
+            HeaderClass = HeaderClass,
+            CellClass = GetAlignmentClass() + (string.IsNullOrEmpty(CellClass) ? "" : $" {CellClass}"),
+            CellClassFunc = CellClassFunc,
+            Visible = Visible,
+            Exportable = Exportable,
+            ExportHeader = ExportHeader ?? Title,
+            ExportValue = ExportValue,
+            Order = Order
+        };
+        
+        // Compile the property expression if provided
+        if (For != null)
+        {
+            column.CompiledProperty = For.Compile();
+        }
+        else if (_propertyInfo != null)
+        {
+            // Create a compiled property getter for direct property binding
+            var param = Expression.Parameter(typeof(TItem), "item");
+            var property = Expression.Property(param, _propertyInfo);
+            var convert = Expression.Convert(property, typeof(object));
+            var lambda = Expression.Lambda<Func<TItem, object>>(convert, param);
+            column.CompiledProperty = lambda.Compile();
+        }
+        
+        TableParent.AddColumn(column);
+    }
+    
+    private bool IsSortableType()
+    {
+        if (_propertyType == null)
+            return false;
+        
+        var underlyingType = Nullable.GetUnderlyingType(_propertyType) ?? _propertyType;
+        return underlyingType.IsPrimitive || 
+               underlyingType == typeof(string) || 
+               underlyingType == typeof(DateTime) || 
+               underlyingType == typeof(DateOnly) || 
+               underlyingType == typeof(TimeOnly) ||
+               underlyingType == typeof(decimal) ||
+               underlyingType == typeof(Guid) ||
+               underlyingType.IsEnum;
+    }
+    
+    private bool IsFilterableType()
+    {
+        return _propertyType != null;
+    }
+    
+    private bool IsSearchableType()
+    {
+        if (_propertyType == null)
+            return false;
+        
+        var underlyingType = Nullable.GetUnderlyingType(_propertyType) ?? _propertyType;
+        return underlyingType == typeof(string) || 
+               underlyingType.IsEnum;
+    }
+    
+    private string GetAlignmentClass()
+    {
+        if (Align != ColumnAlign.Auto)
+        {
+            return Align switch
+            {
+                ColumnAlign.Left => "text-left",
+                ColumnAlign.Center => "text-center",
+                ColumnAlign.Right => "text-right",
+                _ => ""
+            };
+        }
+        
+        // Auto-alignment based on type
+        if (_propertyType != null)
+        {
+            var underlyingType = Nullable.GetUnderlyingType(_propertyType) ?? _propertyType;
+            
+            if (IsNumericType(underlyingType))
+                return "text-right";
+            
+            if (underlyingType == typeof(bool))
+                return "text-center";
+            
+            if (underlyingType == typeof(DateTime) || 
+                underlyingType == typeof(DateOnly) || 
+                underlyingType == typeof(TimeOnly))
+                return "text-center";
+        }
+        
+        // Auto-alignment based on column name
+        var name = _columnKey?.ToLowerInvariant() ?? "";
+        if (name.Contains("status") || name.Contains("state") || 
+            name == "active" || name == "enabled")
+            return "text-center";
+        
+        if (name == "actions" || name.Contains("action"))
+            return "text-center";
+        
+        return "text-left";
+    }
+    
+    private static bool IsNumericType(Type type)
+    {
+        return type == typeof(int) || 
+               type == typeof(long) ||
+               type == typeof(decimal) ||
+               type == typeof(double) ||
+               type == typeof(float) ||
+               type == typeof(short) ||
+               type == typeof(byte);
+    }
+    
+    private static MemberExpression GetMemberExpression(Expression expression)
+    {
+        if (expression is MemberExpression memberExpr)
+            return memberExpr;
+        
+        if (expression is UnaryExpression unaryExpr && unaryExpr.NodeType == ExpressionType.Convert)
+            return GetMemberExpression(unaryExpr.Operand);
+        
+        return null;
+    }
+    
+    private static string GenerateDisplayName(string propertyName)
+    {
+        if (string.IsNullOrEmpty(propertyName))
+            return "";
+        
+        // Handle common abbreviations
+        var replacements = new Dictionary<string, string>
+        {
+            { "Id", "ID" },
+            { "Url", "URL" },
+            { "Api", "API" },
+            { "Hr", "HR" },
+            { "It", "IT" }
+        };
+        
+        // Convert PascalCase to Title Case
+        var result = System.Text.RegularExpressions.Regex.Replace(propertyName, "([A-Z])", " $1").Trim();
+        
+        // Apply replacements
+        foreach (var kvp in replacements)
+        {
+            result = result.Replace($" {kvp.Key}", $" {kvp.Value}");
+            if (result.StartsWith(kvp.Key))
+                result = kvp.Value + result.Substring(kvp.Key.Length);
+        }
+        
+        return result;
+    }
+}

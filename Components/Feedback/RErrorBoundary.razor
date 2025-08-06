@@ -27,14 +27,15 @@ Captures unhandled exceptions in child components and displays user-friendly err
             Message="@ErrorMessage"
             ContentAlignment="AlertContentAlignment.Center"
             Dismissible="@AllowRetry"
-            OnDismiss="@ResetError">
+            OnDismiss="@ResetError"
+            Class="text-on-error">
         
         <ChildContent>
             
             @if ((showTechnicalDetails || IsDevelopment) && !string.IsNullOrEmpty(technicalDetails))
             {
                 <div class="mt-4 pa-3 bg-surface-elevated rounded border border-light">
-                    <h5 class="text-body-2 font-medium mb-2 text-error">Technical Details:</h5>
+                    <div class="text-subtitle-1 font-semibold">Technical Details:</div>
                     <pre class="text-xs text-muted font-monospace overflow-auto whitespace-pre-wrap max-h-96">@technicalDetails</pre>
                 </div>
             }
@@ -42,7 +43,7 @@ Captures unhandled exceptions in child components and displays user-friendly err
             @if (IsDevelopment && currentException != null)
             {
                 <div class="mt-4 pa-3 bg-error-light rounded border border-error">
-                    <h5 class="text-body-2 font-medium mb-2 text-error">Full Stack Trace (Development Only):</h5>
+                    <div class="text-subtitle-1 font-semibold">Full Stack Trace (Development Only):</div>
                     <pre class="text-xs text-muted font-monospace overflow-auto whitespace-pre-wrap max-h-96">@currentException.ToString()</pre>
                 </div>
             }
@@ -56,32 +57,36 @@ Captures unhandled exceptions in child components and displays user-friendly err
         </ChildContent>
         
         <Actions>
-            <div class="d-flex justify-content-center gap-2 w-100">
-                @if (AllowRetry)
-                {
-                    <RButton Text="Try Again" 
-                             Variant="ButtonVariant.Error" 
-                             Size="ButtonSize.Medium"
-                             OnClick="@ResetError" />
-                }
-                
+            <div class="d-flex w-100 position-relative">
                 @if (!string.IsNullOrEmpty(technicalDetails) || currentException != null)
                 {
-                    <RButton Text="Copy Details" 
-                             Icon="content_copy"
-                             Variant="ButtonVariant.Ghost" 
-                             Size="ButtonSize.Medium"
-                             OnClick="@CopyErrorDetails"
-                             Class="text-error" />
+                    <div class="position-absolute top-0 end-0">
+                        <RButton Text="Copy Details" 
+                                 Icon="content_copy"
+                                 Variant="ButtonVariant.Error" 
+                                 Size="ButtonSize.Medium"
+                                 OnClick="@CopyErrorDetails" />
+                    </div>
                 }
+                
+                <div class="d-flex justify-content-center w-100">
+                    @if (AllowRetry)
+                    {
+                        <RButton Text="Try Again" 
+                                 Variant="ButtonVariant.Secondary" 
+                                 Size="ButtonSize.Medium"
+                                 OnClick="@ResetError" />
+                    }
+                </div>
                 
                 @if (!IsDevelopment && ShowDetails && !string.IsNullOrEmpty(technicalDetails))
                 {
-                    <RButton Text="@(showTechnicalDetails ? "Hide Details" : "Show Details")" 
-                             Variant="ButtonVariant.Ghost" 
-                             Size="ButtonSize.Medium"
-                             OnClick="@ToggleTechnicalDetails"
-                             Class="text-error" />
+                    <div class="d-flex justify-content-center w-100 mt-2">
+                        <RButton Text="@(showTechnicalDetails ? "Hide Details" : "Show Details")" 
+                                 Variant="ButtonVariant.Secondary" 
+                                 Size="ButtonSize.Medium"
+                                 OnClick="@ToggleTechnicalDetails" />
+                    </div>
                 }
             </div>
         </Actions>
