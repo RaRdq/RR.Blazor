@@ -284,12 +284,16 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
             tabs.Add(tab);
         }
         
-        // Only set default tab if:
-        // 1. ActiveTabId is not set AND
-        // 2. It wasn't set externally (from URL or parent component)
-        if (string.IsNullOrEmpty(ActiveTabId) && !wasActiveTabIdSetExternally && tabs.Count >= 1)
+        // Only set default tab if ActiveTabId is not set at all
+        // If it was set externally (even to empty string), respect that
+        if (string.IsNullOrEmpty(ActiveTabId) && !wasActiveTabIdSetExternally && tabs.Count == 1)
         {
             ActiveTabId = tabs[0].Id;
+        }
+        // If ActiveTabId was set but doesn't match any tab, and this is the matching tab, keep it
+        else if (!string.IsNullOrEmpty(ActiveTabId) && tab.Id == ActiveTabId)
+        {
+            wasActiveTabIdSetExternally = true; // Mark that we found the matching tab
         }
         
         StateHasChanged();
