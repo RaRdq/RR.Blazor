@@ -74,21 +74,62 @@ function Extract-ParametersFromCsFile {
     for ($i = 0; $i -lt $lines.Length; $i++) {
         $line = $lines[$i].Trim()
         
-        # Look for [Parameter] attributes
+        # Look for [Parameter] attributes (including those with additional attributes)
         if ($line -match '\[Parameter(?:[\],]|$)') {
-            # Look ahead for the property declaration
-            for ($j = $i + 1; $j -lt [Math]::Min($lines.Length, $i + 10); $j++) {
-                $propLine = $lines[$j].Trim()
-                if ([string]::IsNullOrWhiteSpace($propLine)) { continue }
+            # Look ahead for the property declaration, handle multi-line and complex properties
+            $foundProperty = $false
+            $searchText = ""
+            
+            for ($j = $i; $j -lt [Math]::Min($lines.Length, $i + 15); $j++) {
+                $currentLine = $lines[$j].Trim()
+                if ([string]::IsNullOrWhiteSpace($currentLine)) { continue }
                 
-                # Match property declaration: public Type PropertyName { get; set; }
-                if ($propLine -match 'public\s+(?:virtual\s+)?(?:override\s+)?(?:static\s+)?[^\s]+(?:<[^>]*>)?(?:\?)?\s+(\w+)\s*\{') {
-                    $paramName = $Matches[1].Trim()
-                    if ($paramName -and $paramName -notmatch '^(get|set)$') {
-                        $parameters += $paramName
+                # Skip other attributes that might be on separate lines
+                if ($currentLine -match '^\[.*\]$' -and $j -ne $i) { continue }
+                
+                $searchText += " " + $currentLine
+                
+                # Match property declaration - handle both simple and complex properties
+                try {
+                    # Pattern 1: public Type PropertyName { (on same line)
+                    if ($currentLine -match 'public\s+(?:virtual\s+)?(?:override\s+)?(?:static\s+)?[^\s{]+(?:<[^{}>]*(?:<[^{}>]*>[^{}>]*)*>)*(?:\?)?\s+(\w+)\s*\{') {
+                        $paramName = $Matches[1]
+                        if ($paramName) {
+                            $paramName = $paramName.Trim()
+                            if ($paramName -and $paramName -notmatch '^(get|set)$') {
+                                $parameters += $paramName
+                                $foundProperty = $true
+                            }
+                        }
+                        break
                     }
-                    break
+                    # Pattern 2: public Type PropertyName (property name at end of line, { on next line)
+                    if ($currentLine -match 'public\s+(?:virtual\s+)?(?:override\s+)?(?:static\s+)?[^\s{]+(?:<[^{}>]*(?:<[^{}>]*>[^{}>]*)*>)*(?:\?)?\s+(\w+)\s*$') {
+                        # Look ahead to next line for opening brace
+                        $nextLineIndex = $j + 1
+                        if ($nextLineIndex -lt $lines.Length) {
+                            $nextLine = $lines[$nextLineIndex].Trim()
+                            if ($nextLine -match '^\{' -or $nextLine -match '^get\s*=>' -or $nextLine -eq '{') {
+                                $paramName = $Matches[1]
+                                if ($paramName) {
+                                    $paramName = $paramName.Trim()
+                                    if ($paramName -and $paramName -notmatch '^(get|set)$') {
+                                        $parameters += $paramName
+                                        $foundProperty = $true
+                                    }
+                                }
+                                break
+                            }
+                        }
+                    }
+                } catch {
+                    Write-Warning "Error processing line $j in parameter extraction: $($_.Exception.Message)"
                 }
+            }
+            
+            # Debug output for troubleshooting
+            if (-not $foundProperty -and $line -match '\[Parameter') {
+                Write-Debug "Failed to find property for Parameter attribute at line $i in: $searchText"
             }
         }
     }
@@ -151,16 +192,22 @@ function Extract-ActualParameters {
                 
                 $parameterText += " " + $currentLine
                 
-                # Found the property declaration
-                if ($currentLine -match 'public\s+[^{]+\{\s*get;\s*set;\s*\}') {
+                # Found the property declaration - handle both simple and complex properties
+                if ($currentLine -match 'public\s+[^{]+\{' -or $currentLine -match 'public\s+.*\s+\w+\s*$') {
                     $propertyFound = $true
-                    break
+                    # For complex properties, continue reading until we find the opening brace or end
+                    if ($currentLine -notmatch '\{') {
+                        # Property declaration continues on next lines
+                        continue
+                    } else {
+                        break
+                    }
                 }
             }
             
-            # Enhanced regex to handle nested generic types like Expression<Func<TItem, object>>
-            # This regex handles nested angle brackets properly
-            if ($propertyFound -and $parameterText -match 'public\s+(?:virtual\s+)?(?:override\s+)?(?:static\s+)?[^\s{]+(?:<[^{}]*(?:<[^>]*>[^{}]*)*>)?(?:\?)?\s+(@?\w+)\s*\{') {
+            # Enhanced regex to handle nested generic types and complex property definitions
+            # This handles both simple { get; set; } and complex custom implementations
+            if ($propertyFound -and $parameterText -match 'public\s+(?:virtual\s+)?(?:override\s+)?(?:static\s+)?[^\s{]+(?:<[^{}>]*(?:<[^{}>]*>[^{}>]*)*>)*(?:\?)?\s+(@?\w+)\s*[\{\s]') {
                 $paramName = $Matches[1].Trim()
                 if ($paramName -and $paramName -notmatch '^(get|set)$') {
                     $parameters += $paramName

@@ -80,6 +80,8 @@ class DebugLogger {
 
 const debugLogger = new DebugLogger();
 
+// NO PROTECTIVE CODING - All errors must bubble up for proper debugging
+
 // Unified Module System for RR.Blazor
 class ModuleManager {
     constructor() {
@@ -103,17 +105,14 @@ class ModuleManager {
     }
     
     async getModule(moduleName) {
-        // Return cached module if available
         if (this.modules.has(moduleName)) {
             return this.modules.get(moduleName);
         }
         
-        // Return existing loading promise if module is being loaded
         if (this.loadingPromises.has(moduleName)) {
             return this.loadingPromises.get(moduleName);
         }
         
-        // Start loading module
         const url = this.moduleUrls[moduleName];
         if (!url) {
             throw new Error(`Module '${moduleName}' not found in registry`);
@@ -121,18 +120,12 @@ class ModuleManager {
         
         debugLogger.log(`Loading module: ${moduleName}`);
         
-        const loadPromise = import(url)
-            .then(module => {
-                this.modules.set(moduleName, module);
-                this.loadingPromises.delete(moduleName);
-                debugLogger.log(`Module loaded: ${moduleName}`);
-                return module;
-            })
-            .catch(error => {
-                this.loadingPromises.delete(moduleName);
-                debugLogger.error(`Failed to load module '${moduleName}':`, error);
-                throw error;
-            });
+        const loadPromise = import(url).then(module => {
+            this.modules.set(moduleName, module);
+            this.loadingPromises.delete(moduleName);
+            debugLogger.log(`Module loaded: ${moduleName}`);
+            return module;
+        });
             
         this.loadingPromises.set(moduleName, loadPromise);
         return loadPromise;
@@ -149,15 +142,24 @@ const moduleManager = new ModuleManager();
 
 // Create the unified RR.Blazor API
 window.RRBlazor = {
-    // Module manager instance
     moduleManager,
     debugLogger,
     
-    // Portal Management System - Single source of truth
+    // Core preload function for essential modules
+    async preloadCore() {
+        debugLogger.log('Preloading core RR.Blazor modules...');
+        try {
+            // Preload essential modules that are commonly needed
+            await moduleManager.preloadModules('utils', 'theme', 'forms', 'modal');
+            debugLogger.log('Core modules preloaded successfully');
+        } catch (error) {
+            debugLogger.error('Failed to preload core modules:', error);
+        }
+    },
+    
     Portal: {
         async create(element, options = {}) {
             const portal = await moduleManager.getModule('portal');
-            // Access the singleton instance
             const portalManager = portal.portalManager || window.RRPortalManager;
             return portalManager.create(element, options);
         },
@@ -181,97 +183,18 @@ window.RRBlazor = {
         }
     },
     
-    // Tooltip API
-    Tooltip: {
-        async create(popupElement, triggerElement, position, portalId) {
-            const tooltip = await moduleManager.getModule('tooltip');
-            return tooltip.createTooltipPortal(popupElement, triggerElement, position, portalId);
-        },
-        
-        async destroy(portalId) {
-            const tooltip = await moduleManager.getModule('tooltip');
-            return tooltip.destroyTooltipPortal(portalId);
-        },
-        
-        async update(portalId, triggerElement, position) {
-            const tooltip = await moduleManager.getModule('tooltip');
-            return tooltip.updateTooltipPosition(portalId, triggerElement, position);
-        }
-    },
-    
-    // Choice/Dropdown API
     Choice: {
         async createPortal(choiceElementId) {
-            try {
-                const choice = await moduleManager.getModule('choice');
-                if (!choice) throw new Error('Choice module failed to load');
-                return choice.createChoicePortal(choiceElementId);
-            } catch (error) {
-                debugLogger.error('Portal creation failed:', error);
-                return null;
-            }
-        },
-        
-        async destroyPortal(portalId) {
-            try {
-                const choice = await moduleManager.getModule('choice');
-                if (!choice) return;
-                return choice.destroyChoicePortal(portalId);
-            } catch (error) {
-                debugLogger.error('Portal destruction failed:', error);
-            }
-        },
-        
-        async registerClickOutside(choiceElementId, dotNetRef) {
-            try {
-                const choice = await moduleManager.getModule('choice');
-                if (!choice) return;
-                return choice.registerClickOutside(choiceElementId, dotNetRef);
-            } catch (error) {
-                debugLogger.error('Click outside registration failed:', error);
-            }
-        },
-        
-        async calculatePosition(triggerElement, options) {
             const choice = await moduleManager.getModule('choice');
-            return choice.Choice.calculateOptimalPosition(triggerElement, options);
-        }
-    },
-    
-    // Autosuggest API
-    Autosuggest: {
-        async createPortal(elementId, options) {
-            const autosuggest = await moduleManager.getModule('autosuggest');
-            return autosuggest.createAutosuggestPortal(elementId, options);
+            return choice.createChoicePortal(choiceElementId);
         },
         
         async destroyPortal(portalId) {
-            const autosuggest = await moduleManager.getModule('autosuggest');
-            return autosuggest.destroyAutosuggestPortal(portalId);
-        },
-        
-        async registerClickOutside(elementId, dotNetRef) {
-            const autosuggest = await moduleManager.getModule('autosuggest');
-            return autosuggest.registerClickOutside(elementId, dotNetRef);
-        },
-        
-        async updatePosition(elementId) {
-            const autosuggest = await moduleManager.getModule('autosuggest');
-            return autosuggest.updateAutosuggestPosition(elementId);
-        },
-        
-        async getDirection(elementId) {
-            const autosuggest = await moduleManager.getModule('autosuggest');
-            return autosuggest.getAutosuggestDirection(elementId);
-        },
-        
-        async calculateOptimalPosition(triggerElement, options) {
-            const autosuggest = await moduleManager.getModule('autosuggest');
-            return autosuggest.calculateOptimalPosition(triggerElement, options);
+            const choice = await moduleManager.getModule('choice');
+            return choice.destroyChoicePortal(portalId);
         }
     },
     
-    // Modal API
     Modal: {
         async lockScroll() {
             const modal = await moduleManager.getModule('modal');
@@ -281,239 +204,18 @@ window.RRBlazor = {
         async unlockScroll() {
             const modal = await moduleManager.getModule('modal');
             return modal.unlockScroll();
-        },
-        
-        async register(modalId, options) {
-            const modal = await moduleManager.getModule('modal');
-            return modal.register(modalId, options);
-        },
-        
-        async unregister(modalId) {
-            const modal = await moduleManager.getModule('modal');
-            return modal.unregister(modalId);
         }
     },
     
-    // Form utilities
-    Forms: {
-        async autoResizeTextarea(element) {
-            const forms = await moduleManager.getModule('forms');
-            return forms.autoResizeTextarea(element);
-        },
-        
-        async focusElement(element) {
-            const forms = await moduleManager.getModule('forms');
-            return forms.focusElement(element);
-        },
-        
-        async copyToClipboard(text) {
-            const forms = await moduleManager.getModule('forms');
-            return forms.copyToClipboard(text);
-        },
-        
-        async initializeFormField(element, options) {
-            const forms = await moduleManager.getModule('forms');
-            return forms.initializeFormField(element, options);
-        }
-    },
-    
-    // Tab utilities
-    Tabs: {
-        async getIndicatorPosition(element) {
-            const tabs = await moduleManager.getModule('tabs');
-            return tabs.getTabIndicatorPosition(element);
-        },
-        
-        async scrollToTab(element) {
-            const tabs = await moduleManager.getModule('tabs');
-            return tabs.scrollToTab(element);
-        },
-        
-        async initializeTabs(element, options) {
-            const tabs = await moduleManager.getModule('tabs');
-            return tabs.initializeTabs(element, options);
-        }
-    },
-    
-    // DatePicker API
-    DatePicker: {
-        async initialize(element, dotNetRef) {
-            const datepicker = await moduleManager.getModule('datepicker');
-            return datepicker.initializeDatepicker(element, dotNetRef);
-        },
-        
-        async open(element) {
-            const datepicker = await moduleManager.getModule('datepicker');
-            return datepicker.openDatepicker(element);
-        },
-        
-        async close(element) {
-            const datepicker = await moduleManager.getModule('datepicker');
-            return datepicker.closeDatepicker(element);
-        },
-        
-        async positionPopup(element) {
-            const datepicker = await moduleManager.getModule('datepicker');
-            return datepicker.positionPopup(element);
-        },
-        
-        async cleanup(element) {
-            const datepicker = await moduleManager.getModule('datepicker');
-            return datepicker.cleanupDatepicker(element);
-        }
-    },
-    
-    // Utility functions
-    Utils: {
-        async scrollIntoView(element, options) {
-            const utils = await moduleManager.getModule('utils');
-            return utils.scrollIntoView(element, options);
-        },
-        
-        async getElementDimensions(element) {
-            const utils = await moduleManager.getModule('utils');
-            return utils.getElementDimensions(element);
-        },
-        
-        async toggleClass(element, className) {
-            const utils = await moduleManager.getModule('utils');
-            return utils.toggleClass(element, className);
-        },
-        
-        async downloadFile(content, filename, contentType) {
-            const utils = await moduleManager.getModule('utils');
-            return utils.downloadFile(content, filename, contentType);
-        },
-        
-        async updateUrlWithoutScroll(url) {
-            const utils = await moduleManager.getModule('utils');
-            return utils.updateUrlWithoutScroll(url);
-        }
-    },
-    
-    // Theme management
-    Theme: {
-        async apply(theme) {
-            const themeModule = await moduleManager.getModule('theme');
-            return themeModule.applyTheme(theme);
-        },
-        
-        async toggle() {
-            const themeModule = await moduleManager.getModule('theme');
-            return themeModule.toggleTheme();
-        },
-        
-        async getCurrent() {
-            const themeModule = await moduleManager.getModule('theme');
-            return themeModule.getCurrentTheme();
-        }
-    },
-    
-    // Chart API
-    Chart: {
-        async animatePieChart(element) {
-            const chart = await moduleManager.getModule('chart');
-            return chart.animatePieChart(element);
-        },
-        
-        async animateColumnChart(element) {
-            const chart = await moduleManager.getModule('chart');
-            return chart.animateColumnChart(element);
-        },
-        
-        async initializeChart(element, options) {
-            const chart = await moduleManager.getModule('chart');
-            return chart.initializeChart(element, options);
-        },
-        
-        async initializeTooltip(element, options) {
-            const chart = await moduleManager.getModule('chart');
-            return chart.initializeTooltip(element, options);
-        },
-        
-        async exportChartData(element, format) {
-            const chart = await moduleManager.getModule('chart');
-            return chart.exportChartData(element, format);
-        }
-    },
-    
-    // Table API
-    Table: {
-        async initialize(tableId) {
-            const table = await moduleManager.getModule('table');
-            const manager = table.RTableScrollManager || window.RTableScrollManager;
-            return manager.initialize(tableId);
-        },
-        
-        async dispose(tableId) {
-            const table = await moduleManager.getModule('table');
-            const manager = table.RTableScrollManager || window.RTableScrollManager;
-            return manager.dispose(tableId);
-        },
-        
-        async refresh(tableId) {
-            const table = await moduleManager.getModule('table');
-            const manager = table.RTableScrollManager || window.RTableScrollManager;
-            return manager.refresh(tableId);
-        }
-    },
-
-    // Generic component initialization
     async initializeComponent(componentType, elementId, options = {}) {
         const element = document.getElementById(elementId);
-        if (!element) {
-            debugLogger.warn(`Element not found: ${elementId}`);
-            return;
-        }
-        
+        // Let this throw if element doesn't exist - FAIL FAST
         switch (componentType) {
             case 'tabs':
                 return this.Tabs.initializeTabs(element, options);
-            case 'form-field':
-                return this.Forms.initializeFormField(element, options);
-            case 'datepicker':
-                return this.DatePicker.init(elementId, options);
-            case 'autosuggest':
-                return this.Autosuggest.createPortal(elementId, options);
             default:
-                debugLogger.warn(`Unknown component type: ${componentType}`);
+                throw new Error(`Unknown component type: ${componentType}`);
         }
-    },
-    
-    // User menu outside click handler (specific implementation)
-    setupUserMenuOutsideClick(userMenuContainerId, toggleCallback) {
-        debugLogger.log('Setting up user menu outside click handler for:', userMenuContainerId);
-        
-        const userMenuContainer = document.querySelector(userMenuContainerId);
-        if (!userMenuContainer) {
-            debugLogger.warn('User menu container not found:', userMenuContainerId);
-            return;
-        }
-
-        const outsideClickHandler = function(event) {
-            if (!userMenuContainer.contains(event.target)) {
-                debugLogger.log('Outside click detected, closing user menu');
-                toggleCallback.invokeMethodAsync('CloseUserMenu');
-            }
-        };
-
-        userMenuContainer._outsideClickHandler = outsideClickHandler;
-        document.addEventListener('click', outsideClickHandler);
-        debugLogger.log('User menu outside click handler attached');
-    },
-
-    removeUserMenuOutsideClick(userMenuContainerId) {
-        const userMenuContainer = document.querySelector(userMenuContainerId);
-        if (userMenuContainer && userMenuContainer._outsideClickHandler) {
-            document.removeEventListener('click', userMenuContainer._outsideClickHandler);
-            delete userMenuContainer._outsideClickHandler;
-            debugLogger.log('User menu outside click handler removed');
-        }
-    },
-    
-    // Preload commonly used modules for performance
-    async preloadCore() {
-        return moduleManager.preloadModules('portal', 'utils', 'forms', 'autosuggest');
     }
 };
 
@@ -524,10 +226,7 @@ document.addEventListener('DOMContentLoaded', function() {
         RRBlazor.initializeComponent(componentType, element.id, options ? JSON.parse(options) : {});
     });
     
-    // Preload core modules for better performance
-    RRBlazor.preloadCore().catch(error => {
-        debugLogger.warn('Failed to preload core modules:', error);
-    });
+    RRBlazor.preloadCore();
 });
 
 // Direct tab methods for RTabs component
@@ -541,66 +240,10 @@ RRBlazor.getTabIndicatorPosition = async function(tabElementId, wrapperElement) 
     return tabs.getTabIndicatorPosition(tabElementId, wrapperElement);
 };
 
-RRBlazor.getTabScrollInfo = async function(wrapperElement) {
-    const tabs = await moduleManager.getModule('tabs');
-    return tabs.getTabScrollInfo(wrapperElement);
-};
-
-RRBlazor.scrollTabsLeft = async function(wrapperElement) {
-    const tabs = await moduleManager.getModule('tabs');
-    return tabs.scrollTabsLeft(wrapperElement);
-};
-
-RRBlazor.scrollTabsRight = async function(wrapperElement) {
-    const tabs = await moduleManager.getModule('tabs');
-    return tabs.scrollTabsRight(wrapperElement);
-};
-
-RRBlazor.scrollToTab = async function(wrapperElement, tabElementId) {
-    const tabs = await moduleManager.getModule('tabs');
-    return tabs.scrollToTab(wrapperElement, tabElementId);
-};
-
-window.RRFileUpload = {
-    initialize: async function(elementId, settings) {
-        const fileUpload = await moduleManager.getModule('fileUpload');
-        return fileUpload.RRFileUpload.initialize(elementId, settings);
-    },
-    
-    setupBlazorEventListeners: async function(elementId, dotNetObjectRef) {
-        const fileUpload = await moduleManager.getModule('fileUpload');
-        return fileUpload.RRFileUpload.setupBlazorEventListeners(elementId, dotNetObjectRef);
-    },
-    
-    triggerFileSelect: async function(inputId) {
-        const fileUpload = await moduleManager.getModule('fileUpload');
-        return fileUpload.RRFileUpload.triggerFileSelect(inputId);
-    },
-    
-    updateProgress: async function(elementId, fileId, progress) {
-        const fileUpload = await moduleManager.getModule('fileUpload');
-        return fileUpload.RRFileUpload.updateProgress(elementId, fileId, progress);
-    },
-    
-    removeFile: async function(elementId, fileId) {
-        const fileUpload = await moduleManager.getModule('fileUpload');
-        return fileUpload.RRFileUpload.removeFile(elementId, fileId);
-    },
-    
-    cleanup: async function(elementId) {
-        const fileUpload = await moduleManager.getModule('fileUpload');
-        return fileUpload.RRFileUpload.cleanup(elementId);
-    }
-};
-
-// Ensure RRBlazor is available globally before any module loads
 window.RRBlazor = window.RRBlazor || RRBlazor;
-
-// Export debug utilities
 window.RRDebugLogger = DebugLogger;
 window.debugLogger = debugLogger;
 
-// Legacy compatibility - these will be removed in future versions
 window.RRDebug = {
     logger: debugLogger,
     report: async () => {
@@ -611,15 +254,9 @@ window.RRDebug = {
     }
 };
 
-// Load debug utilities in development mode
 if (debugLogger.isDebugMode) {
-    import('./page-debug.js')
-        .then(debugModule => {
-            window.RRDebug.pageDebug = debugModule;
-            debugLogger.log('🔧 Debug utilities loaded for development environment');
-        })
-        .catch(error => {
-            debugLogger.warn('Failed to load debug utilities:', error);
-        });
+    import('./page-debug.js').then(debugModule => {
+        window.RRDebug.pageDebug = debugModule;
+        debugLogger.log('🔧 Debug utilities loaded for development environment');
+    });
 }
-
