@@ -1,4 +1,4 @@
-@** 
+﻿@** 
 <summary>
 Professional card component for content containers with business-grade variants.
 Supports header, media, content areas, loading states, elevation effects, and comprehensive interaction patterns.
@@ -9,7 +9,7 @@ Supports header, media, content areas, loading states, elevation effects, and co
 <ai-common-use>dashboards, data display, content organization, information panels</ai-common-use>
 <ai-avoid>Don't use for navigation - use RLink instead. Avoid for simple text without structure.</ai-avoid>
 <ai-pattern name="basic-card">Text="Card Title" Content="Card content" for simple content cards</ai-pattern>
-<ai-pattern name="clickable-card">Clickable="true" OnClick="HandleClick" for interactive cards</ai-pattern>
+<ai-pattern name="clickable-card">Clickable="true" OnClick="@HandleClick" for interactive cards</ai-pattern>
 <ai-pattern name="elevated-card">Elevation="4" for cards that need prominence</ai-pattern>
 <ai-pattern name="loading-card">Loading="true" LoadingText="Processing..." for async operations</ai-pattern>
 <ai-pattern name="media-card">ImageSrc="/image.jpg" ImageAlt="Description" for cards with images</ai-pattern>
@@ -22,11 +22,11 @@ Supports header, media, content areas, loading states, elevation effects, and co
                        CommonUse = "dashboards, data display, content organization", 
                        AvoidUsage = "Don't use for navigation - use RLink instead")]
 
-<div class="card @GetCardClasses()" 
-     @onclick="HandleClick"
+<div class="@GetCardClasses()" 
+     @onclick="@(Clickable || OnClick.HasDelegate ? HandleClick : null)"
      @onclick:stopPropagation="StopPropagation"
-     @onmouseenter="HandleMouseEnter"
-     @onmouseleave="HandleMouseLeave"
+     @onmouseenter="@(OnMouseEnter.HasDelegate ? HandleMouseEnter : null)"
+     @onmouseleave="@(OnMouseLeave.HasDelegate ? HandleMouseLeave : null)"
      role="@(Clickable ? "button" : null)"
      tabindex="@(Clickable ? 0 : null)"
      aria-label="@AriaLabel">
@@ -259,83 +259,39 @@ Supports header, media, content areas, loading states, elevation effects, and co
     
     private string GetCardClasses()
     {
-        var classes = new List<string>
-        {
-            "card",
-            "position-relative",
-            "bg-surface-elevated",
-            "rounded-lg",
-            "overflow-hidden",
-            "transition-all"
-        };
+        var classes = new List<string> { "card" };
         
-        if (Elevation >= 0)
+        // Use semantic variant classes from SCSS
+        switch (Variant)
         {
-            classes.Add($"shadow-{Math.Min(16, Math.Max(0, Elevation))}");
-        }
-        else
-        {
-            switch (Variant)
-            {
-                case CardVariant.Default:
-                    classes.AddRange(new[] { "border border-light", "shadow-2" });
-                    break;
-                    
-                case CardVariant.Outlined:
-                    classes.AddRange(new[] { "border border-light", "shadow-0" });
-                    break;
-                    
-                case CardVariant.Elevated:
-                    classes.AddRange(new[] { "border border-light", "shadow-8" });
-                    break;
-                    
-                case CardVariant.Glass:
-                    classes.AddRange(new[] { "glass-light", "backdrop-blur-sm", "border border-glass" });
-                    break;
-                    
-                case CardVariant.Flat:
-                    classes.AddRange(new[] { "shadow-0" });
-                    break;
-            }
+            case CardVariant.Outlined:
+                classes.Add("card-outlined");
+                break;
+            case CardVariant.Elevated:
+                classes.Add("card-elevated");
+                break;
+            case CardVariant.Glass:
+                classes.Add("card-glass");
+                break;
+            case CardVariant.Flat:
+                classes.Add("card-flat");
+                break;
+            case CardVariant.Default:
+            default:
+                // Base card class already added, no additional variant needed
+                break;
         }
         
-        // Interactive states with utilities
+        // Interactive states
         if (Clickable && !Disabled)
         {
             classes.Add("card-clickable");
-            
-            if (Elevation >= 0)
-            {
-                var hoverElevation = Math.Min(16, Elevation + 2);
-                classes.Add($"hover:shadow-{hoverElevation}");
-            }
-            else
-            {
-                // Default hover elevations
-                switch (Variant)
-                {
-                    case CardVariant.Default:
-                        classes.Add("hover:shadow-4");
-                        break;
-                    case CardVariant.Outlined:
-                        classes.Add("hover:shadow-2");
-                        break;
-                    case CardVariant.Elevated:
-                        classes.Add("hover:shadow-12");
-                        break;
-                    case CardVariant.Glass:
-                        classes.Add("hover:glass-medium");
-                        break;
-                }
-            }
-            
-            classes.Add("hover-lift-sm");
-            classes.Add("active-scale-sm");
         }
         
+        // State classes
         if (Selected)
         {
-            classes.AddRange(new[] { "border-2 border-primary", "shadow-4" });
+            classes.Add("card-primary"); // Use semantic primary variant for selected state
         }
         
         if (Disabled)
@@ -345,7 +301,13 @@ Supports header, media, content areas, loading states, elevation effects, and co
         
         if (Loading)
         {
-            classes.Add("state-loading");
+            classes.Add("card-loading");
+        }
+        
+        // Custom elevation override (if specified)
+        if (Elevation >= 0)
+        {
+            classes.Add($"shadow-{Math.Min(16, Math.Max(0, Elevation))}");
         }
         
         if (!string.IsNullOrEmpty(Class))
@@ -358,16 +320,13 @@ Supports header, media, content areas, loading states, elevation effects, and co
     
     private string GetHeaderClasses()
     {
-        var classes = new List<string>
-        {
-            "d-flex",
-            "items-center",
-            "justify-between",
-            "border-b",
-            "border-light"
-        };
+        var classes = new List<string> { "card-header" };
         
-        classes.Add(GetDensityPaddingClasses());
+        // Add density-based padding if needed (SCSS handles base styling)
+        if (Density != ComponentDensity.Normal)
+        {
+            classes.Add(GetDensityPaddingClasses());
+        }
         
         return string.Join(" ", classes);
     }
@@ -379,26 +338,38 @@ Supports header, media, content areas, loading states, elevation effects, and co
     
     private string GetTitleClasses()
     {
-        return Density switch
+        var classes = new List<string> { "card-title" };
+        
+        // Add density-specific sizing only if different from normal
+        if (Density != ComponentDensity.Normal)
         {
-            ComponentDensity.Compact => "text-base font-semibold text-primary mb-0",
-            ComponentDensity.Dense => "text-lg font-semibold text-primary mb-0",
-            ComponentDensity.Normal => "text-lg font-semibold text-primary mb-0",
-            ComponentDensity.Spacious => "text-xl font-semibold text-primary mb-0",
-            _ => "text-lg font-semibold text-primary mb-0"
-        };
+            classes.Add(Density switch
+            {
+                ComponentDensity.Compact => "text-base",
+                ComponentDensity.Dense => "text-lg", 
+                ComponentDensity.Spacious => "text-xl",
+                _ => "text-lg"
+            });
+        }
+        
+        return string.Join(" ", classes);
     }
     
     private string GetSubtitleClasses()
     {
-        return Density switch
+        var classes = new List<string> { "text-secondary", "mb-0" };
+        
+        // Add density-specific sizing and spacing
+        classes.Add(Density switch
         {
-            ComponentDensity.Compact => "text-xs text-secondary mt-0 mb-0",
-            ComponentDensity.Dense => "text-sm text-secondary mt-0 mb-0",
-            ComponentDensity.Normal => "text-sm text-secondary mt-1 mb-0",
-            ComponentDensity.Spacious => "text-base text-secondary mt-2 mb-0",
-            _ => "text-sm text-secondary mt-1 mb-0"
-        };
+            ComponentDensity.Compact => "text-xs mt-0",
+            ComponentDensity.Dense => "text-sm mt-0",
+            ComponentDensity.Normal => "text-sm mt-1",
+            ComponentDensity.Spacious => "text-base mt-2",
+            _ => "text-sm mt-1"
+        });
+        
+        return string.Join(" ", classes);
     }
     
     
@@ -437,16 +408,12 @@ Supports header, media, content areas, loading states, elevation effects, and co
             return BodyClass;
         }
         
-        var classes = new List<string>();
+        var classes = new List<string> { "card-body" };
         
-        if (!NoPadding)
+        // Add density-specific padding only if not normal and not NoPadding
+        if (!NoPadding && Density != ComponentDensity.Normal)
         {
             classes.Add(GetDensityPaddingClasses());
-        }
-        
-        if (HasHeader && !FullBleedImage)
-        {
-            classes.Add("pt-0");
         }
         
         return string.Join(" ", classes);
@@ -459,7 +426,16 @@ Supports header, media, content areas, loading states, elevation effects, and co
     
     private string GetFooterClasses()
     {
-        return $"{GetDensityPaddingClasses()} pt-0 border-t border-light {GetDensityMarginClasses()}";
+        var classes = new List<string> { "card-actions" };
+        
+        // Add density-specific styling only if different from normal
+        if (Density != ComponentDensity.Normal)
+        {
+            classes.Add(GetDensityPaddingClasses());
+            classes.Add(GetDensityMarginClasses());
+        }
+        
+        return string.Join(" ", classes);
     }
     
     private string GetDensityPaddingClasses()
