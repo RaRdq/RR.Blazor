@@ -158,7 +158,9 @@ function Extract-ActualParameters {
                 }
             }
             
-            if ($propertyFound -and $parameterText -match 'public\s+(?:virtual\s+)?(?:override\s+)?(?:static\s+)?[^\s]+(?:<[^>]*>)?(?:\?)?\s+(@?\w+)\s*\{') {
+            # Enhanced regex to handle nested generic types like Expression<Func<TItem, object>>
+            # This regex handles nested angle brackets properly
+            if ($propertyFound -and $parameterText -match 'public\s+(?:virtual\s+)?(?:override\s+)?(?:static\s+)?[^\s{]+(?:<[^{}]*(?:<[^>]*>[^{}]*)*>)?(?:\?)?\s+(@?\w+)\s*\{') {
                 $paramName = $Matches[1].Trim()
                 if ($paramName -and $paramName -notmatch '^(get|set)$') {
                     $parameters += $paramName
@@ -319,7 +321,14 @@ Write-Host "📂 Building component parameter dictionary with inheritance..." -F
 
 $componentParameters = @{}
 $componentRequiredParams = @{}
-$componentFiles = Get-ChildItem -Path $ComponentsPath -Filter "R*.razor" -Recurse
+
+# Get both .razor and .cs files for R* components
+$razorFiles = Get-ChildItem -Path $ComponentsPath -Filter "R*.razor" -Recurse
+$csFiles = Get-ChildItem -Path $ComponentsPath -Filter "R*.cs" -Recurse | Where-Object { 
+    $_.Name -notlike "*Base.cs" -and $_.Name -notlike "*Models.cs" -and $_.Name -notlike "*Enums.cs"
+}
+
+$componentFiles = $razorFiles + $csFiles
 
 foreach ($file in $componentFiles) {
     $componentName = [System.IO.Path]::GetFileNameWithoutExtension($file.Name)
@@ -334,11 +343,41 @@ foreach ($file in $componentFiles) {
             continue
         }
         
-        $parameters = Extract-ActualParameters -Content $content -ComponentPath $file.FullName -BaseClassParameters $baseClassParameters
+        # Use different extraction method based on file type
+        if ($file.Extension -eq ".cs") {
+            $parameters = Extract-ParametersFromCsFile -Content $content
+            # For .cs files, also check if there are inherited base class parameters
+            foreach ($line in ($content -split "`n")) {
+                if ($line -match "class\\s+$componentName(?:<[^>]+>)?\\s*:\\s*(\\w+)(?:<[^>]+>)?") {
+                    $parentClass = $Matches[1]
+                    if ($baseClassParameters.ContainsKey($parentClass)) {
+                        $parameters += $baseClassParameters[$parentClass]
+                        Write-Host "    📎 Inherited $($baseClassParameters[$parentClass].Count) parameters from $parentClass" -ForegroundColor DarkCyan
+                    }
+                }
+            }
+            $parameters = $parameters | Sort-Object -Unique
+        } else {
+            $parameters = Extract-ActualParameters -Content $content -ComponentPath $file.FullName -BaseClassParameters $baseClassParameters
+        }
         $requiredParams = Extract-RequiredParameters -Content $content
         
-        $componentParameters[$componentName] = $parameters
-        $componentRequiredParams[$componentName] = $requiredParams
+        # Handle duplicate component names by merging parameters
+        if ($componentParameters.ContainsKey($componentName)) {
+            # Merge with existing parameters (union)
+            $existingParams = $componentParameters[$componentName]
+            $mergedParams = @($existingParams + $parameters) | Sort-Object -Unique
+            $componentParameters[$componentName] = $mergedParams
+            
+            $existingReqParams = $componentRequiredParams[$componentName]
+            $mergedReqParams = @($existingReqParams + $requiredParams) | Sort-Object -Unique
+            $componentRequiredParams[$componentName] = $mergedReqParams
+            
+            Write-Host "    🔄 Merged with existing $componentName ($($existingParams.Count) + $($parameters.Count) = $($mergedParams.Count) parameters)" -ForegroundColor Cyan
+        } else {
+            $componentParameters[$componentName] = $parameters
+            $componentRequiredParams[$componentName] = $requiredParams
+        }
         
         if ($Detailed) {
             Write-Host "    Parameters: $($parameters -join ', ')" -ForegroundColor DarkGreen
@@ -599,6 +638,50 @@ foreach ($file in $filesToScan) {
             }
             
             # Check if parameter is valid for this component
+            # SPECIAL HANDLING: Components using RAttributeForwarder can accept additional HTML attributes
+            $usesAttributeForwarder = $false
+            
+            # Dynamically check if component uses RForwardingComponentBase or has AdditionalAttributes
+            if ($validParams -contains 'AdditionalAttributes' -or 
+                ($validParams | Where-Object { $_ -match 'Class|Style|Disabled|ChildContent' }).Count -ge 3) {
+                $usesAttributeForwarder = $true
+            }
+            
+            # Check if it's a standard HTML attribute that RAttributeForwarder would accept
+            $htmlAttributes = @(
+                'id', 'class', 'style', 'title', 'lang', 'dir', 'accesskey', 'contenteditable', 'contextmenu', 
+                'draggable', 'dropzone', 'hidden', 'spellcheck', 'translate', 'role', 'tabindex',
+                # ARIA attributes
+                'aria-label', 'aria-labelledby', 'aria-describedby', 'aria-hidden', 'aria-expanded', 
+                'aria-selected', 'aria-checked', 'aria-disabled', 'aria-required', 'aria-invalid',
+                # Data attributes (pattern)
+                'data-.*',
+                # Event attributes
+                'onclick', 'ondblclick', 'onmousedown', 'onmouseup', 'onmouseover', 'onmouseout', 
+                'onmousemove', 'onkeydown', 'onkeyup', 'onkeypress', 'onfocus', 'onblur', 'onchange',
+                'onsubmit', 'onreset', 'onload', 'onunload'
+            )
+            
+            $isHtmlAttribute = $false
+            foreach ($htmlAttr in $htmlAttributes) {
+                if ($htmlAttr.EndsWith('.*')) {
+                    # Pattern matching for data-* attributes
+                    $pattern = $htmlAttr.Replace('.*', '')
+                    if ($actualParamName.ToLower().StartsWith($pattern.ToLower())) {
+                        $isHtmlAttribute = $true
+                        break
+                    }
+                } elseif ($actualParamName.ToLower() -eq $htmlAttr.ToLower()) {
+                    $isHtmlAttribute = $true
+                    break
+                }
+            }
+            
+            # If component uses attribute forwarding and it's a standard HTML attribute, allow it
+            if ($usesAttributeForwarder -and $isHtmlAttribute) {
+                continue  # Skip validation - this is valid
+            }
+            
             if ($actualParamName -notin $validParams) {
                 $lineNumber = ($content.Substring(0, $match.Index) -split "`n").Count
                 

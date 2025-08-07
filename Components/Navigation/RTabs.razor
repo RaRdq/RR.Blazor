@@ -215,10 +215,12 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
     protected override void OnParametersSet()
     {
         base.OnParametersSet();
-        // If ActiveTabId was set from outside, mark it as externally set
-        if (!string.IsNullOrEmpty(ActiveTabId))
+        var currentActiveTab = tabs.FirstOrDefault(t => t.Id == ActiveTabId);
+        
+        if (!string.IsNullOrEmpty(ActiveTabId) && currentActiveTab != null)
         {
             wasActiveTabIdSetExternally = true;
+            StateHasChanged();
         }
     }
     
@@ -284,16 +286,13 @@ Supports multiple variants, badges, closable tabs, keyboard navigation, and acce
             tabs.Add(tab);
         }
         
-        // Only set default tab if ActiveTabId is not set at all
-        // If it was set externally (even to empty string), respect that
-        if (string.IsNullOrEmpty(ActiveTabId) && !wasActiveTabIdSetExternally && tabs.Count == 1)
+        if (string.IsNullOrEmpty(ActiveTabId) && tabs.Count == 1)
         {
             ActiveTabId = tabs[0].Id;
         }
-        // If ActiveTabId was set but doesn't match any tab, and this is the matching tab, keep it
         else if (!string.IsNullOrEmpty(ActiveTabId) && tab.Id == ActiveTabId)
         {
-            wasActiveTabIdSetExternally = true; // Mark that we found the matching tab
+            wasActiveTabIdSetExternally = true;
         }
         
         StateHasChanged();
