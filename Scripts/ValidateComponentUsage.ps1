@@ -74,8 +74,8 @@ function Extract-ParametersFromCsFile {
     for ($i = 0; $i -lt $lines.Length; $i++) {
         $line = $lines[$i].Trim()
         
-        # Look for [Parameter] attributes (including those with additional attributes)
-        if ($line -match '\[Parameter(?:[\],]|$)') {
+        # Look for [Parameter] attributes (including those with additional attributes like AIParameter)
+        if ($line -match '\[Parameter(?:[,\s]|$)') {
             # Look ahead for the property declaration, handle multi-line and complex properties
             $foundProperty = $false
             $searchText = ""
@@ -180,8 +180,8 @@ function Extract-ActualParameters {
             continue
         }
         
-        # Look for [Parameter] attributes (handle all variations)
-        if ($line -match '\[Parameter(?:[\],]|$)') {
+        # Look for [Parameter] attributes (handle all variations including AIParameter)
+        if ($line -match '\[Parameter(?:[,\s]|$)') {
             # Collect multi-line parameter definition
             $parameterText = ""
             $propertyFound = $false
@@ -217,7 +217,10 @@ function Extract-ActualParameters {
     }
     
     # Combine inherited and component-specific parameters
-    $allParameters = @($inheritedParameters + $parameters) | Sort-Object -Unique
+    $combinedParameters = @()
+    $combinedParameters += $inheritedParameters
+    $combinedParameters += $parameters
+    $allParameters = $combinedParameters | Sort-Object -Unique
     return $allParameters
 }
 
@@ -306,7 +309,9 @@ function Resolve-InheritanceChain {
     if ($BaseClassInheritance.ContainsKey($ClassName)) {
         $parentClass = $BaseClassInheritance[$ClassName]
         $parentParameters = Resolve-InheritanceChain -ClassName $parentClass -BaseClassParameters $BaseClassParameters -BaseClassInheritance $BaseClassInheritance -VisitedClasses $VisitedClasses
-        $allParameters += $parentParameters
+        if ($parentParameters -and $parentParameters.Count -gt 0) {
+            $allParameters += $parentParameters
+        }
     }
     
     return $allParameters | Sort-Object -Unique
@@ -385,6 +390,9 @@ foreach ($file in $componentFiles) {
         
         Write-Host "  📄 Parsing $componentName..." -ForegroundColor DarkGray
         
+        # Debug mode for RChoice specifically
+        $debugComponent = ($componentName -eq "RChoice")
+        
         if ([string]::IsNullOrEmpty($content)) {
             Write-Warning "Content is empty for: $($file.FullName)"
             continue
@@ -395,11 +403,14 @@ foreach ($file in $componentFiles) {
             $parameters = Extract-ParametersFromCsFile -Content $content
             # For .cs files, also check if there are inherited base class parameters
             foreach ($line in ($content -split "`n")) {
-                if ($line -match "class\\s+$componentName(?:<[^>]+>)?\\s*:\\s*(\\w+)(?:<[^>]+>)?") {
+                if ($line -match "class\s+$componentName(?:<[^>]+>)?\s*:\s*(\w+)(?:<[^>]+>)?") {
                     $parentClass = $Matches[1]
                     if ($baseClassParameters.ContainsKey($parentClass)) {
-                        $parameters += $baseClassParameters[$parentClass]
-                        Write-Host "    📎 Inherited $($baseClassParameters[$parentClass].Count) parameters from $parentClass" -ForegroundColor DarkCyan
+                        $inheritedParams = $baseClassParameters[$parentClass]
+                        if ($inheritedParams -and $inheritedParams.Count -gt 0) {
+                            $parameters += $inheritedParams
+                            Write-Host "    📎 Inherited $($inheritedParams.Count) parameters from $parentClass (including full inheritance chain)" -ForegroundColor DarkCyan
+                        }
                     }
                 }
             }
@@ -413,11 +424,17 @@ foreach ($file in $componentFiles) {
         if ($componentParameters.ContainsKey($componentName)) {
             # Merge with existing parameters (union)
             $existingParams = $componentParameters[$componentName]
-            $mergedParams = @($existingParams + $parameters) | Sort-Object -Unique
+            $combinedParams = @()
+            $combinedParams += $existingParams
+            $combinedParams += $parameters
+            $mergedParams = $combinedParams | Sort-Object -Unique
             $componentParameters[$componentName] = $mergedParams
             
             $existingReqParams = $componentRequiredParams[$componentName]
-            $mergedReqParams = @($existingReqParams + $requiredParams) | Sort-Object -Unique
+            $combinedReqParams = @()
+            $combinedReqParams += $existingReqParams
+            $combinedReqParams += $requiredParams
+            $mergedReqParams = $combinedReqParams | Sort-Object -Unique
             $componentRequiredParams[$componentName] = $mergedReqParams
             
             Write-Host "    🔄 Merged with existing $componentName ($($existingParams.Count) + $($parameters.Count) = $($mergedParams.Count) parameters)" -ForegroundColor Cyan
@@ -426,7 +443,7 @@ foreach ($file in $componentFiles) {
             $componentRequiredParams[$componentName] = $requiredParams
         }
         
-        if ($Detailed) {
+        if ($Detailed -or $debugComponent) {
             Write-Host "    Parameters: $($parameters -join ', ')" -ForegroundColor DarkGreen
             if ($requiredParams.Count -gt 0) {
                 Write-Host "    Required: $($requiredParams -join ', ')" -ForegroundColor Yellow
@@ -742,15 +759,22 @@ foreach ($file in $filesToScan) {
                         break
                     }
                 }
-                # If no exact match, look for parameters that start with the same letters
+                # If no exact match, use Levenshtein distance to find best match
                 if (-not $suggestion -and $paramName.Length -ge 3) {
-                    $prefix = $paramName.Substring(0, 3).ToLower()
+                    $bestMatch = ""
+                    $bestDistance = [int]::MaxValue
+                    
                     foreach ($validParam in $validParams) {
-                        if ($validParam.ToLower().StartsWith($prefix)) {
-                            $suggestion = $validParam
-                            break
+                        $distance = Get-LevenshteinDistance -String1 $paramName.ToLower() -String2 $validParam.ToLower()
+                        # Only suggest if distance is reasonable (not more than half the length)
+                        $maxDistance = [Math]::Max(1, [Math]::Floor($paramName.Length / 2))
+                        if ($distance -lt $bestDistance -and $distance -le $maxDistance) {
+                            $bestDistance = $distance
+                            $bestMatch = $validParam
                         }
                     }
+                    
+                    $suggestion = $bestMatch
                 }
                 
                 # Determine severity based on file type

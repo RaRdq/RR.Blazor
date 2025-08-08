@@ -229,12 +229,12 @@ public partial class RInput : RInputBase
 **Usage Examples**:
 ```razor
 @* Smart detection *@
-<RInput @bind-Value="user.Email" Label="Email" />        @* Auto-detects email *@
-<RInput @bind-Value="user.Phone" Label="Phone Number" /> @* Auto-detects tel *@
+<RInput @bind-Value="user.Email" />        @* Auto-detects email *@
+<RInput @bind-Value="user.Phone" /> @* Auto-detects tel *@
 <RInput @bind-Value="notes" IsMultiLine="true" />        @* Textarea mode *@
 
 @* Explicit types when needed *@
-<RInput @bind-Value="password" Type="FieldType.Password" Label="Password" />
+<RInput @bind-Value="password" Type="FieldType.Password" />
 <RInput @bind-Value="amount" Type="FieldType.Number" Min="0" Max="1000" />
 ```
 

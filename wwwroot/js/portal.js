@@ -1,120 +1,427 @@
-// RR.Blazor Unified Portal System
 // Single source of truth for all portal, popup, and positioning needs
+
+class PortalStateMachine {
+    static States = {
+        IDLE: 'idle',
+        CREATING: 'creating',
+        OPEN: 'open',
+        CLOSING: 'closing',
+        DESTROYED: 'destroyed'
+    };
+    
+    static ValidTransitions = {
+        [PortalStateMachine.States.IDLE]: [PortalStateMachine.States.CREATING],
+        [PortalStateMachine.States.CREATING]: [PortalStateMachine.States.OPEN, PortalStateMachine.States.DESTROYED],
+        [PortalStateMachine.States.OPEN]: [PortalStateMachine.States.CLOSING],
+        [PortalStateMachine.States.CLOSING]: [PortalStateMachine.States.DESTROYED],
+        [PortalStateMachine.States.DESTROYED]: []
+    };
+    
+    constructor(portalId) {
+        this.portalId = portalId;
+        this.state = PortalStateMachine.States.IDLE;
+        this.mutex = new Mutex();
+    }
+    
+    async transition(newState) {
+        return await this.mutex.lock(async () => {
+            const validTransitions = PortalStateMachine.ValidTransitions[this.state] || [];
+            
+            if (!validTransitions.includes(newState)) {
+                throw new Error(`[PortalStateMachine] Invalid transition from ${this.state} to ${newState} for portal ${this.portalId}`);
+            }
+            
+            const oldState = this.state;
+            this.state = newState;
+            return { oldState, newState };
+        });
+    }
+    
+    async getState() {
+        return await this.mutex.lock(async () => this.state);
+    }
+    
+    isInState(state) {
+        return this.state === state;
+    }
+}
+
+// Mutex for ensuring atomic operations
+class Mutex {
+    constructor() {
+        this.locked = false;
+        this.queue = [];
+    }
+    
+    async lock(fn) {
+        while (this.locked) {
+            await new Promise(resolve => this.queue.push(resolve));
+        }
+        
+        this.locked = true;
+        try {
+            return await fn();
+        } finally {
+            this.locked = false;
+            const resolve = this.queue.shift();
+            if (resolve) resolve();
+        }
+    }
+}
+
+// Queue for handling rapid portal operations
+class PortalQueue {
+    constructor() {
+        this.operations = new Map();
+        this.processing = new Set();
+    }
+    
+    async enqueue(portalId, operation, fn) {
+        // Cancel any pending operations for this portal
+        if (this.operations.has(portalId)) {
+            const pending = this.operations.get(portalId);
+            if (pending.operation !== operation) {
+                pending.cancelled = true;
+            }
+        }
+        
+        // Create new operation
+        const op = {
+            portalId,
+            operation,
+            fn,
+            cancelled: false,
+            timestamp: Date.now()
+        };
+        
+        this.operations.set(portalId, op);
+        
+        // Process if not already processing
+        if (!this.processing.has(portalId)) {
+            await this.process(portalId);
+        }
+        
+        return !op.cancelled;
+    }
+    
+    async process(portalId) {
+        this.processing.add(portalId);
+        
+        try {
+            while (this.operations.has(portalId)) {
+                const op = this.operations.get(portalId);
+                this.operations.delete(portalId);
+                
+                if (!op.cancelled) {
+                    try {
+                        await op.fn();
+                    } catch (error) {
+                        console.error(`[PortalQueue] Operation ${op.operation} failed for portal ${portalId}:`, error);
+                    }
+                }
+            }
+        } finally {
+            this.processing.delete(portalId);
+        }
+    }
+}
+
+// Backdrop manager for centralized backdrop handling
+class BackdropManager {
+    constructor(zIndexManager, portalManager) {
+        this.backdrops = new Map();
+        this.zIndexManager = zIndexManager;
+        this.portalManager = portalManager;
+        this.mutex = new Mutex();
+    }
+    
+    async create(portalId, clickHandler) {
+        return await this.mutex.lock(async () => {
+            // Check if backdrop already exists
+            if (this.backdrops.has(portalId)) {
+                console.warn(`[BackdropManager] Backdrop for portal '${portalId}' already exists`);
+                return this.backdrops.get(portalId).element;
+            }
+            
+            // Create backdrop element
+            const backdrop = document.createElement('div');
+            backdrop.id = `backdrop-${portalId}`;
+            backdrop.className = 'rr-portal-backdrop';
+            backdrop.setAttribute('data-portal-id', portalId);
+            
+            // Get z-index
+            const zIndex = this.zIndexManager.getNext('backdrop');
+            backdrop.style.zIndex = zIndex;
+            
+            // Add click handler if provided (for modal backdrops)
+            if (clickHandler) {
+                backdrop.addEventListener('click', (event) => {
+                    // Prevent propagation to elements behind
+                    event.stopPropagation();
+                    event.preventDefault();
+                    clickHandler(event);
+                });
+            }
+            
+            // Add to DOM
+            document.body.appendChild(backdrop);
+            
+            // Store reference
+            this.backdrops.set(portalId, {
+                element: backdrop,
+                zIndex: zIndex,
+                clickHandler: clickHandler
+            });
+            
+            return backdrop;
+        });
+    }
+    
+    async remove(portalId) {
+        return await this.mutex.lock(async () => {
+            const backdrop = this.backdrops.get(portalId);
+            
+            if (!backdrop) {
+                // Also check DOM for orphaned backdrops
+                const orphaned = document.getElementById(`backdrop-${portalId}`);
+                if (orphaned && orphaned.parentElement) {
+                    orphaned.parentElement.removeChild(orphaned);
+                    console.warn(`[BackdropManager] Removed orphaned backdrop for portal ${portalId}`);
+                }
+                return false;
+            }
+            
+            // Remove from DOM
+            if (backdrop.element && backdrop.element.parentElement) {
+                backdrop.element.parentElement.removeChild(backdrop.element);
+            }
+            
+            // Release z-index
+            if (backdrop.zIndex) {
+                this.zIndexManager.release('backdrop', backdrop.zIndex);
+            }
+            
+            // Remove from map
+            this.backdrops.delete(portalId);
+            
+            return true;
+        });
+    }
+    
+    async cleanup() {
+        return await this.mutex.lock(async () => {
+            // Find all backdrop elements in DOM
+            const allBackdrops = document.querySelectorAll('.rr-portal-backdrop');
+            let cleanedCount = 0;
+            
+            allBackdrops.forEach(backdrop => {
+                const portalId = backdrop.getAttribute('data-portal-id');
+                
+                // Remove if not tracked OR if the associated portal no longer exists
+                // OR if both backdrop and portal exist but portal is not in the active portals map
+                const portalContainer = document.getElementById(`portal-${portalId}`);
+                const isPortalTracked = this.portalManager ? this.portalManager.portals.has(portalId) : false;
+                
+                const shouldRemove = !this.backdrops.has(portalId) || 
+                                    (portalId && !portalContainer) ||
+                                    (portalId && portalContainer && !isPortalTracked);
+                
+                if (shouldRemove) {
+                    try {
+                        if (backdrop.parentElement) {
+                            backdrop.parentElement.removeChild(backdrop);
+                            cleanedCount++;
+                            
+                            // Release z-index if we can parse it
+                            const zIndex = parseInt(backdrop.style.zIndex);
+                            if (!isNaN(zIndex)) {
+                                this.zIndexManager.release('backdrop', zIndex);
+                            }
+                            
+                            // Remove from backdrops map if it exists
+                            if (this.backdrops.has(portalId)) {
+                                this.backdrops.delete(portalId);
+                            }
+                        }
+                    } catch (e) {
+                        console.warn(`[BackdropManager] Failed to remove orphaned backdrop: ${e.message}`);
+                    }
+                }
+            });
+            
+            if (cleanedCount > 0) {
+                console.warn(`[BackdropManager] Cleaned up ${cleanedCount} orphaned backdrop(s)`);
+            }
+            
+            return cleanedCount;
+        });
+    }
+}
 
 class PortalManager {
     constructor() {
         this.portals = new Map();
+        this.stateMachines = new Map();
         this.zIndexManager = new ZIndexManager();
+        this.backdropManager = new BackdropManager(this.zIndexManager, this);
         this.positioningEngine = new PositioningEngine();
         this.eventManager = new PortalEventManager();
+        this.queue = new PortalQueue();
+        this.mutex = new Mutex();
     }
     
-    // Create a portal with unified options
-    create(element, options = {}) {
+    // Create a portal with unified options and atomic operations
+    async create(element, options = {}) {
         if (!element) {
             console.warn('[PortalManager] No element provided');
             return null;
         }
         
         const portalId = options.id || `portal-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-        const targetContainer = this.resolveTarget(options.target || 'body');
         
-        if (!targetContainer) {
-            console.warn('[PortalManager] Target container not found');
-            return null;
-        }
+        // Create state machine for this portal
+        const stateMachine = new PortalStateMachine(portalId);
+        this.stateMachines.set(portalId, stateMachine);
         
-        // Store original position for restoration
-        const originalState = {
-            parent: element.parentElement,
-            nextSibling: element.nextSibling,
-            display: element.style.display,
-            position: element.style.position
-        };
+        // Queue the creation operation
+        const result = await this.queue.enqueue(portalId, 'create', async () => {
+            return await this._createPortal(element, options, portalId, stateMachine);
+        });
         
-        // Create portal container
-        const portalContainer = this.createPortalContainer(portalId, options);
-        
-        // Handle different portal types
-        const portalType = options.type || 'generic';
-        switch (portalType) {
-            case 'tooltip':
-                // Clone content for tooltips to preserve styling
-                const clonedContent = element.cloneNode(true);
-                portalContainer.appendChild(clonedContent);
-                element.style.display = 'none'; // Hide original
-                break;
-            case 'modal':
-                // Modals get special backdrop handling
-                if (options.backdrop !== false) {
-                    this.createBackdrop(portalId);
-                }
-                portalContainer.appendChild(element);
-                break;
-            default:
-                // Standard portal - move element
-                portalContainer.appendChild(element);
-        }
-        
-        // Apply z-index
-        const zIndex = this.zIndexManager.getNext(portalType);
-        portalContainer.style.zIndex = zIndex;
-        
-        // Append to target
-        targetContainer.appendChild(portalContainer);
-        
-        // Create portal instance
-        const portal = {
-            id: portalId,
-            element,
-            container: portalContainer,
-            type: portalType,
-            originalState,
-            zIndex,
-            options,
-            anchor: options.anchor,
-            isOpen: true,
-            isDestroying: false,
-            backdropElement: null,
-            backdropZIndex: null
-        };
-        
-        this.portals.set(portalId, portal);
-        
-        // Setup positioning if anchor provided (but NOT for modals)
-        if (options.anchor && portalType !== 'modal') {
-            this.position(portalId);
+        return result ? portalId : null;
+    }
+    
+    async _createPortal(element, options, portalId, stateMachine) {
+        try {
+            // Transition to CREATING state
+            await stateMachine.transition(PortalStateMachine.States.CREATING);
             
-            // Track scroll events to reposition
-            const scrollHandler = () => {
-                this.position(portalId);
+            const targetContainer = this.resolveTarget(options.target || 'body');
+            
+            if (!targetContainer) {
+                console.warn('[PortalManager] Target container not found');
+                await stateMachine.transition(PortalStateMachine.States.DESTROYED);
+                return false;
+            }
+            
+            // Store original position for restoration
+            const originalState = {
+                parent: element.parentElement,
+                nextSibling: element.nextSibling,
+                display: element.style.display,
+                position: element.style.position
             };
             
-            // Track scroll on window and all parent elements
-            window.addEventListener('scroll', scrollHandler, true);
-            portal.scrollHandler = scrollHandler;
+            // Create portal container
+            const portalContainer = this.createPortalContainer(portalId, options);
             
-            // Also track resize events
-            const resizeHandler = () => {
-                this.position(portalId);
+            // Handle different portal types
+            const portalType = options.type || 'generic';
+            let backdropElement = null;
+            
+            switch (portalType) {
+                case 'tooltip':
+                    // Clone content for tooltips to preserve styling
+                    const clonedContent = element.cloneNode(true);
+                    portalContainer.appendChild(clonedContent);
+                    element.style.display = 'none'; // Hide original
+                    break;
+                case 'modal':
+                    // Modals get special backdrop handling
+                    if (options.backdrop !== false) {
+                        // Create click handler for modal backdrop
+                        const backdropClickHandler = options.dotNetRef && options.backdropCallbackMethod ? 
+                            async () => {
+                                try {
+                                    await options.dotNetRef.invokeMethodAsync(options.backdropCallbackMethod);
+                                } catch (error) {
+                                    console.warn('[PortalManager] Backdrop click callback failed:', error);
+                                }
+                            } : null;
+                        
+                        backdropElement = await this.backdropManager.create(portalId, backdropClickHandler);
+                    }
+                    portalContainer.appendChild(element);
+                    break;
+                default:
+                    // Standard portal - move element
+                    portalContainer.appendChild(element);
+            }
+            
+            // Apply z-index with context awareness
+            const isInsideModal = !!element.closest('.modal-content, [role="dialog"]');
+            const context = isInsideModal ? 'modal' : null;
+            const zIndex = this.zIndexManager.getNext(portalType, context);
+            portalContainer.style.zIndex = zIndex;
+            
+            // Append to target
+            targetContainer.appendChild(portalContainer);
+            
+            // Create portal instance
+            const portal = {
+                id: portalId,
+                element,
+                container: portalContainer,
+                type: portalType,
+                originalState,
+                zIndex,
+                options,
+                anchor: options.anchor,
+                stateMachine,
+                backdropElement
             };
             
-            window.addEventListener('resize', resizeHandler);
-            portal.resizeHandler = resizeHandler;
+            this.portals.set(portalId, portal);
+            
+            // Setup positioning if anchor provided (but NOT for modals)
+            if (options.anchor && portalType !== 'modal') {
+                this.position(portalId);
+                
+                // Track scroll events to reposition
+                const scrollHandler = () => {
+                    this.position(portalId);
+                };
+                
+                // Track scroll on window and all parent elements
+                window.addEventListener('scroll', scrollHandler, true);
+                portal.scrollHandler = scrollHandler;
+                
+                // Also track resize events
+                const resizeHandler = () => {
+                    this.position(portalId);
+                };
+                
+                window.addEventListener('resize', resizeHandler);
+                portal.resizeHandler = resizeHandler;
+            }
+            
+            // Setup event handlers
+            if (options.onClickOutside || options.closeOnClickOutside) {
+                const callbackMethod = options.backdropCallbackMethod || 'HandleClickOutside';
+                this.eventManager.setupClickOutside(portal, options.onClickOutside, options.dotNetRef, callbackMethod);
+            }
+            
+            if (options.onEscape || options.closeOnEscape) {
+                const callbackMethod = options.escapeCallbackMethod || 'HandleEscape';
+                this.eventManager.setupEscape(portal, options.onEscape, options.dotNetRef, callbackMethod);
+            }
+            
+            // Transition to OPEN state
+            await stateMachine.transition(PortalStateMachine.States.OPEN);
+            
+            return true;
+        } catch (error) {
+            console.error(`[PortalManager] Failed to create portal ${portalId}:`, error);
+            
+            // Try to transition to DESTROYED state
+            try {
+                await stateMachine.transition(PortalStateMachine.States.DESTROYED);
+            } catch (e) {
+                // Ignore transition errors during cleanup
+            }
+            
+            return false;
         }
-        
-        // Setup event handlers
-        if (options.onClickOutside || options.closeOnClickOutside) {
-            const callbackMethod = options.backdropCallbackMethod || 'HandleClickOutside';
-            this.eventManager.setupClickOutside(portal, options.onClickOutside, options.dotNetRef, callbackMethod);
-        }
-        
-        if (options.onEscape || options.closeOnEscape) {
-            const callbackMethod = options.escapeCallbackMethod || 'HandleEscape';
-            this.eventManager.setupEscape(portal, options.onEscape, options.dotNetRef, callbackMethod);
-        }
-        
-        return portalId;
     }
     
     // Update portal position
@@ -137,8 +444,8 @@ class PortalManager {
         portal.container.className = `rr-portal rr-portal-${portal.type} ${classes} ${portal.options.className || ''}`.trim();
     }
     
-    // Destroy portal and restore element with comprehensive error handling
-    destroy(portalId) {
+    // Destroy portal and restore element with atomic operations
+    async destroy(portalId) {
         const portal = this.portals.get(portalId);
         if (!portal) {
             // Don't log for modal-auto-* portals as these are common during cleanup
@@ -148,15 +455,34 @@ class PortalManager {
             return false;
         }
         
-        // Prevent race conditions during destruction
-        if (portal.isDestroying) {
-            console.warn(`[PortalManager] Portal '${portalId}' is already being destroyed`);
+        const stateMachine = portal.stateMachine || this.stateMachines.get(portalId);
+        if (!stateMachine) {
+            console.warn(`[PortalManager] No state machine for portal '${portalId}'`);
             return false;
         }
-        portal.isDestroying = true;
-        portal.isOpen = false;
         
+        // Queue the destruction operation
+        return await this.queue.enqueue(portalId, 'destroy', async () => {
+            return await this._destroyPortal(portal, portalId, stateMachine);
+        });
+    }
+    
+    async _destroyPortal(portal, portalId, stateMachine) {
         try {
+            // Check current state
+            const currentState = await stateMachine.getState();
+            if (currentState === PortalStateMachine.States.DESTROYED) {
+                return false;
+            }
+            
+            if (currentState === PortalStateMachine.States.CLOSING) {
+                // Already closing, wait for it to complete
+                return false;
+            }
+            
+            // Transition to CLOSING state
+            await stateMachine.transition(PortalStateMachine.States.CLOSING);
+            
             // Clean up event handlers
             this.eventManager.cleanup(portal);
             
@@ -177,7 +503,7 @@ class PortalManager {
             }
             
             // Remove backdrop if exists
-            this.removeBackdrop(portalId);
+            await this.backdropManager.remove(portalId);
             
             // Restore element to original position
             if (portal.originalState.parent && portal.element) {
@@ -211,22 +537,27 @@ class PortalManager {
                 }
             }
             
-            // Release z-index
-            this.zIndexManager.release(portal.type, portal.zIndex);
+            // Release z-index with context
+            const isInsideModal = portal.stateMachine ? 
+                !!portal.element?.closest('.modal-content, [role="dialog"]') : false;
+            const context = isInsideModal ? 'modal' : null;
+            this.zIndexManager.release(portal.type, portal.zIndex, context);
             
+            // Transition to DESTROYED state
+            await stateMachine.transition(PortalStateMachine.States.DESTROYED);
+            
+            return true;
+        } catch (error) {
+            console.error(`[PortalManager] Failed to destroy portal ${portalId}:`, error);
+            return false;
         } finally {
             // Always clean up references even if other operations fail
             this.portals.delete(portalId);
+            this.stateMachines.delete(portalId);
             
             // Run orphaned element cleanup as a safety net
-            try {
-                this.cleanupOrphanedBackdrops();
-            } catch (e) {
-                console.warn(`[PortalManager] Failed to run orphaned cleanup: ${e.message}`);
-            }
+            await this.cleanupOrphanedElements();
         }
-        
-        return true;
     }
     
     // Update portal options
@@ -282,84 +613,13 @@ class PortalManager {
         return container;
     }
     
-    createBackdrop(portalId) {
-        // Check if backdrop already exists
-        const existingBackdrop = document.getElementById(`backdrop-${portalId}`);
-        if (existingBackdrop) {
-            console.warn(`[PortalManager] Backdrop for portal '${portalId}' already exists`);
-            return existingBackdrop;
-        }
-        
-        const backdrop = document.createElement('div');
-        backdrop.id = `backdrop-${portalId}`;
-        backdrop.className = 'rr-portal-backdrop';
-        backdrop.setAttribute('data-portal-id', portalId);
-        const zIndex = this.zIndexManager.getNext('backdrop');
-        backdrop.style.zIndex = zIndex;
-        document.body.appendChild(backdrop);
-        
-        // Store backdrop reference in portal object
-        const portal = this.portals.get(portalId);
-        if (portal) {
-            portal.backdropElement = backdrop;
-            portal.backdropZIndex = zIndex;
-        }
-        
-        return backdrop;
+    // Legacy methods for backward compatibility - now delegate to BackdropManager
+    async createBackdrop(portalId, clickHandler) {
+        return await this.backdropManager.create(portalId, clickHandler);
     }
     
-    removeBackdrop(portalId) {
-        const portal = this.portals.get(portalId);
-        let backdropRemoved = false;
-        
-        // Strategy 1: Try to remove using stored reference
-        if (portal && portal.backdropElement && portal.backdropElement.parentElement) {
-            try {
-                portal.backdropElement.parentElement.removeChild(portal.backdropElement);
-                // Release z-index
-                if (portal.backdropZIndex) {
-                    this.zIndexManager.release('backdrop', portal.backdropZIndex);
-                }
-                portal.backdropElement = null;
-                portal.backdropZIndex = null;
-                backdropRemoved = true;
-            } catch (e) {
-                console.warn(`[PortalManager] Failed to remove backdrop using reference: ${e.message}`);
-            }
-        }
-        
-        // Strategy 2: Try to remove by ID (run regardless of Strategy 1 success)
-        const backdrop = document.getElementById(`backdrop-${portalId}`);
-        if (backdrop && backdrop.parentElement) {
-            try {
-                backdrop.parentElement.removeChild(backdrop);
-                // Release z-index if we can parse it
-                const zIndex = parseInt(backdrop.style.zIndex);
-                if (!isNaN(zIndex)) {
-                    this.zIndexManager.release('backdrop', zIndex);
-                }
-                backdropRemoved = true;
-            } catch (e) {
-                console.warn(`[PortalManager] Failed to remove backdrop by ID: ${e.message}`);
-            }
-        }
-        
-        // Strategy 3: Remove all backdrops with matching data attribute (always run)
-        const orphanedBackdrops = document.querySelectorAll(`[data-portal-id="${portalId}"]`);
-        orphanedBackdrops.forEach(backdrop => {
-            try {
-                if (backdrop.parentElement) {
-                    backdrop.parentElement.removeChild(backdrop);
-                    backdropRemoved = true;
-                }
-            } catch (e) {
-                console.warn(`[PortalManager] Failed to remove orphaned backdrop: ${e.message}`);
-            }
-        });
-        
-        if (!backdropRemoved) {
-            console.warn(`[PortalManager] No backdrop found or removed for portal: ${portalId}`);
-        }
+    async removeBackdrop(portalId) {
+        return await this.backdropManager.remove(portalId);
     }
     
     // Get all portals of a specific type
@@ -379,33 +639,25 @@ class PortalManager {
         
         // Check for any open portals that are children of this container
         for (const [portalId, portal] of this.portals.entries()) {
-            if (portal.isOpen && container.contains(portal.container)) {
+            const stateMachine = this.stateMachines.get(portalId);
+            const isOpen = stateMachine ? 
+                stateMachine.state === PortalStateMachine.States.OPEN : 
+                (portal.isOpen !== false);
+            
+            if (isOpen && container.contains(portal.container)) {
                 return true;
             }
         }
-        return false;
+        
+        // Also check for any portal containers in DOM
+        const portalElements = container.querySelectorAll('.rr-portal:not(.rr-portal-modal)');
+        return portalElements.length > 0;
     }
     
-    // Cleanup method to remove all orphaned backdrops and modal elements
-    cleanupOrphanedBackdrops() {
+    // Cleanup method to remove all orphaned elements
+    async cleanupOrphanedElements() {
         // Clean up orphaned backdrops
-        const allBackdrops = document.querySelectorAll('.rr-portal-backdrop');
-        
-        allBackdrops.forEach(backdrop => {
-            const portalId = backdrop.getAttribute('data-portal-id');
-            
-            // If no portal ID or portal doesn't exist, remove the backdrop
-            if (!portalId || !this.portals.has(portalId)) {
-                try {
-                    if (backdrop.parentElement) {
-                        backdrop.parentElement.removeChild(backdrop);
-                    }
-                    console.warn(`[PortalManager] Removed orphaned backdrop: ${backdrop.id}`);
-                } catch (e) {
-                    console.warn(`[PortalManager] Failed to remove orphaned backdrop: ${e.message}`);
-                }
-            }
-        });
+        const backdropCleanupCount = await this.backdropManager.cleanup();
         
         // Clean up orphaned portal containers
         const allPortals = document.querySelectorAll('.rr-portal');
@@ -444,6 +696,11 @@ class PortalManager {
             }
         });
     }
+    
+    // Legacy method for backward compatibility
+    cleanupOrphanedBackdrops() {
+        return this.cleanupOrphanedElements();
+    }
 }
 
 // Z-Index management with CSS variable integration and recycling
@@ -452,19 +709,13 @@ class ZIndexManager {
         this.counters = new Map();
         this.freeIndices = new Map(); // Track free indices for recycling
         this.usedIndices = new Map(); // Track which indices are in use
-        this.bases = {
-            backdrop: 1000,
-            dropdown: 1100,
-            tooltip: 1200,
-            modal: 1300,
-            notification: 1400,
-            generic: 1000
-        };
+        this.bases = {};
+        this.modalContextBases = {};
         
         // Maximum indices per type before recycling
         this.maxPerType = 100;
         
-        // Try to read from CSS variables
+        // Load z-index values from CSS variables
         this.loadFromCSS();
     }
     
@@ -475,50 +726,79 @@ class ZIndexManager {
             return value ? parseInt(value) : fallback;
         };
         
-        this.bases.dropdown = getVar('--z-dropdown', this.bases.dropdown);
-        this.bases.tooltip = getVar('--z-tooltip', this.bases.tooltip);
-        this.bases.modal = getVar('--z-modal', this.bases.modal);
-        this.bases.notification = getVar('--z-notification', this.bases.notification);
+        // Load base z-index values from CSS variables
+        // From _variables.scss:
+        // --z-popup: 900
+        // --z-modal-backdrop: 1000
+        // --z-modal-content: 1040
+        // --z-modal-popup: 1100 (for dropdowns inside modals)
+        // --z-tooltip: 1220
+        // --z-notification: 1230
+        
+        this.bases.backdrop = getVar('--z-modal-backdrop', 1000);
+        this.bases.dropdown = getVar('--z-popup', 900);
+        this.bases.tooltip = getVar('--z-tooltip', 1220);
+        this.bases.modal = getVar('--z-modal-content', 1040);
+        this.bases.notification = getVar('--z-notification', 1230);
+        this.bases.generic = getVar('--z-popup', 900);
+        this.bases.datepicker = getVar('--z-popup', 900);
+        this.bases.choice = getVar('--z-popup', 900);
+        
+        // Context-aware z-index for portals inside modals
+        this.modalContextBases.dropdown = getVar('--z-modal-popup', 1100);
+        this.modalContextBases.tooltip = getVar('--z-tooltip', 1220);
+        this.modalContextBases.datepicker = getVar('--z-modal-popup', 1100);
+        this.modalContextBases.choice = getVar('--z-modal-popup', 1100);
+        this.modalContextBases.generic = getVar('--z-modal-popup', 1100);
     }
     
-    getNext(type) {
-        const base = this.bases[type] || this.bases.generic;
+    getNext(type, context = null) {
+        // Check if this portal is inside a modal
+        let base = this.bases[type] || this.bases.generic;
+        
+        if (context === 'modal' && this.modalContextBases[type]) {
+            // Use higher base for portals inside modals
+            base = this.modalContextBases[type];
+        }
         
         // Check for free indices to recycle
-        if (!this.freeIndices.has(type)) {
-            this.freeIndices.set(type, []);
+        const contextKey = context ? `${type}_${context}` : type;
+        if (!this.freeIndices.has(contextKey)) {
+            this.freeIndices.set(contextKey, []);
         }
-        const freeList = this.freeIndices.get(type);
+        const freeList = this.freeIndices.get(contextKey);
         
         if (freeList.length > 0) {
             // Recycle a free index
             const recycledIndex = freeList.shift();
-            this.markAsUsed(type, recycledIndex);
+            this.markAsUsed(contextKey, recycledIndex);
             return recycledIndex;
         }
         
         // No free indices, generate new one
-        const count = this.counters.get(type) || 0;
+        const count = this.counters.get(contextKey) || 0;
         
         // Reset counter if we've reached max to prevent overflow
         if (count >= this.maxPerType) {
-            this.resetType(type);
+            this.resetType(contextKey);
             return base;
         }
         
-        this.counters.set(type, count + 1);
+        this.counters.set(contextKey, count + 1);
         const newIndex = base + count;
-        this.markAsUsed(type, newIndex);
+        this.markAsUsed(contextKey, newIndex);
         return newIndex;
     }
     
-    release(type, zIndex) {
-        if (!this.freeIndices.has(type)) {
-            this.freeIndices.set(type, []);
+    release(type, zIndex, context = null) {
+        const contextKey = context ? `${type}_${context}` : type;
+        
+        if (!this.freeIndices.has(contextKey)) {
+            this.freeIndices.set(contextKey, []);
         }
         
         // Mark index as free for recycling
-        const freeList = this.freeIndices.get(type);
+        const freeList = this.freeIndices.get(contextKey);
         if (!freeList.includes(zIndex)) {
             freeList.push(zIndex);
             // Sort to prefer lower indices
@@ -526,13 +806,13 @@ class ZIndexManager {
         }
         
         // Remove from used indices
-        this.markAsUnused(type, zIndex);
+        this.markAsUnused(contextKey, zIndex);
         
         // If no indices are in use, reset the counter
-        const usedForType = this.usedIndices.get(type) || new Set();
+        const usedForType = this.usedIndices.get(contextKey) || new Set();
         if (usedForType.size === 0) {
-            this.counters.set(type, 0);
-            this.freeIndices.set(type, []);
+            this.counters.set(contextKey, 0);
+            this.freeIndices.set(contextKey, []);
         }
     }
     
@@ -687,22 +967,32 @@ class PortalEventManager {
         // Global escape handler
         this.globalEscapeHandler = (event) => {
             if (event.key === 'Escape') {
-                // Find topmost portal
-                let topPortal = null;
-                let topZIndex = -1;
+                // Collect all portals with escape handlers
+                const activePortals = [];
                 
                 this.handlers.forEach((handler, portalId) => {
                     if (handler.escape && handler.portal.isOpen) {
                         const zIndex = parseInt(handler.portal.container.style.zIndex || '0');
-                        if (zIndex > topZIndex) {
-                            topZIndex = zIndex;
-                            topPortal = handler;
-                        }
+                        activePortals.push({ handler, zIndex, portalId, type: handler.portal.type });
                     }
                 });
                 
-                if (topPortal) {
-                    topPortal.escape(event);
+                // Sort by z-index descending (highest first)
+                activePortals.sort((a, b) => b.zIndex - a.zIndex);
+                
+                // Close the topmost non-modal portal first, or the topmost modal if no other portals
+                for (const portal of activePortals) {
+                    // Skip modals if there are non-modal portals above them
+                    if (portal.type === 'modal' && 
+                        activePortals.some(p => p.zIndex > portal.zIndex && p.type !== 'modal')) {
+                        continue;
+                    }
+                    
+                    // Close this portal and stop
+                    portal.handler.escape(event);
+                    event.preventDefault();
+                    event.stopPropagation();
+                    break;
                 }
             }
         };
@@ -831,7 +1121,8 @@ window.RRPortal = {
     position: (portalId) => portalManager.position(portalId),
     isInPortal: (element) => portalManager.isInPortal(element),
     hasOpenPortalsInContainer: (containerSelector) => portalManager.hasOpenPortalsInContainer(containerSelector),
-    cleanupOrphanedBackdrops: () => portalManager.cleanupOrphanedBackdrops()
+    cleanupOrphanedBackdrops: () => portalManager.cleanupOrphanedBackdrops(),
+    cleanupOrphanedElements: () => portalManager.cleanupOrphanedElements()
 };
 
 // Also initialize RRBlazor.Portal if it doesn't exist (for direct script loading)
@@ -841,3 +1132,44 @@ if (!window.RRBlazor) {
 if (!window.RRBlazor.Portal) {
     window.RRBlazor.Portal = window.RRPortal;
 }
+
+// Add FocusTrap API for modal focus management
+window.RRBlazor.FocusTrap = {
+    create: (element, trapId) => {
+        try {
+            if (!element) return false;
+            
+            // Store the currently focused element
+            const previouslyFocused = document.activeElement;
+            
+            // Focus the modal element
+            if (element.focus) {
+                element.focus();
+            }
+            
+            // Find all focusable elements
+            const focusableSelector = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+            const focusableElements = element.querySelectorAll(focusableSelector);
+            
+            if (focusableElements.length > 0) {
+                // Focus first focusable element
+                focusableElements[0].focus();
+            }
+            
+            return true;
+        } catch (e) {
+            console.warn(`[FocusTrap] Failed to create focus trap: ${e.message}`);
+            return false;
+        }
+    },
+    
+    destroy: (trapId) => {
+        try {
+            // Focus trap cleanup
+            return true;
+        } catch (e) {
+            console.warn(`[FocusTrap] Failed to destroy focus trap: ${e.message}`);
+            return false;
+        }
+    }
+};

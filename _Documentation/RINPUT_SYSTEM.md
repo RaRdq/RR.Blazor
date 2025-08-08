@@ -307,7 +307,6 @@ var hasOverlap = workHours.Overlaps(otherRange);
 ```razor
 @* ✅ GOOD: Clear guidance *@
 <RInput @bind-value="workingHours" 
-        HelpText="Enter time range in HH:mm-HH:mm format" 
         Placeholder="09:00-17:00" />
 ```
 
@@ -315,9 +314,7 @@ var hasOverlap = workHours.Overlaps(otherRange);
 
 ### Validation Integration
 ```razor
-<RInput @bind-value="model.Email" 
-        HasError="@(!IsValidEmail(model.Email))" 
-        ErrorMessage="Please enter a valid email address" />
+<RInput @bind-value="model.Email" />
 ```
 
 ### Conversion Error Handling

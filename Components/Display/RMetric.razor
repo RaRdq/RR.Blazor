@@ -1,8 +1,10 @@
 @* RMetric - Universal metric display component for business dashboards *@
 @using RR.Blazor.Enums
 @using RR.Blazor.Models
+@using RR.Blazor.Components.Base
+@inherits RInteractiveComponentBase
 
-<div class="metric @GetMetricClasses()">
+<div class="metric @GetMetricClasses()" @onclick="@HandleClick" @attributes="GetSafeAttributes()">
     @if (!string.IsNullOrEmpty(Icon))
     {
         <div class="metric-icon mb-2">
@@ -63,7 +65,9 @@
 
 @code {
     /// <summary>Metric value to display</summary>
-    [Parameter] public object Value { get; set; }
+    [Parameter]
+    [AIParameter(Hint = "Main numeric or text value to display", Example = "1247", IsRequired = true)]
+    public object Value { get; set; }
     
     /// <summary>Metric label/title</summary>
     [Parameter] 
@@ -71,52 +75,65 @@
     public string Text { get; set; }
     
     /// <summary>Subtitle or description</summary>
-    [Parameter] public string Subtitle { get; set; }
+    [Parameter]
+    [AIParameter(Hint = "Additional descriptive text shown below the value", Example = "vs. last month")]
+    public string Subtitle { get; set; }
     
     /// <summary>Icon to display</summary>
-    [Parameter] public string Icon { get; set; }
+    [Parameter]
+    [AIParameter(Hint = "Material Icons name to display with metric", SuggestedValues = new[] { "trending_up", "attach_money", "shopping_cart", "analytics", "account_balance" }, Example = "trending_up")]
+    public string Icon { get; set; }
     
     /// <summary>Value prefix (e.g., "$", "+")</summary>
-    [Parameter] public string Prefix { get; set; }
+    [Parameter]
+    [AIParameter(Hint = "Text displayed before the value", SuggestedValues = new[] { "$", "+", "-", "€", "£" }, Example = "$")]
+    public string Prefix { get; set; }
     
     /// <summary>Value suffix (e.g., "%", "units")</summary>
-    [Parameter] public string Suffix { get; set; }
+    [Parameter]
+    [AIParameter(Hint = "Text displayed after the value", SuggestedValues = new[] { "%", "units", "pts", "orders", "users" }, Example = "%")]
+    public string Suffix { get; set; }
     
     /// <summary>Metric variant for styling</summary>
-    [Parameter] public string Variant { get; set; } = "default";
+    [Parameter]
+    [AIParameter(Hint = "Visual style variant for different metric types", SuggestedValues = new[] { "default", "success", "warning", "error", "info", "primary" }, Example = "success")]
+    public string Variant { get; set; } = "default";
     
     /// <summary>Metric size</summary>
-    [Parameter] public string Size { get; set; } = "medium";
+    [Parameter]
+    [AIParameter(Hint = "Size of the metric component", SuggestedValues = new[] { "small", "medium", "large" }, Example = "medium")]
+    public string Size { get; set; } = "medium";
     
     /// <summary>Format string for value display</summary>
-    [Parameter] public string Format { get; set; }
-    
-    /// <summary>Whether metric is loading</summary>
-    [Parameter] public bool Loading { get; set; }
+    [Parameter]
+    [AIParameter(Hint = ".NET format string for value formatting", SuggestedValues = new[] { "N0", "N2", "C", "P", "MMM dd, yyyy" }, Example = "N0")]
+    public string Format { get; set; }
     
     /// <summary>Whether to show change indicator</summary>
-    [Parameter] public bool ShowChange { get; set; }
+    [Parameter]
+    [AIParameter(Hint = "Display change indicator with trending icon")]
+    public bool ShowChange { get; set; }
     
     /// <summary>Change value (positive/negative)</summary>
-    [Parameter] public decimal? Change { get; set; }
+    [Parameter]
+    [AIParameter(Hint = "Numerical change value - positive shows green up arrow, negative shows red down arrow", Example = "12.5")]
+    public decimal? Change { get; set; }
     
     /// <summary>Change suffix (e.g., "%", "pts")</summary>
-    [Parameter] public string ChangeSuffix { get; set; } = "%";
+    [Parameter]
+    [AIParameter(Hint = "Text displayed after change value", SuggestedValues = new[] { "%", "pts", "units", "$" }, Example = "%")]
+    public string ChangeSuffix { get; set; } = "%";
     
     /// <summary>Whether change is currency</summary>
-    [Parameter] public bool ChangeIsCurrency { get; set; }
+    [Parameter]
+    [AIParameter(Hint = "Format change value as currency instead of using ChangeSuffix")]
+    public bool ChangeIsCurrency { get; set; }
     
-    /// <summary>Custom content area</summary>
-    [Parameter] public RenderFragment ChildContent { get; set; }
-    
-    /// <summary>Additional CSS classes</summary>
-    [Parameter] public string Class { get; set; }
-    
-    /// <summary>Click handler for interactive metrics</summary>
-    [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
     
     /// <summary>Whether metric is clickable</summary>
-    [Parameter] public bool Clickable { get; set; }
+    [Parameter]
+    [AIParameter(Hint = "Makes metric interactive with hover effects and click events")]
+    public bool Clickable { get; set; }
 
     private string FormattedValue
     {
@@ -242,11 +259,11 @@
         return absChange.ToString("N1");
     }
 
-    private async Task HandleClick(MouseEventArgs e)
+    protected override async Task HandleClick(MouseEventArgs e)
     {
         if (Clickable && !Loading)
         {
-            await OnClick.InvokeAsync(e);
+            await base.HandleClick(e);
         }
     }
 }

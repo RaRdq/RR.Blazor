@@ -142,7 +142,7 @@ public abstract class RDataDisplayBase : RTextComponentBase
         return string.Join(" ", classes);
     }
     
-    protected virtual string GetIconClasses()
+    protected override string GetIconClasses()
     {
         return Size switch
         {
@@ -150,6 +150,28 @@ public abstract class RDataDisplayBase : RTextComponentBase
             DataDisplaySize.Medium => "text-base text-interactive",
             DataDisplaySize.Large => "text-lg text-interactive",
             _ => "text-base text-interactive"
+        };
+    }
+    
+    protected override string GetTextSizeClasses()
+    {
+        return Size switch
+        {
+            DataDisplaySize.Small => "text-xs",
+            DataDisplaySize.Medium => "text-sm",
+            DataDisplaySize.Large => "text-base",
+            _ => "text-sm"
+        };
+    }
+    
+    protected override string GetIconSizeClasses()
+    {
+        return Size switch
+        {
+            DataDisplaySize.Small => "text-sm",
+            DataDisplaySize.Medium => "text-base",
+            DataDisplaySize.Large => "text-lg",
+            _ => "text-base"
         };
     }
     

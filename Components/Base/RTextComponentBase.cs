@@ -131,11 +131,11 @@ namespace RR.Blazor.Components.Base
         }
         
         /// <summary>
-        /// Gets additional HTML attributes for text components
+        /// Gets title attribute for tooltips
         /// </summary>
-        protected override Dictionary<string, object> GetAdditionalAttributes()
+        protected virtual Dictionary<string, object> GetTitleAttributes()
         {
-            var attributes = base.GetAdditionalAttributes();
+            var attributes = new Dictionary<string, object>();
             
             if (!string.IsNullOrEmpty(Title))
                 attributes["title"] = Title;

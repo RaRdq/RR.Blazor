@@ -1,8 +1,10 @@
 @* RTimeline - Universal timeline component for business processes and activity feeds *@
 @using RR.Blazor.Enums
 @using RR.Blazor.Models
+@using RR.Blazor.Components.Base
+@inherits RInteractiveComponentBase
 
-<div class="timeline @GetTimelineClasses()">
+<div class="timeline @GetTimelineClasses()" @attributes="GetSafeAttributes()">
     @if (Items?.Any() == true)
     {
         @foreach (var (item, index) in Items.Select((item, index) => (item, index)))
@@ -106,35 +108,43 @@
 
 @code {
     /// <summary>Timeline items to display</summary>
-    [Parameter] public List<TimelineItem> Items { get; set; } = new();
+    [Parameter]
+    [AIParameter(Hint = "List of timeline items containing title, description, timestamp, and actions", IsRequired = true)]
+    public List<TimelineItem> Items { get; set; } = new();
     
     /// <summary>Timeline variant</summary>
-    [Parameter] public TimelineVariant Variant { get; set; } = TimelineVariant.Default;
-    
-    /// <summary>Whether timeline is loading</summary>
-    [Parameter] public bool Loading { get; set; }
+    [Parameter]
+    [AIParameter(Hint = "Visual style variant for different timeline purposes", SuggestedValues = new[] { "Default", "Process", "Activity", "Minimal" }, Example = "Process")]
+    public TimelineVariant Variant { get; set; } = TimelineVariant.Default;
     
     /// <summary>Number of skeleton items to show when loading</summary>
-    [Parameter] public int LoadingItemCount { get; set; } = 3;
+    [Parameter]
+    [AIParameter(Hint = "Number of placeholder items displayed during loading state", Example = "5")]
+    public int LoadingItemCount { get; set; } = 3;
     
     /// <summary>Date format for timestamps</summary>
-    [Parameter] public string DateFormat { get; set; } = "MMM dd, yyyy HH:mm";
+    [Parameter]
+    [AIParameter(Hint = ".NET date format string for timestamp display", SuggestedValues = new[] { "MMM dd, yyyy HH:mm", "MM/dd/yyyy", "yyyy-MM-dd", "HH:mm" }, Example = "MMM dd, yyyy HH:mm")]
+    public string DateFormat { get; set; } = "MMM dd, yyyy HH:mm";
     
     /// <summary>Whether to show relative times (e.g., "2 hours ago")</summary>
-    [Parameter] public bool ShowRelativeTime { get; set; } = true;
-    
-    /// <summary>Additional CSS classes</summary>
-    [Parameter] public string Class { get; set; }
+    [Parameter]
+    [AIParameter(Hint = "Display relative time (\"2 hours ago\") instead of absolute timestamps for recent items")]
+    public bool ShowRelativeTime { get; set; } = true;
     
     /// <summary>Whether timeline is compact</summary>
-    [Parameter] public bool Compact { get; set; }
+    [Parameter]
+    [AIParameter(Hint = "Reduced spacing and smaller elements for dense layouts")]
+    public bool Compact { get; set; }
     
     /// <summary>Timeline orientation</summary>
-    [Parameter] public string Orientation { get; set; } = "vertical"; // vertical, horizontal
+    [Parameter]
+    [AIParameter(Hint = "Layout direction of timeline items", SuggestedValues = new[] { "vertical", "horizontal" }, Example = "vertical")]
+    public string Orientation { get; set; } = "vertical"; // vertical, horizontal
 
     private string GetTimelineClasses()
     {
-        var classes = new List<string>();
+        var classes = new List<string>(GetBaseCssClasses());
         
         classes.Add($"timeline-{Variant.ToString().ToLowerInvariant()}");
         classes.Add($"timeline-{Orientation.ToLowerInvariant()}");
@@ -142,11 +152,6 @@
         if (Compact)
         {
             classes.Add("timeline-compact");
-        }
-        
-        if (!string.IsNullOrEmpty(Class))
-        {
-            classes.Add(Class);
         }
         
         return string.Join(" ", classes);

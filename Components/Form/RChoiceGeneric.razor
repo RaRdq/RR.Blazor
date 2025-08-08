@@ -19,6 +19,7 @@
 @using Microsoft.AspNetCore.Components
 @using RR.Blazor.Components.Form
 @using RR.Blazor.Enums
+@implements IAsyncDisposable
 
 <!-- Form wrapper with label and validation -->
 <div class="@GetFormWrapperClasses()">
@@ -167,6 +168,7 @@ else
     private ElementReference viewportElement;
     private string choiceElementId = Guid.NewGuid().ToString("N")[..8];
     private string? currentPortalId;
+    private bool disposed = false;
 
     [Parameter] public IEnumerable<TValue> Items { get; set; }
     [Parameter] public TValue SelectedValue { get; set; }
@@ -398,7 +400,7 @@ else
     private async Task CloseDropdown()
     {
         isOpen = false;
-        StateHasChanged();
+        if (!disposed) StateHasChanged();
         
         // Cleanup portal and unregister from popup-manager system
         try
@@ -518,4 +520,32 @@ else
     }
     
     #endregion
+    
+    public async ValueTask DisposeAsync()
+    {
+        if (disposed) return;
+        disposed = true;
+        
+        // Clean up portal
+        if (!string.IsNullOrEmpty(currentPortalId))
+        {
+            try
+            {
+                await JS.InvokeVoidAsync("RRBlazor.Choice.destroyPortal", currentPortalId);
+            }
+            catch { /* Ignore JS cleanup errors */ }
+        }
+        
+        // Clean up click handlers
+        try
+        {
+            await JS.InvokeVoidAsync("eval", $@"
+                if (window.choiceClickHandlers && window.choiceClickHandlers['{choiceElementId}']) {{
+                    document.removeEventListener('click', window.choiceClickHandlers['{choiceElementId}']);
+                    delete window.choiceClickHandlers['{choiceElementId}'];
+                }}
+            ");
+        }
+        catch { /* Ignore JS cleanup errors */ }
+    }
 }

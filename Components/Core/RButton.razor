@@ -1,486 +1,173 @@
-@** 
-<summary>
-Professional button component with enterprise variants, AI-optimized for rapid development. Supports 9 variants including gradients, 5 sizes, loading states, elevation effects, glassmorphism, and comprehensive accessibility.
-</summary>
-<category>Core</category>
-<complexity>Simple</complexity>
-<ai-prompt>Create a professional button for user actions</ai-prompt>
-<ai-common-use>forms, navigation, actions, toolbars, dashboards</ai-common-use>
-<ai-avoid>Don't use for navigation links - use RLink instead. Avoid for simple text without actions.</ai-avoid>
-<ai-pattern name="primary-action">Variant="ButtonVariant.Primary" for main actions like Save, Submit, Create</ai-pattern>
-<ai-pattern name="secondary-action">Variant="ButtonVariant.Secondary" for supporting actions like Cancel, Back</ai-pattern>
-<ai-pattern name="destructive-action">Variant="ButtonVariant.Danger" for destructive actions like Delete, Remove</ai-pattern>
-<ai-pattern name="icon-button">Icon="icon_name" IconPosition="IconPosition.Start" for buttons with icons</ai-pattern>
-<ai-pattern name="loading-button">Loading="true" LoadingText="Processing..." for async operations</ai-pattern>
-**@
+@*
+Button component with variants and loading states.
+*@
 @using RR.Blazor.Enums
 @using RR.Blazor.Attributes
 @using RR.Blazor.Components.Base
 @using RR.Blazor.Utilities
-@using Microsoft.AspNetCore.Components
 @inherits RVariantComponentBase<ButtonSize, ButtonVariant>
-@inject IJSRuntime JSRuntime
-@inject NavigationManager Navigation
 
 @attribute [Component("RButton", Category = "Core", Complexity = ComponentComplexity.Simple)]
-@attribute [AIOptimized(Prompt = "Create a professional button for user actions", 
+@attribute [AIOptimized(Prompt = "Create button for user actions", 
                        CommonUse = "forms, navigation, actions, toolbars", 
                        AvoidUsage = "Don't use for navigation links - use RLink instead")]
 
 <button type="@Type.ToString().ToLower()" 
-        class="button @GetButtonClasses() d-inline-flex align-center justify-center font-medium transition-all focus-ring touch-target" 
+        class="@GetButtonClasses()" 
         disabled="@(Disabled || Loading)"
-        data-has-badge="@(ShowBadge && BadgeCount > 0 ? "true" : "false")"
+        data-loading="@(Loading ? "true" : null)"
+        data-loading-text="@(Loading && !string.IsNullOrEmpty(LoadingText) ? "true" : null)"
         @onclick="HandleClick"
         @onclick:stopPropagation="StopPropagation"
         @onclick:preventDefault="PreventDefault"
-        @onmousedown="HandleMouseDown"
-        @onmouseup="HandleMouseUp"
-        @onfocus="HandleFocus"
-        @onblur="HandleBlur"
-        aria-label="@AriaLabel"
-        title="@Title"
-        tabindex="@TabIndex">
+        @attributes="GetSafeAttributes()">
     
-    @if (!string.IsNullOrEmpty(Icon) && (IconPosition == IconPosition.Start || IconPosition == IconPosition.Top))
+    @if (HasIcon && (IconPosition == IconPosition.Start || IconPosition == IconPosition.Top))
     {
-        <i class="material-symbols-rounded @GetIconClasses()">@Icon</i>
+        <i class="@GetIconClasses()">@Icon</i>
     }
     
-    @if (!string.IsNullOrEmpty(Text))
+    @if (HasText && (!Loading || string.IsNullOrEmpty(LoadingText)))
     {
-        <span class="@GetTextClass()">@Text</span>
+        <span class="@GetTextClasses()">@Text</span>
     }
     
-    @ChildContent
-    
-    @if (!string.IsNullOrEmpty(Icon) && (IconPosition == IconPosition.End || IconPosition == IconPosition.Bottom) && !Loading)
+    @if (ChildContent != null)
     {
-        <i class="material-symbols-rounded @GetIconClasses()">@Icon</i>
+        @ChildContent
     }
     
-    @if (ShowBadge && BadgeCount > 0)
+    @if (Loading && !string.IsNullOrEmpty(LoadingText))
     {
-        <span class="button-badge">
-            @(BadgeCount > 99 ? "99+" : BadgeCount.ToString())
-        </span>
+        <span class="loading-text">@LoadingText</span>
     }
     
-    @* Progress Bar *@
-    @if (Progress >= 0 && Progress <= 100)
+    @if (HasIcon && (IconPosition == IconPosition.End || IconPosition == IconPosition.Bottom))
     {
-        <div class="button-progress absolute bottom-0 left-0 h-1 bg-primary-light transition-all progress-dynamic" 
-             style="--progress-width: @(Progress)%;"></div>
-    }
-    
-    @* Tooltip *@
-    @if (!string.IsNullOrEmpty(Tooltip))
-    {
-        <div class="button-tooltip absolute z-50 pl-2 pr-2 pt-1 pb-1 text-xs bg-surface-elevated text-primary rounded opacity-0 transition-opacity">
-            @Tooltip
-            @if (!string.IsNullOrEmpty(Shortcut))
-            {
-                <span class="ml-2 text-xs opacity-75">(@Shortcut)</span>
-            }
-        </div>
+        <i class="@GetIconClasses()">@Icon</i>
     }
 </button>
 
 @code {
+    #region Button-Specific Properties
     
-    
-    
-    /// <summary>Button type attribute for form interaction</summary>
-    /// <ai-hint>Use Submit for form submission buttons, Button for regular actions</ai-hint>
-    [Parameter]
-    [AIParameter(Hint = "Submit for forms, Button for regular actions", 
-                 SuggestedValues = new[] { "Button", "Submit", "Reset" })]
+    [Parameter] 
+    [AIParameter("Button type", SuggestedValues = new[] { "Button", "Submit", "Reset" })]
     public ButtonType Type { get; set; } = ButtonType.Button;
     
-    
-    
-    /// <summary>Position of icon relative to text content</summary>
-    /// <ai-hint>Start is most common, End for arrows/navigation, Top for stacked layouts</ai-hint>
-    [Parameter]
-    [AIParameter(Hint = "Start is most common, End for arrows, Top for stacked layouts", 
-                 SuggestedValues = new[] { "Start", "End", "Top", "Bottom" })]
+    [Parameter] 
+    [AIParameter("Icon position", SuggestedValues = new[] { "Start", "End", "Top", "Bottom" })]
     public IconPosition IconPosition { get; set; } = IconPosition.Start;
     
+    [Parameter] 
+    [AIParameter("Stop event propagation")]
+    public bool StopPropagation { get; set; }
     
+    [Parameter] 
+    [AIParameter("Prevent default behavior")]
+    public bool PreventDefault { get; set; }
     
-    /// <summary>Whether button spans full width</summary>
-    [Parameter] public bool FullWidth { get; set; }
+    #endregion
     
-    
-    
-    /// <summary>Mouse down event handler</summary>
-    [Parameter] public EventCallback<MouseEventArgs> OnMouseDown { get; set; }
-    
-    /// <summary>Mouse up event handler</summary>
-    [Parameter] public EventCallback<MouseEventArgs> OnMouseUp { get; set; }
-    
-    /// <summary>Focus event handler</summary>
-    [Parameter] public EventCallback<FocusEventArgs> OnFocus { get; set; }
-    
-    /// <summary>Blur event handler</summary>
-    [Parameter] public EventCallback<FocusEventArgs> OnBlur { get; set; }
-    
-    
-    /// <summary>Stop click propagation</summary>
-    [Parameter] public bool StopPropagation { get; set; }
-    
-    /// <summary>Prevent default click behavior</summary>
-    [Parameter] public bool PreventDefault { get; set; }
-    
-    /// <summary>Show notification badge</summary>
-    [Parameter] public bool ShowBadge { get; set; }
-    
-    /// <summary>Badge count number</summary>
-    [Parameter] public int BadgeCount { get; set; }
-    
-    /// <summary>Whether button should have rounded corners</summary>
-    [Parameter] public bool Rounded { get; set; } = true;
-    
-    /// <summary>Whether button should have shadow</summary>
-    [Parameter] public bool HasShadow { get; set; } = true;
-    
-    /// <summary>Elevation level (0-24)</summary>
-    [Parameter] public int Elevation { get; set; } = -1;
-    
-    /// <summary>Confirmation message before action execution</summary>
-    [Parameter] public string ConfirmMessage { get; set; }
-    
-    /// <summary>Confirmation dialog title</summary>
-    [Parameter] public string ConfirmTitle { get; set; } = "Confirm Action";
-    
-    /// <summary>Success message after action completion</summary>
-    [Parameter] public string SuccessMessage { get; set; }
-    
-    /// <summary>Auto-hide timeout for success message (milliseconds)</summary>
-    [Parameter] public int SuccessTimeout { get; set; } = 3000;
-    
-    /// <summary>Whether to show tooltip on hover</summary>
-    [Parameter] public string Tooltip { get; set; }
-    
-    /// <summary>Keyboard shortcut hint (display only)</summary>
-    [Parameter] public string Shortcut { get; set; }
-    
-    /// <summary>Whether button requires special permissions</summary>
-    [Parameter] public bool RequiresConfirmation { get; set; }
-    
-    /// <summary>Progress percentage for progress button (0-100)</summary>
-    [Parameter] public int Progress { get; set; } = -1;
-    
-    /// <summary>Custom loading text override</summary>
-    [Parameter] public string LoadingText { get; set; } = "Processing...";
-    
-    /// <summary>URL for navigation when button is clicked</summary>
-    /// <ai-hint>Button will navigate to this URL when clicked, use _blank target for new window</ai-hint>
-    [Parameter]
-    [AIParameter(Hint = "Button navigates to this URL when clicked", IsRequired = false)]
-    public string Href { get; set; }
-    
-    /// <summary>Target for navigation (_blank for new window)</summary>
-    /// <ai-hint>Use _blank to open in new window/tab</ai-hint>
-    [Parameter]
-    [AIParameter(Hint = "_blank for new window, _self for same window", 
-                 SuggestedValues = new[] { "_blank", "_self" })]
-    public string Target { get; set; } = "_self";
-    
-    private string GetButtonClasses()
-    {
-        var classes = new List<string>();
-        
-        classes.Add(GetSizeClasses());
-        
-        classes.Add(DensityHelper.GetGap(Density));
-        
-        if (!Rounded)
-        {
-            classes.Add("button-no-radius");
-        }
-        
-        switch (Variant)
-        {
-            case ButtonVariant.Primary:
-                classes.Add("button-primary");
-                break;
-                
-            case ButtonVariant.Secondary:
-                classes.Add("button-secondary");
-                break;
-                
-            case ButtonVariant.Ghost:
-                classes.Add("button-ghost");
-                break;
-                
-            case ButtonVariant.Danger:
-                classes.Add("button-danger");
-                break;
-                
-            case ButtonVariant.Outline:
-                classes.Add("button-outline");
-                break;
-                
-            case ButtonVariant.Glass:
-                classes.Add("button-glass");
-                break;
-                
-            case ButtonVariant.Success:
-                classes.Add("button-success");
-                break;
-                
-            case ButtonVariant.Warning:
-                classes.Add("button-warning");
-                break;
-                
-            case ButtonVariant.Info:
-                classes.Add("button-info");
-                break;
-                
-            case ButtonVariant.Gradient:
-                classes.Add("button-gradient");
-                break;
-                
-            case ButtonVariant.Neon:
-                classes.Add("button-neon");
-                break;
-                
-            case ButtonVariant.Neumorphism:
-                classes.Add("button-neumorphism");
-                break;
-                
-            case ButtonVariant.Shimmer:
-                classes.Add("button-shimmer");
-                break;
-                
-            case ButtonVariant.Enterprise:
-                classes.Add("button-enterprise");
-                break;
-        }
-        
-        if (Elevation >= 0)
-        {
-            classes.Add($"button-elevation-{Math.Min(24, Math.Max(0, Elevation))}");
-        }
-        else if (!HasShadow)
-        {
-            classes.Add("button-no-shadow");
-        }
-        
-        if (Disabled)
-        {
-            classes.Add("button-disabled opacity-50 cursor-not-allowed");
-        }
-        
-        if (Loading)
-        {
-            classes.Add("button-loading opacity-75 cursor-wait");
-        }
-        
-        if (FullWidth)
-        {
-            classes.Add("button-full w-full");
-        }
-        
-        
-        if (!string.IsNullOrEmpty(Icon) && string.IsNullOrEmpty(Text))
-        {
-            classes.Add("button-icon-only");
-        }
-        
-        if (!string.IsNullOrEmpty(Icon) && !string.IsNullOrEmpty(Text))
-        {
-            switch (IconPosition)
-            {
-                case IconPosition.Top:
-                case IconPosition.Bottom:
-                    classes.Add("button-vertical");
-                    break;
-            }
-        }
-        
-        if (ShowBadge && BadgeCount > 0)
-        {
-            classes.Add("button-with-badge");
-        }
-        
-        if (!string.IsNullOrEmpty(Class))
-        {
-            classes.Add(Class);
-        }
-        
-        return string.Join(" ", classes);
-    }
+    #region Abstract Method Implementations
     
     protected override string GetSizeClasses()
     {
         return SizeHelper.GetButtonSize(Size, Density);
     }
     
-    
-    protected override string GetIconClasses()
-    {
-        var classes = new List<string> 
-        { 
-            "material-symbols-rounded",
-            SizeHelper.GetButtonIconSize(Size, Density)
-        };
-        
-        if (!string.IsNullOrEmpty(Text))
-        {
-            switch (IconPosition)
-            {
-                case IconPosition.Start:
-                    classes.Add("button-icon-start");
-                    break;
-                case IconPosition.End:
-                    classes.Add("button-icon-end");
-                    break;
-                case IconPosition.Top:
-                    classes.Add("button-icon-top");
-                    break;
-                case IconPosition.Bottom:
-                    classes.Add("button-icon-bottom");
-                    break;
-            }
-        }
-        
-        return string.Join(" ", classes);
-    }
-    
-    private string GetTextClass() => $"button-text {SizeHelper.GetTextSize(Size, Density)}";
-    
-    protected override async Task HandleClick(MouseEventArgs e)
-    {
-        if (!Disabled && !Loading)
-        {
-            if (RequiresConfirmation || !string.IsNullOrEmpty(ConfirmMessage))
-            {
-                
-                var confirmed = await ConfirmAction();
-                if (!confirmed) return;
-            }
-            
-            if (!string.IsNullOrEmpty(Href))
-            {
-                if (Target == "_blank")
-                {
-                    await JSRuntime.InvokeVoidAsync("open", Href, "_blank");
-                }
-                else
-                {
-                    if (Uri.IsWellFormedUriString(Href, UriKind.Absolute))
-                    {
-                        await JSRuntime.InvokeVoidAsync("window.location.assign", Href);
-                    }
-                    else
-                    {
-                        Navigation.NavigateTo(Href);
-                    }
-                }
-            }
-            
-            await OnClick.InvokeAsync(e);
-            
-            if (!string.IsNullOrEmpty(SuccessMessage))
-            {
-                await ShowSuccessMessage();
-            }
-        }
-    }
-    
-    private async Task<bool> ConfirmAction()
-    {
-        return await Task.FromResult(true); // Always confirm for now
-    }
-    
-    private async Task ShowSuccessMessage()
-    {
-        await Task.Delay(100); // Placeholder for toast integration
-    }
-    
-    private async Task HandleMouseDown(MouseEventArgs e)
-    {
-        if (!Disabled && !Loading)
-        {
-            await OnMouseDown.InvokeAsync(e);
-        }
-    }
-    
-    private async Task HandleMouseUp(MouseEventArgs e)
-    {
-        if (!Disabled && !Loading)
-        {
-            await OnMouseUp.InvokeAsync(e);
-        }
-    }
-    
-    private async Task HandleFocus(FocusEventArgs e)
-    {
-        if (!Disabled)
-        {
-            await OnFocus.InvokeAsync(e);
-        }
-    }
-    
-    private async Task HandleBlur(FocusEventArgs e)
-    {
-        if (!Disabled)
-        {
-            await OnBlur.InvokeAsync(e);
-        }
-    }
-    
-    #region Abstract Method Implementations
-    
-    /// <summary>
-    /// Provides button-specific variant classes
-    /// </summary>
     protected override string GetVariantClasses()
     {
-        return GetCompleteVariantClasses();
+        // Return BEM-style button variant classes that match the SCSS
+        var variantName = Variant.ToString().ToLower();
+        
+        var variantClass = variantName switch
+        {
+            "primary" => "button-primary",
+            "secondary" => "button-secondary",
+            "success" => "button-success",
+            "warning" => "button-warning",
+            "danger" or "error" => "button-error",
+            "info" => "button-info",
+            "outline" => "button-outlined-primary",
+            "ghost" => "button-ghost-primary",
+            "glass" => "button-glass-primary",
+            "link" => "button-link",
+            "muted" => "button-muted",
+            // Special effect variants - standalone classes with distinct visual styles
+            "gradient" => "button-gradient",
+            "neon" => "button-neon",
+            "neumorphism" => "button-neumorphism",
+            "shimmer" => "button-shimmer",
+            "enterprise" => "button-enterprise",
+            _ => "button-primary"
+        };
+        
+        return variantClass;
     }
     
-    /// <summary>
-    /// Gets default size for buttons
-    /// </summary>
     protected override ButtonSize GetDefaultSize()
     {
         return ButtonSize.Medium;
     }
     
-    /// <summary>
-    /// Gets default variant for buttons
-    /// </summary>
     protected override ButtonVariant GetDefaultVariant()
     {
         return ButtonVariant.Primary;
     }
     
-    /// <summary>
-    /// Gets complete variant classes with theming
-    /// </summary>
-    protected override string GetCompleteVariantClasses()
+    protected override string GetTextSizeClasses()
     {
-        return Variant switch
+        return SizeHelper.GetTextSize(Size, Density);
+    }
+    
+    protected override string GetIconSizeClasses()
+    {
+        return SizeHelper.GetButtonIconSize(Size, Density);
+    }
+    
+    #endregion
+    
+    #region Styling Methods
+    
+    private string GetButtonClasses()
+    {
+        var classes = new List<string>
         {
-            ButtonVariant.Primary => "button-primary",
-            ButtonVariant.Secondary => "button-secondary", 
-            ButtonVariant.Success => "button-success",
-            ButtonVariant.Warning => "button-warning",
-            ButtonVariant.Danger => "button-danger",
-            ButtonVariant.Info => "button-info",
-            ButtonVariant.Ghost => "button-ghost",
-            ButtonVariant.Outline => "button-outline",
-            ButtonVariant.Glass => "button-glass",
-            ButtonVariant.Gradient => "button-gradient",
-            ButtonVariant.Neon => "button-neon",
-            ButtonVariant.Neumorphism => "button-neumorphism",
-            ButtonVariant.Shimmer => "button-shimmer",
-            ButtonVariant.Enterprise => "button-enterprise",
-            _ => "button-primary"
+            "button",
+            "d-flex",
+            "align-center", 
+            "justify-center"
         };
+        
+        // Check if this is an icon-only button (has icon but no text and no child content)
+        if (HasIcon && !HasText && ChildContent == null)
+        {
+            classes.Add("button-icon");
+        }
+        
+        // Add flex direction for icon positioning
+        if (IconPosition == IconPosition.Top || IconPosition == IconPosition.Bottom)
+        {
+            classes.Add("flex-col");
+        }
+        
+        var sizeClass = GetSizeClasses();
+        if (!string.IsNullOrEmpty(sizeClass))
+        {
+            classes.Add(sizeClass);
+        }
+        
+        var baseClasses = GetBaseClasses();
+        if (!string.IsNullOrEmpty(baseClasses))
+        {
+            classes.AddRange(baseClasses.Split(' ').Where(c => !string.IsNullOrEmpty(c)));
+        }
+        
+        classes.Add(GetCursorClasses());
+        classes.Add(DensityHelper.GetGap(Density));
+        
+        return string.Join(" ", classes.Where(c => !string.IsNullOrEmpty(c)));
     }
     
     #endregion

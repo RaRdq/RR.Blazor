@@ -1,24 +1,20 @@
 ﻿@** 
 <summary>
-Professional card component for content containers with business-grade variants.
-Supports header, media, content areas, loading states, elevation effects, and comprehensive interaction patterns.
+Card component with header, media, content areas, and loading states.
 </summary>
 <category>Core</category>
 <complexity>Simple</complexity>
-<ai-prompt>Create a professional card for content display</ai-prompt>
-<ai-common-use>dashboards, data display, content organization, information panels</ai-common-use>
-<ai-avoid>Don't use for navigation - use RLink instead. Avoid for simple text without structure.</ai-avoid>
-<ai-pattern name="basic-card">Text="Card Title" Content="Card content" for simple content cards</ai-pattern>
-<ai-pattern name="clickable-card">Clickable="true" OnClick="@HandleClick" for interactive cards</ai-pattern>
-<ai-pattern name="elevated-card">Elevation="4" for cards that need prominence</ai-pattern>
-<ai-pattern name="loading-card">Loading="true" LoadingText="Processing..." for async operations</ai-pattern>
-<ai-pattern name="media-card">ImageSrc="/image.jpg" ImageAlt="Description" for cards with images</ai-pattern>
+<ai-prompt>Create card for content display</ai-prompt>
+<ai-common-use>dashboards, data display, content organization</ai-common-use>
+<ai-avoid>Don't use for navigation - use RLink instead</ai-avoid>
 **@
 @using RR.Blazor.Enums
 @using RR.Blazor.Attributes
+@using RR.Blazor.Components.Base
+@inherits RComponentBase
 
 @attribute [Component("RCard", Category = "Core", Complexity = ComponentComplexity.Simple)]
-@attribute [AIOptimized(Prompt = "Create a professional card for content display", 
+@attribute [AIOptimized(Prompt = "Create card for content display", 
                        CommonUse = "dashboards, data display, content organization", 
                        AvoidUsage = "Don't use for navigation - use RLink instead")]
 
@@ -124,36 +120,31 @@ Supports header, media, content areas, loading states, elevation effects, and co
 </div>
 
 @code {
-    /// <summary>Card variant style - determines visual appearance and behavior</summary>
-    /// <ai-hint>Default for standard cards, Elevated for prominent cards, Glass for modern overlay effect</ai-hint>
+    /// <summary>Card variant style</summary>
     [Parameter]
-    [AIParameter(Hint = "Default for standard cards, Elevated for prominence, Glass for modern overlays", 
+    [AIParameter(Hint = "Default for standard, Elevated for prominence, Glass for overlays", 
                  SuggestedValues = new[] { "Default", "Outlined", "Elevated", "Glass", "Flat" }, 
                  IsRequired = false)]
     public CardVariant Variant { get; set; } = CardVariant.Default;
     
-    /// <summary>Card text - main heading displayed in header area</summary>
-    /// <ai-hint>Use descriptive text like "User Details", "Order Summary", "Settings"</ai-hint>
+    /// <summary>Card title text</summary>
     [Parameter]
-    [AIParameter(Hint = "Use descriptive text like User Details, Order Summary", IsRequired = false)]
+    [AIParameter(Hint = "Card title text", IsRequired = false)]
     public string Text { get; set; }
     
-    /// <summary>Card subtitle - secondary text displayed below title</summary>
-    /// <ai-hint>Use for additional context like dates, categories, or descriptions</ai-hint>
+    /// <summary>Card subtitle text</summary>
     [Parameter]
-    [AIParameter(Hint = "Use for additional context like dates, categories, descriptions", IsRequired = false)]
+    [AIParameter(Hint = "Secondary text below title", IsRequired = false)]
     public string Subtitle { get; set; }
     
-    /// <summary>Card content text - simple text content for the card body</summary>
-    /// <ai-hint>Use for simple text content, or use ChildContent for complex layouts</ai-hint>
+    /// <summary>Card content text</summary>
     [Parameter]
-    [AIParameter(Hint = "Use for simple text, or ChildContent for complex layouts", IsRequired = false)]
+    [AIParameter(Hint = "Simple text content", IsRequired = false)]
     public string Content { get; set; }
     
-    /// <summary>Material icon name displayed in header area</summary>
-    /// <ai-hint>Common icons: dashboard, person, settings, analytics, payment, work</ai-hint>
+    /// <summary>Material icon name</summary>
     [Parameter]
-    [AIParameter(Hint = "Common icons: dashboard, person, settings, analytics, payment", 
+    [AIParameter(Hint = "Icon name", 
                  SuggestedValues = new[] { "dashboard", "person", "settings", "analytics", "payment", "work" })]
     public string Icon { get; set; }
     
@@ -184,8 +175,6 @@ Supports header, media, content areas, loading states, elevation effects, and co
     /// <summary>Whether card is selected/active</summary>
     [Parameter] public bool Selected { get; set; }
     
-    /// <summary>Whether card is disabled</summary>
-    [Parameter] public bool Disabled { get; set; }
     
     /// <summary>Ribbon/badge text</summary>
     [Parameter] public string RibbonText { get; set; }
@@ -199,8 +188,6 @@ Supports header, media, content areas, loading states, elevation effects, and co
     /// <summary>Whether image should be full bleed</summary>
     [Parameter] public bool FullBleedImage { get; set; }
     
-    /// <summary>Additional CSS classes</summary>
-    [Parameter] public string Class { get; set; }
     
     /// <summary>CSS classes for the card body/content wrapper - provides full control over content area styling</summary>
     /// <ai-hint>Use to customize padding, layout, spacing of the card content area. Overrides default padding when specified.</ai-hint>
@@ -208,8 +195,6 @@ Supports header, media, content areas, loading states, elevation effects, and co
     [AIParameter(Hint = "Customize content area styling - padding, layout, spacing. Overrides defaults.", IsRequired = false)]
     public string BodyClass { get; set; }
     
-    /// <summary>Main content</summary>
-    [Parameter] public RenderFragment ChildContent { get; set; }
     
     /// <summary>Header content area</summary>
     [Parameter] public RenderFragment HeaderContent { get; set; }
@@ -237,19 +222,7 @@ Supports header, media, content areas, loading states, elevation effects, and co
     /// <summary>Accessibility label</summary>
     [Parameter] public string AriaLabel { get; set; }
     
-    /// <summary>Elevation level (0-24) - controls shadow depth and prominence</summary>
-    /// <ai-hint>Use 0 for flat, 2-4 for standard, 8+ for prominent cards. -1 uses variant default</ai-hint>
-    [Parameter]
-    [AIParameter(Hint = "Use 0 for flat, 2-4 for standard, 8+ for prominent. -1 uses variant default", 
-                 SuggestedValues = new[] { "0", "2", "4", "8", "16" })]
-    public int Elevation { get; set; } = -1;
     
-    /// <summary>Component density level for ultra-dense layouts</summary>
-    /// <ai-hint>Normal is default, Compact for ultra-dense, Dense for data-heavy interfaces</ai-hint>
-    [Parameter]
-    [AIParameter(Hint = "Normal is default, Compact for ultra-dense, Dense for data-heavy", 
-                 SuggestedValues = new[] { "Normal", "Dense", "Compact", "Spacious" })]
-    public ComponentDensity Density { get; set; } = ComponentDensity.Normal;
     
     
     
@@ -259,7 +232,7 @@ Supports header, media, content areas, loading states, elevation effects, and co
     
     private string GetCardClasses()
     {
-        var classes = new List<string> { "card" };
+        var classes = new List<string> { "card", "h-full" };
         
         // Use semantic variant classes from SCSS
         switch (Variant)
@@ -304,11 +277,6 @@ Supports header, media, content areas, loading states, elevation effects, and co
             classes.Add("card-loading");
         }
         
-        // Custom elevation override (if specified)
-        if (Elevation >= 0)
-        {
-            classes.Add($"shadow-{Math.Min(16, Math.Max(0, Elevation))}");
-        }
         
         if (!string.IsNullOrEmpty(Class))
         {

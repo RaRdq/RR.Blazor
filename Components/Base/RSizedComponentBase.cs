@@ -17,7 +17,7 @@ namespace RR.Blazor.Components.Base
         /// </summary>
         [Parameter] 
         [AIParameter("Component size variant", SuggestedValues = new[] { "Small", "Medium", "Large" })]
-        public TSize Size { get; set; } = default(TSize)!;
+        public TSize Size { get; set; }
         
         #endregion
         

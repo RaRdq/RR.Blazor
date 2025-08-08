@@ -1,280 +1,315 @@
+
 @use '../variables' as *;
+@use 'sass:map';
+@use 'sass:list';
 
-@mixin layout-interactive($hover-transform: translateY(-1px), $active-transform: translateY(0) scale(0.98), $hover-filter: brightness(1.02)) {
-  cursor: pointer;
-  transition: all var(--duration-fast) var(--ease-out);
-  
-  &:hover:not(:disabled) {
-    transform: $hover-transform;
-    @if $hover-filter {
-      filter: $hover-filter;
-    }
-  }
-  
-  &:active:not(:disabled) {
-    transform: $active-transform;
-  }
-  
-  &:focus-visible {
-    outline: none;
-    outline-offset: 2px;
-  }
-  
-  &:disabled {
-    opacity: var(--opacity-disabled);
-    cursor: not-allowed;
-    pointer-events: none;
-    transform: none !important;
-  }
-}
-
-@mixin focus-ring($color: var(--color-focus), $width: 2px, $offset: 2px) {
-  &:focus-visible {
-    outline: #{$width} solid color-mix(in srgb, #{$color} 40%, transparent);
-    outline-offset: #{$offset};
-  }
-}
-
-@mixin hover-lift($distance: -2px, $filter: brightness(1.02)) {
-  transition: var(--transition-fast);
-  
-  &:hover {
-    transform: translateY(#{$distance});
-    filter: $filter;
-  }
-}
-
-@mixin card-hover($filter: brightness(1.02) saturate(1.05)) {
-  box-shadow: var(--shadow-lg);
-  transform: translateY(calc(var(--space-0-5) * -1)); // φ-based micro lift
-  filter: $filter;
-}
-
-@mixin button-hover($distance: var(--space-0-5), $filter: brightness(0.95) saturate(1.05)) {
-  transition: var(--transition-transform);
-  
-  &:hover {
-    transform: translateY(-#{$distance});
-    filter: $filter;
-  }
-}
-
-@mixin hover-animation($property: transform, $value: translateY(calc(var(--space-0-5) * -1))) {
-  transition: $property 0.2s ease-in-out;
-  
-  &:hover {
-    #{$property}: $value;
-  }
-}
-
-@mixin loading-skeleton {
-  background: linear-gradient(90deg, var(--color-surface-elevated), var(--color-surface-pressed), var(--color-surface-elevated));
-  background-size: 200% 100%;
-  animation: shimmer 1.5s ease-in-out infinite;
-}
-
-@mixin loading-spinner($size: var(--icon-base), $color: var(--color-primary)) {
-  width: $size;
-  height: $size;
-  border: var(--border-2) solid transparent;
-  border-top: calc(var(--base-unit) * 0.125) solid $color; // φ-based border width
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-// Legacy transform-interaction mixin for backward compatibility
-@mixin transform-interaction($hover-transform: scale(1.01), $active-transform: scale(0.99), $hover-shadow: var(--theme-shadow-lg), $active-shadow: var(--theme-shadow-sm), $hover-bg: null, $active-bg: null) {
-  transition: all var(--duration-normal) var(--ease-out);
-  
-  &:hover {
-    transform: $hover-transform;
-    box-shadow: $hover-shadow;
-    @if $hover-bg {
-      background: $hover-bg !important;
-      color: var(--color-text-inverse) !important;
-    }
-  }
-  
-  &:active {
-    transform: $active-transform;
-    box-shadow: $active-shadow;
-    @if $active-bg {
-      background: $active-bg !important;
-      color: var(--color-text-inverse) !important;
-    }
-  }
-}
-
-@mixin interactive-states($primary-color: var(--color-primary), $hover-color: var(--color-primary-hover), $active-color: var(--color-primary-active), $hover-filter: brightness(1.05) saturate(1.1)) {
-  transition: all var(--duration-normal) var(--ease-out);
-  
-  &:hover {
-    background: $hover-color;
-    transform: translateY(-1px);
-    box-shadow: var(--theme-shadow-lg);
-    filter: $hover-filter;
-  }
-  
-  &:active {
-    background: $active-color;
-    transform: translateY(0);
-    box-shadow: var(--theme-shadow-sm);
-  }
-  
-  &:focus-visible {
-    outline: 2px solid $primary-color;
-    outline-offset: 2px;
-  }
-}
-
-@mixin button-variant-with-states($base-color, $text-color: var(--color-text-inverse), $hover-color: null, $active-color: null) {
-  background: var(--color-#{$base-color});
-  color: $text-color;
-  box-shadow: var(--theme-shadow-md);
-  
-  $hover: if($hover-color, $hover-color, var(--color-#{$base-color}-dark));
-  $active: if($active-color, $active-color, var(--color-#{$base-color}-darker));
-  
-  @include transform-interaction(
-    scale(1.01),
-    scale(0.99),
-    var(--theme-shadow-lg),
-    var(--theme-shadow-sm),
-    $hover,
-    $active
+@mixin interactive-base($type: button, $config: ()) {
+  $default-config: (
+    'cursor': pointer,
+    'transition-duration': var(--duration-fast),
+    'transition-easing': var(--ease-out),
+    'focus-ring': true,
+    'active-feedback': true,
+    'hover-feedback': true
   );
-}
-
-@mixin status-variant($color-base) {
-  background: var(--color-#{$color-base}-bg);
-  color: var(--color-#{$color-base}-dark);
-  border-color: var(--color-#{$color-base});
   
-  & i {
-    color: var(--color-#{$color-base});
+  $merged-config: map.merge($default-config, $config);
+  
+  cursor: map.get($merged-config, 'cursor');
+  transition: all map.get($merged-config, 'transition-duration') map.get($merged-config, 'transition-easing');
+  position: relative;
+  
+  @if map.get($merged-config, 'focus-ring') {
+    &:focus-visible {
+      @include interactive-focus-ring($type);
+    }
+  }
+  
+  @if map.get($merged-config, 'hover-feedback') {
+    &:hover {
+      @include interactive-hover($type);
+    }
+  }
+  
+  @if map.get($merged-config, 'active-feedback') {
+    &:active {
+      @include interactive-active($type);
+    }
+  }
+  
+  &:disabled, &[disabled], &.disabled {
+    @include interactive-disabled();
+  }
+  
+  &.loading {
+    @include interactive-loading();
   }
 }
 
-@mixin interactive-card($hover-shadow: var(--shadow-lg), $active-shadow: var(--shadow-md), $lift: translateY(-1px)) {
-  & {
-    transition: all var(--duration-fast) var(--ease-out);
-  }
-  
-  &:hover {
-    transform: $lift;
-    box-shadow: $hover-shadow;
-    filter: brightness(1.02);
-  }
-  
-  &:active {
-    transform: translateY(0);
-    box-shadow: $active-shadow;
-  }
-}
-
-@mixin interactive-button($hover-scale: scale(1.01), $active-scale: scale(0.99), $hover-shadow: var(--shadow-md), $active-shadow: var(--shadow-sm)) {
-  transition: all var(--duration-fast) var(--ease-out);
-  
-  &:hover {
-    transform: $hover-scale;
-    box-shadow: $hover-shadow;
-    filter: brightness(0.95) saturate(1.05);
-  }
-  
-  &:active {
-    transform: $active-scale;
-    box-shadow: $active-shadow;
-  }
-}
-
-@mixin interactive-list-item($lift: translateY(-1px), $hover-shadow: var(--shadow-lg)) {
-  transition: all var(--duration-fast) var(--ease-out);
-  
-  &:hover {
-    transform: $lift;
-    box-shadow: $hover-shadow;
-    border-color: var(--color-border);
-    filter: brightness(1.02) saturate(1.05);
-  }
-  
-  &:active {
-    transform: translateY(0);
-  }
-}
-
-@mixin interactive-nav($hover-bg: var(--color-primary-hover), $active-bg: var(--color-primary)) {
-  transition: all var(--duration-fast) var(--ease-out);
-  
-  &:hover {
-    background: $hover-bg;
-    color: var(--color-text);
-    filter: brightness(1.02) saturate(1.05);
-  }
-  
-  &:active {
-    background: $active-bg;
-    color: var(--color-text-inverse);
-  }
-}
-
-@mixin interactive-avatar($scale: scale(1.05), $shadow: var(--shadow-md)) {
-  transition: all var(--duration-fast) var(--ease-out);
-  
-  &:hover {
-    transform: $scale;
-    box-shadow: $shadow;
-    filter: brightness(1.05) saturate(1.1);
-  }
-  
-  &:active {
-    transform: scale(1.02);
-  }
-}
-
-@mixin interactive-table-row($hover-bg: var(--state-hover-bg)) {
-  transition: all var(--duration-fast) var(--ease-out);
-  
-  &:hover {
-    background: $hover-bg;
-    transform: translateY(calc(var(--space-0-5) * -0.5)); // φ-based subtle lift
+@mixin interactive-hover($type: default) {
+  @if $type == button {
+    filter: brightness(1.05);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+  } @else if $type == card {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
     filter: brightness(1.01);
+  } @else if $type == badge {
+    transform: scale(1.05);
+    filter: brightness(0.95) saturate(1.1);
+  } @else if $type == input {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px rgba(var(--color-primary-rgb), 0.1);
+  } @else if $type == icon {
+    transform: scale(1.1);
+    filter: brightness(1.1);
+  } @else {
+    filter: brightness(1.02);
+    transform: translateY(-0.5px);
   }
 }
 
-@mixin interactive-badge($scale: scale(1.1), $shadow: var(--shadow-sm)) {
-  transition: all var(--duration-fast) var(--ease-out);
+@mixin interactive-active($type: default) {
+  @if $type == button {
+    transform: scale(0.98) translateY(0);
+    filter: brightness(0.95);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1); // Minimal shadow
+  } @else if $type == card {
+    transform: scale(0.99) translateY(0);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+  } @else if $type == badge {
+    transform: scale(0.97);
+    filter: brightness(0.9);
+  } @else if $type == input {
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
+  } @else if $type == icon {
+    transform: scale(0.9);
+    filter: brightness(0.9);
+  } @else {
+    transform: scale(0.98);
+    filter: brightness(0.95);
+  }
+}
+
+/// Focus Ring System
+/// Consistent focus indicators with φ-based spacing
+/// @param {string} $type - Component type
+/// @param {string} $color - Focus ring color
+@mixin interactive-focus-ring($type: default, $color: var(--color-primary)) {
+  outline: 2px solid #{$color};
+  outline-offset: 2px;
+  border-radius: inherit;
   
-  &:hover {
-    transform: $scale;
-    box-shadow: $shadow;
-    filter: brightness(1.05) saturate(1.1);
+  @if $type == card {
+    outline-width: 2px;
+    outline-offset: 3px;
+  } @else if $type == input {
+    outline-offset: 1px;
+    box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.1); // Clean focus shadow
+  }
+}
+
+/// Disabled State
+/// Consistent disabled styling across all interactive components
+@mixin interactive-disabled() {
+  opacity: var(--opacity-disabled); // 0.6 from variables
+  pointer-events: none;
+  cursor: not-allowed;
+  filter: grayscale(0.3);
+  
+  // Remove interactive effects
+  &:hover, &:active, &:focus-visible {
+    transform: none;
+    filter: grayscale(0.3);
+    box-shadow: none;
+    outline: none;
+  }
+}
+
+/// Loading State
+/// Consistent loading states with φ-based spinner
+@mixin interactive-loading() {
+  position: relative;
+  pointer-events: none;
+  color: transparent;
+  
+  &::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: calc(var(--icon-sm) * var(--φ)); // φ-based spinner size
+    height: calc(var(--icon-sm) * var(--φ));
+    margin: calc(var(--icon-sm) * var(--φ) / -2) 0 0 calc(var(--icon-sm) * var(--φ) / -2);
+    border: 2px solid transparent;
+    border-top-color: currentColor;
+    border-radius: var(--radius-full);
+    animation: spin calc(var(--duration-normal) * var(--φ) * 6) linear infinite; // Using central spin animation
+  }
+  
+  // Remove interactive effects while loading
+  &:hover, &:active, &:focus-visible {
+    transform: none;
+    filter: none;
+  }
+}
+
+/// Enhanced Interactive States
+/// For components requiring more sophisticated feedback
+/// @param {string} $type - Component type
+/// @param {map} $enhancements - Enhancement configuration
+@mixin interactive-enhanced($type: button, $enhancements: ()) {
+  $default-enhancements: (
+    'ripple-effect': false,
+    'glow-on-hover': false,
+    'bounce-on-click': false,
+    'magnetic-hover': false
+  );
+  
+  $merged-enhancements: map.merge($default-enhancements, $enhancements);
+  
+  @include interactive-base($type);
+  
+  @if map.get($merged-enhancements, 'glow-on-hover') {
+    &:hover {
+      box-shadow: 0 4px 12px rgba(var(--color-primary-rgb), 0.15); // Single clean shadow
+    }
+  }
+  
+  @if map.get($merged-enhancements, 'bounce-on-click') {
+    &:active {
+      animation: bounce calc(var(--duration-fast) * var(--φ)) var(--ease-out);
+    }
+  }
+  
+  @if map.get($merged-enhancements, 'magnetic-hover') {
+    transition: all var(--duration-fast) var(--ease-out), transform var(--duration-ultra-fast) var(--ease-out);
+    
+    &:hover {
+      transform: scale(calc(1 + var(--φ-inv) * 0.02));
+    }
+  }
+}
+
+/// Touch-Optimized Interactive States
+/// Enhanced for mobile/touch interfaces with larger hit targets
+/// @param {string} $type - Component type
+/// @param {boolean} $expand-hit-area - Whether to expand touch target
+@mixin interactive-touch($type: button, $expand-hit-area: true) {
+  @include interactive-base($type);
+  
+  @if $expand-hit-area {
+    position: relative;
+    
+    &::before {
+      content: '';
+      position: absolute;
+      top: calc(var(--touch-target-min) / -4);
+      left: calc(var(--touch-target-min) / -4);
+      right: calc(var(--touch-target-min) / -4);
+      bottom: calc(var(--touch-target-min) / -4);
+      min-width: var(--touch-target-min); // 44px minimum
+      min-height: var(--touch-target-min);
+    }
   }
   
   &:active {
-    transform: scale(1.05);
+    transform: scale(calc(1 - var(--φ-inv) * 0.05));
+    transition-duration: calc(var(--duration-ultra-fast) * var(--φ-inv)); // Immediate feedback
+  }
+  
+  // Prevent touch callouts and selection
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
+}
+
+/// Accessibility-Enhanced Interactive States
+/// WCAG 2.1 AA compliant interactive patterns
+/// @param {string} $type - Component type
+/// @param {map} $a11y-config - Accessibility configuration
+@mixin interactive-a11y($type: button, $a11y-config: ()) {
+  $default-a11y: (
+    'high-contrast': true,
+    'reduced-motion': true,
+    'focus-indicators': true,
+    'keyboard-navigation': true
+  );
+  
+  $merged-a11y: map.merge($default-a11y, $a11y-config);
+  
+  @if map.get($merged-a11y, 'high-contrast') {
+    @media (prefers-contrast: high) {
+      border: 2px solid currentColor;
+      
+      &:focus-visible {
+        outline-width: 3px;
+        outline-offset: 3px;
+      }
+    }
+  }
+  
+  @if map.get($merged-a11y, 'reduced-motion') {
+    @media (prefers-reduced-motion: reduce) {
+      transition: none;
+      
+      &:hover, &:active {
+        transform: none;
+        animation: none;
+      }
+      
+      &.loading::after {
+        animation: none;
+        border: 2px solid currentColor;
+      }
+    }
+  }
+  
+  @if map.get($merged-a11y, 'keyboard-navigation') {
+    &:focus-visible {
+      outline: 3px solid var(--color-primary);
+      outline-offset: 3px;
+      box-shadow: 0 0 0 1px var(--color-text-inverse);
+      z-index: 1;
+    }
   }
 }
 
-@mixin colored-shadow($color, $opacity: var(--shadow-color-opacity), $size: "0 8px 25px", $fallback: var(--shadow-sm)) {
-  box-shadow: #{$size} color-mix(in srgb, #{$color} #{$opacity}, transparent), #{$fallback};
-}
-
-@mixin focus-shadow($color: var(--color-primary), $opacity: 15%, $spread: 3px) {
-  box-shadow: 0 0 0 #{$spread} color-mix(in srgb, #{$color} #{$opacity}, transparent);
-}
-
-@mixin interactive-colored-shadow($color, $base-opacity: var(--shadow-color-opacity), $hover-opacity: 25%) {
-  @include colored-shadow($color, $base-opacity);
+/// Multi-State Interactive System
+/// Comprehensive system for components with multiple states
+/// @param {list} $states - States to support (hover, active, focus, disabled, loading)
+/// @param {string} $type - Component type
+/// @param {map} $config - Configuration options
+@mixin interactive-multi-state($states: (hover, active, focus, disabled), $type: button, $config: ()) {
+  @include interactive-base($type, $config);
   
-  &:hover {
-    @include colored-shadow($color, $hover-opacity, "0 8px 25px", var(--shadow-md));
+  @if list.index($states, loading) {
+    &.loading {
+      @include interactive-loading();
+    }
   }
-}
-
-@mixin status-shadow($status: primary) {
-  @include colored-shadow(var(--color-#{$status}));
   
-  &:hover {
-    @include colored-shadow(var(--color-#{$status}), 25%, "0 8px 25px", var(--shadow-md));
+  @if list.index($states, success) {
+    &.success {
+      background: var(--color-success);
+      color: var(--color-text-inverse);
+      
+      &:hover {
+        background: color-mix(in srgb, var(--color-success) 90%, var(--color-text-inverse));
+      }
+    }
+  }
+  
+  @if list.index($states, error) {
+    &.error {
+      background: var(--color-error);
+      color: var(--color-text-inverse);
+      
+      &:hover {
+        background: color-mix(in srgb, var(--color-error) 90%, var(--color-text-inverse));
+      }
+    }
   }
 }

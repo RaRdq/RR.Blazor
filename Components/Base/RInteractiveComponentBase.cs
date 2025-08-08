@@ -26,6 +26,13 @@ namespace RR.Blazor.Components.Base
         public bool Loading { get; set; }
         
         /// <summary>
+        /// Text to display when component is in loading state
+        /// </summary>
+        [Parameter]
+        [AIParameter("Loading text to display")]
+        public string LoadingText { get; set; } = "Loading...";
+        
+        /// <summary>
         /// ARIA label for accessibility
         /// </summary>
         [Parameter] 
@@ -98,11 +105,11 @@ namespace RR.Blazor.Components.Base
         }
         
         /// <summary>
-        /// Gets additional HTML attributes for interactive components
+        /// Gets accessibility and interactive attributes
         /// </summary>
-        protected override Dictionary<string, object> GetAdditionalAttributes()
+        protected virtual Dictionary<string, object> GetAccessibilityAttributes()
         {
-            var attributes = base.GetAdditionalAttributes();
+            var attributes = new Dictionary<string, object>();
             
             if (!string.IsNullOrEmpty(AriaLabel))
                 attributes["aria-label"] = AriaLabel;

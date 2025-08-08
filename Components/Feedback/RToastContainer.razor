@@ -47,7 +47,8 @@
     
     private async void ShowToast(ToastMessage toast)
     {
-
+        if (disposed) return;
+        
         while (toasts.Count >= ToastService.Options.MaxToasts)
         {
             var oldest = toasts.First();
@@ -56,11 +57,10 @@
         
         toasts.Add(toast);
         toastStates[toast.Id] = "entering";
-        StateHasChanged();
+        if (!disposed) StateHasChanged();
         
-
         await Task.Delay(50);
-        if (toastStates.ContainsKey(toast.Id))
+        if (toastStates.ContainsKey(toast.Id) && !disposed)
         {
             toastStates[toast.Id] = "visible";
             StateHasChanged();
@@ -76,13 +76,16 @@
     
     private async void RemoveToast(string id)
     {
+        if (disposed) return;
+        
         if (toastStates.ContainsKey(id))
         {
-
             toastStates[id] = "exiting";
-            StateHasChanged();
+            if (!disposed) StateHasChanged();
             await Task.Delay(300);
         }
+        
+        if (disposed) return;
         
         var toast = toasts.FirstOrDefault(t => t.Id == id);
         if (toast != null)
@@ -96,12 +99,14 @@
                 timers.Remove(id);
             }
             
-            StateHasChanged();
+            if (!disposed) StateHasChanged();
         }
     }
     
     private void ClearAll()
     {
+        if (disposed) return;
+        
         toasts.Clear();
         toastStates.Clear();
         foreach (var timer in timers.Values)

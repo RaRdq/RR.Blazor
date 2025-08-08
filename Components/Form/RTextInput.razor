@@ -1,21 +1,5 @@
 @*
-    RTextInput - Specific text input component implementation
-    
-    A specialized component that handles both single-line and multi-line text inputs
-    with comprehensive styling, validation, and modern UX features.
-    
-    Key Features:
-    - Single component for text inputs and textareas
-    - Utility-first CSS composition with gradient animations
-    - Revolutionary floating labels with perfect background blending
-    - Perfect icon positioning with 60px clearance
-    - Comprehensive validation states with error/success gradients
-    - Touch-friendly mobile design with iOS zoom prevention
-    - Multiple style variants (Clean, Filled, Outlined, Glass)
-    - Size variants (Small, Medium, Large) with proper density
-    - Password toggle functionality
-    - Character counting for textareas
-    - Auto-resize capability for textareas
+    Text input component with floating labels, validation, and multiple variants.
     
     Usage Examples:
     <RTextInput @bind-Value="name" Placeholder="Enter your name" />
@@ -28,6 +12,7 @@
 @inherits RInputBase
 @implements IDisposable
 @inject IJSRuntime JSRuntime
+@using RR.Blazor.Components.Base
 @attribute [Component("RTextInput", Category = "Form", Complexity = ComponentComplexity.Simple)]
 @attribute [AIOptimized(
     Prompt = "Specific text input component - single line, multi-line, with icons, validation, and modern styling",
@@ -66,7 +51,8 @@
                       @onfocus="@HandleFocus"
                       @onblur="@HandleBlur"
                       @onkeypress="@OnKeyPress"
-                      @onkeydown="@OnKeyDown"></textarea>
+                      @onkeydown="@OnKeyDown"
+                      @attributes="GetSafeAttributes()"></textarea>
         }
         else
         {
@@ -88,7 +74,8 @@
                    @onfocus="@HandleFocus"
                    @onblur="@HandleBlur"
                    @onkeypress="@OnKeyPress"
-                   @onkeydown="@OnKeyDown" />
+                   @onkeydown="@OnKeyDown"
+                   @attributes="GetSafeAttributes()" />
         }
         
         @if (!string.IsNullOrEmpty(Label) && IsFloatingLabel())
@@ -248,12 +235,12 @@
     }
     
     
-    private async Task HandleFocus(FocusEventArgs e)
+    protected override async Task HandleFocus(FocusEventArgs e)
     {
         await base.HandleFocus(e);
     }
     
-    private async Task HandleBlur(FocusEventArgs e)
+    protected override async Task HandleBlur(FocusEventArgs e)
     {
         await base.HandleBlur(e);
         
@@ -483,6 +470,18 @@
     
     #endregion
     
+    #region Attribute Filtering
+    
+    /// <summary>
+    /// Returns safely filtered HTML attributes using centralized RAttributeForwarder.
+    /// </summary>
+    private Dictionary<string, object> GetSafeAttributes()
+    {
+        return RAttributeForwarder.GetSafeAttributes(AdditionalAttributes);
+    }
+    
+    #endregion
+    
     #region IDisposable
     
     public void Dispose()
@@ -492,5 +491,3 @@
     
     #endregion
 }
-
-@* CSS removed per project conventions - styles should be in SCSS files *@

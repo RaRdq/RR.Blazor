@@ -13,57 +13,53 @@ Perfect for page headers, section intros, and feature highlights.
 **@
 @using RR.Blazor.Enums
 @using RR.Blazor.Attributes
+@using RR.Blazor.Components.Base
+@inherits RComponentBase
 
 @attribute [Component("RHeaderCard", Category = "Core", Complexity = ComponentComplexity.Simple)]
 @attribute [AIOptimized(Prompt = "Create header card with title and description", 
                        CommonUse = "page headers, section intros, feature highlights", 
                        AvoidUsage = "Don't use for regular content cards - use RCard instead")]
 
-<RCard Class="@($"header-card {Class}")">
-    <HeaderContent>
-        <div class="d-flex items-center gap-3">
-            @if (!string.IsNullOrEmpty(Icon))
+<div class="card card-header @Class">
+    <div class="card-body">
+        @if (!string.IsNullOrEmpty(Icon))
+        {
+            <i class="@GetIconClasses()">@Icon</i>
+        }
+        <div>
+            @if (!string.IsNullOrEmpty(Title))
             {
-                <i class="material-symbols-rounded text-primary @GetIconSize()">@Icon</i>
+                <h1>@Title</h1>
             }
-            <div class="flex-1">
-                @if (!string.IsNullOrEmpty(Title))
-                {
-                    <h1 class="text-2xl font-bold ma-0 text-primary">@Title</h1>
-                }
-                @if (!string.IsNullOrEmpty(Description))
-                {
-                    <p class="text-muted ma-0 mt-1">@Description</p>
-                }
-            </div>
+            @if (!string.IsNullOrEmpty(Description))
+            {
+                <p>@Description</p>
+            }
         </div>
-    </HeaderContent>
-    <ChildContent>
         @ChildContent
-    </ChildContent>
-</RCard>
+    </div>
+</div>
 
 @code {
-    /// <summary>Header title</summary>
     [Parameter, AIParameter("Main title text", "Display title for the header")] 
     public string Title { get; set; }
     
-    /// <summary>Header description</summary>
     [Parameter, AIParameter("Description text", "Subtitle or description below title")] 
     public string Description { get; set; }
     
-    /// <summary>Icon for header</summary>
     [Parameter, AIParameter("Material icon", "settings, dashboard, widgets, etc.")] 
     public string Icon { get; set; }
     
-    /// <summary>Icon size</summary>
-    [Parameter] public string IconSize { get; set; } = "text-3xl";
+    [Parameter] public string IconSize { get; set; } = "lg";
     
-    /// <summary>Additional CSS classes</summary>
-    [Parameter] public string Class { get; set; }
-    
-    /// <summary>Child content</summary>
-    [Parameter] public RenderFragment ChildContent { get; set; }
-    
-    private string GetIconSize() => IconSize ?? "text-3xl";
+    private string GetIconClasses()
+    {
+        var classes = new List<string> { "material-symbols-rounded" };
+        if (!string.IsNullOrEmpty(IconSize))
+        {
+            classes.Add($"icon-{IconSize}");
+        }
+        return string.Join(" ", classes);
+    }
 }

@@ -15,9 +15,11 @@ Supports info, success, warning, and error states with consistent styling.
 **@
 @using RR.Blazor.Enums
 @using RR.Blazor.Attributes
+@using RR.Blazor.Components.Base
+@inherits RForwardingComponentBase
 
 @attribute [Component("RAlert", Category = "Feedback", Complexity = ComponentComplexity.Simple)]
-@attribute [AIOptimized(Prompt = "Create alert for important messages", 
+@attribute [AIOptimized(Prompt = "Create alert for messages", 
                        CommonUse = "notifications, status messages, validation feedback", 
                        AvoidUsage = "Don't use for regular content - use RCard instead")]
 
@@ -27,7 +29,8 @@ Supports info, success, warning, and error states with consistent styling.
          role="alert"
          aria-live="@(Type == AlertType.Error ? "assertive" : "polite")"
          @onclick="HandleClick"
-         @onclick:stopPropagation="StopPropagation">
+         @onclick:stopPropagation="StopPropagation"
+         @attributes="GetSafeAttributes()">
         
         @if (ShowIcon)
         {
@@ -80,9 +83,11 @@ Supports info, success, warning, and error states with consistent styling.
     </div>
 }
 
+@implements IDisposable
 @code {
     private bool isVisible = true;
     private Timer? autoCloseTimer;
+    private bool disposed = false;
     
     /// <summary>Alert type</summary>
     [Parameter, AIParameter("Alert severity level", "AlertType.Info, AlertType.Success, AlertType.Warning, AlertType.Error")] 
@@ -156,13 +161,14 @@ Supports info, success, warning, and error states with consistent styling.
     /// <summary>Click event handler</summary>
     [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
     
+    
     protected override void OnInitialized()
     {
         if (AutoCloseTimeout > 0)
         {
             autoCloseTimer = new Timer(async _ =>
             {
-                await Dismiss();
+                if (!disposed) await Dismiss();
             }, null, AutoCloseTimeout, Timeout.Infinite);
         }
     }
@@ -346,6 +352,8 @@ Supports info, success, warning, and error states with consistent styling.
     
     private async Task Dismiss()
     {
+        if (disposed) return;
+        
         isVisible = false;
         await OnDismiss.InvokeAsync();
         StateHasChanged();
@@ -363,7 +371,12 @@ Supports info, success, warning, and error states with consistent styling.
     
     public void Dispose()
     {
+        if (disposed) return;
+        disposed = true;
+        
         autoCloseTimer?.Dispose();
+        autoCloseTimer = null;
+        
     }
 }
 

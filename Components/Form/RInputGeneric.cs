@@ -36,6 +36,42 @@ namespace RR.Blazor.Components.Form
         
         #endregion
         
+        #region Date-specific Parameters
+        
+        [Parameter]
+        [AIParameter("Date format for display", Example = "yyyy-MM-dd")]
+        public string DateFormat { get; set; } = "";
+        
+        [Parameter]
+        [AIParameter("Minimum allowed date")]
+        public DateTime? MinDate { get; set; }
+        
+        [Parameter]
+        [AIParameter("Show time picker for date inputs")]
+        public bool ShowTime { get; set; }
+        
+        #endregion
+        
+        #region Number-specific Parameters
+        
+        [Parameter]
+        [AIParameter("Number format for display", Example = "N2")]
+        public string NumberFormat { get; set; } = "";
+        
+        [Parameter]
+        [AIParameter("Culture for number formatting")]
+        public string Culture { get; set; } = "";
+        
+        #endregion
+        
+        #region Text-specific Parameters
+        
+        [Parameter]
+        [AIParameter("Enable multiline text input")]
+        public bool IsMultiLine { get; set; }
+        
+        #endregion
+        
         #region Smart Type Detection
         
         /// <summary>
@@ -211,6 +247,14 @@ namespace RR.Blazor.Components.Form
             if (OnKeyDown.HasDelegate) builder.AddAttribute(seq++, "OnKeyDown", OnKeyDown);
             if (OnStartIconClick.HasDelegate) builder.AddAttribute(seq++, "OnStartIconClick", OnStartIconClick);
             if (OnEndIconClick.HasDelegate) builder.AddAttribute(seq++, "OnEndIconClick", OnEndIconClick);
+            
+            // Forward specialized parameters
+            if (!string.IsNullOrEmpty(DateFormat)) builder.AddAttribute(seq++, "DateFormat", DateFormat);
+            if (MinDate.HasValue) builder.AddAttribute(seq++, "MinDate", MinDate.Value);
+            if (ShowTime) builder.AddAttribute(seq++, "ShowTime", ShowTime);
+            if (!string.IsNullOrEmpty(NumberFormat)) builder.AddAttribute(seq++, "NumberFormat", NumberFormat);
+            if (!string.IsNullOrEmpty(Culture)) builder.AddAttribute(seq++, "Culture", Culture);
+            if (IsMultiLine) builder.AddAttribute(seq++, "IsMultiLine", IsMultiLine);
         }
         
         private FieldType GetFieldTypeFromComponent(ComponentType componentType)

@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Components;
 using RR.Blazor.Enums;
 using RR.Blazor.Models;
 using RR.Blazor.Attributes;
+using RR.Blazor.Components.Base;
 
 namespace RR.Blazor.Components.Form;
 
@@ -38,6 +39,18 @@ public abstract class RFormBase : ComponentBase
     [Parameter] public RenderFragment HeaderContent { get; set; }
     [Parameter] public RenderFragment FooterContent { get; set; }
     [Parameter] public string Class { get; set; }
+
+    /// <summary>Captures any additional HTML attributes</summary>
+    [Parameter(CaptureUnmatchedValues = true)] 
+    public Dictionary<string, object> AdditionalAttributes { get; set; }
+    
+    /// <summary>
+    /// Returns safely filtered HTML attributes using centralized RAttributeForwarder.
+    /// </summary>
+    protected virtual Dictionary<string, object> GetSafeAttributes()
+    {
+        return RAttributeForwarder.GetSafeAttributes(AdditionalAttributes);
+    }
     
     // Events - Object-based for smart detection
     [Parameter] public EventCallback<object> OnValidSubmit { get; set; }

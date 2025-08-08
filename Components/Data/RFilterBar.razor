@@ -2,8 +2,10 @@
 @using RR.Blazor.Enums
 @using RR.Blazor.Models
 @using RR.Blazor.Components.Form
+@using RR.Blazor.Components.Base
+@inherits RForwardingComponentBase
 
-<RCard Variant="CardVariant.Flat" Class="pa-4">
+<RCard Variant="CardVariant.Flat" Class="pa-4" @attributes="GetSafeAttributes()">
     <div class="flex flex-wrap gap-4 items-center">
         @* Search Field *@
         @if (ShowSearch)
@@ -119,16 +121,17 @@
                      IconPosition="IconPosition.Start"
                      Variant="ButtonVariant.Ghost"
                      Size="ButtonSize.Medium"
-                     OnClick="ClearAllFilters" />
+                     OnClick="@ClearAllFilters" />
         }
 
         @* Filter Count Badge *@
         @if (ShowFilterCount && HasActiveFilters())
         {
             <div class="flex items-center gap-2">
-                <RBadge Text="@($"{GetActiveFilterCount()} active")"
-                       Variant="BadgeVariant.Info"
-                       Size="BadgeSize.Small" />
+                <RChip Text="@($"{GetActiveFilterCount()} active")"
+                       Style="ChipStyle.Badge"
+                       Variant="ChipVariant.Info"
+                       Size="ChipSize.Small" />
             </div>
         }
     </div>
@@ -136,67 +139,109 @@
 
 @code {
     /// <summary>Whether to show search input</summary>
-    [Parameter] public bool ShowSearch { get; set; } = true;
+    [Parameter]
+    [AIParameter(Hint = "Display search text input field")]
+    public bool ShowSearch { get; set; } = true;
     
     /// <summary>Search input value</summary>
-    [Parameter] public string SearchValue { get; set; } = "";
+    [Parameter]
+    [AIParameter(Hint = "Current search text value", Example = "john doe")]
+    public string SearchValue { get; set; } = "";
     
     /// <summary>Search value changed callback</summary>
-    [Parameter] public EventCallback<string> SearchValueChanged { get; set; }
+    [Parameter]
+    [AIParameter(Hint = "Event fired when search value changes")]
+    public EventCallback<string> SearchValueChanged { get; set; }
     
     /// <summary>Search input placeholder text</summary>
-    [Parameter] public string SearchPlaceholder { get; set; } = "Search...";
+    [Parameter]
+    [AIParameter(Hint = "Placeholder text shown in search input", Example = "Search products...")]
+    public string SearchPlaceholder { get; set; } = "Search...";
     
     /// <summary>Dynamic filter definitions</summary>
-    [Parameter] public List<FilterDefinition> Filters { get; set; } = new();
+    [Parameter]
+    [AIParameter(Hint = "List of filter field definitions with labels, types, and options")]
+    public List<FilterDefinition> Filters { get; set; } = new();
     
     /// <summary>Filter changed callback</summary>
-    [Parameter] public EventCallback<FilterChangedEventArgs> FilterChanged { get; set; }
+    [Parameter]
+    [AIParameter(Hint = "Event fired when any filter value changes")]
+    public EventCallback<FilterChangedEventArgs> FilterChanged { get; set; }
     
     /// <summary>Whether to show date range filter</summary>
-    [Parameter] public bool ShowDateRange { get; set; }
+    [Parameter]
+    [AIParameter(Hint = "Display date range picker with From/To fields")]
+    public bool ShowDateRange { get; set; }
     
     /// <summary>Date from value</summary>
-    [Parameter] public DateTime? DateFrom { get; set; }
+    [Parameter]
+    [AIParameter(Hint = "Start date for date range filter", Example = "2024-01-01")]
+    public DateTime? DateFrom { get; set; }
     
     /// <summary>Date to value</summary>
-    [Parameter] public DateTime? DateTo { get; set; }
+    [Parameter]
+    [AIParameter(Hint = "End date for date range filter", Example = "2024-12-31")]
+    public DateTime? DateTo { get; set; }
     
     /// <summary>Date range changed callback</summary>
-    [Parameter] public EventCallback<DateRangeChangedEventArgs> DateRangeChanged { get; set; }
+    [Parameter]
+    [AIParameter(Hint = "Event fired when date range values change")]
+    public EventCallback<DateRangeChangedEventArgs> DateRangeChanged { get; set; }
     
     /// <summary>Quick filter button definitions</summary>
-    [Parameter] public List<QuickFilterDefinition> QuickFilters { get; set; } = new();
+    [Parameter]
+    [AIParameter(Hint = "List of toggleable filter buttons for common filters")]
+    public List<QuickFilterDefinition> QuickFilters { get; set; } = new();
     
     /// <summary>Active quick filter keys</summary>
-    [Parameter] public HashSet<string> ActiveQuickFilters { get; set; } = new();
+    [Parameter]
+    [AIParameter(Hint = "Set of currently active quick filter keys")]
+    public HashSet<string> ActiveQuickFilters { get; set; } = new();
     
     /// <summary>Quick filter toggled callback</summary>
-    [Parameter] public EventCallback<QuickFilterToggledEventArgs> QuickFilterToggled { get; set; }
+    [Parameter]
+    [AIParameter(Hint = "Event fired when quick filter is toggled on/off")]
+    public EventCallback<QuickFilterToggledEventArgs> QuickFilterToggled { get; set; }
     
     /// <summary>Whether to show status filter</summary>
-    [Parameter] public bool ShowStatus { get; set; }
+    [Parameter]
+    [AIParameter(Hint = "Display status dropdown filter")]
+    public bool ShowStatus { get; set; }
     
     /// <summary>Status filter value</summary>
-    [Parameter] public string StatusFilter { get; set; } = "";
+    [Parameter]
+    [AIParameter(Hint = "Currently selected status value", Example = "active")]
+    public string StatusFilter { get; set; } = "";
     
     /// <summary>Status filter options</summary>
-    [Parameter] public Dictionary<string, string> StatusOptions { get; set; } = new();
+    [Parameter]
+    [AIParameter(Hint = "Dictionary of status values and display labels")]
+    public Dictionary<string, string> StatusOptions { get; set; } = new();
     
     /// <summary>Status filter changed callback</summary>
-    [Parameter] public EventCallback<string> StatusFilterChanged { get; set; }
+    [Parameter]
+    [AIParameter(Hint = "Event fired when status filter value changes")]
+    public EventCallback<string> StatusFilterChanged { get; set; }
     
     /// <summary>Custom filter content</summary>
-    [Parameter] public RenderFragment CustomFilters { get; set; }
+    [Parameter]
+    [AIParameter(Hint = "Custom filter components rendered in the filter bar")]
+    public RenderFragment CustomFilters { get; set; }
     
     /// <summary>Whether to show clear all button</summary>
-    [Parameter] public bool ShowClearButton { get; set; } = true;
+    [Parameter]
+    [AIParameter(Hint = "Display button to clear all active filters")]
+    public bool ShowClearButton { get; set; } = true;
     
     /// <summary>Whether to show active filter count</summary>
-    [Parameter] public bool ShowFilterCount { get; set; } = true;
+    [Parameter]
+    [AIParameter(Hint = "Display badge showing number of active filters")]
+    public bool ShowFilterCount { get; set; } = true;
     
     /// <summary>All filters cleared callback</summary>
-    [Parameter] public EventCallback FiltersCleared { get; set; }
+    [Parameter]
+    [AIParameter(Hint = "Event fired when all filters are cleared")]
+    public EventCallback FiltersCleared { get; set; }
 
     private async Task OnSearchValueChanged(string value)
     {

@@ -1,7 +1,9 @@
 @using Microsoft.AspNetCore.Components
 @using RR.Blazor.Components.Core
 @using RR.Blazor.Components.Form
+@using RR.Blazor.Components.Data
 @using RR.Blazor.Components.Data.Filters
+@using RR.Blazor.Components.Feedback
 @using RR.Blazor.Enums
 @using RR.Blazor.Models
 @using RR.Blazor.Services
@@ -13,23 +15,7 @@
 @implements ITableParent
 @implements IAsyncDisposable
 
-@* 
-    RTable<T> - Next-generation type-safe table component with built-in templates
-    
-    Usage:
-    <RTable Items="@employees">
-        <RColumn For="@(e => e.Name)" />
-        <RColumn For="@(e => e.Email)" Template="Email" />
-        <RColumn For="@(e => e.Salary)" Template="Currency" />
-        <RColumn For="@(e => e.Status)" Template="Status" />
-        <RColumn For="@(e => e.StartDate)" Template="Date" />
-        <RColumn Title="Actions" Template="Actions" Width="100px">
-            <ActionTemplate>
-                <button @onclick="@(() => EditEmployee(context))">Edit</button>
-            </ActionTemplate>
-        </RColumn>
-    </RTable>
-*@
+@* Data table with sorting, filtering, pagination, and row selection *@
 
 <CascadingValue Value="@_tableContext" IsFixed="true">
     <CascadingValue Value="@((ITableParent)this)" IsFixed="true">
@@ -92,7 +78,7 @@
                     @* Initial loading state *@
                     <div class="table-loading">
                         <RProgressCircular Indeterminate="true" Size="40" />
-                        <p>@LoadingMessage</p>
+                        <p>@LoadingText</p>
                     </div>
                 }
                 else if (!_processedItems.Any())
@@ -189,48 +175,62 @@
             @if (ShowPagination && _processedItems.Any())
             {
                 <div class="table-footer">
-                    <div class="table-pagination-info">
-                        Showing @GetStartIndex() to @GetEndIndex() of @_processedItems.Count() results
-                        @if (_selectedItems.Any())
-                        {
-                            <span class="table-selection-count">(@_selectedItems.Count selected)</span>
-                        }
-                    </div>
-                    <div class="table-pagination">
-                        <button class="table-pagination-button"
-                                disabled="@(CurrentPage <= 1)"
-                                @onclick="@(() => CurrentPage = 1)">
-                            <i class="material-symbols-rounded">first_page</i>
-                        </button>
-                        <button class="table-pagination-button"
-                                disabled="@(CurrentPage <= 1)"
-                                @onclick="@(() => CurrentPage--)">
-                            <i class="material-symbols-rounded">chevron_left</i>
-                        </button>
-                        <span class="table-pagination-pages">
-                            Page @CurrentPage of @TotalPages
-                        </span>
-                        <button class="table-pagination-button"
-                                disabled="@(CurrentPage >= TotalPages)"
-                                @onclick="@(() => CurrentPage++)">
-                            <i class="material-symbols-rounded">chevron_right</i>
-                        </button>
-                        <button class="table-pagination-button"
-                                disabled="@(CurrentPage >= TotalPages)"
-                                @onclick="@(() => CurrentPage = TotalPages)">
-                            <i class="material-symbols-rounded">last_page</i>
-                        </button>
-                        @if (PageSizeOptions?.Any() == true)
-                        {
-                            <select class="table-page-size-select"
-                                    value="@PageSize"
-                                    @onchange="@OnPageSizeChanged">
-                                @foreach (var size in PageSizeOptions)
-                                {
-                                    <option value="@size">@size per page</option>
-                                }
-                            </select>
-                        }
+                    <div class="table-footer-desktop d-flex justify-between items-center px-4 py-3">
+                        <div class="table-footer-left d-flex items-center gap-3">
+                            <div class="text-sm text-secondary">
+                                Showing @GetStartIndex() to @GetEndIndex() of @_processedItems.Count() results
+                            </div>
+                            @if (_selectedItems.Any())
+                            {
+                                <RChip Style="ChipStyle.Badge" Variant="ChipVariant.Primary" Size="ChipSize.Small">
+                                    @_selectedItems.Count selected
+                                </RChip>
+                            }
+                        </div>
+                        <div class="table-footer-right d-flex items-center gap-3">
+                            @if (PageSizeOptions?.Any() == true)
+                            {
+                                <select class="form-select" @onchange="OnPageSizeChangedEvent">
+                                    @foreach (var size in PageSizeOptions)
+                                    {
+                                        <option value="@size" selected="@(size == PageSize)">@size per page</option>
+                                    }
+                                </select>
+                            }
+                            <div class="d-flex items-center gap-1">
+                                <RButton Variant="ButtonVariant.Ghost"
+                                        Size="ButtonSize.Small"
+                                        Disabled="@(CurrentPage <= 1)"
+                                        OnClick="@(() => OnPageChanged(1))"
+                                        Dense="true">
+                                    <i class="material-symbols-rounded">first_page</i>
+                                </RButton>
+                                <RButton Variant="ButtonVariant.Ghost"
+                                        Size="ButtonSize.Small"
+                                        Disabled="@(CurrentPage <= 1)"
+                                        OnClick="@(() => OnPageChanged(CurrentPage - 1))"
+                                        Dense="true">
+                                    <i class="material-symbols-rounded">chevron_left</i>
+                                </RButton>
+                                <div class="text-sm font-medium px-3">
+                                    Page @CurrentPage of @TotalPages
+                                </div>
+                                <RButton Variant="ButtonVariant.Ghost"
+                                        Size="ButtonSize.Small"
+                                        Disabled="@(CurrentPage >= TotalPages)"
+                                        OnClick="@(() => OnPageChanged(CurrentPage + 1))"
+                                        Dense="true">
+                                    <i class="material-symbols-rounded">chevron_right</i>
+                                </RButton>
+                                <RButton Variant="ButtonVariant.Ghost"
+                                        Size="ButtonSize.Small"
+                                        Disabled="@(CurrentPage >= TotalPages)"
+                                        OnClick="@(() => OnPageChanged(TotalPages))"
+                                        Dense="true">
+                                    <i class="material-symbols-rounded">last_page</i>
+                                </RButton>
+                            </div>
+                        </div>
                     </div>
                 </div>
             }
@@ -265,7 +265,7 @@
     
     // Table
     [Parameter] public bool Loading { get; set; }
-    [Parameter] public string LoadingMessage { get; set; } = "Loading...";
+    [Parameter] public string LoadingText { get; set; } = "Loading...";
     [Parameter] public string EmptyMessage { get; set; } = "No data available";
     [Parameter] public RenderFragment EmptyContent { get; set; }
     [Parameter] public bool FixedHeader { get; set; }
@@ -328,11 +328,32 @@
     protected override void OnInitialized()
     {
         _tableContext = new TableContext(typeof(TItem), TableId, true);
+        
+        // Auto-generate columns if no ChildContent provided
+        if (ChildContent == null && !_columns.Any())
+        {
+            var generatedColumns = PropertyColumnGenerator.GenerateColumns<TItem>();
+            foreach (var column in generatedColumns)
+            {
+                _columns.Add(column);
+            }
+        }
+        
         base.OnInitialized();
     }
 
     protected override void OnParametersSet()
     {
+        // Auto-generate columns if no ChildContent and no columns exist
+        if (ChildContent == null && !_columns.Any())
+        {
+            var generatedColumns = PropertyColumnGenerator.GenerateColumns<TItem>();
+            foreach (var column in generatedColumns)
+            {
+                _columns.Add(column);
+            }
+        }
+        
         ProcessItems();
         UpdateSelection();
         base.OnParametersSet();
@@ -618,14 +639,26 @@
         return Math.Min(endIndex, totalCount);
     }
 
-    private async Task OnPageSizeChanged(ChangeEventArgs e)
+    private async Task OnPageSizeChanged(int newSize)
+    {
+        PageSize = newSize;
+        CurrentPage = 1; // Reset to first page
+        await PageSizeChanged.InvokeAsync(PageSize);
+        await CurrentPageChanged.InvokeAsync(CurrentPage);
+        ProcessItems();
+    }
+
+    private async Task OnPageChanged(int newPage)
+    {
+        CurrentPage = newPage;
+        await CurrentPageChanged.InvokeAsync(CurrentPage);
+    }
+
+    private async Task OnPageSizeChangedEvent(ChangeEventArgs e)
     {
         if (int.TryParse(e.Value?.ToString(), out var newSize))
         {
-            PageSize = newSize;
-            CurrentPage = 1; // Reset to first page
-            await PageSizeChanged.InvokeAsync(PageSize);
-            await CurrentPageChanged.InvokeAsync(CurrentPage);
+            await OnPageSizeChanged(newSize);
         }
     }
 

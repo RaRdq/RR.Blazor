@@ -1,0 +1,198 @@
+// Consolidated Loading System - Single source of truth for all loading states
+@use '../variables' as *;
+@use 'core' as *;
+@use 'interactions' as *;
+
+@mixin loading-foundation(
+  $pointer-events: none,
+  $cursor: wait,
+  $opacity: 1,
+  $user-select: none
+) {
+  pointer-events: $pointer-events;
+  cursor: $cursor;
+  opacity: $opacity;
+  user-select: $user-select;
+  
+  &:hover,
+  &:active,
+  &:focus,
+  &:focus-visible {
+    transform: inherit;
+    filter: inherit;
+    box-shadow: inherit;
+    outline: inherit;
+  }
+}
+
+@mixin spinner-core(
+  $size: var(--loading-size, 1.2em),
+  $border-width: var(--loading-border, 2px),
+  $speed: var(--loading-speed, 0.8s)
+) {
+  width: $size;
+  height: $size;
+  border-radius: 50%;
+  border: $border-width solid var(--loading-track-color, var(--color-border));
+  border-top-color: var(--loading-spinner-color, var(--color-primary));
+  animation: spin $speed linear infinite;
+  will-change: transform;
+  transform-origin: center;
+  pointer-events: none;
+  display: block;
+}
+
+@mixin loading-theme-colors($variant: default) {
+  @if $variant == primary {
+    --loading-spinner-color: var(--color-primary);
+    --loading-track-color: color-mix(in srgb, var(--color-primary) 20%, transparent);
+  } @else if $variant == inverse {
+    --loading-spinner-color: var(--color-text-inverse);
+    --loading-track-color: color-mix(in srgb, var(--color-text-inverse) 20%, transparent);
+  } @else {
+    --loading-spinner-color: var(--color-text);
+    --loading-track-color: var(--color-border);
+  }
+}
+
+@mixin loading-inline($side: left, $gap: var(--space-2)) {
+  position: relative;
+  
+  @if $side == left {
+    padding-left: calc(1.2em + #{$gap});
+    
+    &::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      @include spinner-core(1em, 2px, 0.8s);
+    }
+  } @else if $side == right {
+    padding-right: calc(1.2em + #{$gap});
+    
+    &::after {
+      content: '';
+      position: absolute;
+      right: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      @include spinner-core(1em, 2px, 0.8s);
+    }
+  }
+}
+
+@mixin card-loading($overlay: true, $blur: 4px) {
+  // Override to keep text visible for cards
+  color: inherit;
+  
+  // Use the global interactive-loading for the spinner
+  @include interactive-loading();
+  
+  @if $overlay {
+    // Add overlay with ::before since ::after is used by interactive-loading spinner
+    &::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: color-mix(in srgb, var(--color-surface) 70%, transparent);
+      backdrop-filter: blur($blur);
+      -webkit-backdrop-filter: blur($blur);
+      z-index: 1;
+      pointer-events: none;
+    }
+    
+    &::after {
+      z-index: 2;
+    }
+  }
+}
+
+@mixin loading-skeleton($height: 1.2em, $lines: 1) {
+  position: relative;
+  overflow: hidden;
+  background: var(--color-border);
+  height: $height;
+  border-radius: var(--radius-md);
+  
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in srgb, var(--color-surface) 50%, transparent),
+      transparent
+    );
+    transform: translateX(-100%);
+    animation: shimmer 1.5s infinite;
+  }
+  
+  @if $lines > 1 {
+    &,
+    &::before {
+      height: calc(#{$height} * 0.7);
+      margin-bottom: calc(#{$height} * 0.3);
+    }
+    
+    @for $i from 2 through $lines {
+      &::before {
+        content: '';
+        position: absolute;
+        top: calc(#{$height} * #{$i - 1});
+        left: 0;
+        right: 0;
+        height: calc(#{$height} * 0.7);
+        background: var(--color-border);
+        border-radius: var(--radius-md);
+      }
+    }
+  }
+}
+
+@mixin input-loading($spinner-position: right, $spinner-size: 1em, $spinner-offset: var(--space-3)) {
+  position: relative;
+  
+  &::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    @include spinner-core($spinner-size, 2px, 0.8s);
+    z-index: 1;
+    
+    @if $spinner-position == right {
+      right: $spinner-offset;
+    } @else {
+      left: $spinner-offset;
+    }
+  }
+  
+  @if $spinner-position == right {
+    padding-right: calc(#{$spinner-size} + #{$spinner-offset} + var(--space-2));
+  } @else {
+    padding-left: calc(#{$spinner-size} + #{$spinner-offset} + var(--space-2));
+  }
+}
+
+@mixin loading-performance-optimize() {
+  // GPU acceleration
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  
+  // Smooth animations
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@mixin loading-dark-mode-support() {
+  @media (prefers-color-scheme: dark) {
+    --loading-track-color: color-mix(in srgb, var(--color-border) 30%, transparent);
+  }
+  
+  [data-theme="dark"] & {
+    --loading-track-color: color-mix(in srgb, var(--color-border) 30%, transparent);
+  }
+}

@@ -40,9 +40,9 @@
 **Purpose**: Information presentation and visualization  
 - RAccordion, RAccordionItem, RChart, RColumnChart, REmptyState, RInfoItem, RMetric, RPieChart, RProgressBar, RSkeleton, RStatsCard, RSummaryItem, RTimeline
 
-### Feedback Components (11)
+### Feedback Components (10)
 **Purpose**: User interaction and notifications
-- RAlert, RConfirmationModal, RConfirmModal, RDetailModal, RFormModal, RMessageModal, RModal, RModalProvider, RPreviewModal, RSelectModalGeneric, RToastContainer
+- RAlert, RConfirmationModal, RDetailModal, RFormModal, RMessageModal, RModal, RModalProvider, RPreviewModal, RSelectModalGeneric, RToastContainer
 
 ### Navigation Components (7)
 **Purpose**: Site navigation and menus

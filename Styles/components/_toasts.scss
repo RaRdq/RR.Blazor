@@ -5,168 +5,287 @@
   z-index: var(--z-toast);
   display: flex;
   flex-direction: column;
-  gap: var(--space-1-5);
+  gap: var(--space-2);
   max-width: 420px;
   min-width: 320px;
   pointer-events: none;
+  padding: var(--space-3);
+  
   &-top-left {
-    top: var(--space-3);
-    left: var(--space-3);
+    top: 0;
+    left: 0;
   }
+  
   &-top-center {
-    top: var(--space-3);
+    top: 0;
     left: 50%;
     transform: translateX(-50%);
   }
+  
   &-top-right {
-    top: var(--space-3);
-    right: var(--space-3);
+    top: 0;
+    right: 0;
   }
+  
   &-bottom-left {
-    bottom: var(--space-3);
-    left: var(--space-3);
+    bottom: 0;
+    left: 0;
   }
+  
   &-bottom-center {
-    bottom: var(--space-3);
+    bottom: 0;
     left: 50%;
     transform: translateX(-50%);
   }
+  
   &-bottom-right {
-    bottom: var(--space-3);
-    right: var(--space-3);
+    bottom: 0;
+    right: 0;
   }
 }
 
 .toast {
-  @extend %card-base-enhanced;
+  @extend %glass-medium;
+  @extend %interactive-base;
+  
   display: flex;
-  flex-direction: row;
   align-items: flex-start;
-  gap: var(--space-2-5);
-  padding: var(--space-3) var(--space-3-5);
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
   border-radius: var(--radius-xl);
   pointer-events: auto;
-  backdrop-filter: var(--glass-blur-md) var(--glass-saturate) var(--glass-brightness);
-  box-shadow: var(--shadow-lg), 0 0 0 1px var(--color-border-light);
-  min-height: 48px;
+  min-height: 56px;
+  position: relative;
+  overflow: hidden;
+  border: var(--border-1) solid var(--glass-border-light);
+  box-shadow: 
+    var(--shadow-xl),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.1),
+    0 0 0 1px rgba(0, 0, 0, 0.05);
   
-  // Modern spring-based transitions
-  transition: all var(--transition-spring), 
-              box-shadow var(--transition-normal),
-              backdrop-filter var(--transition-normal);
+  // Glass intensity variants
+  &.glass-light {
+    @extend %glass-light;
+  }
+  
+  &.glass-heavy {
+    @extend %glass-heavy;
+  }
+  
+  // Initial state - all toasts start hidden
+  opacity: 0;
+  transform: translateY(-20px) scale(0.9);
+  transition: all var(--duration-normal) var(--ease-spring);
+  
+  // Animation states using generic keyframes
   &-entering {
     opacity: 0;
-    transform: scale(0.85);
-    
-    .toast-container-top-left &,
-    .toast-container-bottom-left & {
-      transform: translateX(-100%) scale(0.85);
-    }
-    
-    .toast-container-top-right &,
-    .toast-container-bottom-right & {
-      transform: translateX(100%) scale(0.85);
-    }
-    
-    .toast-container-top-center & {
-      transform: translateY(-30px) scale(0.85);
-    }
-    
-    .toast-container-bottom-center & {
-      transform: translateY(30px) scale(0.85);
-    }
+    transform: translateY(-20px) scale(0.9);
+    animation: fadeSlideIn var(--duration-normal) var(--ease-spring) forwards;
   }
+  
   &-visible {
     opacity: 1;
     transform: translate(0) scale(1);
     
     &:hover {
-      transform: translateY(-1px) scale(1.01);
-      box-shadow: var(--shadow-xl), 0 0 0 1px var(--color-border-soft);
+      transform: translateY(-2px) scale(1.02);
+      box-shadow: 
+        var(--shadow-2xl),
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.15),
+        0 0 0 1px rgba(0, 0, 0, 0.1);
+      
+      // Enhanced glass effect on hover
+      backdrop-filter: blur(16px) saturate(140%);
+      -webkit-backdrop-filter: blur(16px) saturate(140%);
     }
   }
+  
   &-exiting {
-    opacity: 0;
-    transform: scale(0.9);
-    
-    .toast-container-top-left &,
-    .toast-container-bottom-left & {
-      transform: translateX(-60%) scale(0.9);
-    }
-    
-    .toast-container-top-right &,
-    .toast-container-bottom-right & {
-      transform: translateX(60%) scale(0.9);
-    }
-    
-    .toast-container-top-center &,
-    .toast-container-bottom-center & {
-      transform: translateY(-20px) scale(0.9);
-    }
+    animation: fadeSlideOut var(--duration-fast) var(--ease-in) forwards;
   }
+  
+  // Semantic variant styles using mixins
   &-success {
-    border-left: var(--space-0-5) solid var(--color-success);
-    background: var(--glass-bg-medium);
+    @include semantic-glass();
+    border-left: 3px solid var(--color-success);
+    background: linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--color-success) 5%, transparent),
+      color-mix(in srgb, var(--color-success) 2%, transparent)
+    );
+    
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 1px;
+      background: linear-gradient(
+        90deg,
+        transparent,
+        var(--color-success),
+        transparent
+      );
+      opacity: 0.5;
+    }
     
     .toast-icon {
+      @extend %icon-container-sm;
+      background: linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--color-success) 20%, var(--color-surface-elevated)),
+        color-mix(in srgb, var(--color-success) 10%, var(--color-surface-elevated))
+      );
       color: var(--color-success);
-      background: color-mix(in srgb, var(--color-success) 15%, var(--color-surface-elevated));
-      border-radius: var(--radius-md);
-      padding: var(--space-1);
+      box-shadow: 
+        0 2px 8px color-mix(in srgb, var(--color-success) 25%, transparent),
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.2);
     }
   }
+  
   &-error {
-    border-left: var(--space-0-5) solid var(--color-error);
-    background: var(--glass-bg-medium);
+    @include semantic-glass();
+    border-left: 3px solid var(--color-error);
+    background: linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--color-error) 5%, transparent),
+      color-mix(in srgb, var(--color-error) 2%, transparent)
+    );
+    
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 1px;
+      background: linear-gradient(
+        90deg,
+        transparent,
+        var(--color-error),
+        transparent
+      );
+      opacity: 0.5;
+      animation: pulse 2s ease-in-out infinite;
+    }
     
     .toast-icon {
+      @extend %icon-container-sm;
+      background: linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--color-error) 20%, var(--color-surface-elevated)),
+        color-mix(in srgb, var(--color-error) 10%, var(--color-surface-elevated))
+      );
       color: var(--color-error);
-      background: color-mix(in srgb, var(--color-error) 15%, var(--color-surface-elevated));
-      border-radius: var(--radius-md);
-      padding: var(--space-1);
+      box-shadow: 
+        0 2px 8px color-mix(in srgb, var(--color-error) 25%, transparent),
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.2);
     }
   }
+  
   &-warning {
-    border-left: var(--space-0-5) solid var(--color-warning);
-    background: var(--glass-bg-medium);
+    @include semantic-glass();
+    border-left: 3px solid var(--color-warning);
+    background: linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--color-warning) 5%, transparent),
+      color-mix(in srgb, var(--color-warning) 2%, transparent)
+    );
+    
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 1px;
+      background: linear-gradient(
+        90deg,
+        transparent,
+        var(--color-warning),
+        transparent
+      );
+      opacity: 0.5;
+    }
     
     .toast-icon {
+      @extend %icon-container-sm;
+      background: linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--color-warning) 20%, var(--color-surface-elevated)),
+        color-mix(in srgb, var(--color-warning) 10%, var(--color-surface-elevated))
+      );
       color: var(--color-warning);
-      background: color-mix(in srgb, var(--color-warning) 15%, var(--color-surface-elevated));
-      border-radius: var(--radius-md);
-      padding: var(--space-1);
+      box-shadow: 
+        0 2px 8px color-mix(in srgb, var(--color-warning) 25%, transparent),
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.2);
     }
   }
+  
   &-info {
-    border-left: var(--space-0-5) solid var(--color-info);
-    background: var(--glass-bg-medium);
+    @include semantic-glass();
+    border-left: 3px solid var(--color-info);
+    background: linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--color-info) 5%, transparent),
+      color-mix(in srgb, var(--color-info) 2%, transparent)
+    );
+    
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 1px;
+      background: linear-gradient(
+        90deg,
+        transparent,
+        var(--color-info),
+        transparent
+      );
+      opacity: 0.5;
+    }
     
     .toast-icon {
+      @extend %icon-container-sm;
+      background: linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--color-info) 20%, var(--color-surface-elevated)),
+        color-mix(in srgb, var(--color-info) 10%, var(--color-surface-elevated))
+      );
       color: var(--color-info);
-      background: color-mix(in srgb, var(--color-info) 15%, var(--color-surface-elevated));
-      border-radius: var(--radius-md);
-      padding: var(--space-1);
+      box-shadow: 
+        0 2px 8px color-mix(in srgb, var(--color-info) 25%, transparent),
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.2);
     }
   }
 
   &-icon {
-    @extend %icon-container-md;
     flex-shrink: 0;
-    margin-top: var(--space-0-5);
     display: flex;
     align-items: center;
     justify-content: center;
     transition: all var(--transition-fast);
+    
+    .material-symbols-rounded {
+      font-size: var(--icon-md);
+      line-height: 1;
+    }
   }
 
   &-content {
     flex: 1;
     min-width: 0;
-    padding-top: var(--space-0-5);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
   }
   
   &-title {
-    margin: 0 0 var(--space-0-5) 0;
+    margin: 0;
     font-size: var(--text-sm);
     font-weight: var(--font-semibold);
     color: var(--color-text);
@@ -177,142 +296,275 @@
   &-message {
     margin: 0;
     font-size: var(--text-xs);
-    line-height: 1.4;
+    line-height: 1.45;
     color: var(--color-text-muted);
     font-weight: var(--font-medium);
-    max-width: 280px;
+    word-break: break-word;
+  }
+  
+  &-progress {
+    margin-top: var(--space-2);
+    height: 3px;
+    background: var(--color-surface);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+    position: relative;
+    
+    &-bar {
+      height: 100%;
+      background: linear-gradient(
+        90deg,
+        var(--color-primary),
+        var(--color-primary-hover)
+      );
+      border-radius: var(--radius-full);
+      transition: width var(--transition-normal);
+      box-shadow: 0 0 10px var(--color-primary);
+    }
   }
   
   &-action {
     @extend %button-base;
-    margin-top: var(--space-1-5);
-    padding: var(--space-1) var(--space-2-5);
-    background: var(--color-primary);
-    color: var(--color-text-inverse);
+    @include semantic-base(primary, filter);
+    
+    margin-top: var(--space-2);
+    padding: var(--space-1-5) var(--space-3);
     border-radius: var(--radius-md);
     font-size: var(--text-2xs);
-    font-weight: var(--font-medium);
-    height: 28px;
-    transition: all var(--transition-fast);
-    
-    &:hover {
-      background: var(--color-primary-hover);
-      transform: translateY(-1px) scale(1.02);
-      box-shadow: var(--shadow-md);
-    }
+    font-weight: var(--font-semibold);
+    height: 32px;
+    min-width: 64px;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
     
     &:active {
-      transform: translateY(0) scale(0.98);
+      transform: scale(0.96);
     }
   }
 
   &-close {
-    @extend %button-base;
-    background: transparent;
-    color: var(--color-text-subtle);
-    padding: var(--space-1);
-    border-radius: var(--radius-md);
+    @extend %icon-button;
+    
     flex-shrink: 0;
-    width: 28px;
-    height: 28px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    width: 32px;
+    height: 32px;
+    opacity: 0.7;
     transition: all var(--transition-fast);
     
     &:hover {
+      opacity: 1;
       background: var(--state-hover-bg);
-      color: var(--color-text);
-      transform: scale(1.1);
+      transform: rotate(90deg) scale(1.1);
     }
     
     &:active {
-      transform: scale(0.95);
+      transform: rotate(90deg) scale(0.9);
+    }
+    
+    .material-symbols-rounded {
+      font-size: var(--icon-sm);
     }
   }
   
-  @include responsive-max(sm) {
-    padding: var(--space-2-5) var(--space-3);
-    min-height: 44px;
-    gap: var(--space-2);
+  // Sticky toast variant (no auto-dismiss)
+  &.sticky {
+    border-width: 2px;
     
-    &-title {
-      font-size: var(--text-xs);
-      margin-bottom: var(--space-0-5);
+    &::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(
+        90deg,
+        var(--color-primary),
+        var(--color-secondary),
+        var(--color-primary)
+      );
+      background-size: 200% 100%;
+      animation: shimmer 3s linear infinite;
     }
-    
-    &-message {
-      font-size: var(--text-2xs);
-      line-height: 1.35;
+  }
+  
+  // Duration indicator using generic animation
+  &-duration {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 2px;
+    background: var(--color-primary);
+    opacity: 0.3;
+    animation: widthShrink linear forwards;
+  }
+}
+
+// Position-specific animations using generic keyframes
+.toast-container {
+  &-top-left .toast {
+    &-entering {
+      opacity: 0;
+      transform: translateX(-100%) scale(0.8);
+      animation: slideInLeftScale var(--duration-normal) var(--ease-spring) forwards;
     }
-    
-    &-action {
-      margin-top: var(--space-1);
-      padding: var(--space-0-5) var(--space-2);
-      height: 26px;
-      font-size: var(--text-3xs);
+    &-exiting {
+      animation: slideInLeftScale var(--duration-fast) var(--ease-in) reverse forwards;
     }
-    
-    &-close {
-      width: 26px;
-      height: 26px;
+  }
+  
+  &-bottom-left .toast {
+    &-entering {
+      opacity: 0;
+      transform: translateX(-100%) scale(0.8);
+      animation: slideInLeftScale var(--duration-normal) var(--ease-spring) forwards;
     }
-    
-    &-icon {
-      margin-top: var(--space-0-5);
+    &-exiting {
+      animation: slideInLeftScale var(--duration-fast) var(--ease-in) reverse forwards;
+    }
+  }
+  
+  &-top-right .toast {
+    &-entering {
+      opacity: 0;
+      transform: translateX(100%) scale(0.8);
+      animation: slideInRightScale var(--duration-normal) var(--ease-spring) forwards;
+    }
+    &-exiting {
+      animation: slideInRightScale var(--duration-fast) var(--ease-in) reverse forwards;
+    }
+  }
+  
+  &-bottom-right .toast {
+    &-entering {
+      opacity: 0;
+      transform: translateX(100%) scale(0.8);
+      animation: slideInRightScale var(--duration-normal) var(--ease-spring) forwards;
+    }
+    &-exiting {
+      animation: slideInRightScale var(--duration-fast) var(--ease-in) reverse forwards;
+    }
+  }
+  
+  &-top-center .toast {
+    &-entering {
+      opacity: 0;
+      transform: translateY(-100%) scale(0.8);
+      animation: slideInTopScale var(--duration-normal) var(--ease-spring) forwards;
+    }
+    &-exiting {
+      animation: slideInTopScale var(--duration-fast) var(--ease-in) reverse forwards;
+    }
+  }
+  
+  &-bottom-center .toast {
+    &-entering {
+      opacity: 0;
+      transform: translateY(100%) scale(0.8);
+      animation: slideInBottomScale var(--duration-normal) var(--ease-spring) forwards;
+    }
+    &-exiting {
+      animation: slideInBottomScale var(--duration-fast) var(--ease-in) reverse forwards;
     }
   }
 }
 
-@include responsive-max(md) {
+// Responsive adjustments
+@include responsive-max(sm) {
   .toast-container {
     max-width: calc(100vw - var(--space-4));
     min-width: 280px;
-    gap: var(--space-1);
+    gap: var(--space-1-5);
+    padding: var(--space-2);
     
     &-top-left,
-    &-top-right {
-      top: var(--space-2);
-      left: var(--space-2);
-      right: var(--space-2);
-    }
-    
-    &-bottom-left,
-    &-bottom-right {
-      bottom: var(--space-2);
-      left: var(--space-2);
-      right: var(--space-2);
-    }
-    
+    &-top-right,
     &-top-center,
+    &-bottom-left,
+    &-bottom-right,
     &-bottom-center {
-      top: var(--space-2);
-      bottom: var(--space-2);
       left: var(--space-2);
       right: var(--space-2);
       transform: none;
     }
   }
-}
-
-@include responsive-max(xs) {
-  .toast-container {
-    gap: var(--space-0-5);
+  
+  .toast {
+    padding: var(--space-2-5) var(--space-3);
+    min-height: 48px;
+    gap: var(--space-2);
     
-    &-top-left,
-    &-top-right,
-    &-top-center {
-      top: var(--space-1);
-      left: var(--space-1);
-      right: var(--space-1);
+    &-title {
+      font-size: var(--text-xs);
     }
     
-    &-bottom-left,
-    &-bottom-right,
-    &-bottom-center {
-      bottom: var(--space-1);
-      left: var(--space-1);
-      right: var(--space-1);
+    &-message {
+      font-size: var(--text-2xs);
+      line-height: 1.4;
+    }
+    
+    &-action {
+      padding: var(--space-1) var(--space-2);
+      height: 28px;
+      font-size: var(--text-3xs);
+    }
+    
+    &-close {
+      width: 28px;
+      height: 28px;
+    }
+    
+    &-icon {
+      .material-symbols-rounded {
+        font-size: var(--icon-sm);
+      }
+    }
+  }
+}
+
+// Dark theme adjustments
+[data-theme="dark"] {
+  .toast {
+    background: rgba(17, 25, 40, 0.85);
+    border-color: rgba(255, 255, 255, 0.1);
+    
+    &::before {
+      opacity: 0.3;
+    }
+    
+    &-success,
+    &-error,
+    &-warning,
+    &-info {
+      background: linear-gradient(
+        135deg,
+        rgba(17, 25, 40, 0.9),
+        rgba(17, 25, 40, 0.85)
+      );
+    }
+  }
+}
+
+// Accessibility
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    &-entering,
+    &-exiting,
+    &-visible {
+      animation: none;
+      transition: opacity var(--duration-fast);
+    }
+    
+    &-entering {
+      opacity: 0;
+    }
+    
+    &-visible {
+      opacity: 1;
+    }
+    
+    &-exiting {
+      opacity: 0;
     }
   }
 }

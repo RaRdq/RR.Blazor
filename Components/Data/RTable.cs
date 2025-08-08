@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
 using RR.Blazor.Models;
+using RR.Blazor.Components.Base;
+using System.Reflection;
 
 namespace RR.Blazor.Components.Data;
 
@@ -8,17 +10,24 @@ namespace RR.Blazor.Components.Data;
 /// Smart table component with automatic type detection and intelligent defaults.
 /// Supports any domain (CRM, ERP, eCommerce, etc.) with context-aware behavior.
 /// </summary>
-public abstract class RTableBase : ComponentBase
+public abstract class RTableBase : RInteractiveComponentBase
 {
     #region Core Configuration
-    [Parameter] public string Class { get; set; } = "";
     [Parameter] public string AdditionalClass { get; set; } = "";
-    [Parameter] public bool Loading { get; set; }
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public string Subtitle { get; set; } = "";
     [Parameter] public string? StartIcon { get; set; }
     [Parameter] public string? EndIcon { get; set; }
     [Parameter] public RenderFragment HeaderContent { get; set; }
+    #endregion
+
+    #region Data & State Parameters
+    [Parameter] public object Items { get; set; }
+    [Parameter] public bool EnableRowHighlight { get; set; } = true;
+    [Parameter] public bool FilterEnabled { get; set; }
+    [Parameter] public bool SearchEnabled { get; set; } = true;
+    [Parameter] public bool Hoverable { get; set; } = true;
+    [Parameter] public Func<object, string> GetRowClass { get; set; }
     #endregion
 
     #region Smart Features
@@ -105,8 +114,9 @@ public abstract class RTableBase : ComponentBase
 
     #region Content Areas
     [Parameter] public RenderFragment ColumnsContent { get; set; }
-    [Parameter] public string EmptyMessage { get; set; }
-    [Parameter] public string LoadingMessage { get; set; }
+    [Parameter] public string EmptyText { get; set; } = "No data available";
+    [Parameter] public string EmptyDescription { get; set; }
+    [Parameter] public string EmptyIcon { get; set; } = "inbox";
     [Parameter] public RenderFragment FooterContent { get; set; }
     #endregion
 
@@ -118,171 +128,40 @@ public abstract class RTableBase : ComponentBase
 
     protected void ForwardBaseParameters(RenderTreeBuilder builder)
     {
-        builder.AddAttribute(1, nameof(AdditionalClass), AdditionalClass);
-        builder.AddAttribute(2, nameof(Loading), Loading);
-        builder.AddAttribute(3, nameof(Title), Title);
-        builder.AddAttribute(4, nameof(Subtitle), Subtitle);
-        builder.AddAttribute(5, nameof(StartIcon), StartIcon);
-        builder.AddAttribute(6, nameof(EndIcon), EndIcon);
-        builder.AddAttribute(7, nameof(HeaderContent), HeaderContent);
-        
-        builder.AddAttribute(8, nameof(BulkOperationsEnabled), BulkOperationsEnabled);
-        builder.AddAttribute(9, nameof(ExportEnabled), ExportEnabled);
-        builder.AddAttribute(10, nameof(BulkOperations), BulkOperations);
-        
-        builder.AddAttribute(11, nameof(ShowPagination), ShowPagination);
-        builder.AddAttribute(12, nameof(CurrentPage), CurrentPage);
-        builder.AddAttribute(13, nameof(PageSize), PageSize);
-        builder.AddAttribute(14, nameof(TotalItems), TotalItems);
-        builder.AddAttribute(15, nameof(OnPageChange), OnPageChange);
-        builder.AddAttribute(16, nameof(PageSizeOptions), PageSizeOptions);
-        
-        builder.AddAttribute(17, nameof(MultiSelection), MultiSelection);
-        builder.AddAttribute(18, nameof(SingleSelection), SingleSelection);
-        builder.AddAttribute(19, nameof(SelectedItemsChanged), SelectedItemsChanged);
-        builder.AddAttribute(20, nameof(SelectedItemChanged), SelectedItemChanged);
-        
-        builder.AddAttribute(21, nameof(RowClickable), RowClickable);
-        builder.AddAttribute(22, nameof(OnRowClick), OnRowClick);
-        builder.AddAttribute(23, nameof(RowClassFunc), RowClassFunc);
-        
-        builder.AddAttribute(28, nameof(SortColumn), SortColumn);
-        builder.AddAttribute(29, nameof(SortDescending), SortDescending);
-        builder.AddAttribute(30, nameof(OnSort), OnSort);
-        builder.AddAttribute(31, nameof(SortStates), SortStates);
-        builder.AddAttribute(32, nameof(SortStatesChanged), SortStatesChanged);
-        builder.AddAttribute(33, nameof(OnSortChanged), OnSortChanged);
-        builder.AddAttribute(34, nameof(MultiColumnSort), MultiColumnSort);
-        builder.AddAttribute(35, nameof(MaxSortLevels), MaxSortLevels);
-        builder.AddAttribute(36, nameof(ColumnFilters), ColumnFilters);
-        builder.AddAttribute(37, nameof(ColumnFiltersChanged), ColumnFiltersChanged);
-        builder.AddAttribute(38, nameof(OnColumnFilter), OnColumnFilter);
-        
-        builder.AddAttribute(39, nameof(Height), Height);
-        builder.AddAttribute(40, nameof(Virtualize), Virtualize);
-        builder.AddAttribute(41, nameof(ResizableColumns), ResizableColumns);
-        builder.AddAttribute(42, nameof(StickyColumns), StickyColumns);
-        
-        builder.AddAttribute(43, nameof(ColumnsContent), ColumnsContent);
-        builder.AddAttribute(44, nameof(EmptyMessage), EmptyMessage);
-        builder.AddAttribute(45, nameof(LoadingMessage), LoadingMessage);
-        builder.AddAttribute(46, nameof(FooterContent), FooterContent);
-        
-        builder.AddAttribute(47, nameof(ExportFormats), ExportFormats);
-        builder.AddAttribute(48, nameof(ExportFileName), ExportFileName);
-        builder.AddAttribute(49, nameof(ExportMetadata), ExportMetadata);
-        builder.AddAttribute(50, nameof(Density), Density);
-        builder.AddAttribute(51, nameof(Striped), Striped);
-        builder.AddAttribute(52, nameof(Hover), Hover);
-        builder.AddAttribute(53, nameof(Sortable), Sortable);
-        builder.AddAttribute(54, nameof(AllowUnsorted), AllowUnsorted);
-        
-        // Column management parameters
-        builder.AddAttribute(55, nameof(ShowColumnManager), ShowColumnManager);
-        builder.AddAttribute(56, nameof(ColumnPreferences), ColumnPreferences);
-        builder.AddAttribute(57, nameof(ColumnPreferencesChanged), ColumnPreferencesChanged);
-        builder.AddAttribute(58, nameof(OnColumnManagement), OnColumnManagement);
-        builder.AddAttribute(59, nameof(OnColumnResize), OnColumnResize);
-        builder.AddAttribute(60, nameof(EnableColumnReordering), EnableColumnReordering);
-        builder.AddAttribute(61, nameof(PersistColumnPreferences), PersistColumnPreferences);
-        builder.AddAttribute(62, nameof(TableId), TableId);
-        
-        // Professional styling parameters
-        builder.AddAttribute(63, nameof(TableVariant), TableVariant);
-        builder.AddAttribute(64, nameof(TableDensity), TableDensity);
-        builder.AddAttribute(65, nameof(CustomRowHeight), CustomRowHeight);
-        builder.AddAttribute(66, nameof(TableElevation), TableElevation);
-        builder.AddAttribute(67, nameof(EnableGlassmorphism), EnableGlassmorphism);
-        builder.AddAttribute(68, nameof(ShowBorders), ShowBorders);
-        builder.AddAttribute(69, nameof(EnableHoverEffects), EnableHoverEffects);
-        builder.AddAttribute(70, nameof(EnableAnimations), EnableAnimations);
-        builder.AddAttribute(71, nameof(TableTheme), TableTheme);
-        builder.AddAttribute(72, nameof(CustomCssVariables), CustomCssVariables);
+        int seq = 0;
+        // Exclude Blazor-specific parameters that contain @ symbols and component-specific ones
+        builder.ForwardParameters(ref seq, this, 
+            "Items", "SelectedItems", "SelectedItem", "Columns", "ChildContent",
+            "OnRowClick", "OnRowClickTyped", "SelectedItemsChanged", "SelectedItemChanged",
+            "SelectedItemsChangedTyped", "SelectedItemChangedTyped", "OnPageChange",
+            "Loading", "LoadingText", "GetRowClass", "EnableRowHighlight", "Hoverable",
+            "SearchEnabled", "FilterEnabled", "Elevation");
     }
 
     protected void ForwardBaseParametersExceptChildContent(RenderTreeBuilder builder)
     {
-        builder.AddAttribute(1, nameof(AdditionalClass), AdditionalClass);
-        builder.AddAttribute(2, nameof(Loading), Loading);
-        builder.AddAttribute(3, nameof(Title), Title);
-        builder.AddAttribute(4, nameof(Subtitle), Subtitle);
-        builder.AddAttribute(5, nameof(StartIcon), StartIcon);
-        builder.AddAttribute(6, nameof(EndIcon), EndIcon);
-        builder.AddAttribute(7, nameof(HeaderContent), HeaderContent);
-        
-        builder.AddAttribute(8, nameof(BulkOperationsEnabled), BulkOperationsEnabled);
-        builder.AddAttribute(9, nameof(ExportEnabled), ExportEnabled);
-        builder.AddAttribute(10, nameof(BulkOperations), BulkOperations);
-        
-        builder.AddAttribute(11, nameof(ShowPagination), ShowPagination);
-        builder.AddAttribute(12, nameof(CurrentPage), CurrentPage);
-        builder.AddAttribute(13, nameof(PageSize), PageSize);
-        builder.AddAttribute(14, nameof(TotalItems), TotalItems);
-        builder.AddAttribute(15, nameof(OnPageChange), OnPageChange);
-        builder.AddAttribute(16, nameof(PageSizeOptions), PageSizeOptions);
-        
-        builder.AddAttribute(17, nameof(MultiSelection), MultiSelection);
-        builder.AddAttribute(18, nameof(SingleSelection), SingleSelection);
-        builder.AddAttribute(19, nameof(SelectedItemsChanged), SelectedItemsChanged);
-        builder.AddAttribute(20, nameof(SelectedItemChanged), SelectedItemChanged);
-        
-        builder.AddAttribute(21, nameof(RowClickable), RowClickable);
-        builder.AddAttribute(22, nameof(OnRowClick), OnRowClick);
-        builder.AddAttribute(23, nameof(RowClassFunc), RowClassFunc);
-        
-        builder.AddAttribute(28, nameof(SortColumn), SortColumn);
-        builder.AddAttribute(29, nameof(SortDescending), SortDescending);
-        builder.AddAttribute(30, nameof(OnSort), OnSort);
-        builder.AddAttribute(31, nameof(SortStates), SortStates);
-        builder.AddAttribute(32, nameof(SortStatesChanged), SortStatesChanged);
-        builder.AddAttribute(33, nameof(OnSortChanged), OnSortChanged);
-        builder.AddAttribute(34, nameof(MultiColumnSort), MultiColumnSort);
-        builder.AddAttribute(35, nameof(MaxSortLevels), MaxSortLevels);
-        builder.AddAttribute(36, nameof(ColumnFilters), ColumnFilters);
-        builder.AddAttribute(37, nameof(ColumnFiltersChanged), ColumnFiltersChanged);
-        builder.AddAttribute(38, nameof(OnColumnFilter), OnColumnFilter);
-        
-        builder.AddAttribute(39, nameof(Height), Height);
-        builder.AddAttribute(40, nameof(Virtualize), Virtualize);
-        builder.AddAttribute(41, nameof(ResizableColumns), ResizableColumns);
-        builder.AddAttribute(42, nameof(StickyColumns), StickyColumns);
-        
-        builder.AddAttribute(43, nameof(ColumnsContent), ColumnsContent);
-        // NOTE: Intentionally NOT forwarding ChildContent - RTableGeneric doesn't support it
-        builder.AddAttribute(44, nameof(EmptyMessage), EmptyMessage);
-        builder.AddAttribute(45, nameof(LoadingMessage), LoadingMessage);
-        builder.AddAttribute(46, nameof(FooterContent), FooterContent);
-        
-        builder.AddAttribute(47, nameof(ExportFormats), ExportFormats);
-        builder.AddAttribute(48, nameof(ExportFileName), ExportFileName);
-        builder.AddAttribute(49, nameof(ExportMetadata), ExportMetadata);
-        builder.AddAttribute(50, nameof(Density), Density);
-        builder.AddAttribute(51, nameof(Striped), Striped);
-        builder.AddAttribute(52, nameof(Hover), Hover);
-        builder.AddAttribute(53, nameof(Sortable), Sortable);
-        builder.AddAttribute(54, nameof(AllowUnsorted), AllowUnsorted);
-        
-        // Column management parameters
-        builder.AddAttribute(55, nameof(ShowColumnManager), ShowColumnManager);
-        builder.AddAttribute(56, nameof(ColumnPreferences), ColumnPreferences);
-        builder.AddAttribute(57, nameof(ColumnPreferencesChanged), ColumnPreferencesChanged);
-        builder.AddAttribute(58, nameof(OnColumnManagement), OnColumnManagement);
-        builder.AddAttribute(59, nameof(OnColumnResize), OnColumnResize);
-        builder.AddAttribute(60, nameof(EnableColumnReordering), EnableColumnReordering);
-        builder.AddAttribute(61, nameof(PersistColumnPreferences), PersistColumnPreferences);
-        builder.AddAttribute(62, nameof(TableId), TableId);
-        
-        // Professional styling parameters
-        builder.AddAttribute(63, nameof(TableVariant), TableVariant);
-        builder.AddAttribute(64, nameof(TableDensity), TableDensity);
-        builder.AddAttribute(65, nameof(CustomRowHeight), CustomRowHeight);
-        builder.AddAttribute(66, nameof(TableElevation), TableElevation);
-        builder.AddAttribute(67, nameof(EnableGlassmorphism), EnableGlassmorphism);
-        builder.AddAttribute(68, nameof(ShowBorders), ShowBorders);
-        builder.AddAttribute(69, nameof(EnableHoverEffects), EnableHoverEffects);
-        builder.AddAttribute(70, nameof(EnableAnimations), EnableAnimations);
-        builder.AddAttribute(71, nameof(TableTheme), TableTheme);
-        builder.AddAttribute(72, nameof(CustomCssVariables), CustomCssVariables);
+        int seq = 0;
+        // Exclude ChildContent and Blazor-specific parameters that contain @ symbols
+        builder.ForwardParameters(ref seq, this, 
+            "Items", "SelectedItems", "SelectedItem", "Columns", "ChildContent",
+            "OnRowClick", "OnRowClickTyped", "SelectedItemsChanged", "SelectedItemChanged",
+            "SelectedItemsChangedTyped", "SelectedItemChangedTyped", "OnPageChange",
+            "Loading", "LoadingText", "GetRowClass", "EnableRowHighlight", "Hoverable",
+            "SearchEnabled", "FilterEnabled", "Elevation");
+    }
+
+    protected static object CreateTypedRowClassDelegate(Func<object, string> objectRowClass, Type itemType)
+    {
+        // Create a delegate of type Func<TItem, string> that wraps the Func<object, string>
+        var delegateType = typeof(Func<,>).MakeGenericType(itemType, typeof(string));
+        var method = typeof(RTableBase).GetMethod(nameof(WrapRowClassDelegate), BindingFlags.NonPublic | BindingFlags.Static)
+                                       ?.MakeGenericMethod(itemType);
+        return method?.Invoke(null, new object[] { objectRowClass });
+    }
+
+    private static Func<TItem, string> WrapRowClassDelegate<TItem>(Func<object, string> objectRowClass)
+    {
+        return item => objectRowClass(item);
     }
 }
 
@@ -294,11 +173,9 @@ public abstract class RTableBase : ComponentBase
 /// </summary>
 public class RTable : RTableBase
 {
-    [Parameter] public object Items { get; set; }
     [Parameter] public object SelectedItems { get; set; }
     [Parameter] public object SelectedItem { get; set; }
     [Parameter] public object Columns { get; set; }
-    [Parameter] public RenderFragment ChildContent { get; set; }
 
     protected override void BuildRenderTree(RenderTreeBuilder builder)
     {
@@ -309,7 +186,7 @@ public class RTable : RTableBase
             builder.AddAttribute(1, "class", "table-empty-state pa-6 text-center");
             builder.OpenElement(2, "div");
             builder.AddAttribute(3, "class", "text-secondary");
-            builder.AddContent(4, EmptyMessage ?? "No data available");
+            builder.AddContent(4, EmptyText);
             builder.CloseElement();
             builder.CloseElement();
             return;
@@ -341,8 +218,8 @@ public class RTable : RTableBase
         // Create table context for child columns
         var tableContext = new TableContext(itemType, $"smart-table-{GetHashCode()}", true);
 
-        // Use ChildContent as ColumnsContent if provided (for compatibility)
-        var effectiveColumnsContent = ColumnsContent ?? ChildContent;
+        // Use ColumnsContent for table columns
+        var effectiveColumnsContent = ColumnsContent;
 
         // Provide context to child components
         builder.OpenComponent<CascadingValue<TableContext>>(0);
@@ -365,6 +242,22 @@ public class RTable : RTableBase
             childBuilder.AddAttribute(51, "SelectedItems", SelectedItems);
             childBuilder.AddAttribute(52, "SelectedItem", SelectedItem);
             childBuilder.AddAttribute(53, "Columns", Columns);
+            
+            // Forward new parameters
+            childBuilder.AddAttribute(54, "Loading", Loading);
+            childBuilder.AddAttribute(55, "LoadingText", LoadingText);
+            childBuilder.AddAttribute(56, "Hover", Hoverable);
+            childBuilder.AddAttribute(57, "ShowSearch", SearchEnabled);
+            
+            // Forward GetRowClass with type conversion if provided
+            if (GetRowClass != null)
+            {
+                // Create a typed delegate that converts object to TItem
+                var typedRowClassDelegate = CreateTypedRowClassDelegate(GetRowClass, itemType);
+                childBuilder.AddAttribute(58, "RowClass", typedRowClassDelegate);
+            }
+            
+            // Note: EnableRowHighlight, FilterEnabled, Elevation may need custom handling
             
             childBuilder.CloseComponent();
         }));
@@ -378,11 +271,9 @@ public class RTable : RTableBase
 /// </summary>
 public class RTableAuto : RTableBase
 {
-    [Parameter] public object Items { get; set; }
     [Parameter] public object SelectedItems { get; set; }
     [Parameter] public object SelectedItem { get; set; }
     [Parameter] public object Columns { get; set; }
-    [Parameter] public RenderFragment ChildContent { get; set; }
 
     protected override void BuildRenderTree(RenderTreeBuilder builder)
     {
@@ -393,7 +284,7 @@ public class RTableAuto : RTableBase
             builder.AddAttribute(1, "class", "table-empty-state pa-6 text-center");
             builder.OpenElement(2, "div");
             builder.AddAttribute(3, "class", "text-secondary");
-            builder.AddContent(4, EmptyMessage ?? "No data available");
+            builder.AddContent(4, EmptyText);
             builder.CloseElement();
             builder.CloseElement();
             return;
@@ -425,8 +316,8 @@ public class RTableAuto : RTableBase
         // Create table context for child columns
         var tableContext = new TableContext(itemType, $"smart-table-{GetHashCode()}", true);
 
-        // Use ChildContent as ColumnsContent if provided (for compatibility)
-        var effectiveColumnsContent = ColumnsContent ?? ChildContent;
+        // Use ColumnsContent for table columns
+        var effectiveColumnsContent = ColumnsContent;
 
         // Provide context to child components
         builder.OpenComponent<CascadingValue<TableContext>>(0);
@@ -449,6 +340,22 @@ public class RTableAuto : RTableBase
             childBuilder.AddAttribute(51, "SelectedItems", SelectedItems);
             childBuilder.AddAttribute(52, "SelectedItem", SelectedItem);
             childBuilder.AddAttribute(53, "Columns", Columns);
+            
+            // Forward new parameters
+            childBuilder.AddAttribute(54, "Loading", Loading);
+            childBuilder.AddAttribute(55, "LoadingText", LoadingText);
+            childBuilder.AddAttribute(56, "Hover", Hoverable);
+            childBuilder.AddAttribute(57, "ShowSearch", SearchEnabled);
+            
+            // Forward GetRowClass with type conversion if provided
+            if (GetRowClass != null)
+            {
+                // Create a typed delegate that converts object to TItem
+                var typedRowClassDelegate = CreateTypedRowClassDelegate(GetRowClass, itemType);
+                childBuilder.AddAttribute(58, "RowClass", typedRowClassDelegate);
+            }
+            
+            // Note: EnableRowHighlight, FilterEnabled, Elevation may need custom handling
             
             childBuilder.CloseComponent();
         }));

@@ -1,84 +1,195 @@
-@** 
+﻿@** 
 <summary>
-Professional chip component for tags, filters, and selections with interactive states.
-Supports removable chips, selection indicators, icons, and multiple variants.
+Chip component for tags, badges, and status indicators with style variants.
 </summary>
 <category>Core</category>
 <complexity>Simple</complexity>
-<ai-prompt>Create a chip/tag for filters, selections, or labels</ai-prompt>
-<ai-common-use>filter chips, tag lists, multi-select indicators, status tags</ai-common-use>
-<ai-avoid>Don't use for buttons - use RButton. Avoid for large content blocks.</ai-avoid>
-<ai-pattern name="filter-chip">Clickable="true" OnClick="ToggleFilter" for interactive filters</ai-pattern>
-<ai-pattern name="removable-chip">Closeable="true" OnClose="RemoveChip" for deletable tags</ai-pattern>
-<ai-pattern name="selected-chip">Selected="true" for active state indication</ai-pattern>
+<ai-prompt>Create a chip for badges, status, tags, or filters</ai-prompt>
+<ai-common-use>status indicators, counts, labels, notifications, tags, filters, removable selections</ai-common-use>
+<ai-avoid>Don't use for navigation buttons - use RButton instead. Avoid for large text content.</ai-avoid>
+<ai-pattern name="status-chip">Text="Active" Style="ChipStyle.Status" Variant="ChipVariant.Success"</ai-pattern>
+<ai-pattern name="count-badge">Text="5" Style="ChipStyle.Badge" Variant="ChipVariant.Primary"</ai-pattern>
+<ai-pattern name="removable-tag">Text="Filter" Style="ChipStyle.Chip" Closeable="true"</ai-pattern>
+<ai-pattern name="clickable-chip">Text="Category" Clickable="true"</ai-pattern>
 **@
+@namespace RR.Blazor.Components
 @using RR.Blazor.Enums
+@using RR.Blazor.Attributes
+@using RR.Blazor.Components.Base
+@inherits RForwardingComponentBase
 
-<span class="@GetChipClasses() d-inline-flex align-center rounded-full px-3 py-1 text-sm font-medium transition-all" @onclick="HandleClick">
-    @if (!string.IsNullOrEmpty(Icon) && IconPosition == IconPosition.Start)
+@attribute [Component("RChip", Category = "Core", Complexity = ComponentComplexity.Simple)]
+@attribute [AIOptimized(Prompt = "Create a chip for badges, status, tags, or filters", 
+                       CommonUse = "status indicators, counts, labels, notifications, tags, filters", 
+                       AvoidUsage = "Don't use for navigation - use RButton instead")]
+
+<span class="@GetChipClasses()" 
+      @onclick="HandleClick" 
+      @attributes="GetForwardedAttributes()">
+    
+    @if (!string.IsNullOrEmpty(Icon))
     {
-        <i class="material-symbols-rounded chip-icon chip-icon-start text-sm mr-1">@Icon</i>
+        <i class="material-symbols-rounded chip-icon">@Icon</i>
     }
     
-    <span class="chip-label">@Text</span>
-    
-    @if (!string.IsNullOrEmpty(Icon) && IconPosition == IconPosition.End && !Closeable)
+    @if (!string.IsNullOrEmpty(Text))
     {
-        <i class="material-symbols-rounded chip-icon chip-icon-end text-sm ml-1">@Icon</i>
+        <span class="chip-text">@Text</span>
+    }
+    
+    @if (ChildContent != null)
+    {
+        @ChildContent
     }
     
     @if (Closeable)
     {
-        <button class="chip-close absolute right-1 top-1-2 w-5 h-5 d-flex align-center justify-center rounded-full hover-bg-surface-elevated transition-colors" 
-                @onclick:stopPropagation="true" @onclick="HandleClose" aria-label="Remove @Text">
-            <i class="material-symbols-rounded text-xs">close</i>
+        <button class="chip-close" 
+                @onclick="HandleClose" 
+                @onclick:stopPropagation="true" 
+                aria-label="@($"Remove {Text}")">
+            <i class="material-symbols-rounded">close</i>
         </button>
+    }
+    
+    @if (ShouldShowPulse())
+    {
+        <span class="chip-pulse"></span>
     }
 </span>
 
 @code {
-    [Parameter] public string Text { get; set; } = "";
-    [Parameter] public string Icon { get; set; }
-    [Parameter] public IconPosition IconPosition { get; set; } = IconPosition.Start;
-    [Parameter] public ChipVariant Variant { get; set; } = ChipVariant.Default;
-    [Parameter] public ChipSize Size { get; set; } = ChipSize.Medium;
-    [Parameter] public bool Clickable { get; set; }
+    /// <summary>Chip style - determines the primary visual approach and behavior</summary>
+    /// <ai-hint>Badge for counts/notifications, Chip for tags/filters, Status for state indicators</ai-hint>
+    [Parameter]
+    [AIParameter(Hint = "Badge for counts, Chip for tags/filters, Status for state indicators", 
+                 SuggestedValues = new[] { "Badge", "Chip", "Status" })]
+    public ChipStyle Style { get; set; } = ChipStyle.Chip;
+    
+    /// <summary>Color/semantic variant - determines color scheme and meaning</summary>
+    /// <ai-hint>Primary for emphasis, Success for positive, Warning for attention, Error for problems</ai-hint>
+    [Parameter]
+    [AIParameter(Hint = "Primary for emphasis, Success for positive, Warning for attention, Error for problems", 
+                 SuggestedValues = new[] { "Primary", "Secondary", "Success", "Warning", "Error", "Info" })]
+    public ChipVariant Variant { get; set; } = ChipVariant.Secondary;
+    
+    /// <summary>Chip text content</summary>
+    /// <ai-hint>Keep short: "Active", "5", "New", "Pending", "JavaScript". Use 1-20 characters max</ai-hint>
+    [Parameter]
+    [AIParameter(Hint = "Keep short: Active, 5, New, Pending. Use 1-20 characters max")]
+    public string Text { get; set; } = "";
+    
+    /// <summary>Material icon name to display</summary>
+    /// <ai-hint>Common icons: check_circle, warning, error, info, star, notifications, close</ai-hint>
+    [Parameter]
+    [AIParameter(Hint = "Common icons: check_circle, warning, error, info, star, notifications", 
+                 SuggestedValues = new[] { "check_circle", "warning", "error", "info", "star", "notifications" })]
+    public string Icon { get; set; } = "";
+    
+    /// <summary>Size variant</summary>
+    /// <ai-hint>Small for compact, Medium for standard, Large for prominence</ai-hint>
+    [Parameter]
+    [AIParameter(Hint = "Small for compact, Medium for standard, Large for prominence", 
+                 SuggestedValues = new[] { "Small", "Medium", "Large" })]
+    public ChipSize Size { get; set; } = ChipSize.Medium;
+    
+    /// <summary>Density level for ultra-compact layouts</summary>
+    /// <ai-hint>Normal is default, Compact for ultra-dense, Dense for data-heavy</ai-hint>
+    [Parameter]
+    [AIParameter(Hint = "Normal is default, Compact for ultra-dense, Dense for data-heavy", 
+                 SuggestedValues = new[] { "Normal", "Dense", "Compact", "Spacious" })]
+    public ComponentDensity Density { get; set; } = ComponentDensity.Normal;
+    
+    /// <summary>Whether chip is clickable</summary>
+    /// <ai-hint>Set to true for interactive chips that perform actions when clicked</ai-hint>
+    [Parameter]
+    [AIParameter(Hint = "Set to true for interactive chips that perform actions")]
+    public bool Clickable { get; set; }
+    
+    /// <summary>Whether chip can be closed/removed</summary>
+    /// <ai-hint>Set to true for removable tags and filter chips</ai-hint>
+    [Parameter]
+    [AIParameter(Hint = "Set to true for removable tags and filter chips")]
+    public bool Closeable { get; set; }
+    
+    /// <summary>Whether chip is in selected state</summary>
     [Parameter] public bool Selected { get; set; }
-    [Parameter] public bool Closeable { get; set; }
+    
+    /// <summary>Whether chip is disabled</summary>
     [Parameter] public bool Disabled { get; set; }
+    
+    /// <summary>Whether to show pulse animation for processing states</summary>
+    /// <ai-hint>Automatically enabled for Processing variant when Style is Status</ai-hint>
+    [Parameter]
+    [AIParameter(Hint = "Shows pulse animation for processing/loading states")]
+    public bool ShowPulse { get; set; }
+    
+    /// <summary>Click event handler</summary>
     [Parameter] public EventCallback OnClick { get; set; }
+    
+    /// <summary>Close/remove event handler</summary>
     [Parameter] public EventCallback OnClose { get; set; }
-    [Parameter] public string Class { get; set; }
+    
+    /// <summary>Child content for custom chip content</summary>
+    [Parameter] public RenderFragment ChildContent { get; set; }
+    
+    /// <summary>Additional CSS classes</summary>
+    [Parameter] public string Class { get; set; } = "";
 
     private string GetChipClasses()
     {
-        var classes = new List<string> { "chip" };
+        var classes = new List<string>();
         
-        // Variant utility classes
-        classes.Add(GetVariantUtilityClasses());
+        // Base class with style-specific styling
+        var baseClass = Style switch
+        {
+            ChipStyle.Badge => "chip chip-badge",
+            ChipStyle.Status => "chip chip-status", 
+            ChipStyle.Chip => "chip",
+            _ => "chip"
+        };
+        classes.Add(baseClass);
         
-        // Size utility classes
-        classes.Add(GetSizeUtilityClasses());
+        // Semantic variant
+        classes.Add($"chip-{Variant.ToString().ToLower()}");
         
-        // State utility classes
+        // Processing pulse state
+        if (ShouldShowPulse())
+        {
+            classes.Add("chip-pulsing");
+        }
+        
+        // Size variant  
+        if (Size != ChipSize.Medium)
+        {
+            classes.Add($"chip-{Size.ToString().ToLower()}");
+        }
+        
+        // Density variant
+        if (Density != ComponentDensity.Normal)
+        {
+            classes.Add($"chip-{Density.ToString().ToLower()}");
+        }
+        
+        // State classes
         if (Clickable && !Disabled)
         {
-            classes.Add("chip-clickable cursor-pointer hover-scale-sm hover-glow-sm");
+            classes.Add("chip-clickable");
         }
         
         if (Selected)
         {
-            classes.Add("chip-selected bg-primary text-on-primary shadow-md");
+            classes.Add("chip-selected");
         }
         
         if (Closeable)
         {
-            classes.Add("chip-closeable pr-8");
+            classes.Add("chip-closeable");
         }
         
         if (Disabled)
         {
-            classes.Add("chip-disabled opacity-50 cursor-not-allowed");
+            classes.Add("chip-disabled");
         }
         
         if (!string.IsNullOrEmpty(Class))
@@ -88,30 +199,7 @@ Supports removable chips, selection indicators, icons, and multiple variants.
         
         return string.Join(" ", classes);
     }
-
-    private string GetVariantUtilityClasses()
-    {
-        return Variant switch
-        {
-            ChipVariant.Primary => "chip-primary bg-primary text-on-primary",
-            ChipVariant.Secondary => "chip-secondary bg-surface text-secondary border border-light",
-            ChipVariant.Success => "chip-success bg-success text-on-success",
-            ChipVariant.Warning => "chip-warning bg-warning text-on-warning",
-            ChipVariant.Danger => "chip-error bg-error text-on-error",
-            ChipVariant.Info => "chip-info bg-info text-on-info",
-            _ => "chip-default bg-surface text-muted border border-light"
-        };
-    }
-
-    private string GetSizeUtilityClasses()
-    {
-        return Size switch
-        {
-            ChipSize.Small => "chip-small px-2 py-0-5 text-xs min-h-6",
-            ChipSize.Large => "chip-large px-4 py-2 text-base min-h-10",
-            _ => "px-3 py-1 text-sm min-h-8" // Medium is default
-        };
-    }
+    
 
     private async Task HandleClick()
     {
@@ -128,5 +216,26 @@ Supports removable chips, selection indicators, icons, and multiple variants.
             await OnClose.InvokeAsync();
         }
     }
-}
 
+    private Dictionary<string, object> GetForwardedAttributes()
+    {
+        var excludeProperties = new HashSet<string> 
+        { 
+            nameof(Style), nameof(Variant), nameof(Text), nameof(Icon), nameof(Size), 
+            nameof(Density), nameof(Clickable), nameof(Closeable), nameof(Selected), 
+            nameof(Disabled), nameof(ShowPulse), nameof(OnClick), nameof(OnClose), nameof(ChildContent), nameof(Class) 
+        };
+
+        return GetType().GetProperties()
+            .Where(p => p.GetCustomAttributes(typeof(ParameterAttribute), true).Any() 
+                       && !excludeProperties.Contains(p.Name))
+            .Where(p => p.GetValue(this) != null || p.PropertyType.IsValueType)
+            .ToDictionary(p => p.Name, p => p.GetValue(this));
+    }
+
+    private bool ShouldShowPulse()
+    {
+        // Auto-enable pulse for Processing status chips, or when explicitly requested
+        return (Style == ChipStyle.Status && Variant == ChipVariant.Processing) || ShowPulse;
+    }
+}

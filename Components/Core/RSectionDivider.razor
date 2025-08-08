@@ -1,290 +1,111 @@
 @** 
 <summary>
-Professional section divider component for organizing content areas with titles, icons, and visual separation.
-Supports multiple sizes, alignments, and semantic variants with enterprise-grade styling.
+Section divider with icons and titles for content organization.
 </summary>
 <category>Core</category>
 <complexity>Simple</complexity>
-<ai-prompt>Create a professional section divider for content organization</ai-prompt>
-<ai-common-use>page sections, form organization, content separation, feature grouping</ai-common-use>
-<ai-avoid>Don't overuse - only for logical section breaks. Avoid for simple line separation.</ai-avoid>
-<ai-pattern name="titled-section">Text="User Settings" Icon="settings" for labeled content sections</ai-pattern>
-<ai-pattern name="compact-divider">Size="SectionDividerSize.Compact" for tight layouts</ai-pattern>
-<ai-pattern name="prominent-section">Size="SectionDividerSize.Large" Variant="SectionDividerVariant.Primary" for important sections</ai-pattern>
-<ai-pattern name="centered-section">Alignment="SectionDividerAlignment.Center" for balanced layouts</ai-pattern>
+<ai-prompt>Create section divider with title and icon</ai-prompt>
+<ai-common-use>page sections, form organization, content separation</ai-common-use>
+<ai-avoid>Don't overuse - only for logical section breaks</ai-avoid>
 **@
 @using RR.Blazor.Enums
 @using RR.Blazor.Attributes
+@using RR.Blazor.Components.Base
+@inherits RComponentBase
 
 @attribute [Component("RSectionDivider", Category = "Core", Complexity = ComponentComplexity.Simple)]
-@attribute [AIOptimized(Prompt = "Create a professional section divider for content organization", 
+@attribute [AIOptimized(Prompt = "Create section divider with title and icon", 
                        CommonUse = "page sections, form organization, content separation", 
                        AvoidUsage = "Don't overuse - only for logical section breaks")]
 
-<div class="@GetDividerClasses()">
-    @if (!string.IsNullOrEmpty(Icon))
-    {
-        <div class="@GetIconWrapperClasses()">
-            <i class="material-symbols-rounded @GetIconClasses()">@Icon</i>
-        </div>
-    }
-    
-    <div class="@GetContentClasses()">
+<RDivider Style="@LineStyle"
+          TextAlign="@GetTextAlign()"
+          SemanticVariant="@GetSemanticVariant()"
+          Class="@GetDividerClasses()">
+    <ChildContent>
+        @if (!string.IsNullOrEmpty(Icon))
+        {
+            <span class="material-symbols-rounded text-inherit mr-2">@Icon</span>
+        }
         @if (!string.IsNullOrEmpty(Text))
         {
-            <h6 class="@GetTitleClasses()">@Text</h6>
+            <span class="font-semibold">@Text</span>
         }
-        
         @if (!string.IsNullOrEmpty(Subtitle))
         {
-            <p class="@GetSubtitleClasses() leading-loose">@Subtitle</p>
+            <span class="text-muted ml-2">@Subtitle</span>
         }
-        
         @if (ChildContent != null)
         {
             @ChildContent
         }
-    </div>
-    
-    @if (ShowLine)
-    {
-        <div class="@GetLineClasses()"></div>
-    }
-</div>
+    </ChildContent>
+</RDivider>
 
 @code {
-    /// <summary>Section text - main heading for the divided content area</summary>
-    /// <ai-hint>Use descriptive section names like "Personal Information", "Security Settings", "Billing Details"</ai-hint>
-    [Parameter]
-    [AIParameter(Hint = "Use descriptive section names like Personal Information, Security Settings", IsRequired = false)]
+    [Parameter, AIParameter("Section title", "Descriptive section names like Personal Information")]
     public string Text { get; set; }
-    /// <summary>Section subtitle - additional context or description for the section</summary>
-    /// <ai-hint>Use for helpful descriptions like "Update your profile information" or instructions</ai-hint>
-    [Parameter]
-    [AIParameter(Hint = "Use for helpful descriptions like Update your profile information", IsRequired = false)]
+    
+    [Parameter, AIParameter("Section description", "Additional context for the section")]
     public string Subtitle { get; set; }
-    /// <summary>Material icon name displayed alongside the section title</summary>
-    /// <ai-hint>Common icons: settings, person, security, payment, work, home, info</ai-hint>
-    [Parameter]
-    [AIParameter(Hint = "Common icons: settings, person, security, payment, work, home", 
-                 SuggestedValues = new[] { "settings", "person", "security", "payment", "work", "home", "info" })]
+    
+    [Parameter, AIParameter("Material icon", "Common icons: settings, person, security, payment")]
     public string Icon { get; set; }
-    /// <summary>Whether to show the dividing line extending from the content</summary>
-    /// <ai-hint>True for visual separation, false for text-only section headers</ai-hint>
-    [Parameter]
-    [AIParameter(Hint = "True for visual separation, false for text-only headers")]
-    public bool ShowLine { get; set; } = true;
-    /// <summary>Section divider variant - determines color scheme and semantic meaning</summary>
-    /// <ai-hint>Primary for important sections, Success for completed areas, Warning for attention needed</ai-hint>
-    [Parameter]
-    [AIParameter(Hint = "Primary for important sections, Success for completed, Warning for attention", 
-                 SuggestedValues = new[] { "Default", "Primary", "Secondary", "Success", "Warning", "Error", "Info" }, 
-                 IsRequired = false)]
-    public SectionDividerVariant Variant { get; set; } = SectionDividerVariant.Default;
-    /// <summary>Section divider size - affects spacing, text size, and icon dimensions</summary>
-    /// <ai-hint>Default for most sections, Compact for tight layouts, Large for prominent sections</ai-hint>
-    [Parameter]
-    [AIParameter(Hint = "Default for most sections, Compact for tight layouts, Large for prominence", 
-                 SuggestedValues = new[] { "Compact", "Default", "Large" }, 
-                 IsRequired = false)]
-    public SectionDividerSize Size { get; set; } = SectionDividerSize.Default;
-    /// <summary>Section divider alignment - controls content positioning and line placement</summary>
-    /// <ai-hint>Left for standard sections, Center for balanced layouts, Right for special cases</ai-hint>
-    [Parameter]
-    [AIParameter(Hint = "Left for standard sections, Center for balanced layouts, Right for special cases", 
-                 SuggestedValues = new[] { "Left", "Center", "Right" }, 
-                 IsRequired = false)]
-    public SectionDividerAlignment Alignment { get; set; } = SectionDividerAlignment.Left;
-    /// <summary>Additional CSS classes</summary>
-    [Parameter] public string Class { get; set; }
-    /// <summary>Child content for custom section content</summary>
-    [Parameter] public RenderFragment ChildContent { get; set; }
+    
+    [Parameter] public bool ShowLine { get; set; } = true;
+    [Parameter] public DividerStyle LineStyle { get; set; } = DividerStyle.Solid;
+    [Parameter] public SectionDividerVariant Variant { get; set; } = SectionDividerVariant.Default;
+    [Parameter] public SectionDividerSize Size { get; set; } = SectionDividerSize.Default;
+    [Parameter] public SectionDividerAlignment Alignment { get; set; } = SectionDividerAlignment.Left;
+    
+    
+    private string GetSemanticVariant()
+    {
+        return Variant switch
+        {
+            SectionDividerVariant.Primary => "Primary",
+            SectionDividerVariant.Secondary => "Secondary",
+            SectionDividerVariant.Success => "Success",
+            SectionDividerVariant.Warning => "Warning",
+            SectionDividerVariant.Error => "Error",
+            SectionDividerVariant.Info => "Info",
+            _ => "Default"
+        };
+    }
+    
+    private DividerTextAlign GetTextAlign()
+    {
+        return Alignment switch
+        {
+            SectionDividerAlignment.Center => DividerTextAlign.Center,
+            SectionDividerAlignment.Right => DividerTextAlign.Right,
+            _ => DividerTextAlign.Left
+        };
+    }
     
     private string GetDividerClasses()
     {
-        var classes = new List<string> { "flex", "items-center", "w-full", "relative" };
+        var classes = new List<string>();
         
-
+        if (!ShowLine)
+        {
+            classes.Add("divider-no-line");
+        }
+        
+        // Size classes
         switch (Size)
         {
             case SectionDividerSize.Compact:
-                classes.Add("gap-1");
-                classes.Add("mt-2 mb-2");
+                classes.Add("divider-compact");
                 break;
             case SectionDividerSize.Large:
-                classes.Add("gap-3");
-                classes.Add("mt-4 mb-4");
+                classes.Add("divider-spacious");
                 break;
-            default:
-                classes.Add("gap-2");
-                classes.Add("mt-3 mb-3");
-                break;
-        }
-        
-
-        if (Alignment == SectionDividerAlignment.Right)
-        {
-            classes.Add("flex-row-reverse");
         }
         
         if (!string.IsNullOrEmpty(Class))
         {
             classes.Add(Class);
-        }
-        
-        return string.Join(" ", classes);
-    }
-    
-    private string GetIconWrapperClasses()
-    {
-        var classes = new List<string> { "flex", "items-center", "justify-center", "rounded-full", "shrink-0" };
-        
-
-        switch (Size)
-        {
-            case SectionDividerSize.Compact:
-                classes.Add("w-6");
-                classes.Add("h-6");
-                break;
-            case SectionDividerSize.Large:
-                classes.Add("w-10");
-                classes.Add("h-10");
-                break;
-            default:
-                classes.Add("w-8");
-                classes.Add("h-8");
-                break;
-        }
-        
-
-        switch (Variant)
-        {
-            case SectionDividerVariant.Primary:
-                classes.Add("bg-surface-elevated");
-                classes.Add("text-primary");
-                break;
-            case SectionDividerVariant.Secondary:
-                classes.Add("bg-surface-elevated");
-                classes.Add("text-secondary");
-                break;
-            case SectionDividerVariant.Success:
-                classes.Add("bg-surface-elevated");
-                classes.Add("text-success");
-                break;
-            case SectionDividerVariant.Warning:
-                classes.Add("bg-surface-elevated");
-                classes.Add("text-warning");
-                break;
-            case SectionDividerVariant.Error:
-                classes.Add("bg-surface-elevated");
-                classes.Add("text-error");
-                break;
-            case SectionDividerVariant.Info:
-                classes.Add("bg-surface-elevated");
-                classes.Add("text-info");
-                break;
-            default:
-                classes.Add("bg-surface-elevated");
-                classes.Add("text-secondary");
-                break;
-        }
-        
-        return string.Join(" ", classes);
-    }
-    
-    private string GetIconClasses()
-    {
-        var classes = new List<string>();
-        
-        switch (Size)
-        {
-            case SectionDividerSize.Compact:
-                classes.Add("text-sm");
-                break;
-            case SectionDividerSize.Large:
-                classes.Add("text-lg");
-                break;
-            default:
-                classes.Add("text-base");
-                break;
-        }
-        
-        return string.Join(" ", classes);
-    }
-    
-    private string GetContentClasses()
-    {
-        var classes = new List<string> { "grow", "min-w-0" };
-        
-        if (Alignment == SectionDividerAlignment.Center)
-        {
-            classes.Add("text-center");
-            classes.Add("flex");
-            classes.Add("flex-col");
-            classes.Add("items-center");
-        }
-        
-        return string.Join(" ", classes);
-    }
-    
-    private string GetTitleClasses()
-    {
-        var classes = new List<string> { "ma-0", "text-primary", "font-semibold", "leading-tight" };
-        
-        switch (Size)
-        {
-            case SectionDividerSize.Compact:
-                classes.Add("text-subtitle-2");
-                break;
-            case SectionDividerSize.Large:
-                classes.Add("text-h6");
-                break;
-            default:
-                classes.Add("text-subtitle-1");
-                break;
-        }
-        
-        return string.Join(" ", classes);
-    }
-    
-    private string GetSubtitleClasses()
-    {
-        var classes = new List<string> { "ma-0", "text-secondary" };
-        
-
-        if (Size != SectionDividerSize.Compact)
-        {
-            classes.Add("mt-1");
-        }
-        
-        switch (Size)
-        {
-            case SectionDividerSize.Compact:
-                classes.Add("text-caption");
-                break;
-            case SectionDividerSize.Large:
-                classes.Add("text-body-2");
-                break;
-            default:
-                classes.Add("text-caption");
-                break;
-        }
-        
-        return string.Join(" ", classes);
-    }
-    
-    private string GetLineClasses()
-    {
-        var classes = new List<string> { "grow", "border-b", "border-light", "relative", "overflow-hidden" };
-        
-
-        if (Alignment == SectionDividerAlignment.Right)
-        {
-            classes.Add("mr-2");
-        }
-        else
-        {
-            classes.Add("ml-2");
         }
         
         return string.Join(" ", classes);

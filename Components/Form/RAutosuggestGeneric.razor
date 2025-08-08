@@ -120,6 +120,7 @@ Extensible foundation for text search, datepicker autosuggest, and custom implem
     private CancellationTokenSource cancellationTokenSource;
     private string portalId;
     private string currentDirection = "down";
+    private bool disposed = false;
 
     [Parameter] public TItem Value { get; set; }
     [Parameter] public EventCallback<TItem> ValueChanged { get; set; }
@@ -207,13 +208,17 @@ Extensible foundation for text search, datepicker autosuggest, and custom implem
         cancellationTokenSource = new CancellationTokenSource();
         debounceTimer = new Timer(async _ =>
         {
+            if (disposed) return;
+            
             await InvokeAsync(async () =>
             {
+                if (disposed || SearchFunc == null) return;
+                
+                isLoading = true;
+                StateHasChanged();
+
                 if (SearchFunc != null)
                 {
-                    isLoading = true;
-                    StateHasChanged();
-
                     try
                     {
                         var results = await SearchFunc(SearchQuery, cancellationTokenSource.Token);
@@ -227,8 +232,11 @@ Extensible foundation for text search, datepicker autosuggest, and custom implem
                     catch (OperationCanceledException) { }
                     finally
                     {
-                        isLoading = false;
-                        StateHasChanged();
+                        if (!disposed)
+                        {
+                            isLoading = false;
+                            StateHasChanged();
+                        }
                     }
                 }
                 else
@@ -450,14 +458,18 @@ Extensible foundation for text search, datepicker autosuggest, and custom implem
 
     public async ValueTask DisposeAsync()
     {
+        if (disposed) return;
+        disposed = true;
+        
+        // Clean up timers and cancellation tokens first
+        debounceTimer?.Dispose();
+        cancellationTokenSource?.Cancel();
+        cancellationTokenSource?.Dispose();
+        
         // Clean up portal
         await DestroyPortal();
         
-        // Clean up timers and cancellation tokens
-        debounceTimer?.Dispose();
-        cancellationTokenSource?.Cancel();
         debounceTimer = null;
         cancellationTokenSource = null;
-        
     }
 }

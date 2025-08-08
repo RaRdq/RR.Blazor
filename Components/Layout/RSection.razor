@@ -16,6 +16,8 @@ Ideal for organizing page content with consistent styling and optional interacti
 **@
 @using RR.Blazor.Enums
 @using RR.Blazor.Attributes
+@using RR.Blazor.Components.Base
+@inherits RTextComponentBase
 
 @attribute [Component("RSection", Category = "Layout", Complexity = ComponentComplexity.Simple)]
 @attribute [AIOptimized(Prompt = "Create content section with header and body", 
@@ -89,17 +91,6 @@ Ideal for organizing page content with consistent styling and optional interacti
     /// <summary>Section identifier</summary>
     [Parameter] public string SectionId { get; set; } = Guid.NewGuid().ToString("N")[..8];
     
-    /// <summary>Section text (standardized parameter)</summary>
-    [Parameter, AIParameter("Section header text", "Display name for the content section")] 
-    public string Text { get; set; }
-    
-    /// <summary>Section subtitle</summary>
-    [Parameter, AIParameter("Optional subtitle text", "Additional description below title")] 
-    public string Subtitle { get; set; }
-    
-    /// <summary>Icon for header</summary>
-    [Parameter, AIParameter("Material icon for section", "settings, dashboard, people, etc.")] 
-    public string Icon { get; set; }
     
     /// <summary>Whether section is collapsible</summary>
     [Parameter, AIParameter("Enable expand/collapse functionality", "true for interactive sections")] 
@@ -122,11 +113,6 @@ Ideal for organizing page content with consistent styling and optional interacti
     [Parameter, AIParameter("Remove inner content padding", "true for full-width content like tables")] 
     public bool NoPadding { get; set; }
     
-    /// <summary>Additional CSS classes</summary>
-    [Parameter] public string Class { get; set; }
-    
-    /// <summary>Main content</summary>
-    [Parameter] public RenderFragment ChildContent { get; set; }
     
     /// <summary>Title content area</summary>
     [Parameter] public RenderFragment TitleContent { get; set; }
@@ -134,15 +120,10 @@ Ideal for organizing page content with consistent styling and optional interacti
     /// <summary>Footer content area</summary>
     [Parameter] public RenderFragment FooterContent { get; set; }
     
-    /// <summary>Section click event handler</summary>
-    [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
     
     /// <summary>Collapse/expand event handler</summary>
     [Parameter] public EventCallback<bool> OnToggleCollapse { get; set; }
     
-    /// <summary>ARIA label for accessibility</summary>
-    [Parameter, AIParameter("Accessibility label for screen readers", "Brief description of section purpose")] 
-    public string AriaLabel { get; set; }
     
     /// <summary>ARIA labelledby reference</summary>
     [Parameter] public string AriaLabelledBy { get; set; }
@@ -154,17 +135,11 @@ Ideal for organizing page content with consistent styling and optional interacti
     
     private string GetSectionClasses()
     {
-        var classes = new List<string> { "flex", "flex-col" };
+        var classes = new List<string>(GetBaseCssClasses()) { "flex", "flex-col" };
         
         if (Collapsible)
         {
             classes.Add("section-collapsible");
-        }
-        
-        
-        if (!string.IsNullOrEmpty(Class))
-        {
-            classes.Add(Class);
         }
         
         return string.Join(" ", classes);
@@ -242,9 +217,9 @@ Ideal for organizing page content with consistent styling and optional interacti
         return "text-lg";
     }
     
-    private async Task HandleClick(MouseEventArgs e)
+    protected override async Task HandleClick(MouseEventArgs e)
     {
-        await OnClick.InvokeAsync(e);
+        await base.HandleClick(e);
     }
     
     private async Task HandleHeaderClick(MouseEventArgs e)
@@ -257,5 +232,24 @@ Ideal for organizing page content with consistent styling and optional interacti
         }
     }
     
+    #region Abstract Method Implementations
+    
+    /// <summary>
+    /// Provides section-specific text size classes
+    /// </summary>
+    protected override string GetTextSizeClasses()
+    {
+        return "text-xl";
+    }
+    
+    /// <summary>
+    /// Provides section-specific icon size classes
+    /// </summary>
+    protected override string GetIconSizeClasses()
+    {
+        return "text-lg";
+    }
+    
+    #endregion
 }
 

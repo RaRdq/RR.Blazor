@@ -210,3 +210,19 @@ export function isFocusTrapActive(trapId) {
 export function getActiveFocusTrapCount() {
     return globalFocusTrap.getActiveTrapCount();
 }
+
+// Window exports for RRBlazor integration
+window.RRFocusTrap = globalFocusTrap;
+
+// Also initialize RRBlazor.FocusTrap if it doesn't exist (for direct script loading)
+if (!window.RRBlazor) {
+    window.RRBlazor = {};
+}
+if (!window.RRBlazor.FocusTrap) {
+    window.RRBlazor.FocusTrap = {
+        create: (modalElement, trapId) => globalFocusTrap.createTrap(modalElement, trapId),
+        destroy: (trapId) => globalFocusTrap.destroyTrap(trapId),
+        isActive: (trapId) => globalFocusTrap.isActive(trapId),
+        getActiveCount: () => globalFocusTrap.getActiveTrapCount()
+    };
+}

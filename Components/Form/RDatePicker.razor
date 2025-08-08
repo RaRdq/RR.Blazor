@@ -1,16 +1,20 @@
-@**
+﻿@**
 <summary>Professional date picker with calendar popup</summary>
 <category>Form</category>
 <complexity>Medium</complexity>
 <ai-prompt>Create a clean date picker with calendar popup</ai-prompt>
 <ai-common-use>date selection, form inputs, scheduling</ai-common-use>
 <ai-pattern name="basic">@bind-value="selectedDate"</ai-pattern>
-<ai-pattern name="range">@bind-value="startDate" @bind-EndValue="endDate" Range="true"</ai-pattern>
+<ai-pattern name="range">@bind-value="startDate" @bind-EndValue="@endDate" Range="true"</ai-pattern>
 <ai-pattern name="datetime">@bind-value="dateTime" ShowTime="true"</ai-pattern>
 **@
 
+@using RR.Blazor.Components.Base
+@inherits RForwardingComponentBase
+
 @attribute [Component("RDatePicker", Category = "Form")]
 @using System.Globalization
+@using RR.Blazor.Components.Base
 @inject IJSRuntime JSRuntime
 @implements IAsyncDisposable
 
@@ -24,7 +28,8 @@
                disabled="@Disabled"
                required="@Required"
                @onfocus="HandleFocus"
-               @onblur="HandleBlur" />
+               @onblur="HandleBlur"
+               @attributes="GetSafeAttributes()" />
         
         @if (!string.IsNullOrEmpty(GetStartIcon()))
         {
@@ -186,6 +191,15 @@
     [Parameter] public string HelperText { get; set; }
     
     [Parameter] public EventCallback<DateTime?> OnDateSelected { get; set; }
+
+    
+    /// <summary>
+    /// Returns safely filtered HTML attributes using centralized RAttributeForwarder.
+    /// </summary>
+    private Dictionary<string, object> GetSafeAttributes()
+    {
+        return RAttributeForwarder.GetSafeAttributes(AdditionalAttributes);
+    }
 
     protected override void OnInitialized()
     {

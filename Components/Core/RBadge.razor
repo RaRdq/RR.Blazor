@@ -1,56 +1,61 @@
-@** 
+﻿@** 
 <summary>
-Professional badge component for status indicators, counts, and labels.
-Supports multiple variants, sizes, and interactive states with enterprise-grade styling.
+Badge component for status indicators, counts, and labels.
 </summary>
 <category>Core</category>
 <complexity>Simple</complexity>
-<ai-prompt>Create a professional badge for status or count display</ai-prompt>
-<ai-common-use>status indicators, counts, labels, notifications, tags</ai-common-use>
-<ai-avoid>Don't use for navigation buttons - use RButton instead. Avoid for large text content.</ai-avoid>
-<ai-pattern name="status-badge">Text="Active" Variant="BadgeVariant.Success" for status indicators</ai-pattern>
-<ai-pattern name="count-badge">Text="5" Variant="BadgeVariant.Primary" for notification counts</ai-pattern>
-<ai-pattern name="warning-badge">Text="Pending" Variant="BadgeVariant.Warning" for attention states</ai-pattern>
-<ai-pattern name="clickable-badge">Clickable="true" OnClick="HandleClick" for interactive badges</ai-pattern>
+<ai-prompt>Create badge for status or count display</ai-prompt>
+<ai-common-use>status indicators, counts, labels, notifications</ai-common-use>
+<ai-avoid>Don't use for navigation - use RButton instead</ai-avoid>
 **@
 @namespace RR.Blazor.Components
 @using RR.Blazor.Enums
 @using RR.Blazor.Attributes
+@using RR.Blazor.Components.Base
+@using Microsoft.AspNetCore.Components.Rendering
+@inherits RForwardingComponentBase
 
 @attribute [Component("RBadge", Category = "Core", Complexity = ComponentComplexity.Simple)]
-@attribute [AIOptimized(Prompt = "Create a professional badge for status or count display", 
+@attribute [AIOptimized(Prompt = "Create badge for status or count display", 
                        CommonUse = "status indicators, counts, labels, notifications", 
                        AvoidUsage = "Don't use for navigation - use RButton instead")]
 
-<span class="@GetBadgeClasses() rounded-full d-inline-flex align-center justify-center font-medium" @onclick="HandleClick" @attributes="AdditionalAttributes">
+<span class="@GetBadgeClasses()" 
+      @onclick="HandleClick" 
+      @attributes="GetForwardedAttributes()">
+    
     @if (!string.IsNullOrEmpty(Icon))
     {
-        <i class="material-symbols-rounded @GetIconClasses()">@Icon</i>
+        <i class="@GetIconClasses()">@Icon</i>
     }
+    
     @if (!string.IsNullOrEmpty(Text))
     {
         <span>@Text</span>
     }
-    @ChildContent
+    
+    @if (ChildContent != null)
+    {
+        @ChildContent
+    }
 </span>
 
 @code {
-    /// <summary>Badge text content - typically short labels, counts, or status indicators</summary>
-    /// <ai-hint>Keep text short: "Active", "5", "New", "Pending". Use 1-10 characters max</ai-hint>
+    /// <summary>Badge text content</summary>
     [Parameter]
-    [AIParameter(Hint = "Keep text short: Active, 5, New, Pending. Use 1-10 characters max", IsRequired = false)]
+    [AIParameter(Hint = "Short text: Active, 5, New", IsRequired = false)]
     public string Text { get; set; }
-    /// <summary>Badge variant - determines color scheme and semantic meaning</summary>
-    /// <ai-hint>Primary for emphasis, Success for positive states, Warning for attention, Danger for errors</ai-hint>
+    
+    /// <summary>Badge variant</summary>
     [Parameter]
-    [AIParameter(Hint = "Primary for emphasis, Success for positive, Warning for attention, Danger for errors", 
+    [AIParameter(Hint = "Color scheme variant", 
                  SuggestedValues = new[] { "Primary", "Secondary", "Success", "Warning", "Danger", "Info" }, 
                  IsRequired = false)]
     public BadgeVariant Variant { get; set; } = BadgeVariant.Secondary;
-    /// <summary>Badge size - affects padding, text size, and overall dimensions</summary>
-    /// <ai-hint>Medium is default, Small for compact layouts, Large for prominence</ai-hint>
+    
+    /// <summary>Badge size</summary>
     [Parameter]
-    [AIParameter(Hint = "Medium is default, Small for compact layouts, Large for prominence", 
+    [AIParameter(Hint = "Badge size", 
                  SuggestedValues = new[] { "Small", "Medium", "Large" })]
     public BadgeSize Size { get; set; } = BadgeSize.Medium;
     
@@ -60,25 +65,28 @@ Supports multiple variants, sizes, and interactive states with enterprise-grade 
     [AIParameter(Hint = "Normal is default, Compact for ultra-dense, Dense for data-heavy", 
                  SuggestedValues = new[] { "Normal", "Dense", "Compact", "Spacious" })]
     public ComponentDensity Density { get; set; } = ComponentDensity.Normal;
+    
     /// <summary>Material icon name to display alongside text</summary>
     /// <ai-hint>Common icons: check_circle, warning, error, info, star, notifications</ai-hint>
     [Parameter]
     [AIParameter(Hint = "Common icons: check_circle, warning, error, info, star, notifications", 
                  SuggestedValues = new[] { "check_circle", "warning", "error", "info", "star", "notifications" })]
     public string Icon { get; set; }
+    
     /// <summary>Whether badge is clickable - adds hover effects and cursor pointer</summary>
     /// <ai-hint>Set to true for interactive badges that perform actions when clicked</ai-hint>
     [Parameter]
     [AIParameter(Hint = "Set to true for interactive badges that perform actions")]
     public bool Clickable { get; set; }
+    
     /// <summary>Click event handler for interactive badges</summary>
     [Parameter] public EventCallback OnClick { get; set; }
+    
     /// <summary>Child content for custom badge content</summary>
     [Parameter] public RenderFragment ChildContent { get; set; }
+    
     /// <summary>Additional CSS classes</summary>
     [Parameter] public string Class { get; set; } = string.Empty;
-    /// <summary>Additional HTML attributes</summary>
-    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object> AdditionalAttributes { get; set; }
 
     private string GetBadgeClasses()
     {
@@ -108,16 +116,16 @@ Supports multiple variants, sizes, and interactive states with enterprise-grade 
     {
         var sizeClass = Size switch
         {
-            BadgeSize.Small => "badge-sm text-xs px-2 py-0-5 min-h-5",
-            BadgeSize.Large => "badge-lg text-sm px-3 py-1 min-h-8",
-            _ => "text-xs px-2 py-1 min-h-6" // Medium is default
+            BadgeSize.Small => "badge-sm",
+            BadgeSize.Large => "badge-lg",
+            _ => "" // Medium is default, no additional class needed
         };
         
         var densityClass = Density switch
         {
-            ComponentDensity.Compact => "badge-compact px-1 py-0-5",
-            ComponentDensity.Dense => "badge-dense px-2 py-0-5", 
-            ComponentDensity.Spacious => "badge-spacious px-4 py-2",
+            ComponentDensity.Compact => "badge-compact",
+            ComponentDensity.Dense => "badge-dense", 
+            ComponentDensity.Spacious => "badge-spacious",
             _ => ""
         };
         
@@ -128,14 +136,14 @@ Supports multiple variants, sizes, and interactive states with enterprise-grade 
     {
         return Variant switch
         {
-            BadgeVariant.Primary => "badge-primary bg-primary text-on-primary",
-            BadgeVariant.Success => "badge-success bg-success text-on-success", 
-            BadgeVariant.Warning => "badge-warning bg-warning text-on-warning",
-            BadgeVariant.Danger => "badge-error bg-error text-on-error",
-            BadgeVariant.Error => "badge-error bg-error text-on-error",
-            BadgeVariant.Info => "badge-info bg-info text-on-info",
-            BadgeVariant.Outline => "badge-outline border border-primary text-primary bg-transparent",
-            _ => "badge-secondary bg-surface text-secondary"
+            BadgeVariant.Primary => "badge-primary",
+            BadgeVariant.Success => "badge-success", 
+            BadgeVariant.Warning => "badge-warning",
+            BadgeVariant.Danger => "badge-danger",
+            BadgeVariant.Error => "badge-error",
+            BadgeVariant.Info => "badge-info",
+            BadgeVariant.Outline => "badge-outlined-primary",
+            _ => "badge-secondary"
         };
     }
 
@@ -156,7 +164,7 @@ Supports multiple variants, sizes, and interactive states with enterprise-grade 
             _ => iconSizeClass
         };
         
-        return $"material-symbols-rounded {densityIconClass} mr-1";
+        return $"material-symbols-rounded {densityIconClass}";
     }
     
     private string GetCompactIconUtilityClass()
@@ -199,4 +207,31 @@ Supports multiple variants, sizes, and interactive states with enterprise-grade 
             await OnClick.InvokeAsync();
         }
     }
+
+    private Dictionary<string, object> GetForwardedAttributes()
+    {
+        var excludeProperties = new HashSet<string> 
+        { 
+            nameof(Text), nameof(Variant), nameof(Size), nameof(Density), 
+            nameof(Icon), nameof(Clickable), nameof(OnClick), nameof(ChildContent), nameof(Class) 
+        };
+
+        var forwarded = new Dictionary<string, object>();
+        var componentType = GetType();
+        var properties = componentType.GetProperties()
+            .Where(p => p.GetCustomAttributes(typeof(ParameterAttribute), true).Any() 
+                       && !excludeProperties.Contains(p.Name));
+
+        foreach (var property in properties)
+        {
+            var value = property.GetValue(this);
+            if (value != null || property.PropertyType.IsValueType)
+            {
+                forwarded[property.Name] = value;
+            }
+        }
+        
+        return forwarded;
+    }
 }
+

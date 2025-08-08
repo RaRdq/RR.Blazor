@@ -12,10 +12,13 @@
 **@
 
 @typeparam TValue
+@using RR.Blazor.Components.Base
+@inherits RForwardingComponentBase
 @attribute [Component("RToggle", Category = "Form")]
 @attribute [AIOptimized(Prompt = "Create professional toggle switch")]
 
 @using RR.Blazor.Enums
+@using RR.Blazor.Components.Base
 
 <div class="flex items-center gap-3 @GetContainerClasses()">
     @if (LabelPosition == IconPosition.Start && !string.IsNullOrEmpty(Text))
@@ -44,7 +47,8 @@
                @bind="InternalValue"
                @bind:after="OnValueChanged"
                disabled="@Disabled"
-               class="peer absolute opacity-0 w-full h-full cursor-pointer disabled:cursor-not-allowed z-10" />
+               class="peer absolute opacity-0 w-full h-full cursor-pointer disabled:cursor-not-allowed z-10"
+               @attributes="GetSafeAttributes()" />
         
         <div class="@GetToggleTrackClasses()">
             <div class="@GetToggleThumbClasses()">
@@ -106,6 +110,7 @@
     [Parameter] public bool ShowStateIcons { get; set; }
     [Parameter] public string? ValidationMessage { get; set; }
     [Parameter] public string? Class { get; set; }
+
     
     private bool _internalState;
     private bool _initialized = false;
@@ -242,6 +247,14 @@
     private string GetValidationClasses()
     {
         return "flex items-center text-xs text-error mt-1 gap-1";
+    }
+
+    /// <summary>
+    /// Returns safely filtered HTML attributes using centralized RAttributeForwarder.
+    /// </summary>
+    private Dictionary<string, object> GetSafeAttributes()
+    {
+        return RAttributeForwarder.GetSafeAttributes(AdditionalAttributes);
     }
 
     private async Task OnValueChanged()

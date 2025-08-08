@@ -1,107 +1,207 @@
 @use '../abstracts' as *;
 
+// Chip component with badge and status style variants
 .chip {
   @extend %status-indicator-base;
+  background: var(--color-surface-elevated);
+  color: var(--color-text);
+  border: var(--border-1) solid var(--color-border);
+  // Ensure perfect centering
   display: inline-flex;
   align-items: center;
-  gap: var(--space-1);
-  border-radius: var(--radius-full);
-  font-weight: var(--font-medium);
-  transition: all var(--duration-normal) var(--ease-out);
-  white-space: nowrap;
-  user-select: none;
+  justify-content: center;
+  // Default size (medium)
+  font-size: var(--text-sm);
+  padding: var(--space-2) var(--space-3);
+  min-height: var(--space-6);
+  @include φ-radius(var(--radius-full));
+  
+  // Size variants
   &-small {
     padding: var(--space-1) var(--space-2);
     font-size: var(--text-xs);
     min-height: var(--space-5);
     
-    .chip-icon { font-size: var(--icon-sm); }
-  }
-  &-medium {
-    padding: var(--space-1) var(--space-3);
-    font-size: var(--text-sm);
-    min-height: var(--space-6);
+    .chip-icon {
+      font-size: var(--icon-xs);
+    }
     
-    .chip-icon { font-size: var(--icon-base); }
+    .chip-close {
+      width: var(--space-3);
+      height: var(--space-3);
+      
+      i {
+        font-size: calc(var(--icon-xs) * 0.85);
+      }
+    }
   }
+  
   &-large {
     padding: var(--space-2) var(--space-4);
     font-size: var(--text-base);
     min-height: var(--space-8);
     
-    .chip-icon { font-size: var(--icon-lg); }
-  }
-  &-default {
-    background: var(--color-surface);
-    color: var(--color-text-muted);
-    border: var(--border-1) solid var(--color-border);
+    .chip-icon {
+      font-size: var(--icon-base);
+    }
     
-    &-selected {
-      background: var(--color-surface-elevated);
-      border-color: var(--color-border);
-      color: var(--color-text);
+    .chip-close {
+      width: var(--space-5);
+      height: var(--space-5);
+      
+      i {
+        font-size: var(--icon-sm);
+      }
     }
   }
-  &-primary {
-    background: var(--color-primary);
-    color: var(--color-text-inverse);
-    border: var(--border-1) solid transparent;
-    
-    &-selected { background: var(--color-primary-hover); }
+  
+  // Style variants (badge, chip, status behaviors)
+  &-badge {
+    @extend %badge-base;
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-wide);
+    font-weight: var(--font-bold);
+    @include φ-radius(var(--radius-full));
   }
+  
+  &-status {
+    font-weight: var(--font-medium);
+    text-transform: none;
+    @include φ-radius(var(--radius-sm));
+  }
+  
+  // Semantic variants using existing system
+  @include semantic-variants((primary, secondary, success, warning, error, info));
+  
+  // Explicit secondary variant to ensure it has proper styling
   &-secondary {
-    background: var(--color-surface-elevated);
-    color: var(--color-primary);
-    border: var(--border-1) solid var(--color-primary);
+    background: var(--color-gray-100);
+    color: var(--color-gray-800);
+    border-color: var(--color-gray-300);
     
-    &-selected {
-      background: var(--color-primary);
-      color: var(--color-text-inverse);
+    &:hover {
+      background: var(--color-gray-200);
+    }
+    
+    .chip-icon {
+      color: var(--color-gray-600);
     }
   }
-  &-success { @include status-variant(success); }
-  &-warning { @include status-variant(warning); }
-  &-danger { @include status-variant(error); }
-  &-info { @include status-variant(info); }
+  
+  // Pending variant - neutral/gray appearance
+  &-pending {
+    background: var(--color-gray-100);
+    color: var(--color-gray-700);
+    border-color: var(--color-gray-300);
+    
+    .chip-icon {
+      color: var(--color-gray-600);
+    }
+  }
+  
+  // Processing variant - blue/info appearance with pulse animation
+  &-processing {
+    background: var(--color-info-light);
+    color: var(--color-info-dark);
+    border-color: var(--color-info);
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; // Using existing pulse animation from _animations.scss
+    
+    .chip-icon {
+      color: var(--color-info);
+    }
+  }
+  
+  // Density variants using φ-system
+  &-compact {
+    padding: var(--space-0-5) var(--space-1);
+    font-size: var(--text-2xs);
+    gap: var(--space-0-5);
+  }
+  
+  &-dense {
+    padding: var(--space-1) var(--space-1-5);
+    font-size: var(--text-xs);
+    gap: var(--space-0-5);
+  }
+  
+  &-spacious {
+    padding: var(--space-3) var(--space-6);
+    font-size: var(--text-lg);
+    gap: var(--space-3);
+  }
+  
   // Interaction states
   &-clickable {
-    @include hover-lift;
+    @include interactive-base(chip);
     cursor: pointer;
   }
+  
+  &-selected {
+    border-width: 2px;
+    @include φ-elevation(var(--shadow-md));
+  }
+  
   &-disabled {
     opacity: var(--opacity-disabled);
     cursor: not-allowed;
+    pointer-events: none;
   }
   
+  // Icon styling
   &-icon {
-    @extend %icon-container-sm;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent !important;
+    color: inherit;
     flex-shrink: 0;
-    
-    &-start {
-      margin-right: var(--space-1);
-    }
-    
-    &-end {
-      margin-left: var(--space-1);
-    }
-  }
-  
-  &-label {
+    width: auto;
+    height: auto;
+    font-size: inherit;
     line-height: 1;
+    
+    // Remove excessive margins - use minimal spacing
+    margin-right: var(--space-0-5);
+    
+    &:last-child {
+      margin-right: 0;
+    }
   }
   
+  // Text content
+  &-text {
+    line-height: 1;
+    flex-shrink: 0;
+  }
+  
+  // Close button
   &-close {
-    @include close-button;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: var(--space-0-5);
+    background: transparent;
+    cursor: pointer;
+    flex-shrink: 0;
+    border: none;
+    padding: 0;
+    @include φ-sizes(width, var(--space-4));
+    @include φ-sizes(height, var(--space-4));
+    @include φ-radius(var(--radius-full));
     
-    & {
-      width: var(--icon-base);
-      height: var(--icon-base);
-      margin-left: var(--space-1);
-      margin-right: calc(var(--space-1) * -1);
+    &:hover {
+      background: var(--color-surface);
     }
     
-    & > i { 
-      font-size: var(--icon-sm); 
+    i {
+      font-size: var(--icon-xs);
+      line-height: 1;
     }
+  }
+  
+  &-closeable {
+    // Remove excessive right padding - let natural padding handle it
+    position: relative;
   }
 }
+

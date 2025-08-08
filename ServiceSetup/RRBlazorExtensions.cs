@@ -79,7 +79,6 @@ namespace RR.Blazor.ServiceSetup
             serviceCollection.AddScoped<IAppConfigurationService, AppConfigurationService>();
             serviceCollection.AddScoped<IModalService, ModalService>();
             serviceCollection.AddScoped<ModalStackService>();
-            serviceCollection.AddSingleton<IComponentLifecycleService, ComponentLifecycleService>();
             
             // Register default toast configuration
             serviceCollection.AddSingleton(new ToastServiceOptions

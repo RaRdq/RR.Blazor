@@ -1,18 +1,5 @@
 @*
-    RSelectField - Professional select dropdown component with enterprise styling
-    
-    A specialized select component that extends the utility-first design system
-    with comprehensive glassmorphism effects and enterprise-grade styling.
-    
-    Key Features:
-    - Utility-first CSS composition
-    - Glassmorphism and elevation effects
-    - Comprehensive validation states
-    - Touch-friendly mobile design
-    - Multiple style variants (Clean, Filled, Outlined, Glass)
-    - Size variants (Small, Medium, Large)
-    - Professional hover/focus animations
-    - Support for options and option groups
+    Select dropdown component with validation and multiple variants.
     
     Usage Examples:
     <RSelectField @bind-value="selectedValue" Label="Select Option">
@@ -29,6 +16,7 @@
 
 @using RR.Blazor.Enums
 @using RR.Blazor.Models
+@using RR.Blazor.Components.Base
 @using Microsoft.AspNetCore.Components.Web
 @inherits RInputBase
 @attribute [Component("RSelectField", Category = "Form", Complexity = ComponentComplexity.Simple)]
@@ -53,7 +41,8 @@
                 data-field="@FieldName"
                 @onchange="@HandleSelectChange"
                 @onfocus="@HandleFocus"
-                @onblur="@HandleBlur">
+                @onblur="@HandleBlur"
+                @attributes="GetSafeAttributes()">
             @if (!string.IsNullOrEmpty(Placeholder))
             {
                 <option value="" disabled selected>@Placeholder</option>
@@ -119,7 +108,7 @@
     }
     
     
-    private async Task HandleBlur(FocusEventArgs e)
+    protected override async Task HandleBlur(FocusEventArgs e)
     {
         await HandleBlurEvent(e, OnBlur);
     }
@@ -267,6 +256,18 @@
             ComponentDensity.Spacious => "text-base text-secondary mt-3",
             _ => "text-sm text-secondary mt-2"
         };
+    }
+    
+    #endregion
+    
+    #region Attribute Filtering
+    
+    /// <summary>
+    /// Returns safely filtered HTML attributes using centralized RAttributeForwarder.
+    /// </summary>
+    private Dictionary<string, object> GetSafeAttributes()
+    {
+        return RAttributeForwarder.GetSafeAttributes(AdditionalAttributes);
     }
     
     #endregion

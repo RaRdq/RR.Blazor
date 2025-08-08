@@ -1,7 +1,10 @@
 @* RStatsCard - Generic dashboard statistics card component *@
 
 @using RR.Blazor.Enums
+@using RR.Blazor.Components.Base
+@inherits RForwardingComponentBase
 
+<div @attributes="GetSafeAttributes()">
 <RCard Clickable="@Clickable" 
        OnClick="@OnClick"
        Elevation="@Elevation"
@@ -19,7 +22,7 @@
                 <span class="@GetValueClasses() value-dynamic" style="@GetValueStyle()">@Value</span>
                 @if (!string.IsNullOrEmpty(BadgeText))
                 {
-                    <RBadge Text="@BadgeText" Variant="@BadgeVariant" Size="@GetBadgeSize()" />
+                    <RChip Text="@BadgeText" Style="ChipStyle.Badge" Variant="@BadgeVariant" Size="@GetBadgeSize()" />
                 }
             </div>
             @if (!string.IsNullOrEmpty(Subtitle))
@@ -29,6 +32,7 @@
         </div>
     </div>
 </RCard>
+</div>
 
 @code {
     /// <summary>
@@ -41,72 +45,100 @@
     /// <summary>
     /// Main value to display
     /// </summary>
-    [Parameter] public string Value { get; set; } = string.Empty;
+    [Parameter]
+    [AIParameter(Hint = "Primary statistic value to display prominently", Example = "$156,780", IsRequired = true)]
+    public string Value { get; set; } = string.Empty;
 
     /// <summary>
     /// Optional subtitle text (displayed below the value)
     /// </summary>
-    [Parameter] public string Subtitle { get; set; } = string.Empty;
+    [Parameter]
+    [AIParameter(Hint = "Secondary text displayed below the main value", Example = "vs. last month")]
+    public string Subtitle { get; set; } = string.Empty;
 
     /// <summary>
     /// Material Icons icon name
     /// </summary>
-    [Parameter] public string Icon { get; set; } = string.Empty;
+    [Parameter]
+    [AIParameter(Hint = "Material Icons name for visual representation", SuggestedValues = new[] { "trending_up", "attach_money", "people", "analytics", "shopping_cart" }, Example = "trending_up")]
+    public string Icon { get; set; } = string.Empty;
 
     /// <summary>
     /// Icon background color (semantic color name without var prefix)
     /// </summary>
-    [Parameter] public string IconColor { get; set; } = "interactive-primary";
+    [Parameter]
+    [AIParameter(Hint = "Semantic color name for icon background", SuggestedValues = new[] { "interactive-primary", "success", "warning", "error", "info" }, Example = "success")]
+    public string IconColor { get; set; } = "interactive-primary";
 
     /// <summary>
     /// Value text color (semantic color name without var prefix)
     /// </summary>
-    [Parameter] public string ValueColor { get; set; } = "interactive-primary";
+    [Parameter]
+    [AIParameter(Hint = "Semantic color name for value text", SuggestedValues = new[] { "interactive-primary", "success", "warning", "error", "text-primary" }, Example = "interactive-primary")]
+    public string ValueColor { get; set; } = "interactive-primary";
 
     /// <summary>
     /// Icon size in pixels
     /// </summary>
-    [Parameter] public int IconSize { get; set; } = 40;
+    [Parameter]
+    [AIParameter(Hint = "Icon container size in pixels", Example = "40")]
+    public int IconSize { get; set; } = 40;
 
     /// <summary>
     /// Badge text to display next to the value
     /// </summary>
-    [Parameter] public string BadgeText { get; set; } = string.Empty;
+    [Parameter]
+    [AIParameter(Hint = "Optional badge text shown next to value", Example = "+12%")]
+    public string BadgeText { get; set; } = string.Empty;
 
     /// <summary>
     /// Badge variant
     /// </summary>
-    [Parameter] public BadgeVariant BadgeVariant { get; set; } = BadgeVariant.Info;
+    [Parameter]
+    [AIParameter(Hint = "Visual style for badge", SuggestedValues = new[] { "Info", "Success", "Warning", "Error" }, Example = "Success")]
+    public ChipVariant BadgeVariant { get; set; } = ChipVariant.Info;
 
     /// <summary>
     /// Badge size
     /// </summary>
-    [Parameter] public BadgeSize BadgeSize { get; set; } = BadgeSize.Small;
+    [Parameter]
+    [AIParameter(Hint = "Size of the badge component", SuggestedValues = new[] { "Small", "Medium", "Large" }, Example = "Small")]
+    public BadgeSize BadgeSize { get; set; } = BadgeSize.Small;
 
     /// <summary>
     /// Whether the card is clickable
     /// </summary>
-    [Parameter] public bool Clickable { get; set; } = false;
+    [Parameter]
+    [AIParameter(Hint = "Makes card interactive with hover effects and click events")]
+    public bool Clickable { get; set; } = false;
 
     /// <summary>
     /// Click event handler
     /// </summary>
-    [Parameter] public EventCallback OnClick { get; set; }
+    [Parameter]
+    [AIParameter(Hint = "Event fired when clickable card is clicked")]
+    public EventCallback OnClick { get; set; }
 
     /// <summary>
     /// Card elevation level
     /// </summary>
-    [Parameter] public int Elevation { get; set; } = 2;
+    [Parameter]
+    [AIParameter(Hint = "Shadow depth level for card elevation", SuggestedValues = new[] { "0", "1", "2", "3", "4" }, Example = "2")]
+    public int Elevation { get; set; } = 2;
 
     /// <summary>
     /// Additional CSS classes
     /// </summary>
-    [Parameter] public string Class { get; set; } = string.Empty;
+    [Parameter]
+    [AIParameter(Hint = "Custom CSS classes for styling overrides", Example = "mb-4 custom-stats")]
+    public string Class { get; set; } = string.Empty;
     
     /// <summary>
     /// Component density level for ultra-dense layouts
     /// </summary>
-    [Parameter] public ComponentDensity Density { get; set; } = ComponentDensity.Normal;
+    [Parameter]
+    [AIParameter(Hint = "Layout density affecting spacing and sizing", SuggestedValues = new[] { "Compact", "Dense", "Normal", "Spacious" }, Example = "Normal")]
+    public ComponentDensity Density { get; set; } = ComponentDensity.Normal;
     
     private string GetDensityClasses() => Density switch
     {
@@ -180,13 +212,13 @@
         _ => "text-xs text-tertiary mt-0.5"
     };
     
-    private BadgeSize GetBadgeSize() => Density switch
+    private ChipSize GetBadgeSize() => Density switch
     {
-        ComponentDensity.Compact => BadgeSize.Small,
-        ComponentDensity.Dense => BadgeSize.Small,
-        ComponentDensity.Normal => BadgeSize.Medium,
-        ComponentDensity.Spacious => BadgeSize.Large,
-        _ => BadgeSize.Medium
+        ComponentDensity.Compact => ChipSize.Small,
+        ComponentDensity.Dense => ChipSize.Small,
+        ComponentDensity.Normal => ChipSize.Medium,
+        ComponentDensity.Spacious => ChipSize.Large,
+        _ => ChipSize.Medium
     };
     
     private string GetIconStyle()

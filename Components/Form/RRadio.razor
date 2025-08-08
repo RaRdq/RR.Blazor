@@ -1,21 +1,24 @@
-@** 
+﻿@** 
 <summary>Professional radio button component with enterprise styling and accessibility</summary>
 <category>Form</category>
 <complexity>Simple</complexity>
 <ai-prompt>Create a modern radio button for single selections with professional styling</ai-prompt>
 <ai-common-use>option selection, settings toggles, form choices, exclusive selections</ai-common-use>
 <ai-avoid>Don't use for multiple selections (use RCheckbox) or on/off toggles (use RChoice)</ai-avoid>
-<ai-pattern name="basic-radio">Text="Option 1" Value="option1" @bind-SelectedValue="selectedOption" Name="options"</ai-pattern>
-<ai-pattern name="with-description">Text="Premium Plan" Description="Advanced features included" Value="premium" @bind-SelectedValue="plan"</ai-pattern>
-<ai-pattern name="disabled-option">Text="Enterprise" Value="enterprise" Disabled="true" Description="Contact sales"</ai-pattern>
-<ai-pattern name="with-icon">Text="Email Notifications" Icon="email" Value="email" @bind-SelectedValue="notifyMethod"</ai-pattern>
+<ai-pattern name="basic-radio">Text="Option 1" Value="@option1" @bind-SelectedValue="@selectedOption" Name="options"</ai-pattern>
+<ai-pattern name="with-description">Text="Premium Plan" Description="Advanced features included" Value="@premium" @bind-SelectedValue="@plan"</ai-pattern>
+<ai-pattern name="disabled-option">Text="Enterprise" Value="@enterprise" Disabled="true" Description="Contact sales"</ai-pattern>
+<ai-pattern name="with-icon">Text="Email Notifications" Icon="email" Value="@email" @bind-SelectedValue="@notifyMethod"</ai-pattern>
 <ai-pattern name="group-radio">Multiple RRadio components with same Name property for grouping</ai-pattern>
 **@
 
+@using RR.Blazor.Components.Base
+@inherits RForwardingComponentBase
 @attribute [Component("RRadio", Category = "Form")]
 @attribute [AIOptimized(Prompt = "Create professional radio button with validation")]
 
 @using RR.Blazor.Enums
+@using RR.Blazor.Components.Base
 
 <div class="flex items-start gap-3 @GetContainerClasses()">
     <div class="relative flex items-center justify-center">
@@ -26,7 +29,8 @@
                checked="@IsSelected"
                @onchange="OnSelectionChanged"
                disabled="@Disabled"
-               class="peer absolute opacity-0 w-6 h-6 cursor-pointer disabled:cursor-not-allowed" />
+               class="peer absolute opacity-0 w-6 h-6 cursor-pointer disabled:cursor-not-allowed"
+               @attributes="GetSafeAttributes()" />
         
         <div class="@GetRadioClasses()">
             @if (IsSelected)
@@ -122,7 +126,16 @@
     /// <summary>Callback when radio button is clicked</summary>
     [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
 
+
     private bool IsSelected => Value == SelectedValue;
+    
+    /// <summary>
+    /// Returns safely filtered HTML attributes using centralized RAttributeForwarder.
+    /// </summary>
+    private Dictionary<string, object> GetSafeAttributes()
+    {
+        return RAttributeForwarder.GetSafeAttributes(AdditionalAttributes);
+    }
 
     private async Task OnSelectionChanged(ChangeEventArgs e)
     {

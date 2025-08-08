@@ -1,13 +1,16 @@
-@page "/test/data-display-showcase"
+@page "/test/data-display"
 @using RR.Blazor.Models
 @using RR.Blazor.Enums
 @using RR.Blazor.Components.Data
 @using RR.Blazor.Components.Display
+@using RR.Blazor.Components.Feedback
+@using RR.Blazor.Services
 @inject IJSRuntime JS
+@inject IToastService ToastService
 
 <PageTitle>Data & Display Components Showcase</PageTitle>
 
-<RAppShell Title="RR.Blazor Data & Display Components Showcase">
+<RAppShell Title="RR.Blazor Data & Display Components Showcase" Features="AppShellFeatures.All">
     <RContent>
         <div class="container-px-4">
             <!-- Header Section -->
@@ -105,7 +108,7 @@
                                     <div class="text-sm text-muted">@item.Description</div>
                                 </div>
                                 <div class="ml-auto">
-                                    <RBadge Text="@item.Status" Variant="@GetBadgeVariant(item.Status)" Size="BadgeSize.Small" />
+                                    <RChip Text="@item.Status" Style="ChipStyle.Badge" Variant="@GetChipVariant(item.Status)" Size="ChipSize.Small" />
                                 </div>
                             </div>
                         </ItemTemplate>
@@ -361,7 +364,7 @@
                             <div>
                                 <div class="text-h6 font-semibold">Content Loaded Successfully</div>
                                 <p class="text-muted mb-3">This content has finished loading and is now displayed instead of the skeleton placeholder. The skeleton automatically mimicked this content structure.</p>
-                                <RBadge Text="Loaded" Variant="BadgeVariant.Success" />
+                                <RChip Text="Loaded" Style="ChipStyle.Status" Variant="ChipVariant.Success" />
                             </div>
                         </RSkeleton>
                         
@@ -507,9 +510,9 @@
                     <RDivider Class="mt-4 mb-4" />
                     
                     <div class="text-center">
-                        <RBadge Text="20 Components" Variant="BadgeVariant.Primary" Size="BadgeSize.Large" Class="mr-2" />
-                        <RBadge Text="Professional UI" Variant="BadgeVariant.Success" Size="BadgeSize.Large" Class="mr-2" />
-                        <RBadge Text="Utility-First Styling" Variant="BadgeVariant.Info" Size="BadgeSize.Large" />
+                        <RChip Text="20 Components" Style="ChipStyle.Badge" Variant="ChipVariant.Primary" Size="ChipSize.Large" Class="mr-2" />
+                        <RChip Text="Professional UI" Style="ChipStyle.Badge" Variant="ChipVariant.Success" Size="ChipSize.Large" Class="mr-2" />
+                        <RChip Text="Utility-First Styling" Style="ChipStyle.Badge" Variant="ChipVariant.Info" Size="ChipSize.Large" />
                     </div>
                 </div>
             </RCard>
@@ -519,7 +522,6 @@
 </RAppShell>
 
 @code {
-    // Data Models
     public class EmployeeData
     {
         public string Name { get; set; } = "";
@@ -538,7 +540,6 @@
         public string Initials { get; set; } = "";
     }
 
-    // Component State
     private bool isLoadingEmployees = false;
     private bool isLoadingCharts = false;
     private bool isLoadingTimeline = false;
@@ -546,18 +547,15 @@
     private bool showSkeleton = true;
     private bool isPerformanceTest = false;
 
-    // Progress Values
     private double progressValue1 = 75;
     private double progressValue2 = 92;
     private double progressValue3 = 43;
     private double progressValue4 = 67;
 
-    // Performance Metrics
     private int totalRecords = 0;
     private double renderTime = 0;
     private string memoryUsage = "0 MB";
 
-    // Data Collections
     private List<EmployeeData> employeeData = new();
     private List<VirtualListItem> virtualListItems = new();
     private List<ChartDataPoint> monthlyRevenueData = new();
@@ -650,15 +648,15 @@
         virtualListItems = newItems;
     }
 
-    private BadgeVariant GetBadgeVariant(string status) => status switch
+    private ChipVariant GetChipVariant(string status) => status switch
     {
-        "Active" => BadgeVariant.Success,
-        "Away" => BadgeVariant.Warning,
-        "Busy" => BadgeVariant.Danger,
-        "Offline" => BadgeVariant.Secondary,
-        "On Leave" => BadgeVariant.Warning,
-        "Inactive" => BadgeVariant.Secondary,
-        _ => BadgeVariant.Primary
+        "Active" => ChipVariant.Success,
+        "Away" => ChipVariant.Warning,
+        "Busy" => ChipVariant.Error,
+        "Offline" => ChipVariant.Secondary,
+        "On Leave" => ChipVariant.Warning,
+        "Inactive" => ChipVariant.Secondary,
+        _ => ChipVariant.Primary
     };
 
     // Event Handlers
@@ -851,8 +849,8 @@
 
     private async Task ShowToast(string message)
     {
-        await JS.InvokeVoidAsync("console.log", $"Toast: {message}");
-        // Note: Actual toast implementation would require RToastContainer service
+        ToastService.ShowInfo(message);
+        await Task.CompletedTask;
     }
 
     // Click event handlers

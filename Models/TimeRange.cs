@@ -57,21 +57,22 @@ namespace RR.Blazor.Models
         
         /// <summary>
         /// Parse time range from string format "HH:mm-HH:mm"
+        /// Throws ArgumentException if format is invalid
         /// </summary>
-        public static bool TryParse(string input, out TimeRange result)
+        public static TimeRange Parse(string input)
         {
-            result = default;
-            
             if (string.IsNullOrWhiteSpace(input))
-                return false;
+                throw new ArgumentException("Input cannot be null or whitespace", nameof(input));
                 
             var parts = input.Split('-');
             if (parts.Length != 2)
-                return false;
+                throw new ArgumentException($"Invalid time range format. Expected 'HH:mm-HH:mm', got '{input}'", nameof(input));
                 
-            if (!TimeSpan.TryParse(parts[0].Trim(), out var startTime) ||
-                !TimeSpan.TryParse(parts[1].Trim(), out var endTime))
-                return false;
+            if (!TimeSpan.TryParse(parts[0].Trim(), out var startTime))
+                throw new ArgumentException($"Invalid start time format: '{parts[0].Trim()}'", nameof(input));
+                
+            if (!TimeSpan.TryParse(parts[1].Trim(), out var endTime))
+                throw new ArgumentException($"Invalid end time format: '{parts[1].Trim()}'", nameof(input));
                 
             var today = DateTime.Today;
             var start = today.Add(startTime);
@@ -81,8 +82,24 @@ namespace RR.Blazor.Models
             if (end < start)
                 end = end.AddDays(1);
                 
-            result = new TimeRange(start, end);
-            return true;
+            return new TimeRange(start, end);
+        }
+        
+        /// <summary>
+        /// Try to parse time range from string format "HH:mm-HH:mm"
+        /// </summary>
+        public static bool TryParse(string input, out TimeRange result)
+        {
+            try
+            {
+                result = Parse(input);
+                return true;
+            }
+            catch
+            {
+                result = default;
+                return false;
+            }
         }
         
         /// <summary>

@@ -1,0 +1,127 @@
+@use '../variables' as *;
+
+@mixin semantic-base($color, $hover: filter) {
+  background: var(--color-#{$color}-gradient, var(--color-#{$color}));
+  color: var(--color-text-inverse);
+  border: 0;
+  box-shadow: 0 2px 4px rgba(var(--color-#{$color}-rgb), 0.15);
+  transition: all var(--duration-fast) var(--ease-out);
+  
+  @if $hover == filter {
+    &:hover {
+      filter: brightness(0.9) saturate(1.1);
+      transform: translateY(-0.618px);
+    }
+  } @else if $hover == color-mix {
+    &:hover {
+      background: color-mix(in srgb, var(--color-#{$color}) 90%, var(--color-text-inverse));
+    }
+  }
+  
+  &:active {
+    transform: scale(0.938);
+  }
+  
+  &:focus-visible {
+    outline: 2px solid var(--color-#{$color});
+    outline-offset: 2px;
+  }
+}
+
+@mixin semantic-outlined($color) {
+  background: transparent;
+  color: var(--color-#{$color});
+  border: 1.618px solid var(--color-#{$color});
+  transition: all var(--duration-fast) var(--ease-out);
+  
+  &:hover {
+    background: color-mix(in srgb, var(--color-#{$color}) 10%, transparent);
+  }
+  
+  &:active {
+    background: color-mix(in srgb, var(--color-#{$color}) 15%, transparent);
+    transform: scale(0.969);
+  }
+}
+
+@mixin semantic-ghost($color, $opacity: 8) {
+  background: color-mix(in srgb, var(--color-#{$color}) #{$opacity}%, transparent);
+  color: var(--color-#{$color});
+  border: 1px solid color-mix(in srgb, var(--color-#{$color}) 20%, transparent);
+  transition: all var(--duration-fast) var(--ease-out);
+  
+  &:hover {
+    background: color-mix(in srgb, var(--color-#{$color}) #{$opacity + 7}%, transparent);
+  }
+  
+  &:active {
+    background: color-mix(in srgb, var(--color-#{$color}) #{$opacity + 12}%, transparent);
+  }
+}
+
+@mixin semantic-glass($color: null) {
+  @extend %glass-base;
+  transition: all var(--duration-normal) var(--ease-out);
+  
+  &:hover {
+    backdrop-filter: blur(12px) saturate(120%);
+    -webkit-backdrop-filter: blur(12px) saturate(120%);
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.2);
+  }
+}
+
+@mixin semantic-variants($colors: (primary, success, warning, error, info), $styles: (filled)) {
+  @each $color in $colors {
+    @each $style in $styles {
+      @if $style == filled or $style == solid {
+        &-#{$color} {
+          @include semantic-base($color);
+        }
+      } @else {
+        &-#{$style}-#{$color} {
+          @if $style == outlined {
+            @include semantic-outlined($color);
+          } @else if $style == ghost {
+            @include semantic-ghost($color);
+          } @else if $style == glass {
+            @include semantic-glass($color);
+          }
+        }
+      }
+    }
+  }
+}
+
+@mixin semantic-status($color, $status) {
+  @if $status == loading {
+    @include semantic-base($color, none);
+    position: relative;
+    pointer-events: none;
+    
+    // Hide content while preserving layout
+    > * {
+      opacity: 0 !important;
+    }
+    
+    &::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 1em;
+      height: 1em;
+      margin: -0.5em 0 0 -0.5em;
+      border: 2px solid var(--color-text-inverse);
+      border-color: var(--color-text-inverse) transparent var(--color-text-inverse) transparent;
+      border-radius: 50%;
+      opacity: 0.9;
+      animation: spin 0.8s linear infinite;
+      z-index: 1;
+    }
+  } @else if $status == disabled {
+    @include semantic-base($color, none);
+    opacity: 0.6;
+    pointer-events: none;
+    cursor: not-allowed;
+  }
+}

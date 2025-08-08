@@ -47,6 +47,7 @@
     private ElementReference _modalContainer;
     private static int _portalCounter = 0;
     private readonly string _portalId = $"modal-{System.Threading.Interlocked.Increment(ref _portalCounter)}";
+    private string? _actualPortalId = null;
     private bool _isPortalCreated = false;
 
     protected override void OnInitialized()
@@ -83,8 +84,8 @@
         try
         {
             var options = new { type = "modal", backdrop = true };
-            var result = await JSRuntime.InvokeAsync<string>("RRBlazor.Portal.create", _modalContainer, options);
-            var success = !string.IsNullOrEmpty(result);
+            _actualPortalId = await JSRuntime.InvokeAsync<string>("RRBlazor.Portal.create", _modalContainer, options);
+            var success = !string.IsNullOrEmpty(_actualPortalId);
             
             if (success)
             {
@@ -92,12 +93,12 @@
                 
                 // Focus the modal content wrapper for proper keyboard navigation
                 await Task.Yield(); // to ensure DOM is ready
-                await JSRuntime.InvokeVoidAsync("RRBlazor.Modal.focusModal");
                 
                 _isPortalCreated = true;
             }
             else
             {
+                _actualPortalId = null;
             }
         }
         catch (Exception ex)
@@ -107,19 +108,23 @@
 
     private async Task CleanupPortal()
     {
-        if (!_isPortalCreated)
+        if (!_isPortalCreated || string.IsNullOrEmpty(_actualPortalId))
         {
             return;
         }
 
         try
         {
-            await JSRuntime.InvokeVoidAsync("RRBlazor.Portal.destroy", _portalId);
+            await JSRuntime.InvokeVoidAsync("RRBlazor.Portal.destroy", _actualPortalId);
             await JSRuntime.InvokeVoidAsync("RRBlazor.Modal.unlockScroll");
-            _isPortalCreated = false;
         }
         catch (Exception ex)
         {
+        }
+        finally
+        {
+            _actualPortalId = null;
+            _isPortalCreated = false;
         }
     }
 
@@ -289,12 +294,19 @@
         ";
     }
 
-    public async void Dispose()
+    public void Dispose()
     {
-        await CleanupPortal();
+        Task.Run(async () => 
+        {
+            try
+            {
+                await CleanupPortal();
+            }
+            catch { }
+        });
+        
         ModalService.OnModalOpened -= OnModalStateChanged;
         ModalService.OnModalClosed -= OnModalStateChanged;
         ModalService.OnAllModalsClosed -= OnAllModalsClosed;
-        
     }
 }

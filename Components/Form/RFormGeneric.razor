@@ -1,25 +1,21 @@
 @** 
-<summary>Professional form component with validation, state management, and accessibility</summary>
+<summary>Form component with validation, state management, and accessibility</summary>
 <category>Form</category>
 <complexity>Complex</complexity>
-<ai-prompt>Create a professional form container with validation and submission handling</ai-prompt>
-<ai-common-use>user registration, data entry, settings forms, contact forms</ai-common-use>
-<ai-avoid>Don't use for simple single-field inputs or display-only content</ai-avoid>
-<ai-pattern name="basic-form">Model="@myModel" OnValidSubmit="HandleSubmit"</ai-pattern>
-<ai-pattern name="registration-form">Title="Sign Up" ValidationMode="ValidationMode.DataAnnotations"</ai-pattern>
-<ai-pattern name="settings-form">Layout="FormLayout.Executive" ShowFormHeader="true"</ai-pattern>
-<ai-pattern name="modal-form">Layout="FormLayout.Modal" ShowDefaultActions="true"</ai-pattern>
-<ai-pattern name="dense-form">Density="FormDensity.Dense" for compact layouts</ai-pattern>
+<ai-prompt>Create form container with validation and submission handling</ai-prompt>
+<ai-common-use>user registration, data entry, settings forms</ai-common-use>
+<ai-avoid>Don't use for simple single-field inputs</ai-avoid>
 **@
 
 @attribute [Component("RForm", Category = "Form")]
-@attribute [AIOptimized(Prompt = "Create professional form with validation")]
+@attribute [AIOptimized(Prompt = "Create form with validation")]
 
 @using System.ComponentModel.DataAnnotations
 @using System.Reflection
 @using Microsoft.AspNetCore.Components.Forms
 @using RR.Blazor.Enums
 @using RR.Blazor.Models
+@using RR.Blazor.Components.Base
 @using Microsoft.JSInterop
 @typeparam TModel where TModel : class
 @inherits RFormBase
@@ -30,7 +26,8 @@
      role="form" 
      aria-label="@AriaLabel"
      data-form-state="@State.ToString().ToLowerInvariant()"
-     data-form-density="@Density.ToString().ToLowerInvariant()">
+     data-form-density="@Density.ToString().ToLowerInvariant()"
+     @attributes="GetSafeAttributes()">
      
     @if (ShowFormHeader && (!string.IsNullOrEmpty(Title) || !string.IsNullOrEmpty(Description)))
     {
@@ -239,6 +236,7 @@
     private Timer? successMessageTimer;
     private Timer? validationDebounceTimer;
     private ElementReference formElement;
+    private bool disposed = false;
     
     [Inject] private IJSRuntime JSRuntime { get; set; } = default!;
     
@@ -343,8 +341,12 @@
                 successMessageTimer?.Dispose();
                 successMessageTimer = new Timer(async _ =>
                 {
+                    if (disposed) return;
+                    
                     await InvokeAsync(async () =>
                     {
+                        if (disposed) return;
+                        
                         await SetStateAsync(FormState.Ready);
                         StateHasChanged();
                     });
@@ -666,9 +668,13 @@
     
     public async ValueTask DisposeAsync()
     {
+        if (disposed) return;
+        disposed = true;
+        
         successMessageTimer?.Dispose();
+        successMessageTimer = null;
         validationDebounceTimer?.Dispose();
-        await Task.CompletedTask;
+        validationDebounceTimer = null;
     }
     
     /// <summary>

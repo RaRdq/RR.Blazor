@@ -133,11 +133,11 @@ public class ModalService : IModalService, IDisposable
             Icon = options.Icon,
             Size = ModalSize.Small,
             Variant = options.Variant,
-            ComponentType = typeof(RConfirmModal),
+            ComponentType = typeof(RConfirmationModal),
             Parameters = new Dictionary<string, object>
             {
-                { nameof(RConfirmModal.Message), options.Message },
-                { nameof(RConfirmModal.Destructive), options.IsDestructive }
+                { nameof(RConfirmationModal.Message), options.Message },
+                { nameof(RConfirmationModal.Variant), options.IsDestructive ? ConfirmationVariant.Destructive : ConfirmationVariant.Warning }
             },
             Buttons = new List<ModalButton>
             {
@@ -160,11 +160,11 @@ public class ModalService : IModalService, IDisposable
             Icon = variant == ModalVariant.Destructive ? "warning" : "help",
             Size = ModalSize.Small,
             Variant = variant,
-            ComponentType = typeof(RConfirmModal),
+            ComponentType = typeof(RConfirmationModal),
             Parameters = new Dictionary<string, object>
             {
-                { nameof(RConfirmModal.Message), message },
-                { nameof(RConfirmModal.Destructive), variant == ModalVariant.Destructive }
+                { nameof(RConfirmationModal.Message), message },
+                { nameof(RConfirmationModal.Variant), variant == ModalVariant.Destructive ? ConfirmationVariant.Destructive : ConfirmationVariant.Warning }
             },
             Buttons = new List<ModalButton>
             {
