@@ -131,6 +131,11 @@ export function scrollToTab(wrapperElement, tabElementId) {
 export function initializeTabs(element, navContainer, navWrapper) {
     if (!element || !navWrapper) return;
     
+    // Device detection
+    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    const isSmallViewport = () => window.innerWidth <= 768;
+    const isLandscape = () => window.innerWidth > window.innerHeight;
+    
     const tabs = element.querySelectorAll('[role="tab"]');
     tabs.forEach(tab => {
         tab.addEventListener('keydown', (e) => {
@@ -168,20 +173,94 @@ export function initializeTabs(element, navContainer, navWrapper) {
         }
     };
     
-    // Update on resize
+    // Adaptive tab sizing based on viewport
+    const updateTabSizing = () => {
+        const viewport = {
+            width: window.innerWidth,
+            height: window.innerHeight,
+            aspectRatio: window.innerWidth / window.innerHeight,
+            orientation: isLandscape() ? 'landscape' : 'portrait',
+            devicePixelRatio: window.devicePixelRatio || 1
+        };
+        
+        // Add viewport classes for CSS hooks
+        element.classList.toggle('tabs-touch', isTouchDevice);
+        element.classList.toggle('tabs-mobile', isSmallViewport());
+        element.classList.toggle('tabs-landscape', isLandscape());
+        element.classList.toggle('tabs-ultra-wide', viewport.aspectRatio > 2.1);
+        element.classList.toggle('tabs-square', viewport.aspectRatio < 1.3 && viewport.aspectRatio > 0.77);
+        
+        // Dispatch viewport info for Blazor
+        const event = new CustomEvent('rr-tabs-viewport-change', {
+            detail: viewport
+        });
+        element.dispatchEvent(event);
+    };
+    
+    // Touch gesture support
+    if (isTouchDevice && navWrapper) {
+        let touchStartX = 0;
+        let touchStartScrollLeft = 0;
+        let isScrolling = false;
+        
+        navWrapper.addEventListener('touchstart', (e) => {
+            touchStartX = e.touches[0].clientX;
+            touchStartScrollLeft = navWrapper.scrollLeft;
+            isScrolling = false;
+        }, { passive: true });
+        
+        navWrapper.addEventListener('touchmove', (e) => {
+            if (!isScrolling) {
+                isScrolling = true;
+                navWrapper.style.scrollSnapType = 'none';
+            }
+            const touchX = e.touches[0].clientX;
+            const diff = touchStartX - touchX;
+            navWrapper.scrollLeft = touchStartScrollLeft + diff;
+        }, { passive: true });
+        
+        navWrapper.addEventListener('touchend', () => {
+            navWrapper.style.scrollSnapType = 'x mandatory';
+            updateScrollState();
+        }, { passive: true });
+    }
+    
+    // Enhanced resize handling with debouncing
     let resizeScheduled = false;
+    let resizeTimeout;
     const handleResize = () => {
-        if (!resizeScheduled) {
-            resizeScheduled = true;
-            requestAnimationFrame(() => {
-                updateIndicator();
-                updateScrollState();
-                resizeScheduled = false;
-            });
-        }
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(() => {
+            if (!resizeScheduled) {
+                resizeScheduled = true;
+                requestAnimationFrame(() => {
+                    updateTabSizing();
+                    updateIndicator();
+                    updateScrollState();
+                    resizeScheduled = false;
+                });
+            }
+        }, 100);
+    };
+    
+    // Orientation change handling
+    const handleOrientationChange = () => {
+        // Wait for rotation animation to complete
+        setTimeout(() => {
+            updateTabSizing();
+            updateIndicator();
+            updateScrollState();
+            
+            // Re-center active tab after orientation change
+            const activeTab = element.querySelector('[role="tab"][aria-selected="true"]');
+            if (activeTab) {
+                scrollToTab(navWrapper, activeTab.id);
+            }
+        }, 300);
     };
     
     window.addEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', handleOrientationChange);
     
     // Update on scroll
     if (navWrapper) {
@@ -210,12 +289,15 @@ export function initializeTabs(element, navContainer, navWrapper) {
     
     // Initial update
     requestAnimationFrame(() => {
+        updateTabSizing();
         updateScrollState();
+        updateIndicator();
     });
     
     // Cleanup function
     element._rrCleanup = () => {
         window.removeEventListener('resize', handleResize);
+        window.removeEventListener('orientationchange', handleOrientationChange);
         if (navWrapper) {
             navWrapper.removeEventListener('scroll', updateScrollState);
         }
@@ -225,11 +307,31 @@ export function initializeTabs(element, navContainer, navWrapper) {
     };
 }
 
+// Required methods for rr-blazor.js proxy system
+export function initialize(element, dotNetRef) {
+    if (element) {
+        initializeTabs(element);
+        return true;
+    }
+    return true;
+}
+
+export function cleanup(element) {
+    if (element && element._rrCleanup) {
+        element._rrCleanup();
+        delete element._rrCleanup;
+        return true;
+    }
+    return true;
+}
+
 export default {
     getTabIndicatorPosition,
     getTabScrollInfo,
     scrollTabsLeft,
     scrollTabsRight,
     scrollToTab,
-    initializeTabs
+    initializeTabs,
+    initialize,
+    cleanup
 };

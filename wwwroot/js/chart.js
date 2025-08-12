@@ -3,10 +3,9 @@
 
 let activeCharts = new Map();
 let chartObserver = null;
-let dotNetHelper = null;
 
 // Chart Animation System (simplified - animations now handled by SCSS)
-export function animatePieChart(element) {
+function animatePieChart(element) {
     if (!element) return;
     
     const slices = element.querySelectorAll('.pie-slice');
@@ -21,7 +20,7 @@ export function animatePieChart(element) {
     });
 }
 
-export function animateColumnChart(element) {
+function animateColumnChart(element) {
     if (!element) return;
     
     const bars = element.querySelectorAll('.column-chart-bar');
@@ -38,7 +37,7 @@ export function animateColumnChart(element) {
 }
 
 // Chart Tooltip System
-export function initializeTooltip(element, options = {}) {
+function initializeTooltip(element, options = {}) {
     if (!element) return;
     
     const tooltip = document.createElement('div');
@@ -48,25 +47,40 @@ export function initializeTooltip(element, options = {}) {
     tooltip.style.zIndex = 'var(--z-tooltip)';
     document.body.appendChild(tooltip);
     
-    const showTooltip = (event, content) => {
+    const showTooltip = (event, content, targetElement = null) => {
         tooltip.textContent = content; // Use textContent for security
         tooltip.classList.add('visible');
         
-        const rect = element.getBoundingClientRect();
+        // Force tooltip to be visible for accurate measurement
+        tooltip.style.visibility = 'visible';
+        tooltip.style.opacity = '0';
         const tooltipRect = tooltip.getBoundingClientRect();
         
-        let left = event.clientX - tooltipRect.width / 2;
-        let top = event.clientY - tooltipRect.height - 10;
+        let left, top;
         
-        // Boundary checks
-        if (left < 0) left = 0;
-        if (left + tooltipRect.width > window.innerWidth) {
-            left = window.innerWidth - tooltipRect.width;
+        if (targetElement) {
+            const targetRect = targetElement.getBoundingClientRect();
+            left = targetRect.left + targetRect.width / 2 - tooltipRect.width / 2;
+            top = targetRect.top - tooltipRect.height - 10;
+        } else {
+            left = event.clientX - tooltipRect.width / 2;
+            top = event.clientY - tooltipRect.height - 15;
         }
-        if (top < 0) top = event.clientY + 10;
+        
+        if (left < 5) left = 5;
+        if (left + tooltipRect.width > window.innerWidth) {
+            left = window.innerWidth - tooltipRect.width - 5;
+        }
+        if (top < 5) {
+            top = targetElement 
+                ? targetElement.getBoundingClientRect().bottom + 10
+                : event.clientY + 15;
+        }
         
         tooltip.style.left = `${left}px`;
         tooltip.style.top = `${top}px`;
+        tooltip.style.visibility = 'visible';
+        tooltip.style.opacity = '1';
     };
     
     const hideTooltip = () => {
@@ -79,7 +93,7 @@ export function initializeTooltip(element, options = {}) {
             slice.addEventListener('mouseenter', (e) => {
                 const label = slice.getAttribute('aria-label');
                 if (label) {
-                    showTooltip(e, `<div class="chart-tooltip-content">${label}</div>`);
+                    showTooltip(e, label, slice);
                 }
             });
             slice.addEventListener('mouseleave', hideTooltip);
@@ -91,7 +105,8 @@ export function initializeTooltip(element, options = {}) {
             bar.addEventListener('mouseenter', (e) => {
                 const label = bar.getAttribute('aria-label');
                 if (label) {
-                    showTooltip(e, `<div class="chart-tooltip-content">${label}</div>`);
+                    const fillElement = bar.querySelector('.column-chart-bar-fill');
+                    showTooltip(e, label, fillElement || bar);
                 }
             });
             bar.addEventListener('mouseleave', hideTooltip);
@@ -106,7 +121,7 @@ export function initializeTooltip(element, options = {}) {
 }
 
 // Chart Data Export
-export function exportChartData(element, format = 'csv') {
+function exportChartData(element, format = 'csv') {
     if (!element) return null;
     
     const data = extractChartData(element);
@@ -187,51 +202,37 @@ function exportToTSV(data) {
     return tsvContent;
 }
 
-// Chart Responsiveness
-export function initializeResponsiveChart(element) {
-    if (!element) return;
+// Get container dimensions
+function getContainerDimensions(element) {
+    if (!element) return { width: 0, height: 0 };
     
-    const observer = new ResizeObserver(entries => {
-        entries.forEach(entry => {
-            const { width, height } = entry.contentRect;
-            updateChartSize(element, width, height);
-        });
-    });
-    
-    observer.observe(element);
-    
+    const rect = element.getBoundingClientRect();
     return {
-        dispose: () => {
-            observer.disconnect();
-        }
+        width: rect.width,
+        height: rect.height
     };
 }
 
-function updateChartSize(element, width, height) {
-    // Update SVG viewBox for pie charts
-    const svg = element.querySelector('svg');
-    if (svg) {
-        const aspectRatio = width / height;
-        const viewBoxSize = Math.min(width, height);
-        svg.setAttribute('viewBox', `0 0 ${viewBoxSize} ${viewBoxSize}`);
-    }
+
+function updateChartLayout(container, width) {
+    const dataCount = container.querySelectorAll('.column-chart-bar, .pie-slice').length;
+    const barWidth = dataCount > 0 ? width / dataCount : width;
     
-    // Update column chart layout
-    const columnContainer = element.querySelector('.column-chart-container');
-    if (columnContainer) {
-        const isSmall = width < 400;
-        columnContainer.classList.toggle('chart-small-layout', isSmall);
-        
-        // Adjust bar spacing for small screens
-        const bars = element.querySelectorAll('.column-chart-bar');
-        bars.forEach(bar => {
-            bar.style.flexBasis = isSmall ? '100%' : 'auto';
-        });
-    }
+    // Apply responsive classes based on container width and data density
+    container.classList.toggle('chart-xs', width < 300);
+    container.classList.toggle('chart-sm', width >= 300 && width < 600);
+    container.classList.toggle('chart-md', width >= 600 && width < 900);
+    container.classList.toggle('chart-lg', width >= 900);
+    
+    // Apply density classes based on bar width
+    container.classList.toggle('chart-dense', barWidth < 20);
+    container.classList.toggle('chart-compact', barWidth >= 20 && barWidth < 40);
+    container.classList.toggle('chart-normal', barWidth >= 40 && barWidth < 80);
+    container.classList.toggle('chart-spacious', barWidth >= 80);
 }
 
 // Chart Accessibility
-export function enhanceChartAccessibility(element, options = {}) {
+function enhanceChartAccessibility(element, options = {}) {
     if (!element) return;
     
     // Add ARIA roles and properties
@@ -278,7 +279,7 @@ function generateChartSummary(dataTable) {
 }
 
 // Chart Theme Integration (simplified)
-export function applyChartTheme(element, themeData) {
+function applyChartTheme(element, themeData) {
     if (!element) return;
     
     const isDark = themeData.mode === 'dark';
@@ -287,7 +288,7 @@ export function applyChartTheme(element, themeData) {
     
 }
 
-export function optimizeChartPerformance(element) {
+function optimizeChartPerformance(element) {
     if (!element) return;
     
     element.style.willChange = 'transform';
@@ -298,63 +299,78 @@ export function optimizeChartPerformance(element) {
         svg.style.shapeRendering = 'geometricPrecision';
         svg.style.textRendering = 'geometricPrecision';
     }
-    
 }
 
-export function initializeChart(element, options = {}) {
+function initializeChart(element, options = {}) {
     if (!element) return null;
     
     const chartId = `chart-${Math.random().toString(36).substr(2, 9)}`;
     element.setAttribute('data-chart-id', chartId);
     
+    const container = element.querySelector('.column-chart-container, .pie-chart-container');
+    if (container) {
+        // Ensure DOM is ready before layout calculations
+        requestAnimationFrame(() => {
+            const updateLayout = () => {
+                if (!element.offsetWidth) return; // Skip if element not visible
+                const availableWidth = container.offsetWidth || element.offsetWidth;
+                if (availableWidth > 0) {
+                    updateChartLayout(container, availableWidth);
+                }
+            };
+            
+            updateLayout();
+            
+            // Use ResizeObserver with proper debouncing
+            const resizeObserver = new ResizeObserver(entries => {
+                clearTimeout(container._resizeTimeout);
+                container._resizeTimeout = setTimeout(() => {
+                    if (entries[0]?.contentRect?.width > 0) {
+                        updateLayout();
+                    }
+                }, 50); // More stable debounce
+            });
+            
+            resizeObserver.observe(container);
+            
+            container._resizeObserver = resizeObserver;
+        });
+    }
+    
+    // Initialize animations
+    if (options.animation !== false) {
+        if (element.querySelector('.pie-slice')) {
+            animatePieChart(element);
+        } else if (element.querySelector('.column-chart-bar')) {
+            animateColumnChart(element);
+        }
+    }
+    
     const chartInstance = {
         id: chartId,
         element: element,
-        options: options,
-        tooltip: null,
-        resizeObserver: null,
         dispose: () => {
-            if (chartInstance.tooltip) {
-                chartInstance.tooltip.dispose();
-            }
-            if (chartInstance.resizeObserver) {
-                chartInstance.resizeObserver.dispose();
+            if (container && container._resizeObserver) {
+                container._resizeObserver.disconnect();
+                clearTimeout(container._resizeTimeout);
             }
             activeCharts.delete(chartId);
         }
     };
     
-    // Initialize features
-    if (options.tooltip !== false) {
-        chartInstance.tooltip = initializeTooltip(element, options.tooltip);
-    }
-    
-    if (options.responsive !== false) {
-        chartInstance.resizeObserver = initializeResponsiveChart(element);
-    }
-    
-    if (options.accessibility !== false) {
-        enhanceChartAccessibility(element, options.accessibility);
-    }
-    
-    if (options.animations !== false) {
-        optimizeChartPerformance(element);
-    }
-    
     activeCharts.set(chartId, chartInstance);
-    
     return chartInstance;
 }
 
 // Chart Management
-export function getChart(element) {
+function getChart(element) {
     if (!element) return null;
     
     const chartId = element.getAttribute('data-chart-id');
     return chartId ? activeCharts.get(chartId) : null;
 }
 
-export function disposeChart(element) {
+function disposeChart(element) {
     const chart = getChart(element);
     if (chart) {
         chart.dispose();
@@ -363,13 +379,13 @@ export function disposeChart(element) {
     return false;
 }
 
-export function disposeAllCharts() {
+function disposeAllCharts() {
     activeCharts.forEach(chart => chart.dispose());
     activeCharts.clear();
 }
 
 // Theme change handler
-export function handleThemeChange(themeData) {
+function handleThemeChange(themeData) {
     activeCharts.forEach(chart => {
         applyChartTheme(chart.element, themeData);
     });
@@ -380,8 +396,8 @@ document.addEventListener('themeChanged', (e) => {
     handleThemeChange(e.detail);
 });
 
-// Global chart utilities
-window.RChart = {
+// Export all chart functions for module consumption
+export {
     // Animation functions
     animatePieChart,
     animateColumnChart,
@@ -393,7 +409,7 @@ window.RChart = {
     exportChartData,
     
     // Responsive functions
-    initializeResponsiveChart,
+    getContainerDimensions,
     
     // Accessibility functions
     enhanceChartAccessibility,
@@ -412,8 +428,7 @@ window.RChart = {
     disposeAllCharts,
     
     // Utilities
-    extractChartData,
-    generateChartSummary
+    extractChartData
 };
 
 // Initialize intersection observer for lazy loading
@@ -463,6 +478,28 @@ window.RChart = {
         });
     }
 })();
+
+function initialize(element, dotNetRef) {
+    if (element) {
+        const chart = initializeChart(element);
+        if (chart && dotNetRef) {
+            chart.dotNetRef = dotNetRef;
+        }
+        return chart;
+    }
+    return true;
+}
+
+function cleanup(element) {
+    if (element) {
+        return disposeChart(element);
+    }
+    disposeAllCharts();
+    if (chartObserver) {
+        chartObserver.disconnect();
+    }
+    return true;
+}
 
 // Cleanup on page unload
 window.addEventListener('beforeunload', () => {

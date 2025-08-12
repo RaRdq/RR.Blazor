@@ -98,4 +98,22 @@ async function closeDatepicker(element) {
     cleanupDatepicker(element);
 }
 
-export { positionPopup, cleanupDatepicker, setupDatepickerEvents, initializeDatepicker, openDatepicker, closeDatepicker };
+// Required methods for rr-blazor.js proxy system
+function initialize(element, dotNetRef) {
+    return initializeDatepicker(element, dotNetRef);
+}
+
+function cleanup(element) {
+    cleanupDatepicker(element);
+}
+
+export { 
+    positionPopup, 
+    cleanupDatepicker, 
+    setupDatepickerEvents, 
+    initializeDatepicker, 
+    openDatepicker, 
+    closeDatepicker,
+    initialize,
+    cleanup
+};

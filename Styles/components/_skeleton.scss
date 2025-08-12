@@ -1,0 +1,276 @@
+@use '../abstracts' as *;
+
+// Skeleton Loading Component - Unified implementation per SCSS_REFACTOR_PLAN.md
+// Single source of truth for all skeleton patterns
+
+// Use unified loading skeleton implementation - consolidated from loading system
+@mixin skeleton-base() {
+  @include loading-skeleton();
+}
+
+// Main skeleton class
+.skeleton {
+  @include skeleton-base();
+  
+  & {
+    width: var(--skeleton-width, 100%);
+    height: var(--skeleton-height, auto);
+    min-height: 1rem; // Ensure skeleton is always visible
+  }
+  
+  // Animation control
+  &-pulse {
+    animation: shimmer var(--duration-extended) ease-in-out infinite;
+  }
+  
+  // Common skeleton layout types
+  &-text {
+    height: 1rem;
+    margin-bottom: var(--space-2);
+    border-radius: var(--radius-sm);
+    
+    &:last-child {
+      margin-bottom: 0;
+      width: 60%;
+    }
+  }
+  
+  &-title {
+    height: 2rem;
+    margin-bottom: var(--space-3);
+    width: 50%;
+  }
+  
+  &-paragraph {
+    .skeleton-text {
+      &:nth-child(1) { width: 100%; }
+      &:nth-child(2) { width: 95%; }
+      &:nth-child(3) { width: 85%; }
+      &:nth-child(4) { width: 60%; }
+    }
+  }
+  
+  &-avatar {
+    width: 3rem;
+    height: 3rem;
+    border-radius: var(--radius-full);
+    flex-shrink: 0;
+  }
+  
+  &-button {
+    height: 2.5rem;
+    width: 6rem;
+    border-radius: var(--radius-md);
+  }
+  
+  &-badge {
+    height: 1.5rem;
+    width: 4rem;
+    border-radius: var(--radius-full);
+  }
+  
+  &-input {
+    height: 2.5rem;
+    width: 100%;
+    border-radius: var(--radius-md);
+  }
+  
+  &-card {
+    height: 10rem;
+    border-radius: var(--radius-xl);
+  }
+  
+  &-image {
+    height: 12rem;
+    border-radius: var(--radius-lg);
+  }
+  
+  &-table {
+    width: 100%;
+    
+    &-row {
+      display: flex;
+      gap: var(--space-2);
+      padding: var(--space-3) 0;
+      border-bottom: var(--border-1) solid var(--color-border-light);
+      
+      &:last-child {
+        border-bottom: none;
+      }
+    }
+    
+    &-cell {
+      @include skeleton-base();
+      
+      & {
+        height: 1rem;
+        flex: 1;
+      }
+      
+      &:first-child {
+        flex: 0 0 20%;
+      }
+      
+      &:last-child {
+        flex: 0 0 15%;
+      }
+    }
+  }
+  
+  // Smart skeleton overlay system - Container-agnostic per CLAUDE.md
+  &-smart {
+    // Wrapper creates positioning context and maintains original dimensions
+    &-wrapper {
+      position: relative;
+      isolation: isolate; // Create stacking context
+      display: block;
+      width: 100%;
+      
+      // Let content determine natural height, don't force min-height
+      min-height: auto;
+    }
+    
+    &-container {
+      visibility: hidden;
+      opacity: 0;
+      pointer-events: none;
+      
+      display: block;
+      
+      &.skeleton-hidden-container {
+        visibility: hidden;
+        opacity: 0;
+        pointer-events: none;
+      }
+    }
+    
+    // Skeleton overlay positioned over the content area
+    &-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: var(--z-loading, 10);
+      background: var(--color-surface);
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start; // Align to top for natural flow
+      align-items: stretch;
+      padding: var(--space-4); // Consistent padding for skeleton content
+      
+      // Glass effect option for premium loading experience
+      &.skeleton-glass {
+        background: var(--glass-bg-light);
+        backdrop-filter: var(--glass-blur-sm) var(--glass-saturate);
+        -webkit-backdrop-filter: var(--glass-blur-sm) var(--glass-saturate);
+        border-radius: inherit; // Inherit border radius from parent
+      }
+    }
+    
+    // Smart skeleton content with proper spacing and layout
+    &-auto {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-3);
+      width: 100%;
+      
+      // Style skeleton elements for Dashboard-like content
+      .skeleton {
+        border-radius: var(--radius-md);
+        flex-shrink: 0;
+        
+        // Title skeleton (first element)
+        &:first-child {
+          height: 1.5rem;
+          width: 40%;
+          margin-bottom: var(--space-2);
+        }
+        
+        // Content skeletons
+        &:not(:first-child):not(:last-child) {
+          height: 1rem;
+          width: 85%;
+          margin-bottom: var(--space-2);
+          
+          &:nth-child(2) { width: 95%; }
+          &:nth-child(3) { width: 90%; }
+        }
+        
+        // Last skeleton element (shorter for natural appearance)
+        &:last-child:not(:first-child) {
+          height: 1rem;
+          width: 60%;
+          margin-bottom: 0;
+        }
+        
+        // Special case for single skeleton
+        &:only-child {
+          height: 1.5rem;
+          width: 100%;
+        }
+      }
+    }
+  }
+  
+  // Size variants with CSS custom properties
+  &.size {
+    &-xs {
+      --skeleton-scale: 0.75;
+    }
+    &-sm {
+      --skeleton-scale: 0.875;
+    }
+    &-md {
+      --skeleton-scale: 1;
+    }
+    &-lg {
+      --skeleton-scale: 1.125;
+    }
+    &-xl {
+      --skeleton-scale: 1.25;
+    }
+  }
+  
+  // Density variants
+  &.density {
+    &-compact {
+      --skeleton-gap: var(--space-1);
+    }
+    &-dense {
+      --skeleton-gap: var(--space-2);
+    }
+    &-normal {
+      --skeleton-gap: var(--space-3);
+    }
+    &-spacious {
+      --skeleton-gap: var(--space-4);
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    &::after {
+      animation: none;
+    }
+    
+    &-pulse {
+      animation: none;
+    }
+  }
+}
+
+// High contrast mode support
+@media (prefers-contrast: high) {
+  .skeleton {
+    background: repeating-linear-gradient(
+      90deg,
+      var(--color-surface),
+      var(--color-surface) 10px,
+      var(--color-surface-elevated) 10px,
+      var(--color-surface-elevated) 20px
+    );
+    
+    &::after {
+      display: none;
+    }
+  }
+}

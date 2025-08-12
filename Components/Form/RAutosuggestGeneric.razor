@@ -144,6 +144,12 @@ Extensible foundation for text search, datepicker autosuggest, and custom implem
 
     [Parameter] public EventCallback<TItem> OnItemSelected { get; set; }
     [Parameter] public EventCallback<string> OnSearchChanged { get; set; }
+    
+    // Universal Portal Interface Parameters
+    [Parameter] public bool UseBackdrop { get; set; } = false;
+    [Parameter] public string BackdropClass { get; set; } = "";
+    [Parameter] public bool CloseOnBackdropClick { get; set; } = true;
+    [Parameter] public bool CloseOnEscape { get; set; } = true;
 
     private string SearchQuery
     {
@@ -284,7 +290,10 @@ Extensible foundation for text search, datepicker autosuggest, and custom implem
                 break;
 
             case "Escape":
-                await CloseDropdown();
+                if (CloseOnEscape)
+                {
+                    await CloseDropdown();
+                }
                 break;
         }
     }
@@ -330,7 +339,15 @@ Extensible foundation for text search, datepicker autosuggest, and custom implem
         
         try
         {
-            portalId = await JS.InvokeAsync<string>("RRBlazor.Autosuggest.createPortal", ElementId);
+            var portalConfig = new
+            {
+                useBackdrop = UseBackdrop,
+                backdropClass = BackdropClass,
+                closeOnBackdropClick = CloseOnBackdropClick,
+                closeOnEscape = CloseOnEscape
+            };
+            
+            portalId = await JS.InvokeAsync<string>("RRBlazor.Autosuggest.createPortal", ElementId, portalConfig);
             
             if (!string.IsNullOrEmpty(portalId))
             {
@@ -450,7 +467,25 @@ Extensible foundation for text search, datepicker autosuggest, and custom implem
     [JSInvokable]
     public async Task OnClickOutside()
     {
-        if (IsOpen)
+        if (IsOpen && CloseOnBackdropClick)
+        {
+            await CloseDropdown();
+        }
+    }
+    
+    [JSInvokable]
+    public async Task HandleBackdropClick()
+    {
+        if (CloseOnBackdropClick)
+        {
+            await CloseDropdown();
+        }
+    }
+    
+    [JSInvokable]
+    public async Task HandleEscapeKey()
+    {
+        if (CloseOnEscape)
         {
             await CloseDropdown();
         }

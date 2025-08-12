@@ -333,7 +333,15 @@ export function updateUrlWithoutScroll(newUrl) {
 
 
 
-window.RRAppShell = {
+export function initialize(element, dotNetRef) {
+    return true;
+}
+
+export function cleanup(element) {
+    return true;
+}
+
+export default {
     isMobile,
     isTablet,
     isDesktop,
@@ -344,5 +352,7 @@ window.RRAppShell = {
     copyToClipboard,
     getPerformanceMetrics,
     updateUrlWithoutScroll,
-    focusElement
+    focusElement,
+    initialize,
+    cleanup
 };

@@ -1,149 +1,46 @@
 @use '../abstracts' as *;
-.avatar {
+
+// Avatar base foundation - shared across all avatar variants
+@mixin avatar-base {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   border-radius: var(--radius-full);
-  background: linear-gradient(135deg, var(--color-primary) 0%, color-mix(in srgb, var(--color-primary) 85%, var(--color-text) 15%) 100%);
-  color: var(--color-text-inverse);
-  font-weight: var(--font-semibold);
   position: relative;
   overflow: visible;
   flex-shrink: 0;
   line-height: 1;
   vertical-align: middle;
+  font-weight: var(--font-semibold);
+  transition: transform var(--duration-fast) var(--ease-out), box-shadow var(--duration-fast) var(--ease-out);
   
-  width: 2.5rem;
-  height: 2.5rem;
-  font-size: var(--text-sm);
+  &:hover {
+    transform: translateY(-1px) scale(1.02);
+    box-shadow: var(--shadow-md);
+  }
+  
   img,
-  &-image {
+  .avatar-image {
     width: 100%;
     height: 100%;
     object-fit: cover;
     border-radius: inherit;
   }
   
-  &-xs {
-    width: 1.5rem;
-    height: 1.5rem;
-    font-size: var(--text-xs);
-    line-height: 1;
-  }
-  &-sm {
-    width: 2rem;
-    height: 2rem;
-    font-size: var(--text-xs);
-    line-height: 1;
-  }
-  &-md {
-    width: 2.5rem;
-    height: 2.5rem;
-    font-size: var(--text-sm);
-    line-height: 1;
-  }
-  &-lg {
-    width: 3rem;
-    height: 3rem;
-    font-size: var(--text-base);
-    line-height: 1;
-  }
-  &-xl {
-    width: 4rem;
-    height: 4rem;
-    font-size: var(--text-lg);
-    line-height: 1;
-  }
-  
-  &-2xl {
-    width: 5rem;
-    height: 5rem;
-    font-size: var(--text-xl);
-    line-height: 1;
-  }
-  
-  &-default {
-    background: linear-gradient(135deg, var(--color-surface) 0%, var(--color-surface-elevated) 100%);
-    color: var(--color-text);
-    border: 2px solid var(--color-border);
-  }
-  &-primary {
-    background: linear-gradient(135deg, var(--color-primary) 0%, color-mix(in srgb, var(--color-primary) 85%, var(--color-primary) 15%) 100%);
-    color: var(--color-text-inverse);
-    border: 2px solid var(--color-primary);
-  }
-  &-secondary {
-    background: linear-gradient(135deg, var(--color-surface) 0%, var(--color-surface-elevated) 100%);
-    color: var(--color-text-muted);
-  }
-  &-success {
-    background: linear-gradient(135deg, var(--color-success) 0%, color-mix(in srgb, var(--color-success) 85%, var(--color-success-bg) 15%) 100%);
-    color: var(--color-text-inverse);
-    border: 2px solid var(--color-success);
-  }
-  &-warning {
-    background: linear-gradient(135deg, var(--color-warning) 0%, color-mix(in srgb, var(--color-warning) 85%, var(--color-warning-bg) 15%) 100%);
-    color: var(--color-text-inverse);
-    border: 2px solid var(--color-warning);
-  }
-  &-error {
-    background: linear-gradient(135deg, var(--color-error) 0%, color-mix(in srgb, var(--color-error) 85%, var(--color-error-bg) 15%) 100%);
-    color: var(--color-text-inverse);
-    border: 2px solid var(--color-error);
-  }
-  
-  &-status {
-    position: absolute;
-    bottom: 0;
-    right: 0;
-    width: 12px;
-    height: 12px;
-    border-radius: var(--radius-full);
-    border: 2px solid var(--color-surface-elevated);
-    z-index: 10;
-    
-    &-online {
-      background: var(--color-success);
-      box-shadow: 0 0 0 2px var(--color-surface-elevated), 0 0 8px rgba(34, 197, 94, 0.6);
-    }
-    &-away {
-      background: var(--color-warning);
-    }
-    &-offline {
-      background: var(--color-border);
-    }
-  }
-  
-  &-badge {
-    position: absolute;
-    top: -2px;
-    right: -2px;
-    min-width: 1.25rem;
-    height: 1.25rem;
-    padding: 0 var(--space-1);
-    background: var(--color-error);
-    color: var(--color-text-inverse);
-    border-radius: var(--radius-full);
-    font-size: var(--text-xs);
-    font-weight: var(--font-bold);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 2px solid var(--color-surface-elevated);
-    line-height: 1;
-    text-align: center;
-  }
-  
-  &-text {
+  .avatar-text {
     font-weight: var(--font-bold);
     text-transform: uppercase;
-    color: inherit;
     line-height: 1;
     display: flex;
     align-items: center;
     justify-content: center;
     text-align: center;
     user-select: none;
+    background: transparent;
+    border: none;
+    outline: none;
+    position: relative;
+    z-index: 1;
   }
   
   i {
@@ -151,39 +48,489 @@
     align-items: center;
     justify-content: center;
     line-height: 1;
+    position: relative;
+    z-index: 1;
   }
 }
 
+// Size layer - defines dimensions
+@mixin avatar-size($width, $height, $font-size) {
+  width: $width;
+  height: $height;
+  font-size: $font-size;
+}
+
+// Theme layer - defines colors and shadows
+@mixin avatar-theme($bg, $color, $border, $shadow, $hover-shadow: null, $hover-border: null) {
+  background: $bg;
+  color: $color;
+  border: $border;
+  box-shadow: $shadow;
+  
+  @if $hover-shadow {
+    &:hover {
+      box-shadow: $hover-shadow;
+      @if $hover-border {
+        border-color: $hover-border;
+      }
+    }
+  }
+}
+
+// Size implementations
+.avatar {
+  &-xs {
+    @include avatar-base;
+    @include avatar-size(1.25rem, 1.25rem, var(--text-2xs));
+    
+    .avatar-status {
+      width: 0.5rem;
+      height: 0.5rem;
+      border-width: 1px;
+    }
+    
+    .avatar-badge {
+      min-width: 0.875rem;
+      height: 0.875rem;
+      font-size: var(--text-2xs);
+      top: -2px;
+      right: -2px;
+    }
+  }
+  
+  &-sm {
+    @include avatar-base;
+    @include avatar-size(1.75rem, 1.75rem, var(--text-xs));
+    
+    .avatar-status {
+      width: 0.625rem;
+      height: 0.625rem;
+      border-width: 1.5px;
+    }
+    
+    .avatar-badge {
+      min-width: 1rem;
+      height: 1rem;
+      font-size: var(--text-2xs);
+      top: -3px;
+      right: -3px;
+    }
+  }
+  
+  &-md {
+    @include avatar-base;
+    @include avatar-size(2.5rem, 2.5rem, var(--text-sm));
+    
+    .avatar-status {
+      width: 0.75rem;
+      height: 0.75rem;
+      border-width: 2px;
+    }
+    
+    .avatar-badge {
+      min-width: 1.25rem;
+      height: 1.25rem;
+      font-size: var(--text-xs);
+      top: -4px;
+      right: -4px;
+    }
+  }
+  
+  &-lg {
+    @include avatar-base;
+    @include avatar-size(3.5rem, 3.5rem, var(--text-base));
+    
+    .avatar-status {
+      width: 1rem;
+      height: 1rem;
+      border-width: 2.5px;
+    }
+    
+    .avatar-badge {
+      min-width: 1.5rem;
+      height: 1.5rem;
+      font-size: var(--text-sm);
+      top: -5px;
+      right: -5px;
+    }
+  }
+  
+  &-xl {
+    @include avatar-base;
+    @include avatar-size(4.5rem, 4.5rem, var(--text-lg));
+    
+    .avatar-status {
+      width: 1.25rem;
+      height: 1.25rem;
+      border-width: 3px;
+    }
+    
+    .avatar-badge {
+      min-width: 1.75rem;
+      height: 1.75rem;
+      font-size: var(--text-sm);
+      top: -6px;
+      right: -6px;
+    }
+  }
+  
+  &-2xl {
+    @include avatar-base;
+    @include avatar-size(6rem, 6rem, var(--text-xl));
+    
+    .avatar-status {
+      width: 1.5rem;
+      height: 1.5rem;
+      border-width: 3px;
+    }
+    
+    .avatar-badge {
+      min-width: 2rem;
+      height: 2rem;
+      font-size: var(--text-base);
+      top: -8px;
+      right: -8px;
+    }
+  }
+}
+
+// Theme variants layer
+.avatar {
+  &-default {
+    @include avatar-theme(
+      linear-gradient(135deg, var(--color-surface) 0%, var(--color-surface-elevated) 100%),
+      var(--color-text),
+      2px solid var(--color-border),
+      var(--shadow-sm),
+      var(--shadow-md),
+      var(--color-border-hover)
+    );
+  }
+  
+  &-primary {
+    @include avatar-theme(
+      linear-gradient(135deg, var(--color-primary) 0%, color-mix(in srgb, var(--color-primary) 80%, black 20%) 100%),
+      var(--color-text-inverse),
+      2px solid var(--color-primary),
+      (0 0 0 0 var(--color-primary), var(--shadow-sm)),
+      (0 0 0 4px color-mix(in srgb, var(--color-primary) 20%, transparent 80%), var(--shadow-md))
+    );
+    
+    &:hover {
+      transform: scale(1.02);
+    }
+  }
+  
+  &-secondary {
+    @include avatar-theme(
+      linear-gradient(135deg, var(--color-surface) 0%, var(--color-surface-elevated) 100%),
+      var(--color-text-muted),
+      2px solid var(--color-border-secondary),
+      (inset 0 1px 2px rgba(0, 0, 0, 0.05), var(--shadow-sm))
+    );
+    
+    &:hover {
+      border-color: var(--color-text-muted);
+      color: var(--color-text);
+    }
+  }
+  
+  &-success {
+    @include avatar-theme(
+      linear-gradient(135deg, var(--color-success) 0%, color-mix(in srgb, var(--color-success) 80%, black 20%) 100%),
+      var(--color-text-inverse),
+      2px solid var(--color-success),
+      (0 0 0 0 var(--color-success), var(--shadow-sm)),
+      (0 0 0 4px color-mix(in srgb, var(--color-success) 20%, transparent 80%), var(--shadow-md))
+    );
+    
+    &:hover {
+      transform: scale(1.02);
+    }
+  }
+  
+  &-warning {
+    @include avatar-theme(
+      linear-gradient(135deg, var(--color-warning) 0%, color-mix(in srgb, var(--color-warning) 80%, black 20%) 100%),
+      var(--color-text-inverse),
+      2px solid var(--color-warning),
+      (0 0 0 0 var(--color-warning), var(--shadow-sm)),
+      (0 0 0 4px color-mix(in srgb, var(--color-warning) 20%, transparent 80%), var(--shadow-md))
+    );
+    
+    &:hover {
+      transform: scale(1.02);
+    }
+  }
+  
+  &-error {
+    @include avatar-theme(
+      linear-gradient(135deg, var(--color-error) 0%, color-mix(in srgb, var(--color-error) 80%, black 20%) 100%),
+      var(--color-text-inverse),
+      2px solid var(--color-error),
+      (0 0 0 0 var(--color-error), var(--shadow-sm)),
+      (0 0 0 4px color-mix(in srgb, var(--color-error) 20%, transparent 80%), var(--shadow-md))
+    );
+    
+    &:hover {
+      transform: scale(1.02);
+    }
+  }
+  
+  &-gradient {
+    @include avatar-theme(
+      linear-gradient(135deg, 
+        var(--color-primary) 0%, 
+        color-mix(in srgb, var(--color-primary) 70%, var(--color-success) 30%) 25%, 
+        var(--color-success) 50%, 
+        color-mix(in srgb, var(--color-warning) 70%, var(--color-error) 30%) 75%, 
+        var(--color-error) 100%),
+      var(--color-text-inverse),
+      2px solid transparent,
+      (0 0 0 0 var(--color-primary), var(--shadow-md)),
+      (0 0 0 6px color-mix(in srgb, var(--color-primary) 15%, transparent 85%), var(--shadow-lg))
+    );
+    
+    &::before {
+      content: '';
+      position: absolute;
+      top: -2px;
+      left: -2px;
+      right: -2px;
+      bottom: -2px;
+      background: linear-gradient(135deg, 
+        var(--color-primary) 0%, 
+        color-mix(in srgb, var(--color-primary) 70%, var(--color-success) 30%) 25%, 
+        var(--color-success) 50%, 
+        color-mix(in srgb, var(--color-warning) 70%, var(--color-error) 30%) 75%, 
+        var(--color-error) 100%);
+      border-radius: inherit;
+      z-index: -1;
+      transition: all var(--duration-normal) var(--ease-out);
+    }
+    
+    &:hover {
+      transform: scale(1.05);
+      
+      &::before {
+        top: -4px;
+        left: -4px;
+        right: -4px;
+        bottom: -4px;
+      }
+    }
+  }
+}
+
+// Behavior modifiers
+.avatar {
+  &-interactive {
+    cursor: pointer;
+    
+    &:hover {
+      transform: translateY(-2px) scale(1.04);
+    }
+  }
+}
+
+// Avatar components (status, badge)
+.avatar-status {
+  position: absolute;
+  bottom: -1px;
+  right: -1px;
+  border-radius: var(--radius-full);
+  border: 2px solid var(--color-surface-elevated);
+  z-index: 10;
+  transition: all var(--duration-fast) var(--ease-out);
+  
+  &-online {
+    background: var(--color-success);
+    box-shadow: 0 0 0 2px var(--color-surface-elevated), 0 0 8px rgba(34, 197, 94, 0.6);
+  }
+  
+  &-away {
+    background: var(--color-warning);
+    box-shadow: 0 0 0 2px var(--color-surface-elevated), 0 0 6px rgba(251, 191, 36, 0.5);
+  }
+  
+  &-offline {
+    background: var(--color-border);
+    box-shadow: 0 0 0 2px var(--color-surface-elevated);
+  }
+}
+
+.avatar-badge {
+  position: absolute;
+  padding: 0 var(--space-1);
+  background: var(--color-error);
+  color: var(--color-text-inverse);
+  border-radius: var(--radius-full);
+  font-weight: var(--font-bold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--color-surface-elevated);
+  line-height: 1;
+  text-align: center;
+  box-shadow: 0 0 0 1px var(--color-error), var(--shadow-sm);
+  transition: all var(--duration-fast) var(--ease-out);
+  z-index: 10;
+}
+
+// Avatar group compositions
 .avatar-group {
   display: flex;
   align-items: center;
+  position: relative;
   
-  .avatar {
+  [class*="avatar-"] {
     border: 2px solid var(--color-surface-elevated);
     margin-left: -0.5rem;
-    transition: all var(--duration-fast) var(--ease-out);
+    transition: transform var(--duration-fast) var(--ease-out), box-shadow var(--duration-fast) var(--ease-out), border-color var(--duration-fast) var(--ease-out);
+    box-shadow: var(--shadow-lg), 0 8px 16px rgba(0, 0, 0, 0.15), 0 2px 4px rgba(0, 0, 0, 0.1);
+    position: relative;
+    
+    // Override base hover to prevent conflicts
+    &:hover {
+      transform: none;
+      box-shadow: var(--shadow-lg), 0 8px 16px rgba(0, 0, 0, 0.15), 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
     
     &:first-child {
       margin-left: 0;
     }
+  }
+  
+  // Group-specific hover effects
+  [class*="avatar-"]:hover {
+    z-index: 10;
+    transform: translateX(2px) scale(1.08);
+    box-shadow: var(--shadow-xl), 0 12px 24px rgba(0, 0, 0, 0.25), 0 4px 8px rgba(0, 0, 0, 0.15);
+    border-color: var(--color-primary);
+  }
+  
+  [class*="avatar-"]:focus-visible {
+    z-index: 11;
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+  
+  &-compact {
+    [class*="avatar-"] {
+      margin-left: -0.875rem;
+      border-width: 2.5px;
+      box-shadow: 
+        var(--shadow-lg),
+        0 6px 12px rgba(0, 0, 0, 0.12),
+        0 0 0 1px color-mix(in srgb, var(--color-border) 30%, transparent 70%);
+    }
     
-    @include interactive-avatar(scale(1.05), var(--shadow-md));
-    
-    &:hover {
-      z-index: 1;
+    [class*="avatar-"]:hover {
+      transform: translateX(4px) scale(1.1);
+      box-shadow: var(--shadow-xl), 0 10px 20px rgba(0, 0, 0, 0.2), 0 4px 8px rgba(0, 0, 0, 0.1);
     }
   }
   
-  &-compact .avatar {
-    margin-left: -0.75rem;
+  &-spacious {
+    [class*="avatar-"] {
+      margin-left: -0.25rem;
+      box-shadow: var(--shadow-md), 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+  }
+  
+  &-separated {
+    [class*="avatar-"] {
+      margin-left: 0.5rem;
+      border-width: 1px;
+      box-shadow: var(--shadow-md), 0 4px 8px rgba(0, 0, 0, 0.1);
+      
+      &:first-child {
+        margin-left: 0;
+      }
+    }
+    
+    [class*="avatar-"]:hover {
+      transform: translateY(-2px) scale(1.05);
+      box-shadow: var(--shadow-lg), 0 8px 16px rgba(0, 0, 0, 0.15);
+    }
+  }
+  
+  &-stacked {
+    flex-direction: row-reverse;
+    justify-content: flex-end;
+    
+    [class*="avatar-"] {
+      margin-left: 0;
+      margin-right: -0.75rem;
+      
+      &:last-child {
+        margin-right: 0;
+      }
+    }
+    
+    [class*="avatar-"]:hover {
+      transform: translateX(-4px) scale(1.1);
+    }
   }
   
   &-more {
-    @extend .avatar !optional;
-    background: var(--color-surface);
-    color: var(--color-text-muted);
-    font-size: var(--text-xs);
-    font-weight: var(--font-medium);
+    @include avatar-base;
+    @include avatar-size(2.5rem, 2.5rem, var(--text-xs));
+    @include avatar-theme(
+      linear-gradient(135deg, var(--color-surface) 0%, var(--color-surface-elevated) 100%),
+      var(--color-text-muted),
+      2px solid var(--color-border),
+      (var(--shadow-md), 0 4px 8px rgba(0, 0, 0, 0.1)),
+      (var(--shadow-lg), 0 8px 16px rgba(0, 0, 0, 0.15))
+    );
+    
     margin-left: -0.5rem;
+    font-weight: var(--font-semibold);
+    
+    &:hover {
+      background: var(--color-surface-elevated);
+      color: var(--color-text);
+      transform: scale(1.05);
+    }
+  }
+}
+
+// Layout utilities
+.avatar {
+  &-spaced-xs { margin: 0.125rem; }
+  &-spaced-sm { margin: 0.25rem; }
+  &-spaced-md { margin: 0.5rem; }
+  &-spaced-lg { margin: 0.75rem; }
+  &-spaced-xl { margin: 1rem; }
+}
+
+.avatars {
+  &-compact {
+    display: flex;
+    gap: 0.25rem;
+  }
+  
+  &-normal {
+    display: flex;
+    gap: 0.5rem;
+  }
+  
+  &-spacious {
+    display: flex;
+    gap: 1rem;
+  }
+  
+  &-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(2.5rem, 1fr));
+    gap: 0.75rem;
+    
+    &-compact {
+      gap: 0.5rem;
+    }
+    
+    &-spacious {
+      gap: 1.25rem;
+    }
   }
 }

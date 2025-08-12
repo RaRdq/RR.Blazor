@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
 using RR.Blazor.Models;
 using RR.Blazor.Components.Base;
+using RR.Blazor.Enums;
 using System.Reflection;
 
 namespace RR.Blazor.Components.Data;
@@ -81,7 +82,6 @@ public abstract class RTableBase : RInteractiveComponentBase
     [Parameter] public bool Virtualize { get; set; }
     [Parameter] public bool ResizableColumns { get; set; }
     [Parameter] public List<string> StickyColumns { get; set; } = new();
-    [Parameter] public Enums.ComponentDensity Density { get; set; } = Enums.ComponentDensity.Normal;
     [Parameter] public bool Striped { get; set; }
     [Parameter] public bool Hover { get; set; } = true;
     [Parameter] public bool Sortable { get; set; } = true;
@@ -89,8 +89,7 @@ public abstract class RTableBase : RInteractiveComponentBase
     #endregion
 
     #region Professional Styling Parameters  
-    [Parameter] public Enums.TableVariant TableVariant { get; set; } = Enums.TableVariant.Standard;
-    [Parameter] public Enums.TableDensity TableDensity { get; set; } = Enums.TableDensity.Normal;
+    [Parameter] public TableVariant TableVariant { get; set; } = TableVariant.Standard;
     [Parameter] public int CustomRowHeight { get; set; } = 48;
     [Parameter] public int TableElevation { get; set; } = 2;
     [Parameter] public bool EnableGlassmorphism { get; set; }
@@ -183,7 +182,7 @@ public class RTable : RTableBase
         {
             // Render empty state
             builder.OpenElement(0, "div");
-            builder.AddAttribute(1, "class", "table-empty-state pa-6 text-center");
+            builder.AddAttribute(1, "class", "empty-state pa-6 text-center");
             builder.OpenElement(2, "div");
             builder.AddAttribute(3, "class", "text-secondary");
             builder.AddContent(4, EmptyText);
@@ -281,7 +280,7 @@ public class RTableAuto : RTableBase
         {
             // Render empty state
             builder.OpenElement(0, "div");
-            builder.AddAttribute(1, "class", "table-empty-state pa-6 text-center");
+            builder.AddAttribute(1, "class", "empty-state pa-6 text-center");
             builder.OpenElement(2, "div");
             builder.AddAttribute(3, "class", "text-secondary");
             builder.AddContent(4, EmptyText);

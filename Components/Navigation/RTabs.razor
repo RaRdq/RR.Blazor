@@ -12,6 +12,7 @@ Tab container for organizing content with smooth animations.
 @using RR.Blazor.Attributes
 @using RR.Blazor.Components
 @using RR.Blazor.Components.Base
+@using RR.Blazor.Components.Display
 @inherits RForwardingComponentBase
 @implements IDisposable
 @inject IJSRuntime JSRuntime
@@ -131,7 +132,16 @@ Tab container for organizing content with smooth animations.
                      role="tabpanel"
                      aria-labelledby="tab-@tab.Id"
                      tabindex="0">
-                    @tab.Content
+                    @if (Loading && tab.Id == ActiveTabId)
+                    {
+                        <RSkeleton Loading="true" Type="SkeletonType.Card">
+                            @tab.Content
+                        </RSkeleton>
+                    }
+                    else
+                    {
+                        @tab.Content
+                    }
                 </div>
             }
         </div>
@@ -169,6 +179,10 @@ Tab container for organizing content with smooth animations.
     
     /// <summary>Use fade only animation (no slide)</summary>
     [Parameter] public bool FadeOnly { get; set; }
+    
+    /// <summary>Whether tabs are loading - shows skeleton for tab content</summary>
+    [Parameter, AIParameter("Show loading skeleton for tab content", "true when tab data is loading asynchronously")] 
+    public bool Loading { get; set; }
     
     /// <summary>Additional CSS classes</summary>
     [Parameter] public string Class { get; set; }
@@ -227,7 +241,7 @@ Tab container for organizing content with smooth animations.
         {
             try
             {
-                await JSRuntime.InvokeVoidAsync("RRBlazor.initializeTabs", tabsElement, navContainer, navWrapper);
+                await JSRuntime.InvokeVoidAsync("RRBlazor.Tabs.initializeTabs", tabsElement, navContainer, navWrapper);
                 
                 if (tabs.Count > 0)
                 {
@@ -457,7 +471,7 @@ Tab container for organizing content with smooth animations.
             var activeTab = tabs.FirstOrDefault(t => t.Id == ActiveTabId);
             if (activeTab != null)
             {
-                var result = await JSRuntime.InvokeAsync<TabIndicatorPosition>("RRBlazor.getTabIndicatorPosition", $"tab-{ActiveTabId}", navWrapper);
+                var result = await JSRuntime.InvokeAsync<TabIndicatorPosition>("RRBlazor.Tabs.getTabIndicatorPosition", $"tab-{ActiveTabId}", navWrapper);
                 
                 // Only update if values have actually changed to prevent unnecessary re-renders
                 if (Math.Abs(indicatorLeft - result.Left) > 0.5 || Math.Abs(indicatorWidth - result.Width) > 0.5)
@@ -497,7 +511,7 @@ Tab container for organizing content with smooth animations.
                 return;
             }
             
-            var scrollInfo = await JSRuntime.InvokeAsync<ScrollInfo>("RRBlazor.getTabScrollInfo", navWrapper);
+            var scrollInfo = await JSRuntime.InvokeAsync<ScrollInfo>("RRBlazor.Tabs.getTabScrollInfo", navWrapper);
             
 
             if (isScrollable != scrollInfo.IsScrollable || 
@@ -531,7 +545,7 @@ Tab container for organizing content with smooth animations.
     {
         try
         {
-            await JSRuntime.InvokeVoidAsync("RRBlazor.scrollTabsLeft", navWrapper);
+            await JSRuntime.InvokeVoidAsync("RRBlazor.Tabs.scrollTabsLeft", navWrapper);
             await UpdateScrollState();
         }
         catch
@@ -543,7 +557,7 @@ Tab container for organizing content with smooth animations.
     {
         try
         {
-            await JSRuntime.InvokeVoidAsync("RRBlazor.scrollTabsRight", navWrapper);
+            await JSRuntime.InvokeVoidAsync("RRBlazor.Tabs.scrollTabsRight", navWrapper);
             await UpdateScrollState();
         }
         catch
@@ -555,7 +569,7 @@ Tab container for organizing content with smooth animations.
     {
         try
         {
-            await JSRuntime.InvokeVoidAsync("RRBlazor.scrollToTab", navWrapper, $"tab-{tabId}");
+            await JSRuntime.InvokeVoidAsync("RRBlazor.Tabs.scrollToTab", navWrapper, $"tab-{tabId}");
             await UpdateScrollState();
         }
         catch
@@ -740,26 +754,11 @@ Tab container for organizing content with smooth animations.
     
     private string GetScrollArrowClasses(bool canScroll)
     {
-        var classes = new List<string>
-        {
-            "position-absolute",
-            "w-10 h-10",
-            "rounded-full",
-            "d-flex align-center justify-center",
-            "bg-surface-elevated",
-            "shadow-4",
-            "hover-lift",
-            "transition-all",
-            "z-3"
-        };
+        var classes = new List<string>();
         
         if (canScroll && isScrollable)
         {
             classes.Add("tabs-nav-arrow-visible");
-        }
-        else
-        {
-            classes.Add("opacity-0 pointer-events-none");
         }
         
         return string.Join(" ", classes);

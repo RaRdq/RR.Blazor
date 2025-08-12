@@ -9,7 +9,8 @@ public enum AvatarSize
     Small,
     Medium,
     Large,
-    ExtraLarge
+    ExtraLarge,
+    ExtraLarge2X
 }
 
 /// <summary>

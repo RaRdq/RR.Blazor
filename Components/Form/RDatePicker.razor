@@ -25,8 +25,8 @@
                value="@GetDisplayValue()"
                placeholder="@GetPlaceholder()"
                readonly
-               disabled="@Disabled"
-               required="@Required"
+               disabled="@(Disabled ? "disabled" : null)"
+               required="@(Required ? "required" : null)"
                @onfocus="HandleFocus"
                @onblur="HandleBlur"
                @attributes="GetSafeAttributes()" />
@@ -90,7 +90,7 @@
                         {
                             <button type="button" 
                                     class="rr-datepicker-day @GetDayClasses(day)"
-                                    disabled="@IsDateDisabled(day.Date)"
+                                    disabled="@(IsDateDisabled(day.Date) ? "disabled" : null)"
                                     @onclick="() => SelectDate(day.Date)">
                                 @day.Date.Day
                             </button>
@@ -191,6 +191,12 @@
     [Parameter] public string HelperText { get; set; }
     
     [Parameter] public EventCallback<DateTime?> OnDateSelected { get; set; }
+    
+    // Universal Portal Interface Parameters
+    [Parameter] public bool UseBackdrop { get; set; } = false;
+    [Parameter] public string BackdropClass { get; set; } = "";
+    [Parameter] public bool CloseOnBackdropClick { get; set; } = true;
+    [Parameter] public bool CloseOnEscape { get; set; } = true;
 
     
     /// <summary>
@@ -223,24 +229,13 @@
         {
             try
             {
-                // Use the unified RR.Blazor API instead of importing module directly
-                // This ensures proper module loading order and portal system availability
-                await JSRuntime.InvokeVoidAsync("eval", @"
-                    (async function() {
-                        // Wait for RRBlazor to be available
-                        if (window.RRBlazor?.DatePicker) {
-                            // Setup click-outside event listener using the unified API
-                            const datepicker = await window.RRBlazor.moduleManager.getModule('datepicker');
-                            if (datepicker && datepicker.setupDatepickerEvents) {
-                                datepicker.setupDatepickerEvents(arguments[0], arguments[1]);
-                            }
-                        }
-                    })
-                ", elementRef, DotNetObjectReference.Create(this));
+                await Task.Yield();
+                
+                await JSRuntime.InvokeVoidAsync("RRBlazor.DatePicker.initialize", elementRef, DotNetObjectReference.Create(this));
             }
-            catch
+            catch (Exception ex)
             {
-                // JavaScript module failed to load - component will work without positioning
+                Console.WriteLine($"[RDatePicker] JS initialization failed: {ex.Message}");
             }
         }
     }
@@ -261,7 +256,7 @@
 
     private async Task OpenCalendar()
     {
-        if (isOpen) return; // Already open
+        if (isOpen || Disabled) return;
         
         if (Range)
         {
@@ -274,55 +269,40 @@
         isOpen = true;
         StateHasChanged();
         
-        // Wait for DOM update
         await Task.Yield();
         
-        // Use unified RR.Blazor API for positioning
         try
         {
-            // Position popup and setup click handlers after DOM is ready using unified API
-            // Ensure portal system is loaded before calling datepicker positioning
-            await JSRuntime.InvokeVoidAsync("eval", @"
-                (async function() {
-                    if (window.RRBlazor?.moduleManager) {
-                        // Ensure portal module is loaded first
-                        await window.RRBlazor.moduleManager.getModule('portal');
-                        
-                        // Then get datepicker module and call positionPopup
-                        const datepicker = await window.RRBlazor.moduleManager.getModule('datepicker');
-                        if (datepicker && datepicker.positionPopup) {
-                            await datepicker.positionPopup(arguments[0], true);
-                        }
-                    }
-                })
-            ", elementRef);
+            var portalConfig = new
+            {
+                useBackdrop = UseBackdrop,
+                backdropClass = BackdropClass,
+                closeOnBackdropClick = CloseOnBackdropClick,
+                closeOnEscape = CloseOnEscape
+            };
+            
+            await JSRuntime.InvokeVoidAsync("RRBlazor.DatePicker.open", elementRef, portalConfig);
         }
         catch (Exception ex)
         {
+            Console.WriteLine($"[RDatePicker] Failed to position popup: {ex.Message}");
         }
     }
 
     private async Task CloseCalendar()
     {
+        if (!isOpen) return;
+        
         isOpen = false;
         showYearPicker = false;
         
-        // Cleanup JavaScript click-outside handling using unified API
         try
         {
-            await JSRuntime.InvokeVoidAsync("eval", @"
-                (async function() {
-                    if (window.RRBlazor?.moduleManager) {
-                        const datepicker = await window.RRBlazor.moduleManager.getModule('datepicker');
-                        if (datepicker && datepicker.cleanupDatepicker) {
-                            datepicker.cleanupDatepicker(arguments[0]);
-                        }
-                    }
-                })
-            ", elementRef);
+            await JSRuntime.InvokeVoidAsync("RRBlazor.DatePicker.close", elementRef);
         }
         catch (Exception ex)
         {
+            Console.WriteLine($"[RDatePicker] Cleanup failed: {ex.Message}");
         }
         
         StateHasChanged();
@@ -331,7 +311,19 @@
     [JSInvokable]
     public async Task HandleClickOutside()
     {
-        await CloseCalendar();
+        if (CloseOnBackdropClick)
+        {
+            await CloseCalendar();
+        }
+    }
+    
+    [JSInvokable]
+    public async Task HandleEscapeKey()
+    {
+        if (CloseOnEscape)
+        {
+            await CloseCalendar();
+        }
     }
 
     private async Task SelectDate(DateTime date)
@@ -703,21 +695,15 @@
     {
         try
         {
-            // Cleanup using unified API - no need to dispose modules as they're managed by moduleManager
-            await JSRuntime.InvokeVoidAsync("eval", @"
-                (async function() {
-                    if (window.RRBlazor?.moduleManager) {
-                        const datepicker = await window.RRBlazor.moduleManager.getModule('datepicker');
-                        if (datepicker && datepicker.cleanupDatepicker) {
-                            datepicker.cleanupDatepicker(arguments[0]);
-                        }
-                    }
-                })
-            ", elementRef);
+            if (isOpen)
+            {
+                await CloseCalendar();
+            }
+            await JSRuntime.InvokeVoidAsync("RRBlazor.DatePicker.cleanup", elementRef);
         }
         catch
         {
-            // Cleanup failed - ignore
+            // Disposal failed - ignore
         }
     }
 }

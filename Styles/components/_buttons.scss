@@ -1,10 +1,9 @@
 @use '../abstracts' as *;
-@use '../abstracts/mixins/loading' as loading;
 
 .button {
   @extend %button-base;
   
-  padding: var(--space-2-5) var(--space-4);
+  padding: var(--space-2) var(--space-3);
   font-size: var(--text-sm);
   gap: var(--space-2);
   min-height: var(--space-8);
@@ -19,7 +18,6 @@
     background: var(--color-surface-elevated);
     color: var(--color-text);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
-    @include interactive-base(button);
     
     &:hover {
       background: color-mix(in srgb, var(--color-surface-elevated) 90%, var(--color-text));
@@ -253,7 +251,7 @@
         color-mix(in srgb, var(--color-primary) 15%, var(--color-surface-elevated)),
         color-mix(in srgb, var(--color-primary) 25%, var(--color-surface))
       );
-      color: var(--color-primary); // Keep primary color on hover
+      color: var(--color-primary);
       border-color: var(--color-primary);
       transform: translateY(-1px);
       box-shadow: 
@@ -273,7 +271,7 @@
     padding: var(--space-0-5) var(--space-1);
     font-size: var(--text-xs);
     gap: var(--space-0-5);
-    min-height: var(--space-2) !important; // Force override of touch-target-min
+    min-height: var(--space-2);
     border-radius: var(--radius-sm);
   }
   
@@ -281,7 +279,7 @@
     padding: var(--space-1-5) var(--space-3);
     font-size: var(--text-sm);
     gap: var(--space-1);
-    min-height: var(--space-6); // Ensure clear difference from XS
+    min-height: var(--space-6);
     border-radius: var(--radius-md);
   }
   
@@ -435,7 +433,7 @@
         padding: var(--space-1);
       }
       &.button-xl {
-        width: var(--space-8); // ~3.5rem * 0.5 for dense
+        width: var(--space-8);
         height: var(--space-8);
         padding: var(--space-1-5);
       }
@@ -463,7 +461,6 @@
       gap: var(--space-8);
     }
     
-    // Icon button spacious adjustments
     &.button-icon {
       width: var(--space-8);
       height: var(--space-8);
@@ -492,295 +489,26 @@
     }
   }
   
-  &.loading,
-  &[aria-busy="true"],
-  &[data-loading="true"],
-  &[data-state="loading"] {
-    @include loading.loading-foundation(
-      $pointer-events: none,
-      $cursor: wait,
-      $opacity: 1,
-      $user-select: none
-    );
+  // Professional button loading states - consistent BEM pattern
+  &-loading {
+    @include button-loading();
     
-    --button-loading-size: var(--icon-base);
-    --button-loading-border: var(--border-2);
-    
-    // Override generic .loading - clean onion approach
-    &.loading::after,
-    &.loading::before {
-      display: none;
-    }
-    
-    position: relative;
-    
-    // Only hide non-loading content during loading
-    > span:not(.loading-text),
-    > i:not(.loading-icon) {
-      display: none;
-    }
-    
-    // Preserve original button text color during loading
-    &.button-primary,
-    &.button-success,
-    &.button-warning,
-    &.button-error,
-    &.button-info {
-      color: var(--color-text-inverse);
-    }
-    
-    &.button-secondary {
-      color: var(--color-text);
-    }
-    
-    &.button-outline,
-    &.button-ghost {
-      color: var(--color-primary);
-    }
-    
-    &.button-glass {
-      color: var(--color-text);
-    }
-    
-    &.button-gradient,
-    &.button-neon,
-    &.button-shimmer {
-      color: var(--color-text-inverse);
-    }
-    
-    &.button-neumorphism,
-    &.button-enterprise {
-      color: var(--color-primary);
-    }
-    
-    &::after {
-      content: '';
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      @include loading.spinner-core(
-        $size: var(--button-loading-size, var(--icon-base)),
-        $border-width: var(--button-loading-border, 2px),
-        $speed: var(--button-loading-speed, 0.8s)
-      );
-      z-index: 1;
-    }
-    
-    // Loading with text: use data attribute instead of :has()
-    &[data-loading-text="true"] {
-      // Hide centered spinner when loading text is present
-      &::after {
-        display: none !important;
-      }
-      
-      // Show loading text with inline spinner
-      > .loading-text {
-        display: inline-flex !important;
-        align-items: center;
-        gap: var(--space-2);
-        color: currentColor !important;
-        opacity: 1 !important;
-        visibility: visible !important;
-        
-        &::before {
-          content: '';
-          @include loading.spinner-core(
-            $size: var(--button-loading-size, 1em),
-            $border-width: var(--button-loading-border, 2px),
-            $speed: var(--button-loading-speed, 0.8s)
-          );
-          flex-shrink: 0;
-          display: inline-block;
-        }
-      }
-    }
-    
-    &.button-primary,
-    &.button-success,
-    &.button-warning,
-    &.button-error,
-    &.button-info {
-      @include loading.loading-theme-colors(inverse);
-    }
-    
-    &.button-secondary,
-    &.button-outline,
-    &.button-ghost,
-    &.button-glass {
-      @include loading.loading-theme-colors(primary);
-    }
-    
-    &.button-gradient,
-    &.button-neon,
-    &.button-shimmer {
-      @include loading.loading-theme-colors(inverse);
-    }
-    
-    &.button-neumorphism,
-    &.button-enterprise {
-      @include loading.loading-theme-colors(default);
-    }
-    
-    &.button-xs {
-      --button-loading-size: var(--icon-xs);
-      --button-loading-border: var(--border-1);
-    }
-    
-    &.button-sm {
-      --button-loading-size: var(--icon-sm);
-      --button-loading-border: var(--border-2);
-    }
-    
-    &.button-lg {
-      --button-loading-size: var(--icon-lg);
-      --button-loading-border: var(--border-3);
-    }
-    
-    &.button-xl {
-      --button-loading-size: var(--icon-xl);
-      --button-loading-border: var(--border-4);
-    }
-    
-    &.button-icon {
-      &::after {
-        --button-loading-size: 1em;
-      }
-      
-      &.button-xs::after {
-        --button-loading-size: 0.75em;
-      }
-      
-      &.button-sm::after {
-        --button-loading-size: 0.875em;
-      }
-      
-      &.button-lg::after {
-        --button-loading-size: 1.25em;
-      }
-      
-      &.button-xl::after {
-        --button-loading-size: 1.5em;
-      }
-    }
-    
-    &.button-compact {
-      --button-loading-size: 1em;
-      --button-loading-border: 1.5px;
-      
-      &.button-xs {
-        --button-loading-size: 0.75em;
-      }
-      &.button-sm {
-        --button-loading-size: 0.875em;
-      }
-      &.button-lg {
-        --button-loading-size: 1.25em;
-      }
-      &.button-xl {
-        --button-loading-size: 1.5em;
-      }
-    }
-    
-    &.button-dense {
-      --button-loading-size: 1.1em;
-      
-      &.button-xs {
-        --button-loading-size: 0.8em;
-      }
-      &.button-sm {
-        --button-loading-size: 0.95em;
-      }
-      &.button-lg {
-        --button-loading-size: 1.3em;
-      }
-      &.button-xl {
-        --button-loading-size: 1.5em;
-      }
-    }
-    
-    &.button-spacious {
-      --button-loading-size: 1.4em;
-      --button-loading-border: 3px;
-      
-      &.button-xs {
-        --button-loading-size: 1em;
-      }
-      &.button-sm {
-        --button-loading-size: 1.2em;
-      }
-      &.button-lg {
-        --button-loading-size: 1.6em;
-      }
-      &.button-xl {
-        --button-loading-size: 1.8em;
-      }
-    }
-    
-    @include loading.loading-performance-optimize();
-    @include loading.loading-dark-mode-support();
+    // Size-responsive loading for all button variants
+    &.button-xs { @include button-loading('xs'); }
+    &.button-sm { @include button-loading('sm'); }
+    &.button-lg { @include button-loading('lg'); }
+    &.button-xl { @include button-loading('xl'); }
   }
   
-  &.loading-dots {
-    @include loading.loading-inline($side: left, $gap: var(--space-1));
+  &-loading-inline {
+    @include loading-inline('start', 'sm', 'current');
     
-    &::before {
-      content: '';
-      display: inline-flex;
-      width: auto;
-      height: auto;
-      border: none;
-      animation: none;
-      gap: 0.3em;
-      
-      &,
-      &::before,
-      &::after {
-        content: '';
-        display: inline-block;
-        width: 0.4em;
-        height: 0.4em;
-        background: var(--loading-spinner-color, var(--color-primary));
-        border-radius: 50%;
-        animation: pulse 1.4s ease-in-out infinite both;
-      }
-      
-      &::before {
-        animation-delay: -0.32s;
-      }
-      
-      &::after {
-        animation-delay: -0.16s;
-      }
-    }
+    &-end { @include loading-inline('end', 'sm', 'current'); }
+    &-start { @include loading-inline('start', 'sm', 'current'); }
   }
   
-  &.loading-pulse {
-    @include loading.loading-foundation();
-    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-    
-    color: transparent;
-    > * {
-      opacity: 0;
-    }
-  }
-  
-  &.loading-inline {
-    @include loading.loading-inline($side: left, $gap: var(--space-2));
-    
-    color: inherit;
-    > * {
-      opacity: 1;
-    }
-  }
-  
-  &.loading-inline-right {
-    @include loading.loading-inline($side: right, $gap: var(--space-2));
-    
-    color: inherit;
-    > * {
-      opacity: 1;
-    }
+  &-loading-skeleton {
+    @include loading-skeleton();
   }
   
   &:disabled,
@@ -797,7 +525,19 @@
   }
 }
 
-.button-icon-start { margin-right: var(--space-2); }
-.button-icon-end { margin-left: var(--space-2); }
-.button-icon-top { margin-bottom: var(--space-1); }
-.button-icon-bottom { margin-top: var(--space-1); }
+.button-icon-start { 
+  margin-right: 0;
+  margin-left: calc(var(--space-2) * -0.5); 
+}
+.button-icon-end { 
+  margin-left: 0;
+  margin-right: calc(var(--space-2) * -0.5);
+}
+.button-icon-top { 
+  margin-bottom: 0;
+  margin-top: calc(var(--space-1) * -0.5);
+}
+.button-icon-bottom { 
+  margin-top: 0;
+  margin-bottom: calc(var(--space-1) * -0.5);
+}

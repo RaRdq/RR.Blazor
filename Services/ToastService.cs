@@ -48,6 +48,7 @@ public class ToastMessage
     public string Icon { get; set; }
     public string ActionText { get; set; }
     public Action OnAction { get; set; }
+    public int Progress { get; set; } = 0;
 }
 
 /// <summary>
@@ -118,6 +119,19 @@ public class ToastService(ToastServiceOptions options = null) : IToastService
         // Check for duplicates if enabled
         if (Options.PreventDuplicates && activeToasts.Contains(GetToastKey(toast)))
             return;
+        
+        // Auto-assign icons based on type if not provided
+        if (string.IsNullOrEmpty(toast.Icon))
+        {
+            toast.Icon = toast.Type switch
+            {
+                ToastType.Success => "check_circle",
+                ToastType.Error => "error",
+                ToastType.Warning => "warning",
+                ToastType.Info => "info",
+                _ => null
+            };
+        }
         
         activeToasts.Add(toast.Id);
         OnShow?.Invoke(toast);

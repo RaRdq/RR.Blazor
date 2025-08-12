@@ -1,14 +1,6 @@
 @**
-<summary>Universal choice system - works with both inline and dropdown modes</summary>
+<summary>Universal choice system - adapts between inline and dropdown modes</summary>
 <category>Form</category>
-<complexity>Complex</complexity>
-<ai-prompt>Universal choice component that adapts between inline and dropdown variants</ai-prompt>
-<ai-common-use>role switching, status filters, option selection, context switching</ai-common-use>
-<ai-avoid>Don't use for simple on/off toggles (use RToggle) or complex forms</ai-avoid>
-<ai-pattern name="auto-detection">RChoice Items="@options" for smart variant detection</ai-pattern>
-<ai-pattern name="force-dropdown">RChoiceGeneric EffectiveVariant="ChoiceVariant.Dropdown"</ai-pattern>
-<ai-pattern name="force-inline">RChoiceGeneric EffectiveVariant="ChoiceVariant.Inline"</ai-pattern>
-<ai-pattern name="role-switcher">RChoiceGeneric with custom TriggerContent</ai-pattern>
 **@
 
 @attribute [Component("RChoiceGeneric", Category = "Form")]
@@ -19,9 +11,9 @@
 @using Microsoft.AspNetCore.Components
 @using RR.Blazor.Components.Form
 @using RR.Blazor.Enums
+@using RR.Blazor.Services
 @implements IAsyncDisposable
 
-<!-- Form wrapper with label and validation -->
 <div class="@GetFormWrapperClasses()">
     @if (!string.IsNullOrEmpty(Label))
     {
@@ -30,13 +22,11 @@
     
     @if (EffectiveVariant == ChoiceVariant.Dropdown)
     {
-        <!-- Dropdown Mode -->
     <div @ref="choiceElement" class="choice choice-dropdown relative @(IsOpen ? "choice-open" : "") @GetDropdownDensityClass() @Class" 
          data-choice-id="@choiceElementId">
         
         @if (TriggerContent != null)
         {
-            <!-- Custom Trigger Content -->
             <button class="choice-trigger touch-target w-full d-flex align-center justify-between px-3 py-2 bg-surface border border-light rounded-md text-left hover-border-primary focus-ring transition-all"
                     @onclick="ToggleDropdown"
                     @onkeydown="OnKeyDown"
@@ -49,7 +39,6 @@
         }
         else
         {
-            <!-- Default Trigger -->
             <button class="choice-trigger touch-target w-full d-flex align-center justify-between px-3 py-2 bg-surface border border-light rounded-md text-left hover-border-primary focus-ring transition-all"
                     @onclick="ToggleDropdown"
                     @onkeydown="OnKeyDown"
@@ -65,42 +54,54 @@
             </button>
         }
         
-        <!-- Dropdown Content (will be moved to portal when opened) -->
-        <div class="choice-viewport" @ref="viewportElement">
+        <div class="choice-viewport" @ref="viewportElement" style="min-width: 200px;">
             <div class="choice-content">
                 @if (Items != null)
                 {
-                    @foreach (var item in Items)
+                    @if (ShouldUseVirtualScrolling())
                     {
-                        @if (ItemTemplate != null)
+                        <div class="choice-virtual-container" style="height: @GetVirtualContainerHeight()px; overflow-y: auto;">
+                            <RVirtualListGeneric Items="@Items.ToList()" 
+                                               ItemHeight="40" 
+                                               ContainerHeight="@GetVirtualContainerHeight()" 
+                                               BufferSize="5"
+                                               Size="compact"
+                                               ItemTemplate="@GetVirtualItemTemplate()"
+                                               Class="choice-virtual-list" />
+                        </div>
+                    }
+                    else
+                    {
+                        @foreach (var item in Items)
                         {
-                            <!-- Custom Item Template -->
-                            <button class="choice-item @GetItemClass(item)"
-                                    @onclick="() => OnItemSelected(item)"
-                                    disabled="@IsItemDisabled(item)"
-                                    title="@GetItemTitle(item)"
-                                    aria-label="@GetItemAriaLabel(item)">
-                                @ItemTemplate(item)
-                            </button>
-                        }
-                        else
-                        {
-                            <!-- Default Item Template -->
-                            <button class="choice-item @GetItemClass(item)"
-                                    @onclick="() => OnItemSelected(item)"
-                                    disabled="@IsItemDisabled(item)"
-                                    title="@GetItemTitle(item)"
-                                    aria-label="@GetItemAriaLabel(item)">
-                                @if (IsItemActive(item))
-                                {
-                                    <i class="material-symbols-rounded">check</i>
-                                }
-                                else if (!string.IsNullOrEmpty(GetItemIcon(item)))
-                                {
-                                    <i class="material-symbols-rounded">@GetItemIcon(item)</i>
-                                }
-                                <span>@GetItemLabel(item)</span>
-                            </button>
+                            @if (ItemTemplate != null)
+                            {
+                                <button class="choice-item @GetItemClass(item)"
+                                        @onclick="() => OnItemSelected(item)"
+                                        disabled="@IsItemDisabled(item)"
+                                        title="@GetItemTitle(item)"
+                                        aria-label="@GetItemAriaLabel(item)">
+                                    @ItemTemplate(item)
+                                </button>
+                            }
+                            else
+                            {
+                                <button class="choice-item @GetItemClass(item)"
+                                        @onclick="() => OnItemSelected(item)"
+                                        disabled="@IsItemDisabled(item)"
+                                        title="@GetItemTitle(item)"
+                                        aria-label="@GetItemAriaLabel(item)">
+                                    @if (IsItemActive(item))
+                                    {
+                                        <i class="material-symbols-rounded">check</i>
+                                    }
+                                    else if (!string.IsNullOrEmpty(GetItemIcon(item)))
+                                    {
+                                        <i class="material-symbols-rounded">@GetItemIcon(item)</i>
+                                    }
+                                    <span>@GetItemLabel(item)</span>
+                                </button>
+                            }
                         }
                     }
                 }
@@ -110,7 +111,6 @@
 }
 else
 {
-    <!-- Inline Mode -->
     <div class="choice @GetInlineClass() @Class">
         @if (Items != null)
         {
@@ -145,7 +145,6 @@ else
     </div>
     }
     
-    <!-- Validation and Help Text -->
     @if (HasError && !string.IsNullOrEmpty(ErrorMessage))
     {
         <div class="@GetErrorMessageClasses()">
@@ -161,6 +160,7 @@ else
 </div>
 
 @inject IJSRuntime JS
+@inject PortalService PortalService
 
 @code {
     private bool isOpen;
@@ -186,6 +186,12 @@ else
     [Parameter] public RenderFragment<object> ItemTemplate { get; set; }
     [Parameter] public EventCallback<TValue> OnItemClick { get; set; }
     [Parameter] public DropdownDirection DropdownDirection { get; set; } = DropdownDirection.Auto;
+    
+    [Parameter] public bool UseBackdrop { get; set; } = false;
+    [Parameter] public string BackdropClass { get; set; } = "";
+    [Parameter] public bool CloseOnBackdropClick { get; set; } = true;
+    [Parameter] public bool CloseOnEscape { get; set; } = true;
+    [Parameter] public bool EnableVirtualScrolling { get; set; } = true;
 
     private bool IsOpen => isOpen && !Disabled;
 
@@ -331,69 +337,47 @@ else
         isOpen = true;
         StateHasChanged();
         
-        await Task.Yield(); // Allow DOM to update
+        await Task.Yield();
         
         try
         {
-            // Create portal using centralized system with click-outside handling
-            var portalResult = await JS.InvokeAsync<string>("RRBlazor.Choice.createPortal", choiceElementId);
-            if (!string.IsNullOrEmpty(portalResult))
+            var zIndex = await PortalService.RegisterPortalAsync(
+                $"{choiceElementId}-dropdown",
+                PortalType.Dropdown,
+                parentPortalId: null,
+                useBackdrop: UseBackdrop,
+                backdropClass: BackdropClass,
+                closeOnBackdropClick: CloseOnBackdropClick,
+                closeOnEscape: CloseOnEscape
+            );
+            
+            currentPortalId = $"{choiceElementId}-dropdown";
+            
+            var portalConfig = new
             {
-                currentPortalId = portalResult;
-                
-                // Register event listener for click-outside events
-                await JS.InvokeVoidAsync("RRBlazor.Choice.registerClickOutside", choiceElementId, 
-                    DotNetObjectReference.Create(this));
-            }
-            else
+                portalId = currentPortalId,
+                useBackdrop = UseBackdrop,
+                backdropClass = BackdropClass,
+                closeOnBackdropClick = CloseOnBackdropClick,
+                closeOnEscape = CloseOnEscape,
+                dropdownDirection = DropdownDirection.ToString()
+            };
+            
+            var dropdownId = await JS.InvokeAsync<string>("RRBlazor.Choice.openDropdown", choiceElementId, portalConfig);
+            
+            await JS.InvokeVoidAsync("RRBlazor.Choice.registerClickOutsideCallback", 
+                choiceElementId, DotNetObjectReference.Create(this));
+            
+            if (SelectedValue != null && !ShouldUseVirtualScrolling())
             {
-                // Portal creation failed, fall back to CSS-only positioning
-                await HandlePortalFallback();
+                await JS.InvokeVoidAsync("RRBlazor.Choice.scrollSelectedIntoView", viewportElement);
             }
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"Portal creation failed: {ex.Message}");
-            await HandlePortalFallback();
-        }
-    }
-    
-    private async Task HandlePortalFallback()
-    {
-        try
-        {
-            // Add fallback CSS class for CSS-only positioning
-            await JS.InvokeVoidAsync("eval", $@"
-                const element = document.querySelector('[data-choice-id=""{choiceElementId}""]');
-                if (element) {{
-                    element.classList.add('choice-fallback-positioning');
-                    const viewport = element.querySelector('.choice-viewport');
-                    if (viewport) {{
-                        viewport.style.position = 'absolute';
-                        viewport.style.top = '100%';
-                        viewport.style.left = '0';
-                        viewport.style.zIndex = '900';
-                    }}
-                }}
-            ");
-            
-            // Register basic click-outside using document events
-            await JS.InvokeVoidAsync("eval", $@"
-                const handleClickOutside = (e) => {{
-                    const element = document.querySelector('[data-choice-id=""{choiceElementId}""]');
-                    if (element && !element.contains(e.target)) {{
-                        DotNet.invokeMethodAsync('RR.Blazor', 'HandleClickOutside_{choiceElementId}');
-                    }}
-                }};
-                document.addEventListener('click', handleClickOutside);
-                window.choiceClickHandlers = window.choiceClickHandlers || {{}};
-                window.choiceClickHandlers['{choiceElementId}'] = handleClickOutside;
-            ");
-        }
-        catch (Exception fallbackEx)
-        {
-            System.Diagnostics.Debug.WriteLine($"Fallback positioning failed: {fallbackEx.Message}");
-            // Ultimate fallback: just show the dropdown inline
+            System.Diagnostics.Debug.WriteLine($"Dropdown open failed: {ex.Message}");
+            isOpen = false;
+            StateHasChanged();
         }
     }
 
@@ -402,19 +386,19 @@ else
         isOpen = false;
         if (!disposed) StateHasChanged();
         
-        // Cleanup portal and unregister from popup-manager system
         try
         {
+            await JS.InvokeAsync<bool>("RRBlazor.Choice.closeDropdown", choiceElementId);
+            
             if (!string.IsNullOrEmpty(currentPortalId))
             {
-                // Clean up portal using centralized system
-                await JS.InvokeVoidAsync("RRBlazor.Choice.destroyPortal", currentPortalId);
+                await PortalService.UnregisterPortalAsync(currentPortalId);
                 currentPortalId = null;
             }
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"Portal cleanup failed: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"Dropdown close failed: {ex.Message}");
         }
     }
 
@@ -466,7 +450,7 @@ else
         switch (e.Key)
         {
             case "Escape":
-                if (IsOpen)
+                if (IsOpen && CloseOnEscape)
                 {
                     await CloseDropdown();
                 }
@@ -478,10 +462,21 @@ else
                     await OpenDropdown();
                 }
                 break;
+            case "ArrowDown":
+                if (!IsOpen)
+                {
+                    await OpenDropdown();
+                }
+                break;
+            case "ArrowUp":
+                if (!IsOpen)
+                {
+                    await OpenDropdown();
+                }
+                break;
         }
     }
     
-    #region Form Integration CSS Methods
     
     private string GetFormWrapperClasses()
     {
@@ -519,33 +514,81 @@ else
         return "choice-help-text form-field-help text-muted text-sm mt-1";
     }
     
-    #endregion
+    
+    
+    private bool ShouldUseVirtualScrolling()
+    {
+        return EnableVirtualScrolling && Items != null && Items.Count() > 100;
+    }
+    
+    private int GetVirtualContainerHeight()
+    {
+        var itemCount = Items?.Count() ?? 0;
+        var maxHeight = 320; // 8 items * 40px
+        var calculatedHeight = Math.Min(itemCount * 40, maxHeight);
+        return Math.Max(calculatedHeight, 160); // Minimum 4 items visible
+    }
+    
+    private RenderFragment<TValue> GetVirtualItemTemplate()
+    {
+        return item => builder =>
+        {
+            var sequence = 0;
+            builder.OpenElement(sequence++, "button");
+            builder.AddAttribute(sequence++, "class", $"choice-item {GetItemClass(item)}");
+            builder.AddAttribute(sequence++, "onclick", EventCallback.Factory.Create(this, () => OnItemSelected(item)));
+            builder.AddAttribute(sequence++, "disabled", IsItemDisabled(item));
+            builder.AddAttribute(sequence++, "title", GetItemTitle(item));
+            builder.AddAttribute(sequence++, "aria-label", GetItemAriaLabel(item));
+            
+            if (ItemTemplate != null)
+            {
+                builder.AddContent(sequence++, ItemTemplate(item));
+            }
+            else
+            {
+                if (IsItemActive(item))
+                {
+                    builder.OpenElement(sequence++, "i");
+                    builder.AddAttribute(sequence++, "class", "material-symbols-rounded");
+                    builder.AddContent(sequence++, "check");
+                    builder.CloseElement();
+                }
+                else if (!string.IsNullOrEmpty(GetItemIcon(item)))
+                {
+                    builder.OpenElement(sequence++, "i");
+                    builder.AddAttribute(sequence++, "class", "material-symbols-rounded");
+                    builder.AddContent(sequence++, GetItemIcon(item));
+                    builder.CloseElement();
+                }
+                
+                builder.OpenElement(sequence++, "span");
+                builder.AddContent(sequence++, GetItemLabel(item));
+                builder.CloseElement();
+            }
+            
+            builder.CloseElement();
+        };
+    }
+    
     
     public async ValueTask DisposeAsync()
     {
         if (disposed) return;
         disposed = true;
         
-        // Clean up portal
-        if (!string.IsNullOrEmpty(currentPortalId))
+        if (isOpen)
         {
             try
             {
-                await JS.InvokeVoidAsync("RRBlazor.Choice.destroyPortal", currentPortalId);
+                await JS.InvokeAsync<bool>("RRBlazor.Choice.closeDropdown", choiceElementId);
+                
+                if (!string.IsNullOrEmpty(currentPortalId))
+                {
+                    await PortalService.UnregisterPortalAsync(currentPortalId);
+                }
             }
-            catch { /* Ignore JS cleanup errors */ }
+            catch { /* Ignore cleanup errors during disposal */ }
         }
-        
-        // Clean up click handlers
-        try
-        {
-            await JS.InvokeVoidAsync("eval", $@"
-                if (window.choiceClickHandlers && window.choiceClickHandlers['{choiceElementId}']) {{
-                    document.removeEventListener('click', window.choiceClickHandlers['{choiceElementId}']);
-                    delete window.choiceClickHandlers['{choiceElementId}'];
-                }}
-            ");
-        }
-        catch { /* Ignore JS cleanup errors */ }
     }
 }

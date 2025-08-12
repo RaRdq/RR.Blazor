@@ -3,19 +3,18 @@
 @using RR.Blazor.Utilities
 @using RR.Blazor.Components.Base
 @using Microsoft.JSInterop
+@using System.Collections.Generic
 @inherits RVariantComponentBase<ModalSize, ModalVariant>
 @implements IAsyncDisposable
-@inject ModalStackService ModalStack
-@* Modal dialog with backdrop, animations, and form integration *@
-
-@* Auto-portaled modal with backdrop and positioning *@
 @if (Visible)
 {
     <div class="modal-content @GetSizeClass() @GetVisibilityClass() @GetAnimationClass() @GetBaseClasses()" 
          role="dialog" 
-         aria-modal="true" 
+         aria-modal="@(Visible ? "true" : "false")"
+         aria-hidden="@(!Visible ? "true" : "false")"
          aria-labelledby="@ModalTitleId" 
          aria-describedby="@(!string.IsNullOrEmpty(Subtitle) ? ModalDescriptionId : null)"
+         data-modal-id="@portalId"
          @ref="modalElement"
          @onclick:stopPropagation="true"
          tabindex="-1"
@@ -116,17 +115,18 @@
                         }
                     </div>
                 }
-    </div> @* Close modal-content *@
+    </div>
 }
 
 @code {
+    
+
     [Parameter] public bool Visible { get; set; }
     [Parameter] public EventCallback<bool> VisibleChanged { get; set; }
     
-    /// <summary>
-    /// Whether this modal should create a backdrop. When false, modal is rendered without backdrop (useful in RModalProvider).
-    /// </summary>
     [Parameter] public bool UseBackdrop { get; set; } = true;
+    [Parameter] public string BackdropClass { get; set; } = "";
+    [Parameter] public bool BackdropBlur { get; set; } = false;
     
 
     private static int portalCounter = 0;
@@ -135,7 +135,6 @@
     private bool isPortalCreated = false;
     private bool previousVisible = false;
     private int modalZIndex = 1000;
-    private bool focusTrapActive = false;
     
     // State machine for modal lifecycle
     private enum ModalState
@@ -196,7 +195,6 @@
     [Parameter] public EventCallback OnPrimaryAction { get; set; }
 
     private ElementReference modalElement;
-    private ElementReference? previouslyFocusedElement;
     private string ModalTitleId { get; set; } = $"modal-title-{Guid.NewGuid():N}";
     private string ModalDescriptionId { get; set; } = $"modal-desc-{Guid.NewGuid():N}";
 
@@ -220,8 +218,6 @@ protected override async Task OnAfterRenderAsync(bool firstRender)
                 {
                     currentState = ModalState.Opening;
                     
-                    modalZIndex = await ModalStack.RegisterModalAsync(portalId);
-                    
                     // Wait for DOM to be ready
                     await Task.Yield();
                     
@@ -232,8 +228,7 @@ protected override async Task OnAfterRenderAsync(bool firstRender)
                         return;
                     }
                     
-                    
-                    await CreateFocusTrap();
+                    // Focus trap is now managed by modal.js
                     currentState = ModalState.Open;
                 }
                 else if (!Visible)
@@ -242,18 +237,9 @@ protected override async Task OnAfterRenderAsync(bool firstRender)
                     {
                         currentState = ModalState.Closing;
                         
-                        try
-                        {
-                            await DestroyFocusTrap();
-                            await CleanupPortal();
-                            await ModalStack.UnregisterModalAsync(portalId);
-                            currentState = ModalState.Closed;
-                        }
-                        catch (Exception ex)
-                        {
-                            await JSRuntime.InvokeVoidAsync("RRBlazor.Portal.cleanupOrphanedElements");
-                            currentState = ModalState.Closed;
-                        }
+                        await DestroyFocusTrap();
+                        await CleanupPortal();
+                        currentState = ModalState.Closed;
                     }
                 }
                 else
@@ -268,7 +254,7 @@ protected override async Task OnAfterRenderAsync(bool firstRender)
         }
         else if (Visible != previousVisible && !UseBackdrop)
         {
-            // Handle non-portal modals (e.g., within RModalProvider)
+            // Handle non-portal modals (inline rendering)
             previousVisible = Visible;
         }
     }
@@ -292,29 +278,48 @@ private async Task<bool> CreatePortal()
             throw new InvalidOperationException($"Portal {portalId} already created");
         }
         
-        var dotNetRef = DotNetObjectReference.Create(this);
-        
         var options = new
         {
-            type = "modal",
-            backdrop = UseBackdrop,
-            closeOnClickOutside = CloseOnBackdrop,
+            id = portalId,
+            useBackdrop = UseBackdrop,
+            backdropClass = GetBackdropClass() ?? "",
+            backdropBlur = BackdropBlur ? 8 : 0,
+            closeOnBackdropClick = CloseOnBackdrop,
             closeOnEscape = CloseOnEscape,
-            dotNetRef = dotNetRef,
-            backdropCallbackMethod = "HandlePortalBackdropClick",
-            escapeCallbackMethod = "HandlePortalEscapeKey"
+            animation = Animation.ToString().ToLowerInvariant(),
+            animationSpeed = AnimationSpeed.ToString().ToLowerInvariant(),
+            variant = Variant.ToString().ToLowerInvariant(),
+            trapFocus = true
         };
         
-        actualPortalId = await JSRuntime.InvokeAsync<string>("RRBlazor.Portal.create", modalElement, options);
+        // TODO: remove protective Ensure the modal element exists in DOM before creating portal
+        var modalSelector = $"[data-modal-id='{portalId}']";
         
-        if (string.IsNullOrEmpty(actualPortalId))
+        // Try to wait for element to be in DOM
+        for (int i = 0; i < 10; i++)
         {
-            throw new InvalidOperationException($"Failed to create portal for modal {portalId}");
+            var elementExists = await JSRuntime.InvokeAsync<bool>("eval", $"!!document.querySelector(\"{modalSelector}\")");
+            if (elementExists)
+            {
+                break;
+            }
+            await Task.Delay(10);
         }
         
-        isPortalCreated = true;
-        return true;
+        var result = await JSRuntime.InvokeAsync<string>("RRBlazor.Modal.create", modalSelector, options);
+        
+        if (!string.IsNullOrEmpty(result))
+        {
+            actualPortalId = result;
+            isPortalCreated = true;
+            
+            return true;
+        }
+        
+        throw new InvalidOperationException($"Failed to create modal {portalId}");
     }
+    
+    
     
 private async Task CleanupPortal()
     {
@@ -329,50 +334,28 @@ private async Task CleanupPortal()
             return;
         }
         
-        var maxRetries = 3;
-        var delayMs = 50;
-        bool destructionSucceeded = false;
-        
-        for (int attempt = 0; attempt < maxRetries; attempt++)
+        try
         {
-            try
+            // Use the modal state machine destroy API
+            var success = await JSRuntime.InvokeAsync<bool>("RRBlazor.Modal.destroy", actualPortalId);
+            
+            if (success)
             {
-                var success = await JSRuntime.InvokeAsync<bool>("RRBlazor.Portal.destroy", actualPortalId);
-                
-                if (success)
-                {
-                    destructionSucceeded = true;
-                    break;
-                }
-                
-                if (attempt < maxRetries - 1)
-                {
-                    await Task.Delay(delayMs);
-                    delayMs *= 2;
-                }
+                actualPortalId = null;
+                isPortalCreated = false;
             }
-            catch (Exception ex)
+            else
             {
-                if (attempt == maxRetries - 1)
-                {
-                    await JSRuntime.InvokeVoidAsync("RRBlazor.Portal.cleanupOrphanedElements");
-                    destructionSucceeded = true;
-                    break;
-                }
-                
-                await Task.Delay(delayMs);
-                delayMs *= 2;
+                // Modal was already closing/closed
+                actualPortalId = null;
+                isPortalCreated = false;
             }
         }
-        
-        if (destructionSucceeded)
+        catch (Exception ex)
         {
             actualPortalId = null;
             isPortalCreated = false;
-        }
-        else
-        {
-            throw new InvalidOperationException($"Failed to cleanup portal {actualPortalId} after {maxRetries} attempts");
+            throw new InvalidOperationException($"Failed to destroy modal {actualPortalId}: {ex.Message}", ex);
         }
     }
     
@@ -383,10 +366,22 @@ private async Task CleanupPortal()
         ";
     }
     
+    private string GetBackdropClass()
+    {
+        var variantClass = Variant switch
+        {
+            ModalVariant.Glass => "modal-backdrop-glass",
+            ModalVariant.Protected => "modal-backdrop-protected",
+            _ => "modal-backdrop-dark"
+        };
+        
+        return $"{variantClass} {BackdropClass}".Trim();
+    }
+    
     private string GetModalContainerClasses()
     {
         var positionClass = "modal-center"; // default center positioning
-        var backdropClass = Variant == ModalVariant.Glass ? "modal-backdrop-glass" : "modal-backdrop-dark";
+        var backdropClass = GetBackdropClass();
         var sizeClass = GetSizeClass();
         var animationSpeedClass = GetAnimationSpeedClass();
         var protectedClass = Variant == ModalVariant.Protected ? "modal-protected" : "";
@@ -407,45 +402,13 @@ private async Task CleanupPortal()
     {
         if (e.Key == "Escape" && CloseOnEscape && !Processing && Variant != ModalVariant.Protected && currentState == ModalState.Open)
         {
-            if (ModalStack.IsTopModal(portalId))
+            if (await JSRuntime.InvokeAsync<bool>("RRBlazor.Modal.isTopModal", portalId))
             {
                 await HandleClose();
             }
         }
     }
     
-    [JSInvokable]
-    public async Task HandlePortalBackdropClick()
-    {
-        if (CloseOnBackdrop && !Processing && Variant != ModalVariant.Protected && currentState == ModalState.Open)
-        {
-            // Check if any datepickers are open within this modal
-            var hasOpenDatePickers = await JSRuntime.InvokeAsync<bool>("RRBlazor.Portal.hasOpenPortalsInContainer", ".modal-content");
-            
-            if (hasOpenDatePickers)
-            {
-                // Don't close modal if datepickers are open - they handle their own backdrop clicks
-                return;
-            }
-
-            if (ModalStack.IsTopModal(portalId))
-            {
-                await HandleClose();
-            }
-        }
-    }
-    
-    [JSInvokable]
-    public async Task HandlePortalEscapeKey()
-    {
-        if (CloseOnEscape && !Processing && Variant != ModalVariant.Protected && currentState == ModalState.Open)
-        {
-            if (ModalStack.IsTopModal(portalId))
-            {
-                await HandleClose();
-            }
-        }
-    }
     
     private async Task HandleClose()
     {
@@ -465,19 +428,9 @@ private async Task CleanupPortal()
                 {
                     currentState = ModalState.Closing;
                     
-                    try
-                    {
-                        await DestroyFocusTrap();
-                        await CleanupPortal();
-                        await ModalStack.UnregisterModalAsync(portalId);
+                    await DestroyFocusTrap();
+                    await CleanupPortal();
                         currentState = ModalState.Closed;
-                    }
-                    catch (Exception ex)
-                    {
-                        // Fallback cleanup
-                        await JSRuntime.InvokeVoidAsync("RRBlazor.Portal.cleanupOrphanedElements");
-                        currentState = ModalState.Closed;
-                    }
                 }
                 
                 if (Visible)
@@ -641,26 +594,9 @@ public async ValueTask DisposeAsync()
             {
                 currentState = ModalState.Closing;
                 
-                try
-                {
-                    await DestroyFocusTrap();
-                    await CleanupPortal();
-                    await ModalStack.UnregisterModalAsync(portalId);
-                }
-                catch (Exception)
-                {
-                    try
-                    {
-                        await JSRuntime.InvokeVoidAsync("RRBlazor.Portal.cleanupOrphanedElements");
-                    }
-                    catch
-                    {
-                    }
-                }
-                finally
-                {
-                    currentState = ModalState.Closed;
-                }
+                await DestroyFocusTrap();
+                await CleanupPortal();
+                currentState = ModalState.Closed;
             }
         }
         finally
@@ -672,39 +608,14 @@ public async ValueTask DisposeAsync()
     
     private async Task CreateFocusTrap()
     {
-        if (focusTrapActive) return;
-        
-        await Task.Delay(100);
-        
-        var success = await JSRuntime.InvokeAsync<bool>("RRBlazor.FocusTrap.create", modalElement, portalId);
-        
-        if (success)
-        {
-            focusTrapActive = true;
-        }
-        else
-        {
-            throw new InvalidOperationException($"Failed to create focus trap for modal {portalId}");
-        }
+        // Focus trap managed by modal.js
     }
     
     private async Task DestroyFocusTrap()
     {
-        if (!focusTrapActive) return;
-        
-        var success = await JSRuntime.InvokeAsync<bool>("RRBlazor.FocusTrap.destroy", portalId);
-        focusTrapActive = false;
-        
-        if (!success)
-        {
-            throw new InvalidOperationException($"Failed to destroy focus trap for modal {portalId}");
-        }
+        // Focus trap managed by modal.js
     }
 
-    private async Task RestoreFocus()
-    {
-        await JSRuntime.InvokeVoidAsync("RRBlazor.Modal.blurActiveElement");
-    }
     
     #region Abstract Method Implementations
     
@@ -761,4 +672,7 @@ public async ValueTask DisposeAsync()
     }
     
     #endregion
+    
+    // Modal.js already handles backdrop/escape events via custom DOM events
+    // The existing HandleClose() method handles all closing scenarios correctly
 }

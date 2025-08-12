@@ -1,4 +1,6 @@
-// RR.Blazor Tabs Component - Mobile-First Navigation
+// RR.Blazor Tabs Component - Fully Adaptive Navigation
+// Supports: Mobile, Tablet, Laptop, Desktop, Ultra-wide
+// Handles: Portrait/Landscape, Touch/Mouse, Container Queries
 @use '../abstracts' as *;
 @use 'sass:map';
 
@@ -66,13 +68,24 @@ $tab-variants: (
   )
 );
 
-// Tab Container - Mobile-first with theme awareness  
+// Tab Container - Fully adaptive with container query support
 .tabs {
   @extend %card-base-enhanced;
   display: flex;
   flex-direction: column;
   width: 100%;
-  overflow: visible;
+  max-width: 100%;
+  overflow: hidden;
+  container-type: inline-size;
+  container-name: tabs-container;
+  
+  // Performance optimizations
+  contain: layout style paint;
+  will-change: auto;
+  
+  // Prevent layout shifts
+  min-height: 0;
+  flex-shrink: 1;
   
   // Ambient lighting effect
   &::before {
@@ -90,16 +103,42 @@ $tab-variants: (
     z-index: var(--z-base);
   }
   
-  // Tab Navigation - Mobile-first scrollable header
+  // Tab Navigation - Adaptive scrollable header
   &-nav {
     position: relative;
     display: flex;
     padding: var(--space-2) var(--space-3);
     backdrop-filter: var(--glass-medium-blur);
     flex-shrink: 0;
+    max-width: 100%;
+    overflow: hidden;
+    min-height: 44px; // Touch target minimum
     
-    @include responsive-max(md) {
-      padding: var(--space-1);
+    // Ultra-small phones (320px - 375px)
+    @media (max-width: 375px) {
+      padding: var(--space-1) var(--space-2);
+      min-height: 40px;
+    }
+    
+    // Small phones portrait
+    @media (max-width: 640px) and (orientation: portrait) {
+      padding: var(--space-1) var(--space-2);
+    }
+    
+    // Phones landscape
+    @media (max-width: 896px) and (orientation: landscape) {
+      padding: var(--space-1) var(--space-2);
+      min-height: 36px;
+    }
+    
+    // Tablets
+    @include responsive-between(md, lg) {
+      padding: var(--space-2) var(--space-3);
+    }
+    
+    // Ultra-wide monitors
+    @media (min-width: 2560px) {
+      padding: var(--space-3) var(--space-4);
     }
     
     // Scrollable container with mobile-optimized overflow
@@ -108,6 +147,7 @@ $tab-variants: (
       overflow: hidden;
       position: relative;
       min-width: 0;
+      max-width: 100%;
     }
     
     &-wrapper {
@@ -120,16 +160,35 @@ $tab-variants: (
       scrollbar-width: none;
       -ms-overflow-style: none;
       height: fit-content;
-      width: 100%;
+      width: auto;
       max-width: 100%;
+      min-width: 0;
+      flex: 1 1 auto;
       box-sizing: border-box;
+      scroll-snap-type: x mandatory;
+      scroll-padding: var(--space-2);
       
       &::-webkit-scrollbar {
         display: none;
       }
       
-      @include responsive-max(md) {
+      // Adaptive gap sizing
+      @media (max-width: 375px) {
+        gap: var(--space-0-5);
+      }
+      
+      @media (max-width: 640px) {
         gap: var(--space-1);
+      }
+      
+      @media (orientation: landscape) and (max-height: 500px) {
+        gap: var(--space-1);
+      }
+      
+      // Touch devices - larger gaps for easier targeting
+      @media (hover: none) and (pointer: coarse) {
+        gap: var(--space-2);
+        scroll-padding: var(--space-3);
       }
     }
     
@@ -148,12 +207,10 @@ $tab-variants: (
       pointer-events: none;
       transition: all var(--duration-fast) var(--ease-out);
       
-      // Visibility gradient
-      background: linear-gradient(
-        135deg,
-        var(--color-surface-elevated) 0%,
-        var(--state-hover-bg) 100%
-      );
+      // More prominent background with better contrast
+      background: var(--color-surface-elevated);
+      border: 1px solid var(--color-border);
+      box-shadow: var(--shadow-md);
       
       @include responsive-max(md) {
         width: 2rem;
@@ -162,9 +219,18 @@ $tab-variants: (
         bottom: var(--space-1);
       }
       
+      // Hover state for better visibility
+      &:hover {
+        background: var(--color-primary);
+        border-color: var(--color-primary);
+        
+        i {
+          color: var(--color-text-inverse);
+        }
+      }
       
       &-visible {
-        opacity: 0.9;
+        opacity: 1;
         pointer-events: auto;
       }
       
@@ -200,7 +266,7 @@ $tab-variants: (
       bottom: 0;
       width: var(--space-12);
       pointer-events: none;
-      z-index: 2;
+      z-index: var(--z-above);
       transition: opacity var(--duration-fast);
       opacity: 0;
     }
@@ -289,7 +355,7 @@ $tab-variants: (
     }
   }
   
-  // Individual Tab Button - Mobile-first with size variants
+  // Individual Tab Button - Fully adaptive
   &-tab {
     @extend %button-base;
     display: flex;
@@ -304,61 +370,162 @@ $tab-variants: (
     transition: all var(--duration-fast) var(--ease-out);
     white-space: nowrap;
     position: relative;
-    flex-shrink: 0;
+    flex: 0 0 auto; // Don't shrink, natural size
     min-width: fit-content;
-    overflow: hidden;
+    max-width: none; // Remove fixed max-width
+    overflow: visible; // Allow content to show
     text-overflow: ellipsis;
     text-align: center;
+    scroll-snap-align: start;
     
-    height: map.get($tab-sizes, 'medium', 'height');
-    padding: map.get($tab-sizes, 'medium', 'padding');
-    font-size: map.get($tab-sizes, 'medium', 'font-size');
-    max-width: none;
+    // Default medium size
+    height: 3rem;
+    padding: var(--space-3) var(--space-4);
+    font-size: var(--text-sm);
     
-    @include responsive-max(md) {
+    // Ultra-small devices (320px)
+    @media (max-width: 320px) {
+      height: 2.25rem;
+      padding: var(--space-1) var(--space-1-5);
+      font-size: var(--text-3xs);
+      gap: var(--space-0-5);
+      min-width: 60px;
+      // Remove max-width constraint - let tabs expand naturally
+    }
+    
+    // Small phones (321px - 375px)
+    @media (min-width: 321px) and (max-width: 375px) {
       height: 2.5rem;
+      padding: var(--space-1) var(--space-2);
+      font-size: var(--text-2xs);
+      gap: var(--space-1);
+      // Remove max-width constraint
+    }
+    
+    // Standard phones (376px - 640px)
+    @media (min-width: 376px) and (max-width: 640px) {
+      height: 2.75rem;
       padding: var(--space-2) var(--space-3);
       font-size: var(--text-xs);
-      max-width: none;
-      min-width: fit-content;
+      // Remove max-width constraint
+    }
+    
+    // Landscape phones
+    @media (max-width: 896px) and (orientation: landscape) {
+      height: 2.25rem;
+      padding: var(--space-1) var(--space-2);
+      font-size: var(--text-2xs);
+      // Remove max-width constraint
+    }
+    
+    // Tablets portrait (641px - 1024px)
+    @media (min-width: 641px) and (max-width: 1024px) and (orientation: portrait) {
+      height: 3rem;
+      padding: var(--space-2) var(--space-4);
+      font-size: var(--text-sm);
+      // Remove max-width constraint
+    }
+    
+    // Tablets landscape
+    @media (min-width: 641px) and (max-width: 1024px) and (orientation: landscape) {
+      height: 2.75rem;
+      padding: var(--space-2) var(--space-3);
+      font-size: var(--text-xs);
+      // Remove max-width constraint
+    }
+    
+    // Laptops (1025px - 1440px)
+    @media (min-width: 1025px) and (max-width: 1440px) {
+      height: 3rem;
+      padding: var(--space-3) var(--space-4);
+      font-size: var(--text-sm);
+      // Allow tabs to expand - remove constraint
+    }
+    
+    // Desktop (1441px - 1920px)
+    @media (min-width: 1441px) and (max-width: 1920px) {
+      height: 3.25rem;
+      padding: var(--space-3) var(--space-5);
+      font-size: var(--text-base);
+      // Allow tabs to expand - remove constraint
+    }
+    
+    // Ultra-wide monitors (1921px+)
+    @media (min-width: 1921px) {
+      height: 3.5rem;
+      padding: var(--space-3) var(--space-6);
+      font-size: var(--text-base);
+      // Allow tabs to expand - remove constraint
+    }
+    
+    // Aspect ratio adjustments - less restrictive
+    @media (aspect-ratio > 21/9) {
+      // Ultra-wide - allow much wider tabs
+      min-width: 120px;
+    }
+    
+    @media (aspect-ratio < 4/3) {
+      // Square-ish screens - still allow reasonable width
+      min-width: 80px;
+    }
+    
+    // Touch device optimizations
+    @media (hover: none) and (pointer: coarse) {
+      min-height: 44px; // iOS touch target
       @include touch-friendly;
     }
     
-    @include responsive-max(sm) {
+    // Container query support for adaptive sizing - without width constraints
+    @container tabs-container (max-width: 400px) {
+      height: 2.5rem;
       padding: var(--space-1) var(--space-2);
       font-size: var(--text-2xs);
+      min-width: 60px;
     }
     
-    // iPhone 5/SE 320px viewport optimization
-    @media (max-width: 350px) {
-      padding: var(--space-0-5) var(--space-1);
-      font-size: var(--text-3xs);
-      height: 2rem;
-      gap: var(--space-1);
-      max-width: calc(25vw - var(--space-2));
-      
-      // Compact icon sizing for ultra-small screens
-      .tabs-tab-icon {
-        font-size: var(--icon-xs);
-        margin-right: var(--space-0-5);
-        margin-left: var(--space-0-5);
-      }
-      
-      // Hide text on very small tabs if icon is present
-      &:has(.tabs-tab-icon) span {
-        @media (max-width: 320px) {
-          display: none;
-        }
-      }
+    @container tabs-container (min-width: 401px) and (max-width: 600px) {
+      height: 2.75rem;
+      padding: var(--space-2) var(--space-3);
+      font-size: var(--text-xs);
+      min-width: 80px;
     }
     
+    @container tabs-container (min-width: 601px) and (max-width: 900px) {
+      height: 3rem;
+      padding: var(--space-2) var(--space-4);
+      font-size: var(--text-sm);
+      min-width: 100px;
+    }
+    
+    @container tabs-container (min-width: 901px) {
+      height: 3.25rem;
+      padding: var(--space-3) var(--space-5);
+      font-size: var(--text-base);
+      min-width: 120px;
+    }
+    
+    // Dynamic size variants with adaptive behavior
     @each $size-name, $size-props in $tab-sizes {
       &-#{$size-name} {
         height: map.get($size-props, 'height');
         padding: map.get($size-props, 'padding');
         font-size: map.get($size-props, 'font-size');
-        max-width: none;
-        min-width: fit-content;
+        
+        @if $size-name == 'small' {
+          @media (max-width: 640px) {
+            height: 2.25rem;
+            padding: var(--space-1) var(--space-2);
+            font-size: var(--text-2xs);
+          }
+        }
+        
+        @if $size-name == 'large' {
+          @media (max-width: 1024px) {
+            height: 3rem;
+            padding: var(--space-2) var(--space-4);
+            font-size: var(--text-sm);
+          }
+        }
       }
     }
     
@@ -400,11 +567,39 @@ $tab-variants: (
       align-items: center;
       justify-content: center;
       
+      // Adaptive icon sizing
+      @media (max-width: 375px) {
+        font-size: var(--icon-xs);
+      }
+      
+      @media (max-width: 640px) {
+        font-size: var(--icon-sm);
+      }
+      
+      @media (orientation: landscape) and (max-height: 500px) {
+        font-size: var(--icon-xs);
+      }
+      
       &-start { 
-        margin-right: var(--space-1); 
+        margin-right: var(--space-1);
+        
+        @media (max-width: 375px) {
+          margin-right: var(--space-0-5);
+        }
       }
       &-end { 
-        margin-left: var(--space-1); 
+        margin-left: var(--space-1);
+        
+        @media (max-width: 375px) {
+          margin-left: var(--space-0-5);
+        }
+      }
+      
+      // Hide text and show only icon on very small screens
+      @media (max-width: 320px) {
+        & ~ span {
+          display: none;
+        }
       }
     }
     
@@ -523,15 +718,52 @@ $tab-variants: (
     position: relative;
     overflow: visible;
     min-height: 200px;
+    container-type: inline-size;
+    container-name: tab-content;
     
-    @include responsive-max(md) {
-      padding: var(--space-4);
+    // Adaptive padding based on viewport
+    @media (max-width: 375px) {
+      padding: var(--space-2);
+      min-height: 100px;
+    }
+    
+    @media (min-width: 376px) and (max-width: 640px) {
+      padding: var(--space-3);
       min-height: 150px;
     }
     
-    @include responsive-max(sm) {
+    @media (min-width: 641px) and (max-width: 1024px) {
+      padding: var(--space-4);
+      min-height: 200px;
+    }
+    
+    @media (min-width: 1025px) and (max-width: 1440px) {
+      padding: var(--space-5);
+      min-height: 250px;
+    }
+    
+    @media (min-width: 1441px) {
+      padding: var(--space-6);
+      min-height: 300px;
+    }
+    
+    // Landscape adjustments
+    @media (orientation: landscape) and (max-height: 500px) {
+      padding: var(--space-2) var(--space-4);
+      min-height: calc(100vh - 120px);
+    }
+    
+    // Container queries for content
+    @container tab-content (max-width: 400px) {
+      padding: var(--space-2);
+    }
+    
+    @container tab-content (min-width: 401px) and (max-width: 800px) {
       padding: var(--space-3);
-      min-height: 100px;
+    }
+    
+    @container tab-content (min-width: 801px) {
+      padding: var(--space-4);
     }
     
     &-no-padding {

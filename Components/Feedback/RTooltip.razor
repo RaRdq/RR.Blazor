@@ -115,6 +115,12 @@
     /// <summary>Rich content template for the tooltip content</summary>
     [Parameter] [AIParameter("Rich HTML content for tooltip", Example = "ContentFragment with links and buttons")] public RenderFragment? ContentFragment { get; set; }
     
+    // Universal Portal Interface Parameters
+    [Parameter] public bool UseBackdrop { get; set; } = false;
+    [Parameter] public string BackdropClass { get; set; } = "";
+    [Parameter] public bool CloseOnBackdropClick { get; set; } = false; // Tooltips shouldn't close on backdrop by default
+    [Parameter] public bool CloseOnEscape { get; set; } = true;
+    
     
     // Component style helper methods - override base class methods
     protected override string GetTextClasses() => $"{GetTextSizeClasses()} tooltip-text";
@@ -302,11 +308,20 @@
                 // Create portal and position tooltip
                 if (!string.IsNullOrEmpty(portalId))
                 {
+                    var portalConfig = new
+                    {
+                        useBackdrop = UseBackdrop,
+                        backdropClass = BackdropClass,
+                        closeOnBackdropClick = CloseOnBackdropClick,
+                        closeOnEscape = CloseOnEscape
+                    };
+                    
                     await JS.InvokeVoidAsync("RRBlazor.Tooltip.create", 
                         popupElement, 
                         triggerElement, 
                         Position.ToString().ToLowerInvariant(), 
-                        portalId);
+                        portalId,
+                        portalConfig);
                 }
             }
             catch
@@ -384,6 +399,24 @@
             {
                 // Ignore portal cleanup errors
             }
+        }
+    }
+    
+    [JSInvokable]
+    public async Task HandleBackdropClick()
+    {
+        if (CloseOnBackdropClick && Trigger == TooltipTrigger.Click)
+        {
+            await HideTooltip();
+        }
+    }
+    
+    [JSInvokable]
+    public async Task HandleEscapeKey()
+    {
+        if (CloseOnEscape)
+        {
+            await HideTooltip();
         }
     }
 

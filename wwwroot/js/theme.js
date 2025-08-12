@@ -245,20 +245,6 @@ export function getThemeInfo() {
     };
 }
 
-// Global theme utilities
-window.RRTheme = {
-    applyTheme,
-    getSystemDarkMode,
-    getSystemHighContrast,
-    getEffectiveTheme,
-    isCurrentlyDark,
-    getCurrentTheme,
-    setCSSVariable,
-    getCSSVariable,
-    validateTheme,
-    getThemeInfo
-};
-
 // Initialize theme immediately (before DOM load)
 (function() {
     // Get stored theme or default to 'system'
@@ -291,6 +277,23 @@ window.RRTheme = {
     debugLogger.log('Initial theme applied:', themeMode);
 })();
 
+// Required methods for rr-blazor.js proxy system
+function apply(themeData) {
+    return applyTheme(themeData);
+}
+
+function initialize() {
+    // Theme system initializes itself, return success
+    return true;
+}
+
+function cleanup() {
+    disposeSystemThemeListener();
+}
+
+// Export functions for module consumption
+export { apply, initialize, cleanup };
+
 // Global exports for Blazor interop
 window.RRTheme = {
     applyTheme,
@@ -298,5 +301,8 @@ window.RRTheme = {
     registerSystemThemeListener,
     disposeSystemThemeListener,
     isCurrentlyDark,
-    getCurrentTheme
+    getCurrentTheme,
+    apply,
+    initialize,
+    cleanup
 };

@@ -6,7 +6,9 @@ namespace RR.Blazor.Enums
         Outlined,
         Elevated,
         Glass,
-        Flat
+        Flat,
+        Gradient,
+        GlassGradient
     }
     
     public enum RibbonVariant

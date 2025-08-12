@@ -211,18 +211,39 @@ export function getActiveFocusTrapCount() {
     return globalFocusTrap.getActiveTrapCount();
 }
 
-// Window exports for RRBlazor integration
-window.RRFocusTrap = globalFocusTrap;
+// Export main instance and utility functions for ES6 modules
+export { globalFocusTrap };
+export default globalFocusTrap;
 
-// Also initialize RRBlazor.FocusTrap if it doesn't exist (for direct script loading)
-if (!window.RRBlazor) {
-    window.RRBlazor = {};
+// Export utility functions for convenience
+export function getFocusableElements(container) {
+    return globalFocusTrap.getFocusableElements(container);
 }
-if (!window.RRBlazor.FocusTrap) {
-    window.RRBlazor.FocusTrap = {
-        create: (modalElement, trapId) => globalFocusTrap.createTrap(modalElement, trapId),
-        destroy: (trapId) => globalFocusTrap.destroyTrap(trapId),
-        isActive: (trapId) => globalFocusTrap.isActive(trapId),
-        getActiveCount: () => globalFocusTrap.getActiveTrapCount()
-    };
+
+export function isActive(trapId) {
+    return globalFocusTrap.isActive(trapId);
+}
+
+export function getActiveTrapCount() {
+    return globalFocusTrap.getActiveTrapCount();
+}
+
+export function destroyAllTraps() {
+    return globalFocusTrap.destroyAllTraps();
+}
+
+// Required methods for rr-blazor.js proxy system
+export function initialize(element, dotNetRef) {
+    // Focus trap system initializes itself, return success
+    return true;
+}
+
+export function cleanup(element) {
+    if (element && element.hasAttribute('data-trap-id')) {
+        const trapId = element.getAttribute('data-trap-id');
+        destroyFocusTrap(trapId);
+    } else {
+        // Cleanup all traps if no specific element
+        destroyAllTraps();
+    }
 }

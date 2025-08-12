@@ -9,37 +9,64 @@
   border: 1px solid var(--color-border);
   position: relative;
   overflow: hidden;
+  transition: all var(--duration-normal) var(--ease-out);
   @include φ-sizes(padding, var(--space-3));
   @include φ-sizes(margin, var(--space-1));
   @include φ-radius(var(--radius-lg));
   @include φ-elevation(var(--shadow-md));
-  transition: all var(--duration-normal) var(--ease-out);
-  @include interactive-a11y(card);
 }
 
 .card {
   @extend %card-base;
   
   &-outlined {
-    @include φ-elevation(none);
     background: transparent;
     border-style: solid;
+    @include φ-elevation(none);
   }
   
   &-elevated { @include φ-elevation(var(--shadow-xl)); }
   &-floating { @include φ-elevation(var(--shadow-2xl)); }
   &-flat { 
-    @include φ-elevation(none);
     border: none;
+    @include φ-elevation(none);
   }
   
   &-glass { @include semantic-glass(primary); }
   
+  &-gradient {
+    background: var(--gradient-primary);
+    color: var(--color-text-inverse);
+    border-color: transparent;
+    
+    .card-title {
+      color: var(--color-text-inverse);
+    }
+    
+    .card-body {
+      color: var(--color-text-inverse);
+    }
+  }
+  
+  &-glass-gradient {
+    @include semantic-glass(primary);
+    background: var(--gradient-primary);
+    color: var(--color-text-inverse);
+    
+    .card-title {
+      color: var(--color-text-inverse);
+    }
+    
+    .card-body {
+      color: var(--color-text-inverse);
+    }
+  }
+  
   &-clickable,
   &-interactive {
-    cursor: pointer;
     @include interactive-base(card);
     @include interactive-touch(card, true);
+    @include interactive-a11y(card);
     
     button, input, select, textarea, a, [role="button"] {
       pointer-events: auto;
@@ -118,23 +145,34 @@
     }
   }
   
+  // Loading states - disable CSS spinner when component manages its own loading UI
   &-loading {
+    // Position relative for custom loading overlay
     position: relative;
-    overflow: hidden;
     
+    // Hide CSS-based loading spinners to prevent double spinners
+    // Component manages its own loading UI
+    &::before,
     &::after {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: -100%;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(90deg, 
-        transparent 0%, 
-        var(--color-surface) 50%, 
-        transparent 100%);
-      animation: shimmer 1.5s infinite;
+      display: none;
     }
+    
+    // Ensure proper z-index stacking for custom overlay
+    .loading-overlay {
+      z-index: var(--z-loading, 10);
+    }
+  }
+  
+  &-loading-skeleton {
+    @include loading-skeleton();
+    
+    & {
+      height: 1.5em;
+    }
+    
+    &-text { height: 1rem; }
+    &-title { height: 2rem; width: 50%; }
+    &-button { height: 2.5rem; width: 6rem; }
   }
   
   // Stats card icon and value styling
@@ -215,6 +253,77 @@
       align-items: flex-start;
       gap: var(--space-2);
     }
+    
+    // RHeaderCard specific styling
+    .header-card-body {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-3);
+      width: 100%;
+      
+      // Alignment classes
+      &.align-start {
+        align-items: flex-start;
+        text-align: left;
+      }
+      
+      &.align-center {
+        align-items: center;
+        text-align: center;
+      }
+      
+      &.align-end {
+        align-items: flex-end;
+        text-align: right;
+      }
+      
+      // Icon position layouts
+      &.icon-top,
+      &.icon-bottom {
+        align-items: inherit; // Inherit from alignment
+      }
+    }
+    
+    .header-content-wrapper {
+      display: flex;
+      align-items: center;
+      width: 100%;
+      
+      &:not(.d-flex) {
+        flex-direction: column;
+        text-align: inherit;
+      }
+    }
+    
+    .header-text-container {
+      flex: 1;
+      min-width: 0; // Prevent text overflow
+    }
+    
+    .header-title {
+      margin: 0 0 var(--space-1) 0;
+      font-size: var(--text-2xl);
+      font-weight: var(--font-bold);
+      line-height: var(--leading-tight);
+      color: inherit;
+    }
+    
+    .header-description {
+      margin: 0;
+      font-size: var(--text-base);
+      line-height: var(--leading-normal);
+      opacity: 0.8;
+    }
+    
+    .header-card-icon {
+      flex-shrink: 0;
+      color: inherit;
+      opacity: 0.9;
+    }
+    
+    .header-child-content {
+      width: 100%;
+    }
   }
   
   &-title {
@@ -265,4 +374,3 @@
     }
   }
 }
-

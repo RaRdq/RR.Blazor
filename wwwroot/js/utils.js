@@ -51,7 +51,7 @@ export function downloadContent(content, fileName, contentType = 'text/plain') {
     link.download = fileName;
     document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
+    link?.remove();
     window.URL.revokeObjectURL(url);
 }
 
@@ -65,7 +65,7 @@ export async function downloadFileFromStream(fileName, contentStream) {
         anchorElement.href = url;
         anchorElement.download = fileName ?? '';
         anchorElement.click();
-        anchorElement.remove();
+        anchorElement?.remove();
         
         URL.revokeObjectURL(url);
         return true;
@@ -84,7 +84,7 @@ export function downloadFile(url, fileName) {
     link.style.display = 'none';
     document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
+    link?.remove();
 }
 
 export function setupOutsideClickHandler(containerId, callback) {

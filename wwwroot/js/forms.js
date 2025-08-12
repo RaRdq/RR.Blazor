@@ -125,7 +125,9 @@ export function copyToClipboard(text) {
             }
             return Promise.reject(err);
         } finally {
-            document.body.removeChild(textArea);
+            if (textArea.parentNode) {
+                textArea.remove();
+            }
         }
     }
 }

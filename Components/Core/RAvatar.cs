@@ -75,7 +75,7 @@ namespace RR.Blazor.Components.Core
             var sequence = 0;
             
             builder.OpenElement(++sequence, "div");
-            builder.AddAttribute(++sequence, "class", $"avatar {GetAvatarClasses()}");
+            builder.AddAttribute(++sequence, "class", GetAvatarClasses());
             
             // Forward additional attributes except our specific parameters
             ForwardParametersExcept(builder, ref sequence, 
@@ -144,10 +144,10 @@ namespace RR.Blazor.Components.Core
         
         private string GetAvatarClasses()
         {
-            var classes = new List<string> { "avatar" };
+            var classes = new List<string>();
             
-            // Size utility classes
-            classes.Add(Size switch
+            // Size modifier - single semantic class
+            var sizeClass = Size switch
             {
                 AvatarSize.ExtraSmall => "avatar-xs",
                 AvatarSize.Small => "avatar-sm",
@@ -156,10 +156,11 @@ namespace RR.Blazor.Components.Core
                 AvatarSize.ExtraLarge => "avatar-xl",
                 AvatarSize.ExtraLarge2X => "avatar-2xl",
                 _ => "avatar-md"
-            });
+            };
+            classes.Add(sizeClass);
             
-            // Variant utility classes
-            classes.Add(Variant switch
+            // Variant modifier
+            var variantClass = Variant switch
             {
                 AvatarVariant.Default => "avatar-default",
                 AvatarVariant.Primary => "avatar-primary",
@@ -168,12 +169,13 @@ namespace RR.Blazor.Components.Core
                 AvatarVariant.Error => "avatar-error",
                 AvatarVariant.Gradient => "avatar-gradient",
                 _ => "avatar-default"
-            });
+            };
+            classes.Add(variantClass);
             
-            // Interactive utility classes
+            // Interactive modifier
             if (IsClickable)
             {
-                classes.Add("cursor-pointer hover-scale-sm transition-transform");
+                classes.Add("avatar-interactive");
             }
             
             if (!string.IsNullOrEmpty(Class))

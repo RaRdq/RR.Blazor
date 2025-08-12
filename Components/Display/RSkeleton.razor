@@ -4,21 +4,34 @@
 @inherits RForwardingComponentBase
 @inject IJSRuntime JS
 
-@if (Loading)
+@if (SmartMode && ChildContent != null)
 {
-    <div class="@GetContainerClasses()" @ref="skeletonContainer" @attributes="GetSafeAttributes()">
-        @if (SmartMode && ChildContent != null)
-        {
+    @* Smart mode: Wrap content and show skeleton overlay when loading *@
+    @if (Loading)
+    {
+        <div class="skeleton-smart-wrapper @Class" @ref="skeletonContainer" @attributes="GetSafeAttributes()">
             <div class="skeleton-smart-container skeleton-hidden-container">
                 @ChildContent
             </div>
-            <div class="skeleton-smart-overlay">
-                @RenderSmartSkeleton()
+            <div class="skeleton-smart-overlay @(UseGlassEffect ? "skeleton-glass" : "")">
+                <div class="skeleton-smart-auto">
+                    @RenderSmartSkeleton()
+                </div>
             </div>
-        }
-        else
-        {
-            @* Manual mode: Use predefined skeleton types *@
+        </div>
+    }
+    else
+    {
+        @* Smart mode not loading: Show actual content *@
+        @ChildContent
+    }
+}
+else
+{
+    @* Non-smart mode: Show skeleton as standalone visual component *@
+    @if (Loading || !SmartMode)
+    {
+        <div class="@GetContainerClasses()" @ref="skeletonContainer" @attributes="GetSafeAttributes()">
             @if (Count > 1)
             {
                 @for (int i = 0; i < Count; i++)
@@ -32,19 +45,13 @@
             {
                 @RenderSkeleton()
             }
-        }
-    </div>
-}
-else if (ChildContent != null)
-{
-    @ChildContent
-}
-else
-{
-    @* Fallback: Show content even if Loading=false and no ChildContent *@
-    <div class="@GetContainerClasses()" @attributes="GetSafeAttributes()">
-        @RenderSkeleton()
-    </div>
+        </div>
+    }
+    else if (ChildContent != null)
+    {
+        @* Has content but not smart mode and not loading *@
+        @ChildContent
+    }
 }
 
 @code {
@@ -55,11 +62,13 @@ else
     [Parameter] public bool Animated { get; set; } = true;
     [Parameter] public bool Loading { get; set; } = true;
     [Parameter] public bool SmartMode { get; set; } = true;
+    [Parameter] public bool UseGlassEffect { get; set; } = false;
     [Parameter] public string Class { get; set; } = string.Empty;
     [Parameter] public RenderFragment ChildContent { get; set; }
     
     private ElementReference skeletonContainer;
     private List<SkeletonElement> detectedElements = new();
+    private bool _isAnalyzed = false;
 
     private RenderFragment RenderSkeleton() => Type switch
     {
@@ -74,7 +83,7 @@ else
     };
     
     private RenderFragment RenderSmartSkeleton() => 
-        @<div class="skeleton-smart-auto">
+        @<text>
             @if (detectedElements.Any())
             {
                 @foreach (var element in detectedElements)
@@ -84,12 +93,12 @@ else
             }
             else
             {
-                @* Fallback smart skeleton *@
+                @* Fallback smart skeleton patterns *@
                 <div class="@GetSkeletonClasses() skeleton-text mb-2"></div>
                 <div class="@GetSkeletonClasses() skeleton-text mb-2 w-80"></div>
                 <div class="@GetSkeletonClasses() skeleton-text w-60"></div>
             }
-        </div>;
+        </text>;
         
     private RenderFragment RenderSkeletonElement(SkeletonElement element) =>
         @<div class="@GetSkeletonClasses() @element.CssClass" 
@@ -103,7 +112,7 @@ else
             }
         </div>;
 
-    private RenderFragment RenderTextSkeleton() => @<div class="@GetSkeletonClasses() size-dynamic" style="@GetSkeletonStyle()"></div>;
+    private RenderFragment RenderTextSkeleton() => @<div class="@GetSkeletonClasses() skeleton-text size-dynamic" style="@GetSkeletonStyle()"></div>;
 
     private RenderFragment RenderTitleSkeleton() => @<div class="@GetSkeletonClasses() skeleton-title size-dynamic" style="@GetSkeletonStyle()"></div>;
 
@@ -163,11 +172,6 @@ else
     {
         var classes = new List<string>();
         
-        if (SmartMode && Loading)
-        {
-            classes.Add("skeleton-smart-wrapper");
-        }
-        
         if (!string.IsNullOrEmpty(Class))
         {
             classes.Add(Class);
@@ -195,7 +199,7 @@ else
     
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender && SmartMode && ChildContent != null && Loading)
+        if (firstRender && SmartMode && ChildContent != null && Loading && !_isAnalyzed)
         {
             await AnalyzeContent();
         }
@@ -203,12 +207,15 @@ else
     
     private async Task AnalyzeContent()
     {
+        if (_isAnalyzed) return;
+        
         try
         {
+            _isAnalyzed = true;
             // In a real implementation, this would use JS interop to analyze the hidden content
             // For now, we'll create a smart fallback based on common patterns
             await GenerateSmartSkeleton();
-            StateHasChanged();
+            await InvokeAsync(StateHasChanged);
         }
         catch
         {

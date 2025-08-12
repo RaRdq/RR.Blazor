@@ -1,0 +1,228 @@
+@page "/test/datepicker-modal"
+@using RR.Blazor.Components
+@using RR.Blazor.Components.Form
+@using RR.Blazor.Components.Feedback
+@using RR.Blazor.Components.Layout
+@using RR.Blazor.Enums
+
+<div class="container pa-6">
+    <RSection Text="DatePicker Modal Integration Test" Icon="bug_report">
+        <p class="text-muted mb-4">Testing RDatePicker inside modal contexts to ensure proper JavaScript interop and no "Unable to set property" errors.</p>
+        
+        <RActionGroup>
+            <RButton Variant="ButtonVariant.Primary" OnClick="OpenSimpleModal">
+                Open Simple DatePicker Modal
+            </RButton>
+            
+            <RButton Variant="ButtonVariant.Secondary" OnClick="OpenRangeModal">
+                Open Range DatePicker Modal
+            </RButton>
+            
+            <RButton Variant="ButtonVariant.Outline" OnClick="OpenFormModal">
+                Open Form with DatePicker Modal
+            </RButton>
+            
+            <RButton Variant="ButtonVariant.Ghost" OnClick="OpenDisabledModal">
+                Open Disabled DatePicker Modal
+            </RButton>
+        </RActionGroup>
+        
+        @if (selectedDate.HasValue || startDate.HasValue)
+        {
+            <RAlert Variant="AlertVariant.Filled" Class="mt-4">
+                <strong>Selected Values:</strong><br/>
+                Single Date: @(selectedDate?.ToString("yyyy-MM-dd") ?? "Not selected")<br/>
+                Range Start: @(startDate?.ToString("yyyy-MM-dd") ?? "Not selected")<br/>
+                Range End: @(endDate?.ToString("yyyy-MM-dd") ?? "Not selected")
+            </RAlert>
+        }
+    </RSection>
+</div>
+
+@* Simple DatePicker Modal *@
+<RModal @bind-Visible="showSimpleModal"
+        Text="Select Date"
+        Icon="calendar_today"
+        Size="ModalSize.Medium"
+        ShowPrimaryButton="true"
+        PrimaryText="Confirm"
+        OnPrimaryAction="HandleSimpleConfirm">
+    <div class="pa-4">
+        <p class="mb-4">Select a date using the date picker below:</p>
+        
+        <RDatePicker @bind-Value="tempSelectedDate"
+                     Label="Event Date"
+                     Placeholder="Choose a date..."
+                     ShowTodayButton="true"
+                     Required="true" />
+    </div>
+</RModal>
+
+@* Range DatePicker Modal *@
+<RModal @bind-Visible="showRangeModal"
+        Text="Select Date Range"
+        Icon="date_range"
+        Size="ModalSize.Medium"
+        ShowPrimaryButton="true"
+        PrimaryText="Apply Range"
+        OnPrimaryAction="HandleRangeConfirm">
+    <div class="pa-4">
+        <p class="mb-4">Select a date range for your report:</p>
+        
+        <RDatePicker @bind-Value="tempStartDate"
+                     @bind-EndValue="tempEndDate"
+                     Range="true"
+                     Label="Report Period"
+                     Placeholder="Select start and end dates..."
+                     ShowTodayButton="true" />
+    </div>
+</RModal>
+
+@* Form with DatePicker Modal *@
+<RModal @bind-Visible="showFormModal"
+        Text="Create Event"
+        Icon="event"
+        Size="ModalSize.Large"
+        ShowPrimaryButton="true"
+        PrimaryText="Create Event"
+        OnPrimaryAction="HandleFormSubmit"
+        ShowUnsavedIndicator="true"
+        HasUnsavedChanges="@(!string.IsNullOrEmpty(eventTitle))">
+    <div class="pa-4">
+        <div class="space-y-4">
+            <RTextInput @bind-Value="eventTitle"
+                       Label="Event Title"
+                       Placeholder="Enter event title..."
+                       Required="true" />
+            
+            <RTextInput @bind-Value="eventDescription"
+                       Label="Description"
+                       Placeholder="Describe the event..." />
+            
+            <div class="grid grid-cols-2 gap-4">
+                <RDatePicker @bind-Value="eventStartDate"
+                            Label="Start Date"
+                            Placeholder="Select start date..."
+                            Required="true"
+                            ShowTime="true" />
+                
+                <RDatePicker @bind-Value="eventEndDate"
+                            Label="End Date"
+                            Placeholder="Select end date..."
+                            ShowTime="true"
+                            MinDate="eventStartDate" />
+            </div>
+            
+            <RSelectField @bind-Value="eventType"
+                         Label="Event Type">
+                <option value="">Select type...</option>
+                <option value="meeting">Meeting</option>
+                <option value="deadline">Deadline</option>
+                <option value="reminder">Reminder</option>
+            </RSelectField>
+        </div>
+    </div>
+</RModal>
+
+@* Disabled DatePicker Modal *@
+<RModal @bind-Visible="showDisabledModal"
+        Text="View Locked Dates"
+        Icon="lock"
+        Size="ModalSize.Medium"
+        ShowPrimaryButton="false">
+    <div class="pa-4">
+        <p class="mb-4">These dates are locked and cannot be changed:</p>
+        
+        <div class="space-y-3">
+            <RDatePicker Value="@lockedDate1"
+                        Label="Contract Start Date"
+                        Disabled="true" />
+            
+            <RDatePicker Value="@lockedDate2"
+                        Label="Contract End Date"
+                        Disabled="true" />
+            
+            <RAlert Variant="AlertVariant.Filled">
+                <i class="material-symbols-rounded mr-2">info</i>
+                These dates are set by the system and cannot be modified.
+            </RAlert>
+        </div>
+    </div>
+</RModal>
+
+@code {
+    // Modal visibility states
+    private bool showSimpleModal = false;
+    private bool showRangeModal = false;
+    private bool showFormModal = false;
+    private bool showDisabledModal = false;
+    
+    // Data binding properties
+    private DateTime? selectedDate;
+    private DateTime? tempSelectedDate;
+    
+    private DateTime? startDate;
+    private DateTime? endDate;
+    private DateTime? tempStartDate;
+    private DateTime? tempEndDate;
+    
+    // Form modal properties
+    private string eventTitle = "";
+    private string eventDescription = "";
+    private DateTime? eventStartDate;
+    private DateTime? eventEndDate;
+    private string eventType = "";
+    
+    // Disabled modal properties
+    private DateTime lockedDate1 = DateTime.Today.AddMonths(-6);
+    private DateTime lockedDate2 = DateTime.Today.AddMonths(6);
+    
+    private void OpenSimpleModal()
+    {
+        tempSelectedDate = selectedDate;
+        showSimpleModal = true;
+    }
+    
+    private void OpenRangeModal()
+    {
+        tempStartDate = startDate;
+        tempEndDate = endDate;
+        showRangeModal = true;
+    }
+    
+    private void OpenFormModal()
+    {
+        // Reset form
+        eventTitle = "";
+        eventDescription = "";
+        eventStartDate = DateTime.Today;
+        eventEndDate = DateTime.Today.AddDays(1);
+        eventType = "";
+        showFormModal = true;
+    }
+    
+    private void OpenDisabledModal()
+    {
+        showDisabledModal = true;
+    }
+    
+    private void HandleSimpleConfirm()
+    {
+        selectedDate = tempSelectedDate;
+        showSimpleModal = false;
+    }
+    
+    private void HandleRangeConfirm()
+    {
+        startDate = tempStartDate;
+        endDate = tempEndDate;
+        showRangeModal = false;
+    }
+    
+    private void HandleFormSubmit()
+    {
+        // In a real app, you would save the event here
+        Console.WriteLine($"Event created: {eventTitle} from {eventStartDate} to {eventEndDate}");
+        showFormModal = false;
+    }
+}

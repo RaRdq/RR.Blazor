@@ -21,23 +21,47 @@ Perfect for page headers, section intros, and feature highlights.
                        CommonUse = "page headers, section intros, feature highlights", 
                        AvoidUsage = "Don't use for regular content cards - use RCard instead")]
 
-<div class="card card-header @Class">
-    <div class="card-body">
-        @if (!string.IsNullOrEmpty(Icon))
+<div class="@GetHeaderCardClasses()">
+    <div class="card-body @GetBodyClasses()">
+        @if (IconPosition == IconPosition.Top && !string.IsNullOrEmpty(Icon))
         {
             <i class="@GetIconClasses()">@Icon</i>
         }
-        <div>
-            @if (!string.IsNullOrEmpty(Title))
+        
+        <div class="@GetContentWrapperClasses()">
+            @if (IconPosition == IconPosition.Start && !string.IsNullOrEmpty(Icon))
             {
-                <h1>@Title</h1>
+                <i class="@GetIconClasses()">@Icon</i>
             }
-            @if (!string.IsNullOrEmpty(Description))
+            
+            <div class="@GetTextContainerClasses()">
+                @if (!string.IsNullOrEmpty(Title))
+                {
+                    <h1 class="@GetTitleClasses()">@Title</h1>
+                }
+                @if (!string.IsNullOrEmpty(Description))
+                {
+                    <p class="@GetDescriptionClasses()">@Description</p>
+                }
+            </div>
+            
+            @if (IconPosition == IconPosition.End && !string.IsNullOrEmpty(Icon))
             {
-                <p>@Description</p>
+                <i class="@GetIconClasses()">@Icon</i>
             }
         </div>
-        @ChildContent
+        
+        @if (IconPosition == IconPosition.Bottom && !string.IsNullOrEmpty(Icon))
+        {
+            <i class="@GetIconClasses()">@Icon</i>
+        }
+        
+        @if (ChildContent != null)
+        {
+            <div class="@GetChildContentClasses()">
+                @ChildContent
+            </div>
+        }
     </div>
 </div>
 
@@ -53,13 +77,119 @@ Perfect for page headers, section intros, and feature highlights.
     
     [Parameter] public string IconSize { get; set; } = "lg";
     
+    [Parameter] public IconPosition IconPosition { get; set; } = IconPosition.Start;
+    
+    [Parameter] public ActionGroupAlignment Alignment { get; set; } = ActionGroupAlignment.Start;
+    
+    [Parameter]
+    [AIParameter(Hint = "Header card variant - Gradient for hero headers, GlassGradient for premium features", 
+                 SuggestedValues = new[] { "Default", "Gradient", "GlassGradient" }, 
+                 IsRequired = false)]
+    public CardVariant Variant { get; set; } = CardVariant.Default;
+    
     private string GetIconClasses()
     {
-        var classes = new List<string> { "material-symbols-rounded" };
+        var classes = new List<string> { "material-symbols-rounded", "header-card-icon" };
         if (!string.IsNullOrEmpty(IconSize))
         {
             classes.Add($"icon-{IconSize}");
         }
+        return string.Join(" ", classes);
+    }
+    
+    private string GetHeaderCardClasses()
+    {
+        var classes = new List<string> { "card", "card-header" };
+        
+        switch (Variant)
+        {
+            case CardVariant.Gradient:
+                classes.Add("card-gradient");
+                break;
+            case CardVariant.GlassGradient:
+                classes.Add("card-glass-gradient");
+                break;
+        }
+        
+        if (!string.IsNullOrEmpty(Class))
+        {
+            classes.Add(Class);
+        }
+        
+        return string.Join(" ", classes);
+    }
+    
+    private string GetBodyClasses()
+    {
+        var classes = new List<string> { "header-card-body" };
+        
+        // Add alignment class
+        classes.Add(Alignment switch
+        {
+            ActionGroupAlignment.Start => "align-start",
+            ActionGroupAlignment.Center => "align-center", 
+            ActionGroupAlignment.End => "align-end",
+            _ => "align-start"
+        });
+        
+        // Add icon position class for overall layout
+        if (!string.IsNullOrEmpty(Icon))
+        {
+            classes.Add($"icon-{IconPosition.ToString().ToLower()}");
+        }
+        
+        return string.Join(" ", classes);
+    }
+    
+    private string GetContentWrapperClasses()
+    {
+        var classes = new List<string> { "header-content-wrapper" };
+        
+        // Only add horizontal layout if icon is start or end
+        if (!string.IsNullOrEmpty(Icon) && (IconPosition == IconPosition.Start || IconPosition == IconPosition.End))
+        {
+            classes.Add("d-flex");
+            classes.Add("align-center");
+            classes.Add("gap-3");
+        }
+        
+        return string.Join(" ", classes);
+    }
+    
+    private string GetTextContainerClasses()
+    {
+        var classes = new List<string> { "header-text-container" };
+        
+        // Text alignment based on overall alignment
+        classes.Add(Alignment switch
+        {
+            ActionGroupAlignment.Center => "text-center",
+            ActionGroupAlignment.End => "text-right",
+            _ => "text-left"
+        });
+        
+        return string.Join(" ", classes);
+    }
+    
+    private string GetTitleClasses()
+    {
+        var classes = new List<string> { "header-title" };
+        return string.Join(" ", classes);
+    }
+    
+    private string GetDescriptionClasses()
+    {
+        var classes = new List<string> { "header-description", "text-muted" };
+        return string.Join(" ", classes);
+    }
+    
+    private string GetChildContentClasses()
+    {
+        var classes = new List<string> { "header-child-content" };
+        
+        // Add margin top for spacing from title/description
+        classes.Add("mt-3");
+        
         return string.Join(" ", classes);
     }
 }

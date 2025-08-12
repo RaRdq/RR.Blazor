@@ -1,18 +1,127 @@
-// Portal System Styles
+// Portal System Styles - No !important needed with cascade layers
 @use '../abstracts' as *;
 
-// Base portal container
-.rr-portal {
-  position: absolute;
-  z-index: var(--z-popup);
+// Portal root container
+.portal-root {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  z-index: var(--z-base, 1000);
+}
+
+// Base portal element
+.portal {
+  position: fixed;
+  pointer-events: auto;
   
-  // Portal types
-  &-dropdown {
-    min-width: 100%;
-    width: max-content;
+  // Dynamic z-index via data attribute
+  &[data-z-index] {
+    z-index: var(--portal-z-index);
+  }
+}
+
+// Portal backdrop with theme-aware variables
+.portal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--backdrop-color, rgba(0, 0, 0, var(--backdrop-opacity, 0.5)));
+  backdrop-filter: blur(var(--backdrop-blur, 4px));
+  pointer-events: auto;
+  
+  // Smooth transitions
+  transition: opacity var(--backdrop-transition-duration, 200ms) var(--backdrop-transition-timing, ease-out);
+  
+  // Stacking context
+  &[data-backdrop-level] {
+    z-index: calc(var(--z-base, 1000) + (var(--level, 0) * 10) - 1);
+  }
+  
+  // Theme-aware backdrop styling
+  &.backdrop-themed {
+    background: var(--backdrop-themed-color, var(--backdrop-color, rgba(0, 0, 0, var(--backdrop-opacity, 0.5))));
+    backdrop-filter: blur(var(--backdrop-themed-blur, var(--backdrop-blur, 4px)));
     
-    // Ensure dropdown content has solid background
-    > * {
+    // Dark theme adjustments
+    [data-theme="dark"] & {
+      background: var(--backdrop-dark-color, rgba(0, 0, 0, var(--backdrop-dark-opacity, 0.7)));
+      backdrop-filter: blur(var(--backdrop-dark-blur, var(--backdrop-blur, 6px)));
+    }
+    
+    // Light theme adjustments
+    [data-theme="light"] & {
+      background: var(--backdrop-light-color, rgba(255, 255, 255, var(--backdrop-light-opacity, 0.8)));
+      backdrop-filter: blur(var(--backdrop-light-blur, var(--backdrop-blur, 4px)));
+    }
+    
+    // High contrast support
+    @media (prefers-contrast: high) {
+      background: var(--backdrop-high-contrast-color, rgba(0, 0, 0, var(--backdrop-high-contrast-opacity, 0.9)));
+      backdrop-filter: none;
+    }
+    
+    // Glassmorphism variant
+    &.backdrop-glass {
+      background: var(--backdrop-glass-color, rgba(255, 255, 255, var(--backdrop-glass-opacity, 0.1)));
+      backdrop-filter: blur(var(--backdrop-glass-blur, 12px)) saturate(var(--backdrop-glass-saturation, 1.8));
+      
+      [data-theme="dark"] & {
+        background: var(--backdrop-glass-dark-color, rgba(0, 0, 0, var(--backdrop-glass-dark-opacity, 0.2)));
+      }
+    }
+    
+    // Solid variant for reduced motion/performance
+    &.backdrop-solid {
+      backdrop-filter: none;
+      background: var(--backdrop-solid-color, var(--color-surface-overlay, rgba(0, 0, 0, 0.8)));
+    }
+  }
+}
+
+// Theme variables for backdrop customization
+:root {
+  // Base backdrop variables
+  --backdrop-opacity: 0.5;
+  --backdrop-blur: 4px;
+  --backdrop-transition-duration: 200ms;
+  --backdrop-transition-timing: ease-out;
+  
+  // Theme-specific backdrop variables
+  --backdrop-dark-opacity: 0.7;
+  --backdrop-dark-blur: 6px;
+  --backdrop-light-opacity: 0.8;
+  --backdrop-light-blur: 4px;
+  
+  // High contrast backdrop
+  --backdrop-high-contrast-opacity: 0.9;
+  
+  // Glassmorphism backdrop
+  --backdrop-glass-opacity: 0.1;
+  --backdrop-glass-blur: 12px;
+  --backdrop-glass-saturation: 1.8;
+  --backdrop-glass-dark-opacity: 0.2;
+  
+  // Color overrides (can be customized per theme)
+  --backdrop-color: rgba(0, 0, 0, var(--backdrop-opacity));
+  --backdrop-dark-color: rgba(0, 0, 0, var(--backdrop-dark-opacity));
+  --backdrop-light-color: rgba(255, 255, 255, var(--backdrop-light-opacity));
+  --backdrop-glass-color: rgba(255, 255, 255, var(--backdrop-glass-opacity));
+  --backdrop-glass-dark-color: rgba(0, 0, 0, var(--backdrop-glass-dark-opacity));
+  --backdrop-solid-color: var(--color-surface-overlay, rgba(0, 0, 0, 0.8));
+}
+
+// Modern portal types - replaced legacy .rr-portal system
+.portal {
+  // Portal-specific overrides only when needed
+  &[data-portal-type="dropdown"] {
+    .portal-content {
+      min-width: 100%;
+      width: max-content;
       background: var(--color-surface-elevated);
       border: var(--border-1) solid var(--color-border);
       border-radius: var(--radius-lg);
@@ -21,49 +130,31 @@
     }
   }
   
-  &-tooltip {
+  &[data-portal-type="tooltip"] {
     pointer-events: none;
     
-    > * {
+    .portal-content {
       pointer-events: auto;
     }
   }
   
-  &-modal {
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    right: 0 !important;
-    bottom: 0 !important;
-    width: 100vw !important;
-    height: 100vh !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    pointer-events: none !important; // Allow clicks to pass through to backdrop
+  &[data-portal-type="modal"] {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
     
-    // But modal content should still receive events
-    > * {
+    .portal-content {
       pointer-events: auto;
     }
   }
-  
-  // Context-aware z-index layering
-  .modal &,
-  .modal-content & {
-    z-index: var(--z-modal-popup);
-  }
-}
-
-// Portal backdrop
-.rr-portal-backdrop {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
 }
 
 // Datepicker portal specific
@@ -89,5 +180,63 @@
     border: var(--border-1) solid var(--color-border);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-xl);
+  }
+}
+
+// Portal position modifiers
+.portal {
+  &[data-position*="top"] {
+    transform-origin: center bottom;
+  }
+  
+  &[data-position*="bottom"] {
+    transform-origin: center top;
+  }
+  
+  &[data-position*="left"] {
+    transform-origin: right center;
+  }
+  
+  &[data-position*="right"] {
+    transform-origin: left center;
+  }
+}
+
+// Portal animations - Use existing keyframes from abstracts/_animations.scss
+
+// Animation classes - Use existing animations
+.portal-enter {
+  animation: fadeIn 200ms ease-out;
+  
+  &.portal-scale {
+    animation: scaleIn 200ms ease-out;
+  }
+  
+  &.portal-slide {
+    animation: slideInDown 150ms ease-out;
+  }
+}
+
+.portal-exit {
+  animation: fadeOut 150ms ease-in;
+  
+  &.portal-scale {
+    animation: scaleOut 150ms ease-in;
+  }
+  
+  &.portal-slide {
+    animation: fadeOutDown 100ms ease-in;
+  }
+}
+
+// Accessibility - respect reduced motion
+@media (prefers-reduced-motion: reduce) {
+  .portal-enter,
+  .portal-exit {
+    animation: none;
+  }
+  
+  .portal-backdrop {
+    transition: none;
   }
 }

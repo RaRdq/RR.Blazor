@@ -8,8 +8,8 @@
     {
         <div class="progress-label @GetLabelSpacingClasses() @GetLabelSizeClasses() font-medium text-secondary">@Text</div>
     }
-    <div class="progress relative @GetProgressClasses() bg-surface-secondary rounded-full overflow-hidden">
-        <div class="progress-bar @GetProgressBarClasses() h-full transition-all duration-300 d-flex items-center justify-center text-inverse @GetProgressBarTextClasses() font-medium progress-dynamic" 
+    <div class="progress relative @GetProgressClasses() @GetProgressContainerClasses() bg-surface-secondary rounded-full overflow-hidden">
+        <div class="progress-bar @GetProgressBarClasses() h-full d-flex items-center justify-center text-inverse @GetProgressBarTextClasses() font-medium progress-dynamic" 
              role="progressbar" 
              style="@GetProgressBarStyleVariables()"
              aria-valuenow="@Value" 
@@ -147,30 +147,16 @@
 
     private string GetProgressBarClasses()
     {
-        var classes = new List<string>();
-        
-        classes.Add(Variant switch
-        {
-            ProgressVariant.Success => "progress-bar-fill-success",
-            ProgressVariant.Warning => "progress-bar-fill-warning",
-            ProgressVariant.Danger => "progress-bar-fill-error",
-            ProgressVariant.Info => "progress-bar-fill-info",
-            _ => "progress-bar-fill-primary"
-        });
+        var classes = new List<string> { "fill-dynamic" };
         
         if (Striped)
         {
             classes.Add("progress-bar-striped");
         }
         
-        if (Animated || Indeterminate)
+        if (Animated && !Indeterminate)
         {
-            classes.Add("animate-pulse");
-        }
-        
-        if (Indeterminate)
-        {
-            classes.Add("progress-bar-indeterminate");
+            classes.Add("progress-bar-animated");
         }
         
         return string.Join(" ", classes);
@@ -178,13 +164,39 @@
 
     private string GetProgressBarStyleVariables()
     {
-        if (Indeterminate)
+        var styles = new List<string>();
+        
+        // Set fill color based on variant
+        var fillColor = Variant switch
         {
-            return "";
+            ProgressVariant.Success => "var(--color-success)",
+            ProgressVariant.Warning => "var(--color-warning)",
+            ProgressVariant.Danger or ProgressVariant.Error => "var(--color-error)",
+            ProgressVariant.Info => "var(--color-info)",
+            _ => "var(--color-primary)"
+        };
+        styles.Add($"--fill-color: {fillColor}");
+        
+        // Set progress width
+        if (!Indeterminate)
+        {
+            var percentage = Math.Max(0, Math.Min(100, Value));
+            styles.Add($"--progress-width: {percentage}%");
         }
         
-        var percentage = Math.Max(0, Math.Min(100, Value));
-        return $"--progress-width: {percentage}%;";
+        return string.Join("; ", styles);
+    }
+
+    private string GetProgressContainerClasses()
+    {
+        var classes = new List<string>();
+        
+        if (Indeterminate)
+        {
+            classes.Add("progress-indeterminate");
+        }
+        
+        return string.Join(" ", classes);
     }
 
     private string GetFormattedValue()

@@ -291,6 +291,21 @@ window.RRAutosuggest = {
     calculateOptimalPosition: calculateOptimalPosition
 };
 
+// Required methods for rr-blazor.js proxy system
+export function initialize(element, dotNetRef) {
+    // Autosuggest system initializes itself, return success
+    return true;
+}
+
+export function cleanup(element) {
+    if (element && element.hasAttribute('data-autosuggest-id')) {
+        const elementId = element.getAttribute('data-autosuggest-id');
+        destroyAutosuggestPortal(elementId).catch(error => {
+            debugLogger.error('[Autosuggest] Cleanup failed:', error);
+        });
+    }
+}
+
 // Export for module usage
 export default {
     createAutosuggestPortal,
@@ -298,5 +313,7 @@ export default {
     updateAutosuggestPosition,
     getAutosuggestDirection,
     registerClickOutside,
-    calculateOptimalPosition
+    calculateOptimalPosition,
+    initialize,
+    cleanup
 };

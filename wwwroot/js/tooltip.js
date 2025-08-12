@@ -84,9 +84,23 @@ export function getTooltipPosition(triggerElement, tooltipElement, preferredPosi
     return finalPosition;
 }
 
+// Required methods for rr-blazor.js proxy system
+export function initialize(element, dotNetRef) {
+    return true;
+}
+
+export function cleanup(element) {
+    if (element && element.hasAttribute('data-tooltip-id')) {
+        const tooltipId = element.getAttribute('data-tooltip-id');
+        destroyTooltipPortal(tooltipId);
+    }
+}
+
 export default {
     create: createTooltipPortal,
     destroy: destroyTooltipPortal,
     update: updateTooltipPosition,
-    getPosition: getTooltipPosition
+    getPosition: getTooltipPosition,
+    initialize,
+    cleanup
 };

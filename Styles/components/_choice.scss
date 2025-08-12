@@ -1,4 +1,3 @@
-// Choice Component - Clean CSS-only positioning
 @use '../abstracts' as *;
 
 // Mixin for compact choice styles (reusable across responsive contexts)
@@ -12,6 +11,7 @@
     min-height: var(--touch-target-min, 44px);
     border-radius: var(--radius-full);
     gap: 0;
+    position: relative;
     
     // Hide text content in compact mode
     .choice-text,
@@ -25,6 +25,8 @@
     .material-symbols-rounded {
       display: flex;
       flex-shrink: 0;
+      position: relative;
+      z-index: 1;
     }
     
     // Remove chevron in compact mode
@@ -439,6 +441,8 @@
         background-position: center;
         background-size: contain;
         transition: transform var(--duration-fast) var(--ease-out);
+        z-index: 0;
+        pointer-events: none;
       }
       
       &:hover:not(:disabled) {
@@ -540,23 +544,31 @@
     }
     
     .choice-viewport {
-      position: fixed;
-      z-index: var(--z-popup);
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
       visibility: hidden;
       opacity: 0;
-      transition: all var(--duration-fast) var(--ease-out);
       pointer-events: none;
+      transform: translateY(-4px);
+      z-index: var(--z-portal-base, 1000);
       
-      // Modal-aware layering - detect if inside modal context
-      .modal &, 
-      .modal-container &,
-      .modal-content & {
-        z-index: var(--z-modal-popup);
-      }
+      @extend %glass-medium;
+      background: var(--glass-bg-medium);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-xl);
+      padding: var(--space-2);
+      min-width: var(--space-56);
+      max-height: 80vh;
+      overflow-y: auto;
       
-      // Custom premium scrollbar
+      // Scrollbar styling
+      scrollbar-width: thin;
+      scrollbar-color: var(--color-border) transparent;
+      
       &::-webkit-scrollbar {
-        width: 8px;
+        width: 4px;
       }
       
       &::-webkit-scrollbar-track {
@@ -566,33 +578,35 @@
       &::-webkit-scrollbar-thumb {
         background: var(--color-border);
         border-radius: var(--radius-full);
-        transition: background var(--duration-fast);
-        
-        &:hover {
-          background: var(--color-primary-light);
-        }
       }
       
-      // Firefox scrollbar
-      scrollbar-width: thin;
-      scrollbar-color: var(--color-border) transparent;
+      @media (max-width: 768px) {
+        min-width: var(--space-48);
+        right: -var(--space-2);
+      }
+      
+      @media (max-width: 480px) {
+        min-width: var(--space-40);
+        right: -var(--space-1);
+      }
     }
     
-    // Standard choice-content styling (non-card positioning)
     .choice-content {
       background: var(--color-surface-elevated);
       border: var(--border-1) solid var(--color-border);
       border-radius: var(--radius-lg);
-      box-shadow: var(--shadow-xl);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12),
+                  0 2px 8px rgba(0, 0, 0, 0.08);
       backdrop-filter: blur(var(--blur-md));
       width: 100%;
-      min-width: 100%; // Ensure full width of trigger
-      max-height: min(280px, calc(100vh - 200px));
+      min-width: 200px;
+      max-width: 400px;
+      max-height: 320px;
       overflow-y: auto;
       overflow-x: hidden;
-      padding: var(--space-1);
+      padding: var(--space-1) 0;
+      box-sizing: border-box;
       
-      // Premium scrollbar
       &::-webkit-scrollbar {
         width: 8px;
       }
@@ -621,126 +635,93 @@
       .choice-item {
         border: none;
         background: transparent;
-        margin: 0;
+        margin: 0 var(--space-1);
         justify-content: flex-start;
         text-align: left;
         padding: var(--space-2) var(--space-3);
         font-size: var(--text-sm);
         font-weight: var(--font-normal);
         color: var(--color-text);
-        transition: all var(--duration-fast) var(--ease-out);
+        transition: background var(--duration-fast) var(--ease-out),
+                    color var(--duration-fast) var(--ease-out);
         cursor: pointer;
-        border-radius: 0;
+        border-radius: var(--radius-md);
         position: relative;
-        width: 100%;
+        width: auto;
+        max-width: calc(100% - calc(var(--space-1) * 2));
         box-sizing: border-box;
+        display: flex;
+        align-items: center;
+        gap: var(--space-2);
+        min-width: 0;
         
-        &:hover {
-          background: var(--color-primary-light);
+        &:hover,
+        &.choice-item-highlighted {
+          background: color-mix(in srgb, var(--color-primary) 10%, transparent);
           color: var(--color-text);
-          position: relative;
-          z-index: 10; // Ensure hover item appears above other content
         }
         
         &:active {
+          background: color-mix(in srgb, var(--color-primary) 20%, transparent);
+          transform: scale(0.98);
+        }
+        
+        &.choice-item-active {
           background: var(--color-primary);
           color: var(--color-text-inverse);
+          font-weight: var(--font-semibold);
+          
+          &:hover {
+            background: var(--color-primary-hover);
+            color: var(--color-text-inverse);
+          }
         }
         
         .material-symbols-rounded {
           margin-right: var(--space-2);
           font-size: var(--icon-sm);
-          color: var(--color-primary);
+          color: currentColor;
+          opacity: 0.8;
+          flex-shrink: 0;
+        }
+        
+        // Text content handling for long text
+        .choice-text,
+        .choice-label {
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          flex-shrink: 1;
+          min-width: 0;
+        }
+        
+        // Avatar should never shrink
+        .choice-avatar {
+          flex-shrink: 0;
         }
       }
     }
     
     
-    .choice-backdrop {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      z-index: var(--z-popup-backdrop);
-      background: transparent;
-      visibility: hidden;
-      pointer-events: none;
-      
-      .modal &, 
-      .modal-container &,
-      .modal-content & {
-        z-index: calc(var(--z-modal-popup) - 10);
-      }
-    }
     
-    &.choice-open .choice-backdrop {
-      visibility: visible;
-      pointer-events: auto;
-    }
-    
-    .choice-content {
-      background: var(--color-surface-elevated);
-      border: var(--border-1) solid var(--color-border);
-      border-radius: var(--radius-lg);
-      box-shadow: var(--shadow-lg);
-      backdrop-filter: blur(var(--blur-md));
-      min-width: 100%;
-      max-height: min(280px, calc(100vh - 200px));
-      overflow-y: auto;
-      overflow-x: hidden;
-      padding: var(--space-1) 0;
-      
-      .choice-item {
-        border: none;
-        border-radius: 0;
-        background: transparent;
-        margin: 0;
-        justify-content: flex-start;
-        text-align: left;
-        padding: var(--space-2) var(--space-3);
-        
-        &:hover {
-          background: color-mix(in srgb, var(--color-surface-elevated) 15%, transparent);
-          color: var(--color-text);
-          transform: none;
-          position: relative;
-          z-index: 10;
-        }
-        
-        &:first-child {
-          border-top-left-radius: var(--radius-lg);
-          border-top-right-radius: var(--radius-lg);
-        }
-        
-        &:last-child {
-          border-bottom-left-radius: var(--radius-lg);
-          border-bottom-right-radius: var(--radius-lg);
-        }
-      }
-    }
     &.choice-open {
       .choice-trigger {
         border-color: var(--color-primary);
-        box-shadow: var(--shadow-sm);
+        box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 20%, transparent);
         
         &::after {
           transform: translateY(-50%) rotate(180deg);
         }
       }
       
-      .choice-backdrop {
-        visibility: visible;
-        pointer-events: auto;
-      }
-      
       .choice-viewport {
         visibility: visible;
         opacity: 1;
         pointer-events: auto;
+        transform: translateY(0);
+        animation: dropdownSlideIn var(--duration-normal) var(--ease-out);
       }
     }
-    
   }
 
   &-switcher {
@@ -763,4 +744,32 @@
     }
   }
 }
+
+// Scrollbar styling for dropdown content
+.choice-dropdown .choice-content {
+  &::-webkit-scrollbar {
+    width: 6px; // Slimmer scrollbar
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: transparent;
+    margin: var(--space-1) 0;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: var(--radius-full);
+    transition: all var(--duration-fast);
+    
+    &:hover {
+      background: var(--color-primary);
+      width: 8px; // Expand on hover
+    }
+  }
+  
+  // Firefox
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+
 

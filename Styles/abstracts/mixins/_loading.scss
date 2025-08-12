@@ -1,198 +1,552 @@
-// Consolidated Loading System - Single source of truth for all loading states
+// Modern Loading System - Using existing animations and BEM patterns
 @use '../variables' as *;
+@use '../animations' as *;
 @use 'core' as *;
-@use 'interactions' as *;
+@use 'sass:map';
 
-@mixin loading-foundation(
-  $pointer-events: none,
-  $cursor: wait,
-  $opacity: 1,
-  $user-select: none
-) {
-  pointer-events: $pointer-events;
-  cursor: $cursor;
-  opacity: $opacity;
-  user-select: $user-select;
-  
-  &:hover,
-  &:active,
-  &:focus,
-  &:focus-visible {
-    transform: inherit;
-    filter: inherit;
-    box-shadow: inherit;
-    outline: inherit;
-  }
+// Loading types configuration
+$loading-types: (
+  'replace': 'Content is hidden and replaced with spinner',
+  'overlay': 'Content remains visible with loading overlay',
+  'inline': 'Spinner appears alongside content',
+  'skeleton': 'Placeholder content with shimmer effect',
+  'container': 'Centered loading with optional text',
+  'fullscreen': 'Full page loading overlay',
+  'bar': 'Top progress bar indicator',
+  'dots': 'Animated dots loading indicator'
+);
+
+// Size configuration using em units for proper scaling with button text
+$loading-sizes: (
+  'xs': (size: 0.75em, border: 1.5px, speed: var(--duration-fast)),
+  'sm': (size: 0.875em, border: 2px, speed: var(--duration-normal)), 
+  'md': (size: 1em, border: 2px, speed: var(--duration-normal)),
+  'lg': (size: 1.125em, border: 2.5px, speed: var(--duration-slow)),
+  'xl': (size: 1.25em, border: 3px, speed: var(--duration-very-slow))
+);
+
+// Theme configuration  
+$loading-themes: (
+  'default': (spinner: var(--color-text), track: var(--color-border)),
+  'current': (spinner: currentColor, track: color-mix(in srgb, currentColor 20%, transparent)),
+  'primary': (spinner: var(--color-primary), track: color-mix(in srgb, var(--color-primary) 20%, transparent)),
+  'secondary': (spinner: var(--color-secondary), track: color-mix(in srgb, var(--color-secondary) 20%, transparent)),
+  'success': (spinner: var(--color-success), track: color-mix(in srgb, var(--color-success) 20%, transparent)),
+  'warning': (spinner: var(--color-warning), track: color-mix(in srgb, var(--color-warning) 20%, transparent)),
+  'error': (spinner: var(--color-error), track: color-mix(in srgb, var(--color-error) 20%, transparent)),
+  'inverse': (spinner: var(--color-text-inverse), track: color-mix(in srgb, var(--color-text-inverse) 20%, transparent)),
+  'muted': (spinner: var(--color-muted), track: var(--color-border-subtle)),
+  'white': (spinner: white, track: color-mix(in srgb, white 30%, transparent))
+);
+
+// Foundation mixin for all loading states
+@mixin loading-foundation() {
+  position: relative;
+  min-height: 3rem;
+  contain: layout style;
+  isolation: isolate;
+  will-change: contents;
+  z-index: 1;
+  transition: opacity var(--duration-normal) var(--ease-out);
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
-@mixin spinner-core(
-  $size: var(--loading-size, 1.2em),
-  $border-width: var(--loading-border, 2px),
-  $speed: var(--loading-speed, 0.8s)
-) {
-  width: $size;
-  height: $size;
+// Core spinner mixin using existing spin animation
+@mixin spinner-core($size: 'md', $theme: 'default') {
+  $size-config: map.get($loading-sizes, $size);
+  $theme-config: map.get($loading-themes, $theme);
+  
+  $spinner-size: map.get($size-config, 'size');
+  $border-width: map.get($size-config, 'border'); 
+  $speed: map.get($size-config, 'speed');
+  
+  $spinner-color: map.get($theme-config, 'spinner');
+  $track-color: map.get($theme-config, 'track');
+  
+  width: $spinner-size;
+  height: $spinner-size;
   border-radius: 50%;
-  border: $border-width solid var(--loading-track-color, var(--color-border));
-  border-top-color: var(--loading-spinner-color, var(--color-primary));
+  border: $border-width solid $track-color;
+  border-top-color: $spinner-color;
+  // Use existing spin animation from animations.scss
   animation: spin $speed linear infinite;
   will-change: transform;
   transform-origin: center;
-  pointer-events: none;
   display: block;
+  flex-shrink: 0;
 }
 
-@mixin loading-theme-colors($variant: default) {
-  @if $variant == primary {
-    --loading-spinner-color: var(--color-primary);
-    --loading-track-color: color-mix(in srgb, var(--color-primary) 20%, transparent);
-  } @else if $variant == inverse {
-    --loading-spinner-color: var(--color-text-inverse);
-    --loading-track-color: color-mix(in srgb, var(--color-text-inverse) 20%, transparent);
+// Replace content with spinner - enhanced for button support
+@mixin loading-replace($size: 'md', $theme: 'default', $supports-loading-text: false) {
+  @include loading-foundation();
+  
+  // Hide original content (unless LoadingText present)
+  > *:not(.loading-text):not(.loading-spinner) {
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+  }
+  
+  // Loading text styling (inherits parent font properties)
+  .loading-text {
+    visibility: visible;
+    opacity: 1;
+    color: inherit;
+    font-size: inherit;
+    pointer-events: none;
+  }
+  
+  @if $supports-loading-text {
+    // LoadingText support: conditional rendering
+    &:has(.loading-text) {
+      // Inline spinner with text
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5em;
+      
+      &::after {
+        content: '';
+        position: static;
+        display: inline-block;
+        transform: none;
+        @include spinner-core($size, $theme);
+        order: -1;
+        flex-shrink: 0;
+        vertical-align: middle;
+      }
+      
+      .loading-text {
+        display: inline;
+        vertical-align: middle;
+      }
+    }
+    
+    &:not(:has(.loading-text)) {
+      // Centered spinner without text
+      &::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        @include spinner-core($size, $theme);
+        z-index: 1;
+      }
+    }
   } @else {
-    --loading-spinner-color: var(--color-text);
-    --loading-track-color: var(--color-border);
-  }
-}
-
-@mixin loading-inline($side: left, $gap: var(--space-2)) {
-  position: relative;
-  
-  @if $side == left {
-    padding-left: calc(1.2em + #{$gap});
-    
-    &::before {
-      content: '';
-      position: absolute;
-      left: 0;
-      top: 50%;
-      transform: translateY(-50%);
-      @include spinner-core(1em, 2px, 0.8s);
-    }
-  } @else if $side == right {
-    padding-right: calc(1.2em + #{$gap});
-    
+    // Standard centered spinner
     &::after {
       content: '';
       position: absolute;
-      right: 0;
       top: 50%;
-      transform: translateY(-50%);
-      @include spinner-core(1em, 2px, 0.8s);
-    }
-  }
-}
-
-@mixin card-loading($overlay: true, $blur: 4px) {
-  // Override to keep text visible for cards
-  color: inherit;
-  
-  // Use the global interactive-loading for the spinner
-  @include interactive-loading();
-  
-  @if $overlay {
-    // Add overlay with ::before since ::after is used by interactive-loading spinner
-    &::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: color-mix(in srgb, var(--color-surface) 70%, transparent);
-      backdrop-filter: blur($blur);
-      -webkit-backdrop-filter: blur($blur);
+      left: 50%;
+      transform: translate(-50%, -50%);
+      @include spinner-core($size, $theme);
       z-index: 1;
-      pointer-events: none;
-    }
-    
-    &::after {
-      z-index: 2;
     }
   }
 }
 
-@mixin loading-skeleton($height: 1.2em, $lines: 1) {
-  position: relative;
-  overflow: hidden;
-  background: var(--color-border);
-  height: $height;
-  border-radius: var(--radius-md);
+// Overlay with spinner
+@mixin loading-overlay($size: 'md', $theme: 'default', $blur: 4px) {
+  @include loading-foundation();
   
-  &::after {
+  &::before {
     content: '';
     position: absolute;
     inset: 0;
-    background: linear-gradient(
-      90deg,
-      transparent,
-      color-mix(in srgb, var(--color-surface) 50%, transparent),
-      transparent
-    );
-    transform: translateX(-100%);
-    animation: shimmer 1.5s infinite;
+    background: color-mix(in srgb, var(--color-surface) 80%, transparent);
+    backdrop-filter: blur($blur);
+    -webkit-backdrop-filter: blur($blur);
+    z-index: var(--z-loading-overlay, 10);
+    border-radius: inherit;
+    // Use existing fadeIn animation
+    animation: fadeIn var(--duration-fast) var(--ease-out);
   }
-  
-  @if $lines > 1 {
-    &,
-    &::before {
-      height: calc(#{$height} * 0.7);
-      margin-bottom: calc(#{$height} * 0.3);
-    }
-    
-    @for $i from 2 through $lines {
-      &::before {
-        content: '';
-        position: absolute;
-        top: calc(#{$height} * #{$i - 1});
-        left: 0;
-        right: 0;
-        height: calc(#{$height} * 0.7);
-        background: var(--color-border);
-        border-radius: var(--radius-md);
-      }
-    }
-  }
-}
-
-@mixin input-loading($spinner-position: right, $spinner-size: 1em, $spinner-offset: var(--space-3)) {
-  position: relative;
   
   &::after {
     content: '';
     position: absolute;
     top: 50%;
-    transform: translateY(-50%);
-    @include spinner-core($spinner-size, 2px, 0.8s);
-    z-index: 1;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    @include spinner-core($size, $theme);
+    z-index: var(--z-loading-spinner, 11);
+  }
+}
+
+// Inline loading spinner
+@mixin loading-inline($position: 'end', $size: 'sm', $theme: 'default') {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  
+  @if $position == 'start' {
+    flex-direction: row-reverse;
+  }
+  
+  &::after {
+    content: '';
+    display: inline-block;
+    @include spinner-core($size, $theme);
+  }
+}
+
+// Skeleton loading using existing shimmer animation
+@mixin loading-skeleton($theme: 'default') {
+  background: linear-gradient(
+    90deg,
+    var(--color-border-light) 25%,
+    var(--color-surface-elevated) 50%,
+    var(--color-border-light) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer var(--duration-extended) ease-in-out infinite;
+  border-radius: var(--radius-sm);
+  color: transparent;
+  user-select: none;
+  
+  &::before,
+  &::after {
+    display: none;
+  }
+  
+  * {
+    visibility: hidden;
+  }
+}
+
+// Loading dots using existing pulse animation
+@mixin loading-dots($size: 'sm', $color: 'primary') {
+  $size-config: map.get($loading-sizes, $size);
+  $dot-size: map.get($size-config, 'size');
+  $gap-size: calc($dot-size * 0.3);
+  
+  display: inline-flex;
+  gap: $gap-size;
+  
+  span {
+    display: inline-block;
+    width: $dot-size;
+    height: $dot-size;
+    background: var(--color-#{$color});
+    border-radius: 50%;
+    // Use existing pulse animation from animations.scss
+    animation: pulse calc(var(--duration-very-slow) * 1.4) ease-in-out infinite;
     
-    @if $spinner-position == right {
-      right: $spinner-offset;
-    } @else {
-      left: $spinner-offset;
+    &:nth-child(1) { animation-delay: 0s; }
+    &:nth-child(2) { animation-delay: 0.2s; }
+    &:nth-child(3) { animation-delay: 0.4s; }
+  }
+}
+
+// Button loading mixin - proper extension of generic system
+@mixin button-loading($size: 'md') {
+  @include loading-replace($size, 'current', true);
+  
+  // Additional button-specific styling
+  pointer-events: none;
+  cursor: wait;
+  
+  // Ensure smooth transitions and professional appearance
+  transition: all var(--duration-fast) var(--ease-out);
+  
+  // Modern PRO styling with subtle shadow for depth
+  &:has(.loading-text) {
+    // Slightly more refined gap for professional look
+    gap: 0.5em;
+    
+    .loading-text {
+      font-weight: inherit;
+      letter-spacing: inherit;
     }
   }
   
-  @if $spinner-position == right {
-    padding-right: calc(#{$spinner-size} + #{$spinner-offset} + var(--space-2));
-  } @else {
-    padding-left: calc(#{$spinner-size} + #{$spinner-offset} + var(--space-2));
+  // Spinner refinements for modern appearance
+  &::after {
+    // Professional spinner with perfect circular motion
+    border-width: max(2px, 0.125em);
+    
+    // Slower, smoother rotation for professional feel
+    animation-duration: var(--duration-slow);
+    animation-timing-function: linear;
+    
+    // Modern shadow for depth (subtle)
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
   }
 }
 
-@mixin loading-performance-optimize() {
-  // GPU acceleration
-  transform: translateZ(0);
-  backface-visibility: hidden;
-  
-  // Smooth animations
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+// Card loading state
+@mixin loading-card() {
+  @include loading-overlay('md');
+  min-height: 8rem;
 }
 
-@mixin loading-dark-mode-support() {
-  @media (prefers-color-scheme: dark) {
-    --loading-track-color: color-mix(in srgb, var(--color-border) 30%, transparent);
-  }
-  
-  [data-theme="dark"] & {
-    --loading-track-color: color-mix(in srgb, var(--color-border) 30%, transparent);
+// Table loading state
+@mixin loading-table() {
+  tbody {
+    tr {
+      @include loading-skeleton();
+      height: 3rem;
+      margin-bottom: var(--space-1);
+    }
   }
 }
+
+// Modern BEM-style loading classes
+.loading {
+  @include loading-replace();
+  
+  &-xs { @include loading-replace('xs'); }
+  &-sm { @include loading-replace('sm'); }
+  &-md { @include loading-replace('md'); }
+  &-lg { @include loading-replace('lg'); }
+  &-xl { @include loading-replace('xl'); }
+  
+  &-overlay {
+    @include loading-overlay();
+    
+    &-xs { @include loading-overlay('xs'); }
+    &-sm { @include loading-overlay('sm'); }
+    &-md { @include loading-overlay('md'); }
+    &-lg { @include loading-overlay('lg'); }
+    &-xl { @include loading-overlay('xl'); }
+  }
+  
+  &-inline {
+    @include loading-inline();
+    
+    &-start { @include loading-inline('start'); }
+    &-end { @include loading-inline('end'); }
+    &-xs { @include loading-inline('end', 'xs'); }
+    &-sm { @include loading-inline('end', 'sm'); }
+    &-md { @include loading-inline('end', 'md'); }
+    &-lg { @include loading-inline('end', 'lg'); }
+  }
+  
+  &-skeleton {
+    @include loading-skeleton();
+    
+    &-text {
+      height: 1rem;
+      margin-bottom: var(--space-2);
+      
+      &:last-child {
+        width: 60%;
+        margin-bottom: 0;
+      }
+    }
+    
+    &-title {
+      height: 2rem;
+      margin-bottom: var(--space-3);
+      width: 50%;
+    }
+    
+    &-avatar {
+      width: 3rem;
+      height: 3rem;
+      border-radius: 50%;
+    }
+    
+    &-button {
+      height: 2.5rem;
+      width: 6rem;
+    }
+    
+    &-card {
+      height: 10rem;
+      border-radius: var(--radius-lg);
+    }
+  }
+  
+  &-dots {
+    @include loading-dots();
+    
+    &-primary { @include loading-dots('sm', 'primary'); }
+    &-secondary { @include loading-dots('sm', 'secondary'); }
+    &-white { @include loading-dots('sm', 'white'); }
+  }
+  
+  &-container {
+    @include loading-replace('lg', 'default');
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-4);
+    padding: var(--space-8);
+    min-height: 20rem;
+    
+    &-text {
+      font-size: var(--text-sm);
+      color: var(--color-text-muted);
+      text-align: center;
+      visibility: visible;
+      opacity: 1;
+    }
+  }
+  
+  &-text {
+    display: inline-block;
+    margin-top: var(--space-2);
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+    // Use existing pulse animation
+    animation: pulse calc(var(--duration-very-slow) * 2) ease-in-out infinite;
+  }
+}
+
+.loading-spinner {
+  display: inline-block;
+  width: 2.5rem;
+  height: 2.5rem;
+  position: relative;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border: 3px solid var(--color-surface-subtle);
+    border-top-color: var(--color-primary);
+    border-radius: 50%;
+    animation: spin var(--duration-very-slow) linear infinite;
+  }
+  
+  &::after {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    border: 2px solid transparent;
+    border-top-color: color-mix(in srgb, var(--color-primary) 30%, transparent);
+    border-radius: 50%;
+    animation: spin calc(var(--duration-very-slow) * 1.5) linear infinite reverse;
+  }
+  
+  // Size variants using &- pattern
+  &-xs {
+    width: 1rem;
+    height: 1rem;
+    
+    &::before { border-width: 2px; }
+    &::after { display: none; }
+  }
+  
+  &-sm {
+    width: 1.5rem;
+    height: 1.5rem;
+    
+    &::before { border-width: 2px; }
+    &::after { border-width: 1px; inset: -2px; }
+  }
+  
+  &-lg {
+    width: 3rem;
+    height: 3rem;
+  }
+  
+  &-xl {
+    width: 4rem;
+    height: 4rem;
+    
+    &::before { border-width: 4px; }
+    &::after { border-width: 3px; inset: -6px; }
+  }
+  
+  // Color variants
+  &-primary {
+    &::before { border-top-color: var(--color-primary); }
+    &::after { border-top-color: color-mix(in srgb, var(--color-primary) 30%, transparent); }
+  }
+  
+  &-secondary {
+    &::before { border-top-color: var(--color-secondary); }
+    &::after { border-top-color: color-mix(in srgb, var(--color-secondary) 30%, transparent); }
+  }
+  
+  &-success {
+    &::before { border-top-color: var(--color-success); }
+    &::after { border-top-color: color-mix(in srgb, var(--color-success) 30%, transparent); }
+  }
+  
+  &-warning {
+    &::before { border-top-color: var(--color-warning); }
+    &::after { border-top-color: color-mix(in srgb, var(--color-warning) 30%, transparent); }
+  }
+  
+  &-error {
+    &::before { border-top-color: var(--color-error); }
+    &::after { border-top-color: color-mix(in srgb, var(--color-error) 30%, transparent); }
+  }
+  
+  &-white {
+    &::before { 
+      border-color: color-mix(in srgb, white 30%, transparent);
+      border-top-color: white; 
+    }
+    &::after { border-top-color: color-mix(in srgb, white 30%, transparent); }
+  }
+  
+  &-inline {
+    width: 1em;
+    height: 1em;
+    margin-right: var(--space-2);
+    vertical-align: middle;
+    
+    &::before,
+    &::after {
+      border-width: 2px;
+    }
+  }
+}
+
+// Additional utilities
+.skeleton {
+  @include loading-skeleton();
+  
+  &-pulse {
+    // Use existing pulse animation for shimmer effect
+    animation: shimmer calc(var(--duration-very-slow) * 1.5) ease-in-out infinite;
+  }
+  
+  &-text {
+    height: 1rem;
+    margin-bottom: var(--space-2);
+    
+    &:last-child {
+      width: 60%;
+      margin-bottom: 0;
+    }
+  }
+  
+  &-title {
+    height: 2rem;
+    margin-bottom: var(--space-3);
+    width: 50%;
+  }
+  
+  &-avatar {
+    width: 3rem;
+    height: 3rem;
+    border-radius: 50%;
+  }
+  
+  &-button {
+    height: 2.5rem;
+    width: 6rem;
+  }
+  
+  &-card {
+    height: 10rem;
+    border-radius: var(--radius-lg);
+  }
+  
+  &-badge {
+    height: 1.5rem;
+    width: 4rem;
+    border-radius: var(--radius-full);
+  }
+}
+

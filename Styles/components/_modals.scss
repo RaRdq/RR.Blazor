@@ -2,747 +2,547 @@
 
 .modal-provider,
 .modal-backdrop-container {
-  // OVERRIDE ALL CONTAINER CONSTRAINTS - Full viewport mandatory
-  position: fixed !important;
-  top: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
-  bottom: 0 !important;
-  width: 100vw !important;
-  height: 100vh !important;
-  z-index: var(--z-modal-container) !important;
-  pointer-events: auto !important;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: var(--z-modal);
+  pointer-events: auto;
   
-  min-width: 100vw !important;
-  min-height: 100vh !important;
+  min-width: 100vw;
+  min-height: 100vh;
   
   transition: opacity 0.2s ease-out, visibility 0.2s ease-out;
   
   &.active {
-    pointer-events: auto !important;
-    opacity: 1 !important;
-    visibility: visible !important;
+    pointer-events: auto;
+    opacity: 1;
+    visibility: visible;
   }
 }
 
 .modal {
-  // CRITICAL: Override ANY container positioning constraints
-  position: fixed !important;
-  top: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
-  bottom: 0 !important;
-  width: 100vw !important;
-  height: 100vh !important;
-  z-index: var(--z-modal) !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: var(--z-modal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: var(--space-4);
   
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
   
-  
-  // Critical mobile safety for 375px viewport
   @include responsive-max(sm) {
-    // Ensure modal doesn't extend beyond viewport on small screens
     padding: var(--space-2);
-    // Force safe positioning within viewport bounds
     align-items: safe center;
     justify-content: safe center;
   }
   
   &--visible {
-    opacity: 1 !important;
-    visibility: visible !important;
-    transform: scale(1) !important;
-    pointer-events: auto !important;
-    
-    // Apply modal animation based on CSS custom property
+    opacity: 1;
+    visibility: visible;
+    transform: scale(1);
+    pointer-events: auto;
     animation: var(--modal-animation, scaleIn var(--duration-normal) var(--ease-out));
   }
   
   &--hidden {
-    opacity: 0 !important;
-    visibility: hidden !important;
-    transform: scale(0.95) !important;
-    pointer-events: none !important;
+    opacity: 0;
+    visibility: hidden;
+    transform: scale(0.95);
+    pointer-events: none;
   }
   
-  // Backdrop - CRITICAL: Force full viewport coverage
+  // Backdrop variants
   &-backdrop {
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    right: 0 !important;
-    bottom: 0 !important;
-    width: 100vw !important;
-    height: 100vh !important;
-    z-index: var(--z-modal-backdrop) !important;
-    background: rgba(15, 23, 42, 0.7);
-    backdrop-filter: blur(8px);
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: var(--z-modal);
     cursor: pointer;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    
-    // Subtle backdrop fade with customizable duration
+    display: flex;
+    align-items: center;
+    justify-content: center;
     animation: fadeIn var(--modal-backdrop-duration, var(--duration-fast)) var(--ease-out);
+    
+    &-dark {
+      background: rgba(15, 23, 42, 0.7);
+      backdrop-filter: blur(8px);
+    }
+    
+    &-glass {
+      background: rgba(15, 23, 42, 0.5);
+      backdrop-filter: blur(12px) saturate(180%);
+      -webkit-backdrop-filter: blur(12px) saturate(180%);
+    }
+    
+    &-protected {
+      background: rgba(220, 38, 38, 0.15);
+      backdrop-filter: blur(8px);
+    }
   }
 
-  // Modal Content Wrapper - Prevents event bubbling to backdrop
   &-content-wrapper {
     pointer-events: auto;
     cursor: auto;
     display: flex;
     align-items: center;
     justify-content: center;
-    outline: none; // Remove focus outline on wrapper
-    
-    // Allow natural height - no max-height constraint
-    height: auto;
-    overflow: visible; // Remove wrapper scrolling - allow body scrolling
-    scroll-behavior: smooth;
-    -webkit-overflow-scrolling: touch;
-    
-    // Focus management for keyboard navigation
-    &:focus {
-      outline: none;
-    }
-    
-    &:focus-visible {
-      outline: 2px solid var(--color-primary);
-      outline-offset: 4px;
-      border-radius: var(--radius-lg);
-    }
+    width: 100%;
+    height: 100%;
+    position: relative;
   }
   
-  // Modal Content - Uses CSS custom properties for flexible sizing
   &-content {
+    @extend %card-base-enhanced;
     position: relative;
-    z-index: var(--z-modal-content);
-    background: var(--color-surface-elevated);
-    border-radius: var(--radius-2xl);
-    border: 1px solid var(--color-border);
-    width: 100%;
-    max-width: var(--modal-width, 45.5rem); // Default medium: φ^6 ≈ 45.5rem
-    height: auto; // Allow natural height
-    max-height: calc(100vh - var(--space-8)); // Limit height to viewport with padding
-    overflow: hidden; // Hide overflow on content container
+    z-index: var(--z-modal);
+    max-width: 90vw;
+    max-height: 90vh;
+    width: auto;
+    height: auto;
     display: flex;
     flex-direction: column;
-    box-shadow: 
-      0 32px 64px rgba(0, 0, 0, 0.24),
-      0 16px 32px rgba(0, 0, 0, 0.16),
-      0 8px 16px rgba(0, 0, 0, 0.12);
+    overflow: visible;
     
-    // WCAG 1.4.10 - Zoom level support for 200%-400% browser zoom
-    @media (min-resolution: 2dppx), (min-zoom: 200%) {
-      width: 90%;
-      overflow: auto;
-      font-size: clamp(0.875rem, 2.5vw, 1rem); // Responsive text sizing
+    // Size variants
+    &--sm {
+      max-width: min(400px, 90vw);
     }
     
-    @media (min-zoom: 300%) {
-      width: 95%;
-      border-radius: var(--radius-lg); // Reduced border radius at high zoom
+    &--md {
+      max-width: min(600px, 90vw);
     }
     
-    @media (min-zoom: 400%) {
-      width: 98%;
-      border-radius: var(--radius-md); // Further reduced border radius
-      padding: var(--space-2); // Reduced padding at extreme zoom
-    }
-  }
-  
-  // Modal Size Variants - Override CSS custom properties
-  &-small { 
-    --modal-width: 28rem; // φ^5 ≈ 28rem (448px)
-    --modal-height: 61.8vh; // φ^-1 ≈ 61.8vh
-    
-    @include responsive-max(md) {
-      --modal-width: 90vw;
-      --modal-height: 70vh;
-    }
-  }
-  
-  &-medium {
-    --modal-width: 45.5rem; // φ^6 ≈ 45.5rem (728px)
-    --modal-height: 70vh; // Standard height
-    
-    @include responsive-max(md) {
-      --modal-width: 95vw;
-      --modal-height: 75vh;
-    }
-  }
-  
-  &-large { 
-    --modal-width: 80vw; // 80% of viewport width
-    --modal-height: 80.9vh; // φ * 50vh ≈ 80.9vh
-    
-    @include responsive-max(md) {
-      --modal-width: 95vw;
-      --modal-height: 85vh;
-    }
-  }
-  
-  &-xlarge { 
-    --modal-width: 95vw;
-    --modal-height: 90vh;
-    
-    @include responsive-max(md) {
-      --modal-width: 100vw;
-      --modal-height: 95vh;
-      border-radius: var(--radius-lg);
-    }
-  }
-  
-  &-wide { 
-    --modal-width: 80vw;
-    --modal-height: 70vh;
-      
-    @include responsive-max(md) {
-      --modal-width: 95vw;
-      --modal-height: 80vh;
-    }
-  }
-  
-  &-full { 
-    --modal-width: 95vw;
-    --modal-height: 95vh;
-    
-    @include responsive-max(md) {
-      --modal-width: 100vw;
-      --modal-height: 100vh;
-      border-radius: 0; // True full-screen on mobile
-    }
-  }
-  
-  // Glass variant
-  &-glass {
-    background: var(--glass-bg-strong);
-    backdrop-filter: blur(var(--blur-xl));
-    border: var(--border-1) solid var(--glass-border-strong);
-  }
-  
-  @include responsive-max(sm) {
-    // Ensure padding respects safe area and viewport bounds
-    padding: max(var(--space-2), env(safe-area-inset-top)) max(var(--space-2), env(safe-area-inset-right)) max(var(--space-2), env(safe-area-inset-bottom)) max(var(--space-2), env(safe-area-inset-left));
-    align-items: safe center; // Safe centering for mobile browsers
-    justify-content: safe center; // Safe centering for mobile browsers
-    
-    // Override JavaScript forcing with !important when needed for mobile safety
-    &[style*="position: fixed"] {
-      // Allow JavaScript positioning but ensure mobile viewport safety
-      align-items: safe center !important;
-      justify-content: safe center !important;
-      // Ensure content doesn't extend beyond safe viewport bounds
-      overflow: auto !important;
+    &--lg {
+      max-width: min(800px, 90vw);
     }
     
-    .modal-content {
-      max-height: calc(100vh - var(--space-4) - env(safe-area-inset-top) - env(safe-area-inset-bottom));
-      max-width: calc(100vw - var(--space-4) - env(safe-area-inset-left) - env(safe-area-inset-right));
-      min-height: 200px;
-      width: 100%;
-      border-radius: var(--radius-lg); // Slightly reduced for mobile
-      margin: auto; // Center within available space
-      
-      // Override JavaScript forced styles when they conflict with mobile safety
-      &[style*="position: fixed"] {
-        position: relative !important; // Force relative positioning within modal for mobile
-        width: 100% !important;
-        //height: auto !important;
-        top: auto !important;
-        left: auto !important;
-        right: auto !important;
-        bottom: auto !important;
-        transform: none !important;
-      }
-      
-      // Ensure modal content animation works properly on mobile
-      transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+    &--xl {
+      max-width: min(1200px, 90vw);
     }
-  }
-  
-  &--visible {
+    
+    &--full {
+      width: 100vw;
+      height: 100vh;
+      max-width: 100vw;
+      max-height: 100vh;
+      border-radius: 0;
+    }
+    
+    &--auto {
+      width: auto;
+      max-width: 90vw;
+      max-height: 90vh;
+    }
+    
+    // Mobile adjustments
     @include responsive-max(sm) {
-      .modal-content {
-        // Ensure visibility and proper positioning regardless of JavaScript interference
-        opacity: 1 !important;
-        transform: none !important;
-        visibility: visible !important;
+      max-width: calc(100vw - var(--space-4));
+      max-height: calc(100vh - var(--space-4));
+      margin: 0;
+      
+      &--full {
+        border-radius: 0;
+        width: 100vw;
+        height: 100vh;
       }
     }
   }
   
-  @include responsive-min(md) {
-    .modal-content {
-    }
-  }
-}
-
-// Modal Header
-.modal-header {
-  padding: var(--space-6);
-  border-bottom: 1px solid var(--color-border);
-  flex-shrink: 0;
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  background: linear-gradient(135deg, var(--color-surface-elevated) 0%, var(--color-surface) 100%);
-  border-top-left-radius: var(--radius-2xl);
-  border-top-right-radius: var(--radius-2xl);
-  
-  // Density-based padding variations
-  &.modal-header-compact {
-    padding: var(--space-2);
-  }
-  
-  &.modal-header-dense {
-    padding: var(--space-3);
-  }
-  
-  &.modal-header-spacious {
-    padding: var(--space-8);
-  }
-  
-  @include responsive-max(sm) {
-    padding: var(--space-3);
-    min-height: 60px; // Increased for better touch targets
-    width: 100%;
-    max-width: 100%;
-    box-sizing: border-box;
-    
-    // Critical fix: Ensure flexbox layout works within mobile viewport bounds
-    display: flex !important;
-    flex-direction: row !important;
-    gap: var(--space-2);
-    align-items: center;
+  // Header
+  &-header {
+    display: flex;
     justify-content: space-between;
+    align-items: center;
+    padding: var(--space-4);
+    border-bottom: 1px solid var(--color-border);
+    flex-shrink: 0;
+    min-height: 64px;
     
-    // Prevent any JavaScript or inherited styles from breaking mobile layout
-    &[style] {
-      display: flex !important;
-      flex-direction: row !important;
-      justify-content: space-between !important;
+    @include responsive-max(sm) {
+      padding: var(--space-3);
+      min-height: 56px;
+      position: relative;
+      width: 100%;
+      overflow: auto;
     }
+  }
+  
+  // Body with proper scrolling
+  &-body {
+    flex: 1 1 auto;
+    padding: var(--space-4);
+    overflow-y: auto;
+    overflow-x: hidden;
     
-    .header-actions {
-      // Critical mobile fix: Ensure close button stays within 375px viewport
-      flex-shrink: 0 !important;
-      display: flex !important;
-      align-items: center !important;
-      justify-content: center !important;
-      width: 48px !important; // Fixed width to fit within mobile viewport
-      min-width: 48px !important;
-      max-width: 48px !important;
-      height: 48px !important;
-      overflow: visible !important;
-      z-index: calc(var(--z-modal-content) + 10) !important;
-      
-      // Override any inherited styles that might hide the button
-      opacity: 1 !important;
-      visibility: visible !important;
-      pointer-events: auto !important;
-      position: relative !important;
-      margin-left: auto !important; // Push to right within viewport bounds
+    @include responsive-max(sm) {
+      padding: var(--space-3);
+      max-height: calc(100vh - 180px);
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
     }
+  }
+  
+  // Footer
+  &-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-4);
+    border-top: 1px solid var(--color-border);
+    flex-shrink: 0;
+    gap: var(--space-2);
     
-    .d-flex.align-center {
-      flex: 1 1 auto !important;
-      min-width: 0 !important; // Force shrinking when needed
-      max-width: calc(100% - 56px) !important; // Always leave room for close button + margin
-      overflow: hidden;
+    @include responsive-max(sm) {
+      padding: var(--space-3);
+      flex-direction: column-reverse;
       
-      .d-flex.flex-col {
-        min-width: 0 !important;
-        max-width: 100% !important;
-        overflow: hidden;
-        
-        .modal-title {
-          // Critical fix for 375px viewport - conservative sizing
-          max-width: calc(375px - 140px) !important; // 375px viewport - padding - button - margins
-          word-wrap: break-word;
-          overflow-wrap: break-word;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap; // Force single line on mobile for predictable layout
-          line-height: 1.3;
-          font-size: var(--text-base); // Slightly smaller on mobile
-        }
-        
-        .modal-subtitle {
-          max-width: calc(375px - 140px) !important; // Match title constraints
-          word-wrap: break-word;
-          overflow-wrap: break-word;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap; // Force single line for predictable layout
-          font-size: var(--text-sm);
-        }
+      > * {
+        width: 100%;
       }
     }
   }
-}
-
-.modal-title {
-  font-size: var(--text-xl);
-  font-weight: var(--font-semibold);
-  color: var(--color-text);
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-}
-
-.modal-subtitle {
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
-  margin: var(--space-2) 0 0 0;
-  line-height: var(--leading-relaxed);
+  
+  // Title
+  &-title {
+    font-size: var(--text-lg);
+    font-weight: 600;
+    color: var(--color-text);
+    margin: 0;
+    flex: 1 1 auto;
+    min-width: 0;
+    
+    @include responsive-max(sm) {
+      font-size: var(--text-base);
+      max-width: calc(100% - 56px);
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+      hyphens: auto;
+    }
+  }
+  
+  // Subtitle
+  &-subtitle {
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+    margin-top: var(--space-1);
+    
+    @include responsive-max(sm) {
+      max-width: calc(100% - 56px);
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+    }
+  }
 }
 
 .modal-close {
-  // WCAG 2.5.5 Level AA - Minimum 48px touch target on all devices
-  min-width: 48px !important;
-  min-height: 48px !important;
+  min-width: 48px;
+  min-height: 48px;
   width: 48px;
   height: 48px;
-  border-radius: var(--radius-full);
-  background: var(--color-surface);
+  padding: 0;
+  background: var(--color-surface-elevated);
   border: 1px solid var(--color-border);
-  display: flex !important; // Force display to prevent hiding
+  display: flex;
   align-items: center;
   justify-content: center;
+  border-radius: var(--radius-md);
   cursor: pointer;
-  color: var(--color-text-muted);
   transition: all var(--duration-fast) var(--ease-out);
-  flex-shrink: 0 !important; // Prevent button from shrinking under any circumstances
-  z-index: calc(var(--z-modal-content) + 10) !important; // Ensure button is above all content including overlays
-  position: relative !important; // Ensure proper stacking context
+  flex-shrink: 0;
+  z-index: var(--z-modal);
+  position: relative;
+  pointer-events: auto;
+  opacity: 1;
+  visibility: visible;
   
-  // Ensure button is always interactive
-  pointer-events: auto !important;
-  opacity: 1 !important;
-  visibility: visible !important;
-  
-  // WCAG 1.4.10 - Zoom level support
-  @media (min-zoom: 200%) {
-    min-width: 56px !important;
-    min-height: 56px !important;
-    width: 56px;
-    height: 56px;
-    font-size: 1.25rem; // Larger icon at high zoom
+  &:hover {
+    background: var(--color-error-bg);
+    border-color: var(--color-error);
+    transform: scale(1.05);
   }
   
-  @media (min-zoom: 300%) {
-    min-width: 64px !important;
-    min-height: 64px !important;
-    width: 64px;
-    height: 64px;
-    font-size: 1.5rem; // Even larger icon
+  &:active {
+    transform: scale(0.95);
   }
   
-  @media (min-zoom: 400%) {
-    min-width: 72px !important;
-    min-height: 72px !important;
-    width: 72px;
-    height: 72px;
-    font-size: 1.75rem; // Maximum icon size
+  .material-symbols-rounded, i {
+    font-size: 20px;
+    line-height: 1;
+    color: var(--color-text-muted);
   }
   
-  @include responsive-min(md) {
-    // Desktop still needs minimum 48px for WCAG compliance
-    min-width: 48px !important;
-    min-height: 48px !important;
+  &:hover .material-symbols-rounded,
+  &:hover i {
+    color: var(--color-error);
+  }
+  
+  // Touch device adjustments
+  @media (pointer: coarse) {
+    min-width: 48px;
+    min-height: 48px;
+  }
+  
+  @include responsive-max(sm) {
+    min-width: 48px;
+    min-height: 48px;
     width: 48px;
     height: 48px;
-  }
-  
-  @include responsive-max(sm) {
-    // Enhanced mobile accessibility - WCAG 2.1 AA compliance
-    min-width: 48px !important; // Increased for better accessibility
-    min-height: 48px !important;
-    width: 48px !important;
-    height: 48px !important;
-    margin: 0 !important; // Remove any margin that could cause layout issues
-    padding: 0 !important; // Ensure consistent sizing
-    
-    position: relative !important;
-    z-index: calc(var(--z-modal-content) + 20) !important; // Maximum priority on mobile
-    flex-shrink: 0 !important;
-    
-    // Grid positioning for mobile layout
-    justify-self: end !important;
-    align-self: center !important;
-    
-    // Ensure button stays within viewport bounds
-    box-sizing: border-box !important;
-    
-    // Override any external styles that might interfere
-    right: auto !important;
-    left: auto !important;
-    top: auto !important;
-    bottom: auto !important;
-    transform: none !important;
-    
-    background: var(--color-surface-elevated) !important;
-    border: 2px solid var(--color-border) !important;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
-    
-    // Ensure icon is properly sized for touch
-    .material-symbols-rounded, i {
-      font-size: 20px !important;
-      line-height: 1 !important;
-    }
-  }
-  
-  @media (hover: hover) and (pointer: fine) {
-    &:hover {
-      background: var(--color-surface);
-      border-color: var(--color-border);
-      color: var(--color-text);
-      transform: scale(1.05);
-    }
-  }
-  
-  &:focus-visible {
-    outline: 2px solid var(--color-primary);
-    outline-offset: 2px;
-  }
-  
-  // Ensure button is always accessible
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    pointer-events: none;
+    margin: 0;
+    padding: 0;
+    position: relative;
+    z-index: var(--z-modal);
+    flex-shrink: 0;
+    justify-self: end;
+    align-self: center;
+    box-sizing: border-box;
+    background: var(--color-surface-elevated);
+    border: 2px solid var(--color-border);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   }
 }
 
-// Modal Body
+// Nested modal support and dropdown elevation
+.modal-popup {
+  z-index: var(--z-modal-popup);
+  
+  .modal-backdrop {
+    z-index: var(--z-modal-popup);
+  }
+  
+}
+
+.modal-content {
+  .dropdown-menu,
+  .dropdown-portal,
+  .choice-portal,
+  .autosuggest-portal,
+  .datepicker-portal,
+  .popover-portal {
+    z-index: 10;
+    position: relative;
+  }
+  
+  .choice-dropdown,
+  .select-dropdown,
+  .autosuggest-dropdown {
+    z-index: 10;
+    position: relative;
+  }
+  
+  .tooltip {
+    z-index: 20;
+    position: relative;
+  }
+}
+
+.modal-content .modal-content {
+  
+  .dropdown-menu,
+  .dropdown-portal {
+    z-index: calc(var(--z-modal-popup) + 60);
+  }
+}
+
+// Modal state machine animations
+.modal-animating {
+  transition: all var(--modal-duration, 200ms) var(--modal-timing, ease-out);
+}
+
+.modal-scale {
+  &.modal-in {
+    opacity: 1;
+    transform: scale(1);
+  }
+  &.modal-out {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+
+.modal-fade {
+  &.modal-in {
+    opacity: 1;
+  }
+  &.modal-out {
+    opacity: 0;
+  }
+}
+
+.modal-slide {
+  &.modal-in {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  &.modal-out {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+}
+
+// Animation speed classes
+.modal-speed-fast {
+  --modal-duration: var(--duration-fast);
+}
+
+.modal-speed-normal {
+  --modal-duration: var(--duration-normal);
+}
+
+.modal-speed-slow {
+  --modal-duration: var(--duration-slow);
+}
+
+// Glass morphism variant
+.modal-glass {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+  
+  @media (prefers-color-scheme: dark) {
+    background: rgba(30, 41, 59, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+}
+
+// Animations - Use existing keyframes from abstracts/_animations.scss
+
+// Utility classes for modal control
+.modal-open {
+  overflow: hidden;
+}
+
+.modal-static {
+  animation: shake 0.5s;
+}
+
+// Use existing shake animation from abstracts/_animations.scss
+
+// Scrollbar styling for modal body
 .modal-body {
-  flex: 1;
-  padding: var(--space-6);
-  overflow-x: hidden; // Prevent horizontal scrollbar
-  overflow-y: auto; // Enable vertical scrolling when content exceeds modal height
-  // Content wrapping and sizing
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-  max-width: 100%;
-  box-sizing: border-box;
-  // Smooth scrolling
-  scroll-behavior: smooth;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
-  
-  // Density-based padding variations
-  &-compact {
-    padding: var(--space-2);
+  &::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
   }
   
-  &-dense {
-    padding: var(--space-3);
+  &::-webkit-scrollbar-track {
+    background: var(--color-surface);
+    border-radius: var(--radius-sm);
   }
   
-  &-spacious {
-    padding: var(--space-8);
-  }
-  
-  @include responsive-max(sm) {
-    padding: var(--space-4);
-  }
-  
-  // WCAG 1.4.10 - Enhanced zoom level support
-  @media (min-zoom: 200%) {
-    padding: var(--space-4);
-    font-size: clamp(0.875rem, 2.5vw, 1rem);
-    line-height: 1.6; // Better readability at zoom
-  }
-  
-  @media (min-zoom: 300%) {
-    padding: var(--space-3);
-    font-size: clamp(1rem, 3vw, 1.125rem);
-    line-height: 1.7;
-  }
-  
-  @media (min-zoom: 400%) {
-    padding: var(--space-2);
-    font-size: clamp(1.125rem, 3.5vw, 1.25rem);
-    line-height: 1.8;
-  }
-}
-
-// Modal Footer
-.modal-footer {
-  padding: var(--space-4);
-  border-top: 1px solid var(--color-border);
-  background: var(--color-surface);
-  flex-shrink: 0;
-  border-bottom-left-radius: var(--radius-2xl);
-  border-bottom-right-radius: var(--radius-2xl);
-  
-  display: flex;
-  gap: var(--space-3);
-  justify-content: flex-end;
-  align-items: center;
-  
-  container-type: inline-size;
-  min-height: calc(var(--button-height, 40px) + var(--space-4) * 2);
-  
-  &-compact {
-    padding: var(--space-1);
-    min-height: calc(var(--button-height, 32px) + var(--space-1) * 2);
-  }
-  
-  &-dense {
-    padding: var(--space-2);
-    min-height: calc(var(--button-height, 36px) + var(--space-2) * 2);
-  }
-  
-  &-spacious {
-    padding: var(--space-6);
-    min-height: calc(var(--button-height, 48px) + var(--space-6) * 2);
-  }
-  
-  &:has(.button-sm) {
-    --button-height: 32px;
-  }
-  
-  &:has(.button-md) {
-    --button-height: 40px;
-  }
-  
-  &:has(.button-lg) {
-    --button-height: 48px;
-  }
-  
-  &:has(.button-xl) {
-    --button-height: 56px;
-  }
-  
-  @include responsive-max(sm) {
-    padding: var(--space-4);
-  }
-  
-  // WCAG 1.4.10 - Enhanced zoom level support
-  @media (min-zoom: 200%) {
-    padding: var(--space-4);
-  }
-  
-  @media (min-zoom: 300%) {
-    padding: var(--space-3);
-  }
-  
-  @media (min-zoom: 400%) {
-    padding: var(--space-2);
-  }
-  
-  .button-group,
-  .modal-actions {
-    display: flex;
-    gap: var(--space-3);
-    justify-content: flex-end;
+  &::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: var(--radius-sm);
     
-    @include responsive-max(sm) {
-      flex-direction: column-reverse;
-      
-      .button {
-        width: 100%;
-        min-height: 48px; // WCAG 2.5.5 compliance
-        justify-content: center;
-      }
-    }
-    
-    @media (min-zoom: 200%) {
-      gap: var(--space-2);
-      
-      .button {
-        min-height: 56px; // Larger touch targets at zoom
-        font-size: 1.125rem;
-      }
-    }
-    
-    @media (min-zoom: 300%) {
-      flex-direction: column;
-      
-      .button {
-        min-height: 64px;
-        font-size: 1.25rem;
-      }
-    }
-    
-    @media (min-zoom: 400%) {
-      .button {
-        min-height: 72px;
-        font-size: 1.375rem;
-      }
+    &:hover {
+      background: var(--color-text-muted);
     }
   }
 }
 
-// Body scroll behavior when modal is open - allow scrolling
-body.modal-open {
-  // Remove overflow hidden to allow body scrolling when modal content is long
-  overflow: auto;
-  
-  // Prevent layout shift when scrollbar appears/disappears
-  padding-right: var(--scrollbar-width, 0);
-  
-  @include responsive-max(sm) {
-    position: static !important; // Override JavaScript fixed positioning
-    top: auto !important; // Override JavaScript top positioning
-    overflow: auto !important; // Allow scrolling on mobile
-  }
+// Focus trap styling
+.modal-focus-trap {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
-
-.confirm-modal {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: var(--space-4);
-  padding: var(--space-6);
-  
-  &-icon {
-    width: 4rem;
-    height: 4rem;
-    border-radius: var(--radius-full);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 2rem;
-    margin-bottom: var(--space-2);
-    
-    &-info {
-      background: color-mix(in srgb, var(--color-info) 10%, var(--color-surface));
-      color: var(--color-info);
+// Modal variants
+.modal {
+  &--error {
+    .modal-header {
+      background: var(--color-error-bg);
+      border-color: var(--color-error);
     }
     
-    &-danger {
-      background: color-mix(in srgb, var(--color-error) 10%, var(--color-surface));
+    .modal-title {
       color: var(--color-error);
     }
-    
-    &-warning {
-      background: color-mix(in srgb, var(--color-warning) 10%, var(--color-surface));
-      color: var(--color-warning);
+  }
+  
+  &--warning {
+    .modal-header {
+      background: var(--color-warning-bg);
+      border-color: var(--color-warning);
     }
     
-    &-success {
-      background: color-mix(in srgb, var(--color-success) 10%, var(--color-surface));
-      color: var(--color-success);
+    .modal-title {
+      color: var(--color-warning-dark);
     }
   }
   
-  &-message {
-    font-size: var(--text-base);
-    color: var(--color-text);
-    margin: 0 0 var(--space-3) 0;
-    line-height: var(--leading-relaxed);
+  &--success {
+    .modal-header {
+      background: var(--color-success-bg);
+      border-color: var(--color-success);
+    }
+    
+    .modal-title {
+      color: var(--color-success-dark);
+    }
+  }
+  
+  &--info {
+    .modal-header {
+      background: var(--color-info-bg);
+      border-color: var(--color-info);
+    }
+    
+    .modal-title {
+      color: var(--color-info-dark);
+    }
   }
 }
 
+// Header alignment utilities
+.modal-header {
+  &-actions {
+    display: flex;
+    gap: var(--space-2);
+    align-items: center;
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+  
+  &-compact {
+    min-height: 48px;
+    padding: var(--space-3);
+  }
+  
+  &-large {
+    min-height: 80px;
+    padding: var(--space-5) var(--space-4);
+  }
+}
+
+// Responsive behavior for nested content
+.modal-responsive {
+  @include responsive-max(sm) {
+    position: static;
+    top: auto;
+    overflow: auto;
+  }
+}
