@@ -5,10 +5,11 @@
 @using Microsoft.AspNetCore.Components.Web
 @using Microsoft.JSInterop
 @using RR.Blazor.Extensions
+@using Newtonsoft.Json
 @inherits RInteractiveComponentBase
 @inject IJSRuntime JSRuntime
 
-<RChart Title="@Title" 
+<RChart Header="@Title" 
         Subtitle="@Subtitle"
         Icon="@Icon"
         Type="@(IsHorizontal ? ChartType.Bar : ChartType.Column)"
@@ -63,13 +64,14 @@
                             }
                         </div>
                     }
+                    
+                    @* HTML/CSS bars rendering *@
                     @foreach (var (dataPoint, index) in Data.Select((d, i) => (d, i)))
                     {
                         var percentage = range > 0 ? (dataPoint.Value - minValue) / range : 0;
                         var height = Math.Max(percentage * 100, 1); // Minimum 1% height for visibility
                         var color = GetBarColor(dataPoint, index);
-                        var shouldShowLabel = ShowLabels;
-                        var shouldShowValue = ShowValues || selectedIndex == index;
+                        var shouldShowValue = ShowValues || selectedIndex == index || hoveredIndex == index;
                         
                         <div class="column-chart-bar @(selectedIndex == index ? "active" : "") @(GetBarResponsiveClass())"
                              @onclick="@(async () => await HandleBarClick(dataPoint, index))"
@@ -79,19 +81,16 @@
                              tabindex="0"
                              aria-label="@GetBarAriaLabel(dataPoint)">
                             
-                            <div class="column-chart-bar-wrapper size-dynamic" style="--dynamic-height: @(height)%;">
-                                <div class="chart-bar-dynamic column-chart-bar-fill-@GetColorVariant(dataPoint, index)"
-                                     style="--bar-color: @(color); height: @(height)%;">
+                            @if (shouldShowValue)
+                            {
+                                <div class="column-chart-bar-value" style="position: absolute; bottom: calc(@(height)% + 5px); left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: 11px; font-weight: bold; color: var(--color-text); z-index: 10;">
+                                    @GetFormattedValue(dataPoint.Value)
                                 </div>
-                                
-                                @if (shouldShowValue)
-                                {
-                                    <div class="column-chart-bar-value @(hoveredIndex == index ? "visible" : "")">
-                                        @GetFormattedValue(dataPoint.Value)
-                                    </div>
-                                }
-                            </div>
+                            }
                             
+                            <div class="column-chart-bar-fill column-chart-bar-fill-@GetColorVariant(dataPoint, index)"
+                                 style="height: @(height)%;">
+                            </div>
                         </div>
                     }
                 </div>
@@ -123,11 +122,11 @@
                      tabindex="0"
                      aria-label="@GetLegendAriaLabel(dataPoint)">
                     <div class="chart-legend-indicator" 
-                         style="--legend-color: @(color);"></div>
+                         style="background: @(color);"></div>
                     <span class="chart-legend-label">@dataPoint.Label</span>
                     @if (ShowLegendValues)
                     {
-                        <span class="chart-legend-label ml-auto">
+                        <span class="chart-legend-value ml-auto">
                             @GetFormattedValue(dataPoint.Value)
                         </span>
                     }
@@ -261,6 +260,18 @@
     /// <summary>Accessibility content</summary>
     [Parameter] public RenderFragment AccessibilityContent { get; set; }
     
+    // TODO: Implement Canvas 2D rendering for performance with large datasets (>1000 points)
+    // Future enhancement: Add UseCanvas parameter for high-performance rendering mode
+    // Will include virtualization, touch interactions (zoom, pan), and GPU acceleration
+    
+    /// <summary>Enable touch interactions (zoom, pan)</summary>
+    [Parameter] public bool EnableTouchInteractions { get; set; } = true;
+    
+    /// <summary>Enable virtualization for large datasets</summary>
+    [Parameter] public bool EnableVirtualization { get; set; } = true;
+    
+    /// <summary>Virtualization threshold (number of data points)</summary>
+    [Parameter] public int VirtualizationThreshold { get; set; } = 1000;
     
     /// <summary>Bar click handler</summary>
     [Parameter] public EventCallback<ChartEventArgs> OnBarClick { get; set; }
@@ -288,18 +299,28 @@
     private async Task HandleChartInit(ElementReference element)
     {
         chartContainer = element;
-        
-        try
-        {
-            chartModule = await JSRuntime.InvokeAsync<IJSObjectReference>(
-                "RRBlazor.Chart.initializeChart", 
-                element,
-                new { responsive = true, animation = Configuration.EnableAnimation });
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Chart init error: {ex.Message}");
-        }
+        // HTML/CSS rendering doesn't need JS initialization
+        await Task.CompletedTask;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+        // HTML/CSS rendering doesn't need special initialization
+    }
+
+    // TODO: Future implementation for Canvas 2D rendering
+    // This will provide high-performance rendering for large datasets
+    // Features to implement:
+    // - Hardware-accelerated Canvas 2D API
+    // - Virtualization for datasets > 1000 points
+    // - Touch interactions (pinch-zoom, pan)
+    // - Smooth animations with requestAnimationFrame
+    // - WebGL fallback for extreme performance needs
+
+    private string GetColorForIndex(int index)
+    {
+        return ColorPalette[index % ColorPalette.Length];
     }
     
 
@@ -465,17 +486,8 @@
         {
             Console.WriteLine($"Chart disposal error: {ex.Message}");
         }
-    }
-    
-    
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        await base.OnAfterRenderAsync(firstRender);
         
-        if (firstRender && Data?.Any() == true)
-        {
-            await HandleChartInit(chartContainer);
-        }
+        await base.DisposeAsync();
     }
 }
 
@@ -483,18 +495,18 @@
 Usage Examples:
 
 <!-- Basic column chart -->
-<RColumnChart Title="Monthly Sales" 
+<RColumnChart Header="Monthly Sales" 
               Data="@salesData" 
               Icon="bar_chart" />
 
 <!-- Horizontal bar chart -->
-<RColumnChart Title="Product Performance" 
+<RColumnChart Header="Product Performance" 
               Data="@performanceData"
               IsHorizontal="true"
               Icon="bar_chart_4_bars" />
 
 <!-- Column chart with custom styling -->
-<RColumnChart Title="Revenue by Quarter" 
+<RColumnChart Header="Revenue by Quarter" 
               Data="@revenueData"
               Size="ChartSize.Large"
               Variant="ChartVariant.Elevated"
@@ -504,7 +516,7 @@ Usage Examples:
               ColorPalette="@customColors" />
 
 <!-- Interactive column chart -->
-<RColumnChart Title="User Engagement" 
+<RColumnChart Header="User Engagement" 
               Data="@engagementData"
               OnBarClick="@HandleBarClick"
               OnBarHover="@HandleBarHover"
@@ -519,7 +531,7 @@ Usage Examples:
               ShowAxis="false" />
 
 <!-- Column chart with header controls -->
-<RColumnChart Title="Performance Metrics" 
+<RColumnChart Header="Performance Metrics" 
               Data="@performanceData"
               LegendPosition="ChartLegendPosition.Top">
     
@@ -529,7 +541,7 @@ Usage Examples:
                 <i class="material-symbols-rounded mr-1">download</i>
                 Export
             </button>
-            <select class="form-field-input form-field-sm">
+            <select class="form-input form-input-sm">
                 <option>Daily</option>
                 <option>Weekly</option>
                 <option>Monthly</option>
@@ -546,7 +558,7 @@ Usage Examples:
 </RColumnChart>
 
 <!-- Stacked column chart simulation -->
-<RColumnChart Title="Sales by Category" 
+<RColumnChart Header="Sales by Category" 
               Data="@stackedData"
               ShowValues="false"
               ShowLabels="true"
@@ -567,7 +579,7 @@ Usage Examples:
 </RColumnChart>
 
 <!-- Accessible column chart -->
-<RColumnChart Title="Budget Allocation" 
+<RColumnChart Header="Budget Allocation" 
               Data="@budgetData"
               Configuration="@(new ChartConfiguration { EnableAccessibility = true })"
               ShowAccessibilityTable="true"

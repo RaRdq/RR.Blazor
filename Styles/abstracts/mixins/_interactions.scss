@@ -11,7 +11,8 @@
     'transition-easing': var(--ease-out),
     'focus-ring': true,
     'active-feedback': true,
-    'hover-feedback': true
+    'hover-feedback': true,
+    'loading-component-type': $type  // Pass component type for context-aware loading
   );
   
   $merged-config: map.merge($default-config, $config);
@@ -43,7 +44,17 @@
   }
   
   &.loading {
-    @include loading-replace();
+    // Use component type for context-aware loading
+    $loading-type: map.get($merged-config, 'loading-component-type');
+    @if $loading-type == 'button' {
+      @include button-loading();
+    } @else if $loading-type == 'input' {
+      @include loading-inline('end', 'sm', 'default');
+    } @else if $loading-type == 'card' {
+      @include loading-overlay('md', 'default', 4px, 'card');
+    } @else {
+      @include loading-replace('md', 'default', 'default');
+    }
   }
 }
 
@@ -261,7 +272,16 @@
   
   @if list.index($states, loading) {
     &.loading {
-      @include loading-replace();
+      // Use component type for context-aware loading
+      @if $type == 'button' {
+        @include button-loading();
+      } @else if $type == 'input' {
+        @include loading-inline('end', 'sm', 'default');
+      } @else if $type == 'card' {
+        @include loading-overlay('md', 'default', 4px, 'card');
+      } @else {
+        @include loading-replace('md', 'default', 'default');
+      }
     }
   }
   

@@ -136,7 +136,7 @@
   }
 
   &-content {
-    min-height: 150px; // Reduced minimum to allow smaller containers
+    min-height: var(--chart-min-height, 150px); // Use custom property with fallback
     display: flex;
     flex-direction: column;
     flex: 1;
@@ -239,7 +239,7 @@
     min-height: 200px; // Reasonable minimum
     
     @include responsive-max(md) {
-      min-height: 150px; // Minimum for mobile
+      min-height: var(--chart-mobile-min-height, 150px); // Use custom property
     }
   }
 
@@ -255,7 +255,7 @@
       
       &-content {
         height: 100%;
-        min-height: 150px;
+        min-height: var(--chart-content-min-height, 150px);
         flex: 1 1 0;
       }
     }
@@ -435,7 +435,7 @@
     position: relative;
     width: 100%;
     height: 100%;
-    min-height: 200px; // Reasonable minimum for chart visibility
+    min-height: var(--chart-container-min-height, 200px); // Use custom property
     display: grid;
     grid-template-areas: 
       "y-labels chart-area"
@@ -479,8 +479,9 @@
     grid-area: chart-area;
     display: flex;
     align-items: flex-end;
+    justify-content: space-between; // Distribute bars evenly
     gap: var(--space-2);
-    min-height: 100px; // Reasonable minimum
+    min-height: var(--chart-bars-min-height, 100px); // Use custom property
     height: 100%; // Fill available height
     width: 100%; // Ensure full width usage
     padding: var(--space-2) 0;
@@ -517,12 +518,14 @@
 
   &-bar {
     @extend %chart-interactive;
-    flex: 1 1 0; // Force equal distribution regardless of content
-    min-width: 0; // Prevent flex item from growing due to content
+    flex: 1 1 auto; // Allow natural flex distribution
+    min-width: 20px; // Ensure minimum visible width
+    max-width: 150px; // Reasonable max width
+    width: 100%; // Ensure it takes available width
     position: relative;
     display: flex;
     flex-direction: column;
-    align-items: center;
+    align-items: stretch; // Stretch children to full width
     justify-content: flex-end;
     height: 100%;
     
@@ -552,6 +555,7 @@
     border-radius: var(--radius-sm) var(--radius-sm) 0 0;
     @include chart-bar-animation;
     min-height: 4px;
+    transition: all var(--duration-fast) var(--ease-out);
     
     &[style*="height"] { min-height: 0; }
     
@@ -606,6 +610,33 @@
     
     @include responsive-max(sm) {
       font-size: var(--text-2xs);
+    }
+  }
+
+  &-grid-lines {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    
+    .grid-line {
+      position: absolute;
+      background: var(--color-border);
+      opacity: 0.2;
+      
+      &:not([style*="left"]) {
+        // Horizontal lines
+        left: 0;
+        right: 0;
+        height: 1px;
+      }
+      
+      &[style*="left"] {
+        // Vertical lines for horizontal charts
+        top: 0;
+        bottom: 0;
+        width: 1px;
+      }
     }
   }
 
@@ -667,7 +698,7 @@
 
     &-label {
       font-family: var(--font-family-mono);
-      font-size: 10px;
+      font-size: var(--text-2xs);
       user-select: none;
       white-space: nowrap;
       overflow: hidden;
@@ -745,8 +776,10 @@
 .chart-legend {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-2);
+  gap: var(--space-2); // Reduced gap to prevent excessive spacing
   padding: var(--space-3) 0;
+  margin-top: var(--space-3); // Reduced margin for tighter layout
+  min-height: auto; // Allow natural height
   animation: slideInDown var(--duration-slow) ease-out;
   animation-delay: var(--duration-normal);
   
@@ -760,9 +793,10 @@
   
   &-bottom {
     order: 1;
-    margin-top: var(--space-4);
+    margin-top: var(--space-6); // Increased margin from chart
     border-top: 1px solid var(--color-border);
-    padding-top: var(--space-3);
+    padding-top: var(--space-4); // More padding
+    clear: both; // Ensure proper clearing
     animation: slideInBottomScale var(--duration-slow) ease-out;
   }
   
@@ -786,9 +820,15 @@
     @extend %chart-interactive;
     display: flex;
     align-items: center;
-    gap: var(--space-2);
-    padding: var(--space-2);
+    gap: var(--space-1); // Reduced internal gap
+    padding: var(--space-2) var(--space-3); // Reduced padding to prevent bloating
+    margin: 0; // Remove all margins to rely on gap
+    min-height: 28px; // Reduced height for compact layout
+    min-width: 30px; // Ensure minimum 30px width for accessibility
     border-radius: var(--radius-sm);
+    white-space: nowrap; // Prevent text wrapping within items
+    flex: 0 0 auto; // Prevent flex growing/shrinking
+    max-width: 200px; // Prevent oversized items
     @extend %chart-animation-fade;
     
     @for $i from 1 through 20 {
@@ -816,10 +856,10 @@
   }
 
   &-indicator {
-    width: var(--space-3);
-    height: var(--space-3);
+    width: 10px;
+    height: 10px;
     border-radius: var(--radius-full);
-    flex-shrink: 0;
+    flex-shrink: 0; // Fixed size indicator
     @extend %chart-animation-scale;
     animation-delay: calc(var(--duration-normal) * 1.5);
     
@@ -833,14 +873,31 @@
   }
 
   &-label {
-    font-size: var(--text-sm);
+    font-size: var(--text-xs);
     color: var(--color-text-muted);
     font-weight: var(--font-medium);
     user-select: none;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 150px; // Prevent excessive label width
+    max-width: 80px; // Reduced width for better fit
+    flex-shrink: 1; // Allow shrinking if needed
+  }
+  
+  &-value {
+    font-size: var(--text-xs);
+    color: var(--color-text);
+    font-weight: var(--font-semibold);
+    user-select: none;
+    white-space: nowrap;
+    flex-shrink: 0; // Keep values intact
+  }
+  
+  &-percentage {
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+    font-weight: var(--font-normal);
+    margin-left: var(--space-1);
   }
 }
 
@@ -941,11 +998,23 @@
 
 @include responsive-max(sm) {
   .chart-legend {
+    gap: var(--space-1); // Tighter spacing on mobile
+    
     &-left, &-right {
       flex-direction: row;
       margin: var(--space-2) 0;
       border: none;
       padding: 0;
+    }
+    
+    &-item {
+      padding: var(--space-1) var(--space-2); // Reduced padding on mobile
+      min-height: 24px; // Smaller height on mobile
+      max-width: 150px; // Smaller max width on mobile
+    }
+    
+    &-label {
+      max-width: 60px; // Much smaller label width on mobile
     }
   }
   

@@ -1,5 +1,5 @@
 // RR.Blazor Tooltip Module
-// Handles tooltip-specific behavior using the unified portal system
+// Handles tooltip-specific behavior using the unified portal system via RRBlazor proxy
 
 export async function createTooltipPortal(popupElement, triggerElement, position, portalId) {
     try {
@@ -8,18 +8,68 @@ export async function createTooltipPortal(popupElement, triggerElement, position
             return false;
         }
         
-        const portal = await window.RRBlazor.Portal.create(popupElement, {
+        const portalManager = await window.RRBlazor.Portal.getInstance();
+        const portalResult = portalManager.create({
             id: portalId,
-            type: 'tooltip',
-            anchor: triggerElement,
-            className: 'tooltip-portal',
-            closeOnClickOutside: false,
-            closeOnEscape: false,
-            width: popupElement.offsetWidth || 200,
-            height: popupElement.offsetHeight || 100
+            className: 'tooltip-portal'
         });
         
-        return portal || portalId;
+        const portalContainer = portalResult.element;
+        
+        // Store original position for restoration
+        if (!popupElement._originalParent) {
+            popupElement._originalParent = popupElement.parentNode;
+            popupElement._originalNextSibling = popupElement.nextSibling;
+        }
+        
+        // Move tooltip to portal
+        portalContainer.appendChild(popupElement);
+        
+        // Apply positioning based on the position parameter
+        const triggerRect = triggerElement.getBoundingClientRect();
+        const finalPosition = getTooltipPosition(triggerElement, popupElement, position || 'top');
+        
+        let x, y;
+        const buffer = 8;
+        const tooltipWidth = popupElement.offsetWidth || 200;
+        const tooltipHeight = popupElement.offsetHeight || 100;
+        
+        switch (finalPosition) {
+            case 'top':
+                x = triggerRect.left + (triggerRect.width / 2) - (tooltipWidth / 2);
+                y = triggerRect.top - tooltipHeight - buffer;
+                break;
+            case 'bottom':
+                x = triggerRect.left + (triggerRect.width / 2) - (tooltipWidth / 2);
+                y = triggerRect.bottom + buffer;
+                break;
+            case 'left':
+                x = triggerRect.left - tooltipWidth - buffer;
+                y = triggerRect.top + (triggerRect.height / 2) - (tooltipHeight / 2);
+                break;
+            case 'right':
+                x = triggerRect.right + buffer;
+                y = triggerRect.top + (triggerRect.height / 2) - (tooltipHeight / 2);
+                break;
+            default:
+                x = triggerRect.left;
+                y = triggerRect.top - tooltipHeight - buffer;
+        }
+        
+        // Constrain to viewport
+        x = Math.max(8, Math.min(x, window.innerWidth - tooltipWidth - 8));
+        y = Math.max(8, Math.min(y, window.innerHeight - tooltipHeight - 8));
+        
+        // Apply styles
+        portalContainer.style.position = 'fixed';
+        portalContainer.style.left = `${x}px`;
+        portalContainer.style.top = `${y}px`;
+        portalContainer.style.zIndex = portalResult.zIndex;
+        portalContainer.style.visibility = 'visible';
+        portalContainer.style.opacity = '1';
+        portalContainer.style.pointerEvents = 'auto';
+        
+        return portalResult.id;
     } catch (error) {
         console.error('[Tooltip] Portal creation failed:', error);
         return false;
@@ -28,7 +78,25 @@ export async function createTooltipPortal(popupElement, triggerElement, position
 
 export async function destroyTooltipPortal(portalId) {
     try {
-        return await window.RRBlazor.Portal.destroy(portalId);
+        const portalManager = await window.RRBlazor.Portal.getInstance();
+        if (portalManager.isPortalActive(portalId)) {
+            const portal = portalManager.getPortal(portalId);
+            
+            // Restore tooltip to original position if it was moved
+            const tooltipElement = portal.element.querySelector('.tooltip, [role="tooltip"]');
+            if (tooltipElement && tooltipElement._originalParent) {
+                if (tooltipElement._originalNextSibling) {
+                    tooltipElement._originalParent.insertBefore(tooltipElement, tooltipElement._originalNextSibling);
+                } else {
+                    tooltipElement._originalParent.appendChild(tooltipElement);
+                }
+                delete tooltipElement._originalParent;
+                delete tooltipElement._originalNextSibling;
+            }
+            
+            portalManager.destroy(portalId);
+        }
+        return true;
     } catch (error) {
         console.error('[Tooltip] Portal cleanup failed:', error);
         return false;
@@ -37,9 +105,54 @@ export async function destroyTooltipPortal(portalId) {
 
 export async function updateTooltipPosition(portalId, triggerElement, position) {
     try {
-        return await window.RRBlazor.Portal.update(portalId, {
-            anchor: triggerElement
-        });
+        const portalManager = await window.RRBlazor.Portal.getInstance();
+        if (portalManager.isPortalActive(portalId)) {
+            const portal = portalManager.getPortal(portalId);
+            const portalContainer = portal.element;
+            const tooltipElement = portalContainer.querySelector('.tooltip, [role="tooltip"]');
+            
+            if (tooltipElement && triggerElement) {
+                // Recalculate position
+                const triggerRect = triggerElement.getBoundingClientRect();
+                const finalPosition = getTooltipPosition(triggerElement, tooltipElement, position || 'top');
+                
+                let x, y;
+                const buffer = 8;
+                const tooltipWidth = tooltipElement.offsetWidth || 200;
+                const tooltipHeight = tooltipElement.offsetHeight || 100;
+                
+                switch (finalPosition) {
+                    case 'top':
+                        x = triggerRect.left + (triggerRect.width / 2) - (tooltipWidth / 2);
+                        y = triggerRect.top - tooltipHeight - buffer;
+                        break;
+                    case 'bottom':
+                        x = triggerRect.left + (triggerRect.width / 2) - (tooltipWidth / 2);
+                        y = triggerRect.bottom + buffer;
+                        break;
+                    case 'left':
+                        x = triggerRect.left - tooltipWidth - buffer;
+                        y = triggerRect.top + (triggerRect.height / 2) - (tooltipHeight / 2);
+                        break;
+                    case 'right':
+                        x = triggerRect.right + buffer;
+                        y = triggerRect.top + (triggerRect.height / 2) - (tooltipHeight / 2);
+                        break;
+                    default:
+                        x = triggerRect.left;
+                        y = triggerRect.top - tooltipHeight - buffer;
+                }
+                
+                // Constrain to viewport
+                x = Math.max(8, Math.min(x, window.innerWidth - tooltipWidth - 8));
+                y = Math.max(8, Math.min(y, window.innerHeight - tooltipHeight - 8));
+                
+                // Update position
+                portalContainer.style.left = `${x}px`;
+                portalContainer.style.top = `${y}px`;
+            }
+        }
+        return true;
     } catch (error) {
         console.error('[Tooltip] Position update failed:', error);
         return false;

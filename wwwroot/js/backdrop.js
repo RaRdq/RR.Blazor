@@ -312,45 +312,38 @@ class BackdropManagerBase {
 // Create singleton using factory
 export const BackdropManager = createSingleton(BackdropManagerBase, 'BackdropManager');
 
-// Event-driven modal integration (bridge between modal events and backdrop API)
-document.addEventListener('modal-request-backdrop', (event) => {
-    const { modalId, config, onBackdropClick } = event.detail;
-    try {
-        const backdrop = BackdropManager.getInstance().create(modalId, config);
+// Generic event-driven backdrop integration (application-agnostic)
+document.addEventListener('backdrop-create-request', (event) => {
+    const { requesterId, config } = event.detail;
+    const backdrop = BackdropManager.getInstance().create(requesterId, config);
+    
+    const responseEvent = new CustomEvent('backdrop-created', {
+        detail: { requesterId, backdrop },
+        bubbles: true
+    });
+    document.dispatchEvent(responseEvent);
+});
+
+document.addEventListener('backdrop-destroy-request', (event) => {
+    const { requesterId } = event.detail;
+    if (BackdropManager.getInstance().hasBackdrop(requesterId)) {
+        BackdropManager.getInstance().destroy(requesterId);
         
-        // Set up backdrop click handler if provided
-        if (onBackdropClick) {
-            BackdropManager.getInstance().onClick(modalId, onBackdropClick);
-        }
-        
-        console.log(`[BackdropManager] Created backdrop for modal ${modalId}`);
-    } catch (error) {
-        console.error(`[BackdropManager] Failed to create backdrop for modal ${modalId}:`, error);
-        throw error;
+        const responseEvent = new CustomEvent('backdrop-destroyed', {
+            detail: { requesterId },
+            bubbles: true
+        });
+        document.dispatchEvent(responseEvent);
     }
 });
 
-document.addEventListener('modal-destroy-backdrop', (event) => {
-    const { modalId } = event.detail;
-    try {
-        if (BackdropManager.getInstance().hasBackdrop(modalId)) {
-            BackdropManager.getInstance().destroy(modalId);
-            console.log(`[BackdropManager] Destroyed backdrop for modal ${modalId}`);
-        }
-    } catch (error) {
-        console.error(`[BackdropManager] Failed to destroy backdrop for modal ${modalId}:`, error);
-        // Don't re-throw on cleanup - just log the error
-    }
-});
-
-document.addEventListener('modal-force-cleanup-all', () => {
-    try {
-        BackdropManager.getInstance().destroyAll();
-        console.log(`[BackdropManager] Force cleaned all backdrops`);
-    } catch (error) {
-        console.error(`[BackdropManager] Failed to force cleanup backdrops:`, error);
-        // Don't re-throw on cleanup - just log the error
-    }
+document.addEventListener('backdrop-cleanup-all-request', () => {
+    BackdropManager.getInstance().destroyAll();
+    
+    const responseEvent = new CustomEvent('backdrop-all-destroyed', {
+        bubbles: true
+    });
+    document.dispatchEvent(responseEvent);
 });
 
 // Auto-cleanup on page unload

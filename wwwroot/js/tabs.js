@@ -225,28 +225,24 @@ export function initializeTabs(element, navContainer, navWrapper) {
         }, { passive: true });
     }
     
-    // Enhanced resize handling with debouncing
+    // Enhanced resize handling with requestAnimationFrame
     let resizeScheduled = false;
-    let resizeTimeout;
     const handleResize = () => {
-        clearTimeout(resizeTimeout);
-        resizeTimeout = setTimeout(() => {
-            if (!resizeScheduled) {
-                resizeScheduled = true;
-                requestAnimationFrame(() => {
-                    updateTabSizing();
-                    updateIndicator();
-                    updateScrollState();
-                    resizeScheduled = false;
-                });
-            }
-        }, 100);
+        if (!resizeScheduled) {
+            resizeScheduled = true;
+            requestAnimationFrame(() => {
+                updateTabSizing();
+                updateIndicator();
+                updateScrollState();
+                resizeScheduled = false;
+            });
+        }
     };
     
     // Orientation change handling
     const handleOrientationChange = () => {
-        // Wait for rotation animation to complete
-        setTimeout(() => {
+        // Use requestAnimationFrame for orientation change
+        requestAnimationFrame(() => {
             updateTabSizing();
             updateIndicator();
             updateScrollState();
@@ -256,7 +252,7 @@ export function initializeTabs(element, navContainer, navWrapper) {
             if (activeTab) {
                 scrollToTab(navWrapper, activeTab.id);
             }
-        }, 300);
+        });
     };
     
     window.addEventListener('resize', handleResize);
@@ -272,9 +268,13 @@ export function initializeTabs(element, navContainer, navWrapper) {
             clearTimeout(scrollTimeout);
             
             // Update indicator after scroll ends
-            scrollTimeout = setTimeout(() => {
-                updateIndicator();
-            }, 150);
+            // Use requestAnimationFrame after scroll
+            if (!scrollTimeout) {
+                scrollTimeout = requestAnimationFrame(() => {
+                    updateIndicator();
+                    scrollTimeout = null;
+                });
+            }
         });
     }
     

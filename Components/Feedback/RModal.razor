@@ -202,8 +202,6 @@
     
 protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        
-
         if (Visible != previousVisible && UseBackdrop)
         {
             if (currentState == ModalState.Closing && Visible)
@@ -214,36 +212,33 @@ protected override async Task OnAfterRenderAsync(bool firstRender)
             await stateLock.WaitAsync();
             try
             {
-                if (Visible && IsValidTransition(currentState, ModalState.Opening))
+                if (Visible && currentState == ModalState.Closed)
                 {
+                    // Only transition from Closed to Opening - skip if already open/opening
                     currentState = ModalState.Opening;
                     
                     // Wait for DOM to be ready
                     await Task.Yield();
                     
-                    var portalCreated = await CreatePortal();
-                    if (!portalCreated)
-                    {
-                        currentState = ModalState.Closed;
-                        return;
-                    }
+                    await CreatePortal();
                     
                     // Focus trap is now managed by modal.js
                     currentState = ModalState.Open;
                 }
-                else if (!Visible)
+                else if (Visible && (currentState == ModalState.Open || currentState == ModalState.Opening))
                 {
-                    if (currentState == ModalState.Open)
-                    {
-                        currentState = ModalState.Closing;
-                        
-                        await DestroyFocusTrap();
-                        await CleanupPortal();
-                        currentState = ModalState.Closed;
-                    }
+                    // Modal already open or opening - skip duplicate opening
+                    // This handles Blazor re-renders that trigger OnAfterRenderAsync multiple times
+                    return;
                 }
-                else
+                else if (!Visible && (currentState == ModalState.Open || currentState == ModalState.Opening))
                 {
+                    // Close the modal
+                    currentState = ModalState.Closing;
+                    
+                    await DestroyFocusTrap();
+                    await CleanupPortal();
+                    currentState = ModalState.Closed;
                 }
                 previousVisible = Visible;
             }
@@ -292,31 +287,13 @@ private async Task<bool> CreatePortal()
             trapFocus = true
         };
         
-        // TODO: remove protective Ensure the modal element exists in DOM before creating portal
-        var modalSelector = $"[data-modal-id='{portalId}']";
+        // Pass the modal element directly via ElementReference
+        var result = await JSRuntime.InvokeAsync<string>("RRBlazor.Modal.create", modalElement, options);
         
-        // Try to wait for element to be in DOM
-        for (int i = 0; i < 10; i++)
-        {
-            var elementExists = await JSRuntime.InvokeAsync<bool>("eval", $"!!document.querySelector(\"{modalSelector}\")");
-            if (elementExists)
-            {
-                break;
-            }
-            await Task.Delay(10);
-        }
+        actualPortalId = result;
+        isPortalCreated = true;
         
-        var result = await JSRuntime.InvokeAsync<string>("RRBlazor.Modal.create", modalSelector, options);
-        
-        if (!string.IsNullOrEmpty(result))
-        {
-            actualPortalId = result;
-            isPortalCreated = true;
-            
-            return true;
-        }
-        
-        throw new InvalidOperationException($"Failed to create modal {portalId}");
+        return true;
     }
     
     
@@ -330,33 +307,19 @@ private async Task CleanupPortal()
         
         if (string.IsNullOrEmpty(actualPortalId))
         {
-            isPortalCreated = false;
-            return;
+            throw new InvalidOperationException($"Portal {portalId} marked as created but actualPortalId is null");
         }
         
-        try
+        // Use the modal state machine destroy API - let it throw if it fails
+        var success = await JSRuntime.InvokeAsync<bool>("RRBlazor.Modal.destroy", actualPortalId);
+        
+        if (!success)
         {
-            // Use the modal state machine destroy API
-            var success = await JSRuntime.InvokeAsync<bool>("RRBlazor.Modal.destroy", actualPortalId);
-            
-            if (success)
-            {
-                actualPortalId = null;
-                isPortalCreated = false;
-            }
-            else
-            {
-                // Modal was already closing/closed
-                actualPortalId = null;
-                isPortalCreated = false;
-            }
+            throw new InvalidOperationException($"Failed to destroy modal {actualPortalId}");
         }
-        catch (Exception ex)
-        {
-            actualPortalId = null;
-            isPortalCreated = false;
-            throw new InvalidOperationException($"Failed to destroy modal {actualPortalId}: {ex.Message}", ex);
-        }
+        
+        actualPortalId = null;
+        isPortalCreated = false;
     }
     
     private string GetFullViewportStyles()
@@ -602,7 +565,7 @@ public async ValueTask DisposeAsync()
         finally
         {
             stateLock.Release();
-            stateLock?.Dispose();
+            stateLock.Dispose();
         }
     }
     

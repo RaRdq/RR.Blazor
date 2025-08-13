@@ -134,13 +134,20 @@ function setupResponsive() {
         }
     };
     
+    // Handle resize immediately with requestAnimationFrame
+    let resizeScheduled = false;
     window.addEventListener('resize', () => {
-        clearTimeout(resizeTimeout);
-        resizeTimeout = setTimeout(handleMobileCollapse, 150);
+        if (!resizeScheduled) {
+            resizeScheduled = true;
+            requestAnimationFrame(() => {
+                handleMobileCollapse();
+                resizeScheduled = false;
+            });
+        }
     });
     
-    // Initial setup - use setTimeout to ensure DOM is ready
-    setTimeout(handleMobileCollapse, 100);
+    // Initial setup - immediate execution
+    handleMobileCollapse();
 }
 
 function setupAccessibility() {
@@ -264,9 +271,12 @@ function announce(message) {
     const announcer = document.getElementById('app-shell-announcer');
     if (announcer) {
         announcer.textContent = message;
-        setTimeout(() => {
-            announcer.textContent = '';
-        }, 1000);
+        // Clear after animation frame to ensure screen reader captures it
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                announcer.textContent = '';
+            });
+        });
     }
 }
 
@@ -340,6 +350,22 @@ export function initialize(element, dotNetRef) {
 export function cleanup(element) {
     return true;
 }
+
+window.RRAppShell = {
+    isMobile,
+    isTablet,
+    isDesktop,
+    focusSearch,
+    toggleSidebar,
+    scrollToTop,
+    scrollToElement,
+    copyToClipboard,
+    getPerformanceMetrics,
+    updateUrlWithoutScroll,
+    focusElement,
+    initialize,
+    cleanup
+};
 
 export default {
     isMobile,

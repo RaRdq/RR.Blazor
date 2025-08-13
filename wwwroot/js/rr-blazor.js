@@ -97,7 +97,10 @@ class ModuleManager {
             'positioning': { path: './positioning.js', preload: true },
             'modal': { path: './modal.js', preload: true },
             'choice': { path: './choice.js', preload: true },
-            'eventManager': { path: './event-manager.js', preload: true },
+            'clickOutside': { path: './click-outside.js', preload: true },
+            'keyboardNavigation': { path: './keyboard-navigation.js', preload: true },
+            'modalEvents': { path: './modal-events.js', preload: true },
+            'choiceEvents': { path: './choice-events.js', preload: true },
             'scrollLock': { path: './scroll-lock.js', preload: true },
             
             // Standard modules - lazy load
@@ -233,9 +236,21 @@ class ModuleManager {
     async preloadCriticalModules() {
         const preloadModules = Object.entries(this.moduleConfigs)
             .filter(([name, config]) => config.preload)
-            .map(([name]) => this.loadModule(name));
+            .map(([name]) => name);
         
-        await Promise.allSettled(preloadModules);
+        debugLogger.log(`Preloading critical modules: ${preloadModules.join(', ')}`);
+        
+        const results = await Promise.allSettled(
+            preloadModules.map(name => this.loadModule(name))
+        );
+        
+        // Log any failures
+        results.forEach((result, index) => {
+            if (result.status === 'rejected') {
+                debugLogger.error(`Failed to preload ${preloadModules[index]}: ${result.reason}`);
+            }
+        });
+        
         debugLogger.log('🚀 Critical modules preloaded');
     }
 
@@ -269,6 +284,9 @@ const moduleManager = new ModuleManager();
 
 // Universal Smart Proxy - Works with ANY export pattern
 function createUniversalProxy(moduleName) {
+    // Cache for resolved properties to avoid repeated lookups
+    const propertyCache = new Map();
+    
     // Create a proxy that intelligently handles all call patterns
     return new Proxy(function() {}, {
         // Handle direct function calls: proxy()
@@ -299,6 +317,22 @@ function createUniversalProxy(moduleName) {
             // Handle toString and other special methods
             if (prop === 'toString' || prop === 'valueOf' || prop === Symbol.toStringTag) {
                 return () => `[RRBlazor.${moduleName}]`;
+            }
+            
+            // Handle prototype for proxy trap compliance
+            if (prop === 'prototype') {
+                return undefined;
+            }
+            
+            // Check cache first for critical modules
+            if (propertyCache.has(prop) && moduleManager.isModuleLoaded(moduleName)) {
+                const cached = propertyCache.get(prop);
+                return function(...args) {
+                    if (typeof cached.target === 'function') {
+                        return cached.target.apply(cached.context, args);
+                    }
+                    return cached.target;
+                };
             }
             
             // Return async function that loads module and accesses the property
@@ -334,6 +368,9 @@ function createUniversalProxy(moduleName) {
                     throw new Error(`Property '${prop}' not found in module '${moduleName}'`);
                 }
                 
+                // Cache the resolved property for future use
+                propertyCache.set(prop, { target, context });
+                
                 // If it's a function, call it with proper context
                 if (typeof target === 'function') {
                     return target.apply(context, args);
@@ -353,20 +390,24 @@ function createUniversalProxy(moduleName) {
         },
         
         ownKeys(target) {
-            return moduleManager.loadModule(moduleName).then(module => {
-                const keys = new Set(Object.keys(module));
-                if (module.default && typeof module.default === 'object') {
-                    Object.keys(module.default).forEach(key => keys.add(key));
-                }
-                return Array.from(keys);
-            }).catch(() => []);
+            // ownKeys must return synchronously, include required properties
+            // to satisfy proxy trap requirements
+            return ['prototype', 'length', 'name', 'constructor'];
         },
         
         getOwnPropertyDescriptor(target, prop) {
+            // Return descriptors for required properties
+            if (['prototype', 'length', 'name', 'constructor'].includes(prop)) {
+                return {
+                    configurable: true,
+                    enumerable: false,
+                    value: undefined
+                };
+            }
             return {
                 configurable: true,
                 enumerable: true,
-                get: () => this.get(target, prop)
+                value: undefined
             };
         }
     });
@@ -382,7 +423,10 @@ const RRBlazor = {
     Portal: createUniversalProxy('portal'),
     Backdrop: createUniversalProxy('backdrop'),
     Positioning: createUniversalProxy('positioning'),
-    EventManager: createUniversalProxy('eventManager'),
+    ClickOutside: createUniversalProxy('clickOutside'),
+    KeyboardNavigation: createUniversalProxy('keyboardNavigation'),
+    ModalEvents: createUniversalProxy('modalEvents'),
+    ChoiceEvents: createUniversalProxy('choiceEvents'),
     ScrollLock: createUniversalProxy('scrollLock'),
     
     // Component modules
@@ -425,6 +469,13 @@ const RRBlazor = {
         
         // Preload critical modules for performance
         await moduleManager.preloadCriticalModules();
+        
+        const portalModule = await moduleManager.loadModule('portal');
+        if (portalModule) {
+            debugLogger.log('✅ Portal module event listeners registered');
+        } else {
+            debugLogger.error('❌ Failed to load portal module - dropdowns and modals will not work!');
+        }
         
         debugLogger.log('✨ RR.Blazor initialized with universal proxy system');
         return true;

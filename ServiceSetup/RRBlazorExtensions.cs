@@ -78,8 +78,7 @@ namespace RR.Blazor.ServiceSetup
             serviceCollection.AddScoped<IAppSearchService, AppSearchService>();
             serviceCollection.AddScoped<IAppConfigurationService, AppConfigurationService>();
             serviceCollection.AddScoped<IModalService, ModalService>();
-            serviceCollection.AddScoped<ModalStackService>();
-            serviceCollection.AddScoped<PortalService>();
+            // ModalStackService removed - DOM management fully delegated to JavaScript
             
             // Register default toast configuration
             serviceCollection.AddSingleton(new ToastServiceOptions

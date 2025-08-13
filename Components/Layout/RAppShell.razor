@@ -29,7 +29,7 @@
     @if (ShowHeader)
     {
         <header class="app-header">
-            <div class="header-left">
+            <div class="app-header-left">
                 @if (ShowSidebar && ShowSidebarToggle)
                 {
                     <RButton Icon="@GetToggleIcon()" 
@@ -96,16 +96,16 @@
                 }
             </div>
             
-            <div class="header-right">
+            <div class="app-header-right">
                 @if (ShowSearch)
                 {
                     <div class="relative d-flex align-center gap-2 transition-all @(SearchCollapsible && searchExpanded ? "search-expanded" : "")">
                         @if (!SearchCollapsible || searchExpanded)
                         {
                             <div class="transition-all overflow-hidden @(SearchCollapsible ? (searchExpanded ? "w-64 md:w-56 sm:w-48 visible" : "w-0 invisible") : "w-64 md:w-56 sm:w-48")">
-                                <RAutosuggestGeneric TItem="AppSearchResult" 
+                                <RAutosuggestGeneric 
                                                    Value="@selectedSearchResult"
-                                                   ValueChanged="@HandleSearchResultSelected"
+                                                   ValueChanged="@(EventCallback.Factory.Create<AppSearchResult>(this, HandleSearchResultSelected))"
                                                    SearchFunc="@HandleSearchAsync"
                                                    ItemTextSelector="@(result => result.Title)"
                                                    ItemIconSelector="@(result => result.Icon)"
@@ -117,7 +117,7 @@
                                                    MaxSuggestions="8"
                                                    ShowLoading="true"
                                                    ShowDropdownIcon="false"
-                                                   OnItemSelected="@HandleSearchItemSelected"
+                                                   OnItemSelected="@(EventCallback.Factory.Create<AppSearchResult>(this, HandleSearchItemSelected))"
                                                    OnSearchChanged="@HandleSearchQueryChanged"
                                                    OnBlur="@(SearchCollapsible ? HandleSearchBlur : null)"
                                                    Class="w-full" />
@@ -607,7 +607,7 @@
 
     private async Task HandleSearchBlur()
     {
-        await Task.Delay(200);
+        await Task.Yield(); // Let Blazor render
         if (string.IsNullOrWhiteSpace(currentSearchQuery) && searchExpanded)
         {
             await CollapseSearch();
@@ -619,7 +619,7 @@
         searchExpanded = true;
         StateHasChanged();
         
-        await Task.Delay(50);
+        await Task.Yield(); // Let render complete
         try
         {
             await JS.InvokeVoidAsync("RRAppShell.focusElement", ".search-expanded input");
@@ -663,12 +663,12 @@
     
     private string GetHeaderLeftClasses()
     {
-        return "header-left";
+        return "app-header-left";
     }
     
     private string GetHeaderRightClasses()
     {
-        return "header-right";
+        return "app-header-right";
     }
     
     private string GetLogoClasses()

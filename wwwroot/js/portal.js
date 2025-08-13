@@ -98,8 +98,24 @@ class PortalManagerBase {
         });
         document.dispatchEvent(destroyEvent);
         
+        // Track if we're removing the highest z-index portal
+        const wasMaxZIndex = portal.zIndex === this._maxZIndex;
+        
         this._portals.delete(id);
         this._registry.delete(id);
+        
+        // Update max z-index efficiently
+        if (wasMaxZIndex && this._portals.size > 0) {
+            // Only recalculate if we removed the highest portal
+            let newMax = PortalManagerBase._baseZIndex;
+            this._portals.forEach(p => {
+                if (p.zIndex > newMax) newMax = p.zIndex;
+            });
+            this._maxZIndex = newMax;
+        } else if (this._portals.size === 0) {
+            // Reset to base if no portals left
+            this._maxZIndex = PortalManagerBase._baseZIndex;
+        }
         
         if (!portal.element) {
             throw new Error(`Portal ${id} has no DOM element - corrupted state`);
@@ -207,14 +223,19 @@ class PortalManagerBase {
     }
     
     _calculateZIndex() {
-        const level = this._portals.size;
-        const zIndex = PortalManagerBase._baseZIndex + (level * PortalManagerBase._zIndexIncrement);
+        // Find the highest z-index among existing portals
+        let maxZIndex = PortalManagerBase._baseZIndex;
+        this._portals.forEach(portal => {
+            if (portal.zIndex >= maxZIndex) {
+                maxZIndex = portal.zIndex + PortalManagerBase._zIndexIncrement;
+            }
+        });
         
-        if (zIndex > 2147483647) {
+        if (maxZIndex > 2147483647) {
             throw new Error('[PortalManager] Z-index limit exceeded');
         }
         
-        return zIndex;
+        return maxZIndex;
     }
     
     _reindexPortals() {
@@ -295,39 +316,42 @@ class PortalManagerBase {
 // Create singleton using factory
 export const PortalManager = createSingleton(PortalManagerBase, 'PortalManager');
 
-// Event-driven modal integration (bridge between modal events and portal API)
-document.addEventListener('modal-request-portal', (event) => {
-    const { modalId, config } = event.detail;
-    try {
-        const portal = PortalManager.getInstance().create(config);
-        console.log(`[PortalManager] Created portal ${modalId} for modal request`);
-    } catch (error) {
-        console.error(`[PortalManager] Failed to create portal ${modalId}:`, error);
-        throw error;
+console.log('[Portal.js] Module loaded, setting up event listeners');
+
+// Generic event-driven portal integration (application-agnostic)
+document.addEventListener('portal-create-request', (event) => {
+    console.log('[Portal.js] Received portal-create-request:', event.detail);
+    const { requesterId, config } = event.detail;
+    const portal = PortalManager.getInstance().create(config);
+    
+    const responseEvent = new CustomEvent('portal-created', {
+        detail: { requesterId, portal },
+        bubbles: true
+    });
+    console.log('[Portal.js] Dispatching portal-created event:', responseEvent.detail);
+    document.dispatchEvent(responseEvent);
+});
+
+document.addEventListener('portal-destroy-request', (event) => {
+    const { requesterId, portalId } = event.detail;
+    if (PortalManager.getInstance().isPortalActive(portalId)) {
+        PortalManager.getInstance().destroy(portalId);
+        
+        const responseEvent = new CustomEvent('portal-destroyed', {
+            detail: { requesterId, portalId },
+            bubbles: true
+        });
+        document.dispatchEvent(responseEvent);
     }
 });
 
-document.addEventListener('modal-destroy-portal', (event) => {
-    const { modalId } = event.detail;
-    try {
-        if (PortalManager.getInstance().isPortalActive(modalId)) {
-            PortalManager.getInstance().destroy(modalId);
-            console.log(`[PortalManager] Destroyed portal ${modalId} for modal request`);
-        }
-    } catch (error) {
-        console.error(`[PortalManager] Failed to destroy portal ${modalId}:`, error);
-        // Don't re-throw on cleanup - just log the error
-    }
-});
-
-document.addEventListener('modal-force-cleanup-all', () => {
-    try {
-        PortalManager.getInstance().destroyAll();
-        console.log(`[PortalManager] Force cleaned all portals`);
-    } catch (error) {
-        console.error(`[PortalManager] Failed to force cleanup portals:`, error);
-        // Don't re-throw on cleanup - just log the error
-    }
+document.addEventListener('portal-cleanup-all-request', () => {
+    PortalManager.getInstance().destroyAll();
+    
+    const responseEvent = new CustomEvent('portal-all-destroyed', {
+        bubbles: true
+    });
+    document.dispatchEvent(responseEvent);
 });
 
 // Auto-cleanup on page unload
@@ -342,6 +366,10 @@ window.addEventListener('beforeunload', () => {
 export default PortalManager;
 
 // Export pure DOM manipulation functions
+export function getInstance() {
+    return PortalManager.getInstance();
+}
+
 export function createPortal(config) {
     return PortalManager.getInstance().create(config);
 }

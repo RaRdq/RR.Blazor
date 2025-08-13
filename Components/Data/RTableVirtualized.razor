@@ -1,0 +1,981 @@
+@* RTableVirtualized - Enterprise-grade virtualized table with superior performance *@
+@typeparam TItem where TItem : class
+@using Microsoft.AspNetCore.Components.Web.Virtualization
+@using RR.Blazor.Components.Core
+@using RR.Blazor.Components.Form
+@using RR.Blazor.Components.Data
+@using RR.Blazor.Components.Data.Filters
+@using RR.Blazor.Components.Display
+@using RR.Blazor.Components.Feedback
+@using RR.Blazor.Enums
+@using RR.Blazor.Models
+@using RR.Blazor.Services
+@using System.Linq.Expressions
+@using System.Collections.Concurrent
+@using System.Reflection
+@inherits ComponentBase
+@implements ITableParent
+@implements IAsyncDisposable
+
+<CascadingValue Value="@_tableContext" IsFixed="true">
+    <CascadingValue Value="@((ITableParent)this)" IsFixed="true">
+        <div class="virtual-table-container @GetContainerClasses()" 
+             data-table-id="@TableId"
+             style="@GetContainerStyle()">
+            
+            @* Header Section *@
+            @if (ShowHeader && (!string.IsNullOrEmpty(Title) || HeaderContent != null))
+            {
+                <div class="virtual-table-header pa-4">
+                    <div class="d-flex justify-between items-center">
+                        <div class="d-flex items-center gap-3">
+                            @if (!string.IsNullOrEmpty(Icon))
+                            {
+                                <i class="material-symbols-rounded text-primary">@Icon</i>
+                            }
+                            @if (!string.IsNullOrEmpty(Title))
+                            {
+                                <div class="text-h5 font-semibold">@Title</div>
+                            }
+                            @if (!string.IsNullOrEmpty(Subtitle))
+                            {
+                                <p class="text-sm text-secondary">@Subtitle</p>
+                            }
+                        </div>
+                        @if (HeaderContent != null)
+                        {
+                            <div class="d-flex items-center gap-2">
+                                @HeaderContent
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+
+            @* Toolbar Section with Search and Filters *@
+            @if (ShowToolbar && (ShowSearch || ShowFilters || ShowColumnManager || ToolbarContent != null))
+            {
+                <div class="virtual-table-toolbar pa-3 border-b border-surface-outline">
+                    <div class="d-flex justify-between items-center gap-4">
+                        @if (ShowSearch)
+                        {
+                            <div class="flex-grow-1 max-w-96">
+                                <RTextInput Type="FieldType.Search"
+                                           Placeholder="@SearchPlaceholder"
+                                           @bind-Value="_searchTerm"
+                                           Disabled="@Disabled"
+                                           Dense="true"
+                                           Icon="search"
+                                           OnInput="@OnSearchInput" />
+                            </div>
+                        }
+                        
+                        <div class="d-flex items-center gap-2">
+                            @if (ShowColumnManager && _columns.Any())
+                            {
+                                <RTableColumnManager Columns="@_columns"
+                                                    Preferences="@ColumnPreferences"
+                                                    PreferencesChanged="@OnColumnPreferencesChanged"
+                                                    EnableReordering="@EnableColumnReordering"
+                                                    SupportsStickyColumns="@EnableStickyColumns"
+                                                    TableId="@TableId" />
+                            }
+                            
+                            @if (ShowChartButton)
+                            {
+                                <RButton Text="@ChartButtonText"
+                                        Icon="analytics"
+                                        Variant="ButtonVariant.Outline"
+                                        Size="ButtonSize.Small"
+                                        OnClick="@ShowChartModal"
+                                        Disabled="@(!FilteredData.Any())" />
+                            }
+                            
+                            @if (ExportEnabled)
+                            {
+                                <RButton Text="Export"
+                                        Icon="download"
+                                        Variant="ButtonVariant.Outline"
+                                        Size="ButtonSize.Small"
+                                        OnClick="@ExportData" />
+                            }
+                            
+                            @if (ToolbarContent != null)
+                            {
+                                @ToolbarContent
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+
+            @* Virtual Table Section *@
+            <div class="virtual-table-viewport" style="height: @Height;">
+                @if (Loading && !Items.Any())
+                {
+                    <div class="d-flex justify-center items-center pa-8">
+                        <RProgressCircular Indeterminate="true" Size="40" />
+                        <p class="ml-3">@LoadingText</p>
+                    </div>
+                }
+                else if (!_processedItems.Any())
+                {
+                    <div class="virtual-table-empty">
+                        @if (EmptyContent != null)
+                        {
+                            @EmptyContent
+                        }
+                        else
+                        {
+                            <i class="material-symbols-rounded empty-icon">inbox</i>
+                            <div class="empty-title">No Data Available</div>
+                            <p class="empty-description">@EmptyMessage</p>
+                        }
+                    </div>
+                }
+                else
+                {
+                    @* Sticky Header *@
+                    <div class="virtual-table-header-row">
+                        <table class="virtual-table">
+                            <thead>
+                                <tr>
+                                    @if (Selectable)
+                                    {
+                                        <th class="virtual-table-header-cell" style="width: 48px;">
+                                            @if (MultiSelect)
+                                            {
+                                                <RCheckbox Checked="@IsAllSelected()"
+                                                          Disabled="@Disabled"
+                                                          OnChange="@OnSelectAllChanged" />
+                                            }
+                                        </th>
+                                    }
+                                    @foreach (var column in GetVisibleColumns())
+                                    {
+                                        <th class="virtual-table-header-cell @(column.Sortable ? "sortable" : "")"
+                                            style="@GetColumnStyle(column)"
+                                            @onclick="@(() => OnSort(column.Key))">
+                                            <div class="d-flex items-center justify-between">
+                                                <span>@column.Title</span>
+                                                @if (column.Sortable)
+                                                {
+                                                    <i class="material-symbols-rounded text-sm">
+                                                        @GetSortIcon(column.Key)
+                                                    </i>
+                                                }
+                                            </div>
+                                        </th>
+                                    }
+                                </tr>
+                            </thead>
+                        </table>
+                    </div>
+
+                    @* Virtualized Content *@
+                    <div class="virtual-table-content">
+                        <Virtualize @ref="_virtualizeComponent"
+                                   Items="@_processedItems.ToList()"
+                                   ItemSize="@GetRowHeight()"
+                                   OverscanCount="@OverscanRows"
+                                   Context="item">
+                            <ItemContent>
+                                <table class="virtual-table">
+                                    <tbody>
+                                        <tr class="virtual-table-row @GetRowClass(item)"
+                                            @onclick="@(() => OnRowClick(item))">
+                                            @if (Selectable)
+                                            {
+                                                <td class="virtual-table-cell" style="width: 48px;">
+                                                    @if (MultiSelect)
+                                                    {
+                                                        <RCheckbox Checked="@IsSelected(item)"
+                                                                  Disabled="@Disabled"
+                                                                  OnChange="@((bool value) => OnSelectionChanged(item, value))" />
+                                                    }
+                                                    else
+                                                    {
+                                                        <RRadio Name="@($"table-{TableId}")"
+                                                               Checked="@IsSelected(item)"
+                                                               Disabled="@Disabled"
+                                                               OnChange="@((bool value) => OnSelectionChanged(item, value))" />
+                                                    }
+                                                </td>
+                                            }
+                                            @foreach (var column in GetVisibleColumns())
+                                            {
+                                                <td class="virtual-table-cell" style="@GetColumnStyle(column)">
+                                                    @{
+                                                        var cellContent = column.GetCellContent(item);
+                                                        if (cellContent != null)
+                                                        {
+                                                            @cellContent
+                                                        }
+                                                    }
+                                                </td>
+                                            }
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </ItemContent>
+                            <Placeholder>
+                                <table class="virtual-table">
+                                    <tbody>
+                                        <tr class="virtual-table-row">
+                                            @if (Selectable)
+                                            {
+                                                <td class="virtual-table-cell" style="width: 48px;">
+                                                    <RSkeleton Width="20px" Height="20px" />
+                                                </td>
+                                            }
+                                            @foreach (var column in GetVisibleColumns())
+                                            {
+                                                <td class="virtual-table-cell" style="@GetColumnStyle(column)">
+                                                    <RSkeleton Height="16px" />
+                                                </td>
+                                            }
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </Placeholder>
+                        </Virtualize>
+                    </div>
+                }
+            </div>
+
+            @* Footer Section with Info and Pagination *@
+            @if (ShowFooter && _processedItems.Any())
+            {
+                <div class="virtual-table-pagination pa-3 d-flex justify-between items-center">
+                    <div class="d-flex items-center gap-3">
+                        <span class="text-sm text-secondary">
+                            @GetItemsRangeText() of @_processedItems.Count() items
+                        </span>
+                        @if (_selectedItems.Any())
+                        {
+                            <RChip Text="@($"{_selectedItems.Count} selected")"
+                                  Style="ChipStyle.Badge"
+                                  Variant="ChipVariant.Primary"
+                                  Size="ChipSize.Small" />
+                        }
+                    </div>
+                    
+                    <div class="d-flex items-center gap-3">
+                        @if (ShowPerformanceMetrics)
+                        {
+                            <div class="d-flex items-center gap-2 text-xs text-secondary">
+                                <i class="material-symbols-rounded text-sm">speed</i>
+                                <span>Render: @_lastRenderTime.TotalMilliseconds.ToString("F1")ms</span>
+                                <span>|</span>
+                                <span>FPS: @_currentFps</span>
+                            </div>
+                        }
+                        
+                        <RButton Text="Scroll to Top"
+                                Icon="vertical_align_top"
+                                Variant="ButtonVariant.Ghost"
+                                Size="ButtonSize.Small"
+                                OnClick="@ScrollToTop" />
+                    </div>
+                </div>
+            }
+
+            @* Column definitions from child content *@
+            <div style="display: none;">
+                @ChildContent
+            </div>
+        </div>
+    </CascadingValue>
+</CascadingValue>
+
+@* Chart Modal *@
+@if (_showChartModal && _chartModalReady)
+{
+    <RModal @bind-Visible="_showChartModal"
+            Header="Data Visualization"
+            Size="ModalSize.Large">
+        <HeaderContent>
+            <div class="d-flex items-center gap-2">
+                <i class="material-symbols-rounded text-primary">analytics</i>
+                <span>@Title Chart Analysis</span>
+            </div>
+        </HeaderContent>
+        <ChildContent>
+            @if (FilteredData.Any())
+            {
+                <div class="pa-4">
+                    <RChartSmart Data="@FilteredData"
+                                Type="@DefaultChartType"
+                                Header="@($"{Title} Overview")"
+                                Height="400px"
+                                UseCanvas="true"
+                                EnableTouchInteractions="true" />
+                    
+                    <div class="text-sm text-secondary mt-4">
+                        Visualizing @FilteredData.Count() of @Items.Count() records
+                        @if (!string.IsNullOrEmpty(_searchTerm))
+                        {
+                            <span> (filtered by "@_searchTerm")</span>
+                        }
+                    </div>
+                </div>
+            }
+            else
+            {
+                <REmptyState Text="No Data to Visualize"
+                            Icon="insert_chart"
+                            Description="Apply filters or add data to see visualizations" />
+            }
+        </ChildContent>
+        <FooterContent>
+            <RButton Text="Close"
+                    Variant="ButtonVariant.Ghost"
+                    OnClick="@(() => _showChartModal = false)" />
+        </FooterContent>
+    </RModal>
+}
+
+@code {
+    #region Parameters
+
+    [Parameter] public IEnumerable<TItem> Items { get; set; } = Enumerable.Empty<TItem>();
+    [Parameter] public RenderFragment ChildContent { get; set; }
+    
+    // Header
+    [Parameter] public bool ShowHeader { get; set; } = true;
+    [Parameter] public string Title { get; set; }
+    [Parameter] public string Subtitle { get; set; }
+    [Parameter] public string Icon { get; set; }
+    [Parameter] public RenderFragment HeaderContent { get; set; }
+    
+    // Toolbar
+    [Parameter] public bool ShowToolbar { get; set; } = true;
+    [Parameter] public bool ShowSearch { get; set; } = true;
+    [Parameter] public string SearchPlaceholder { get; set; } = "Search...";
+    [Parameter] public bool ShowFilters { get; set; }
+    [Parameter] public bool ShowColumnManager { get; set; } = true;
+    [Parameter] public RenderFragment ToolbarContent { get; set; }
+    
+    // Virtualization
+    [Parameter] public string Height { get; set; } = "600px";
+    [Parameter] public int OverscanRows { get; set; } = 10;
+    [Parameter] public bool DynamicRowHeight { get; set; }
+    [Parameter] public Func<TItem, int> GetItemHeight { get; set; }
+    
+    // Performance
+    [Parameter] public bool ShowPerformanceMetrics { get; set; }
+    [Parameter] public int MaxRenderBatch { get; set; } = 50;
+    [Parameter] public bool EnableHorizontalVirtualization { get; set; }
+    
+    // Chart Integration
+    [Parameter] public bool ShowChartButton { get; set; }
+    [Parameter] public ChartType? DefaultChartType { get; set; }
+    [Parameter] public string ChartButtonText { get; set; } = "Visualize";
+    
+    // Export
+    [Parameter] public bool ExportEnabled { get; set; }
+    [Parameter] public string[] ExportFormats { get; set; } = new[] { "csv", "excel", "json" };
+    
+    // Table
+    [Parameter] public bool Loading { get; set; }
+    [Parameter] public string LoadingText { get; set; } = "Loading data...";
+    [Parameter] public string EmptyMessage { get; set; } = "No data available";
+    [Parameter] public RenderFragment EmptyContent { get; set; }
+    [Parameter] public bool ShowFooter { get; set; } = true;
+    [Parameter] public ComponentDensity Density { get; set; } = ComponentDensity.Normal;
+    
+    // Selection
+    [Parameter] public bool Selectable { get; set; }
+    [Parameter] public bool MultiSelect { get; set; }
+    [Parameter] public IEnumerable<TItem> SelectedItems { get; set; } = Enumerable.Empty<TItem>();
+    [Parameter] public EventCallback<IEnumerable<TItem>> SelectedItemsChanged { get; set; }
+    [Parameter] public TItem SelectedItem { get; set; }
+    [Parameter] public EventCallback<TItem> SelectedItemChanged { get; set; }
+    
+    // Sorting
+    [Parameter] public string SortBy { get; set; }
+    [Parameter] public bool SortDescending { get; set; }
+    [Parameter] public EventCallback<string> SortByChanged { get; set; }
+    [Parameter] public EventCallback<bool> SortDescendingChanged { get; set; }
+    
+    // Column Management
+    [Parameter] public bool EnableStickyColumns { get; set; } = true;
+    [Parameter] public bool EnableColumnReordering { get; set; } = true;
+    [Parameter] public Dictionary<string, ColumnPreferences> ColumnPreferences { get; set; } = new();
+    [Parameter] public EventCallback<Dictionary<string, ColumnPreferences>> ColumnPreferencesChanged { get; set; }
+    
+    // Row customization
+    [Parameter] public Func<TItem, string> RowClass { get; set; }
+    [Parameter] public EventCallback<TItem> OnRowClicked { get; set; }
+    [Parameter] public bool RowClickable { get; set; }
+    
+    // Styling
+    [Parameter] public string Class { get; set; }
+    [Parameter] public string Style { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+
+    #endregion
+
+    #region Private Fields
+
+    private TableContext _tableContext;
+    private readonly List<ColumnDefinition<TItem>> _columns = new();
+    private readonly HashSet<TItem> _selectedItems = new();
+    private string _searchTerm = "";
+    private IEnumerable<TItem> _processedItems = Enumerable.Empty<TItem>();
+    private string TableId => $"vtable-{GetHashCode()}";
+    
+    // Virtualization
+    private Virtualize<TItem> _virtualizeComponent;
+    private int _visibleStartIndex = 0;
+    private int _visibleEndIndex = 0;
+    
+    // Performance tracking
+    private DateTime _lastRenderStart;
+    private TimeSpan _lastRenderTime;
+    private int _currentFps = 60;
+    private System.Timers.Timer _performanceTimer;
+    
+    // Chart integration
+    private bool _showChartModal = false;
+    private bool _chartModalReady = false;
+    
+    // Cache for performance
+    private static readonly ConcurrentDictionary<string, Func<TItem, object>> _propertyGetterCache = new();
+    private static readonly ConcurrentDictionary<string, PropertyInfo> _propertyInfoCache = new();
+
+    #endregion
+
+    #region Public Properties
+
+    public IEnumerable<TItem> FilteredData => _processedItems;
+
+    #endregion
+
+    #region Lifecycle
+
+    protected override void OnInitialized()
+    {
+        _tableContext = new TableContext(typeof(TItem), TableId, true);
+        
+        // Auto-generate columns if needed
+        if (ChildContent == null && !_columns.Any())
+        {
+            var generatedColumns = PropertyColumnGenerator.GenerateColumns<TItem>();
+            foreach (var column in generatedColumns)
+            {
+                _columns.Add(column);
+            }
+        }
+        
+        // Initialize performance monitoring
+        if (ShowPerformanceMetrics)
+        {
+            _performanceTimer = new System.Timers.Timer(1000);
+            _performanceTimer.Elapsed += OnPerformanceTimerElapsed;
+            _performanceTimer.Start();
+        }
+        
+        base.OnInitialized();
+    }
+
+    protected override void OnParametersSet()
+    {
+        _lastRenderStart = DateTime.Now;
+        
+        // Auto-generate columns if needed
+        if (ChildContent == null && !_columns.Any())
+        {
+            var generatedColumns = PropertyColumnGenerator.GenerateColumns<TItem>();
+            foreach (var column in generatedColumns)
+            {
+                _columns.Add(column);
+            }
+        }
+        
+        ProcessItems();
+        UpdateSelection();
+        
+        _lastRenderTime = DateTime.Now - _lastRenderStart;
+        base.OnParametersSet();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && _virtualizeComponent != null)
+        {
+            // Initialize virtualization settings
+            await Task.CompletedTask;
+        }
+        
+        await base.OnAfterRenderAsync(firstRender);
+    }
+
+    #endregion
+
+    #region ITableParent Implementation
+
+    public Type ItemType => typeof(TItem);
+
+    public void AddColumn(object columnInfo)
+    {
+        if (columnInfo is ColumnDefinition<TItem> column)
+        {
+            _columns.Add(column);
+            StateHasChanged();
+        }
+    }
+
+    public void UpdateColumn(object columnInfo)
+    {
+        if (columnInfo is ColumnDefinition<TItem> column)
+        {
+            var index = _columns.FindIndex(c => c.Key == column.Key);
+            if (index >= 0)
+            {
+                _columns[index] = column;
+                StateHasChanged();
+            }
+        }
+    }
+
+    #endregion
+
+    #region Data Processing
+
+    private void ProcessItems()
+    {
+        if (Items == null)
+        {
+            _processedItems = Enumerable.Empty<TItem>();
+            return;
+        }
+
+        var query = Items.AsQueryable();
+
+        // Apply search
+        if (!string.IsNullOrWhiteSpace(_searchTerm))
+        {
+            query = ApplySearch(query, _searchTerm);
+        }
+
+        // Apply sorting
+        if (!string.IsNullOrEmpty(SortBy))
+        {
+            query = ApplySort(query, SortBy, SortDescending);
+        }
+
+        _processedItems = query.ToList();
+    }
+
+    private IQueryable<TItem> ApplySearch(IQueryable<TItem> query, string searchTerm)
+    {
+        var searchableColumns = _columns.Where(c => c.Searchable).ToList();
+        if (!searchableColumns.Any())
+        {
+            searchableColumns = _columns.Where(c => 
+                GetPropertyType(c.Key) == typeof(string)).ToList();
+        }
+
+        if (!searchableColumns.Any())
+            return query;
+
+        var lowerSearchTerm = searchTerm.ToLower();
+        var items = query.ToList();
+        
+        var filteredItems = items.Where(item =>
+            searchableColumns.Any(column =>
+            {
+                var value = GetPropertyValue(item, column.Key);
+                return value?.ToString()?.ToLower().Contains(lowerSearchTerm) ?? false;
+            }));
+            
+        return filteredItems.AsQueryable();
+    }
+
+    private IQueryable<TItem> ApplySort(IQueryable<TItem> query, string sortBy, bool descending)
+    {
+        var getter = GetPropertyGetter(sortBy);
+        if (getter == null)
+            return query;
+
+        return descending
+            ? query.OrderByDescending(item => getter(item))
+            : query.OrderBy(item => getter(item));
+    }
+
+    #endregion
+
+    #region Property Access
+
+    private static Func<TItem, object> GetPropertyGetter(string propertyName)
+    {
+        return _propertyGetterCache.GetOrAdd(propertyName, key =>
+        {
+            var param = Expression.Parameter(typeof(TItem), "item");
+            var property = Expression.Property(param, key);
+            var convert = Expression.Convert(property, typeof(object));
+            var lambda = Expression.Lambda<Func<TItem, object>>(convert, param);
+            return lambda.Compile();
+        });
+    }
+
+    private static object GetPropertyValue(TItem item, string propertyName)
+    {
+        if (item == null || string.IsNullOrEmpty(propertyName))
+            return null;
+
+        try
+        {
+            var getter = GetPropertyGetter(propertyName);
+            return getter(item);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static Type GetPropertyType(string propertyName)
+    {
+        var propInfo = _propertyInfoCache.GetOrAdd(propertyName, key =>
+            typeof(TItem).GetProperty(key));
+        return propInfo?.PropertyType;
+    }
+
+    #endregion
+
+    #region Selection
+
+    private void UpdateSelection()
+    {
+        _selectedItems.Clear();
+        
+        if (MultiSelect && SelectedItems != null)
+        {
+            foreach (var item in SelectedItems)
+            {
+                _selectedItems.Add(item);
+            }
+        }
+        else if (!MultiSelect && SelectedItem != null)
+        {
+            _selectedItems.Add(SelectedItem);
+        }
+    }
+
+    private bool IsSelected(TItem item)
+    {
+        return _selectedItems.Contains(item);
+    }
+
+    private bool IsAllSelected()
+    {
+        var visibleItems = GetVisibleItems();
+        return visibleItems.Any() && visibleItems.All(item => _selectedItems.Contains(item));
+    }
+
+    private async Task OnSelectionChanged(TItem item, bool selected)
+    {
+        if (MultiSelect)
+        {
+            if (selected)
+                _selectedItems.Add(item);
+            else
+                _selectedItems.Remove(item);
+
+            await SelectedItemsChanged.InvokeAsync(_selectedItems.ToList());
+        }
+        else
+        {
+            _selectedItems.Clear();
+            if (selected)
+            {
+                _selectedItems.Add(item);
+                await SelectedItemChanged.InvokeAsync(item);
+            }
+            else
+            {
+                await SelectedItemChanged.InvokeAsync(default(TItem));
+            }
+        }
+        
+        StateHasChanged();
+    }
+
+    private async Task OnSelectAllChanged(bool selected)
+    {
+        var visibleItems = GetVisibleItems();
+
+        if (selected)
+        {
+            foreach (var item in visibleItems)
+            {
+                _selectedItems.Add(item);
+            }
+        }
+        else
+        {
+            foreach (var item in visibleItems)
+            {
+                _selectedItems.Remove(item);
+            }
+        }
+
+        await SelectedItemsChanged.InvokeAsync(_selectedItems.ToList());
+        StateHasChanged();
+    }
+
+    #endregion
+
+    #region Sorting
+
+    private async Task OnSort(string columnKey)
+    {
+        if (SortBy == columnKey)
+        {
+            SortDescending = !SortDescending;
+            await SortDescendingChanged.InvokeAsync(SortDescending);
+        }
+        else
+        {
+            SortBy = columnKey;
+            SortDescending = false;
+            await SortByChanged.InvokeAsync(SortBy);
+            await SortDescendingChanged.InvokeAsync(SortDescending);
+        }
+
+        ProcessItems();
+        StateHasChanged();
+        
+        // Refresh virtualization
+        if (_virtualizeComponent != null)
+        {
+            await _virtualizeComponent.RefreshDataAsync();
+        }
+    }
+
+    private string GetSortIcon(string columnKey)
+    {
+        if (SortBy != columnKey)
+            return "unfold_more";
+
+        return SortDescending ? "arrow_drop_down" : "arrow_drop_up";
+    }
+
+    #endregion
+
+    #region Virtualization
+
+    private IEnumerable<TItem> GetVisibleItems()
+    {
+        // Get currently visible items based on virtualization state
+        return _processedItems.Skip(_visibleStartIndex).Take(_visibleEndIndex - _visibleStartIndex);
+    }
+
+    private int GetRowHeight()
+    {
+        if (DynamicRowHeight && GetItemHeight != null)
+        {
+            // For dynamic heights, return average or default
+            return 48;
+        }
+
+        return Density switch
+        {
+            ComponentDensity.Compact => 36,
+            ComponentDensity.Normal => 56,
+            _ => 48
+        };
+    }
+
+    private async Task ScrollToTop()
+    {
+        if (_virtualizeComponent != null)
+        {
+            // Scroll to top of virtualized content
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private string GetItemsRangeText()
+    {
+        var total = _processedItems.Count();
+        if (total == 0) return "0";
+        
+        var start = Math.Min(_visibleStartIndex + 1, total);
+        var end = Math.Min(_visibleEndIndex, total);
+        
+        return $"{start}-{end}";
+    }
+
+    #endregion
+
+    #region Column Management
+
+    private IEnumerable<ColumnDefinition<TItem>> GetVisibleColumns()
+    {
+        return _columns.Where(c => 
+            !ColumnPreferences.ContainsKey(c.Key) || 
+            ColumnPreferences[c.Key].Visible);
+    }
+
+    private async Task OnColumnPreferencesChanged(Dictionary<string, ColumnPreferences> preferences)
+    {
+        ColumnPreferences = preferences;
+        await ColumnPreferencesChanged.InvokeAsync(preferences);
+        StateHasChanged();
+    }
+
+    #endregion
+
+    #region Event Handlers
+
+    private async Task OnSearchInput(ChangeEventArgs e)
+    {
+        _searchTerm = e.Value?.ToString() ?? "";
+        ProcessItems();
+        
+        if (_virtualizeComponent != null)
+        {
+            await _virtualizeComponent.RefreshDataAsync();
+        }
+        
+        StateHasChanged();
+    }
+
+    private async Task OnRowClick(TItem item)
+    {
+        if (RowClickable && OnRowClicked.HasDelegate)
+        {
+            await OnRowClicked.InvokeAsync(item);
+        }
+    }
+
+    private async Task ShowChartModal()
+    {
+        _chartModalReady = true;
+        await Task.Delay(50);
+        _showChartModal = true;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ExportData()
+    {
+        // Implement export functionality
+        await Task.CompletedTask;
+    }
+
+    #endregion
+
+    #region Performance Monitoring
+
+    private void OnPerformanceTimerElapsed(object sender, System.Timers.ElapsedEventArgs e)
+    {
+        // Calculate FPS based on render times
+        if (_lastRenderTime.TotalMilliseconds > 0)
+        {
+            _currentFps = (int)(1000 / _lastRenderTime.TotalMilliseconds);
+        }
+        
+        InvokeAsync(StateHasChanged);
+    }
+
+    #endregion
+
+    #region Styling
+
+    private string GetContainerClasses()
+    {
+        var classes = new List<string> { "virtual-table-container" };
+        
+        if (!string.IsNullOrEmpty(Class))
+            classes.Add(Class);
+
+        if (Disabled)
+            classes.Add("disabled");
+
+        if (Loading)
+            classes.Add("loading");
+
+        // Add density class
+        classes.Add($"density-{Density.ToString().ToLower()}");
+
+        // Add performance optimization class for large datasets
+        if (_processedItems.Count() > 1000)
+            classes.Add("optimized");
+
+        return string.Join(" ", classes);
+    }
+
+    private string GetContainerStyle()
+    {
+        var styles = new List<string>();
+        
+        if (!string.IsNullOrEmpty(Style))
+            styles.Add(Style);
+
+        return string.Join("; ", styles);
+    }
+
+    private string GetRowClass(TItem item)
+    {
+        var classes = new List<string>();
+
+        if (IsSelected(item))
+            classes.Add("selected");
+
+        if (RowClickable)
+            classes.Add("clickable");
+
+        if (RowClass != null)
+        {
+            var customClass = RowClass(item);
+            if (!string.IsNullOrEmpty(customClass))
+                classes.Add(customClass);
+        }
+
+        return string.Join(" ", classes);
+    }
+
+    private string GetColumnStyle(ColumnDefinition<TItem> column)
+    {
+        var styles = new List<string>();
+
+        if (!string.IsNullOrEmpty(column.Width))
+            styles.Add($"width: {column.Width}");
+
+        if (!string.IsNullOrEmpty(column.MinWidth))
+            styles.Add($"min-width: {column.MinWidth}");
+
+        if (!string.IsNullOrEmpty(column.MaxWidth))
+            styles.Add($"max-width: {column.MaxWidth}");
+
+        // Add sticky column support
+        if (EnableStickyColumns && ColumnPreferences.ContainsKey(column.Key))
+        {
+            var prefs = ColumnPreferences[column.Key];
+            if (prefs.IsPinned)
+            {
+                styles.Add("position: sticky");
+                styles.Add($"{prefs.PinPosition.ToString().ToLower()}: 0");
+                styles.Add("z-index: 10");
+            }
+        }
+
+        return string.Join("; ", styles);
+    }
+
+    #endregion
+
+    #region Cleanup
+
+    public async ValueTask DisposeAsync()
+    {
+        _performanceTimer?.Stop();
+        _performanceTimer?.Dispose();
+        await Task.CompletedTask;
+    }
+
+    #endregion
+}

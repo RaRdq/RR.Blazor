@@ -79,8 +79,8 @@ export class FocusTrap {
         // Add event listener
         document.addEventListener('keydown', trapHandler);
 
-        // Focus first element after a delay to ensure rendering
-        setTimeout(() => {
+        // Focus first element immediately
+        requestAnimationFrame(() => {
             const currentModal = this.findPortaledModal(modalElement, trapId);
             if (currentModal) {
                 const firstFocusable = this.getFocusableElements(currentModal)[0];
@@ -88,7 +88,7 @@ export class FocusTrap {
                     firstFocusable.focus();
                 }
             }
-        }, 150);
+        });
 
         return true;
     }

@@ -451,15 +451,16 @@ export const RRFileUpload = {
             fileCard.style.opacity = '0';
             fileCard.style.transition = 'all 0.2s ease-out';
             
-            setTimeout(() => {
+            // Use transitionend event instead of setTimeout
+            fileCard.addEventListener('transitionend', function onTransitionEnd() {
                 fileCard.remove();
                 
                 // Check if we need to show empty state
-                const remainingFiles = this.getCurrentFileCount(element);
+                const remainingFiles = FileUpload.getCurrentFileCount(element);
                 if (remainingFiles === 0) {
-                    this.showEmptyState(element);
+                    FileUpload.showEmptyState(element);
                 }
-            }, 200);
+            }, { once: true });
         }
 
         // Trigger removal event
@@ -477,7 +478,8 @@ export const RRFileUpload = {
         if (previewContainer && uploadArea) {
             // Smooth transition back to empty drop zone
             previewContainer.style.opacity = '0';
-            setTimeout(() => {
+            // Use transitionend for cleanup
+            previewContainer.addEventListener('transitionend', function onTransitionEnd() {
                 previewContainer.style.display = 'none';
                 uploadArea.style.display = 'block';
                 uploadArea.style.opacity = '0';
@@ -485,7 +487,7 @@ export const RRFileUpload = {
                     uploadArea.style.transition = 'opacity 0.3s ease-in';
                     uploadArea.style.opacity = '1';
                 });
-            }, 150);
+            }, { once: true });
         }
     },
 
@@ -496,7 +498,8 @@ export const RRFileUpload = {
         
         if (previewContainer && uploadArea && uploadArea.style.display !== 'none') {
             uploadArea.style.opacity = '0';
-            setTimeout(() => {
+            // Use transitionend for state switch
+            uploadArea.addEventListener('transitionend', function onTransitionEnd() {
                 uploadArea.style.display = 'none';
                 previewContainer.style.display = 'block';
                 previewContainer.style.opacity = '0';
@@ -504,7 +507,7 @@ export const RRFileUpload = {
                     previewContainer.style.transition = 'opacity 0.3s ease-in';
                     previewContainer.style.opacity = '1';
                 });
-            }, 150);
+            }, { once: true });
         }
     },
 

@@ -321,14 +321,16 @@ function initializeChart(element, options = {}) {
             
             updateLayout();
             
-            // Use ResizeObserver with proper debouncing
+            // Use ResizeObserver with requestAnimationFrame
+            let resizeScheduled = false;
             const resizeObserver = new ResizeObserver(entries => {
-                clearTimeout(container._resizeTimeout);
-                container._resizeTimeout = setTimeout(() => {
-                    if (entries[0]?.contentRect?.width > 0) {
+                if (!resizeScheduled && entries[0]?.contentRect?.width > 0) {
+                    resizeScheduled = true;
+                    requestAnimationFrame(() => {
                         updateLayout();
-                    }
-                }, 50); // More stable debounce
+                        resizeScheduled = false;
+                    });
+                }
             });
             
             resizeObserver.observe(container);

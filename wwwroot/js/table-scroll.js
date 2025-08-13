@@ -119,15 +119,14 @@ class TableScrollInstance {
     }
     
     handleResize() {
-        // Debounce resize events
-        if (this.resizeTimeout) {
-            clearTimeout(this.resizeTimeout);
+        // Use requestAnimationFrame for resize handling
+        if (!this.resizeScheduled) {
+            this.resizeScheduled = true;
+            requestAnimationFrame(() => {
+                this.updateScrollShadows();
+                this.resizeScheduled = false;
+            });
         }
-        
-        this.resizeTimeout = setTimeout(() => {
-            this.updateScrollShadows();
-            this.resizeTimeout = null;
-        }, 100);
     }
     
     updateScrollShadows() {

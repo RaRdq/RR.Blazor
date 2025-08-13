@@ -4,6 +4,24 @@
 @use 'core' as *;
 @use 'sass:map';
 
+// Component loading configuration - defines behavior per component type
+$component-loading-config: (
+  'button': (preserve-height: true, min-height: null),
+  'input': (preserve-height: true, min-height: null),
+  'select': (preserve-height: true, min-height: null),
+  'textarea': (preserve-height: true, min-height: null),
+  'badge': (preserve-height: true, min-height: null),
+  'chip': (preserve-height: true, min-height: null),
+  'card': (preserve-height: false, min-height: 8rem),
+  'section': (preserve-height: false, min-height: 20rem),
+  'container': (preserve-height: false, min-height: 20rem),
+  'table': (preserve-height: false, min-height: 10rem),
+  'form': (preserve-height: false, min-height: 10rem),
+  'modal': (preserve-height: false, min-height: 15rem),
+  'inline': (preserve-height: true, min-height: null),
+  'default': (preserve-height: false, min-height: 3rem)
+);
+
 // Loading types configuration
 $loading-types: (
   'replace': 'Content is hidden and replaced with spinner',
@@ -39,10 +57,26 @@ $loading-themes: (
   'white': (spinner: white, track: color-mix(in srgb, white 30%, transparent))
 );
 
-// Foundation mixin for all loading states
-@mixin loading-foundation() {
+// Foundation mixin for all loading states - context-aware
+@mixin loading-foundation($component-type: 'default', $custom-min-height: null) {
+  // Get component-specific configuration
+  $config: map.get($component-loading-config, $component-type);
+  
+  // Fallback to default if component type not found
+  @if not $config {
+    $config: map.get($component-loading-config, 'default');
+  }
+  
+  $preserve: map.get($config, 'preserve-height');
+  $min-h: if($custom-min-height, $custom-min-height, map.get($config, 'min-height'));
+  
   position: relative;
-  min-height: 3rem;
+  
+  // Only apply min-height if component needs it
+  @if $min-h and not $preserve {
+    min-height: $min-h;
+  }
+  
   contain: layout style;
   isolation: isolate;
   will-change: contents;
@@ -77,9 +111,9 @@ $loading-themes: (
   flex-shrink: 0;
 }
 
-// Replace content with spinner - enhanced for button support
-@mixin loading-replace($size: 'md', $theme: 'default', $supports-loading-text: false) {
-  @include loading-foundation();
+// Replace content with spinner - context-aware
+@mixin loading-replace($size: 'md', $theme: 'default', $component-type: 'default', $supports-loading-text: false) {
+  @include loading-foundation($component-type);
   
   // Hide original content (unless LoadingText present)
   > *:not(.loading-text):not(.loading-spinner) {
@@ -109,17 +143,19 @@ $loading-themes: (
       &::after {
         content: '';
         position: static;
-        display: inline-block;
+        display: inline-flex;
+        align-self: center;
         transform: none;
         @include spinner-core($size, $theme);
         order: -1;
         flex-shrink: 0;
-        vertical-align: middle;
+        margin-right: 0.5em;
       }
       
       .loading-text {
-        display: inline;
-        vertical-align: middle;
+        display: inline-flex;
+        align-self: center;
+        line-height: 1;
       }
     }
     
@@ -149,9 +185,9 @@ $loading-themes: (
   }
 }
 
-// Overlay with spinner
-@mixin loading-overlay($size: 'md', $theme: 'default', $blur: 4px) {
-  @include loading-foundation();
+// Overlay with spinner - context-aware
+@mixin loading-overlay($size: 'md', $theme: 'default', $blur: 4px, $component-type: 'default') {
+  @include loading-foundation($component-type);
   
   &::before {
     content: '';
@@ -242,9 +278,9 @@ $loading-themes: (
   }
 }
 
-// Button loading mixin - proper extension of generic system
+// Button loading mixin - uses button-specific configuration
 @mixin button-loading($size: 'md') {
-  @include loading-replace($size, 'current', true);
+  @include loading-replace($size, 'current', 'button', true); // component-type: 'button'
   
   // Additional button-specific styling
   pointer-events: none;
@@ -278,10 +314,9 @@ $loading-themes: (
   }
 }
 
-// Card loading state
+// Card loading state - uses card-specific configuration
 @mixin loading-card() {
-  @include loading-overlay('md');
-  min-height: 8rem;
+  @include loading-overlay('md', 'default', 4px, 'card'); // component-type: 'card'
 }
 
 // Table loading state
@@ -297,22 +332,22 @@ $loading-themes: (
 
 // Modern BEM-style loading classes
 .loading {
-  @include loading-replace();
+  @include loading-replace('md', 'default', 'default');
   
-  &-xs { @include loading-replace('xs'); }
-  &-sm { @include loading-replace('sm'); }
-  &-md { @include loading-replace('md'); }
-  &-lg { @include loading-replace('lg'); }
-  &-xl { @include loading-replace('xl'); }
+  &-xs { @include loading-replace('xs', 'default', 'default'); }
+  &-sm { @include loading-replace('sm', 'default', 'default'); }
+  &-md { @include loading-replace('md', 'default', 'default'); }
+  &-lg { @include loading-replace('lg', 'default', 'default'); }
+  &-xl { @include loading-replace('xl', 'default', 'default'); }
   
   &-overlay {
-    @include loading-overlay();
+    @include loading-overlay('md', 'default', 4px, 'default');
     
-    &-xs { @include loading-overlay('xs'); }
-    &-sm { @include loading-overlay('sm'); }
-    &-md { @include loading-overlay('md'); }
-    &-lg { @include loading-overlay('lg'); }
-    &-xl { @include loading-overlay('xl'); }
+    &-xs { @include loading-overlay('xs', 'default', 4px, 'default'); }
+    &-sm { @include loading-overlay('sm', 'default', 4px, 'default'); }
+    &-md { @include loading-overlay('md', 'default', 4px, 'default'); }
+    &-lg { @include loading-overlay('lg', 'default', 4px, 'default'); }
+    &-xl { @include loading-overlay('xl', 'default', 4px, 'default'); }
   }
   
   &-inline {
@@ -371,7 +406,7 @@ $loading-themes: (
   }
   
   &-container {
-    @include loading-replace('lg', 'default');
+    @include loading-replace('lg', 'default', 'container');
     display: flex;
     flex-direction: column;
     align-items: center;

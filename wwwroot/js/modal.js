@@ -1,11 +1,8 @@
 // modal.js - Modal-specific behavior management
-// Following SRP: This module manages modal behavior and state
-// Delegates DOM operations to PortalManager and BackdropManager
-
-import PortalManager from './portal.js';
-import BackdropManager from './backdrop.js';
-import { createFocusTrap, destroyFocusTrap } from './focus-trap.js';
-import { lockScroll, unlockScroll, forceUnlockScroll } from './scroll-lock.js';
+// Following SRP and Dependency Inversion:
+// - This module manages modal behavior and state
+// - Uses events to communicate with portal and backdrop (not direct imports)
+// - Portal and backdrop are core modules that don't know about modals
 
 class ModalManager {
     constructor() {
@@ -16,23 +13,22 @@ class ModalManager {
         // Initialize animation durations from CSS variables
         this.animationDurations = this._initializeAnimationDurations();
         
-        // Get singleton instances
-        this._portalManager = null;
-        this._backdropManager = null;
+        // Setup event listeners for portal and backdrop events
+        this._setupEventListeners();
     }
     
-    get portalManager() {
-        if (!this._portalManager) {
-            this._portalManager = PortalManager.getInstance();
-        }
-        return this._portalManager;
-    }
-    
-    get backdropManager() {
-        if (!this._backdropManager) {
-            this._backdropManager = BackdropManager.getInstance();
-        }
-        return this._backdropManager;
+    _setupEventListeners() {
+        // Listen for portal events (Dependency Inversion)
+        document.addEventListener('portal-destroyed', (event) => {
+            const { portalId } = event.detail;
+            // Clean up modal data when portal is destroyed
+            const modal = Array.from(this.activeModals.entries())
+                .find(([id, data]) => data.portalId === portalId);
+            if (modal) {
+                const [modalId] = modal;
+                this.activeModals.delete(modalId);
+            }
+        });
     }
     
     /**
@@ -47,15 +43,7 @@ class ModalManager {
         // Handle existing modal recreation
         if (this.activeModals.has(modalId)) {
             const currentState = this.activeModals.get(modalId).state;
-            console.log(`[ModalManager] Recreating modal ${modalId} from state: ${currentState}`);
-            
-            // Destroy existing modal first
-            try {
-                await this.destroyModal(modalId);
-            } catch (error) {
-                console.warn(`[ModalManager] Force cleanup modal ${modalId}:`, error.message);
-                this._forceCleanup(modalId);
-            }
+            throw new Error(`Modal ${modalId} already exists in state: ${currentState}. Destroy it first.`);
         }
         
         // State: closed → opening
@@ -66,61 +54,73 @@ class ModalManager {
             createdAt: Date.now()
         });
         
-        // Lock scroll on first modal
+        // Lock scroll on first modal via proxy
         if (this.activeModals.size === 1) {
-            lockScroll();
+            await window.RRBlazor.ScrollLock.lock();
         }
         
-        // Create backdrop if requested (delegate to BackdropManager)
+        // Request backdrop creation via events directly
         if (options.useBackdrop !== false) {
-            const backdropConfig = {
-                level: this.activeModals.size - 1,
-                className: options.backdropClass || 'modal-backdrop-dark',
-                blur: options.backdropBlur || 8,
-                animationDuration: this.animationDurations[options.animationSpeed || 'normal'],
-                shared: true
-            };
-            
-            const backdrop = this.backdropManager.create(modalId, backdropConfig);
-            
-            // Setup backdrop click handler
-            if (options.closeOnBackdropClick !== false && options.onBackdropClick) {
-                const cleanupFn = this.backdropManager.onClick(modalId, (event) => {
-                    event.stopPropagation();
-                    event.preventDefault();
-                    if (this.isTopModal(modalId)) {
-                        options.onBackdropClick(event);
+            const backdropRequest = new CustomEvent('backdrop-create-request', {
+                detail: {
+                    requesterId: modalId,
+                    config: {
+                        level: this.activeModals.size - 1,
+                        className: options.backdropClass || 'modal-backdrop-dark',
+                        blur: options.backdropBlur || 8,
+                        animationDuration: this.animationDurations[options.animationSpeed || 'normal'],
+                        shared: true
                     }
-                });
-                this._storeEventHandler(modalId, 'backdropClick', cleanupFn);
-            }
+                },
+                bubbles: true
+            });
+            document.dispatchEvent(backdropRequest);
         }
         
-        // Create portal container (delegate to PortalManager)
-        const portal = this.portalManager.create({
-            id: modalId,
-            className: 'modal-portal',
-            attributes: {
-                'role': 'presentation',
-                'data-modal-id': modalId
-            }
+        // Set up listener BEFORE dispatching request to avoid race condition
+        const portalPromise = this._waitForPortal(modalId);
+        
+        // Now request portal creation via events
+        const portalRequest = new CustomEvent('portal-create-request', {
+            detail: {
+                requesterId: modalId,
+                config: {
+                    id: modalId,
+                    className: 'modal-portal',
+                    attributes: {
+                        'role': 'presentation',
+                        'data-modal-id': modalId
+                    }
+                }
+            },
+            bubbles: true
         });
+        document.dispatchEvent(portalRequest);
+        
+        // Wait for portal to be created
+        await portalPromise;
+        
+        // Get the created portal element
+        const portal = document.getElementById(modalId);
+        if (!portal) {
+            throw new Error(`Portal ${modalId} was not created`);
+        }
         
         // Copy theme attributes from document to portal
-        this._copyThemeToPortal(portal.element);
+        this._copyThemeToPortal(portal);
         
         // Apply modal-specific centering styles
-        this._applyModalContainerStyles(portal.element);
+        this._applyModalContainerStyles(portal);
         
         // Move modal element to portal
-        portal.element.appendChild(modalElement);
+        portal.appendChild(modalElement);
         
         // Apply modal styles and animations
         this._applyModalStyles(modalElement, options);
         
-        // Create focus trap
+        // Create focus trap via proxy
         if (options.trapFocus !== false) {
-            await createFocusTrap(modalElement, modalId);
+            await window.RRBlazor.FocusTrap.create(modalElement, modalId);
         }
         
         // Setup escape key handler
@@ -138,14 +138,13 @@ class ModalManager {
             });
         }
         
-        // Wait for opening animation
-        await this._waitForAnimation(options.animationSpeed || 'normal');
+        // No waiting - CSS handles animations independently
         
         // State: opening → open
         const modal = this.activeModals.get(modalId);
         if (modal) {
             modal.state = 'open';
-            modal.portal = portal;
+            modal.portalId = modalId;
         }
         
         return modalId;
@@ -176,42 +175,37 @@ class ModalManager {
         // Cleanup event handlers
         this._cleanupEventHandlers(modalId);
         
-        // Destroy focus trap
-        try {
-            await destroyFocusTrap(modalId);
-        } catch (error) {
-            console.warn(`[ModalManager] Focus trap cleanup failed for ${modalId}:`, error);
-        }
+        // Destroy focus trap via proxy - let it throw if it fails
+        await window.RRBlazor.FocusTrap.destroy(modalId);
         
-        // Apply closing animation
+        // Apply closing animation - CSS handles timing
         if (modal.element && modal.element.parentNode) {
             this._applyClosingAnimation(modal.element, modal.options);
-            await this._waitForAnimation(modal.options?.animationSpeed || 'normal');
         }
         
-        // Destroy portal (delegate to PortalManager)
-        try {
-            this.portalManager.destroy(modalId);
-        } catch (error) {
-            console.warn(`[ModalManager] Portal cleanup failed for ${modalId}:`, error);
-        }
+        // Request portal destruction via events directly
+        const destroyPortalRequest = new CustomEvent('portal-destroy-request', {
+            detail: { requesterId: modalId, portalId: modalId },
+            bubbles: true
+        });
+        document.dispatchEvent(destroyPortalRequest);
         
-        // Destroy backdrop (delegate to BackdropManager)
+        // Request backdrop destruction via events if it was created
         if (modal.options?.useBackdrop !== false) {
-            try {
-                this.backdropManager.destroy(modalId);
-            } catch (error) {
-                console.warn(`[ModalManager] Backdrop cleanup failed for ${modalId}:`, error);
-            }
+            const destroyBackdropRequest = new CustomEvent('backdrop-destroy-request', {
+                detail: { requesterId: modalId },
+                bubbles: true
+            });
+            document.dispatchEvent(destroyBackdropRequest);
         }
         
         // State: closing → closed
         modal.state = 'closed';
         this.activeModals.delete(modalId);
         
-        // Unlock scroll when all modals are closed
+        // Unlock scroll when all modals are closed via proxy
         if (this.activeModals.size === 0) {
-            unlockScroll();
+            await window.RRBlazor.ScrollLock.unlock();
         }
         
         return true;
@@ -271,47 +265,38 @@ class ModalManager {
         
         this.activeModals.clear();
         this.eventHandlers.clear();
-        forceUnlockScroll();
+        window.RRBlazor.ScrollLock.forceUnlock();
         
-        // Force cleanup portal and backdrop managers
-        try {
-            this.portalManager.destroyAll();
-        } catch (error) {
-            console.warn('[ModalManager] Portal force cleanup failed:', error);
-        }
-        
-        try {
-            this.backdropManager.destroyAll();
-        } catch (error) {
-            console.warn('[ModalManager] Backdrop force cleanup failed:', error);
-        }
+        // Request force cleanup via events
+        document.dispatchEvent(new CustomEvent('portal-cleanup-all-request', { bubbles: true }));
+        document.dispatchEvent(new CustomEvent('backdrop-cleanup-all-request', { bubbles: true }));
     }
     
     // Private helper methods
     
     _initializeAnimationDurations() {
-        try {
-            const rootStyles = getComputedStyle(document.documentElement);
-            
-            const getDurationMs = (cssVar) => {
-                const value = rootStyles.getPropertyValue(cssVar).trim();
-                if (value.endsWith('ms')) {
-                    return parseInt(value, 10);
-                } else if (value.endsWith('s')) {
-                    return parseFloat(value) * 1000;
-                }
-                return 200;
-            };
-            
-            return {
-                fast: getDurationMs('--duration-fast'),
-                normal: getDurationMs('--duration-normal'),
-                slow: getDurationMs('--duration-slow')
-            };
-        } catch (error) {
-            console.warn('[ModalManager] Failed to read CSS duration variables:', error);
-            return { fast: 100, normal: 200, slow: 300 };
-        }
+        const rootStyles = getComputedStyle(document.documentElement);
+        
+        const getDurationMs = (cssVar, defaultValue = '200ms') => {
+            const value = rootStyles.getPropertyValue(cssVar).trim();
+            if (!value) {
+                // Use default value if CSS variable not yet loaded
+                console.warn(`CSS variable ${cssVar} not found, using default: ${defaultValue}`);
+                return defaultValue.endsWith('ms') ? parseInt(defaultValue, 10) : parseFloat(defaultValue) * 1000;
+            }
+            if (value.endsWith('ms')) {
+                return parseInt(value, 10);
+            } else if (value.endsWith('s')) {
+                return parseFloat(value) * 1000;
+            }
+            throw new Error(`Invalid duration format: ${value}`);
+        };
+        
+        return {
+            fast: getDurationMs('--duration-fast'),
+            normal: getDurationMs('--duration-normal'),
+            slow: getDurationMs('--duration-slow')
+        };
     }
     
     _copyThemeToPortal(portalElement) {
@@ -364,8 +349,9 @@ class ModalManager {
     }
     
     async _waitForAnimation(speed) {
-        const duration = this.animationDurations[speed] || this.animationDurations.normal;
-        return new Promise(resolve => setTimeout(resolve, duration));
+        // No waiting - CSS handles animations, we proceed immediately
+        // Fail-fast principle: if CSS transitions aren't ready, that's a CSS issue
+        return Promise.resolve();
     }
     
     _storeEventHandler(modalId, type, cleanupFn) {
@@ -379,11 +365,7 @@ class ModalManager {
         const handlers = this.eventHandlers.get(modalId);
         if (handlers) {
             handlers.forEach(cleanupFn => {
-                try {
-                    cleanupFn();
-                } catch (error) {
-                    console.warn(`[ModalManager] Event cleanup failed:`, error);
-                }
+                cleanupFn();
             });
             this.eventHandlers.delete(modalId);
         }
@@ -391,18 +373,36 @@ class ModalManager {
     
     _forceCleanup(modalId) {
         this._cleanupEventHandlers(modalId);
+        window.RRBlazor.FocusTrap.destroy(modalId);
         
-        try {
-            destroyFocusTrap(modalId);
-        } catch {}
-        
-        try {
-            this.portalManager.destroy(modalId);
-        } catch {}
-        
-        try {
-            this.backdropManager.destroy(modalId);
-        } catch {}
+        // Request cleanup via events
+        document.dispatchEvent(new CustomEvent('portal-destroy-request', { 
+            detail: { requesterId: modalId, portalId: modalId },
+            bubbles: true 
+        }));
+        document.dispatchEvent(new CustomEvent('backdrop-destroy-request', { 
+            detail: { requesterId: modalId },
+            bubbles: true 
+        }));
+    }
+    
+    async _waitForPortal(modalId, timeout = 1000) {
+        return new Promise((resolve, reject) => {
+            const timeoutId = setTimeout(() => {
+                document.removeEventListener('portal-created', handler);
+                reject(new Error(`Portal creation timeout for modal ${modalId}`));
+            }, timeout);
+            
+            const handler = (event) => {
+                if (event.detail.requesterId === modalId) {
+                    clearTimeout(timeoutId);
+                    document.removeEventListener('portal-created', handler);
+                    resolve(event.detail.portal);
+                }
+            };
+            
+            document.addEventListener('portal-created', handler);
+        });
     }
 }
 

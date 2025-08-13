@@ -3,6 +3,7 @@
 @using RR.Blazor.Components.Form
 @using RR.Blazor.Components.Data
 @using RR.Blazor.Components.Data.Filters
+@using RR.Blazor.Components.Display
 @using RR.Blazor.Components.Feedback
 @using RR.Blazor.Enums
 @using RR.Blazor.Models
@@ -11,7 +12,7 @@
 @using System.Collections.Concurrent
 @using System.Reflection
 @typeparam TItem where TItem : class
-@inherits ComponentBase
+@inherits RTableBase
 @implements ITableParent
 @implements IAsyncDisposable
 
@@ -50,7 +51,7 @@
             }
 
             @* Toolbar Section *@
-            @if (ShowToolbar && (ShowSearch || ShowFilters || ToolbarContent != null))
+            @if (ShowToolbar && (ShowSearch || ShowFilters || ShowChartButton || ToolbarContent != null))
             {
                 <div class="table-toolbar">
                     @if (ShowSearch)
@@ -61,8 +62,16 @@
                                    class="table-search-input" 
                                    placeholder="@SearchPlaceholder"
                                    value="@_searchTerm"
+                                   disabled="@Disabled"
                                    @oninput="@OnSearchInput" />
                         </div>
+                    }
+                    @if (ShowChartButton)
+                    {
+                        <button class="button button-outline button-sm" @onclick="@ShowChartModal" disabled="@(!FilteredData.Any())">
+                            <i class="material-symbols-rounded mr-2">analytics</i>
+                            @ChartButtonText
+                        </button>
                     }
                     @if (ToolbarContent != null)
                     {
@@ -108,11 +117,12 @@
                                         {
                                             <input type="checkbox"
                                                    checked="@IsAllSelected()"
+                                                   disabled="@Disabled"
                                                    @onchange="@OnSelectAllChanged" />
                                         }
                                     </th>
                                 }
-                                @foreach (var column in _columns.Where(c => c.Visible))
+                                @foreach (var column in GetEffectiveColumns().Where(c => c.Visible))
                                 {
                                     <th class="r-table-header-cell @(column.Sortable ? "is-sortable" : "") @column.HeaderClass"
                                         style="@GetColumnStyle(column)">
@@ -148,11 +158,12 @@
                                             <input type="@(MultiSelect ? "checkbox" : "radio")"
                                                    name="@(MultiSelect ? null : $"table-{TableId}")"
                                                    checked="@IsSelected(item)"
+                                                   disabled="@Disabled"
                                                    @onclick:stopPropagation="true"
                                                    @onchange="@((e) => OnSelectionChanged(item, (bool)e.Value!))" />
                                         </td>
                                     }
-                                    @foreach (var column in _columns.Where(c => c.Visible))
+                                    @foreach (var column in GetEffectiveColumns().Where(c => c.Visible))
                                     {
                                         <td class="r-table-cell @column.CellClass" style="@GetColumnStyle(column)">
                                             @{
@@ -188,14 +199,18 @@
                             }
                         </div>
                         <div class="table-footer-right d-flex items-center gap-3">
-                            @if (PageSizeOptions?.Any() == true)
+                            @if (_effectivePageSizeOptions?.Any() == true)
                             {
-                                <select class="form-select" @onchange="OnPageSizeChangedEvent">
-                                    @foreach (var size in PageSizeOptions)
-                                    {
-                                        <option value="@size" selected="@(size == PageSize)">@size per page</option>
-                                    }
-                                </select>
+                                <div class="page-size-selector d-flex items-center gap-2">
+                                    <span class="text-sm text-secondary">Show:</span>
+                                    <select class="form-select form-select-sm" value="@PageSize" @onchange="OnPageSizeChangedEvent">
+                                        @foreach (var size in _effectivePageSizeOptions)
+                                        {
+                                            <option value="@size">@size</option>
+                                        }
+                                    </select>
+                                    <span class="text-sm text-secondary">per page</span>
+                                </div>
                             }
                             <div class="d-flex items-center gap-1">
                                 <RButton Variant="ButtonVariant.Ghost"
@@ -243,37 +258,77 @@
     </CascadingValue>
 </CascadingValue>
 
+@* Chart Modal *@
+@if (_showChartModal && _chartModalReady)
+{
+    <RModal @bind-Visible="_showChartModal" 
+            Header="Chart Visualization" 
+            Size="ModalSize.Large">
+        
+        <HeaderContent>
+            <div class="d-flex items-center gap-2">
+                <i class="material-symbols-rounded text-primary">analytics</i>
+                <span>@Title Chart</span>
+            </div>
+        </HeaderContent>
+
+        <ChildContent>
+            @if (FilteredData.Any())
+            {
+                <div class="pa-4">
+                    <RChartSmart Data="@FilteredData" 
+                                Type="@DefaultChartType"
+                                Header="@($"{Title} Analysis")"
+                                Height="400px"
+                                UseCanvas="true"
+                                EnableTouchInteractions="true" />
+                    
+                    <div class="text-sm text-secondary mt-4">
+                        Showing @FilteredData.Count() of @Items.Count() records
+                        @if (!string.IsNullOrEmpty(_searchTerm))
+                        {
+                            <span> filtered by "@_searchTerm"</span>
+                        }
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="d-flex flex-col items-center justify-center pa-12 text-center">
+                    <i class="material-symbols-rounded text-6xl text-secondary mb-4">insert_chart</i>
+                    <div class="text-lg font-semibold text-secondary">No Data Available</div>
+                    <p class="text-secondary mt-2">There's no data to display in the chart.</p>
+                </div>
+            }
+        </ChildContent>
+
+        <FooterContent>
+            <div class="d-flex justify-end gap-2">
+                <RButton Text="Close" Variant="ButtonVariant.Ghost" OnClick="@(() => _showChartModal = false)" />
+            </div>
+        </FooterContent>
+    </RModal>
+}
+
 @code {
     #region Parameters
 
     [Parameter] public IEnumerable<TItem> Items { get; set; } = Enumerable.Empty<TItem>();
-    [Parameter] public RenderFragment ChildContent { get; set; }
+    // ChildContent inherited from RTableBase
     
-    // Header
-    [Parameter] public bool ShowHeader { get; set; } = true;
-    [Parameter] public string Title { get; set; }
-    [Parameter] public string Subtitle { get; set; }
+    // Header - Title, Subtitle, ShowHeader inherited from RTableBase
     [Parameter] public string Icon { get; set; }
     [Parameter] public RenderFragment HeaderContent { get; set; }
     
-    // Toolbar
-    [Parameter] public bool ShowToolbar { get; set; } = true;
-    [Parameter] public bool ShowSearch { get; set; } = true;
+    // Toolbar - ShowToolbar, ShowSearch inherited from RTableBase
     [Parameter] public string SearchPlaceholder { get; set; } = "Search...";
     [Parameter] public bool ShowFilters { get; set; }
     [Parameter] public RenderFragment ToolbarContent { get; set; }
     
-    // Table
-    [Parameter] public bool Loading { get; set; }
-    [Parameter] public string LoadingText { get; set; } = "Loading...";
+    // Chart Integration - ShowChartButton, ChartButtonText, DefaultChartType inherited from RTableBase
+    
+    // Table - Loading, LoadingText, EmptyContent, FixedHeader, Height, Hover, Striped, Bordered, Density inherited from RTableBase
     [Parameter] public string EmptyMessage { get; set; } = "No data available";
-    [Parameter] public RenderFragment EmptyContent { get; set; }
-    [Parameter] public bool FixedHeader { get; set; }
-    [Parameter] public string Height { get; set; }
-    [Parameter] public bool Hover { get; set; } = true;
-    [Parameter] public bool Striped { get; set; }
-    [Parameter] public bool Bordered { get; set; }
-    [Parameter] public ComponentDensity Density { get; set; } = ComponentDensity.Normal;
     
     // Selection
     [Parameter] public bool Selectable { get; set; }
@@ -289,22 +344,23 @@
     [Parameter] public EventCallback<string> SortByChanged { get; set; }
     [Parameter] public EventCallback<bool> SortDescendingChanged { get; set; }
     
-    // Pagination
-    [Parameter] public bool ShowPagination { get; set; } = true;
-    [Parameter] public int PageSize { get; set; } = 10;
+    // Pagination - ShowPagination inherited from RTableBase
+    // PageSize is inherited from RTableBase with default value of 50
     [Parameter] public EventCallback<int> PageSizeChanged { get; set; }
     [Parameter] public int CurrentPage { get; set; } = 1;
     [Parameter] public EventCallback<int> CurrentPageChanged { get; set; }
-    [Parameter] public int[] PageSizeOptions { get; set; } = new[] { 10, 25, 50, 100 };
+    [Parameter] public int[] PageSizeOptions { get; set; }
     
     // Row customization
     [Parameter] public Func<TItem, string> RowClass { get; set; }
     [Parameter] public EventCallback<TItem> OnRowClicked { get; set; }
     [Parameter] public bool RowClickable { get; set; }
     
-    // Styling
-    [Parameter] public string Class { get; set; }
-    [Parameter] public string Style { get; set; }
+    // Styling - Class and Style inherited from RTableBase
+    [Parameter] public bool Disabled { get; set; }
+    
+    // Auto-generation - AutoGenerateColumns inherited from RTableBase
+    [Parameter] public List<string> ExcludeColumns { get; set; } = new();
 
     #endregion
 
@@ -312,14 +368,28 @@
 
     private TableContext _tableContext;
     private readonly List<ColumnDefinition<TItem>> _columns = new();
+    private readonly List<ColumnDefinition<TItem>> _autoGeneratedColumns = new();
     private readonly HashSet<TItem> _selectedItems = new();
     private string _searchTerm = "";
     private IEnumerable<TItem> _processedItems = Enumerable.Empty<TItem>();
     private string TableId => $"table-{GetHashCode()}";
+    private int[] _effectivePageSizeOptions = new[] { 10, 25, 50, 100 };
+
+    // Chart integration
+    private bool _showChartModal = false;
+    private bool _chartModalReady = false;
+    private readonly ChartDataAnalyzer _chartAnalyzer = new();
 
     // Performance: Cache compiled expressions
     private static readonly ConcurrentDictionary<string, Func<TItem, object>> _propertyGetterCache = new();
     private static readonly ConcurrentDictionary<string, PropertyInfo> _propertyInfoCache = new();
+
+    #endregion
+
+    #region Public Properties for Chart Integration
+
+    /// <summary>Gets the filtered and sorted data for chart integration</summary>
+    public IEnumerable<TItem> FilteredData => _processedItems;
 
     #endregion
 
@@ -329,13 +399,28 @@
     {
         _tableContext = new TableContext(typeof(TItem), TableId, true);
         
-        // Auto-generate columns if no ChildContent provided
-        if (ChildContent == null && !_columns.Any())
+        // Initialize PageSize from base class if not set
+        if (PageSize == 0)
+        {
+            PageSize = 50; // Default from base class
+        }
+        
+        // Auto-generate columns if requested or if no ChildContent provided
+        if (AutoGenerateColumns || (ChildContent == null && !_columns.Any()))
         {
             var generatedColumns = PropertyColumnGenerator.GenerateColumns<TItem>();
+            
+            // Filter out excluded columns
+            if (ExcludeColumns?.Any() == true)
+            {
+                generatedColumns = generatedColumns
+                    .Where(c => !ExcludeColumns.Contains(c.Key, StringComparer.OrdinalIgnoreCase))
+                    .ToList();
+            }
+            
             foreach (var column in generatedColumns)
             {
-                _columns.Add(column);
+                _autoGeneratedColumns.Add(column);
             }
         }
         
@@ -356,6 +441,7 @@
         
         ProcessItems();
         UpdateSelection();
+        UpdatePageSizeOptions();
         base.OnParametersSet();
     }
 
@@ -389,6 +475,51 @@
 
     #endregion
 
+    #region Column Management
+    
+    private IEnumerable<ColumnDefinition<TItem>> GetEffectiveColumns()
+    {
+        // If AutoGenerateColumns is true, merge manual columns with auto-generated ones
+        if (AutoGenerateColumns && _autoGeneratedColumns.Any())
+        {
+            // Manual columns take precedence - they override auto-generated columns with same key
+            var manualKeys = _columns.Select(c => c.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            
+            // First add all manual columns
+            foreach (var column in _columns)
+            {
+                yield return column;
+            }
+            
+            // Then add auto-generated columns that aren't already manually defined
+            foreach (var autoColumn in _autoGeneratedColumns)
+            {
+                if (!manualKeys.Contains(autoColumn.Key))
+                {
+                    yield return autoColumn;
+                }
+            }
+        }
+        else if (_columns.Any())
+        {
+            // Only manual columns
+            foreach (var column in _columns)
+            {
+                yield return column;
+            }
+        }
+        else
+        {
+            // Only auto-generated columns (when no manual columns defined)
+            foreach (var column in _autoGeneratedColumns)
+            {
+                yield return column;
+            }
+        }
+    }
+    
+    #endregion
+
     #region Data Processing
 
     private void ProcessItems()
@@ -418,11 +549,11 @@
 
     private IQueryable<TItem> ApplySearch(IQueryable<TItem> query, string searchTerm)
     {
-        var searchableColumns = _columns.Where(c => c.Searchable).ToList();
+        var searchableColumns = GetEffectiveColumns().Where(c => c.Searchable).ToList();
         if (!searchableColumns.Any())
         {
             // If no columns are marked searchable, search all string properties
-            searchableColumns = _columns.Where(c => 
+            searchableColumns = GetEffectiveColumns().Where(c => 
                 GetPropertyType(c.Key) == typeof(string)).ToList();
         }
 
@@ -431,7 +562,10 @@
 
         var lowerSearchTerm = searchTerm.ToLower();
         
-        var filteredItems = query.AsEnumerable().Where(item =>
+        // For better performance with large datasets, we search in memory
+        // This is acceptable for client-side Blazor where data is already loaded
+        var items = query.ToList();
+        var filteredItems = items.Where(item =>
             searchableColumns.Any(column =>
             {
                 var value = GetPropertyValue(item, column.Key);
@@ -646,12 +780,14 @@
         await PageSizeChanged.InvokeAsync(PageSize);
         await CurrentPageChanged.InvokeAsync(CurrentPage);
         ProcessItems();
+        StateHasChanged();
     }
 
     private async Task OnPageChanged(int newPage)
     {
-        CurrentPage = newPage;
+        CurrentPage = Math.Max(1, Math.Min(newPage, TotalPages));
         await CurrentPageChanged.InvokeAsync(CurrentPage);
+        StateHasChanged();
     }
 
     private async Task OnPageSizeChangedEvent(ChangeEventArgs e)
@@ -659,6 +795,7 @@
         if (int.TryParse(e.Value?.ToString(), out var newSize))
         {
             await OnPageSizeChanged(newSize);
+            StateHasChanged();
         }
     }
 
@@ -682,6 +819,14 @@
         }
     }
 
+    private async Task ShowChartModal()
+    {
+        _chartModalReady = true;
+        await Task.Delay(50); // Small delay to ensure DOM is ready
+        _showChartModal = true;
+        await InvokeAsync(StateHasChanged);
+    }
+
     #endregion
 
     #region Styling
@@ -695,6 +840,9 @@
 
         if (!string.IsNullOrEmpty(Height))
             classes.Add("table-fixed-height");
+
+        if (Disabled)
+            classes.Add("disabled");
 
         return string.Join(" ", classes);
     }
@@ -753,6 +901,91 @@
         return string.Join("; ", styles);
     }
 
+    #endregion
+
+    #region Smart PageSize Options
+    
+    private void UpdatePageSizeOptions()
+    {
+        // If user explicitly provided PageSizeOptions, use them
+        if (PageSizeOptions?.Any() == true)
+        {
+            _effectivePageSizeOptions = PageSizeOptions;
+            return;
+        }
+        
+        // Otherwise, generate smart options based on total record count
+        var totalCount = _processedItems.Count();
+        
+        if (totalCount <= 10)
+        {
+            _effectivePageSizeOptions = new[] { 5, 10 };
+        }
+        else if (totalCount <= 50)
+        {
+            _effectivePageSizeOptions = new[] { 10, 25, 50 };
+        }
+        else if (totalCount <= 200)
+        {
+            _effectivePageSizeOptions = new[] { 10, 25, 50, 100 };
+        }
+        else if (totalCount <= 1000)
+        {
+            _effectivePageSizeOptions = new[] { 25, 50, 100, 250 };
+        }
+        else if (totalCount <= 10000)
+        {
+            // For large datasets, use exponential growth
+            var options = new List<int> { 50, 100, 250, 500 };
+            
+            // Add smart option: roughly totalCount / 20 (5% of data)
+            var smartOption = (int)Math.Round(totalCount / 20.0 / 50.0) * 50;
+            if (smartOption > 500 && smartOption < 2000)
+            {
+                options.Add(smartOption);
+            }
+            
+            _effectivePageSizeOptions = options.OrderBy(x => x).ToArray();
+        }
+        else
+        {
+            // For very large datasets (10K+), use logarithmic scaling
+            var options = new List<int> { 100, 250, 500 };
+            
+            // Add options based on logarithmic scale
+            var log = Math.Log10(totalCount);
+            var factor1 = (int)Math.Pow(10, Math.Floor(log - 1)); // 10% of magnitude
+            var factor2 = (int)Math.Pow(10, Math.Floor(log - 0.5)); // ~30% of magnitude
+            
+            // Round to nearest 50 or 100
+            if (factor1 > 500)
+                options.Add((factor1 / 100) * 100);
+            if (factor2 > 1000 && factor2 < 5000)
+                options.Add((factor2 / 100) * 100);
+            
+            // Add option for viewing 1% of data
+            var onePercent = Math.Max(100, (totalCount / 100 / 50) * 50);
+            if (onePercent <= 2500)
+                options.Add(onePercent);
+            
+            _effectivePageSizeOptions = options.Distinct().OrderBy(x => x).Take(5).ToArray();
+        }
+        
+        // Ensure current PageSize is in the options, if not add it
+        if (PageSize > 0 && !_effectivePageSizeOptions.Contains(PageSize))
+        {
+            var list = _effectivePageSizeOptions.ToList();
+            list.Add(PageSize);
+            _effectivePageSizeOptions = list.OrderBy(x => x).ToArray();
+        }
+        
+        // If PageSize is not set or invalid, set to first option
+        if (PageSize <= 0 || PageSize > totalCount)
+        {
+            PageSize = _effectivePageSizeOptions.FirstOrDefault(10);
+        }
+    }
+    
     #endregion
 
     #region Cleanup

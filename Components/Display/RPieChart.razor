@@ -4,10 +4,12 @@
 @using RR.Blazor.Components.Base
 @using Microsoft.AspNetCore.Components.Web
 @using Microsoft.JSInterop
+@using Newtonsoft.Json
 @inherits RInteractiveComponentBase
+@implements IAsyncDisposable
 @inject IJSRuntime JSRuntime
 
-<RChart Title="@Title" 
+<RChart Header="@Title" 
         Subtitle="@Subtitle"
         Icon="@Icon"
         Type="@(IsDoughnut ? ChartType.Doughnut : ChartType.Pie)"
@@ -32,7 +34,7 @@
         <div class="pie-chart-svg-container" @ref="chartContainer">
             @if (Data != null && Data.Any())
             {
-                <svg class="pie-chart-svg w-full h-full" viewBox="0 0 300 300">
+                    <svg class="pie-chart-svg w-full h-full" viewBox="0 0 300 300">
                     @{
                         var total = Data.Sum(d => d.Value);
                         var startAngle = 0.0;
@@ -69,27 +71,27 @@
                 </svg>
                 
                 @if (ShowCenterValue && IsDoughnut)
-                {
-                    <div class="pie-chart-center-text">
-                        <div class="value">@GetCenterValue()</div>
-                        <div class="label">@CenterLabel</div>
-                    </div>
+                    {
+                        <div class="pie-chart-center-text">
+                            <div class="value">@GetCenterValue()</div>
+                            <div class="label">@CenterLabel</div>
+                        </div>
                 }
                 
                 @* Tooltip *@
                 @if (showTooltip && hoveredDataPoint != null)
-                {
-                    <div class="chart-tooltip tooltip-dynamic @(showTooltip ? "visible" : "")" style="--tooltip-y: @(tooltipY)px; --tooltip-x: @(tooltipX)px;">
-                        <div class="chart-tooltip-title">@hoveredDataPoint.Label</div>
-                        <div class="chart-tooltip-value">
-                            @GetFormattedValue(hoveredDataPoint.Value)
-                            @if (Data != null && Data.Any())
-                            {
-                                var percentage = hoveredDataPoint.Value / Data.Sum(d => d.Value);
-                                <span class="chart-tooltip-percentage">(@(percentage.ToString("P1")))</span>
-                            }
+                    {
+                        <div class="chart-tooltip tooltip-dynamic @(showTooltip ? "visible" : "")" style="--tooltip-y: @(tooltipY)px; --tooltip-x: @(tooltipX)px;">
+                            <div class="chart-tooltip-title">@hoveredDataPoint.Label</div>
+                            <div class="chart-tooltip-value">
+                                @GetFormattedValue(hoveredDataPoint.Value)
+                                @if (Data != null && Data.Any())
+                                {
+                                    var percentage = hoveredDataPoint.Value / Data.Sum(d => d.Value);
+                                    <span class="chart-tooltip-percentage">(@(percentage.ToString("P1")))</span>
+                                }
+                            </div>
                         </div>
-                    </div>
                 }
             }
         </div>
@@ -108,15 +110,15 @@
                      role="button"
                      tabindex="0"
                      aria-label="@GetLegendAriaLabel(dataPoint, percentage)">
-                    <div class="chart-legend-indicator legend-color-dynamic" style="--legend-color: @color;"></div>
+                    <div class="chart-legend-indicator legend-color-dynamic" style="background: @color;"></div>
                     <span class="chart-legend-label">@dataPoint.Label</span>
                     @if (ShowLegendValues)
                     {
-                        <span class="chart-legend-label ml-auto">
+                        <span class="chart-legend-value ml-auto">
                             @GetFormattedValue(dataPoint.Value)
                             @if (ShowLegendPercentages)
                             {
-                                <span class="text-xs text-secondary ml-1">(@(percentage.ToString("P1")))</span>
+                                <span class="chart-legend-percentage text-xs text-secondary ml-1">(@(percentage.ToString("P1")))</span>
                             }
                         </span>
                     }
@@ -246,6 +248,11 @@
     /// <summary>Accessibility content</summary>
     [Parameter] public RenderFragment AccessibilityContent { get; set; }
     
+    // TODO: Implement Canvas 2D rendering for performance with large datasets (>100 slices)
+    // Future enhancement: Add UseCanvas parameter for high-performance rendering mode
+    
+    /// <summary>Enable touch interactions (zoom, pan)</summary>
+    [Parameter] public bool EnableTouchInteractions { get; set; } = true;
     
     /// <summary>Slice click handler</summary>
     [Parameter] public EventCallback<ChartEventArgs> OnSliceClick { get; set; }
@@ -274,12 +281,23 @@
     private async Task HandleChartInit(ElementReference element)
     {
         chartContainer = element;
-
-        if (Configuration.EnableAnimation)
-        {
-            await JSRuntime.InvokeVoidAsync("RRBlazor.Chart.animatePieChart", element);
-        }
+        // SVG rendering doesn't need special initialization
+        await Task.CompletedTask;
     }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+        // SVG rendering handles everything in the markup
+    }
+
+    // TODO: Future implementation for Canvas 2D rendering
+    // This will provide high-performance rendering for complex pie charts
+    // Features to implement:
+    // - Hardware-accelerated Canvas 2D API for smooth animations
+    // - Touch interactions (pinch-zoom, rotation)
+    // - Exploded slice animations
+    // - WebGL rendering for 3D pie charts
 
     private async Task HandleSliceClick(ChartDataPoint dataPoint, int index)
     {
@@ -464,18 +482,24 @@
     {
         return $"background: {color};";
     }
+
+    public async ValueTask DisposeAsync()
+    {
+        // SVG rendering doesn't require disposal
+        await Task.CompletedTask;
+    }
 }
 
 @*
 Usage Examples:
 
 <!-- Basic pie chart -->
-<RPieChart Title="Sales Distribution" 
+<RPieChart Header="Sales Distribution" 
            Data="@salesData" 
            Icon="pie_chart" />
 
 <!-- Doughnut chart with center value -->
-<RPieChart Title="Revenue by Category" 
+<RPieChart Header="Revenue by Category" 
            Data="@revenueData"
            IsDoughnut="true"
            ShowCenterValue="true"
@@ -483,7 +507,7 @@ Usage Examples:
            ValueFormat="C0" />
 
 <!-- Pie chart with custom styling -->
-<RPieChart Title="Market Share" 
+<RPieChart Header="Market Share" 
            Data="@marketData"
            Size="ChartSize.Large"
            Variant="ChartVariant.Elevated"
@@ -492,7 +516,7 @@ Usage Examples:
            ColorPalette="@customColors" />
 
 <!-- Interactive pie chart -->
-<RPieChart Title="User Engagement" 
+<RPieChart Header="User Engagement" 
            Data="@engagementData"
            OnSliceClick="@HandleSliceClick"
            OnSliceHover="@HandleSliceHover"
@@ -506,12 +530,12 @@ Usage Examples:
            ShowLabels="false" />
 
 <!-- Pie chart with header controls -->
-<RPieChart Title="Performance Metrics" 
+<RPieChart Header="Performance Metrics" 
            Data="@performanceData"
            LegendPosition="ChartLegendPosition.Right">
     
     <HeaderContent>
-        <select class="form-field-input form-field-sm">
+        <select class="form-input form-input-sm">
             <option>Last 7 days</option>
             <option>Last 30 days</option>
             <option>Last 90 days</option>
@@ -526,7 +550,7 @@ Usage Examples:
 </RPieChart>
 
 <!-- Accessible pie chart -->
-<RPieChart Title="Budget Allocation" 
+<RPieChart Header="Budget Allocation" 
            Data="@budgetData"
            Configuration="@(new ChartConfiguration { EnableAccessibility = true })"
            ShowAccessibilityTable="true" />

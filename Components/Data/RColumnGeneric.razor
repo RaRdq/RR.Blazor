@@ -1,0 +1,83 @@
+@using RR.Blazor.Models
+@using System.Linq.Expressions
+@typeparam TItem where TItem : class
+@inherits RColumnBase
+
+@*
+Advanced generic column for developers who need explicit type control.
+For normal use cases, use RColumn instead.
+
+Usage:
+<RColumnGeneric TItem="Employee" For="@(e => e.Name)" Title="Name" />
+<RColumnGeneric TItem="Employee" For="@(e => e.Salary)" Title="Salary">
+    <CustomTemplate Context="emp">
+        <b>@emp.Salary.ToString("C")</b>
+    </CustomTemplate>
+</RColumnGeneric>
+*@
+
+@code {
+    [CascadingParameter] public ITableParent ParentTable { get; set; }
+    [CascadingParameter] public TableContext TableContext { get; set; }
+    
+    [Parameter] public Expression<Func<TItem, object>> For { get; set; }
+    [Parameter] public RenderFragment<TItem> CustomTemplate { get; set; }
+    
+    protected override void OnInitialized()
+    {
+        if (ParentTable != null)
+        {
+            var columnDef = CreateColumnDefinition();
+            ParentTable.AddColumn(columnDef);
+        }
+        
+        base.OnInitialized();
+    }
+    
+    private ColumnDefinition<TItem> CreateColumnDefinition()
+    {
+        var columnDef = new ColumnDefinition<TItem>
+        {
+            Title = Header ?? Title,
+            Visible = Visible,
+            Sortable = Sortable ?? true,
+            Searchable = Searchable ?? true,
+            Width = Width,
+            MinWidth = MinWidth,
+            MaxWidth = MaxWidth,
+            HeaderClass = HeaderClass,
+            CellClass = CellClass,
+            Format = Format,
+            EmptyText = EmptyText ?? "-",
+            Template = Template,
+            HeaderTemplate = HeaderTemplate,
+            Order = Order
+        };
+        
+        // Handle For parameter (strongly typed)
+        if (For != null)
+        {
+            columnDef.Property = For;
+            columnDef.CompiledProperty = For.Compile();
+            columnDef.Key = GetPropertyName(For);
+        }
+        
+        // Handle CustomTemplate (strongly typed)
+        if (CustomTemplate != null)
+        {
+            columnDef.CustomTemplate = CustomTemplate;
+        }
+        
+        return columnDef;
+    }
+    
+    private static string GetPropertyName(Expression<Func<TItem, object>> expr)
+    {
+        return expr.Body switch
+        {
+            MemberExpression member => member.Member.Name,
+            UnaryExpression { Operand: MemberExpression member } => member.Member.Name,
+            _ => ""
+        };
+    }
+}

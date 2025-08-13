@@ -20,129 +20,125 @@
         <label class="@GetLabelClasses()">@Label</label>
     }
     
-    @if (EffectiveVariant == ChoiceVariant.Dropdown)
+    @if (EffectiveVariant == ChoiceVariant.Dropdown || TriggerContent != null)
     {
-    <div @ref="choiceElement" class="choice choice-dropdown relative @(IsOpen ? "choice-open" : "") @GetDropdownDensityClass() @Class" 
-         data-choice-id="@choiceElementId">
+        @* Choice element with trigger *@
+        <div @ref="choiceElement" class="choice choice-dropdown relative @GetDropdownDensityClass()" 
+             data-choice-id="@choiceElementId">
         
-        @if (TriggerContent != null)
-        {
-            <button class="choice-trigger touch-target w-full d-flex align-center justify-between px-3 py-2 bg-surface border border-light rounded-md text-left hover-border-primary focus-ring transition-all"
-                    @onclick="ToggleDropdown"
-                    @onkeydown="OnKeyDown"
-                    aria-haspopup="true"
-                    aria-expanded="@IsOpen"
-                    aria-label="@(AriaLabel ?? "Open dropdown")"
-                    disabled="@Disabled">
-                @TriggerContent
-            </button>
-        }
-        else
-        {
-            <button class="choice-trigger touch-target w-full d-flex align-center justify-between px-3 py-2 bg-surface border border-light rounded-md text-left hover-border-primary focus-ring transition-all"
-                    @onclick="ToggleDropdown"
-                    @onkeydown="OnKeyDown"
-                    aria-haspopup="true"
-                    aria-expanded="@IsOpen"
-                    aria-label="@(AriaLabel ?? "Open dropdown")"
-                    disabled="@Disabled">
-                @if (!string.IsNullOrEmpty(GetSelectedItemIcon()))
-                {
-                    <i class="material-symbols-rounded">@GetSelectedItemIcon()</i>
-                }
-                <span>@GetSelectedItemLabel()</span>
-            </button>
-        }
+            @if (TriggerContent != null)
+            {
+                <button class="choice-trigger w-full"
+                        type="button"
+                        aria-haspopup="true"
+                        aria-expanded="false"
+                        aria-label="@(AriaLabel ?? "Open dropdown")"
+                        disabled="@Disabled"
+                        @onclick="ToggleDropdown">
+                    <div class="d-flex align-center justify-between w-full">
+                        @TriggerContent
+                    </div>
+                </button>
+            }
+            else
+            {
+                <button class="choice-trigger w-full"
+                        type="button"
+                        aria-haspopup="true"
+                        aria-expanded="false"
+                        aria-label="@(AriaLabel ?? "Open dropdown")"
+                        disabled="@Disabled"
+                        @onclick="ToggleDropdown">
+                    <div class="d-flex align-center gap-2">
+                        @if (!string.IsNullOrEmpty(GetSelectedItemIcon()))
+                        {
+                            <i class="material-symbols-rounded choice-icon">@GetSelectedItemIcon()</i>
+                        }
+                        <span class="choice-text">@GetSelectedItemLabel()</span>
+                    </div>
+                </button>
+            }
+        </div>
         
-        <div class="choice-viewport" @ref="viewportElement" style="min-width: 200px;">
+        @* Viewport as sibling - hidden but present in DOM *@
+        <div class="choice-viewport choice-viewport-closed" @ref="viewportElement" data-viewport-id="@choiceElementId" style="position: absolute; top: -9999px; left: -9999px; visibility: hidden;">
             <div class="choice-content">
                 @if (Items != null)
                 {
-                    @if (ShouldUseVirtualScrolling())
+                    @foreach (var item in Items)
                     {
-                        <div class="choice-virtual-container" style="height: @GetVirtualContainerHeight()px; overflow-y: auto;">
-                            <RVirtualListGeneric Items="@Items.ToList()" 
-                                               ItemHeight="40" 
-                                               ContainerHeight="@GetVirtualContainerHeight()" 
-                                               BufferSize="5"
-                                               Size="compact"
-                                               ItemTemplate="@GetVirtualItemTemplate()"
-                                               Class="choice-virtual-list" />
-                        </div>
-                    }
-                    else
-                    {
-                        @foreach (var item in Items)
+                        @if (ItemTemplate != null)
                         {
-                            @if (ItemTemplate != null)
-                            {
-                                <button class="choice-item @GetItemClass(item)"
-                                        @onclick="() => OnItemSelected(item)"
-                                        disabled="@IsItemDisabled(item)"
-                                        title="@GetItemTitle(item)"
-                                        aria-label="@GetItemAriaLabel(item)">
-                                    @ItemTemplate(item)
-                                </button>
-                            }
-                            else
-                            {
-                                <button class="choice-item @GetItemClass(item)"
-                                        @onclick="() => OnItemSelected(item)"
-                                        disabled="@IsItemDisabled(item)"
-                                        title="@GetItemTitle(item)"
-                                        aria-label="@GetItemAriaLabel(item)">
-                                    @if (IsItemActive(item))
-                                    {
-                                        <i class="material-symbols-rounded">check</i>
-                                    }
-                                    else if (!string.IsNullOrEmpty(GetItemIcon(item)))
-                                    {
-                                        <i class="material-symbols-rounded">@GetItemIcon(item)</i>
-                                    }
-                                    <span>@GetItemLabel(item)</span>
-                                </button>
-                            }
+                            <button class="choice-item @GetItemClass(item)"
+                                    type="button"
+                                    disabled="@IsItemDisabled(item)"
+                                    title="@GetItemTitle(item)"
+                                    aria-label="@GetItemAriaLabel(item)"
+                                    data-value="@GetItemValue(item)"
+                                    @onclick="() => OnItemSelected(item)">
+                                @ItemTemplate(item)
+                            </button>
+                        }
+                        else
+                        {
+                            <button class="choice-item @GetItemClass(item)"
+                                    type="button"
+                                    disabled="@IsItemDisabled(item)"
+                                    title="@GetItemTitle(item)"
+                                    aria-label="@GetItemAriaLabel(item)"
+                                    data-value="@GetItemValue(item)"
+                                    @onclick="() => OnItemSelected(item)">
+                                @if (IsItemActive(item) && ShowActiveIndicator)
+                                {
+                                    <i class="material-symbols-rounded choice-check">check</i>
+                                }
+                                else if (!string.IsNullOrEmpty(GetItemIcon(item)))
+                                {
+                                    <i class="material-symbols-rounded choice-icon">@GetItemIcon(item)</i>
+                                }
+                                <span class="choice-text">@GetItemLabel(item)</span>
+                            </button>
                         }
                     }
                 }
             </div>
         </div>
-    </div>
-}
-else
-{
-    <div class="choice @GetInlineClass() @Class">
-        @if (Items != null)
-        {
-            @foreach (var item in Items)
+    }
+    else
+    {
+        <div class="choice @GetInlineClass()">
+            @if (Items != null)
             {
-                <button class="choice-item @GetItemClass(item)" 
-                        @onclick="() => OnItemSelected(item)"
-                        title="@GetItemTitle(item)"
-                        aria-label="@GetItemAriaLabel(item)"
-                        disabled="@IsItemDisabled(item)">
-                    @if (!string.IsNullOrEmpty(GetItemIcon(item)))
-                    {
-                        <i class="material-symbols-rounded">@GetItemIcon(item)</i>
-                    }
-                    @if (ShowLabels && !string.IsNullOrEmpty(GetItemLabel(item)))
-                    {
-                        <span class="choice-label">@GetItemLabel(item)</span>
-                    }
-                    @if (IsItemActive(item) && ShowActiveIndicator)
-                    {
-                        <i class="material-symbols-rounded choice-check">check</i>
-                    }
-                    @if (IsItemLoading(item))
-                    {
-                        <div class="choice-loading">
-                            <i class="material-symbols-rounded animate-spin">hourglass_empty</i>
-                        </div>
-                    }
-                </button>
+                @foreach (var item in Items)
+                {
+                    <button class="choice-item @GetItemClass(item)" 
+                            type="button"
+                            title="@GetItemTitle(item)"
+                            aria-label="@GetItemAriaLabel(item)"
+                            disabled="@IsItemDisabled(item)"
+                            @onclick="() => OnItemSelected(item)">
+                        @if (!string.IsNullOrEmpty(GetItemIcon(item)))
+                        {
+                            <i class="material-symbols-rounded choice-icon">@GetItemIcon(item)</i>
+                        }
+                        @if (ShowLabels && !string.IsNullOrEmpty(GetItemLabel(item)))
+                        {
+                            <span class="choice-label">@GetItemLabel(item)</span>
+                        }
+                        @if (IsItemActive(item) && ShowActiveIndicator)
+                        {
+                            <i class="material-symbols-rounded choice-check">check</i>
+                        }
+                        @if (IsItemLoading(item))
+                        {
+                            <div class="choice-loading">
+                                <i class="material-symbols-rounded animate-spin">hourglass_empty</i>
+                            </div>
+                        }
+                    </button>
+                }
             }
-        }
-    </div>
+        </div>
     }
     
     @if (HasError && !string.IsNullOrEmpty(ErrorMessage))
@@ -160,15 +156,13 @@ else
 </div>
 
 @inject IJSRuntime JS
-@inject PortalService PortalService
 
 @code {
-    private bool isOpen;
     private ElementReference choiceElement;
     private ElementReference viewportElement;
     private string choiceElementId = Guid.NewGuid().ToString("N")[..8];
-    private string? currentPortalId;
     private bool disposed = false;
+    private bool isDropdownOpen = false;
 
     [Parameter] public IEnumerable<TValue> Items { get; set; }
     [Parameter] public TValue SelectedValue { get; set; }
@@ -193,402 +187,152 @@ else
     [Parameter] public bool CloseOnEscape { get; set; } = true;
     [Parameter] public bool EnableVirtualScrolling { get; set; } = true;
 
-    private bool IsOpen => isOpen && !Disabled;
+    
+    protected override bool ShouldRender()
+    {
+        // Prevent unnecessary re-renders that might remove DOM elements during JS operations
+        return true;
+    }
 
     private string GetInlineClass()
     {
-        var classes = new List<string> { "choice-inline" };
+        var styleClass = GetStyleClass();
+        var densityClass = GetDensityClass();
+        var directionClass = Direction == ChoiceDirection.Vertical ? " choice-vertical flex-col" : "";
         
-        // Style utility classes
-        classes.Add(Style switch
-        {
-            ChoiceStyle.Standard => "choice-switcher d-flex gap-1 p-1 bg-surface rounded-lg",
-            ChoiceStyle.Pills => "choice-pills d-flex gap-2",
-            ChoiceStyle.Tabs => "choice-tabs d-flex border-b border-light", 
-            ChoiceStyle.Buttons => "choice-buttons d-flex gap-1",
-            ChoiceStyle.Compact => "choice-compact d-flex gap-0-5",
-            _ => "choice-switcher d-flex gap-1 p-1 bg-surface rounded-lg"
-        });
-        
-        // Density utility classes
-        classes.Add(Density switch
-        {
-            ComponentDensity.Compact => "choice-compact gap-0-5 p-0-5",
-            ComponentDensity.Dense => "choice-dense gap-1 p-1",
-            ComponentDensity.Normal => "choice-normal gap-2 p-2",
-            ComponentDensity.Spacious => "choice-spacious gap-3 p-3",
-            _ => "choice-normal gap-2 p-2"
-        });
-        
-        // Direction utility classes
-        if (Direction == ChoiceDirection.Vertical)
-            classes.Add("choice-vertical flex-col");
-            
-        return string.Join(" ", classes);
+        return $"choice-inline {styleClass} {densityClass}{directionClass}";
     }
-
-    private string GetDropdownDensityClass()
+    
+    private string GetStyleClass() => Style switch
     {
-        return Density switch
-        {
-            ComponentDensity.Compact => "choice-compact py-1 px-2 text-sm",
-            ComponentDensity.Dense => "choice-dense py-2 px-3 text-sm", 
-            ComponentDensity.Normal => "choice-normal py-3 px-4 text-base",
-            ComponentDensity.Spacious => "choice-spacious py-4 px-6 text-lg",
-            _ => "choice-normal py-3 px-4 text-base"
-        };
-    }
+        ChoiceStyle.Pills => "choice-pills d-flex gap-2",
+        ChoiceStyle.Tabs => "choice-tabs d-flex border-b border-light", 
+        ChoiceStyle.Buttons => "choice-buttons d-flex gap-1",
+        ChoiceStyle.Compact => "choice-compact d-flex gap-0-5",
+        _ => "choice-switcher d-flex gap-1 p-1 bg-surface rounded-lg"
+    };
+    
+    private string GetDensityClass() => Density switch
+    {
+        ComponentDensity.Compact => "choice-compact gap-0-5 p-0-5",
+        ComponentDensity.Dense => "choice-dense gap-1 p-1", 
+        ComponentDensity.Spacious => "choice-spacious gap-3 p-3",
+        _ => "choice-normal gap-2 p-2"
+    };
+
+    private string GetDropdownDensityClass() => Density switch
+    {
+        ComponentDensity.Compact => "choice-compact py-1 px-2 text-sm",
+        ComponentDensity.Dense => "choice-dense py-2 px-3 text-sm", 
+        ComponentDensity.Spacious => "choice-spacious py-4 px-6 text-lg",
+        _ => "choice-normal py-3 px-4 text-base"
+    };
 
     private string GetItemClass(TValue item)
     {
-        var classes = new List<string> { "choice-item", "d-flex", "align-center", "gap-2", "px-3", "py-2", "text-sm", "cursor-pointer", "transition-all", "hover-bg-surface-elevated" };
+        var baseClass = "choice-item d-flex align-center gap-2 px-3 py-2 text-sm cursor-pointer transition-all hover-bg-surface-elevated";
         
-        if (IsItemActive(item)) 
-        {
-            classes.Add("choice-item-active bg-primary text-on-primary font-medium");
-        }
-        else
-        {
-            classes.Add("text-secondary hover-text-primary");
-        }
+        if (IsItemDisabled(item)) return $"{baseClass} choice-item-disabled opacity-50 cursor-not-allowed hover-bg-transparent";
+        if (IsItemLoading(item)) return $"{baseClass} choice-item-loading opacity-75";
+        if (IsItemActive(item)) return $"{baseClass} choice-item-active bg-primary text-on-primary font-medium";
         
-        if (IsItemDisabled(item)) 
-        {
-            classes.Add("choice-item-disabled opacity-50 cursor-not-allowed hover-bg-transparent");
-        }
-        
-        if (IsItemLoading(item)) 
-        {
-            classes.Add("choice-item-loading opacity-75");
-        }
-        
-        return string.Join(" ", classes);
+        return $"{baseClass} text-secondary hover-text-primary";
     }
 
-    private bool IsItemActive(TValue item)
-    {
-        return EqualityComparer<TValue>.Default.Equals(item, SelectedValue);
-    }
+    private bool IsItemActive(TValue item) => EqualityComparer<TValue>.Default.Equals(item, SelectedValue);
+    private bool IsItemDisabled(TValue item) => ItemDisabledSelectorTyped?.Invoke(item) ?? false;
+    private bool IsItemLoading(TValue item) => ItemLoadingSelectorTyped?.Invoke(item) ?? false;
 
-    private bool IsItemDisabled(TValue item)
-    {
-        return ItemDisabledSelectorTyped?.Invoke(item) ?? false;
-    }
+    private string GetItemLabel(TValue item) => ItemLabelSelectorTyped?.Invoke(item) ?? item.ToString();
+    private string GetItemIcon(TValue item) => ItemIconSelectorTyped?.Invoke(item) ?? "";
+    private string GetItemTitle(TValue item) => ItemTitleSelectorTyped?.Invoke(item) ?? GetItemLabel(item);
+    private string GetItemAriaLabel(TValue item) => ItemAriaLabelSelectorTyped?.Invoke(item) ?? $"Select {GetItemLabel(item)}";
+    private string GetItemValue(TValue item) => item.ToString();
 
-    private bool IsItemLoading(TValue item)
-    {
-        return ItemLoadingSelectorTyped?.Invoke(item) ?? false;
-    }
+    private string GetSelectedItemLabel() => 
+        SelectedValue != null ? GetItemLabel(SelectedValue) : "Select an option";
 
-    private string GetItemLabel(TValue item)
-    {
-        return ItemLabelSelectorTyped?.Invoke(item) ?? item?.ToString() ?? "";
-    }
+    private string GetSelectedItemIcon() => 
+        SelectedValue != null ? GetItemIcon(SelectedValue) : "";
 
-    private string GetItemIcon(TValue item)
-    {
-        return ItemIconSelectorTyped?.Invoke(item) ?? "";
-    }
-
-    private string GetItemTitle(TValue item)
-    {
-        return ItemTitleSelectorTyped?.Invoke(item) ?? GetItemLabel(item);
-    }
-
-    private string GetItemAriaLabel(TValue item)
-    {
-        return ItemAriaLabelSelectorTyped?.Invoke(item) ?? $"Select {GetItemLabel(item)}";
-    }
-
-    private string GetSelectedItemLabel()
-    {
-        if (SelectedValue != null)
-        {
-            return GetItemLabel(SelectedValue);
-        }
-        return "Select an option";
-    }
-
-    private string GetSelectedItemIcon()
-    {
-        if (SelectedValue != null)
-        {
-            return GetItemIcon(SelectedValue);
-        }
-        return "";
-    }
-
-    private async Task ToggleDropdown()
+    private async Task ToggleDropdown() 
     {
         if (Disabled) return;
         
-        if (isOpen)
+        try 
         {
-            await CloseDropdown();
+            // Check if this dropdown is currently active using a safer approach
+            var isOpen = await JS.InvokeAsync<bool>("RRBlazor.Choice.isDropdownOpen", choiceElementId);
+            
+            if (isOpen)
+                await CloseDropdown();
+            else
+                await OpenDropdown();
         }
-        else
+        catch 
         {
-            await OpenDropdown();
+            // Fallback to simple toggle based on local state
+            if (isDropdownOpen)
+                await CloseDropdown();
+            else
+                await OpenDropdown();
         }
     }
 
-    private async Task OpenDropdown()
+    private async Task OpenDropdown() 
     {
-        isOpen = true;
-        StateHasChanged();
+        if (Disabled) return;
         
-        await Task.Yield();
+        // Ensure component is in dropdown mode and rendered
+        StateHasChanged(); // Force re-render to ensure viewport is in DOM
+        await Task.Yield(); // Let Blazor complete current render cycle
         
-        try
-        {
-            var zIndex = await PortalService.RegisterPortalAsync(
-                $"{choiceElementId}-dropdown",
-                PortalType.Dropdown,
-                parentPortalId: null,
-                useBackdrop: UseBackdrop,
-                backdropClass: BackdropClass,
-                closeOnBackdropClick: CloseOnBackdropClick,
-                closeOnEscape: CloseOnEscape
-            );
-            
-            currentPortalId = $"{choiceElementId}-dropdown";
-            
-            var portalConfig = new
-            {
-                portalId = currentPortalId,
-                useBackdrop = UseBackdrop,
-                backdropClass = BackdropClass,
-                closeOnBackdropClick = CloseOnBackdropClick,
-                closeOnEscape = CloseOnEscape,
-                dropdownDirection = DropdownDirection.ToString()
-            };
-            
-            var dropdownId = await JS.InvokeAsync<string>("RRBlazor.Choice.openDropdown", choiceElementId, portalConfig);
-            
-            await JS.InvokeVoidAsync("RRBlazor.Choice.registerClickOutsideCallback", 
-                choiceElementId, DotNetObjectReference.Create(this));
-            
-            if (SelectedValue != null && !ShouldUseVirtualScrolling())
-            {
-                await JS.InvokeVoidAsync("RRBlazor.Choice.scrollSelectedIntoView", viewportElement);
-            }
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Dropdown open failed: {ex.Message}");
-            isOpen = false;
-            StateHasChanged();
-        }
+        await JS.InvokeVoidAsync("RRBlazor.Choice.openDropdown", choiceElementId, new {
+            direction = DropdownDirection.ToString().ToLowerInvariant(),
+            useBackdrop = UseBackdrop,
+            backdropClass = BackdropClass,
+            closeOnBackdropClick = CloseOnBackdropClick,
+            closeOnEscape = CloseOnEscape
+        });
     }
 
-    private async Task CloseDropdown()
-    {
-        isOpen = false;
-        if (!disposed) StateHasChanged();
-        
-        try
-        {
-            await JS.InvokeAsync<bool>("RRBlazor.Choice.closeDropdown", choiceElementId);
-            
-            if (!string.IsNullOrEmpty(currentPortalId))
-            {
-                await PortalService.UnregisterPortalAsync(currentPortalId);
-                currentPortalId = null;
-            }
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Dropdown close failed: {ex.Message}");
-        }
-    }
-
-    private async Task HandleClickOutside()
-    {
-        if (isOpen)
-        {
-            await CloseDropdown();
-        }
-    }
-
-    [JSInvokable]
-    public async Task OnClickOutside()
-    {
-        await HandleClickOutside();
-    }
+    private Task CloseDropdown() => JS.InvokeVoidAsync("RRBlazor.Choice.closeDropdown", choiceElementId).AsTask();
 
     private async Task OnItemSelected(TValue item)
     {
-        if (IsItemDisabled(item) || IsItemLoading(item))
-            return;
+        if (IsItemDisabled(item) || IsItemLoading(item)) return;
 
-
-        if (OnItemClick.HasDelegate)
-            await OnItemClick.InvokeAsync(item);
+        if (OnItemClick.HasDelegate) await OnItemClick.InvokeAsync(item);
 
         SelectedValue = item;
         
-
-        if (SelectedValueChangedTyped.HasDelegate)
-            await SelectedValueChangedTyped.InvokeAsync(item);
-            
-
-        if (SelectedValueChangedObject.HasDelegate)
-            await SelectedValueChangedObject.InvokeAsync(item);
+        if (SelectedValueChangedTyped.HasDelegate) await SelectedValueChangedTyped.InvokeAsync(item);
+        if (SelectedValueChangedObject.HasDelegate) await SelectedValueChangedObject.InvokeAsync(item);
         
-
-        
-        if (EffectiveVariant == ChoiceVariant.Dropdown && CloseOnSelect)
-        {
-            await CloseDropdown();
-        }
+        if (EffectiveVariant == ChoiceVariant.Dropdown && CloseOnSelect) await CloseDropdown();
     }
-
-    private async Task OnKeyDown(KeyboardEventArgs e)
-    {
-        if (EffectiveVariant != ChoiceVariant.Dropdown) return;
-        
-        switch (e.Key)
-        {
-            case "Escape":
-                if (IsOpen && CloseOnEscape)
-                {
-                    await CloseDropdown();
-                }
-                break;
-            case "Enter":
-            case " ":
-                if (!IsOpen)
-                {
-                    await OpenDropdown();
-                }
-                break;
-            case "ArrowDown":
-                if (!IsOpen)
-                {
-                    await OpenDropdown();
-                }
-                break;
-            case "ArrowUp":
-                if (!IsOpen)
-                {
-                    await OpenDropdown();
-                }
-                break;
-        }
-    }
-    
     
     private string GetFormWrapperClasses()
     {
-        var classes = new List<string> { "choice-form-wrapper", "form-field" };
+        var baseClass = "choice-form-wrapper form-wrapper";
+        var customClass = !string.IsNullOrEmpty(Class) ? $" {Class}" : "";
+        var errorClass = HasError ? " choice-error form-error border-error" : "";
+        var disabledClass = Disabled ? " choice-disabled opacity-50 cursor-not-allowed" : "";
         
-        if (!string.IsNullOrEmpty(Class))
-            classes.Add(Class);
-            
-        if (HasError)
-            classes.Add("choice-error form-field-error border-error");
-            
-        if (Disabled)
-            classes.Add("choice-disabled opacity-50 cursor-not-allowed");
-            
-        return string.Join(" ", classes);
+        return $"{baseClass}{customClass}{errorClass}{disabledClass}";
     }
     
-    private string GetLabelClasses()
-    {
-        var classes = new List<string> { "choice-label", "form-label", "text-sm", "font-medium", "text-secondary", "mb-2" };
-        
-        if (Required)
-            classes.Add("choice-label-required form-label-required");
-            
-        return string.Join(" ", classes);
-    }
+    private string GetLabelClasses() => 
+        "choice-label form-label text-sm font-medium text-secondary mb-2" + (Required ? " choice-label-required form-label-required" : "");
     
-    private string GetErrorMessageClasses()
-    {
-        return "choice-error-message form-field-error text-error text-sm mt-1 d-flex align-center gap-1";
-    }
-    
-    private string GetHelpTextClasses()
-    {
-        return "choice-help-text form-field-help text-muted text-sm mt-1";
-    }
-    
-    
-    
-    private bool ShouldUseVirtualScrolling()
-    {
-        return EnableVirtualScrolling && Items != null && Items.Count() > 100;
-    }
-    
-    private int GetVirtualContainerHeight()
-    {
-        var itemCount = Items?.Count() ?? 0;
-        var maxHeight = 320; // 8 items * 40px
-        var calculatedHeight = Math.Min(itemCount * 40, maxHeight);
-        return Math.Max(calculatedHeight, 160); // Minimum 4 items visible
-    }
-    
-    private RenderFragment<TValue> GetVirtualItemTemplate()
-    {
-        return item => builder =>
-        {
-            var sequence = 0;
-            builder.OpenElement(sequence++, "button");
-            builder.AddAttribute(sequence++, "class", $"choice-item {GetItemClass(item)}");
-            builder.AddAttribute(sequence++, "onclick", EventCallback.Factory.Create(this, () => OnItemSelected(item)));
-            builder.AddAttribute(sequence++, "disabled", IsItemDisabled(item));
-            builder.AddAttribute(sequence++, "title", GetItemTitle(item));
-            builder.AddAttribute(sequence++, "aria-label", GetItemAriaLabel(item));
-            
-            if (ItemTemplate != null)
-            {
-                builder.AddContent(sequence++, ItemTemplate(item));
-            }
-            else
-            {
-                if (IsItemActive(item))
-                {
-                    builder.OpenElement(sequence++, "i");
-                    builder.AddAttribute(sequence++, "class", "material-symbols-rounded");
-                    builder.AddContent(sequence++, "check");
-                    builder.CloseElement();
-                }
-                else if (!string.IsNullOrEmpty(GetItemIcon(item)))
-                {
-                    builder.OpenElement(sequence++, "i");
-                    builder.AddAttribute(sequence++, "class", "material-symbols-rounded");
-                    builder.AddContent(sequence++, GetItemIcon(item));
-                    builder.CloseElement();
-                }
-                
-                builder.OpenElement(sequence++, "span");
-                builder.AddContent(sequence++, GetItemLabel(item));
-                builder.CloseElement();
-            }
-            
-            builder.CloseElement();
-        };
-    }
-    
+    private string GetErrorMessageClasses() => "choice-error-message form-error text-error text-sm mt-1 d-flex align-center gap-1";
+    private string GetHelpTextClasses() => "choice-help-text form-help text-muted text-sm mt-1";
     
     public async ValueTask DisposeAsync()
     {
         if (disposed) return;
         disposed = true;
         
-        if (isOpen)
-        {
-            try
-            {
-                await JS.InvokeAsync<bool>("RRBlazor.Choice.closeDropdown", choiceElementId);
-                
-                if (!string.IsNullOrEmpty(currentPortalId))
-                {
-                    await PortalService.UnregisterPortalAsync(currentPortalId);
-                }
-            }
-            catch { /* Ignore cleanup errors during disposal */ }
-        }
+        // No cleanup needed - JS handles state
     }
 }

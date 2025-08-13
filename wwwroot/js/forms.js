@@ -36,57 +36,56 @@ export function initializeFormField(element, options) {
     const cleanupFunctions = [];
     
     if (input.tagName === 'TEXTAREA' && options.autoResize) {
-        // Debounce auto-resize for better performance
-        let resizeTimeout;
-        const debouncedAutoResize = () => {
-            if (resizeTimeout) clearTimeout(resizeTimeout);
-            resizeTimeout = setTimeout(() => autoResizeTextarea(input), 16);
+        // Use requestAnimationFrame for resize
+        let resizeScheduled = false;
+        const scheduleResize = () => {
+            if (!resizeScheduled) {
+                resizeScheduled = true;
+                requestAnimationFrame(() => {
+                    autoResizeTextarea(input);
+                    resizeScheduled = false;
+                });
+            }
         };
         
-        input.addEventListener('input', debouncedAutoResize, { passive: true });
+        input.addEventListener('input', scheduleResize, { passive: true });
         autoResizeTextarea(input);
         
         cleanupFunctions.push(() => {
-            input.removeEventListener('input', debouncedAutoResize);
-            if (resizeTimeout) clearTimeout(resizeTimeout);
+            input.removeEventListener('input', scheduleResize);
         });
     }
     
     if (options.showCharacterCount && options.maxLength) {
-        // Debounce character count updates
-        let countTimeout;
-        const debouncedUpdateCount = () => {
-            if (countTimeout) clearTimeout(countTimeout);
-            countTimeout = setTimeout(() => {
-                const counter = element.querySelector('.rr-form-field__character-count');
-                if (counter) {
-                    const count = input.value.length;
-                    counter.textContent = `${count} / ${options.maxLength}`;
+        // Update character count immediately
+        const updateCount = () => {
+            const counter = element.querySelector('.rr-form-field__character-count');
+            if (counter) {
+                const count = input.value.length;
+                counter.textContent = `${count} / ${options.maxLength}`;
+                
+                const percentage = count / options.maxLength;
+                
+                // Batch class updates
+                requestAnimationFrame(() => {
+                    counter.classList.remove('text-error', 'text-warning', 'text-tertiary');
                     
-                    const percentage = count / options.maxLength;
-                    
-                    // Batch class updates
-                    requestAnimationFrame(() => {
-                        counter.classList.remove('text-error', 'text-warning', 'text-tertiary');
-                        
-                        if (percentage >= 1.0) {
-                            counter.classList.add('text-error');
-                        } else if (percentage >= 0.9) {
-                            counter.classList.add('text-warning');
-                        } else {
-                            counter.classList.add('text-tertiary');
-                        }
-                    });
-                }
-            }, 100);
+                    if (percentage >= 1.0) {
+                        counter.classList.add('text-error');
+                    } else if (percentage >= 0.9) {
+                        counter.classList.add('text-warning');
+                    } else {
+                        counter.classList.add('text-tertiary');
+                    }
+                });
+            }
         };
         
-        input.addEventListener('input', debouncedUpdateCount, { passive: true });
-        debouncedUpdateCount();
+        input.addEventListener('input', updateCount, { passive: true });
+        updateCount();
         
         cleanupFunctions.push(() => {
-            input.removeEventListener('input', debouncedUpdateCount);
-            if (countTimeout) clearTimeout(countTimeout);
+            input.removeEventListener('input', updateCount);
         });
     }
     

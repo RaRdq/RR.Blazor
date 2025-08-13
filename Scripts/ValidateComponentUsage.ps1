@@ -248,7 +248,7 @@ function Extract-RequiredParameters {
         # Look for ArgumentNullException or required parameter validation
         if ($line -match 'ArgumentNullException.*Parameter.*"([^"]+)"') {
             $paramName = $Matches[1]
-            if ($paramName -and $paramName -notin $requiredParameters) {
+            if ($paramName -and $requiredParameters -notcontains $paramName) {
                 $requiredParameters += $paramName
             }
         }
@@ -256,7 +256,7 @@ function Extract-RequiredParameters {
         # Look for required parameter validation patterns
         if ($line -match 'if\s*\(.*\s*(\w+)\s*==\s*null.*throw.*required') {
             $paramName = $Matches[1]
-            if ($paramName -and $paramName -notin $requiredParameters) {
+            if ($paramName -and $requiredParameters -notcontains $paramName) {
                 $requiredParameters += $paramName
             }
         }
@@ -268,7 +268,7 @@ function Extract-RequiredParameters {
                 $nextLine = $lines[$j].Trim()
                 if ($nextLine -match 'public\s+[^\s]+\s+(\w+)\s*\{') {
                     $paramName = $Matches[1]
-                    if ($paramName -and $paramName -notin $requiredParameters) {
+                    if ($paramName -and $requiredParameters -notcontains $paramName) {
                         $requiredParameters += $paramName
                     }
                     break
@@ -674,7 +674,7 @@ foreach ($file in $filesToScan) {
             continue
         }
         
-        $validParams = $componentParameters[$componentName]
+        $validParams = @($componentParameters[$componentName])
         
         # Extract parameters using Blazor-aware approach
         # Match actual parameter assignments: ParamName="value" or ParamName={expr} or @bind-ParamName
@@ -690,14 +690,14 @@ foreach ($file in $filesToScan) {
             if ($paramName.StartsWith("@bind-")) {
                 $actualParamName = $paramName.Substring(6)  # Remove "@bind-" prefix
                 # For @bind-Parameter, check if Parameter or ParameterChanged exists
-                $bindingValid = ($actualParamName -in $validParams) -or ("$($actualParamName)Changed" -in $validParams)
+                $bindingValid = ($validParams -contains $actualParamName) -or ($validParams -contains "$($actualParamName)Changed")
                 if ($bindingValid) {
                     continue  # @bind-Parameter is valid
                 }
             }
             
             # Skip ignored parameters (no false positives)
-            if ($actualParamName -in $ignoredParameters) {
+            if ($ignoredParameters -contains $actualParamName) {
                 continue
             }
             
@@ -746,7 +746,7 @@ foreach ($file in $filesToScan) {
                 continue  # Skip validation - this is valid
             }
             
-            if ($actualParamName -notin $validParams) {
+            if ($validParams -notcontains $actualParamName) {
                 $lineNumber = ($content.Substring(0, $match.Index) -split "`n").Count
                 
                 # Find closest matching parameter for suggestions

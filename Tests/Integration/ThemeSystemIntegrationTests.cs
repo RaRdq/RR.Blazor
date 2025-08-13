@@ -138,8 +138,10 @@ public class ThemeSystemIntegrationTests : TestContext
         // Layer 3: Utility Classes
         
         // Arrange - Check default theme SCSS structure
-        var defaultThemeFile = File.ReadAllText("C:\\Projects\\PayrollAI\\RR.Blazor\\Styles\\themes\\_default.scss");
-        var variablesFile = File.ReadAllText("C:\\Projects\\PayrollAI\\RR.Blazor\\Styles\\abstracts\\_variables.scss");
+        // Use relative paths from the test project location
+        var projectDir = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", ".."));
+        var defaultThemeFile = File.ReadAllText(Path.Combine(projectDir, "Styles", "themes", "_default.scss"));
+        var variablesFile = File.ReadAllText(Path.Combine(projectDir, "Styles", "abstracts", "_variables.scss"));
 
         // Assert - Verify theme layer uses --theme- prefix
         defaultThemeFile.Should().Contain("--theme-canvas:");
@@ -158,7 +160,9 @@ public class ThemeSystemIntegrationTests : TestContext
     public void DarkTheme_ShouldDefineAllRequiredVariables()
     {
         // Arrange - Read dark theme file
-        var darkThemeFile = File.ReadAllText("C:\\Projects\\PayrollAI\\RR.Blazor\\Styles\\themes\\_dark.scss");
+        // Use relative paths from the test project location
+        var projectDir = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", ".."));
+        var darkThemeFile = File.ReadAllText(Path.Combine(projectDir, "Styles", "themes", "_dark.scss"));
 
         // Assert - Verify all essential theme variables are defined
         var requiredVariables = new[]
@@ -335,7 +339,8 @@ public class ThemeSystemIntegrationTests : TestContext
     public void ThemeArchitecture_ShouldNotHaveCircularDependencies()
     {
         // Verify semantic variables don't reference each other circularly
-        var variablesFile = File.ReadAllText("C:\\Projects\\PayrollAI\\RR.Blazor\\Styles\\abstracts\\_variables.scss");
+        var projectDir = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", ".."));
+        var variablesFile = File.ReadAllText(Path.Combine(projectDir, "Styles", "abstracts", "_variables.scss"));
         
         // Check that semantic variables only reference theme variables, not other semantic variables
         var semanticVariablePattern = @"--color-\w+:\s*var\(--color-\w+\)";

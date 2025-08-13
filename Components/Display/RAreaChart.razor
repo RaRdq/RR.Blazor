@@ -1,0 +1,232 @@
+@* RAreaChart - Area chart component for showing data trends with filled areas *@
+@using RR.Blazor.Enums
+@using RR.Blazor.Models
+@using RR.Blazor.Components.Base
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.JSInterop
+@inherits RInteractiveComponentBase
+@inject IJSRuntime JSRuntime
+
+<RChart Header="@Title" 
+        Subtitle="@Subtitle"
+        Icon="@Icon"
+        Type="ChartType.Area"
+        Size="@Size"
+        Variant="@Variant"
+        Theme="@Theme"
+        Loading="@Loading"
+        HasError="@HasError"
+        IsEmpty="@IsEmpty"
+        ShowLegend="@ShowLegend"
+        LegendPosition="@LegendPosition"
+        Class="@Class"
+        OnClick="@OnClick"
+        OnChartInit="@HandleChartInit"
+        Configuration="@Configuration">
+    
+    <HeaderContent>
+        @HeaderContent
+    </HeaderContent>
+    
+    <ChildContent>
+        <div class="area-chart-container" @ref="chartContainer" style="height: @Height;">
+            @if (SeriesData != null && SeriesData.Any())
+            {
+                <svg class="area-chart-svg w-full h-full" viewBox="0 0 800 400">
+                    <defs>
+                        @foreach (var (series, index) in SeriesData.Select((s, i) => (s, i)))
+                        {
+                            <linearGradient id="areaGradient@(index)" x1="0%" y1="0%" x2="0%" y2="100%">
+                                <stop offset="0%" style="stop-color:@GetSeriesColor(series, index);stop-opacity:0.6" />
+                                <stop offset="100%" style="stop-color:@GetSeriesColor(series, index);stop-opacity:0.1" />
+                            </linearGradient>
+                        }
+                    </defs>
+                    
+                    @foreach (var (series, seriesIndex) in SeriesData.Select((s, i) => (s, i)))
+                    {
+                        if (series.Data.Any())
+                        {
+                            var pathData = GenerateAreaPath(series.Data, seriesIndex);
+                            <path d="@pathData" 
+                                  fill="url(#areaGradient@(seriesIndex))" 
+                                  stroke="@GetSeriesColor(series, seriesIndex)" 
+                                  stroke-width="2" 
+                                  class="area-path @(selectedSeries == seriesIndex ? "selected" : "")"
+                                  @onclick="@(() => HandleAreaClick(series, seriesIndex))" />
+                        }
+                    }
+                </svg>
+            }
+        </div>
+    </ChildContent>
+</RChart>
+
+@code {
+    [Parameter] public IEnumerable<ChartSeries> SeriesData { get; set; } = new List<ChartSeries>();
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public string Subtitle { get; set; } = "";
+    [Parameter] public string Icon { get; set; } = "area_chart";
+    [Parameter] public ChartSize Size { get; set; } = ChartSize.Medium;
+    [Parameter] public ChartVariant Variant { get; set; } = ChartVariant.Default;
+    [Parameter] public ChartTheme Theme { get; set; } = ChartTheme.Auto;
+    [Parameter] public bool ShowLegend { get; set; } = true;
+    [Parameter] public ChartLegendPosition LegendPosition { get; set; } = ChartLegendPosition.Bottom;
+    [Parameter] public string Height { get; set; } = "300px";
+    [Parameter] public bool HasError { get; set; }
+    [Parameter] public bool IsEmpty { get; set; }
+    [Parameter] public ChartConfiguration Configuration { get; set; } = new();
+    [Parameter] public RenderFragment HeaderContent { get; set; }
+    [Parameter] public bool UseCanvas { get; set; } = true;
+    [Parameter] public bool EnableTouchInteractions { get; set; } = true;
+    [Parameter] public EventCallback<ChartEventArgs> OnAreaClick { get; set; }
+
+    private static readonly string[] DefaultColorPalette = {
+        "var(--color-primary)",
+        "var(--color-success)",
+        "var(--color-warning)",
+        "var(--color-error)",
+        "var(--color-info)"
+    };
+
+    private ElementReference chartContainer;
+    private ElementReference canvasContainer;
+    private int selectedSeries = -1;
+    private IJSObjectReference canvasChart;
+
+    private async Task HandleChartInit(ElementReference element)
+    {
+        chartContainer = element;
+        
+        if (UseCanvas)
+        {
+            await InitializeCanvasChart();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+        
+        if (firstRender && UseCanvas && canvasContainer.Id != null)
+        {
+            await InitializeCanvasChart();
+        }
+    }
+
+    private async Task InitializeCanvasChart()
+    {
+        if (canvasContainer.Id == null || SeriesData?.Any() != true) return;
+        
+        try
+        {
+            var canvasModule = await JSRuntime.InvokeAsync<IJSObjectReference>(
+                "import", "./_content/RR.Blazor/js/chart-canvas.js");
+                
+            var flatData = SeriesData.SelectMany(s => s.Data.Select(d => new
+            {
+                label = d.Label,
+                value = d.Value,
+                series = s.Name,
+                color = !string.IsNullOrEmpty(s.Color) ? s.Color : GetSeriesColor(s, 0)
+            })).ToArray();
+
+            canvasChart = await canvasModule.InvokeAsync<IJSObjectReference>(
+                "createCanvasChart",
+                canvasContainer,
+                "area",
+                new
+                {
+                    enableTouch = EnableTouchInteractions,
+                    enableZoom = EnableTouchInteractions,
+                    enablePan = EnableTouchInteractions,
+                    enableAnimation = Configuration.EnableAnimation,
+                    animationDuration = Configuration.AnimationDuration
+                });
+
+            await canvasChart.InvokeVoidAsync("setData", flatData);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Canvas area chart init error: {ex.Message}");
+            UseCanvas = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleAreaClick(ChartSeries series, int index)
+    {
+        selectedSeries = selectedSeries == index ? -1 : index;
+        
+        if (OnAreaClick.HasDelegate)
+        {
+            await OnAreaClick.InvokeAsync(new ChartEventArgs
+            {
+                Index = index,
+                EventType = "click",
+                AdditionalData = new Dictionary<string, object> { ["Series"] = series }
+            });
+        }
+        
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private string GetSeriesColor(ChartSeries series, int index)
+    {
+        return !string.IsNullOrEmpty(series.Color) ? series.Color : DefaultColorPalette[index % DefaultColorPalette.Length];
+    }
+
+    private string GenerateAreaPath(List<ChartDataPoint> data, int seriesIndex)
+    {
+        if (!data.Any()) return "";
+        
+        var maxValue = SeriesData.SelectMany(s => s.Data).Max(d => d.Value);
+        var minValue = SeriesData.SelectMany(s => s.Data).Min(d => d.Value);
+        var range = maxValue - minValue;
+        if (range == 0) range = 1;
+
+        var pathBuilder = new System.Text.StringBuilder();
+        var width = 760; // SVG width minus padding
+        var height = 360; // SVG height minus padding
+        
+        for (int i = 0; i < data.Count; i++)
+        {
+            var x = 40 + (i * width / (data.Count - 1));
+            var y = 40 + height - ((data[i].Value - minValue) / range * height);
+            
+            if (i == 0)
+            {
+                pathBuilder.Append($"M {x},{y}");
+            }
+            else
+            {
+                pathBuilder.Append($" L {x},{y}");
+            }
+        }
+        
+        // Close the area to bottom
+        var lastX = 40 + ((data.Count - 1) * width / (data.Count - 1));
+        pathBuilder.Append($" L {lastX},{40 + height} L 40,{40 + height} Z");
+        
+        return pathBuilder.ToString();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            if (canvasChart != null)
+            {
+                await canvasChart.InvokeVoidAsync("dispose");
+                await canvasChart.DisposeAsync();
+            }
+        }
+        catch (JSDisconnectedException) { }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Area chart disposal error: {ex.Message}");
+        }
+        
+        await base.DisposeAsync();
+    }
+}

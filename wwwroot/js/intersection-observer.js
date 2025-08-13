@@ -24,11 +24,14 @@ export function observe(element, dotNetRef, options = {}) {
     const observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
-                // Debounce the callback to prevent multiple rapid calls
-                clearTimeout(element._loadMoreTimeout);
-                element._loadMoreTimeout = setTimeout(() => {
-                    dotNetRef.invokeMethodAsync('OnIntersectionChanged', true);
-                }, 100);
+                // Use requestAnimationFrame to prevent rapid calls
+                if (!element._loadMoreScheduled) {
+                    element._loadMoreScheduled = true;
+                    requestAnimationFrame(() => {
+                        delete element._loadMoreScheduled;
+                        dotNetRef.invokeMethodAsync('OnIntersectionChanged', true);
+                    });
+                }
             }
         });
     }, defaultOptions);

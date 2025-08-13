@@ -1,3 +1,5 @@
+// Use RRBlazor proxy instead of direct imports for proper architecture
+
 // Create local debug logger to avoid circular imports
 const debugLogger = {
     log: (...args) => {
@@ -55,26 +57,35 @@ class AutosuggestPositioning {
                 return null;
             }
 
-            // Create portal using the same pattern as RChoice
-            const portalId = await window.RRBlazor.Portal.create(viewportElement, {
+            // Create portal using RRBlazor proxy
+            const portalManager = await window.RRBlazor.Portal.getInstance();
+            const portalResult = portalManager.create({
                 id: `autosuggest-${elementId}`,
-                type: 'dropdown',
-                anchor: triggerElement,
-                className: 'autosuggest-portal',
-                buffer: 8,
-                minWidth: 200,
-                maxHeight: 'min(20rem, 50vh)',
-                constrainToViewport: true,
-                zIndex: this.getContextualZIndex(autosuggestElement)
+                className: 'autosuggest-portal'
             });
+            const portalId = portalResult.id;
+            const portalContainer = portalResult.element;
 
-            if (portalId) {
+            if (portalId && portalContainer) {
+                // Store original position for restoration
+                if (!viewportElement._originalParent) {
+                    viewportElement._originalParent = viewportElement.parentNode;
+                    viewportElement._originalNextSibling = viewportElement.nextSibling;
+                }
+                
+                // Move viewport to portal
+                portalContainer.appendChild(viewportElement);
+                
+                // Apply portal positioning
+                this.positionPortal(portalContainer, triggerElement, options);
+                
                 viewportElement._portalId = portalId;
                 autosuggestElement._portalId = portalId;
                 
                 // Store autosuggest data
                 this.activeAutosuggest.set(elementId, {
                     portalId,
+                    portalContainer,
                     triggerElement,
                     viewportElement,
                     autosuggestElement,
@@ -89,9 +100,6 @@ class AutosuggestPositioning {
 
                 // Setup event listeners
                 this.setupEventListeners(elementId);
-
-                // Position the portal
-                window.RRBlazor.Portal.position(portalId);
                 
                 debugLogger.log(`Autosuggest portal created: ${portalId}`);
             }
@@ -108,8 +116,25 @@ class AutosuggestPositioning {
         if (!autosuggestData) return;
 
         try {
-            // Destroy portal using the same pattern as RChoice
-            await window.RRBlazor.Portal.destroy(autosuggestData.portalId);
+            // Restore viewport to original position
+            if (autosuggestData.viewportElement) {
+                const viewport = autosuggestData.viewportElement;
+                if (viewport._originalParent) {
+                    if (viewport._originalNextSibling) {
+                        viewport._originalParent.insertBefore(viewport, viewport._originalNextSibling);
+                    } else {
+                        viewport._originalParent.appendChild(viewport);
+                    }
+                    delete viewport._originalParent;
+                    delete viewport._originalNextSibling;
+                }
+            }
+            
+            // Destroy portal using RRBlazor proxy
+            const portalManager = await window.RRBlazor.Portal.getInstance();
+            if (portalManager.isPortalActive(autosuggestData.portalId)) {
+                portalManager.destroy(autosuggestData.portalId);
+            }
 
             // Clean up observers
             if (this.resizeObserver && autosuggestData.triggerElement) {
@@ -134,15 +159,65 @@ class AutosuggestPositioning {
         if (!autosuggestData) return;
 
         try {
-            // Get portal manager
-            const portalModule = await window.RRBlazor.moduleManager.getModule('portal');
-            const portalManager = portalModule.portalManager || window.RRPortalManager;
-
-            // Update portal position
-            await portalManager.position(autosuggestData.portalId);
+            // Update portal position using direct positioning
+            if (autosuggestData.portalContainer && autosuggestData.triggerElement) {
+                this.positionPortal(autosuggestData.portalContainer, autosuggestData.triggerElement, autosuggestData.options);
+            }
         } catch (error) {
             debugLogger.error(`Failed to update autosuggest position for ${elementId}:`, error);
         }
+    }
+
+    positionPortal(portalContainer, triggerElement, options = {}) {
+        if (!portalContainer || !triggerElement) return;
+        
+        const triggerRect = triggerElement.getBoundingClientRect();
+        const viewportHeight = window.innerHeight;
+        const viewportWidth = window.innerWidth;
+        
+        // Calculate optimal position
+        const buffer = options.buffer || 8;
+        const minWidth = Math.max(options.minWidth || 200, triggerRect.width);
+        const maxWidth = Math.min(400, viewportWidth - 16);
+        const width = Math.min(minWidth, maxWidth);
+        
+        // Determine if dropdown should open up or down
+        const spaceBelow = viewportHeight - triggerRect.bottom - buffer;
+        const spaceAbove = triggerRect.top - buffer;
+        const estimatedHeight = Math.min(options.maxHeight || 320, 320);
+        
+        let x = triggerRect.left;
+        let y = triggerRect.bottom + buffer;
+        
+        // Adjust horizontal position if needed
+        if (x + width > viewportWidth - buffer) {
+            x = viewportWidth - width - buffer;
+        }
+        if (x < buffer) {
+            x = buffer;
+        }
+        
+        // Adjust vertical position if needed
+        if (spaceBelow < estimatedHeight && spaceAbove > estimatedHeight) {
+            y = triggerRect.top - estimatedHeight - buffer;
+        }
+        
+        // Apply positioning
+        portalContainer.style.position = 'fixed';
+        portalContainer.style.left = `${x}px`;
+        portalContainer.style.top = `${y}px`;
+        portalContainer.style.width = `${width}px`;
+        portalContainer.style.maxHeight = `${Math.min(estimatedHeight, Math.max(spaceAbove, spaceBelow))}px`;
+        portalContainer.style.zIndex = this.getContextualZIndex(triggerElement);
+        portalContainer.style.visibility = 'visible';
+        portalContainer.style.opacity = '1';
+        portalContainer.style.pointerEvents = 'auto';
+        
+        // Apply visual styling
+        portalContainer.style.boxShadow = 'var(--shadow-lg)';
+        portalContainer.style.borderRadius = 'var(--radius-md)';
+        portalContainer.style.backgroundColor = 'var(--color-background-elevated)';
+        portalContainer.style.border = '1px solid var(--color-border-subtle)';
     }
 
     getContextualZIndex(element) {
@@ -207,9 +282,9 @@ export function registerClickOutside(elementId, dotNetRef) {
         const portalId = autosuggest?._portalId;
         
         if (portalId) {
-            window.RRBlazor.Portal.update(portalId, {
-                onClickOutside: () => dotNetRef.invokeMethodAsync('OnClickOutside')
-            });
+            // Click outside handling is managed by Blazor component itself
+            // No need for portal-level click outside handling
+            debugLogger.log(`Click-outside registered for autosuggest: ${portalId}`);
         }
     } catch (error) {
         debugLogger.error('[Autosuggest] Click-outside registration failed:', error);
@@ -235,7 +310,10 @@ export async function destroyAutosuggestPortal(portalId) {
     }
     // Try direct portal destruction as fallback
     try {
-        await window.RRBlazor.Portal.destroy(portalId);
+        const portalManager = await window.RRBlazor.Portal.getInstance();
+        if (portalManager.isPortalActive(portalId)) {
+            portalManager.destroy(portalId);
+        }
     } catch (error) {
         debugLogger.error('[Autosuggest] Direct portal destruction failed:', error);
     }

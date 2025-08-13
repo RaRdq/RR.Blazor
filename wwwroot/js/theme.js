@@ -71,9 +71,9 @@ export function applyTheme(themeData) {
         const bodyEl = document.body;
         if (bodyEl) {
             bodyEl.style.opacity = '0.999';
-            setTimeout(() => {
+            requestAnimationFrame(() => {
                 bodyEl.style.opacity = '';
-            }, 1);
+            });
         }
         
         // Notify other systems of theme change

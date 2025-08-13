@@ -125,10 +125,7 @@ For AI agents (Claude, GPT-4, etc.), add a rule or manually refer to [`@RR.Blazo
              OnClick="HandleSave" />
 </RCard>
 
-<RDataTable TItem="Employee" 
-            Items="employees"
-            ShowFilters="true"
-            Striped="true" />
+<RTable Items="@employees" />  @* Zero configuration - auto-generates all columns! *@
 ```
 
 ### Forms with Validation

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Components;
 using RR.Blazor.Enums;
+using System.Reflection;
 
 namespace RR.Blazor.Models
 {
@@ -16,6 +17,91 @@ namespace RR.Blazor.Models
         public string AccessibilityText { get; set; } = "";
         public bool IsVisible { get; set; } = true;
         public EventCallback<ChartDataPoint> OnClick { get; set; }
+    }
+
+    public class ChartDataAnalyzer
+    {
+        public ChartType AnalyzeAndRecommend<T>(IEnumerable<T> data)
+        {
+            if (!data.Any()) return ChartType.Column;
+
+            var properties = typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance);
+            var sample = data.Take(100).ToList();
+
+            if (HasDateTimeProperty(properties)) return ChartType.Line;
+
+            var numericProps = properties.Count(IsNumericProperty);
+            var categoricalProps = properties.Count(IsCategoricalProperty);
+
+            return (numericProps, categoricalProps) switch
+            {
+                (1, 1) => ChartType.Column,
+                (> 1, 1) => ChartType.Column,
+                (1, 0) => ChartType.Pie,
+                _ => ChartType.Column
+            };
+        }
+
+        public List<ChartDataPoint> ConvertToChartData<T>(IEnumerable<T> data)
+        {
+            if (!data.Any()) return new List<ChartDataPoint>();
+
+            var properties = typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance);
+            var labelProp = FindLabelProperty(properties);
+            var valueProp = FindValueProperty(properties);
+            var categoryProp = FindCategoryProperty(properties);
+
+            return data.Select(item => new ChartDataPoint
+            {
+                Label = labelProp?.GetValue(item)?.ToString() ?? "Unknown",
+                Value = GetNumericValue(valueProp?.GetValue(item)),
+                Category = categoryProp?.GetValue(item)?.ToString() ?? "",
+                Metadata = properties.ToDictionary(p => p.Name, p => p.GetValue(item) ?? "")
+            }).ToList();
+        }
+
+        private static bool HasDateTimeProperty(PropertyInfo[] properties) =>
+            properties.Any(p => p.PropertyType == typeof(DateTime) || p.PropertyType == typeof(DateTime?));
+
+        private static bool IsNumericProperty(PropertyInfo prop) =>
+            prop.PropertyType == typeof(int) || prop.PropertyType == typeof(double) || 
+            prop.PropertyType == typeof(decimal) || prop.PropertyType == typeof(float) ||
+            prop.PropertyType == typeof(int?) || prop.PropertyType == typeof(double?) ||
+            prop.PropertyType == typeof(decimal?) || prop.PropertyType == typeof(float?);
+
+        private static bool IsCategoricalProperty(PropertyInfo prop) =>
+            prop.PropertyType == typeof(string);
+
+        private static PropertyInfo? FindLabelProperty(PropertyInfo[] properties) =>
+            properties.FirstOrDefault(p => 
+                p.Name.Equals("Label", StringComparison.OrdinalIgnoreCase) ||
+                p.Name.Equals("Name", StringComparison.OrdinalIgnoreCase) ||
+                p.PropertyType == typeof(string)) ??
+            properties.FirstOrDefault();
+
+        private static PropertyInfo? FindValueProperty(PropertyInfo[] properties) =>
+            properties.FirstOrDefault(p =>
+                p.Name.Equals("Value", StringComparison.OrdinalIgnoreCase) ||
+                p.Name.Equals("Amount", StringComparison.OrdinalIgnoreCase) ||
+                p.Name.Equals("Count", StringComparison.OrdinalIgnoreCase) ||
+                IsNumericProperty(p)) ??
+            properties.FirstOrDefault(IsNumericProperty);
+
+        private static PropertyInfo? FindCategoryProperty(PropertyInfo[] properties) =>
+            properties.FirstOrDefault(p =>
+                p.Name.Equals("Category", StringComparison.OrdinalIgnoreCase) ||
+                p.Name.Equals("Group", StringComparison.OrdinalIgnoreCase));
+
+        private static double GetNumericValue(object? value) =>
+            value switch
+            {
+                null => 0,
+                int i => i,
+                double d => d,
+                decimal dec => (double)dec,
+                float f => f,
+                _ => double.TryParse(value.ToString(), out var result) ? result : 0
+            };
     }
 
     public class ChartSeries

@@ -146,6 +146,9 @@ namespace RR.Blazor.Components.Core
         {
             var classes = new List<string>();
             
+            // Check if this is a group-more indicator
+            var isGroupMore = !string.IsNullOrEmpty(Class) && Class.Contains("avatar-group-more");
+            
             // Size modifier - single semantic class
             var sizeClass = Size switch
             {
@@ -159,18 +162,21 @@ namespace RR.Blazor.Components.Core
             };
             classes.Add(sizeClass);
             
-            // Variant modifier
-            var variantClass = Variant switch
+            // Only add variant modifier if not a group-more indicator
+            if (!isGroupMore)
             {
-                AvatarVariant.Default => "avatar-default",
-                AvatarVariant.Primary => "avatar-primary",
-                AvatarVariant.Success => "avatar-success",
-                AvatarVariant.Warning => "avatar-warning",
-                AvatarVariant.Error => "avatar-error",
-                AvatarVariant.Gradient => "avatar-gradient",
-                _ => "avatar-default"
-            };
-            classes.Add(variantClass);
+                var variantClass = Variant switch
+                {
+                    AvatarVariant.Default => "avatar-default",
+                    AvatarVariant.Primary => "avatar-primary",
+                    AvatarVariant.Success => "avatar-success",
+                    AvatarVariant.Warning => "avatar-warning",
+                    AvatarVariant.Error => "avatar-error",
+                    AvatarVariant.Gradient => "avatar-gradient",
+                    _ => "avatar-default"
+                };
+                classes.Add(variantClass);
+            }
             
             // Interactive modifier
             if (IsClickable)

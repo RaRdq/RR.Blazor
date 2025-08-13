@@ -31,13 +31,23 @@ public class RToggle : ComponentBase
         // Use the generic component with bool type
         builder.OpenComponent<RToggleGeneric<bool>>(0);
         
-        // Explicitly forward the Value and ValueChanged parameters
+        // Forward Value and ValueChanged properly for @bind-Value support
         builder.AddAttribute(1, "Value", Value);
         builder.AddAttribute(2, "ValueChanged", ValueChanged);
         
-        // Forward all other parameters except Value and ValueChanged to prevent @bind issues
-        var seq = 10;
-        builder.ForwardParameters(ref seq, this, "Value", "ValueChanged");
+        // Forward all other parameters manually to ensure compatibility
+        builder.AddAttribute(3, "Text", Text);
+        builder.AddAttribute(4, "TrueText", TrueText);
+        builder.AddAttribute(5, "FalseText", FalseText);
+        builder.AddAttribute(6, "TrueIcon", TrueIcon);
+        builder.AddAttribute(7, "FalseIcon", FalseIcon);
+        builder.AddAttribute(8, "Variant", Variant);
+        builder.AddAttribute(9, "Size", Size);
+        builder.AddAttribute(10, "Disabled", Disabled);
+        builder.AddAttribute(11, "Loading", Loading);
+        builder.AddAttribute(12, "Class", Class);
+        builder.AddAttribute(13, "AriaLabel", AriaLabel);
+        builder.AddAttribute(14, "OnToggle", OnToggle);
         
         builder.CloseComponent();
     }
