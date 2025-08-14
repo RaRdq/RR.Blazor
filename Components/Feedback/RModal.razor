@@ -30,7 +30,7 @@
                                 <i class="material-symbols-rounded text-primary @GetIconSizeClass()" aria-hidden="true">@Icon</i>
                             }
                             <div class="d-flex flex-col">
-                                <h3 id="@ModalTitleId" class="modal-title ma-0 @GetTitleClasses()">@Text</h3>
+                                <h3 id="@ModalTitleId" class="modal-title ma-0 @GetTitleClasses()">@Title</h3>
                                 @if (!string.IsNullOrEmpty(Subtitle))
                                 {
                                     <p id="@ModalDescriptionId" class="modal-subtitle ma-0 text-sm text-muted">@Subtitle</p>
@@ -119,34 +119,12 @@
 }
 
 @code {
-    
-
     [Parameter] public bool Visible { get; set; }
     [Parameter] public EventCallback<bool> VisibleChanged { get; set; }
     
     [Parameter] public bool UseBackdrop { get; set; } = true;
     [Parameter] public string BackdropClass { get; set; } = "";
     [Parameter] public bool BackdropBlur { get; set; } = false;
-    
-
-    private static int portalCounter = 0;
-    private readonly string portalId = $"modal-auto-{System.Threading.Interlocked.Increment(ref portalCounter)}";
-    private string? actualPortalId = null;
-    private bool isPortalCreated = false;
-    private bool previousVisible = false;
-    private int modalZIndex = 1000;
-    
-    // State machine for modal lifecycle
-    private enum ModalState
-    {
-        Closed,
-        Opening,
-        Open,
-        Closing
-    }
-    
-    private ModalState currentState = ModalState.Closed;
-    private readonly SemaphoreSlim stateLock = new SemaphoreSlim(1, 1);
     
     /// <summary>
     /// Animation style for modal appearance
@@ -160,11 +138,9 @@
     
     [Parameter] public bool ShowHeader { get; set; } = true;
     
-    
     [Parameter] public RenderFragment HeaderContent { get; set; }
     [Parameter] public bool ShowCloseButton { get; set; } = true;
     
-
     [Parameter] public bool ShowFooter { get; set; } = true;
     [Parameter] public RenderFragment FooterContent { get; set; }
     [Parameter] public bool ShowCancelButton { get; set; } = true;
@@ -198,9 +174,28 @@
     private string ModalTitleId { get; set; } = $"modal-title-{Guid.NewGuid():N}";
     private string ModalDescriptionId { get; set; } = $"modal-desc-{Guid.NewGuid():N}";
 
-[Inject] private IJSRuntime JSRuntime { get; set; } = default!;
+    private static int portalCounter = 0;
+    private readonly string portalId = $"modal-auto-{System.Threading.Interlocked.Increment(ref portalCounter)}";
+    private string? actualPortalId = null;
+    private bool isPortalCreated = false;
+    private bool previousVisible = false;
+    private int modalZIndex = 1000;
     
-protected override async Task OnAfterRenderAsync(bool firstRender)
+    private ModalState currentState = ModalState.Closed;
+    private readonly SemaphoreSlim stateLock = new SemaphoreSlim(1, 1);
+    
+    [Inject] private IJSRuntime JSRuntime { get; set; } = default!;
+
+    // State machine for modal lifecycle
+    private enum ModalState
+    {
+        Closed,
+        Opening,
+        Open,
+        Closing
+    }
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (Visible != previousVisible && UseBackdrop)
         {
@@ -214,21 +209,15 @@ protected override async Task OnAfterRenderAsync(bool firstRender)
             {
                 if (Visible && currentState == ModalState.Closed)
                 {
-                    // Only transition from Closed to Opening - skip if already open/opening
                     currentState = ModalState.Opening;
                     
-                    // Wait for DOM to be ready
                     await Task.Yield();
-                    
                     await CreatePortal();
                     
-                    // Focus trap is now managed by modal.js
                     currentState = ModalState.Open;
                 }
                 else if (Visible && (currentState == ModalState.Open || currentState == ModalState.Opening))
                 {
-                    // Modal already open or opening - skip duplicate opening
-                    // This handles Blazor re-renders that trigger OnAfterRenderAsync multiple times
                     return;
                 }
                 else if (!Visible && (currentState == ModalState.Open || currentState == ModalState.Opening))
@@ -249,7 +238,6 @@ protected override async Task OnAfterRenderAsync(bool firstRender)
         }
         else if (Visible != previousVisible && !UseBackdrop)
         {
-            // Handle non-portal modals (inline rendering)
             previousVisible = Visible;
         }
     }
@@ -266,12 +254,10 @@ protected override async Task OnAfterRenderAsync(bool firstRender)
         };
     }
     
-private async Task<bool> CreatePortal()
+    private async Task<bool> CreatePortal()
     {
         if (isPortalCreated)
-        {
             throw new InvalidOperationException($"Portal {portalId} already created");
-        }
         
         var options = new
         {
@@ -287,7 +273,6 @@ private async Task<bool> CreatePortal()
             trapFocus = true
         };
         
-        // Pass the modal element directly via ElementReference
         var result = await JSRuntime.InvokeAsync<string>("RRBlazor.Modal.create", modalElement, options);
         
         actualPortalId = result;
@@ -296,9 +281,7 @@ private async Task<bool> CreatePortal()
         return true;
     }
     
-    
-    
-private async Task CleanupPortal()
+    private async Task CleanupPortal()
     {
         if (!isPortalCreated)
         {
