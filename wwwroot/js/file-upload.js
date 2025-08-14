@@ -1,21 +1,12 @@
-// RFileUpload JavaScript Module
-// Advanced file upload functionality with drag/drop, previews, and validation
-
-// Use shared debug logger from RR.Blazor main file
-const debugLogger = window.debugLogger || new (window.RRDebugLogger || class {
-    constructor() { this.logPrefix = '[RFileUpload]'; }
-    warn(...args) { console.warn(this.logPrefix, ...args); }
-})();
 
 export const RRFileUpload = {
-    // Initialize file upload component
     initialize: function(elementId, options = {}) {
         const element = document.getElementById(elementId);
         if (!element) return;
 
         const settings = {
             allowedTypes: options.allowedTypes || [],
-            maxSize: options.maxSize || 10 * 1024 * 1024, // 10MB
+            maxSize: options.maxSize || 10 * 1024 * 1024,
             maxFiles: options.maxFiles || 10,
             enableDragDrop: options.enableDragDrop !== false,
             showProgress: options.showProgress !== false,
@@ -24,19 +15,14 @@ export const RRFileUpload = {
             ...options
         };
 
-        // Setup drag and drop
         if (settings.enableDragDrop) {
             this.setupDragDrop(element, settings);
         }
 
-        // Setup file input handling
         this.setupFileInput(element, settings);
-
-        // Store settings on element
         element._rrFileUploadSettings = settings;
     },
 
-    // Setup drag and drop functionality with smart preview mode
     setupDragDrop: function(element, settings) {
         const dropZone = element.querySelector('.upload-area, .file-preview-container');
         if (!dropZone) return;
@@ -86,13 +72,11 @@ export const RRFileUpload = {
             }
         };
 
-        // Prevent default drag behaviors
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
             dropZone.addEventListener(eventName, this.preventDefaults, false);
             document.body.addEventListener(eventName, this.preventDefaults, false);
         });
 
-        // Highlight drop zone when dragging over it
         ['dragenter', 'dragover'].forEach(eventName => {
             dropZone.addEventListener(eventName, (e) => {
                 if (eventName === 'dragenter') {
@@ -118,13 +102,11 @@ export const RRFileUpload = {
             }, false);
         });
 
-        // Handle dropped files
         dropZone.addEventListener('drop', (e) => {
             const files = e.dataTransfer.files;
             this.handleFiles(files, element, settings);
         }, false);
 
-        // Store cleanup function
         element._rrDropZoneCleanup = () => {
             ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
                 dropZone.removeEventListener(eventName, this.preventDefaults, false);
@@ -132,7 +114,6 @@ export const RRFileUpload = {
         };
     },
 
-    // Setup file input handling
     setupFileInput: function(element, settings) {
         const fileInput = element.querySelector('input[type="file"]');
         if (!fileInput) return;
@@ -142,19 +123,16 @@ export const RRFileUpload = {
         });
     },
 
-    // Prevent default drag behaviors
     preventDefaults: function(e) {
         e.preventDefault();
         e.stopPropagation();
     },
 
-    // Handle file selection/drop
     handleFiles: function(files, element, settings) {
         const fileArray = Array.from(files);
         const validFiles = [];
         const errors = [];
 
-        // Validate files
         fileArray.forEach(file => {
             const validation = this.validateFile(file, settings);
             if (validation.valid) {
@@ -164,20 +142,16 @@ export const RRFileUpload = {
             }
         });
 
-        // Process valid files
         if (validFiles.length > 0) {
             this.processFiles(validFiles, element, settings);
         }
 
-        // Report errors
         if (errors.length > 0) {
             this.showErrors(errors, element);
         }
     },
 
-    // Validate individual file
     validateFile: function(file, settings) {
-        // Check file size
         if (file.size > settings.maxSize) {
             return {
                 valid: false,
@@ -185,7 +159,6 @@ export const RRFileUpload = {
             };
         }
 
-        // Check file type
         if (settings.allowedTypes && settings.allowedTypes.length > 0) {
             const extension = '.' + file.name.split('.').pop().toLowerCase();
             const isAllowed = settings.allowedTypes.some(type => 
@@ -204,7 +177,6 @@ export const RRFileUpload = {
         return { valid: true };
     },
 
-    // Process valid files
     processFiles: async function(files, element, settings) {
         const fileInfos = [];
 
@@ -220,26 +192,23 @@ export const RRFileUpload = {
                 status: 'Pending'
             };
 
-            // Generate thumbnail for images
             if (fileInfo.isImage && settings.generateThumbnails) {
                 try {
                     fileInfo.thumbnailUrl = await this.generateThumbnail(file);
                 } catch (error) {
-                    debugLogger.warn('Failed to generate thumbnail:', error);
+                    console.error('Failed to generate thumbnail:', error);
                 }
             }
 
             fileInfos.push(fileInfo);
         }
 
-        // Trigger Blazor callback
         const event = new CustomEvent('rr-files-selected', {
             detail: { files: fileInfos, originalFiles: files }
         });
         element.dispatchEvent(event);
     },
 
-    // Generate thumbnail for image files
     generateThumbnail: function(file, maxWidth = 150, maxHeight = 150) {
         return new Promise((resolve, reject) => {
             const canvas = document.createElement('canvas');
@@ -247,7 +216,6 @@ export const RRFileUpload = {
             const img = new Image();
 
             img.onload = function() {
-                // Calculate dimensions
                 let { width, height } = img;
                 
                 if (width > height) {
@@ -265,7 +233,6 @@ export const RRFileUpload = {
                 canvas.width = width;
                 canvas.height = height;
 
-                // Draw and export
                 ctx.drawImage(img, 0, 0, width, height);
                 resolve(canvas.toDataURL('image/jpeg', 0.8));
             };
@@ -275,14 +242,11 @@ export const RRFileUpload = {
         });
     },
 
-    // Show validation errors
     showErrors: function(errors, element) {
         const errorContainer = element.querySelector('.file-upload-errors');
         if (errorContainer) {
-            // Clear existing content
             errorContainer.innerHTML = '';
             
-            // Create error elements safely
             errors.forEach(error => {
                 const errorDiv = document.createElement('div');
                 errorDiv.className = 'd-flex align-center text-xs text-error mb-1';
@@ -302,7 +266,6 @@ export const RRFileUpload = {
         }
     },
 
-    // Clear errors
     clearErrors: function(element) {
         const errorContainer = element.querySelector('.file-upload-errors');
         if (errorContainer) {
@@ -311,7 +274,6 @@ export const RRFileUpload = {
         }
     },
 
-    // Update upload progress
     updateProgress: function(elementId, fileId, progress) {
         const element = document.getElementById(elementId);
         if (!element) return;
@@ -327,7 +289,6 @@ export const RRFileUpload = {
         }
     },
 
-    // Remove file from list
     removeFile: function(elementId, fileId) {
         const element = document.getElementById(elementId);
         if (!element) return;
@@ -337,14 +298,12 @@ export const RRFileUpload = {
             fileElement.remove();
         }
 
-        // Trigger removal event
         const event = new CustomEvent('rr-file-removed', {
             detail: { fileId }
         });
         element.dispatchEvent(event);
     },
 
-    // Utility functions
     formatFileSize: function(bytes) {
         if (bytes === 0) return '0 Bytes';
         const k = 1024;
@@ -363,26 +322,18 @@ export const RRFileUpload = {
         return div.innerHTML;
     },
 
-    // Get file icon based on extension
     getFileIcon: function(extension) {
         const iconMap = {
-            // Documents
             '.pdf': 'picture_as_pdf',
             '.doc': 'description',
             '.docx': 'description',
             '.txt': 'description',
             '.rtf': 'description',
-            
-            // Spreadsheets
             '.xls': 'grid_on',
             '.xlsx': 'grid_on',
             '.csv': 'grid_on',
-            
-            // Presentations
             '.ppt': 'slideshow',
             '.pptx': 'slideshow',
-            
-            // Images
             '.jpg': 'image',
             '.jpeg': 'image',
             '.png': 'image',
@@ -390,26 +341,18 @@ export const RRFileUpload = {
             '.bmp': 'image',
             '.svg': 'image',
             '.webp': 'image',
-            
-            // Audio
             '.mp3': 'audio_file',
             '.wav': 'audio_file',
             '.flac': 'audio_file',
             '.aac': 'audio_file',
-            
-            // Video
             '.mp4': 'video_file',
             '.avi': 'video_file',
             '.mov': 'video_file',
             '.wmv': 'video_file',
-            
-            // Archives
             '.zip': 'folder_zip',
             '.rar': 'folder_zip',
             '.7z': 'folder_zip',
             '.tar': 'folder_zip',
-            
-            // Code
             '.html': 'code',
             '.css': 'code',
             '.js': 'code',
@@ -423,62 +366,50 @@ export const RRFileUpload = {
         return iconMap[extension.toLowerCase()] || 'draft';
     },
 
-    // Trigger file selection
     triggerFileSelect: function(inputId) {
         const fileInput = document.getElementById(inputId);
         if (fileInput) {
-            // Simple approach - just click the file input directly
-            // The complex modal handling was causing double file dialogs
             fileInput.click();
         }
     },
 
-    // Get current file count from DOM
     getCurrentFileCount: function(element) {
         const fileCards = element.querySelectorAll('.file-preview-card');
         return fileCards.length;
     },
 
-    // Enhanced file removal with animation
     removeFileWithAnimation: function(elementId, fileId) {
         const element = document.getElementById(elementId);
         if (!element) return;
 
         const fileCard = element.querySelector(`[data-file-id="${fileId}"]`);
         if (fileCard) {
-            // Add removal animation
             fileCard.style.transform = 'scale(0.8)';
             fileCard.style.opacity = '0';
             fileCard.style.transition = 'all 0.2s ease-out';
             
-            // Use transitionend event instead of setTimeout
             fileCard.addEventListener('transitionend', function onTransitionEnd() {
                 fileCard.remove();
                 
-                // Check if we need to show empty state
-                const remainingFiles = FileUpload.getCurrentFileCount(element);
+                const remainingFiles = this.getCurrentFileCount(element);
                 if (remainingFiles === 0) {
-                    FileUpload.showEmptyState(element);
+                    this.showEmptyState(element);
                 }
-            }, { once: true });
+            }.bind(this), { once: true });
         }
 
-        // Trigger removal event
         const event = new CustomEvent('rr-file-removed', {
             detail: { fileId }
         });
         element.dispatchEvent(event);
     },
 
-    // Show empty state when all files removed
     showEmptyState: function(element) {
         const previewContainer = element.querySelector('.file-preview-container');
         const uploadArea = element.querySelector('.upload-area');
         
         if (previewContainer && uploadArea) {
-            // Smooth transition back to empty drop zone
             previewContainer.style.opacity = '0';
-            // Use transitionend for cleanup
             previewContainer.addEventListener('transitionend', function onTransitionEnd() {
                 previewContainer.style.display = 'none';
                 uploadArea.style.display = 'block';
@@ -491,14 +422,12 @@ export const RRFileUpload = {
         }
     },
 
-    // Show file preview state when files are added
     showPreviewState: function(element) {
         const previewContainer = element.querySelector('.file-preview-container');
         const uploadArea = element.querySelector('.upload-area');
         
         if (previewContainer && uploadArea && uploadArea.style.display !== 'none') {
             uploadArea.style.opacity = '0';
-            // Use transitionend for state switch
             uploadArea.addEventListener('transitionend', function onTransitionEnd() {
                 uploadArea.style.display = 'none';
                 previewContainer.style.display = 'block';
@@ -511,31 +440,26 @@ export const RRFileUpload = {
         }
     },
 
-    // Setup event listeners for Blazor callbacks
     setupBlazorEventListeners: function(elementId, dotNetObjectRef) {
         const element = document.getElementById(elementId);
         if (!element) return;
 
-        // Setup rr-files-selected event listener
         const filesSelectedHandler = function(e) {
             dotNetObjectRef.invokeMethodAsync('OnFilesSelectedFromJS', e.detail);
         };
         element.addEventListener('rr-files-selected', filesSelectedHandler);
 
-        // Setup rr-file-removed event listener
         const fileRemovedHandler = function(e) {
             dotNetObjectRef.invokeMethodAsync('OnFileRemovedFromJS', e.detail.fileId);
         };
         element.addEventListener('rr-file-removed', fileRemovedHandler);
 
-        // Store cleanup function for these specific listeners
         element._rrBlazorEventCleanup = () => {
             element.removeEventListener('rr-files-selected', filesSelectedHandler);
             element.removeEventListener('rr-file-removed', fileRemovedHandler);
         };
     },
 
-    // Cleanup component
     cleanup: function(elementId) {
         const element = document.getElementById(elementId);
         if (element) {
@@ -552,5 +476,4 @@ export const RRFileUpload = {
     }
 };
 
-// Also expose on window for non-module usage
 window.RRFileUpload = RRFileUpload;

@@ -1,5 +1,3 @@
-// keyboard-navigation.js - Pure Keyboard Navigation (SRP)  
-// Responsibility: Handle keyboard navigation within interactive elements
 
 class KeyboardNavigationManager {
     constructor() {
@@ -17,7 +15,7 @@ class KeyboardNavigationManager {
     
     enableNavigation(elementId, container, options = {}) {
         if (!this.initialized) {
-            throw new Error('[KeyboardNavigationManager] Must initialize before enabling navigation');
+            throw new Error('Must initialize before enabling navigation');
         }
         
         this.activeNavigation = {
@@ -33,10 +31,10 @@ class KeyboardNavigationManager {
     }
     
     disableNavigation() {
-        if (this.activeNavigation) {
-            this.clearHighlight();
-            this.activeNavigation = null;
-        }
+        if (!this.activeNavigation) return;
+        
+        this.clearHighlight();
+        this.activeNavigation = null;
     }
     
     handleGlobalKeydown(event) {
@@ -116,17 +114,17 @@ class KeyboardNavigationManager {
         const items = this.getNavigableItems();
         const currentItem = items[this.activeNavigation.currentIndex];
         
-        if (currentItem) {
-            const selectEvent = new CustomEvent('keyboard-select', {
-                detail: { 
-                    elementId: this.activeNavigation.elementId,
-                    item: currentItem,
-                    index: this.activeNavigation.currentIndex
-                },
-                bubbles: true
-            });
-            currentItem.dispatchEvent(selectEvent);
-        }
+        if (!currentItem) throw new Error('No current item to select');
+        
+        const selectEvent = new CustomEvent('keyboard-select', {
+            detail: { 
+                elementId: this.activeNavigation.elementId,
+                item: currentItem,
+                index: this.activeNavigation.currentIndex
+            },
+            bubbles: true
+        });
+        currentItem.dispatchEvent(selectEvent);
     }
     
     emitEscape() {
@@ -148,17 +146,15 @@ class KeyboardNavigationManager {
     }
     
     updateHighlight(items) {
-        // Clear previous highlight
         items.forEach(item => {
             item.classList.remove(this.activeNavigation.highlightClass);
         });
         
-        // Apply new highlight
         const currentItem = items[this.activeNavigation.currentIndex];
-        if (currentItem) {
-            currentItem.classList.add(this.activeNavigation.highlightClass);
-            currentItem.scrollIntoView({ block: 'nearest' });
-        }
+        if (!currentItem) throw new Error('Invalid highlight index');
+        
+        currentItem.classList.add(this.activeNavigation.highlightClass);
+        currentItem.scrollIntoView({ block: 'nearest' });
     }
     
     clearHighlight() {

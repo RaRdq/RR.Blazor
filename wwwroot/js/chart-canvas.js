@@ -1,10 +1,7 @@
-// RR.Blazor Canvas 2D Chart Rendering Engine
-// High-performance chart rendering with touch interactions and virtualization
 
 let activeCanvasCharts = new Map();
 let canvasObserver = null;
 
-// Core Canvas Chart Manager
 class CanvasChart {
     constructor(element, options = {}) {
         this.element = element;
@@ -127,7 +124,6 @@ class CanvasChart {
     }
 
     calculateVisibleRange() {
-        // Simple virtualization - show visible data points based on viewport
         const totalPoints = this.data.length;
         const visiblePoints = Math.min(totalPoints, this.options.virtualizeThreshold);
         
@@ -167,10 +163,8 @@ class CanvasChart {
 
     renderOverlays() {
         this.ctx.restore();
-        // Render zoom controls, tooltips, etc.
     }
 
-    // Touch handling
     handleTouchStart(event) {
         event.preventDefault();
         
@@ -256,7 +250,6 @@ class CanvasChart {
         );
     }
 
-    // Mouse events for desktop
     handleMouseDown(event) {
         this.isMouseDown = true;
         this.lastMouseX = event.clientX;
@@ -291,7 +284,6 @@ class CanvasChart {
         this.render();
     }
 
-    // Animation system
     startRenderLoop() {
         if (this.animationFrame) return;
         
@@ -329,7 +321,6 @@ class CanvasChart {
     }
 }
 
-// Column Chart Implementation
 class CanvasColumnChart extends CanvasChart {
     renderChart() {
         if (!this.data || !this.data.length) return;
@@ -347,15 +338,12 @@ class CanvasColumnChart extends CanvasChart {
             const x = this.drawingArea.x + index * (barWidth + barSpacing);
             const y = this.drawingArea.y + this.drawingArea.height - barHeight;
             
-            // Bar fill
             this.ctx.fillStyle = dataPoint.color || 'var(--color-primary)';
             this.ctx.fillRect(x, y, barWidth, barHeight);
             
-            // Bar border
             this.ctx.strokeStyle = 'var(--color-border)';
             this.ctx.strokeRect(x, y, barWidth, barHeight);
             
-            // Label
             this.ctx.fillStyle = 'var(--color-text)';
             this.ctx.textAlign = 'center';
             this.ctx.fillText(
@@ -367,7 +355,6 @@ class CanvasColumnChart extends CanvasChart {
     }
 }
 
-// Pie Chart Implementation
 class CanvasPieChart extends CanvasChart {
     renderChart() {
         if (!this.data || !this.data.length) return;
@@ -377,12 +364,11 @@ class CanvasPieChart extends CanvasChart {
         const radius = Math.min(this.drawingArea.width, this.drawingArea.height) / 2 * 0.8;
         
         const total = this.data.reduce((sum, d) => sum + d.value, 0);
-        let currentAngle = -Math.PI / 2; // Start at top
+        let currentAngle = -Math.PI / 2;
         
         this.data.forEach(dataPoint => {
             const sliceAngle = (dataPoint.value / total) * 2 * Math.PI;
             
-            // Slice
             this.ctx.beginPath();
             this.ctx.moveTo(centerX, centerY);
             this.ctx.arc(centerX, centerY, radius, currentAngle, currentAngle + sliceAngle);
@@ -400,7 +386,6 @@ class CanvasPieChart extends CanvasChart {
     }
 }
 
-// Line Chart Implementation  
 class CanvasLineChart extends CanvasChart {
     renderChart() {
         if (!this.data || !this.data.length) return;
@@ -431,7 +416,6 @@ class CanvasLineChart extends CanvasChart {
         
         this.ctx.stroke();
         
-        // Data points
         visibleData.forEach((dataPoint, index) => {
             const x = this.drawingArea.x + (index / (visibleData.length - 1)) * this.drawingArea.width;
             const y = this.drawingArea.y + this.drawingArea.height - 
@@ -445,7 +429,6 @@ class CanvasLineChart extends CanvasChart {
     }
 }
 
-// Chart factory
 function createCanvasChart(element, type, options = {}) {
     const chartId = `canvas-chart-${Math.random().toString(36).substr(2, 9)}`;
     
@@ -480,13 +463,11 @@ function disposeCanvasChart(element) {
     }
 }
 
-// Global cleanup
 window.addEventListener('beforeunload', () => {
     activeCanvasCharts.forEach(chart => chart.dispose());
     activeCanvasCharts.clear();
 });
 
-// Global exports for Blazor dynamic import compatibility
 if (typeof window !== 'undefined') {
     window.RRBlazor = window.RRBlazor || {};
     window.RRBlazor.CanvasChart = {
@@ -499,7 +480,6 @@ if (typeof window !== 'undefined') {
     };
 }
 
-// ES6 Module exports for modern import compatibility
 export {
     CanvasChart,
     CanvasColumnChart,

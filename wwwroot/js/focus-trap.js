@@ -13,21 +13,16 @@ export class FocusTrap {
             this.destroyTrap(trapId);
         }
 
-        // Store previously focused element
         this.previousFocus = document.activeElement;
 
-        // For portaled modals, find the actual modal in the DOM by role
         const actualModal = this.findPortaledModal(modalElement, trapId);
         if (!actualModal) {
-            console.warn(`[FocusTrap-${trapId}] Could not find portaled modal`);
             return false;
         }
 
-        // Get all focusable elements within the actual modal
         const focusableElements = this.getFocusableElements(actualModal);
         
         if (focusableElements.length === 0) {
-            console.warn(`[FocusTrap-${trapId}] No focusable elements found in modal`);
             return false;
         }
 

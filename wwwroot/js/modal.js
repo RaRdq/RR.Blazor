@@ -158,13 +158,10 @@ class ModalManager {
     async destroyModal(modalId) {
         const modal = this.activeModals.get(modalId);
         if (!modal) {
-            console.warn(`[ModalManager] Modal ${modalId} not found for destruction`);
             return true;
         }
         
-        // Check state transition validity
         if (modal.state === 'closing' || modal.state === 'closed') {
-            console.log(`[ModalManager] Modal ${modalId} already closing/closed`);
             return true;
         }
         
@@ -280,8 +277,6 @@ class ModalManager {
         const getDurationMs = (cssVar, defaultValue = '200ms') => {
             const value = rootStyles.getPropertyValue(cssVar).trim();
             if (!value) {
-                // Use default value if CSS variable not yet loaded
-                console.warn(`CSS variable ${cssVar} not found, using default: ${defaultValue}`);
                 return defaultValue.endsWith('ms') ? parseInt(defaultValue, 10) : parseFloat(defaultValue) * 1000;
             }
             if (value.endsWith('ms')) {

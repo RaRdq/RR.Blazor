@@ -147,17 +147,8 @@ export class PositioningEngine {
             right: viewport.width - triggerRect.right
         };
         
-        console.log('🎯 DEBUG space calculation:', {
-            triggerTop: triggerRect.top,
-            triggerBottom: triggerRect.bottom,
-            viewportHeight: viewport.height,
-            spaceTop: space.top,
-            spaceBottom: space.bottom,
-            targetHeight: targetDimensions.height
-        });
 
-        // Determine best placement based on available space (with safety margin)
-        const safetyMargin = 20; // Extra margin to prevent cut-off
+        const safetyMargin = 20;
         let placement;
         if (space.bottom >= targetDimensions.height + safetyMargin) {
             placement = 'bottom';
@@ -210,13 +201,6 @@ export class PositioningEngine {
         switch (placement) {
             case 'top':
                 y = triggerRect.top - targetDimensions.height - offset;
-                console.log('🎯 DEBUG TOP calculation:', {
-                    triggerTop: triggerRect.top,
-                    targetHeight: targetDimensions.height,
-                    offset: offset,
-                    calculatedY: y,
-                    formula: `${triggerRect.top} - ${targetDimensions.height} - ${offset} = ${y}`
-                });
                 break;
             case 'bottom':
                 y = triggerRect.bottom + offset;

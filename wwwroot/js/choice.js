@@ -40,18 +40,7 @@ const Choice = {
             }));
 
             const triggerRect = trigger.getBoundingClientRect();
-            console.log('🎯 DEBUG triggerRect:', {
-                top: triggerRect.top,
-                bottom: triggerRect.bottom,
-                left: triggerRect.left,
-                right: triggerRect.right,
-                height: triggerRect.height,
-                width: triggerRect.width
-            });
-            
-            // Smart dynamic height calculation for optimal positioning
             const dropdownMaxHeight = 320;
-            // Enhanced min-width for user menus and role switchers
             const isUserMenu = choiceElement.closest('[class*="role-switcher"], [class*="user-menu"], .choice-dropdown[data-choice-id*="user"]');
             const baseMinWidth = isUserMenu ? 280 : 200;
             const minWidth = Math.max(triggerRect.width, baseMinWidth);
@@ -64,13 +53,7 @@ const Choice = {
                 height: estimatedHeight
             };
             
-            console.log('🎯 DEBUG simple height:', {
-                itemCount: itemCount,
-                estimatedHeight: estimatedHeight,
-                maxHeight: dropdownMaxHeight
-            });
             
-            // Handle direction mapping - "auto" means detect optimal position
             let desiredPosition;
             if (!options.direction || options.direction === 'auto') {
                 desiredPosition = positioningEngine.detectOptimalPosition(triggerRect, targetDimensions);
@@ -119,15 +102,12 @@ const Choice = {
                     offset: 4, // Reduced from 8 to 4 since we removed SCSS transform offset
                     flip: true,
                     constrain: true,
-                    container: containerRect // Pass container constraints to positioning engine
+                    container: containerRect
                 }
             );
-            console.log('🎯 DEBUG calculated position:', position);
 
-            // Set up listener BEFORE dispatching request to avoid race condition
             const portalPromise = this._waitForPortal(choiceElementId);
             
-            // Now request portal creation via events (Dependency Inversion)
             document.dispatchEvent(new CustomEvent('portal-create-request', {
                 detail: {
                     requesterId: `choice-${choiceElementId}`,

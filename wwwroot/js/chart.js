@@ -1,10 +1,7 @@
-// RR.Blazor Chart System - Modern chart rendering and interaction management
-// Supports pie charts, column charts, and interactive features
 
 let activeCharts = new Map();
 let chartObserver = null;
 
-// Chart Animation System (simplified - animations now handled by SCSS)
 function animatePieChart(element) {
     if (!element) return;
     
@@ -36,7 +33,6 @@ function animateColumnChart(element) {
     });
 }
 
-// Chart Tooltip System
 function initializeTooltip(element, options = {}) {
     if (!element) return;
     
@@ -48,10 +44,9 @@ function initializeTooltip(element, options = {}) {
     document.body.appendChild(tooltip);
     
     const showTooltip = (event, content, targetElement = null) => {
-        tooltip.textContent = content; // Use textContent for security
+        tooltip.textContent = content;
         tooltip.classList.add('visible');
         
-        // Force tooltip to be visible for accurate measurement
         tooltip.style.visibility = 'visible';
         tooltip.style.opacity = '0';
         const tooltipRect = tooltip.getBoundingClientRect();
@@ -120,7 +115,6 @@ function initializeTooltip(element, options = {}) {
     };
 }
 
-// Chart Data Export
 function exportChartData(element, format = 'csv') {
     if (!element) return null;
     
@@ -202,7 +196,6 @@ function exportToTSV(data) {
     return tsvContent;
 }
 
-// Get container dimensions
 function getContainerDimensions(element) {
     if (!element) return { width: 0, height: 0 };
     
@@ -218,48 +211,39 @@ function updateChartLayout(container, width) {
     const dataCount = container.querySelectorAll('.column-chart-bar, .pie-slice').length;
     const barWidth = dataCount > 0 ? width / dataCount : width;
     
-    // Apply responsive classes based on container width and data density
     container.classList.toggle('chart-xs', width < 300);
     container.classList.toggle('chart-sm', width >= 300 && width < 600);
     container.classList.toggle('chart-md', width >= 600 && width < 900);
     container.classList.toggle('chart-lg', width >= 900);
     
-    // Apply density classes based on bar width
     container.classList.toggle('chart-dense', barWidth < 20);
     container.classList.toggle('chart-compact', barWidth >= 20 && barWidth < 40);
     container.classList.toggle('chart-normal', barWidth >= 40 && barWidth < 80);
     container.classList.toggle('chart-spacious', barWidth >= 80);
 }
 
-// Chart Accessibility
 function enhanceChartAccessibility(element, options = {}) {
     if (!element) return;
     
-    // Add ARIA roles and properties
     element.setAttribute('role', 'img');
     element.setAttribute('tabindex', '0');
     
-    // Add keyboard navigation
     element.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
             const firstInteractive = element.querySelector('.pie-slice, .column-chart-bar');
-            if (firstInteractive) {
-                firstInteractive.click();
-            }
+            firstInteractive?.click();
         }
     });
     
-    // Generate alternative text
     const dataTable = element.querySelector('.chart-accessibility-table table');
     if (dataTable && options.generateSummary) {
         const summary = generateChartSummary(dataTable);
         element.setAttribute('aria-label', summary);
     }
     
-    // Add focus management
     const interactiveElements = element.querySelectorAll('.pie-slice, .column-chart-bar');
-    interactiveElements.forEach((el, index) => {
+    interactiveElements.forEach((el) => {
         el.setAttribute('tabindex', '0');
     });
 }
@@ -278,7 +262,6 @@ function generateChartSummary(dataTable) {
     return `Chart with ${total} data points, ranging from ${firstLabel} to ${lastLabel}`;
 }
 
-// Chart Theme Integration (simplified)
 function applyChartTheme(element, themeData) {
     if (!element) return;
     
@@ -364,7 +347,6 @@ function initializeChart(element, options = {}) {
     return chartInstance;
 }
 
-// Chart Management
 function getChart(element) {
     if (!element) return null;
     
@@ -386,54 +368,33 @@ function disposeAllCharts() {
     activeCharts.clear();
 }
 
-// Theme change handler
 function handleThemeChange(themeData) {
     activeCharts.forEach(chart => {
         applyChartTheme(chart.element, themeData);
     });
 }
 
-// Register with theme system
 document.addEventListener('themeChanged', (e) => {
     handleThemeChange(e.detail);
 });
 
-// Export all chart functions for module consumption
 export {
-    // Animation functions
     animatePieChart,
     animateColumnChart,
-    
-    // Tooltip functions
     initializeTooltip,
-    
-    // Export functions
     exportChartData,
-    
-    // Responsive functions
     getContainerDimensions,
-    
-    // Accessibility functions
     enhanceChartAccessibility,
-    
-    // Theme functions
     applyChartTheme,
     handleThemeChange,
-    
-    // Performance functions
     optimizeChartPerformance,
-    
-    // Management functions
     initializeChart,
     getChart,
     disposeChart,
     disposeAllCharts,
-    
-    // Utilities
     extractChartData
 };
 
-// Initialize intersection observer for lazy loading
 (function() {
     if ('IntersectionObserver' in window) {
         chartObserver = new IntersectionObserver((entries) => {
@@ -455,12 +416,10 @@ export {
             threshold: 0.1
         });
         
-        // Observe all chart elements
         document.querySelectorAll('[data-chart-type]').forEach(element => {
             chartObserver.observe(element);
         });
         
-        // Also observe dynamically added chart elements
         const mutationObserver = new MutationObserver(mutations => {
             mutations.forEach(mutation => {
                 mutation.addedNodes.forEach(node => {
@@ -503,10 +462,7 @@ function cleanup(element) {
     return true;
 }
 
-// Cleanup on page unload
 window.addEventListener('beforeunload', () => {
     disposeAllCharts();
-    if (chartObserver) {
-        chartObserver.disconnect();
-    }
+    chartObserver?.disconnect();
 });

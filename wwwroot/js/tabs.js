@@ -1,19 +1,13 @@
-// Tab navigation and scrolling utilities
 
 export function getTabIndicatorPosition(tabElementId, wrapperElement) {
     const element = document.getElementById(tabElementId);
-    if (!element || !wrapperElement) {
-        return { left: 0, width: 0 };
-    }
+    if (!element) throw new Error(`Tab element not found: ${tabElementId}`);
+    if (!wrapperElement) throw new Error('Wrapper element required');
     
-    // Force layout calculation to ensure accurate measurements
     element.offsetHeight;
-    
-    // Get the position relative to the scrollable wrapper
     const tabRect = element.getBoundingClientRect();
     const wrapperRect = wrapperElement.getBoundingClientRect();
     
-    // Calculate position accounting for scroll offset with rounding to prevent sub-pixel issues
     const scrollLeft = wrapperElement.scrollLeft || 0;
     const relativeLeft = Math.round(tabRect.left - wrapperRect.left + scrollLeft);
     
@@ -24,9 +18,7 @@ export function getTabIndicatorPosition(tabElementId, wrapperElement) {
 }
 
 export function getTabScrollInfo(wrapperElement) {
-    if (!wrapperElement) {
-        return { isScrollable: false, canScrollLeft: false, canScrollRight: false };
-    }
+    if (!wrapperElement) throw new Error('Wrapper element required');
     
     const scrollLeft = wrapperElement.scrollLeft;
     const scrollWidth = wrapperElement.scrollWidth;
@@ -43,7 +35,7 @@ export function getTabScrollInfo(wrapperElement) {
 }
 
 export function scrollTabsLeft(wrapperElement) {
-    if (!wrapperElement) return;
+    if (!wrapperElement) throw new Error('Wrapper element required');
     
     const tabs = wrapperElement.querySelectorAll('[role="tab"]');
     const containerRect = wrapperElement.getBoundingClientRect();
@@ -73,7 +65,7 @@ export function scrollTabsLeft(wrapperElement) {
 }
 
 export function scrollTabsRight(wrapperElement) {
-    if (!wrapperElement) return;
+    if (!wrapperElement) throw new Error('Wrapper element required');
     
     const tabs = wrapperElement.querySelectorAll('[role="tab"]');
     const containerRect = wrapperElement.getBoundingClientRect();
@@ -103,10 +95,10 @@ export function scrollTabsRight(wrapperElement) {
 }
 
 export function scrollToTab(wrapperElement, tabElementId) {
-    if (!wrapperElement) return;
+    if (!wrapperElement) throw new Error('Wrapper element required');
     
     const tabElement = document.getElementById(tabElementId);
-    if (!tabElement) return;
+    if (!tabElement) throw new Error(`Tab element not found: ${tabElementId}`);
     
     const wrapperRect = wrapperElement.getBoundingClientRect();
     const tabRect = tabElement.getBoundingClientRect();
@@ -129,18 +121,15 @@ export function scrollToTab(wrapperElement, tabElementId) {
 }
 
 export function initializeTabs(element, navContainer, navWrapper) {
-    if (!element || !navWrapper) return;
-    
-    // Device detection
+    if (!element) throw new Error('Element required');
+    if (!navWrapper) throw new Error('Nav wrapper required');
     const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
     const isSmallViewport = () => window.innerWidth <= 768;
     const isLandscape = () => window.innerWidth > window.innerHeight;
     
     const tabs = element.querySelectorAll('[role="tab"]');
     tabs.forEach(tab => {
-        tab.addEventListener('keydown', (e) => {
-            // Keyboard navigation handled by Blazor
-        });
+        tab.addEventListener('keydown', () => {});
     });
     
     const updateIndicator = () => {
@@ -183,21 +172,18 @@ export function initializeTabs(element, navContainer, navWrapper) {
             devicePixelRatio: window.devicePixelRatio || 1
         };
         
-        // Add viewport classes for CSS hooks
         element.classList.toggle('tabs-touch', isTouchDevice);
         element.classList.toggle('tabs-mobile', isSmallViewport());
         element.classList.toggle('tabs-landscape', isLandscape());
         element.classList.toggle('tabs-ultra-wide', viewport.aspectRatio > 2.1);
         element.classList.toggle('tabs-square', viewport.aspectRatio < 1.3 && viewport.aspectRatio > 0.77);
         
-        // Dispatch viewport info for Blazor
         const event = new CustomEvent('rr-tabs-viewport-change', {
             detail: viewport
         });
         element.dispatchEvent(event);
     };
     
-    // Touch gesture support
     if (isTouchDevice && navWrapper) {
         let touchStartX = 0;
         let touchStartScrollLeft = 0;
@@ -225,7 +211,6 @@ export function initializeTabs(element, navContainer, navWrapper) {
         }, { passive: true });
     }
     
-    // Enhanced resize handling with requestAnimationFrame
     let resizeScheduled = false;
     const handleResize = () => {
         if (!resizeScheduled) {
@@ -239,15 +224,12 @@ export function initializeTabs(element, navContainer, navWrapper) {
         }
     };
     
-    // Orientation change handling
     const handleOrientationChange = () => {
-        // Use requestAnimationFrame for orientation change
         requestAnimationFrame(() => {
             updateTabSizing();
             updateIndicator();
             updateScrollState();
             
-            // Re-center active tab after orientation change
             const activeTab = element.querySelector('[role="tab"][aria-selected="true"]');
             if (activeTab) {
                 scrollToTab(navWrapper, activeTab.id);
@@ -258,17 +240,13 @@ export function initializeTabs(element, navContainer, navWrapper) {
     window.addEventListener('resize', handleResize);
     window.addEventListener('orientationchange', handleOrientationChange);
     
-    // Update on scroll
     if (navWrapper) {
         let scrollTimeout;
         navWrapper.addEventListener('scroll', () => {
             updateScrollState();
             
-            // Clear existing timeout
             clearTimeout(scrollTimeout);
             
-            // Update indicator after scroll ends
-            // Use requestAnimationFrame after scroll
             if (!scrollTimeout) {
                 scrollTimeout = requestAnimationFrame(() => {
                     updateIndicator();
@@ -278,7 +256,6 @@ export function initializeTabs(element, navContainer, navWrapper) {
         });
     }
     
-    // ResizeObserver for dynamic content changes
     const resizeObserver = new ResizeObserver(() => {
         updateScrollState();
     });
@@ -287,14 +264,12 @@ export function initializeTabs(element, navContainer, navWrapper) {
         resizeObserver.observe(navContainer);
     }
     
-    // Initial update
     requestAnimationFrame(() => {
         updateTabSizing();
         updateScrollState();
         updateIndicator();
     });
     
-    // Cleanup function
     element._rrCleanup = () => {
         window.removeEventListener('resize', handleResize);
         window.removeEventListener('orientationchange', handleOrientationChange);
@@ -307,20 +282,17 @@ export function initializeTabs(element, navContainer, navWrapper) {
     };
 }
 
-// Required methods for rr-blazor.js proxy system
 export function initialize(element, dotNetRef) {
-    if (element) {
-        initializeTabs(element);
-        return true;
-    }
+    if (!element) throw new Error('Element required');
+    initializeTabs(element);
     return true;
 }
 
 export function cleanup(element) {
-    if (element && element._rrCleanup) {
+    if (!element) throw new Error('Element required');
+    if (element._rrCleanup) {
         element._rrCleanup();
         delete element._rrCleanup;
-        return true;
     }
     return true;
 }

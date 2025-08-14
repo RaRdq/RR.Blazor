@@ -1,5 +1,3 @@
-// click-outside.js - Pure Click Outside Detection (SRP)
-// Responsibility: Detect clicks outside registered elements and emit events
 
 class ClickOutsideManager {
     constructor() {
@@ -10,16 +8,14 @@ class ClickOutsideManager {
     
     initialize() {
         if (this.initialized) return;
-        
         document.addEventListener('click', this.globalHandler, true);
         this.initialized = true;
     }
     
     register(elementId, element, options = {}) {
         if (!this.initialized) {
-            throw new Error('[ClickOutsideManager] Must initialize before registering elements');
+            throw new Error('Must initialize before registering elements');
         }
-        
         this.trackedElements.set(elementId, {
             element,
             options,
@@ -37,19 +33,12 @@ class ClickOutsideManager {
         this.trackedElements.forEach((data, elementId) => {
             const { element, excludeSelectors } = data;
             
-            // Skip if target is inside the tracked element
-            if (element.contains(target)) {
-                return;
-            }
+            if (element.contains(target)) return;
             
-            // Skip if target matches any exclude selector
             for (const selector of excludeSelectors) {
-                if (target.closest(selector)) {
-                    return;
-                }
+                if (target.closest(selector)) return;
             }
             
-            // Click is outside - emit event
             const outsideClickEvent = new CustomEvent('click-outside', {
                 detail: { elementId, target, originalEvent: event },
                 bubbles: true
@@ -69,7 +58,6 @@ class ClickOutsideManager {
 
 const clickOutsideManager = new ClickOutsideManager();
 
-// Auto-initialize
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => clickOutsideManager.initialize());
 } else {

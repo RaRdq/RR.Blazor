@@ -1,6 +1,3 @@
-// modal-events.js - Modal Event Coordination (SRP)
-// Responsibility: Bridge modal layer with infrastructure layers via events
-// Does NOT manage portals or backdrops directly - only coordinates via events
 
 class ModalEventCoordinator {
     constructor() {
@@ -9,7 +6,6 @@ class ModalEventCoordinator {
     }
     
     setupInfrastructureEventHandlers() {
-        // Listen for infrastructure responses
         document.addEventListener('portal-created', (event) => {
             const { requesterId, portal } = event.detail;
             if (requesterId.startsWith('modal-')) {
@@ -39,7 +35,6 @@ class ModalEventCoordinator {
         });
     }
     
-    // Request portal creation for modal
     requestPortal(modalId, config) {
         const portalRequest = new CustomEvent('portal-create-request', {
             detail: {
@@ -59,7 +54,6 @@ class ModalEventCoordinator {
         document.dispatchEvent(portalRequest);
     }
     
-    // Request portal destruction for modal
     destroyPortal(modalId) {
         const destroyRequest = new CustomEvent('portal-destroy-request', {
             detail: {
@@ -71,7 +65,6 @@ class ModalEventCoordinator {
         document.dispatchEvent(destroyRequest);
     }
     
-    // Request backdrop creation for modal
     requestBackdrop(modalId, config) {
         const backdropRequest = new CustomEvent('backdrop-create-request', {
             detail: {
@@ -83,7 +76,6 @@ class ModalEventCoordinator {
         document.dispatchEvent(backdropRequest);
     }
     
-    // Request backdrop destruction for modal
     destroyBackdrop(modalId) {
         const destroyRequest = new CustomEvent('backdrop-destroy-request', {
             detail: {
@@ -94,7 +86,6 @@ class ModalEventCoordinator {
         document.dispatchEvent(destroyRequest);
     }
     
-    // Force cleanup all modals
     forceCleanupAll() {
         const cleanupRequest = new CustomEvent('portal-cleanup-all-request', {
             bubbles: true
@@ -107,7 +98,6 @@ class ModalEventCoordinator {
         document.dispatchEvent(backdropCleanupRequest);
     }
     
-    // Handle infrastructure responses
     handlePortalCreated(modalId, portal) {
         const modalCreatedEvent = new CustomEvent('modal-portal-ready', {
             detail: { modalId, portal },
@@ -141,12 +131,9 @@ class ModalEventCoordinator {
     }
 }
 
-// Create singleton
 const modalEventCoordinator = new ModalEventCoordinator();
 
 export default modalEventCoordinator;
-
-// Export functions for modal.js to use
 export function requestModalPortal(modalId, config) {
     return modalEventCoordinator.requestPortal(modalId, config);
 }

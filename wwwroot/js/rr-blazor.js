@@ -1,6 +1,5 @@
-// RR.Blazor - Generic Smart Proxy System
-// ZERO manual method definitions - pure dynamic proxy
-// Handles all module patterns: default exports, named exports, classes
+// RR.Blazor - Universal module proxy system
+// Dynamic imports with smart export pattern detection
 
 class DebugLogger {
     constructor(prefix = '[RR.Blazor]') {
@@ -9,28 +8,18 @@ class DebugLogger {
     }
 
     detectDebugMode() {
-        // Check for common development indicators
-        const isDevelopmentHost = 
-            window.location.hostname === 'localhost' ||
+        const isDevelopmentHost = window.location.hostname === 'localhost' ||
             window.location.hostname === '127.0.0.1' ||
             window.location.hostname.startsWith('192.168.') ||
             window.location.hostname.startsWith('10.');
         
-        // Check for common development ports
-        const isDevelopmentPort = 
-            ['3000', '3001', '4200', '5000', '5001', '5002', '5173', '7049', '8080', '8081']
-                .includes(window.location.port);
         
-        // Check for explicit debug flag in URL or localStorage
-        const hasDebugFlag = 
-            window.location.search.includes('debug=true') ||
+        const hasDebugFlag = window.location.search.includes('debug=true') ||
             localStorage.getItem('RRBlazor.DebugMode') === 'true';
         
-        // Check for environment-specific flag (can be set by the host application)
-        const isProductionOverride = 
-            window.RRBlazorConfig?.forceProduction === true;
+        const isProductionOverride = window.RRBlazorConfig?.forceProduction === true;
         
-        return !isProductionOverride && (isDevelopmentHost || isDevelopmentPort || hasDebugFlag);
+        return !isProductionOverride && (isDevelopmentHost || hasDebugFlag);
     }
 
     log(...args) {
@@ -82,16 +71,14 @@ class DebugLogger {
 
 const debugLogger = new DebugLogger();
 
-// Module Manager - Smart module loading with preload support
 class ModuleManager {
     constructor() {
         this.modules = new Map();
         this.loadingPromises = new Map();
-        this.moduleExports = new Map(); // Cache of actual exports
+        this.moduleExports = new Map();
         
-        // Module configurations with preload flags
         this.moduleConfigs = {
-            // Critical modules - preload for performance
+            // Critical modules (preloaded)
             'portal': { path: './portal.js', preload: true },
             'backdrop': { path: './backdrop.js', preload: true },
             'positioning': { path: './positioning.js', preload: true },
@@ -103,7 +90,7 @@ class ModuleManager {
             'choiceEvents': { path: './choice-events.js', preload: true },
             'scrollLock': { path: './scroll-lock.js', preload: true },
             
-            // Standard modules - lazy load
+            // Standard modules (lazy loaded)
             'tooltip': { path: './tooltip.js' },
             'focusTrap': { path: './focus-trap.js' },
             'autosuggest': { path: './autosuggest.js' },
@@ -126,12 +113,10 @@ class ModuleManager {
     }
 
     async loadModule(moduleName) {
-        // Return if already loaded
         if (this.modules.has(moduleName)) {
             return this.modules.get(moduleName);
         }
 
-        // Return existing loading promise
         if (this.loadingPromises.has(moduleName)) {
             return this.loadingPromises.get(moduleName);
         }
@@ -141,17 +126,12 @@ class ModuleManager {
             throw new Error(`Module '${moduleName}' is not configured`);
         }
 
-        // Load the module
         const loadPromise = import(config.path)
             .then(moduleExports => {
-                // Analyze and cache the module's export structure
                 const exportInfo = this.analyzeExports(moduleExports);
                 this.moduleExports.set(moduleName, exportInfo);
-                
-                // Store the raw module exports
                 this.modules.set(moduleName, moduleExports);
                 this.loadingPromises.delete(moduleName);
-                
                 debugLogger.log(`✅ Module '${moduleName}' loaded (${exportInfo.type})`);
                 return moduleExports;
             })
@@ -166,11 +146,9 @@ class ModuleManager {
     }
 
     analyzeExports(moduleExports) {
-        // Determine the module's export pattern
         const hasDefault = 'default' in moduleExports;
         const namedExports = Object.keys(moduleExports).filter(key => key !== 'default');
         
-        // Classify the module type
         let type = 'mixed';
         let primary = null;
         
@@ -181,10 +159,8 @@ class ModuleManager {
             type = 'named-only';
             primary = moduleExports;
         } else if (hasDefault && namedExports.length > 0) {
-            // Mixed exports - check if default is a comprehensive object
             const defaultExport = moduleExports.default;
             if (typeof defaultExport === 'object' && defaultExport !== null) {
-                // Check if default export contains all named exports
                 const defaultKeys = Object.keys(defaultExport);
                 const hasAllNamed = namedExports.every(name => 
                     defaultKeys.includes(name) || name in defaultExport
@@ -195,7 +171,7 @@ class ModuleManager {
                     primary = defaultExport;
                 } else {
                     type = 'mixed';
-                    primary = moduleExports; // Use all exports
+                    primary = moduleExports;
                 }
             } else {
                 type = 'mixed';
@@ -213,17 +189,14 @@ class ModuleManager {
         const exportInfo = this.moduleExports.get(moduleName);
         if (!exportInfo) return null;
         
-        // No specific export requested - return primary
         if (!exportName) {
             return exportInfo.primary;
         }
         
-        // Look for specific export
         if (exportName in moduleExports) {
             return moduleExports[exportName];
         }
         
-        // Check in default export if it's an object
         if (exportInfo.hasDefault && typeof moduleExports.default === 'object') {
             if (exportName in moduleExports.default) {
                 return moduleExports.default[exportName];
@@ -244,14 +217,13 @@ class ModuleManager {
             preloadModules.map(name => this.loadModule(name))
         );
         
-        // Log any failures
         results.forEach((result, index) => {
             if (result.status === 'rejected') {
                 debugLogger.error(`Failed to preload ${preloadModules[index]}: ${result.reason}`);
             }
         });
         
-        debugLogger.log('🚀 Critical modules preloaded');
+        debugLogger.log('Critical modules preloaded');
     }
 
     isModuleLoaded(moduleName) {
@@ -259,10 +231,8 @@ class ModuleManager {
     }
 
     async dispose() {
-        // Dispose all loaded modules
         for (const [name, moduleExports] of this.modules.entries()) {
             try {
-                // Check for dispose in various places
                 if (typeof moduleExports.dispose === 'function') {
                     await moduleExports.dispose();
                 } else if (moduleExports.default && typeof moduleExports.default.dispose === 'function') {
@@ -282,24 +252,19 @@ class ModuleManager {
 
 const moduleManager = new ModuleManager();
 
-// Universal Smart Proxy - Works with ANY export pattern
+// Universal proxy for dynamic module loading
 function createUniversalProxy(moduleName) {
-    // Cache for resolved properties to avoid repeated lookups
     const propertyCache = new Map();
     
-    // Create a proxy that intelligently handles all call patterns
     return new Proxy(function() {}, {
-        // Handle direct function calls: proxy()
         async apply(target, thisArg, args) {
             const module = await moduleManager.loadModule(moduleName);
             const exportInfo = moduleManager.moduleExports.get(moduleName);
             
-            // If primary export is a function, call it
             if (typeof exportInfo.primary === 'function') {
                 return exportInfo.primary.apply(thisArg, args);
             }
             
-            // If default export is a function, call it
             if (module.default && typeof module.default === 'function') {
                 return module.default.apply(thisArg, args);
             }
@@ -307,24 +272,19 @@ function createUniversalProxy(moduleName) {
             throw new Error(`Module '${moduleName}' is not callable`);
         },
         
-        // Handle property access: proxy.method() or proxy.property
         get(target, prop) {
-            // Ignore Promise protocol methods
             if (prop === 'then' || prop === 'catch' || prop === 'finally') {
                 return undefined;
             }
             
-            // Handle toString and other special methods
             if (prop === 'toString' || prop === 'valueOf' || prop === Symbol.toStringTag) {
                 return () => `[RRBlazor.${moduleName}]`;
             }
             
-            // Handle prototype for proxy trap compliance
             if (prop === 'prototype') {
                 return undefined;
             }
             
-            // Check cache first for critical modules
             if (propertyCache.has(prop) && moduleManager.isModuleLoaded(moduleName)) {
                 const cached = propertyCache.get(prop);
                 return function(...args) {
@@ -335,30 +295,21 @@ function createUniversalProxy(moduleName) {
                 };
             }
             
-            // Return async function that loads module and accesses the property
             return async function(...args) {
                 const module = await moduleManager.loadModule(moduleName);
                 const exportInfo = moduleManager.moduleExports.get(moduleName);
                 
-                // Search order for the property/method:
-                // 1. Direct named export
-                // 2. Property on default export
-                // 3. Property on primary export
-                
                 let target = null;
                 let context = null;
                 
-                // Check named exports first
                 if (prop in module) {
                     target = module[prop];
                     context = module;
                 }
-                // Check default export
                 else if (module.default && typeof module.default === 'object' && prop in module.default) {
                     target = module.default[prop];
                     context = module.default;
                 }
-                // Check primary export (might be different from default)
                 else if (exportInfo.primary && typeof exportInfo.primary === 'object' && prop in exportInfo.primary) {
                     target = exportInfo.primary[prop];
                     context = exportInfo.primary;
@@ -368,20 +319,16 @@ function createUniversalProxy(moduleName) {
                     throw new Error(`Property '${prop}' not found in module '${moduleName}'`);
                 }
                 
-                // Cache the resolved property for future use
                 propertyCache.set(prop, { target, context });
                 
-                // If it's a function, call it with proper context
                 if (typeof target === 'function') {
                     return target.apply(context, args);
                 }
                 
-                // Otherwise return the value
                 return target;
             };
         },
         
-        // Make the proxy look like a proper object
         has(target, prop) {
             return moduleManager.loadModule(moduleName).then(module => {
                 return prop in module || 
@@ -390,13 +337,10 @@ function createUniversalProxy(moduleName) {
         },
         
         ownKeys(target) {
-            // ownKeys must return synchronously, include required properties
-            // to satisfy proxy trap requirements
             return ['prototype', 'length', 'name', 'constructor'];
         },
         
         getOwnPropertyDescriptor(target, prop) {
-            // Return descriptors for required properties
             if (['prototype', 'length', 'name', 'constructor'].includes(prop)) {
                 return {
                     configurable: true,
@@ -413,7 +357,6 @@ function createUniversalProxy(moduleName) {
     });
 }
 
-// Main RRBlazor API - Clean, no manual methods
 const RRBlazor = {
     version: '2.0.0',
     debug: debugLogger,
@@ -451,37 +394,31 @@ const RRBlazor = {
     TableScroll: createUniversalProxy('tableScroll'),
     IntersectionObserver: createUniversalProxy('intersectionObserver'),
     
-    // Dynamic module access
     getModule: function(moduleName) {
         return createUniversalProxy(moduleName);
     },
     
-    // Module access via property
     modules: new Proxy({}, {
         get(target, moduleName) {
             return createUniversalProxy(moduleName);
         }
     }),
     
-    // Initialize and preload critical modules
     async initialize() {
-        debugLogger.log('🚀 RR.Blazor initializing...');
-        
-        // Preload critical modules for performance
+        debugLogger.log('RR.Blazor initializing...');
         await moduleManager.preloadCriticalModules();
         
         const portalModule = await moduleManager.loadModule('portal');
         if (portalModule) {
-            debugLogger.log('✅ Portal module event listeners registered');
+            debugLogger.log('Portal module event listeners registered');
         } else {
-            debugLogger.error('❌ Failed to load portal module - dropdowns and modals will not work!');
+            debugLogger.error('Failed to load portal module - dropdowns and modals will not work!');
         }
         
-        debugLogger.log('✨ RR.Blazor initialized with universal proxy system');
+        debugLogger.log('RR.Blazor initialized with universal proxy system');
         return true;
     },
     
-    // Cleanup
     async dispose() {
         debugLogger.log('Disposing RR.Blazor...');
         await moduleManager.dispose();
@@ -490,19 +427,18 @@ const RRBlazor = {
     }
 };
 
-// Export to window
 window.RRBlazor = RRBlazor;
 window.RRFileUpload = createUniversalProxy('fileUpload');
 window.RRDebugLogger = DebugLogger;
 window.debugLogger = debugLogger;
 
-// Debug utilities
+// Debug utilities for development
 window.RRDebug = {
     logger: debugLogger,
     
     async report() {
         if (debugLogger.isDebugMode) {
-            const debugModule = await import('./page-debug.js');
+            const debugModule = await import('./_dev_tools/page-debug.js');
             return debugModule.generateReport();
         }
     },
@@ -521,41 +457,20 @@ window.RRDebug = {
         });
         
         return { loaded, available, preload };
-    },
-    
-    async testModule(moduleName, methodName = null) {
-        try {
-            const proxy = createUniversalProxy(moduleName);
-            if (methodName) {
-                const result = await proxy[methodName]();
-                console.log(`✅ ${moduleName}.${methodName}() works:`, result);
-                return result;
-            } else {
-                const module = await moduleManager.loadModule(moduleName);
-                const info = moduleManager.moduleExports.get(moduleName);
-                console.log(`✅ Module '${moduleName}' loaded:`, info);
-                return info;
-            }
-        } catch (error) {
-            console.error(`❌ Test failed for ${moduleName}:`, error);
-            throw error;
-        }
     }
 };
 
-// Initialize on DOM ready
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => RRBlazor.initialize());
 } else {
     RRBlazor.initialize();
 }
 
-// Cleanup on unload
 window.addEventListener('beforeunload', () => {
     RRBlazor.dispose();
 });
 
-// Element existence check for Blazor ElementReference validation
+// Blazor ElementReference validation
 window.RRBlazor.elementExists = function(elementReference) {
     try {
         return elementReference && elementReference.tagName !== undefined;
@@ -564,7 +479,7 @@ window.RRBlazor.elementExists = function(elementReference) {
     }
 };
 
-// Enhanced element verification for choice components
+// Element verification for choice components
 window.RRBlazor.elementExistsInParent = function(choiceId, selector) {
     try {
         const choice = document.querySelector(`[data-choice-id="${choiceId}"]`);
@@ -573,8 +488,6 @@ window.RRBlazor.elementExistsInParent = function(choiceId, selector) {
         const element = choice.querySelector(selector);
         if (!element) return false;
         
-        // Verify element is actually in DOM and has dimensions
-        const rect = element.getBoundingClientRect();
         const inDocument = document.body.contains(element);
         const hasParent = element.parentElement !== null;
         
@@ -585,34 +498,7 @@ window.RRBlazor.elementExistsInParent = function(choiceId, selector) {
     }
 };
 
-// DOM state debugging helper
-window.RRBlazor.getChoiceDomInfo = function(choiceId) {
-    try {
-        const choice = document.querySelector(`[data-choice-id="${choiceId}"]`);
-        if (!choice) {
-            return `Choice element not found with id: ${choiceId}`;
-        }
-        
-        const info = {
-            choiceFound: true,
-            choiceClasses: choice.className,
-            hasViewport: !!choice.querySelector('.choice-viewport'),
-            hasTrigger: !!choice.querySelector('.choice-trigger'),
-            hasContent: !!choice.querySelector('.choice-content'),
-            childCount: choice.children.length,
-            innerHTML: choice.innerHTML.substring(0, 200) + '...',
-            computedDisplay: window.getComputedStyle(choice).display,
-            isConnected: choice.isConnected
-        };
-        
-        return JSON.stringify(info, null, 2);
-    } catch (e) {
-        return `Error getting DOM info: ${e.message}`;
-    }
-};
+debugLogger.log('RR.Blazor loaded!');
 
-debugLogger.log('✨ RR.Blazor loaded - Universal proxy active!');
-
-// Export for ES6 modules
 export { RRBlazor, debugLogger, moduleManager, createUniversalProxy };
 export default RRBlazor;

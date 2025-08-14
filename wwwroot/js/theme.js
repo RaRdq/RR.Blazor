@@ -1,26 +1,13 @@
-// RR.Blazor Theme System - Unified theme management for all layouts
-// Coordinates between RR.Blazor theme system and project-specific theme implementations
 
 let dotNetHelper = null;
 let systemThemeListener = null;
 
-// Use shared debug logger from RR.Blazor main file
-const debugLogger = window.debugLogger || new (window.RRDebugLogger || class {
-    constructor() { this.logPrefix = '[RR.Blazor Theme]'; }
-    log(...args) { console.log(this.logPrefix, ...args); }
-    warn(...args) { console.warn(this.logPrefix, ...args); }
-    error(...args) { console.error(this.logPrefix, ...args); }
-})();
+const debugLogger = window.debugLogger || { error: console.error };
 
 export function applyTheme(themeData) {
     const root = document.documentElement;
     
-    try {
-        // Set theme mode as data attribute
-        root.setAttribute('data-theme', themeData.mode);
-        debugLogger.log('Set data-theme attribute to', themeData.mode);
-        
-        // Apply color variables
+    root.setAttribute('data-theme', themeData.mode);
         if (themeData.colors) {
             Object.entries(themeData.colors).forEach(([key, value]) => {
                 if (value) {
@@ -29,7 +16,6 @@ export function applyTheme(themeData) {
             });
         }
         
-        // Apply custom variables
         if (themeData.customVariables) {
             Object.entries(themeData.customVariables).forEach(([key, value]) => {
                 if (value) {
@@ -38,7 +24,6 @@ export function applyTheme(themeData) {
             });
         }
         
-        // Apply animation settings
         if (themeData.animations !== undefined) {
             root.style.setProperty('--theme-animations', themeData.animations ? 'enabled' : 'disabled');
             if (!themeData.animations) {
@@ -48,26 +33,22 @@ export function applyTheme(themeData) {
             }
         }
         
-        // Apply accessibility settings
         if (themeData.accessibility) {
             root.classList.add('theme-accessibility');
         } else {
             root.classList.remove('theme-accessibility');
         }
         
-        // Apply high contrast mode
         if (themeData.highContrast) {
             root.classList.add('theme-high-contrast');
         } else {
             root.classList.remove('theme-high-contrast');
         }
         
-        // Force style recalculation and theme variable updates
         root.style.display = 'none';
-        root.offsetHeight; // Trigger reflow
+        root.offsetHeight;
         root.style.display = '';
         
-        // Force background redraw for gradient updates
         const bodyEl = document.body;
         if (bodyEl) {
             bodyEl.style.opacity = '0.999';
@@ -76,14 +57,9 @@ export function applyTheme(themeData) {
             });
         }
         
-        // Notify other systems of theme change
         notifyThemeChange(themeData);
         
         return true;
-    } catch (error) {
-        debugLogger.error('Error applying theme:', error);
-        return false;
-    }
 }
 
 export function getSystemDarkMode() {
@@ -97,7 +73,6 @@ export function getSystemHighContrast() {
 export function registerSystemThemeListener(dotNetRef) {
     dotNetHelper = dotNetRef;
     
-    // Listen for system theme changes
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     const contrastQuery = window.matchMedia('(prefers-contrast: more)');
     
@@ -116,7 +91,6 @@ export function registerSystemThemeListener(dotNetRef) {
     mediaQuery.addEventListener('change', handleThemeChange);
     contrastQuery.addEventListener('change', handleContrastChange);
     
-    // Initial calls
     handleThemeChange();
     handleContrastChange();
     
@@ -138,7 +112,6 @@ export function disposeSystemThemeListener() {
     }
 }
 
-// Enhanced setTheme export for modules
 export function setTheme(theme) {
     if (theme && typeof theme === 'string') {
         const normalizedTheme = theme.toLowerCase();
@@ -158,7 +131,6 @@ export function setTheme(theme) {
     return false;
 }
 
-// Utility functions for theme management
 export function getEffectiveTheme(themeMode) {
     switch (themeMode) {
         case 'system':
@@ -180,19 +152,15 @@ export function getCurrentTheme() {
     return document.documentElement.getAttribute('data-theme') || 'light';
 }
 
-// Integration with existing theme systems
 function notifyThemeChange(themeData) {
-    // Notify MainLayout theme manager if it exists
     if (window.themeManager && typeof window.themeManager.onThemeChanged === 'function') {
         window.themeManager.onThemeChanged(themeData);
     }
     
-    // Notify RAppShell if it exists
     if (window.RRAppShell && typeof window.RRAppShell.onThemeChanged === 'function') {
         window.RRAppShell.onThemeChanged(themeData);
     }
     
-    // Dispatch custom event for other components
     const event = new CustomEvent('themeChanged', { 
         detail: themeData,
         bubbles: true 
@@ -200,7 +168,6 @@ function notifyThemeChange(themeData) {
     document.dispatchEvent(event);
 }
 
-// CSS Custom Properties helper
 export function setCSSVariable(property, value) {
     document.documentElement.style.setProperty(property, value);
 }
@@ -209,29 +176,15 @@ export function getCSSVariable(property) {
     return getComputedStyle(document.documentElement).getPropertyValue(property).trim();
 }
 
-// Theme validation
 export function validateTheme(themeData) {
-    const requiredProperties = ['mode'];
-    const validModes = ['light', 'dark', 'system'];
-    
-    if (!themeData) return false;
-    
-    for (const prop of requiredProperties) {
-        if (!themeData.hasOwnProperty(prop)) {
-            debugLogger.warn(`Theme validation failed: missing property '${prop}'`);
-            return false;
-        }
+    if (!themeData) throw new Error('Theme data required');
+    if (!themeData.mode) throw new Error('Theme mode required');
+    if (!['light', 'dark', 'system'].includes(themeData.mode)) {
+        throw new Error(`Invalid theme mode: ${themeData.mode}`);
     }
-    
-    if (!validModes.includes(themeData.mode)) {
-        debugLogger.warn(`Theme validation failed: invalid mode '${themeData.mode}'`);
-        return false;
-    }
-    
     return true;
 }
 
-// Export theme info for compatibility
 export function getThemeInfo() {
     const currentTheme = getCurrentTheme();
     const systemDark = getSystemDarkMode();
@@ -245,45 +198,32 @@ export function getThemeInfo() {
     };
 }
 
-// Initialize theme immediately (before DOM load)
 (function() {
-    // Get stored theme or default to 'system'
     let themeMode = 'system';
-    try {
-        const stored = localStorage.getItem('rr-blazor-theme');
-        if (stored) {
-            const config = JSON.parse(stored);
-            // Handle both string and numeric enum values
-            const mode = config.Mode;
-            if (typeof mode === 'number') {
-                themeMode = mode === 0 ? 'system' : mode === 1 ? 'light' : mode === 2 ? 'dark' : 'system';
-            } else if (typeof mode === 'string') {
-                themeMode = mode.toLowerCase();
-            }
+    const stored = localStorage.getItem('rr-blazor-theme');
+    if (stored) {
+        const config = JSON.parse(stored);
+        const mode = config.Mode;
+        if (typeof mode === 'number') {
+            themeMode = mode === 0 ? 'system' : mode === 1 ? 'light' : mode === 2 ? 'dark' : 'system';
+        } else if (typeof mode === 'string') {
+            themeMode = mode.toLowerCase();
         }
-    } catch (e) {
-        debugLogger.warn('Failed to load theme from localStorage:', e);
     }
     
-    // Apply system preference if mode is system
     if (themeMode === 'system' || themeMode === 0) {
         const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
         themeMode = prefersDark ? 'dark' : 'light';
-        debugLogger.log('System theme detected:', themeMode);
     }
     
-    // Apply theme immediately
     document.documentElement.setAttribute('data-theme', themeMode);
-    debugLogger.log('Initial theme applied:', themeMode);
 })();
 
-// Required methods for rr-blazor.js proxy system
 function apply(themeData) {
     return applyTheme(themeData);
 }
 
 function initialize() {
-    // Theme system initializes itself, return success
     return true;
 }
 
@@ -291,10 +231,8 @@ function cleanup() {
     disposeSystemThemeListener();
 }
 
-// Export functions for module consumption
 export { apply, initialize, cleanup };
 
-// Global exports for Blazor interop
 window.RRTheme = {
     applyTheme,
     setTheme,

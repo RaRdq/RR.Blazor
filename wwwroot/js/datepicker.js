@@ -1,21 +1,17 @@
-// Datepicker instances registry
 const datepickerInstances = new Map();
 
 async function positionPopup(element, immediate = false) {
     if (!element) return;
     
-    // Ensure portal system is available
     if (!window.RRBlazor?.Portal) {
-        console.warn('[datepicker] Portal system not available');
-        return;
+        throw new Error('Portal system not available');
     }
     
     const popup = element.querySelector('.rr-datepicker-popup');
     const trigger = element.querySelector('.rr-datepicker-trigger');
     
     if (!popup || !trigger) {
-        console.warn('[datepicker] Popup or trigger element not found');
-        return;
+        throw new Error('Popup or trigger element not found');
     }
     
     if (!datepickerInstances.has(element)) {
@@ -44,7 +40,6 @@ async function positionPopup(element, immediate = false) {
     }
 }
 
-// Clean up datepicker portal
 function cleanupDatepicker(element) {
     if (!element) return;
     
@@ -59,7 +54,6 @@ function cleanupDatepicker(element) {
     }
 }
 
-// Setup datepicker events
 function setupDatepickerEvents(element, dotNetRef) {
     if (!element) return;
     
@@ -70,35 +64,29 @@ function setupDatepickerEvents(element, dotNetRef) {
     });
 }
 
-// Initialize datepicker with proper API calls
 async function initializeDatepicker(element, dotNetRef) {
     if (!element || !dotNetRef) return;
     
-    // Setup event listeners
     setupDatepickerEvents(element, dotNetRef);
     
-    // Store reference for cleanup
     if (!element._datepickerInitialized) {
         element._datepickerDotNetRef = dotNetRef;
         element._datepickerInitialized = true;
     }
 }
 
-// Open datepicker popup
 async function openDatepicker(element) {
     if (!element) return;
     
     await positionPopup(element, true);
 }
 
-// Close datepicker popup
 async function closeDatepicker(element) {
     if (!element) return;
     
     cleanupDatepicker(element);
 }
 
-// Required methods for rr-blazor.js proxy system
 function initialize(element, dotNetRef) {
     return initializeDatepicker(element, dotNetRef);
 }

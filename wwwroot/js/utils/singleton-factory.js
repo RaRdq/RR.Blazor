@@ -1,4 +1,3 @@
-// singleton-factory.js - Universal singleton pattern implementation
 
 export function createSingleton(className, instanceName) {
     const SingletonClass = class extends className {
@@ -45,7 +44,6 @@ export function createSingleton(className, instanceName) {
     return SingletonClass;
 }
 
-// WeakRef registry for automatic memory cleanup
 export class WeakRegistry {
     #registry = new Map();
     #cleanupInterval = null;
@@ -56,7 +54,7 @@ export class WeakRegistry {
     
     register(key, object) {
         if (!object || typeof object !== 'object') {
-            throw new Error('[WeakRegistry] Object is required');
+            throw new Error('Object is required');
         }
         
         this.#registry.set(key, new WeakRef(object));

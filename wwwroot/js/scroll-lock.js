@@ -1,4 +1,3 @@
-// scroll-lock.js - Dedicated scroll locking service
 
 class ScrollLockManager {
     constructor() {
@@ -8,7 +7,6 @@ class ScrollLockManager {
         this.scrollbarWidth = null;
     }
     
-    // Calculate scrollbar width once and cache
     getScrollbarWidth() {
         if (this.scrollbarWidth !== null) return this.scrollbarWidth;
         
@@ -16,11 +14,9 @@ class ScrollLockManager {
         return this.scrollbarWidth;
     }
     
-    // Lock scroll - increment lock count for nested modals
     lock() {
         this.lockCount++;
         
-        // Only lock if first call
         if (this.lockCount === 1 && !this.isLocked) {
             this.performLock();
         }
@@ -28,15 +24,13 @@ class ScrollLockManager {
         return this.lockCount;
     }
     
-    // Unlock scroll - decrement lock count
     unlock() {
         if (this.lockCount === 0) {
-            throw new Error('[ScrollLockManager] Cannot unlock - no active locks');
+            throw new Error('Cannot unlock - no active locks');
         }
         
         this.lockCount--;
         
-        // Only unlock if no more locks
         if (this.lockCount === 0 && this.isLocked) {
             this.performUnlock();
         }
@@ -44,7 +38,6 @@ class ScrollLockManager {
         return this.lockCount;
     }
     
-    // Force unlock all (for cleanup/error recovery)
     forceUnlock() {
         this.lockCount = 0;
         if (this.isLocked) {
@@ -52,9 +45,7 @@ class ScrollLockManager {
         }
     }
     
-    // Actually perform the scroll lock
     performLock() {
-        // Store original body styles
         this.originalBodyStyles = {
             overflow: document.body.style.overflow,
             paddingRight: document.body.style.paddingRight
@@ -62,11 +53,9 @@ class ScrollLockManager {
         
         const scrollbarWidth = this.getScrollbarWidth();
         
-        // Apply scroll lock
         document.body.classList.add('modal-open');
         document.body.style.overflow = 'hidden';
         
-        // Compensate for scrollbar to prevent layout shift
         if (scrollbarWidth > 0) {
             document.body.style.setProperty('--scrollbar-width', `${scrollbarWidth}px`);
             document.body.style.paddingRight = `${scrollbarWidth}px`;
@@ -75,9 +64,7 @@ class ScrollLockManager {
         this.isLocked = true;
     }
     
-    // Actually perform the scroll unlock
     performUnlock() {
-        // Restore original body styles
         document.body.classList.remove('modal-open');
         document.body.style.overflow = this.originalBodyStyles.overflow || '';
         document.body.style.paddingRight = this.originalBodyStyles.paddingRight || '';
@@ -87,7 +74,6 @@ class ScrollLockManager {
         this.originalBodyStyles = {};
     }
     
-    // Get current lock status
     getStatus() {
         return {
             locked: this.isLocked,
@@ -96,25 +82,19 @@ class ScrollLockManager {
         };
     }
     
-    // Check if currently locked
     isScrollLocked() {
         return this.isLocked;
     }
     
-    // Get active lock count
     getLockCount() {
         return this.lockCount;
     }
 }
 
-// Create singleton instance
 const scrollLockManager = new ScrollLockManager();
 
-// Export for ES6 modules
 export { scrollLockManager, ScrollLockManager };
 export default scrollLockManager;
-
-// Export individual functions
 export function lockScroll() {
     return scrollLockManager.lock();
 }
@@ -139,9 +119,7 @@ export function getScrollLockStatus() {
     return scrollLockManager.getStatus();
 }
 
-// Required methods for rr-blazor.js proxy system
 export function initialize() {
-    // Scroll lock system initializes itself, return success
     return true;
 }
 

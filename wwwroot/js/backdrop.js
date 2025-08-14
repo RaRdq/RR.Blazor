@@ -1,6 +1,3 @@
-// backdrop.js - Pure Backdrop Management Only
-// Following SRP: This module ONLY manages backdrop elements
-// NO portal management, NO event handling logic beyond backdrop clicks
 
 import { createSingleton, WeakRegistry } from './utils/singleton-factory.js';
 
@@ -19,21 +16,9 @@ class BackdropManagerBase {
         this.#animationDuration = this.#getAnimationDuration();
     }
     
-    /**
-     * Creates a backdrop element
-     * @param {string} portalId - Associated portal ID
-     * @param {Object} config - Backdrop configuration
-     * @param {number} config.level - Stacking level for opacity calculation
-     * @param {boolean} config.shared - Whether to share backdrop at same level
-     * @param {string} config.className - CSS class names to apply
-     * @param {number} config.blur - Blur amount in pixels
-     * @param {number} config.animationDuration - Animation duration in ms
-     * @returns {HTMLElement} Backdrop element
-     */
     create(portalId, config = {}) {
-        // FAIL FAST: No duplicate backdrops
         if (this.#backdrops.has(portalId)) {
-            throw new Error(`Backdrop for portal ${portalId} already exists - programming error`);
+            throw new Error(`Backdrop for portal ${portalId} already exists`);
         }
         
         const level = config.level || 0;
@@ -71,18 +56,12 @@ class BackdropManagerBase {
         return backdrop.element;
     }
     
-    /**
-     * Destroys a backdrop
-     * @param {string} portalId - Associated portal ID
-     */
     destroy(portalId) {
         const backdrop = this.#backdrops.get(portalId);
-        // FAIL FAST: Backdrop must exist when destroying
         if (!backdrop) {
-            throw new Error(`Backdrop for portal ${portalId} not found - cannot destroy non-existent backdrop`);
+            throw new Error(`Backdrop for portal ${portalId} not found`);
         }
         
-        // Remove from tracking immediately
         this.#backdrops.delete(portalId);
         this.#registry.delete(portalId);
         
@@ -92,43 +71,34 @@ class BackdropManagerBase {
                 shared.refCount = Math.max(0, shared.refCount - 1);
                 
                 if (shared.refCount === 0) {
-                    // Last reference, remove shared backdrop
                     this.#sharedBackdrops.delete(backdrop.level);
                     this.#removeBackdropElement(shared.element, backdrop.config.animationDuration);
                 }
             }
         } else {
-            // Non-shared backdrop - remove directly
             this.#removeBackdropElement(backdrop.element, backdrop.config.animationDuration);
         }
     }
     
-    /**
-     * Destroys all backdrops
-     */
     destroyAll() {
         const elementsToRemove = [];
         
-        // Collect non-shared backdrops
         this.#backdrops.forEach((backdrop) => {
             if (!backdrop.shared && backdrop.element) {
                 elementsToRemove.push(backdrop.element);
             }
         });
         
-        // Collect shared backdrops
         this.#sharedBackdrops.forEach(shared => {
             if (shared.element) {
                 elementsToRemove.push(shared.element);
             }
         });
         
-        // Clear tracking immediately
         this.#backdrops.clear();
         this.#sharedBackdrops.clear();
         this.#registry.destroy();
         
-        // Remove all elements without animation
         elementsToRemove.forEach(element => {
             if (element && element.parentNode) {
                 element.remove();
@@ -136,11 +106,6 @@ class BackdropManagerBase {
         });
     }
     
-    /**
-     * Updates backdrop opacity
-     * @param {string} portalId - Associated portal ID
-     * @param {number} opacity - New opacity value
-     */
     updateOpacity(portalId, opacity) {
         const backdrop = this.#backdrops.get(portalId);
         if (!backdrop) {
@@ -150,12 +115,6 @@ class BackdropManagerBase {
         backdrop.element.style.setProperty('--backdrop-opacity', opacity);
     }
     
-    /**
-     * Adds click handler to backdrop
-     * @param {string} portalId - Associated portal ID
-     * @param {Function} handler - Click handler function
-     * @returns {Function} Cleanup function to remove handler
-     */
     onClick(portalId, handler) {
         const backdrop = this.#backdrops.get(portalId);
         if (!backdrop) {
@@ -171,27 +130,16 @@ class BackdropManagerBase {
         backdrop.element.addEventListener('click', clickHandler);
         backdrop.element.dataset.clickHandler = 'true';
         
-        // Return cleanup function
         return () => {
             backdrop.element.removeEventListener('click', clickHandler);
             delete backdrop.element.dataset.clickHandler;
         };
     }
     
-    /**
-     * Checks if a backdrop exists
-     * @param {string} portalId - Associated portal ID
-     * @returns {boolean} True if backdrop exists
-     */
     hasBackdrop(portalId) {
         return this.#backdrops.has(portalId);
     }
     
-    /**
-     * Gets backdrop data
-     * @param {string} portalId - Associated portal ID
-     * @returns {Object} Backdrop data
-     */
     getBackdrop(portalId) {
         const backdrop = this.#backdrops.get(portalId);
         if (!backdrop) {
@@ -200,7 +148,6 @@ class BackdropManagerBase {
         return backdrop;
     }
     
-    // Private helper methods
     
     #getAnimationDuration() {
         try {
@@ -213,9 +160,8 @@ class BackdropManagerBase {
                 return parseFloat(durationValue) * 1000;
             }
         } catch (error) {
-            console.warn('[BackdropManager] Failed to read CSS duration variable, using default:', error);
         }
-        return 200; // Fallback
+        return 200;
     }
     
     #createBackdropElement(portalId, level, config) {
@@ -232,7 +178,6 @@ class BackdropManagerBase {
             backdrop.style.setProperty('--backdrop-blur', `${config.blur}px`);
         }
         
-        // Get or create portal root container
         let container = document.getElementById('portal-root');
         if (!container) {
             container = document.createElement('div');
@@ -252,7 +197,6 @@ class BackdropManagerBase {
             document.body.appendChild(container);
         }
         
-        // Insert backdrop before the portal if it exists
         const portal = document.getElementById(portalId);
         if (portal && portal.parentNode === container) {
             container.insertBefore(backdrop, portal);
@@ -284,35 +228,28 @@ class BackdropManagerBase {
             return;
         }
         
-        // Mark element for removal to prevent double-execution
         if (element.dataset.removing === 'true') {
             return;
         }
         
         element.dataset.removing = 'true';
         
-        // Handle animation and removal
         if (duration > 0) {
             element.style.transition = `opacity ${duration}ms ease-in`;
             element.style.opacity = '0';
             
-            // Let CSS handle animation completion
             element.addEventListener('transitionend', function onTransitionEnd() {
                 if (element.parentNode) {
                     element.remove();
                 }
             }, { once: true });
         } else {
-            // No animation, remove immediately
             element.remove();
         }
     }
 }
 
-// Create singleton using factory
 export const BackdropManager = createSingleton(BackdropManagerBase, 'BackdropManager');
-
-// Generic event-driven backdrop integration (application-agnostic)
 document.addEventListener('backdrop-create-request', (event) => {
     const { requesterId, config } = event.detail;
     const backdrop = BackdropManager.getInstance().create(requesterId, config);
@@ -346,7 +283,6 @@ document.addEventListener('backdrop-cleanup-all-request', () => {
     document.dispatchEvent(responseEvent);
 });
 
-// Auto-cleanup on page unload
 window.addEventListener('beforeunload', () => {
     if (BackdropManager.hasInstance()) {
         BackdropManager.getInstance().destroyAll();
@@ -354,10 +290,7 @@ window.addEventListener('beforeunload', () => {
     }
 });
 
-// Export for ES6 modules
 export default BackdropManager;
-
-// Export pure backdrop management functions
 export function createBackdrop(portalId, config) {
     return BackdropManager.getInstance().create(portalId, config);
 }

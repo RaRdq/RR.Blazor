@@ -1,23 +1,12 @@
-// RAppShell JavaScript module for enhanced functionality
-
-// Use shared debug logger from RR.Blazor main file
-const debugLogger = window.debugLogger || new (window.RRDebugLogger || class {
-    constructor() { this.logPrefix = '[RAppShell]'; }
-    log(...args) { console.log(this.logPrefix, ...args); }
-    error(...args) { console.error(this.logPrefix, ...args); }
-})();
+const debugLogger = {
+    error: (...args) => console.error('[RAppShell]', ...args)
+};
 
 export function initialize() {
-        debugLogger.log('RAppShell initialized');
-    
     setupKeyboardShortcuts();
-    
     setupClickOutside();
-    
     setupResponsive();
-    
     setupAccessibility();
-    
 }
 
 
@@ -35,30 +24,25 @@ export function isDesktop() {
 
 function setupKeyboardShortcuts() {
     document.addEventListener('keydown', (e) => {
-        // Global shortcuts
         if (e.ctrlKey || e.metaKey) {
             switch (e.key) {
                 case 'k':
                 case 'K':
-                    // Focus search (Ctrl/Cmd + K)
                     e.preventDefault();
                     focusSearch();
                     break;
                 case 'b':
                 case 'B':
-                    // Toggle sidebar (Ctrl/Cmd + B)
                     e.preventDefault();
                     toggleSidebar();
                     break;
                 case ',':
-                    // Open settings (Ctrl/Cmd + ,)
                     e.preventDefault();
                     navigateTo('/settings');
                     break;
             }
         }
         
-        // Escape key handling
         if (e.key === 'Escape') {
             closeAllDropdowns();
             closeSearch();
@@ -68,18 +52,15 @@ function setupKeyboardShortcuts() {
 
 function setupClickOutside() {
     document.addEventListener('click', (e) => {
-        // Close search results if clicking outside
         const searchContainer = e.target.closest('.search-container');
         if (!searchContainer) {
             closeSearch();
         }
         
-        // Close dropdowns if clicking outside
         const dropdown = e.target.closest('.dropdown');
         if (!dropdown) {
             closeAllDropdowns();
         }
-        
     });
 }
 
@@ -87,54 +68,25 @@ function setupResponsive() {
     let resizeTimeout;
     
     const handleMobileCollapse = () => {
-        // Update mobile state
         document.documentElement.style.setProperty('--is-mobile', isMobile() ? '1' : '0');
         document.documentElement.style.setProperty('--is-tablet', isTablet() ? '1' : '0');
         document.documentElement.style.setProperty('--is-desktop', isDesktop() ? '1' : '0');
         
-        // Force mobile sidebar behavior - try multiple selector patterns
+        const sidebarSelectors = ['.sidebar', '[class*="sidebar"]', '.app-shell .sidebar', 'aside[role="navigation"]'];
+        const sidebar = sidebarSelectors.map(sel => document.querySelector(sel)).find(Boolean);
+        const mainContent = document.querySelector('.main-content');
+        
         if (isMobile()) {
-            // Multiple selector patterns to ensure we catch the sidebar
-            const sidebarSelectors = ['.sidebar', '[class*="sidebar"]', '.app-shell .sidebar', 'aside[role="navigation"]'];
-            let sidebar = null;
-            
-            for (const selector of sidebarSelectors) {
-                sidebar = document.querySelector(selector);
-                if (sidebar) break;
-            }
-            
-            if (sidebar) {
-                sidebar.classList.add('sidebar-closed', 'mobile-hidden');
-                document.documentElement.classList.add('mobile-layout');
-                
-                const mainContent = document.querySelector('.main-content');
-                if (mainContent) {
-                    mainContent.classList.add('mobile-sidebar');
-                }
-            }
+            sidebar?.classList.add('sidebar-closed', 'mobile-hidden');
+            document.documentElement.classList.add('mobile-layout');
+            mainContent?.classList.add('mobile-sidebar');
         } else {
-            // Desktop behavior - restore sidebar
-            const sidebarSelectors = ['.sidebar', '[class*="sidebar"]', '.app-shell .sidebar', 'aside[role="navigation"]'];
-            let sidebar = null;
-            
-            for (const selector of sidebarSelectors) {
-                sidebar = document.querySelector(selector);
-                if (sidebar) break;
-            }
-            
-            if (sidebar) {
-                sidebar.classList.remove('mobile-hidden', 'sidebar-closed');
-                document.documentElement.classList.remove('mobile-layout');
-                
-                const mainContent = document.querySelector('.main-content');
-                if (mainContent) {
-                    mainContent.classList.remove('mobile-sidebar');
-                }
-            }
+            sidebar?.classList.remove('mobile-hidden', 'sidebar-closed');
+            document.documentElement.classList.remove('mobile-layout');
+            mainContent?.classList.remove('mobile-sidebar');
         }
     };
     
-    // Handle resize immediately with requestAnimationFrame
     let resizeScheduled = false;
     window.addEventListener('resize', () => {
         if (!resizeScheduled) {
@@ -146,12 +98,10 @@ function setupResponsive() {
         }
     });
     
-    // Initial setup - immediate execution
     handleMobileCollapse();
 }
 
 function setupAccessibility() {
-    // Add focus indicators for keyboard navigation
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Tab') {
             document.body.classList.add('keyboard-navigation');
@@ -162,7 +112,6 @@ function setupAccessibility() {
         document.body.classList.remove('keyboard-navigation');
     });
     
-    // Screen reader announcements
     const announcer = document.createElement('div');
     announcer.setAttribute('aria-live', 'polite');
     announcer.setAttribute('aria-atomic', 'true');
@@ -181,46 +130,29 @@ function focusSearch() {
 }
 
 export function focusElement(selector) {
-    try {
-        let element;
-        if (selector.startsWith('#')) {
-            element = document.getElementById(selector.substring(1));
-        } else if (selector.startsWith('[') && selector.endsWith(']')) {
-            element = document.querySelector(selector);
-        } else {
-            element = document.querySelector(selector);
-        }
-        
-        if (element) {
-            element.focus();
-            return true;
-        }
-        return false;
-    } catch (error) {
-        console.warn('Focus element failed:', error);
-        return false;
+    const element = selector.startsWith('#') 
+        ? document.getElementById(selector.substring(1))
+        : document.querySelector(selector);
+    
+    if (element) {
+        element.focus();
+        return true;
     }
+    return false;
 }
 
 export function focusSearchInput(searchId) {
-    try {
-        // Try to find the autosuggest input by the provided ID
-        const autosuggestContainer = document.querySelector(`[data-autosuggest-id="${searchId}"]`);
-        if (autosuggestContainer) {
-            const input = autosuggestContainer.querySelector('input[type="text"], input[type="search"]');
-            if (input) {
-                input.focus();
-                input.select();
-                return true;
-            }
+    const autosuggestContainer = document.querySelector(`[data-autosuggest-id="${searchId}"]`);
+    if (autosuggestContainer) {
+        const input = autosuggestContainer.querySelector('input[type="text"], input[type="search"]');
+        if (input) {
+            input.focus();
+            input.select();
+            return true;
         }
-        
-        // Fallback to generic search
-        return focusElement('input[placeholder*="Search"]');
-    } catch (error) {
-        console.warn('Focus search input failed:', error);
-        return false;
     }
+    
+    return focusElement('input[placeholder*="Search"]');
 }
 
 function toggleSidebar() {
@@ -243,35 +175,22 @@ function closeAllDropdowns() {
     const dropdowns = document.querySelectorAll('.dropdown__viewport');
     dropdowns.forEach(viewport => {
         const dropdown = viewport.closest('.dropdown');
-        if (dropdown) {
-            const trigger = dropdown.querySelector('.dropdown__trigger');
-            if (trigger) {
-                trigger.click(); // This will trigger the Blazor close logic
-            }
-        }
+        const trigger = dropdown?.querySelector('.dropdown__trigger');
+        trigger?.click();
     });
 }
 
 
 function navigateTo(url) {
-    if (isValidUrl(url)) {
+    if (url && (url.startsWith('/') || url.startsWith('./') || url.startsWith('../') || url.startsWith('http'))) {
         window.location.href = url;
     }
-}
-
-function isValidUrl(url) {
-    return url && 
-           (url.startsWith('/') || 
-            url.startsWith('./') || 
-            url.startsWith('../') ||
-            (url.startsWith('http://') || url.startsWith('https://')));
 }
 
 function announce(message) {
     const announcer = document.getElementById('app-shell-announcer');
     if (announcer) {
         announcer.textContent = message;
-        // Clear after animation frame to ensure screen reader captures it
         requestAnimationFrame(() => {
             requestAnimationFrame(() => {
                 announcer.textContent = '';
@@ -280,17 +199,14 @@ function announce(message) {
     }
 }
 
-// Theme system integration
 export function registerSystemThemeListener(dotNetRef) {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     
-    function handleThemeChange(e) {
+    const handleThemeChange = (e) => {
         dotNetRef.invokeMethodAsync('OnSystemThemeChanged', e.matches, false);
-    }
+    };
     
     mediaQuery.addEventListener('change', handleThemeChange);
-    
-    // Initial call
     handleThemeChange(mediaQuery);
     
     return {
@@ -300,7 +216,6 @@ export function registerSystemThemeListener(dotNetRef) {
     };
 }
 
-// Performance monitoring
 export function getPerformanceMetrics() {
     if (!window.performance) return null;
     
@@ -315,16 +230,13 @@ export function getPerformanceMetrics() {
     };
 }
 
-// Utility functions for component interaction
 export function scrollToTop() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 export function scrollToElement(selector) {
     const element = document.querySelector(selector);
-    if (element) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+    element?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 export function copyToClipboard(text) {
@@ -341,15 +253,6 @@ export function updateUrlWithoutScroll(newUrl) {
     return RRBlazor.updateUrlWithoutScroll(newUrl);
 }
 
-
-
-export function initialize(element, dotNetRef) {
-    return true;
-}
-
-export function cleanup(element) {
-    return true;
-}
 
 window.RRAppShell = {
     isMobile,

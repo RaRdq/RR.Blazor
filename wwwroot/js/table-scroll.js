@@ -6,19 +6,16 @@ export const RTableScrollManager = {
     initialize: function(tableId) {
         try {
             if (!tableId) {
-                console.warn('[RTableScrollManager] Missing table ID for initialization');
                 return false;
             }
             
             const tableContainer = document.querySelector(`[data-table-id="${tableId}"]`);
             if (!tableContainer) {
-                console.warn('[RTableScrollManager] Table container not found:', tableId);
                 return false;
             }
             
             const scrollContainer = tableContainer.querySelector('.table-content.scroll-container-x');
             if (!scrollContainer) {
-                console.warn('[RTableScrollManager] Scroll container not found for table:', tableId);
                 return false;
             }
             

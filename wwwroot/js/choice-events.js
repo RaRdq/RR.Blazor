@@ -1,5 +1,3 @@
-// choice-events.js - Choice Event Coordination (SRP)
-// Responsibility: Bridge choice layer with infrastructure layers via events
 
 class ChoiceEventCoordinator {
     constructor() {
@@ -7,7 +5,6 @@ class ChoiceEventCoordinator {
     }
     
     setupInfrastructureEventHandlers() {
-        // Listen for infrastructure responses
         document.addEventListener('portal-created', (event) => {
             const { requesterId, portal } = event.detail;
             if (requesterId.startsWith('choice-')) {
@@ -22,7 +19,6 @@ class ChoiceEventCoordinator {
             }
         });
         
-        // Listen for click-outside events
         document.addEventListener('click-outside', (event) => {
             const { elementId } = event.detail;
             if (elementId.startsWith('choice-')) {
@@ -30,7 +26,6 @@ class ChoiceEventCoordinator {
             }
         });
         
-        // Listen for keyboard navigation events
         document.addEventListener('keyboard-select', (event) => {
             const { elementId, item, index } = event.detail;
             if (elementId.startsWith('choice-')) {
@@ -46,7 +41,6 @@ class ChoiceEventCoordinator {
         });
     }
     
-    // Request portal creation for choice
     requestPortal(choiceId, config) {
         const portalRequest = new CustomEvent('portal-create-request', {
             detail: {
@@ -62,7 +56,6 @@ class ChoiceEventCoordinator {
         document.dispatchEvent(portalRequest);
     }
     
-    // Request portal destruction for choice
     destroyPortal(choiceId) {
         const destroyRequest = new CustomEvent('portal-destroy-request', {
             detail: {
@@ -74,7 +67,6 @@ class ChoiceEventCoordinator {
         document.dispatchEvent(destroyRequest);
     }
     
-    // Register choice for click-outside detection
     registerClickOutside(choiceId, element, viewportElement) {
         const clickOutsideEvent = new CustomEvent('register-click-outside', {
             detail: {
@@ -93,7 +85,6 @@ class ChoiceEventCoordinator {
         document.dispatchEvent(clickOutsideEvent);
     }
     
-    // Unregister choice from click-outside detection
     unregisterClickOutside(choiceId) {
         const unregisterEvent = new CustomEvent('unregister-click-outside', {
             detail: {
@@ -104,7 +95,6 @@ class ChoiceEventCoordinator {
         document.dispatchEvent(unregisterEvent);
     }
     
-    // Enable keyboard navigation for choice
     enableKeyboardNavigation(choiceId, viewport) {
         const enableNavEvent = new CustomEvent('enable-keyboard-navigation', {
             detail: {
@@ -118,7 +108,6 @@ class ChoiceEventCoordinator {
         document.dispatchEvent(enableNavEvent);
     }
     
-    // Disable keyboard navigation
     disableKeyboardNavigation() {
         const disableNavEvent = new CustomEvent('disable-keyboard-navigation', {
             bubbles: true
@@ -126,7 +115,6 @@ class ChoiceEventCoordinator {
         document.dispatchEvent(disableNavEvent);
     }
     
-    // Handle infrastructure responses
     handlePortalCreated(choiceId, portal) {
         const choicePortalReadyEvent = new CustomEvent('choice-portal-ready', {
             detail: { choiceId: choiceId.replace('choice-', ''), portal },
@@ -172,12 +160,10 @@ class ChoiceEventCoordinator {
     }
 }
 
-// Create singleton
 const choiceEventCoordinator = new ChoiceEventCoordinator();
 
 export default choiceEventCoordinator;
 
-// Export functions for choice.js to use
 export function requestChoicePortal(choiceId, config) {
     return choiceEventCoordinator.requestPortal(choiceId, config);
 }

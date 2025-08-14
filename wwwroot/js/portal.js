@@ -48,7 +48,6 @@ class PortalManagerBase {
         portal.dataset.portalLevel = this._portals.size.toString();
         
         const zIndex = this._calculateZIndex();
-        console.log(`[PortalManager] Creating portal ${id} with z-index ${zIndex}`);
         portal.style.zIndex = zIndex.toString();
         portal.dataset.zIndex = zIndex.toString();
         
@@ -313,14 +312,9 @@ class PortalManagerBase {
     }
 }
 
-// Create singleton using factory
 export const PortalManager = createSingleton(PortalManagerBase, 'PortalManager');
 
-console.log('[Portal.js] Module loaded, setting up event listeners');
-
-// Generic event-driven portal integration (application-agnostic)
 document.addEventListener('portal-create-request', (event) => {
-    console.log('[Portal.js] Received portal-create-request:', event.detail);
     const { requesterId, config } = event.detail;
     const portal = PortalManager.getInstance().create(config);
     
@@ -328,7 +322,6 @@ document.addEventListener('portal-create-request', (event) => {
         detail: { requesterId, portal },
         bubbles: true
     });
-    console.log('[Portal.js] Dispatching portal-created event:', responseEvent.detail);
     document.dispatchEvent(responseEvent);
 });
 
