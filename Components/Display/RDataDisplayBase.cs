@@ -21,8 +21,8 @@ public abstract class RDataDisplayBase : RTextComponentBase
     [Parameter, AIParameter("Visual variant", "DataDisplayVariant.Standard")]
     public DataDisplayVariant Variant { get; set; } = DataDisplayVariant.Standard;
     
-    [Parameter, AIParameter("Size variant", "DataDisplaySize.Medium")]
-    public DataDisplaySize Size { get; set; } = DataDisplaySize.Medium;
+    [Parameter, AIParameter("Size variant", "SizeType.Medium")]
+    public SizeType Size { get; set; } = SizeType.Medium;
     
     [Parameter, AIParameter("Layout arrangement", "DataDisplayLayout.Vertical")]
     public DataDisplayLayout Layout { get; set; } = DataDisplayLayout.Vertical;
@@ -99,9 +99,9 @@ public abstract class RDataDisplayBase : RTextComponentBase
         
         classes.Add(Size switch
         {
-            DataDisplaySize.Small => "text-xs font-medium",
-            DataDisplaySize.Medium => "text-sm font-medium", 
-            DataDisplaySize.Large => "text-base font-medium",
+            SizeType.Small => "text-xs font-medium",
+            SizeType.Medium => "text-sm font-medium", 
+            SizeType.Large => "text-base font-medium",
             _ => "text-sm font-medium"
         });
         
@@ -116,9 +116,9 @@ public abstract class RDataDisplayBase : RTextComponentBase
         
         classes.Add(Size switch
         {
-            DataDisplaySize.Small => "text-sm",
-            DataDisplaySize.Medium => "text-base",
-            DataDisplaySize.Large => "text-lg", 
+            SizeType.Small => "text-sm",
+            SizeType.Medium => "text-base",
+            SizeType.Large => "text-lg", 
             _ => "text-base"
         });
         
@@ -146,9 +146,9 @@ public abstract class RDataDisplayBase : RTextComponentBase
     {
         return Size switch
         {
-            DataDisplaySize.Small => "text-sm text-interactive",
-            DataDisplaySize.Medium => "text-base text-interactive",
-            DataDisplaySize.Large => "text-lg text-interactive",
+            SizeType.Small => "text-sm text-interactive",
+            SizeType.Medium => "text-base text-interactive",
+            SizeType.Large => "text-lg text-interactive",
             _ => "text-base text-interactive"
         };
     }
@@ -157,9 +157,9 @@ public abstract class RDataDisplayBase : RTextComponentBase
     {
         return Size switch
         {
-            DataDisplaySize.Small => "text-xs",
-            DataDisplaySize.Medium => "text-sm",
-            DataDisplaySize.Large => "text-base",
+            SizeType.Small => "text-xs",
+            SizeType.Medium => "text-sm",
+            SizeType.Large => "text-base",
             _ => "text-sm"
         };
     }
@@ -168,9 +168,9 @@ public abstract class RDataDisplayBase : RTextComponentBase
     {
         return Size switch
         {
-            DataDisplaySize.Small => "text-sm",
-            DataDisplaySize.Medium => "text-base",
-            DataDisplaySize.Large => "text-lg",
+            SizeType.Small => "text-sm",
+            SizeType.Medium => "text-base",
+            SizeType.Large => "text-lg",
             _ => "text-base"
         };
     }

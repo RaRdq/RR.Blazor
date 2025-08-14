@@ -44,8 +44,6 @@ public static class PropertyColumnGenerator
     private static ColumnDefinition<TItem> CreateSmartColumn<TItem>(PropertyInfo property) where TItem : class
     {
         var metadata = GetPropertyMetadata(property);
-        
-        // Create property expression for type-safe access
         var parameter = Expression.Parameter(typeof(TItem), "item");
         var propertyAccess = Expression.Property(parameter, property);
         var converted = Expression.Convert(propertyAccess, typeof(object));

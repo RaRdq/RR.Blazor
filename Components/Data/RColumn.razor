@@ -28,31 +28,26 @@
     
     private object CreateColumnDefinition()
     {
-        if (TableContext?.ItemType == null)
-            return null;
+        var itemType = TableContext.ItemType;
         
-        // Use string Property parameter (compile-time safe)
         if (!string.IsNullOrEmpty(Property))
         {
             return CreateColumnFromProperty(Property);
         }
         
-        // Priority 2: Use For lambda expression (requires explicit types)
         if (For != null)
         {
             return CreateColumnFromLambda(For);
         }
         
-        return null;
+        throw new InvalidOperationException("Column must specify either Property or For parameter");
     }
     
     private object CreateColumnFromProperty(string propertyName)
     {
         var itemType = TableContext.ItemType;
         var propertyInfo = itemType.GetProperty(propertyName);
-        if (propertyInfo == null) return null;
         
-        // Create typed lambda: x => (object)x.PropertyName
         var parameter = Expression.Parameter(itemType, "x");
         var propertyAccess = Expression.Property(parameter, propertyInfo);
         var converted = propertyInfo.PropertyType != typeof(object) 
@@ -68,19 +63,11 @@
     private object CreateColumnFromLambda(object lambda)
     {
         var itemType = TableContext.ItemType;
+        var lambdaExpr = (LambdaExpression)lambda;
+        var propertyName = GetPropertyNameFromLambda(lambdaExpr);
+        var convertedLambda = ConvertLambdaExpression(lambdaExpr, itemType);
         
-        if (lambda is LambdaExpression lambdaExpr)
-        {
-            var propertyName = GetPropertyNameFromLambda(lambdaExpr);
-            if (!string.IsNullOrEmpty(propertyName))
-            {
-                // Convert the lambda to correct type
-                var convertedLambda = ConvertLambdaExpression(lambdaExpr, itemType);
-                return CreateColumnDefinition(itemType, convertedLambda, propertyName);
-            }
-        }
-        
-        return null;
+        return CreateColumnDefinition(itemType, convertedLambda, propertyName);
     }
     
     private object CreateColumnDefinition(Type itemType, object typedLambda, string propertyName)
@@ -137,7 +124,7 @@
     private void SetProperty(object obj, string propertyName, object value)
     {
         var property = obj.GetType().GetProperty(propertyName);
-        property?.SetValue(obj, value);
+        property.SetValue(obj, value);
     }
     
     private object CreateTypedTemplate(Type itemType, RenderFragment<object> template)
@@ -157,34 +144,28 @@
     
     private object ConvertLambdaExpression(object lambda, Type itemType)
     {
-        if (!(lambda is LambdaExpression lambdaExpr))
-            return null;
-        
-        // Create Expression<Func<TItem, object>> with the correct type
+        var lambdaExpr = (LambdaExpression)lambda;
         var funcType = typeof(Func<,>).MakeGenericType(itemType, typeof(object));
         
         var parameter = lambdaExpr.Parameters[0];
         var body = lambdaExpr.Body;
         
-        // Convert value types to object
         if (body.Type != typeof(object) && body.Type.IsValueType)
         {
             body = Expression.Convert(body, typeof(object));
         }
         
-        // Replace parameter with correctly typed parameter
         var newParameter = Expression.Parameter(itemType, parameter.Name);
         var visitor = new ParameterReplacerVisitor(parameter, newParameter);
         var newBody = visitor.Visit(body);
         
-        var newLambda = Expression.Lambda(funcType, newBody, newParameter);
-        return newLambda;
+        return Expression.Lambda(funcType, newBody, newParameter);
     }
     
     private object CompileExpression(object expression)
     {
-        var compileMethod = expression?.GetType().GetMethod("Compile", Type.EmptyTypes);
-        return compileMethod?.Invoke(expression, null);
+        var compileMethod = expression.GetType().GetMethod("Compile", Type.EmptyTypes);
+        return compileMethod.Invoke(expression, null);
     }
     
     private string GetPropertyName()

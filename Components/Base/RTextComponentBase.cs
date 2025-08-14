@@ -93,10 +93,10 @@ namespace RR.Blazor.Components.Base
         {
             return Density switch
             {
-                ComponentDensity.Compact => "leading-tight",
-                ComponentDensity.Dense => "leading-snug",
-                ComponentDensity.Normal => "leading-normal",
-                ComponentDensity.Spacious => "leading-relaxed",
+                DensityType.Compact => "leading-tight",
+                DensityType.Dense => "leading-snug",
+                DensityType.Normal => "leading-normal",
+                DensityType.Spacious => "leading-relaxed",
                 _ => "leading-normal"
             };
         }
@@ -108,10 +108,10 @@ namespace RR.Blazor.Components.Base
         {
             return Density switch
             {
-                ComponentDensity.Compact => "icon-compact",
-                ComponentDensity.Dense => "icon-dense",
-                ComponentDensity.Normal => "icon-normal",
-                ComponentDensity.Spacious => "icon-spacious",
+                DensityType.Compact => "icon-compact",
+                DensityType.Dense => "icon-dense",
+                DensityType.Normal => "icon-normal",
+                DensityType.Spacious => "icon-spacious",
                 _ => "icon-normal"
             };
         }

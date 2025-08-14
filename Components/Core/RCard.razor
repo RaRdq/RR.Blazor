@@ -1,4 +1,4 @@
-﻿@** 
+@** 
 <summary>
 Card component with header, media, content areas, and loading states.
 </summary>
@@ -154,7 +154,6 @@ Card component with header, media, content areas, and loading states.
     [AIParameter(Hint = "Use for hero images, thumbnails, or visual content", IsRequired = false)]
     public string ImageSrc { get; set; }
     
-    /// <summary>Image alt text</summary>
     [Parameter] public string ImageAlt { get; set; }
     
     /// <summary>Whether card is clickable - adds hover effects and cursor pointer</summary>
@@ -169,23 +168,17 @@ Card component with header, media, content areas, and loading states.
     [AIParameter(Hint = "Use during async operations to show processing state")]
     public bool Loading { get; set; }
     
-    /// <summary>Loading text to display</summary>
     [Parameter] public string LoadingText { get; set; }
     
-    /// <summary>Whether card is selected/active</summary>
     [Parameter] public bool Selected { get; set; }
     
     
-    /// <summary>Ribbon/badge text</summary>
     [Parameter] public string RibbonText { get; set; }
     
-    /// <summary>Ribbon variant</summary>
     [Parameter] public RibbonVariant RibbonVariant { get; set; } = RibbonVariant.Primary;
     
-    /// <summary>Whether to remove padding from content</summary>
     [Parameter] public bool NoPadding { get; set; }
     
-    /// <summary>Whether image should be full bleed</summary>
     [Parameter] public bool FullBleedImage { get; set; }
     
     
@@ -196,30 +189,22 @@ Card component with header, media, content areas, and loading states.
     public string BodyClass { get; set; }
     
     
-    /// <summary>Header content area</summary>
     [Parameter] public RenderFragment HeaderContent { get; set; }
     
     
-    /// <summary>Media content area</summary>
     [Parameter] public RenderFragment MediaContent { get; set; }
     
-    /// <summary>Footer content area</summary>
     [Parameter] public RenderFragment FooterContent { get; set; }
     
     
-    /// <summary>Click event handler</summary>
     [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
     
-    /// <summary>Mouse enter event handler</summary>
     [Parameter] public EventCallback<MouseEventArgs> OnMouseEnter { get; set; }
     
-    /// <summary>Mouse leave event handler</summary>
     [Parameter] public EventCallback<MouseEventArgs> OnMouseLeave { get; set; }
     
-    /// <summary>Stop click propagation</summary>
     [Parameter] public bool StopPropagation { get; set; }
     
-    /// <summary>Accessibility label</summary>
     [Parameter] public string AriaLabel { get; set; }
     
     
@@ -234,60 +219,27 @@ Card component with header, media, content areas, and loading states.
     {
         var classes = new List<string> { "card", "h-full" };
         
-        // Use semantic variant classes from SCSS
-        switch (Variant)
+        if (Variant != CardVariant.Default)
         {
-            case CardVariant.Outlined:
-                classes.Add("card-outlined");
-                break;
-            case CardVariant.Elevated:
-                classes.Add("card-elevated");
-                break;
-            case CardVariant.Glass:
-                classes.Add("card-glass");
-                break;
-            case CardVariant.Flat:
-                classes.Add("card-flat");
-                break;
-            case CardVariant.Gradient:
-                classes.Add("card-gradient");
-                break;
-            case CardVariant.GlassGradient:
-                classes.Add("card-glass-gradient");
-                break;
-            case CardVariant.Default:
-            default:
-                // Base card class already added, no additional variant needed
-                break;
+            classes.Add(Variant switch
+            {
+                CardVariant.Outlined => "card-outlined",
+                CardVariant.Elevated => "card-elevated",
+                CardVariant.Glass => "card-glass",
+                CardVariant.Flat => "card-flat",
+                CardVariant.Gradient => "card-gradient",
+                CardVariant.GlassGradient => "card-glass-gradient",
+                _ => ""
+            });
         }
         
-        // Interactive states
-        if (Clickable && !Disabled)
-        {
-            classes.Add("card-clickable");
-        }
-        
-        // State classes
-        if (Selected)
-        {
-            classes.Add("card-primary"); // Use semantic primary variant for selected state
-        }
-        
-        if (Disabled)
-        {
-            classes.Add("state-disabled");
-        }
-        
-        if (Loading)
-        {
-            classes.Add("card-loading");
-        }
+        if (Clickable && !Disabled) classes.Add("card-clickable");
+        if (Selected) classes.Add("card-primary");
+        if (Disabled) classes.Add("state-disabled");
+        if (Loading) classes.Add("card-loading");
         
         
-        if (!string.IsNullOrEmpty(Class))
-        {
-            classes.Add(Class);
-        }
+        if (!string.IsNullOrEmpty(Class)) classes.Add(Class);
         
         return string.Join(" ", classes);
     }
@@ -296,11 +248,7 @@ Card component with header, media, content areas, and loading states.
     {
         var classes = new List<string> { "card-header" };
         
-        // Add density-based padding if needed (SCSS handles base styling)
-        if (Density != ComponentDensity.Normal)
-        {
-            classes.Add(GetDensityPaddingClasses());
-        }
+        if (Density != DensityType.Normal) classes.Add(GetDensityPaddingClasses());
         
         return string.Join(" ", classes);
     }
@@ -314,14 +262,13 @@ Card component with header, media, content areas, and loading states.
     {
         var classes = new List<string> { "card-title" };
         
-        // Add density-specific sizing only if different from normal
-        if (Density != ComponentDensity.Normal)
+        if (Density != DensityType.Normal)
         {
             classes.Add(Density switch
             {
-                ComponentDensity.Compact => "text-base",
-                ComponentDensity.Dense => "text-lg", 
-                ComponentDensity.Spacious => "text-xl",
+                DensityType.Compact => "text-base",
+                DensityType.Dense => "text-lg", 
+                DensityType.Spacious => "text-xl",
                 _ => "text-lg"
             });
         }
@@ -333,13 +280,12 @@ Card component with header, media, content areas, and loading states.
     {
         var classes = new List<string> { "text-secondary", "mb-0" };
         
-        // Add density-specific sizing and spacing
         classes.Add(Density switch
         {
-            ComponentDensity.Compact => "text-xs mt-0",
-            ComponentDensity.Dense => "text-sm mt-0",
-            ComponentDensity.Normal => "text-sm mt-1",
-            ComponentDensity.Spacious => "text-base mt-2",
+            DensityType.Compact => "text-xs mt-0",
+            DensityType.Dense => "text-sm mt-0",
+            DensityType.Normal => "text-sm mt-1",
+            DensityType.Spacious => "text-base mt-2",
             _ => "text-sm mt-1"
         });
         
@@ -351,14 +297,7 @@ Card component with header, media, content areas, and loading states.
     {
         var classes = new List<string>();
         
-        if (FullBleedImage)
-        {
-            classes.Add("ml-0 mr-0");
-        }
-        else
-        {
-            classes.Add("ml-4 mr-4 mt-4");
-        }
+        classes.Add(FullBleedImage ? "ml-0 mr-0" : "ml-4 mr-4 mt-4");
         
         return string.Join(" ", classes);
     }
@@ -367,28 +306,18 @@ Card component with header, media, content areas, and loading states.
     {
         var classes = new List<string> { "w-full", "h-auto" };
         
-        if (!FullBleedImage)
-        {
-            classes.Add("rounded-md");
-        }
+        if (!FullBleedImage) classes.Add("rounded-md");
         
         return string.Join(" ", classes);
     }
     
     private string GetContentClasses()
     {
-        if (!string.IsNullOrEmpty(BodyClass))
-        {
-            return BodyClass;
-        }
+        if (!string.IsNullOrEmpty(BodyClass)) return BodyClass;
         
         var classes = new List<string> { "card-body" };
         
-        // Add density-specific padding only if not normal and not NoPadding
-        if (!NoPadding && Density != ComponentDensity.Normal)
-        {
-            classes.Add(GetDensityPaddingClasses());
-        }
+        if (!NoPadding && Density != DensityType.Normal) classes.Add(GetDensityPaddingClasses());
         
         return string.Join(" ", classes);
     }
@@ -402,8 +331,7 @@ Card component with header, media, content areas, and loading states.
     {
         var classes = new List<string> { "card-actions" };
         
-        // Add density-specific styling only if different from normal
-        if (Density != ComponentDensity.Normal)
+        if (Density != DensityType.Normal)
         {
             classes.Add(GetDensityPaddingClasses());
             classes.Add(GetDensityMarginClasses());
@@ -416,10 +344,10 @@ Card component with header, media, content areas, and loading states.
     {
         return Density switch
         {
-            ComponentDensity.Compact => "pa-2",
-            ComponentDensity.Dense => "pa-3",
-            ComponentDensity.Normal => "pa-4",
-            ComponentDensity.Spacious => "pa-6",
+            DensityType.Compact => "pa-2",
+            DensityType.Dense => "pa-3",
+            DensityType.Normal => "pa-4",
+            DensityType.Spacious => "pa-6",
             _ => "pa-4"
         };
     }
@@ -428,10 +356,10 @@ Card component with header, media, content areas, and loading states.
     {
         return Density switch
         {
-            ComponentDensity.Compact => "mt-2",
-            ComponentDensity.Dense => "mt-3",
-            ComponentDensity.Normal => "mt-4",
-            ComponentDensity.Spacious => "mt-6",
+            DensityType.Compact => "mt-2",
+            DensityType.Dense => "mt-3",
+            DensityType.Normal => "mt-4",
+            DensityType.Spacious => "mt-6",
             _ => "mt-4"
         };
     }
@@ -477,10 +405,7 @@ Card component with header, media, content areas, and loading states.
     
     private async Task HandleClick(MouseEventArgs e)
     {
-        if (Clickable && !Disabled && !Loading)
-        {
-            await OnClick.InvokeAsync(e);
-        }
+        if (Clickable && !Disabled && !Loading) await OnClick.InvokeAsync(e);
     }
     
     private async Task HandleMouseEnter(MouseEventArgs e)

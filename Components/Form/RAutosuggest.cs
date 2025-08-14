@@ -25,7 +25,7 @@ public class RAutosuggest : ComponentBase
     [Parameter] public string StartIcon { get; set; }
     [Parameter] public string EndIcon { get; set; }
     [Parameter] public FieldType InputType { get; set; } = FieldType.Text;
-    [Parameter] public FieldSize Size { get; set; } = FieldSize.Medium;
+    [Parameter] public SizeType Size { get; set; } = SizeType.Medium;
     [Parameter] public int MinSearchLength { get; set; } = 1;
     [Parameter] public int DebounceDelay { get; set; } = 300;
     [Parameter] public int MaxSuggestions { get; set; } = 10;

@@ -58,6 +58,31 @@ The RR.Blazor Smart Table System provides a modern, type-safe, and efficient tab
 
 ## 🎯 Smart Features
 
+### Column Management & Visibility
+Built-in column manager for dynamic table control:
+```razor
+<RTable Items="@employees" 
+        ShowColumnManager="true"
+        EnableColumnReordering="true"
+        EnableStickyColumns="true">
+```
+- **Show/Hide Columns**: Users can toggle column visibility
+- **Pin Columns**: Sticky columns that stay visible when scrolling
+- **Reorder Columns**: Drag-and-drop column reordering
+- **Save Preferences**: Persists to localStorage automatically
+
+### Horizontal Scrolling
+Adaptive horizontal scrolling for wide tables:
+```razor
+<RTable Items="@data" 
+        EnableHorizontalScroll="true"
+        Class="min-w-fit>
+```
+- **Auto-enabled by default**: Tables scroll horizontally when content overflows
+- **CSS-controlled width**: Use `Style` or `Class` for table width control
+- **Mobile-optimized**: Touch-friendly scrolling on mobile devices
+- **Custom scrollbars**: Styled to match your theme
+
 ### Intelligent PageSize Options
 The table automatically suggests optimal page sizes based on your dataset:
 - **Small datasets (≤50 rows)**: `[5, 10]`
@@ -71,11 +96,13 @@ For massive datasets, use `RTableVirtualized`:
 ```razor
 <RTableVirtualized Items="@largeDataset" 
                    Height="600px"
-                   ShowPerformanceMetrics="true" />
+                   ShowPerformanceMetrics="true"
+                   ShowColumnManager="true" />
 ```
 - Handles 1M+ records smoothly
 - Real-time performance metrics
 - Minimal DOM nodes (only visible rows rendered)
+- Full column management support
 
 ## 📋 The Magic: Auto-Generated Columns
 
@@ -395,6 +422,11 @@ else
 | `ShowSearch` | `bool` | true | Enable search bar |
 | `ShowPagination` | `bool` | true | Enable pagination |
 | `ShowChartButton` | `bool` | false | Show chart visualization button |
+| `ShowColumnManager` | `bool` | false | Show column visibility manager |
+| `EnableHorizontalScroll` | `bool` | true | Enable horizontal scrolling for wide tables |
+| `EnableColumnReordering` | `bool` | false | Allow drag-and-drop column reordering |
+| `EnableStickyColumns` | `bool` | false | Allow pinning columns to left/right |
+| `ColumnPreferences` | `Dictionary` | {} | Column visibility/order preferences |
 | `MultiSelection` | `bool` | false | Enable row multi-selection |
 | `ExportEnabled` | `bool` | false | Enable export functionality |
 | `Virtualize` | `bool` | false | Enable virtualization for large datasets |

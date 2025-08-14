@@ -22,7 +22,6 @@
     
     @if (EffectiveVariant == ChoiceVariant.Dropdown || TriggerContent != null)
     {
-        @* Choice element with trigger *@
         <div @ref="choiceElement" class="choice choice-dropdown relative @GetDropdownDensityClass()" 
              data-choice-id="@choiceElementId">
         
@@ -187,12 +186,7 @@
     [Parameter] public bool CloseOnEscape { get; set; } = true;
     [Parameter] public bool EnableVirtualScrolling { get; set; } = true;
 
-    
-    protected override bool ShouldRender()
-    {
-        // Prevent unnecessary re-renders that might remove DOM elements during JS operations
-        return true;
-    }
+    protected override bool ShouldRender() => true;
 
     private string GetInlineClass()
     {
@@ -214,17 +208,17 @@
     
     private string GetDensityClass() => Density switch
     {
-        ComponentDensity.Compact => "choice-compact gap-0-5 p-0-5",
-        ComponentDensity.Dense => "choice-dense gap-1 p-1", 
-        ComponentDensity.Spacious => "choice-spacious gap-3 p-3",
+        DensityType.Compact => "choice-compact gap-0-5 p-0-5",
+        DensityType.Dense => "choice-dense gap-1 p-1", 
+        DensityType.Spacious => "choice-spacious gap-3 p-3",
         _ => "choice-normal gap-2 p-2"
     };
 
     private string GetDropdownDensityClass() => Density switch
     {
-        ComponentDensity.Compact => "choice-compact py-1 px-2 text-sm",
-        ComponentDensity.Dense => "choice-dense py-2 px-3 text-sm", 
-        ComponentDensity.Spacious => "choice-spacious py-4 px-6 text-lg",
+        DensityType.Compact => "choice-compact py-1 px-2 text-sm",
+        DensityType.Dense => "choice-dense py-2 px-3 text-sm", 
+        DensityType.Spacious => "choice-spacious py-4 px-6 text-lg",
         _ => "choice-normal py-3 px-4 text-base"
     };
 
@@ -238,6 +232,22 @@
         
         return $"{baseClass} text-secondary hover-text-primary";
     }
+
+    private string GetFormWrapperClasses()
+    {
+        var baseClass = "choice-form-wrapper form-wrapper";
+        var customClass = !string.IsNullOrEmpty(Class) ? $" {Class}" : "";
+        var errorClass = HasError ? " choice-error form-error border-error" : "";
+        var disabledClass = Disabled ? " choice-disabled opacity-50 cursor-not-allowed" : "";
+        
+        return $"{baseClass}{customClass}{errorClass}{disabledClass}";
+    }
+    
+    private string GetLabelClasses() => 
+        "choice-label form-label text-sm font-medium text-secondary mb-2" + (Required ? " choice-label-required form-label-required" : "");
+    
+    private string GetErrorMessageClasses() => "choice-error-message form-error text-error text-sm mt-1 d-flex align-center gap-1";
+    private string GetHelpTextClasses() => "choice-help-text form-help text-muted text-sm mt-1";
 
     private bool IsItemActive(TValue item) => EqualityComparer<TValue>.Default.Equals(item, SelectedValue);
     private bool IsItemDisabled(TValue item) => ItemDisabledSelectorTyped?.Invoke(item) ?? false;
@@ -255,13 +265,13 @@
     private string GetSelectedItemIcon() => 
         SelectedValue != null ? GetItemIcon(SelectedValue) : "";
 
+    // TODO: fully delegate to JS .toglleDropdown()
     private async Task ToggleDropdown() 
     {
         if (Disabled) return;
         
         try 
         {
-            // Check if this dropdown is currently active using a safer approach
             var isOpen = await JS.InvokeAsync<bool>("RRBlazor.Choice.isDropdownOpen", choiceElementId);
             
             if (isOpen)
@@ -278,7 +288,8 @@
                 await OpenDropdown();
         }
     }
-
+    
+    // TODO: fully delegate to JS .toglleDropdown()
     private async Task OpenDropdown() 
     {
         if (Disabled) return;
@@ -295,7 +306,8 @@
             closeOnEscape = CloseOnEscape
         });
     }
-
+    
+    // TODO: fully delegate to JS .toglleDropdown()
     private Task CloseDropdown() => JS.InvokeVoidAsync("RRBlazor.Choice.closeDropdown", choiceElementId).AsTask();
 
     private async Task OnItemSelected(TValue item)
@@ -311,22 +323,6 @@
         
         if (EffectiveVariant == ChoiceVariant.Dropdown && CloseOnSelect) await CloseDropdown();
     }
-    
-    private string GetFormWrapperClasses()
-    {
-        var baseClass = "choice-form-wrapper form-wrapper";
-        var customClass = !string.IsNullOrEmpty(Class) ? $" {Class}" : "";
-        var errorClass = HasError ? " choice-error form-error border-error" : "";
-        var disabledClass = Disabled ? " choice-disabled opacity-50 cursor-not-allowed" : "";
-        
-        return $"{baseClass}{customClass}{errorClass}{disabledClass}";
-    }
-    
-    private string GetLabelClasses() => 
-        "choice-label form-label text-sm font-medium text-secondary mb-2" + (Required ? " choice-label-required form-label-required" : "");
-    
-    private string GetErrorMessageClasses() => "choice-error-message form-error text-error text-sm mt-1 d-flex align-center gap-1";
-    private string GetHelpTextClasses() => "choice-help-text form-help text-muted text-sm mt-1";
     
     public async ValueTask DisposeAsync()
     {

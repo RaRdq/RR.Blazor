@@ -75,36 +75,56 @@ function Extract-ParametersFromCsFile {
         $line = $lines[$i].Trim()
         
         # Look for [Parameter] attributes (including those with additional attributes like AIParameter)
-        if ($line -match '\[Parameter(?:[,\s]|$)') {
+        if ($line -match '\[Parameter') {
             # Look ahead for the property declaration, handle multi-line and complex properties
             $foundProperty = $false
             $searchText = ""
             
-            for ($j = $i; $j -lt [Math]::Min($lines.Length, $i + 15); $j++) {
+            for ($j = $i; $j -lt [Math]::Min($lines.Length, $i + 10); $j++) {
                 $currentLine = $lines[$j].Trim()
                 if ([string]::IsNullOrWhiteSpace($currentLine)) { continue }
                 
-                # Skip other attributes that might be on separate lines
-                if ($currentLine -match '^\[.*\]$' -and $j -ne $i) { continue }
+                # Skip other attributes that might be on separate lines (like [AIParameter])
+                if ($currentLine -match '^\[' -and $j -ne $i) { continue }
                 
                 $searchText += " " + $currentLine
                 
-                # Match property declaration - handle both simple and complex properties
+                # Match property declaration - use simple patterns that work
                 try {
-                    # Pattern 1: public Type PropertyName { (on same line)
-                    if ($currentLine -match 'public\s+(?:virtual\s+)?(?:override\s+)?(?:static\s+)?[^\s{]+(?:<[^{}>]*(?:<[^{}>]*>[^{}>]*)*>)*(?:\?)?\s+(\w+)\s*\{') {
+                    # Try multiple patterns to catch different property declaration styles
+                    $matched = $false
+                    
+                    # Pattern 1: public Type PropertyName { (most common)
+                    if ($currentLine -match 'public\s+\w+(?:<[^>]+>)?(?:\[[\],]*\])?(?:\?)?\s+(\w+)\s*\{') {
                         $paramName = $Matches[1]
-                        if ($paramName) {
-                            $paramName = $paramName.Trim()
-                            if ($paramName -and $paramName -notmatch '^(get|set)$') {
-                                $parameters += $paramName
-                                $foundProperty = $true
-                            }
+                        $matched = $true
+                    }
+                    # Pattern 2: public string PropertyName { (simple types) - most reliable
+                    elseif ($currentLine -match 'public\s+string\s+(\w+)') {
+                        $paramName = $Matches[1]
+                        $matched = $true
+                    }
+                    # Pattern 2b: other simple types
+                    elseif ($currentLine -match 'public\s+(?:int|bool|decimal|float|double|DateTime|Guid)\s+(\w+)') {
+                        $paramName = $Matches[1]
+                        $matched = $true
+                    }
+                    # Pattern 3: Generic catch-all for public properties
+                    elseif ($currentLine -match 'public\s+\S+\s+(\w+)\s*\{') {
+                        $paramName = $Matches[1]
+                        $matched = $true
+                    }
+                    
+                    if ($matched -and $paramName) {
+                        $paramName = $paramName.Trim()
+                        if ($paramName -and $paramName -notmatch '^(get|set|value)$') {
+                            $parameters += $paramName
+                            $foundProperty = $true
                         }
                         break
                     }
                     # Pattern 2: public Type PropertyName (property name at end of line, { on next line)
-                    if ($currentLine -match 'public\s+(?:virtual\s+)?(?:override\s+)?(?:static\s+)?[^\s{]+(?:<[^{}>]*(?:<[^{}>]*>[^{}>]*)*>)*(?:\?)?\s+(\w+)\s*$') {
+                    if ($currentLine -match 'public\s+.*?\s+(\w+)\s*$') {
                         # Look ahead to next line for opening brace
                         $nextLineIndex = $j + 1
                         if ($nextLineIndex -lt $lines.Length) {
@@ -157,11 +177,18 @@ function Extract-ActualParameters {
     # First, check for @inherits directive to find base class
     $inheritedParameters = @()
     foreach ($line in $lines) {
-        if ($line -match '@inherits\s+(\w+(?:<[^>]+>)?)') {
-            $baseClassName = $Matches[1] -replace '<.*>', ''  # Remove generic type parameters
+        if ($line -match '@inherits\s+(\w+)(?:<[^>]+>)?') {
+            $baseClassName = $Matches[1]  # Get base class name without generic parameters
+            
+            # Try to find the base class in our dictionary
             if ($BaseClassParameters.ContainsKey($baseClassName)) {
                 $inheritedParameters += $BaseClassParameters[$baseClassName]
                 Write-Host "    📎 Inherited $($BaseClassParameters[$baseClassName].Count) parameters from $baseClassName (including full inheritance chain)" -ForegroundColor DarkCyan
+            }
+            # Also check for base classes that might have "Base" suffix
+            elseif ($BaseClassParameters.ContainsKey("${baseClassName}Base")) {
+                $inheritedParameters += $BaseClassParameters["${baseClassName}Base"]
+                Write-Host "    📎 Inherited $($BaseClassParameters["${baseClassName}Base"].Count) parameters from ${baseClassName}Base (including full inheritance chain)" -ForegroundColor DarkCyan
             }
         }
     }
@@ -181,7 +208,7 @@ function Extract-ActualParameters {
         }
         
         # Look for [Parameter] attributes (handle all variations including AIParameter)
-        if ($line -match '\[Parameter(?:[,\s]|$)') {
+        if ($line -match '\[Parameter') {
             # Collect multi-line parameter definition
             $parameterText = ""
             $propertyFound = $false
@@ -350,6 +377,12 @@ if ($baseClassFiles) {
                 }
                 
                 Write-Host "  📄 Base class ${className}: $($parameters.Count) parameters" -ForegroundColor DarkCyan
+                if ($parameters.Count -gt 0) {
+                    Write-Host "     Parameters: $($parameters -join ', ')" -ForegroundColor DarkGray
+                } elseif ($className -match "Text|Sized|Variant") {
+                    # Debug why these aren't being detected
+                    Write-Host "     WARNING: No parameters detected for $className - check extraction" -ForegroundColor Yellow
+                }
             }
         }
         catch {
@@ -358,11 +391,21 @@ if ($baseClassFiles) {
     }
     
     # Second pass: resolve full inheritance chains
+    Write-Host "📊 Resolving inheritance chains..." -ForegroundColor Yellow
     $resolvedBaseClassParameters = @{}
     foreach ($className in $baseClassParameters.Keys) {
         $allParams = Resolve-InheritanceChain -ClassName $className -BaseClassParameters $baseClassParameters -BaseClassInheritance $baseClassInheritance
         $resolvedBaseClassParameters[$className] = $allParams
-        Write-Host "  ✅ $className total: $($allParams.Count) parameters (including inherited)" -ForegroundColor Green
+        if ($allParams.Count -gt 0) {
+            Write-Host "  ✅ $className total: $($allParams.Count) parameters (including inherited)" -ForegroundColor Green
+            if ($allParams.Count -gt 5) {
+                # Show first 5 parameters for readability
+                $preview = ($allParams | Select-Object -First 5) -join ', '
+                Write-Host "     Parameters: $preview, ..." -ForegroundColor DarkGray
+            } else {
+                Write-Host "     Parameters: $($allParams -join ', ')" -ForegroundColor DarkGray
+            }
+        }
     }
     
     $baseClassParameters = $resolvedBaseClassParameters

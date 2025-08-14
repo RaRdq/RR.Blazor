@@ -20,7 +20,7 @@ namespace RR.Blazor.Components.Core
         [Parameter]
         [AIParameter(Hint = "Medium is default, Large for prominent display, Small for compact layouts, 2XL for hero sections", 
                      SuggestedValues = new[] { "ExtraSmall", "Small", "Medium", "Large", "ExtraLarge", "ExtraLarge2X" })]
-        public AvatarSize Size { get; set; } = AvatarSize.Medium;
+        public SizeType Size { get; set; } = SizeType.Medium;
         
         [Parameter]
         [AIParameter(Hint = "Default for neutral, Primary for branded, Success/Warning/Error for status", 
@@ -152,12 +152,12 @@ namespace RR.Blazor.Components.Core
             // Size modifier - single semantic class
             var sizeClass = Size switch
             {
-                AvatarSize.ExtraSmall => "avatar-xs",
-                AvatarSize.Small => "avatar-sm",
-                AvatarSize.Medium => "avatar-md",
-                AvatarSize.Large => "avatar-lg",
-                AvatarSize.ExtraLarge => "avatar-xl",
-                AvatarSize.ExtraLarge2X => "avatar-2xl",
+                SizeType.ExtraSmall => "avatar-xs",
+                SizeType.Small => "avatar-sm",
+                SizeType.Medium => "avatar-md",
+                SizeType.Large => "avatar-lg",
+                SizeType.ExtraLarge => "avatar-xl",
+                SizeType.ExtraLarge2X => "avatar-2xl",
                 _ => "avatar-md"
             };
             classes.Add(sizeClass);
@@ -201,12 +201,12 @@ namespace RR.Blazor.Components.Core
         {
             var iconSizeClass = Size switch
             {
-                AvatarSize.ExtraSmall => "text-xs",
-                AvatarSize.Small => "text-sm",
-                AvatarSize.Medium => "text-lg",
-                AvatarSize.Large => "text-2xl",
-                AvatarSize.ExtraLarge => "text-3xl",
-                AvatarSize.ExtraLarge2X => "text-4xl",
+                SizeType.ExtraSmall => "text-xs",
+                SizeType.Small => "text-sm",
+                SizeType.Medium => "text-lg",
+                SizeType.Large => "text-2xl",
+                SizeType.ExtraLarge => "text-3xl",
+                SizeType.ExtraLarge2X => "text-4xl",
                 _ => "text-lg"
             };
             
@@ -217,12 +217,12 @@ namespace RR.Blazor.Components.Core
         {
             var textSizeClass = Size switch
             {
-                AvatarSize.ExtraSmall => "text-2xs",
-                AvatarSize.Small => "text-xs",
-                AvatarSize.Medium => "text-sm",
-                AvatarSize.Large => "text-base",
-                AvatarSize.ExtraLarge => "text-lg",
-                AvatarSize.ExtraLarge2X => "text-xl",
+                SizeType.ExtraSmall => "text-2xs",
+                SizeType.Small => "text-xs",
+                SizeType.Medium => "text-sm",
+                SizeType.Large => "text-base",
+                SizeType.ExtraLarge => "text-lg",
+                SizeType.ExtraLarge2X => "text-xl",
                 _ => "text-sm"
             };
             
@@ -247,12 +247,12 @@ namespace RR.Blazor.Components.Core
         {
             var badgeSizeClass = Size switch
             {
-                AvatarSize.ExtraSmall => "text-2xs min-w-4 h-4",
-                AvatarSize.Small => "text-xs min-w-5 h-5",
-                AvatarSize.Medium => "text-xs min-w-6 h-6",
-                AvatarSize.Large => "text-sm min-w-7 h-7",
-                AvatarSize.ExtraLarge => "text-sm min-w-8 h-8",
-                AvatarSize.ExtraLarge2X => "text-base min-w-10 h-10",
+                SizeType.ExtraSmall => "text-2xs min-w-4 h-4",
+                SizeType.Small => "text-xs min-w-5 h-5",
+                SizeType.Medium => "text-xs min-w-6 h-6",
+                SizeType.Large => "text-sm min-w-7 h-7",
+                SizeType.ExtraLarge => "text-sm min-w-8 h-8",
+                SizeType.ExtraLarge2X => "text-base min-w-10 h-10",
                 _ => "text-xs min-w-6 h-6"
             };
             

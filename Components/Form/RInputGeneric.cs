@@ -232,8 +232,8 @@ namespace RR.Blazor.Components.Form
             if (ReadOnly) builder.AddAttribute(seq++, "ReadOnly", ReadOnly);
             if (Loading) builder.AddAttribute(seq++, "Loading", Loading);
             if (Variant != TextInputVariant.Default) builder.AddAttribute(seq++, "Variant", Variant);
-            if (Size != TextInputSize.Medium) builder.AddAttribute(seq++, "Size", Size);
-            if (Density != ComponentDensity.Normal) builder.AddAttribute(seq++, "Density", Density);
+            if (Size != SizeType.Medium) builder.AddAttribute(seq++, "Size", Size);
+            if (Density != DensityType.Normal) builder.AddAttribute(seq++, "Density", Density);
             if (!string.IsNullOrEmpty(StartIcon)) builder.AddAttribute(seq++, "StartIcon", StartIcon);
             if (!string.IsNullOrEmpty(EndIcon)) builder.AddAttribute(seq++, "EndIcon", EndIcon);
             if (!string.IsNullOrEmpty(Class)) builder.AddAttribute(seq++, "Class", Class);

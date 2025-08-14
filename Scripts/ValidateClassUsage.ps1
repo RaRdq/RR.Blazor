@@ -114,7 +114,8 @@ if (Test-Path $StylesDocPath) {
 $allClasses = @{}
 $availableClasses.Keys | ForEach-Object { $allClasses[$_] = "utility" }
 
-# Find all code files (.razor, .cs, .js, .ts, .ch) based on project paths or auto-detection
+# Find all code files (.razor, .cs) based on project paths or auto-detection
+# Exclude JavaScript/TypeScript test files to reduce false positives
 if ($ProjectPaths.Count -gt 0) {
     # Use specific project paths provided by user
     $razorFiles = @()
@@ -126,12 +127,15 @@ if ($ProjectPaths.Count -gt 0) {
         }
         
         if (Test-Path $fullProjectPath) {
-            $projectCodeFiles = Get-ChildItem -Path $fullProjectPath -Recurse -Include "*.razor", "*.cs", "*.js", "*.ts", "*.ch" | Where-Object { 
+            $projectCodeFiles = Get-ChildItem -Path $fullProjectPath -Recurse -Include "*.razor", "*.cs" | Where-Object { 
                 $_.FullName -notlike "*node_modules*" -and 
                 $_.FullName -notlike "*bin*" -and 
                 $_.FullName -notlike "*obj*" -and 
                 $_.FullName -notlike "*_backup*" -and 
-                $_.FullName -notlike "*_Backup*"
+                $_.FullName -notlike "*_Backup*" -and
+                $_.FullName -notlike "*_TestResults*" -and
+                $_.FullName -notlike "*Test*" -and
+                $_.FullName -notlike "*playwright*"
             }
             $razorFiles += $projectCodeFiles
             Write-Host "  Found $($projectCodeFiles.Count) code files in: $projectPath" -ForegroundColor Gray
@@ -140,13 +144,16 @@ if ($ProjectPaths.Count -gt 0) {
         }
     }
 } else {
-    # Auto-detect client projects - exclude server and RR modules except RR.Blazor
-    $razorFiles = Get-ChildItem -Path $SolutionPath -Recurse -Include "*.razor", "*.cs", "*.js", "*.ts", "*.ch" | Where-Object { 
+    # Auto-detect client projects - exclude server, test files, and RR modules except RR.Blazor
+    $razorFiles = Get-ChildItem -Path $SolutionPath -Recurse -Include "*.razor", "*.cs" | Where-Object { 
         $_.FullName -notlike "*node_modules*" -and 
         $_.FullName -notlike "*bin*" -and 
         $_.FullName -notlike "*obj*" -and 
         $_.FullName -notlike "*_backup*" -and 
         $_.FullName -notlike "*_Backup*" -and
+        $_.FullName -notlike "*_TestResults*" -and
+        $_.FullName -notlike "*Test*" -and
+        $_.FullName -notlike "*playwright*" -and
         $_.FullName -notlike "*Server*" -and
         $_.FullName -notlike "*RR.Auth*" -and
         $_.FullName -notlike "*RR.AI*" -and
@@ -187,24 +194,8 @@ function IsValidClass($class) {
         return $true
     }
     
-    # Pattern-based validation for common utility classes that should exist
-    $commonPatterns = @(
-        '^min-w-\d+$',          # min-w-200, min-w-80, etc.
-        '^max-w-\d+$',          # max-w-400, etc.
-        '^min-h-\d+$',          # min-h-100, min-h-200, etc.
-        '^max-h-\d+$',          # max-h-300, max-h-500, etc.
-        '^h-\d+$',              # h-10, h-60, h-400, etc.
-        '^w-\d+$',              # w-150, etc.
-        '^bg-opacity-\d+$',     # bg-opacity-50, bg-opacity-75, etc.
-        '^progress-\d+$',       # progress-65, progress-85, etc.
-        '^bg-(light|dark|elevated|secondary|danger|surface-secondary|white-\d+|bg-gradient-primary)$'  # Common background variants
-    )
-    
-    foreach ($pattern in $commonPatterns) {
-        if ($cleanClass -match $pattern) {
-            return $true
-        }
-    }
+    # REMOVED: Hardcoded patterns violate single source of truth principle
+    # All classes MUST exist in rr-ai-styles.json documentation
     
     return $false
 }
@@ -238,14 +229,19 @@ function ExtractClasses($classString) {
 foreach ($file in $razorFiles) {
     if ($Verbose) { Write-Host "📄 Analyzing: $($file.Name)" -ForegroundColor Gray }
     
-    $content = Get-Content $file.FullName -Raw
+    $content = Get-Content $file.FullName -Raw -ErrorAction SilentlyContinue
+    if ([string]::IsNullOrEmpty($content)) {
+        if ($Verbose) { Write-Host "  ⚠️ Skipping empty or inaccessible file: $($file.Name)" -ForegroundColor Yellow }
+        continue
+    }
+    
     $relativePath = $file.FullName.Replace($PWD.Path, "").TrimStart('\', '/')
     
     # Check if this is a test file (be more lenient with validation)
     $isTestFile = $relativePath -match '(Test_|Tests?/|\.Test\.)'
     
     # Check for inline styles
-    if ($ShowInlineStyles) {
+    if ($ShowInlineStyles -and $content) {
         $inlineStyleMatches = [regex]::Matches($content, 'style\s*=\s*["'']([^"'']*?)["'']')
         foreach ($match in $inlineStyleMatches) {
             $inlineStyleCount++
@@ -261,7 +257,7 @@ foreach ($file in $razorFiles) {
     }
     
     # Extract class usages with better Razor syntax handling
-    $classMatches = [regex]::Matches($content, 'class\s*=\s*["'']([^"'']*?)["'']')
+    $classMatches = if ($content) { [regex]::Matches($content, 'class\s*=\s*["'']([^"'']*?)["'']') } else { @() }
     foreach ($match in $classMatches) {
         $classString = $match.Groups[1].Value
         $classes = ExtractClasses($classString)
@@ -288,14 +284,14 @@ foreach ($file in $razorFiles) {
     # Extract class strings from C# code blocks and expressions
     # Pattern 1: String literals containing CSS classes in @code blocks
     $codeBlockPattern = '(?s)@code\s*\{.*?\}'
-    $codeBlockMatches = [regex]::Matches($content, $codeBlockPattern)
+    $codeBlockMatches = if ($content) { [regex]::Matches($content, $codeBlockPattern) } else { @() }
     
     foreach ($codeBlockMatch in $codeBlockMatches) {
         $codeContent = $codeBlockMatch.Value
         
         # Look for string literals that likely contain CSS classes
         $stringLiteralPattern = '"([^"]*(?:\s+[a-z][a-z0-9-]*){1,}[^"]*)"'
-        $stringMatches = [regex]::Matches($codeContent, $stringLiteralPattern)
+        $stringMatches = if ($codeContent) { [regex]::Matches($codeContent, $stringLiteralPattern) } else { @() }
         
         foreach ($stringMatch in $stringMatches) {
             $stringValue = $stringMatch.Groups[1].Value
@@ -356,14 +352,14 @@ foreach ($file in $razorFiles) {
     
     # Pattern 2: String literals in C# expressions (outside @code blocks)
     $csharpExpressionPattern = '@\([^)]+\)|@[a-zA-Z_][a-zA-Z0-9_]*\([^)]*\)|@\{[^}]*\}'
-    $expressionMatches = [regex]::Matches($content, $csharpExpressionPattern)
+    $expressionMatches = if ($content) { [regex]::Matches($content, $csharpExpressionPattern) } else { @() }
     
     foreach ($expressionMatch in $expressionMatches) {
         $expressionContent = $expressionMatch.Value
         
         # Look for string literals within expressions
         $stringLiteralPattern = '"([^"]*(?:\s+[a-z][a-z0-9-]*){1,}[^"]*)"'
-        $stringMatches = [regex]::Matches($expressionContent, $stringLiteralPattern)
+        $stringMatches = if ($expressionContent) { [regex]::Matches($expressionContent, $stringLiteralPattern) } else { @() }
         
         foreach ($stringMatch in $stringMatches) {
             $stringValue = $stringMatch.Groups[1].Value
@@ -423,7 +419,7 @@ foreach ($file in $razorFiles) {
     }
     
     # Check for old BEM patterns that should be updated
-    $bemMatches = [regex]::Matches($content, 'class\s*=\s*["''][^"'']*__[^"'']*["'']')
+    $bemMatches = if ($content) { [regex]::Matches($content, 'class\s*=\s*["''][^"'']*__[^"'']*["'']') } else { @() }
     foreach ($match in $bemMatches) {
         $issues += [PSCustomObject]@{
             File = $relativePath
@@ -441,7 +437,7 @@ foreach ($file in $razorFiles) {
     }
     
     foreach ($pattern in $deprecatedPatterns.Keys) {
-        $deprecatedMatches = [regex]::Matches($content, $pattern)
+        $deprecatedMatches = if ($content) { [regex]::Matches($content, $pattern) } else { @() }
         foreach ($match in $deprecatedMatches) {
             $issues += [PSCustomObject]@{
                 File = $relativePath

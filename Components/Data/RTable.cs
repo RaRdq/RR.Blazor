@@ -17,7 +17,7 @@ public abstract class RTableBase : ComponentBase
     [Parameter] public bool Loading { get; set; }
     [Parameter] public string LoadingText { get; set; } = "Loading...";
     [Parameter] public string EmptyText { get; set; } = "No data available";
-    [Parameter] public bool ShowHeader { get; set; } = true;
+    [Parameter] public bool ShowTitle { get; set; } = true;
     [Parameter] public bool ShowFooter { get; set; }
     [Parameter] public bool Striped { get; set; } = true;
     [Parameter] public bool Hover { get; set; } = true;
@@ -58,7 +58,13 @@ public abstract class RTableBase : ComponentBase
     [Parameter] public bool ShowChartButton { get; set; }
     [Parameter] public string ChartButtonText { get; set; } = "Show as Chart";
     [Parameter] public RR.Blazor.Enums.ChartType? DefaultChartType { get; set; }
-    [Parameter] public RR.Blazor.Enums.ComponentDensity Density { get; set; } = RR.Blazor.Enums.ComponentDensity.Normal;
+    [Parameter] public RR.Blazor.Enums.DensityType Density { get; set; } = RR.Blazor.Enums.DensityType.Normal;
+    
+    // Column management and table features
+    [Parameter] public bool ShowColumnManager { get; set; }
+    [Parameter] public bool EnableColumnReordering { get; set; }
+    [Parameter] public bool EnableStickyColumns { get; set; }
+    [Parameter] public bool EnableHorizontalScroll { get; set; }
     
     [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object> AdditionalAttributes { get; set; }
 }
@@ -114,7 +120,7 @@ public class RTable : RTableBase
         builder.AddAttribute(5, "Loading", Loading);
         builder.AddAttribute(6, "LoadingText", LoadingText);
         builder.AddAttribute(7, "EmptyText", EmptyText);
-        builder.AddAttribute(8, "ShowHeader", ShowHeader);
+        builder.AddAttribute(8, "ShowTitle", ShowTitle);
         builder.AddAttribute(9, "ShowFooter", ShowFooter);
         builder.AddAttribute(10, "Striped", Striped);
         builder.AddAttribute(11, "Hover", Hover);
@@ -146,11 +152,15 @@ public class RTable : RTableBase
         builder.AddAttribute(37, "ChartButtonText", ChartButtonText);
         builder.AddAttribute(38, "DefaultChartType", DefaultChartType);
         builder.AddAttribute(39, "Density", Density);
+        builder.AddAttribute(40, "ShowColumnManager", ShowColumnManager);
+        builder.AddAttribute(41, "EnableColumnReordering", EnableColumnReordering);
+        builder.AddAttribute(42, "EnableStickyColumns", EnableStickyColumns);
+        builder.AddAttribute(43, "EnableHorizontalScroll", EnableHorizontalScroll);
         
         // Forward all additional attributes
         if (AdditionalAttributes != null)
         {
-            builder.AddMultipleAttributes(40, AdditionalAttributes);
+            builder.AddMultipleAttributes(44, AdditionalAttributes);
         }
         
         builder.CloseComponent();

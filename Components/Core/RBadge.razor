@@ -1,4 +1,4 @@
-﻿@** 
+@** 
 <summary>
 Badge component for status indicators, counts, and labels.
 </summary>
@@ -51,20 +51,20 @@ Badge component for status indicators, counts, and labels.
     [AIParameter(Hint = "Color scheme variant", 
                  SuggestedValues = new[] { "Primary", "Secondary", "Success", "Warning", "Danger", "Info" }, 
                  IsRequired = false)]
-    public BadgeVariant Variant { get; set; } = BadgeVariant.Secondary;
+    public VariantType Variant { get; set; } = VariantType.Secondary;
     
     /// <summary>Badge size</summary>
     [Parameter]
     [AIParameter(Hint = "Badge size", 
                  SuggestedValues = new[] { "Small", "Medium", "Large" })]
-    public BadgeSize Size { get; set; } = BadgeSize.Medium;
+    public SizeType Size { get; set; } = SizeType.Medium;
     
     /// <summary>Component density level for ultra-dense layouts</summary>
     /// <ai-hint>Normal is default, Compact for ultra-dense, Dense for data-heavy interfaces</ai-hint>
     [Parameter]
     [AIParameter(Hint = "Normal is default, Compact for ultra-dense, Dense for data-heavy", 
                  SuggestedValues = new[] { "Normal", "Dense", "Compact", "Spacious" })]
-    public ComponentDensity Density { get; set; } = ComponentDensity.Normal;
+    public DensityType Density { get; set; } = DensityType.Normal;
     
     /// <summary>Material icon name to display alongside text</summary>
     /// <ai-hint>Common icons: check_circle, warning, error, info, star, notifications</ai-hint>
@@ -79,30 +79,19 @@ Badge component for status indicators, counts, and labels.
     [AIParameter(Hint = "Set to true for interactive badges that perform actions")]
     public bool Clickable { get; set; }
     
-    /// <summary>Click event handler for interactive badges</summary>
     [Parameter] public EventCallback OnClick { get; set; }
     
-    /// <summary>Child content for custom badge content</summary>
     [Parameter] public RenderFragment ChildContent { get; set; }
     
-    /// <summary>Additional CSS classes</summary>
     [Parameter] public string Class { get; set; } = string.Empty;
 
     private string GetBadgeClasses()
     {
         var classes = new List<string> { "badge" };
         
-        // Variant utility classes
         classes.Add(GetVariantUtilityClasses());
-        
-        // Size and density utility classes
         classes.Add(GetSizeUtilityClasses());
-        
-        // Interactive utility classes
-        if (Clickable || OnClick.HasDelegate)
-        {
-            classes.Add("badge-clickable cursor-pointer hover-scale-sm transition-transform");
-        }
+        if (Clickable || OnClick.HasDelegate) classes.Add("badge-clickable cursor-pointer hover-scale-sm transition-transform");
         
         if (!string.IsNullOrEmpty(Class))
         {
@@ -116,16 +105,16 @@ Badge component for status indicators, counts, and labels.
     {
         var sizeClass = Size switch
         {
-            BadgeSize.Small => "badge-sm",
-            BadgeSize.Large => "badge-lg",
+            SizeType.Small => "badge-sm",
+            SizeType.Large => "badge-lg",
             _ => "" // Medium is default, no additional class needed
         };
         
         var densityClass = Density switch
         {
-            ComponentDensity.Compact => "badge-compact",
-            ComponentDensity.Dense => "badge-dense", 
-            ComponentDensity.Spacious => "badge-spacious",
+            DensityType.Compact => "badge-compact",
+            DensityType.Dense => "badge-dense", 
+            DensityType.Spacious => "badge-spacious",
             _ => ""
         };
         
@@ -136,13 +125,13 @@ Badge component for status indicators, counts, and labels.
     {
         return Variant switch
         {
-            BadgeVariant.Primary => "badge-primary",
-            BadgeVariant.Success => "badge-success", 
-            BadgeVariant.Warning => "badge-warning",
-            BadgeVariant.Danger => "badge-danger",
-            BadgeVariant.Error => "badge-error",
-            BadgeVariant.Info => "badge-info",
-            BadgeVariant.Outline => "badge-outlined-primary",
+            VariantType.Primary => "badge-primary",
+            VariantType.Success => "badge-success", 
+            VariantType.Warning => "badge-warning",
+            VariantType.Danger => "badge-danger",
+            VariantType.Error => "badge-error",
+            VariantType.Info => "badge-info",
+            VariantType.Outline => "badge-outlined-primary",
             _ => "badge-secondary"
         };
     }
@@ -151,16 +140,16 @@ Badge component for status indicators, counts, and labels.
     {
         var iconSizeClass = Size switch
         {
-            BadgeSize.Small => "text-sm",
-            BadgeSize.Large => "text-lg",
+            SizeType.Small => "text-sm",
+            SizeType.Large => "text-lg",
             _ => "text-base"
         };
         
         var densityIconClass = Density switch
         {
-            ComponentDensity.Compact => GetCompactIconUtilityClass(),
-            ComponentDensity.Dense => GetDenseIconUtilityClass(),
-            ComponentDensity.Spacious => GetSpaciousIconUtilityClass(),
+            DensityType.Compact => GetCompactIconUtilityClass(),
+            DensityType.Dense => GetDenseIconUtilityClass(),
+            DensityType.Spacious => GetSpaciousIconUtilityClass(),
             _ => iconSizeClass
         };
         
@@ -171,9 +160,9 @@ Badge component for status indicators, counts, and labels.
     {
         return Size switch
         {
-            BadgeSize.Small => "text-xs",
-            BadgeSize.Medium => "text-xs",
-            BadgeSize.Large => "text-sm",
+            SizeType.Small => "text-xs",
+            SizeType.Medium => "text-xs",
+            SizeType.Large => "text-sm",
             _ => "text-xs"
         };
     }
@@ -182,9 +171,9 @@ Badge component for status indicators, counts, and labels.
     {
         return Size switch
         {
-            BadgeSize.Small => "text-xs",
-            BadgeSize.Medium => "text-sm",
-            BadgeSize.Large => "text-base",
+            SizeType.Small => "text-xs",
+            SizeType.Medium => "text-sm",
+            SizeType.Large => "text-base",
             _ => "text-sm"
         };
     }
@@ -193,19 +182,16 @@ Badge component for status indicators, counts, and labels.
     {
         return Size switch
         {
-            BadgeSize.Small => "text-base",
-            BadgeSize.Medium => "text-lg",
-            BadgeSize.Large => "text-xl",
+            SizeType.Small => "text-base",
+            SizeType.Medium => "text-lg",
+            SizeType.Large => "text-xl",
             _ => "text-lg"
         };
     }
 
     private async Task HandleClick()
     {
-        if (OnClick.HasDelegate)
-        {
-            await OnClick.InvokeAsync();
-        }
+        if (OnClick.HasDelegate) await OnClick.InvokeAsync();
     }
 
     private Dictionary<string, object> GetForwardedAttributes()
@@ -225,10 +211,7 @@ Badge component for status indicators, counts, and labels.
         foreach (var property in properties)
         {
             var value = property.GetValue(this);
-            if (value != null || property.PropertyType.IsValueType)
-            {
-                forwarded[property.Name] = value;
-            }
+            if (value != null || property.PropertyType.IsValueType) forwarded[property.Name] = value;
         }
         
         return forwarded;

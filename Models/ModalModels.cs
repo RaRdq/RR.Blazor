@@ -8,7 +8,7 @@ public class ModalOptions<T>
     public string Title { get; set; } = "";
     public string Subtitle { get; set; } = "";
     public string Icon { get; set; } = "";
-    public ModalSize Size { get; set; } = ModalSize.Medium;
+    public SizeType Size { get; set; } = SizeType.Medium;
     public ModalVariant Variant { get; set; } = ModalVariant.Default;
     public bool CloseOnBackdrop { get; set; } = true;
     public bool CloseOnEscape { get; set; } = true;
@@ -150,7 +150,7 @@ public class FormModalOptions<T>
     public T InitialData { get; set; }
     public Type FormComponentType { get; set; }
     public Dictionary<string, object> FormParameters { get; set; } = new();
-    public ModalSize Size { get; set; } = ModalSize.Medium;
+    public SizeType Size { get; set; } = SizeType.Medium;
     public string SaveButtonText { get; set; } = "Save";
     public string CancelButtonText { get; set; } = "Cancel";
     public Func<T, Task<bool>> OnValidate { get; set; }

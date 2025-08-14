@@ -17,7 +17,7 @@ public interface IModalService
     Task<Models.ModalResult> ConfirmWithResultAsync(string message, string title = "Confirm", ModalVariant variant = ModalVariant.Default);
     
     // Form modals
-    Task<ModalResult<T>> ShowFormAsync<T>(string title, T initialData = default, ModalSize size = ModalSize.Medium);
+    Task<ModalResult<T>> ShowFormAsync<T>(string title, T initialData = default, SizeType size = SizeType.Medium);
     Task<ModalResult<T>> ShowFormAsync<T>(FormModalOptions<T> options);
     
     // Quick modals
@@ -27,7 +27,7 @@ public interface IModalService
     Task ShowSuccessAsync(string message, string title = "Success");
     
     // Detail/preview modals
-    Task ShowDetailAsync<T>(T data, string title = "", ModalSize size = ModalSize.Large);
+    Task ShowDetailAsync<T>(T data, string title = "", SizeType size = SizeType.Large);
     Task ShowPreviewAsync(string content, string title = "Preview", string contentType = "text/plain");
     
     // Selection modals
@@ -52,7 +52,7 @@ public interface IModalBuilder<T>
     IModalBuilder<T> WithTitle(string title);
     IModalBuilder<T> WithSubtitle(string subtitle);
     IModalBuilder<T> WithIcon(string icon);
-    IModalBuilder<T> WithSize(ModalSize size);
+    IModalBuilder<T> WithSize(SizeType size);
     IModalBuilder<T> WithVariant(ModalVariant variant);
     IModalBuilder<T> WithComponent<TComponent>() where TComponent : ComponentBase;
     IModalBuilder<T> WithComponent(Type componentType);

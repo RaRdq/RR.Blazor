@@ -10,6 +10,7 @@
 @using RR.Blazor.Enums
 @using RR.Blazor.Models
 @using RR.Blazor.Services
+@using RR.Blazor.Configuration
 @using System.Linq.Expressions
 @using System.Collections.Concurrent
 @using System.Reflection
@@ -24,7 +25,7 @@
              style="@GetContainerStyle()">
             
             @* Header Section *@
-            @if (ShowHeader && (!string.IsNullOrEmpty(Title) || HeaderContent != null))
+            @if (ShowTitle && (!string.IsNullOrEmpty(Title) || HeaderContent != null))
             {
                 <div class="virtual-table-header pa-4">
                     <div class="d-flex justify-between items-center">
@@ -86,7 +87,7 @@
                                 <RButton Text="@ChartButtonText"
                                         Icon="analytics"
                                         Variant="ButtonVariant.Outline"
-                                        Size="ButtonSize.Small"
+                                        Size="SizeType.Small"
                                         OnClick="@ShowChartModal"
                                         Disabled="@(!FilteredData.Any())" />
                             }
@@ -96,7 +97,7 @@
                                 <RButton Text="Export"
                                         Icon="download"
                                         Variant="ButtonVariant.Outline"
-                                        Size="ButtonSize.Small"
+                                        Size="SizeType.Small"
                                         OnClick="@ExportData" />
                             }
                             
@@ -142,7 +143,7 @@
                                 <tr>
                                     @if (Selectable)
                                     {
-                                        <th class="virtual-table-header-cell" style="width: 48px;">
+                                        <th class="virtual-table-header-cell" style="width: @(TableConfig.GetRowHeight(Density))px;">
                                             @if (MultiSelect)
                                             {
                                                 <RCheckbox Checked="@IsAllSelected()"
@@ -186,7 +187,7 @@
                                             @onclick="@(() => OnRowClick(item))">
                                             @if (Selectable)
                                             {
-                                                <td class="virtual-table-cell" style="width: 48px;">
+                                                <td class="virtual-table-cell" style="width: @(TableConfig.GetRowHeight(Density))px;">
                                                     @if (MultiSelect)
                                                     {
                                                         <RCheckbox Checked="@IsSelected(item)"
@@ -224,7 +225,7 @@
                                         <tr class="virtual-table-row">
                                             @if (Selectable)
                                             {
-                                                <td class="virtual-table-cell" style="width: 48px;">
+                                                <td class="virtual-table-cell" style="width: @(TableConfig.GetRowHeight(Density))px;">
                                                     <RSkeleton Width="20px" Height="20px" />
                                                 </td>
                                             }
@@ -255,8 +256,8 @@
                         {
                             <RChip Text="@($"{_selectedItems.Count} selected")"
                                   Style="ChipStyle.Badge"
-                                  Variant="ChipVariant.Primary"
-                                  Size="ChipSize.Small" />
+                                  Variant="VariantType.Primary"
+                                  Size="@TableConfig.GetPaginationChipSize(Density)" />
                         }
                     </div>
                     
@@ -274,7 +275,7 @@
                         <RButton Text="Scroll to Top"
                                 Icon="vertical_align_top"
                                 Variant="ButtonVariant.Ghost"
-                                Size="ButtonSize.Small"
+                                Size="@TableConfig.GetPaginationButtonSize(Density)"
                                 OnClick="@ScrollToTop" />
                     </div>
                 </div>
@@ -293,7 +294,7 @@
 {
     <RModal @bind-Visible="_showChartModal"
             Header="Data Visualization"
-            Size="ModalSize.Large">
+            Size="SizeType.Large">
         <HeaderContent>
             <div class="d-flex items-center gap-2">
                 <i class="material-symbols-rounded text-primary">analytics</i>
@@ -342,7 +343,7 @@
     [Parameter] public RenderFragment ChildContent { get; set; }
     
     // Header
-    [Parameter] public bool ShowHeader { get; set; } = true;
+    [Parameter] public bool ShowTitle { get; set; } = true;
     [Parameter] public string Title { get; set; }
     [Parameter] public string Subtitle { get; set; }
     [Parameter] public string Icon { get; set; }
@@ -382,7 +383,7 @@
     [Parameter] public string EmptyMessage { get; set; } = "No data available";
     [Parameter] public RenderFragment EmptyContent { get; set; }
     [Parameter] public bool ShowFooter { get; set; } = true;
-    [Parameter] public ComponentDensity Density { get; set; } = ComponentDensity.Normal;
+    [Parameter] public DensityType Density { get; set; } = DensityType.Normal;
     
     // Selection
     [Parameter] public bool Selectable { get; set; }
@@ -777,16 +778,10 @@
     {
         if (DynamicRowHeight && GetItemHeight != null)
         {
-            // For dynamic heights, return average or default
-            return 48;
+            return TableConfig.GetRowHeight(DensityType.Dense); // Use Dense as middle ground
         }
 
-        return Density switch
-        {
-            ComponentDensity.Compact => 36,
-            ComponentDensity.Normal => 56,
-            _ => 48
-        };
+        return TableConfig.GetRowHeight(Density);
     }
 
     private async Task ScrollToTop()

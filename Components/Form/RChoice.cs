@@ -6,7 +6,7 @@ using RR.Blazor.Components.Base;
 using System.Collections;
 using static RR.Blazor.Enums.ChoiceVariant;
 using static RR.Blazor.Enums.ChoiceStyle;
-using static RR.Blazor.Enums.ChoiceSize;
+using static RR.Blazor.Enums.SizeType;
 using static RR.Blazor.Enums.ChoiceDirection;
 
 namespace RR.Blazor.Components.Form;
@@ -46,8 +46,8 @@ public abstract class RChoiceBase : ComponentBase
     [Parameter] public Func<object, bool> ItemLoadingSelector { get; set; }
     [Parameter] public bool ShowLabels { get; set; } = true;
     [Parameter] public bool ShowActiveIndicator { get; set; }
-    [Parameter] public ChoiceSize Size { get; set; } = Medium;
-    [Parameter] public ComponentDensity Density { get; set; } = ComponentDensity.Normal;
+    [Parameter] public SizeType Size { get; set; } = Medium;
+    [Parameter] public DensityType Density { get; set; } = DensityType.Normal;
     [Parameter] public ChoiceDirection Direction { get; set; } = Horizontal;
     [Parameter] public bool Disabled { get; set; }
     [Parameter] public bool CloseOnSelect { get; set; } = true;
@@ -67,7 +67,7 @@ public abstract class RChoiceBase : ComponentBase
 /// AI GUIDANCE:
 /// - Use for 2-20 exclusive options (status, roles, modes, filters, view switching)
 /// - ChoiceVariant.Auto intelligently chooses inline vs dropdown based on item count and label length
-/// - Supports RSwitcher migration with SwitcherVariant/SwitcherSize compatibility parameters
+/// - Supports RSwitcher migration with SwitcherVariant/SizeType compatibility parameters
 /// - For boolean toggles use RToggle, for large datasets use searchable components
 /// 
 /// SMART DETECTION RULES:
@@ -77,7 +77,7 @@ public abstract class RChoiceBase : ComponentBase
 /// COMMON PATTERNS:
 /// - Status selection: RChoice Items="@statuses" Variant="ChoiceVariant.Auto" ItemIconSelector for icons
 /// - View switching: Style="ChoiceStyle.Tabs" for tab-like behavior  
-/// - Filters: Style="ChoiceStyle.Pills" Density="ComponentDensity.Compact"
+/// - Filters: Style="ChoiceStyle.Pills" Density="DensityType.Compact"
 /// - Settings: Use with form integration (Label, Required, HelpText, ErrorMessage)
 /// 
 /// DROPDOWN FEATURES:
@@ -150,7 +150,7 @@ public class RChoice : RChoiceBase
 
     // RSwitcher compatibility parameters
     [Parameter] public SwitcherVariant? SwitcherVariant { get; set; }
-    [Parameter] public ButtonSize? SwitcherSize { get; set; }
+    [Parameter] public SizeType? CompatibleSize { get; set; }
     [Parameter] public string LoadingText { get; set; } = "Loading...";
     [Parameter] public EventCallback<object> OnSelectionChanged { get; set; }
 
@@ -320,7 +320,7 @@ public class RChoice : RChoiceBase
         });
     }
     
-    private void ForwardBaseParameters(RenderTreeBuilder builder, Type itemType, ChoiceStyle effectiveStyle, ChoiceSize effectiveSize)
+    private void ForwardBaseParameters(RenderTreeBuilder builder, Type itemType, ChoiceStyle effectiveStyle, SizeType effectiveSize)
     {
         // Forward events using object-based parameters - only add if they have delegates
         if (SelectedValueChanged.HasDelegate)
@@ -418,7 +418,7 @@ public class RChoice : RChoiceBase
                 Enums.SwitcherVariant.Tabs => Tabs,
                 Enums.SwitcherVariant.Pills => Pills,
                 Enums.SwitcherVariant.Buttons => Buttons,
-                Enums.SwitcherVariant.Compact => Compact,
+                Enums.SwitcherVariant.Compact => ChoiceStyle.Compact,
                 _ => Standard
             };
         }
@@ -426,17 +426,12 @@ public class RChoice : RChoiceBase
         return Style;
     }
 
-    private ChoiceSize GetEffectiveSize()
+    private SizeType GetEffectiveSize()
     {
-        // RSwitcher compatibility - SwitcherSize takes precedence
-        if (SwitcherSize.HasValue)
+        // RSwitcher compatibility - CompatibleSize takes precedence
+        if (CompatibleSize.HasValue)
         {
-            return SwitcherSize.Value switch
-            {
-                ButtonSize.Small => Small,
-                ButtonSize.Large => Large,
-                _ => Medium
-            };
+            return CompatibleSize.Value;
         }
         
         return Size;

@@ -1,4 +1,4 @@
-﻿@** 
+@** 
 <summary>
 Chip component for tags, badges, and status indicators with style variants.
 </summary>
@@ -71,7 +71,7 @@ Chip component for tags, badges, and status indicators with style variants.
     [Parameter]
     [AIParameter(Hint = "Primary for emphasis, Success for positive, Warning for attention, Error for problems", 
                  SuggestedValues = new[] { "Primary", "Secondary", "Success", "Warning", "Error", "Info" })]
-    public ChipVariant Variant { get; set; } = ChipVariant.Secondary;
+    public VariantType Variant { get; set; } = VariantType.Secondary;
     
     /// <summary>Chip text content</summary>
     /// <ai-hint>Keep short: "Active", "5", "New", "Pending", "JavaScript". Use 1-20 characters max</ai-hint>
@@ -91,14 +91,14 @@ Chip component for tags, badges, and status indicators with style variants.
     [Parameter]
     [AIParameter(Hint = "Small for compact, Medium for standard, Large for prominence", 
                  SuggestedValues = new[] { "Small", "Medium", "Large" })]
-    public ChipSize Size { get; set; } = ChipSize.Medium;
+    public SizeType Size { get; set; } = SizeType.Medium;
     
     /// <summary>Density level for ultra-compact layouts</summary>
     /// <ai-hint>Normal is default, Compact for ultra-dense, Dense for data-heavy</ai-hint>
     [Parameter]
     [AIParameter(Hint = "Normal is default, Compact for ultra-dense, Dense for data-heavy", 
                  SuggestedValues = new[] { "Normal", "Dense", "Compact", "Spacious" })]
-    public ComponentDensity Density { get; set; } = ComponentDensity.Normal;
+    public DensityType Density { get; set; } = DensityType.Normal;
     
     /// <summary>Whether chip is clickable</summary>
     /// <ai-hint>Set to true for interactive chips that perform actions when clicked</ai-hint>
@@ -112,10 +112,8 @@ Chip component for tags, badges, and status indicators with style variants.
     [AIParameter(Hint = "Set to true for removable tags and filter chips")]
     public bool Closeable { get; set; }
     
-    /// <summary>Whether chip is in selected state</summary>
     [Parameter] public bool Selected { get; set; }
     
-    /// <summary>Whether chip is disabled</summary>
     [Parameter] public bool Disabled { get; set; }
     
     /// <summary>Whether to show pulse animation for processing states</summary>
@@ -124,23 +122,18 @@ Chip component for tags, badges, and status indicators with style variants.
     [AIParameter(Hint = "Shows pulse animation for processing/loading states")]
     public bool ShowPulse { get; set; }
     
-    /// <summary>Click event handler</summary>
     [Parameter] public EventCallback OnClick { get; set; }
     
-    /// <summary>Close/remove event handler</summary>
     [Parameter] public EventCallback OnClose { get; set; }
     
-    /// <summary>Child content for custom chip content</summary>
     [Parameter] public RenderFragment ChildContent { get; set; }
     
-    /// <summary>Additional CSS classes</summary>
     [Parameter] public string Class { get; set; } = "";
 
     private string GetChipClasses()
     {
         var classes = new List<string>();
         
-        // Base class with style-specific styling
         var baseClass = Style switch
         {
             ChipStyle.Badge => "chip chip-badge",
@@ -150,52 +143,16 @@ Chip component for tags, badges, and status indicators with style variants.
         };
         classes.Add(baseClass);
         
-        // Semantic variant
         classes.Add($"chip-{Variant.ToString().ToLower()}");
+        if (ShouldShowPulse()) classes.Add("chip-pulsing");
+        if (Size != SizeType.Medium) classes.Add($"chip-{Size.ToString().ToLower()}");
+        if (Density != DensityType.Normal) classes.Add($"chip-{Density.ToString().ToLower()}");
+        if (Clickable && !Disabled) classes.Add("chip-clickable");
+        if (Selected) classes.Add("chip-selected");
+        if (Closeable) classes.Add("chip-closeable");
+        if (Disabled) classes.Add("chip-disabled");
         
-        // Processing pulse state
-        if (ShouldShowPulse())
-        {
-            classes.Add("chip-pulsing");
-        }
-        
-        // Size variant  
-        if (Size != ChipSize.Medium)
-        {
-            classes.Add($"chip-{Size.ToString().ToLower()}");
-        }
-        
-        // Density variant
-        if (Density != ComponentDensity.Normal)
-        {
-            classes.Add($"chip-{Density.ToString().ToLower()}");
-        }
-        
-        // State classes
-        if (Clickable && !Disabled)
-        {
-            classes.Add("chip-clickable");
-        }
-        
-        if (Selected)
-        {
-            classes.Add("chip-selected");
-        }
-        
-        if (Closeable)
-        {
-            classes.Add("chip-closeable");
-        }
-        
-        if (Disabled)
-        {
-            classes.Add("chip-disabled");
-        }
-        
-        if (!string.IsNullOrEmpty(Class))
-        {
-            classes.Add(Class);
-        }
+        if (!string.IsNullOrEmpty(Class)) classes.Add(Class);
         
         return string.Join(" ", classes);
     }
@@ -203,18 +160,12 @@ Chip component for tags, badges, and status indicators with style variants.
 
     private async Task HandleClick()
     {
-        if (Clickable && !Disabled && OnClick.HasDelegate)
-        {
-            await OnClick.InvokeAsync();
-        }
+        if (Clickable && !Disabled && OnClick.HasDelegate) await OnClick.InvokeAsync();
     }
 
     private async Task HandleClose()
     {
-        if (!Disabled && OnClose.HasDelegate)
-        {
-            await OnClose.InvokeAsync();
-        }
+        if (!Disabled && OnClose.HasDelegate) await OnClose.InvokeAsync();
     }
 
     private Dictionary<string, object> GetForwardedAttributes()
@@ -235,7 +186,6 @@ Chip component for tags, badges, and status indicators with style variants.
 
     private bool ShouldShowPulse()
     {
-        // Auto-enable pulse for Processing status chips, or when explicitly requested
-        return (Style == ChipStyle.Status && Variant == ChipVariant.Processing) || ShowPulse;
+        return (Style == ChipStyle.Status && Variant == VariantType.Warning) || ShowPulse;
     }
 }

@@ -8,6 +8,7 @@
 @using RR.Blazor.Enums
 @using RR.Blazor.Models
 @using RR.Blazor.Services
+@using RR.Blazor.Configuration
 @using System.Linq.Expressions
 @using System.Collections.Concurrent
 @using System.Reflection
@@ -22,7 +23,7 @@
     <CascadingValue Value="@((ITableParent)this)" IsFixed="true">
         <div class="r-table-container @GetContainerClasses()" data-table-id="@TableId">
             @* Header Section *@
-            @if (ShowHeader && (!string.IsNullOrEmpty(Title) || HeaderContent != null))
+            @if (ShowTitle && (!string.IsNullOrEmpty(Title) || HeaderContent != null))
             {
                 <div class="table-header">
                     <div class="table-header-content">
@@ -50,8 +51,7 @@
                 </div>
             }
 
-            @* Toolbar Section *@
-            @if (ShowToolbar && (ShowSearch || ShowFilters || ShowChartButton || ToolbarContent != null))
+            @if (ShowToolbar && (ShowSearch || ShowFilters || ShowChartButton || ShowColumnManager || ToolbarContent != null))
             {
                 <div class="table-toolbar">
                     @if (ShowSearch)
@@ -73,6 +73,15 @@
                             @ChartButtonText
                         </button>
                     }
+                    @if (ShowColumnManager)
+                    {
+                        <RTableColumnManager Columns="@GetEffectiveColumns()"
+                                           Preferences="@ColumnPreferences"
+                                           PreferencesChanged="@OnColumnPreferencesChanged"
+                                           EnableReordering="@EnableColumnReordering"
+                                           SupportsStickyColumns="@EnableStickyColumns"
+                                           TableId="@TableId" />
+                    }
                     @if (ToolbarContent != null)
                     {
                         @ToolbarContent
@@ -80,11 +89,10 @@
                 </div>
             }
 
-            @* Table Section *@
-            <div class="table-scroll-container @(FixedHeader ? "table-fixed-header" : "")">
+            <div class="table-scroll-container @(FixedHeader ? "table-fixed-header" : "") @(EnableHorizontalScroll ? "table-horizontal-scroll" : "")" 
+                 style="@GetScrollContainerStyle()">
                 @if (Loading && !Items.Any())
                 {
-                    @* Initial loading state *@
                     <div class="table-loading">
                         <RProgressCircular Indeterminate="true" Size="40" />
                         <p>@LoadingText</p>
@@ -107,7 +115,7 @@
                 }
                 else
                 {
-                    <table class="r-table @GetTableClasses()">
+                    <table class="r-table @GetTableClasses()" style="@GetTableStyle()">
                         <thead>
                             <tr>
                                 @if (Selectable)
@@ -122,7 +130,7 @@
                                         }
                                     </th>
                                 }
-                                @foreach (var column in GetEffectiveColumns().Where(c => c.Visible))
+                                @foreach (var column in GetVisibleColumns())
                                 {
                                     <th class="r-table-header-cell @(column.Sortable ? "is-sortable" : "") @column.HeaderClass"
                                         style="@GetColumnStyle(column)">
@@ -163,7 +171,7 @@
                                                    @onchange="@((e) => OnSelectionChanged(item, (bool)e.Value!))" />
                                         </td>
                                     }
-                                    @foreach (var column in GetEffectiveColumns().Where(c => c.Visible))
+                                    @foreach (var column in GetVisibleColumns())
                                     {
                                         <td class="r-table-cell @column.CellClass" style="@GetColumnStyle(column)">
                                             @{
@@ -193,7 +201,7 @@
                             </div>
                             @if (_selectedItems.Any())
                             {
-                                <RChip Style="ChipStyle.Badge" Variant="ChipVariant.Primary" Size="ChipSize.Small">
+                                <RChip Style="ChipStyle.Badge" Variant="VariantType.Primary" Size="@TableConfig.GetPaginationChipSize(Density)">
                                     @_selectedItems.Count selected
                                 </RChip>
                             }
@@ -212,33 +220,33 @@
                                     <span class="text-sm text-secondary">per page</span>
                                 </div>
                             }
-                            <div class="d-flex items-center gap-1">
+                            <div class="d-flex items-center @TableConfig.GetTableGap(Density)">
                                 <RButton Variant="ButtonVariant.Ghost"
-                                        Size="ButtonSize.Small"
+                                        Size="@TableConfig.GetPaginationButtonSize(Density)"
                                         Disabled="@(CurrentPage <= 1)"
                                         OnClick="@(() => OnPageChanged(1))"
                                         Dense="true">
                                     <i class="material-symbols-rounded">first_page</i>
                                 </RButton>
                                 <RButton Variant="ButtonVariant.Ghost"
-                                        Size="ButtonSize.Small"
+                                        Size="@TableConfig.GetPaginationButtonSize(Density)"
                                         Disabled="@(CurrentPage <= 1)"
                                         OnClick="@(() => OnPageChanged(CurrentPage - 1))"
                                         Dense="true">
                                     <i class="material-symbols-rounded">chevron_left</i>
                                 </RButton>
-                                <div class="text-sm font-medium px-3">
+                                <div class="text-sm font-medium @TableConfig.GetTablePadding(Density)">
                                     Page @CurrentPage of @TotalPages
                                 </div>
                                 <RButton Variant="ButtonVariant.Ghost"
-                                        Size="ButtonSize.Small"
+                                        Size="@TableConfig.GetPaginationButtonSize(Density)"
                                         Disabled="@(CurrentPage >= TotalPages)"
                                         OnClick="@(() => OnPageChanged(CurrentPage + 1))"
                                         Dense="true">
                                     <i class="material-symbols-rounded">chevron_right</i>
                                 </RButton>
                                 <RButton Variant="ButtonVariant.Ghost"
-                                        Size="ButtonSize.Small"
+                                        Size="@TableConfig.GetPaginationButtonSize(Density)"
                                         Disabled="@(CurrentPage >= TotalPages)"
                                         OnClick="@(() => OnPageChanged(TotalPages))"
                                         Dense="true">
@@ -263,7 +271,7 @@
 {
     <RModal @bind-Visible="_showChartModal" 
             Header="Chart Visualization" 
-            Size="ModalSize.Large">
+            Size="SizeType.Large">
         
         <HeaderContent>
             <div class="d-flex items-center gap-2">
@@ -316,7 +324,7 @@
     [Parameter] public IEnumerable<TItem> Items { get; set; } = Enumerable.Empty<TItem>();
     // ChildContent inherited from RTableBase
     
-    // Header - Title, Subtitle, ShowHeader inherited from RTableBase
+    // Header - Title, Subtitle, ShowTitle inherited from RTableBase
     [Parameter] public string Icon { get; set; }
     [Parameter] public RenderFragment HeaderContent { get; set; }
     
@@ -325,12 +333,12 @@
     [Parameter] public bool ShowFilters { get; set; }
     [Parameter] public RenderFragment ToolbarContent { get; set; }
     
-    // Chart Integration - ShowChartButton, ChartButtonText, DefaultChartType inherited from RTableBase
+    [Parameter] public Dictionary<string, ColumnPreferences> ColumnPreferences { get; set; } = new();
+    [Parameter] public EventCallback<Dictionary<string, ColumnPreferences>> ColumnPreferencesChanged { get; set; }
     
-    // Table - Loading, LoadingText, EmptyContent, FixedHeader, Height, Hover, Striped, Bordered, Density inherited from RTableBase
+    
     [Parameter] public string EmptyMessage { get; set; } = "No data available";
     
-    // Selection
     [Parameter] public bool Selectable { get; set; }
     [Parameter] public bool MultiSelect { get; set; }
     [Parameter] public IEnumerable<TItem> SelectedItems { get; set; } = Enumerable.Empty<TItem>();
@@ -373,9 +381,8 @@
     private string _searchTerm = "";
     private IEnumerable<TItem> _processedItems = Enumerable.Empty<TItem>();
     private string TableId => $"table-{GetHashCode()}";
-    private int[] _effectivePageSizeOptions = new[] { 10, 25, 50, 100 };
+    private int[] _effectivePageSizeOptions = TableConfig.DefaultPageSizeOptions;
 
-    // Chart integration
     private bool _showChartModal = false;
     private bool _chartModalReady = false;
     private readonly ChartDataAnalyzer _chartAnalyzer = new();
@@ -399,13 +406,6 @@
     {
         _tableContext = new TableContext(typeof(TItem), TableId, true);
         
-        // Initialize PageSize from base class if not set
-        if (PageSize == 0)
-        {
-            PageSize = 50; // Default from base class
-        }
-        
-        // Auto-generate columns if requested or if no ChildContent provided
         if (AutoGenerateColumns || (ChildContent == null && !_columns.Any()))
         {
             var generatedColumns = PropertyColumnGenerator.GenerateColumns<TItem>();
@@ -476,6 +476,20 @@
     #endregion
 
     #region Column Management
+    
+    private IEnumerable<ColumnDefinition<TItem>> GetVisibleColumns()
+    {
+        return GetEffectiveColumns().Where(c => 
+            !ColumnPreferences.ContainsKey(c.Key) || 
+            ColumnPreferences[c.Key].Visible != false);
+    }
+    
+    private async Task OnColumnPreferencesChanged(Dictionary<string, ColumnPreferences> preferences)
+    {
+        ColumnPreferences = preferences;
+        await ColumnPreferencesChanged.InvokeAsync(preferences);
+        StateHasChanged();
+    }
     
     private IEnumerable<ColumnDefinition<TItem>> GetEffectiveColumns()
     {
@@ -603,18 +617,8 @@
 
     private static object GetPropertyValue(TItem item, string propertyName)
     {
-        if (item == null || string.IsNullOrEmpty(propertyName))
-            return null;
-
-        try
-        {
-            var getter = GetPropertyGetter(propertyName);
-            return getter(item);
-        }
-        catch
-        {
-            return null;
-        }
+        var getter = GetPropertyGetter(propertyName);
+        return getter(item);
     }
 
     private static Type GetPropertyType(string propertyName)
@@ -901,6 +905,32 @@
         return string.Join("; ", styles);
     }
 
+    private string GetScrollContainerStyle()
+    {
+        var styles = new List<string>();
+        
+        if (!string.IsNullOrEmpty(Height))
+            styles.Add($"height: {Height}");
+            
+        if (!string.IsNullOrEmpty(MaxHeight))
+            styles.Add($"max-height: {MaxHeight}");
+            
+        if (EnableHorizontalScroll)
+            styles.Add("overflow-x: auto");
+            
+        return string.Join("; ", styles);
+    }
+
+    private string GetTableStyle()
+    {
+        var styles = new List<string>();
+        
+        if (!string.IsNullOrEmpty(Style))
+            styles.Add(Style);
+            
+        return string.Join("; ", styles);
+    }
+
     #endregion
 
     #region Smart PageSize Options
@@ -914,64 +944,36 @@
             return;
         }
         
-        // Otherwise, generate smart options based on total record count
         var totalCount = _processedItems.Count();
         
-        if (totalCount <= 10)
+        var breakpoint = TableConfig.SmartPageSizeBreakpoints.FirstOrDefault(b => totalCount <= b.threshold);
+        _effectivePageSizeOptions = breakpoint.options ?? TableConfig.DefaultPageSizeOptions;
+        
+        if (totalCount > TableConfig.SmartPageSizeBreakpoints[3].threshold) // > 1000 records
         {
-            _effectivePageSizeOptions = new[] { 5, 10 };
-        }
-        else if (totalCount <= 50)
-        {
-            _effectivePageSizeOptions = new[] { 10, 25, 50 };
-        }
-        else if (totalCount <= 200)
-        {
-            _effectivePageSizeOptions = new[] { 10, 25, 50, 100 };
-        }
-        else if (totalCount <= 1000)
-        {
-            _effectivePageSizeOptions = new[] { 25, 50, 100, 250 };
-        }
-        else if (totalCount <= 10000)
-        {
-            // For large datasets, use exponential growth
-            var options = new List<int> { 50, 100, 250, 500 };
+            var options = _effectivePageSizeOptions.ToList();
             
-            // Add smart option: roughly totalCount / 20 (5% of data)
-            var smartOption = (int)Math.Round(totalCount / 20.0 / 50.0) * 50;
-            if (smartOption > 500 && smartOption < 2000)
+            var smartOption = (int)Math.Round(totalCount * TableConfig.SmartOptionPercentage / TableConfig.SmartOptionRounding) * TableConfig.SmartOptionRounding;
+            if (smartOption > options.Max() && smartOption <= TableConfig.MaxPageSize)
             {
                 options.Add(smartOption);
             }
             
-            _effectivePageSizeOptions = options.OrderBy(x => x).ToArray();
-        }
-        else
-        {
-            // For very large datasets (10K+), use logarithmic scaling
-            var options = new List<int> { 100, 250, 500 };
+            if (totalCount > TableConfig.SmartPageSizeBreakpoints[4].threshold) // > 10K records
+            {
+                var log = Math.Log10(totalCount);
+                var factor = (int)Math.Pow(10, Math.Floor(log - 1));
+                
+                var logOption = (factor / 100) * 100;
+                if (logOption > options.Max() && logOption <= TableConfig.MaxPageSize)
+                {
+                    options.Add(logOption);
+                }
+            }
             
-            // Add options based on logarithmic scale
-            var log = Math.Log10(totalCount);
-            var factor1 = (int)Math.Pow(10, Math.Floor(log - 1)); // 10% of magnitude
-            var factor2 = (int)Math.Pow(10, Math.Floor(log - 0.5)); // ~30% of magnitude
-            
-            // Round to nearest 50 or 100
-            if (factor1 > 500)
-                options.Add((factor1 / 100) * 100);
-            if (factor2 > 1000 && factor2 < 5000)
-                options.Add((factor2 / 100) * 100);
-            
-            // Add option for viewing 1% of data
-            var onePercent = Math.Max(100, (totalCount / 100 / 50) * 50);
-            if (onePercent <= 2500)
-                options.Add(onePercent);
-            
-            _effectivePageSizeOptions = options.Distinct().OrderBy(x => x).Take(5).ToArray();
+            _effectivePageSizeOptions = options.Distinct().OrderBy(x => x).Take(TableConfig.MaxSmartOptions).ToArray();
         }
         
-        // Ensure current PageSize is in the options, if not add it
         if (PageSize > 0 && !_effectivePageSizeOptions.Contains(PageSize))
         {
             var list = _effectivePageSizeOptions.ToList();
@@ -979,10 +981,9 @@
             _effectivePageSizeOptions = list.OrderBy(x => x).ToArray();
         }
         
-        // If PageSize is not set or invalid, set to first option
-        if (PageSize <= 0 || PageSize > totalCount)
+        if (PageSize <= TableConfig.MinPageSize)
         {
-            PageSize = _effectivePageSizeOptions.FirstOrDefault(10);
+            PageSize = _effectivePageSizeOptions.Length > 0 ? _effectivePageSizeOptions[0] : TableConfig.DefaultPageSize;
         }
     }
     

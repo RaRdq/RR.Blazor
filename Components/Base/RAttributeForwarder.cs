@@ -38,13 +38,7 @@ public static class RAttributeForwarder
     {
         if (string.IsNullOrEmpty(propertyName)) return false;
         
-        // CRITICAL: Skip any property name starting with @ (Blazor directives)
-        if (propertyName.StartsWith("@")) return false;
-        
-        // Skip property names containing @ anywhere (like @bind, @onclick, etc)
-        if (propertyName.Contains("@")) return false;
-        
-        // Skip Blazor-specific property patterns
+        if (propertyName.StartsWith("@") || propertyName.Contains("@")) return false;
         if (propertyName.EndsWith("Changed") || 
             propertyName.EndsWith("Expression") ||
             propertyName.EndsWith("Callback") ||
@@ -59,56 +53,45 @@ public static class RAttributeForwarder
             propertyName == "CheckedChanged")
             return false;
         
-        // Skip any Blazor-specific types
         if (propertyType.IsGenericType)
         {
             var genericTypeDef = propertyType.GetGenericTypeDefinition();
             var genericTypeName = genericTypeDef.Name;
             
-            // Skip EventCallback, RenderFragment, Expression, etc.
             if (genericTypeName.Contains("EventCallback") ||
                 genericTypeName.Contains("RenderFragment") ||
                 genericTypeName.Contains("Expression"))
                 return false;
         }
         
-        // Skip delegate types
         if (typeof(Delegate).IsAssignableFrom(propertyType))
             return false;
             
-        // CRITICAL: Skip properties with Symbol in their type name (fix for Symbol() errors)
         if (propertyType.Name.Contains("Symbol") || propertyType.FullName?.Contains("Symbol") == true)
             return false;
         
-        // Skip IEnumerable types (except string)
         if (propertyType != typeof(string) && typeof(System.Collections.IEnumerable).IsAssignableFrom(propertyType))
             return false;
         
-        // Only forward simple value types and strings
         if (!propertyType.IsValueType && propertyType != typeof(string) && !propertyType.IsEnum)
             return false;
         
         var lowerName = propertyName.ToLowerInvariant();
         
-        // Check if it's a standard HTML attribute
         if (ValidHtmlAttributes.Contains(lowerName))
             return true;
         
-        // Check if it starts with a valid prefix
         if (ValidHtmlAttributePrefixes.Any(prefix => lowerName.StartsWith(prefix)))
             return true;
         
-        // Otherwise, don't forward it
         return false;
     }
     
     private static string ToHtmlAttributeName(string propertyName)
     {
-        // Convert PascalCase to kebab-case for custom attributes
         if (propertyName.StartsWith("data", StringComparison.OrdinalIgnoreCase) ||
             propertyName.StartsWith("aria", StringComparison.OrdinalIgnoreCase))
         {
-            // Convert DataFoo to data-foo, AriaLabel to aria-label
             var result = new System.Text.StringBuilder();
             for (int i = 0; i < propertyName.Length; i++)
             {
@@ -125,7 +108,6 @@ public static class RAttributeForwarder
             return result.ToString();
         }
         
-        // For standard HTML attributes, use lowercase
         return propertyName.ToLowerInvariant();
     }
     
@@ -219,23 +201,18 @@ public static class RAttributeForwarder
         
         foreach (var property in properties)
         {
-            // ++sequence
             var incrementSequence = Expression.PreIncrementAssign(sequenceParam);
             
-            // component.PropertyName
             var propertyAccess = Expression.Property(componentTyped, property);
             
-            // Convert to object if needed
             var valueAsObject = property.PropertyType.IsValueType 
                 ? Expression.Convert(propertyAccess, typeof(object))
                 : (Expression)propertyAccess;
             
-            // ToHtmlAttributeName(property.Name)
             var htmlAttrName = Expression.Call(
                 toHtmlAttributeNameMethod,
                 Expression.Constant(property.Name));
             
-            // builder.AddAttribute(sequence, htmlAttributeName, value)
             var addAttribute = Expression.Call(
                 builderParam,
                 addAttributeMethod,
@@ -243,7 +220,6 @@ public static class RAttributeForwarder
                 htmlAttrName,
                 valueAsObject);
             
-            // Add null check for reference types (strings)
             if (!property.PropertyType.IsValueType)
             {
                 var condition = Expression.IfThen(
@@ -259,7 +235,6 @@ public static class RAttributeForwarder
         
         if (expressions.Count == 0)
         {
-            // Return empty delegate if no valid attributes to forward
             var emptyBody = Expression.Empty();
             var emptyLambda = Expression.Lambda<ForwardingDelegate>(emptyBody, builderParam, sequenceParam, componentParam);
             return emptyLambda.Compile();
@@ -272,52 +247,32 @@ public static class RAttributeForwarder
     }
 }
 
-/// <summary>
-/// Base class extension for simplified attribute forwarding in components.
-/// </summary>
 public abstract class RForwardingComponentBase : ComponentBase
 {
-    /// <summary>Captures any additional HTML attributes</summary>
     [Parameter(CaptureUnmatchedValues = true)] 
     public Dictionary<string, object> AdditionalAttributes { get; set; }
     
-    /// <summary>
-    /// Returns safely filtered HTML attributes using centralized RAttributeForwarder.
-    /// </summary>
     protected virtual Dictionary<string, object> GetSafeAttributes()
     {
         return RAttributeForwarder.GetSafeAttributes(AdditionalAttributes);
     }
     
-    /// <summary>
-    /// Forwards all parameters to a child component in BuildRenderTree.
-    /// </summary>
     protected void ForwardParameters(RenderTreeBuilder builder, ref int sequence)
     {
         builder.ForwardAllParameters(ref sequence, this);
     }
     
-    /// <summary>
-    /// Forwards parameters excluding specific properties.
-    /// </summary>
     protected void ForwardParametersExcept(RenderTreeBuilder builder, ref int sequence, params string[] excludeProperties)
     {
         builder.ForwardParameters(ref sequence, this, excludeProperties);
     }
 }
 
-/// <summary>
-/// Attribute to mark properties that should be excluded from automatic forwarding.
-/// </summary>
 [AttributeUsage(AttributeTargets.Property)]
 public class NoForwardAttribute : Attribute
 {
 }
 
-/// <summary>
-/// Simplified parameter forwarding using source generators (future enhancement).
-/// This would generate optimal forwarding code at compile time.
-/// </summary>
 public static class RAttributeForwarderExtensions
 {
     /// <summary>
@@ -337,9 +292,6 @@ public static class RAttributeForwarderExtensions
         builder.ForwardParameters(ref sequence, source, except);
     }
     
-    /// <summary>
-    /// Fluent API for attribute forwarding with filtering.
-    /// </summary>
     public static AttributeForwardingBuilder<TComponent> Forward<TComponent>(
         this RenderTreeBuilder builder, 
         TComponent component) 
@@ -349,9 +301,6 @@ public static class RAttributeForwarderExtensions
     }
 }
 
-/// <summary>
-/// Fluent builder for attribute forwarding configuration.
-/// </summary>
 public class AttributeForwardingBuilder<TComponent> where TComponent : ComponentBase
 {
     private readonly RenderTreeBuilder _builder;

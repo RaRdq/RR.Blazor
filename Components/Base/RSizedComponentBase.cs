@@ -99,10 +99,10 @@ namespace RR.Blazor.Components.Base
             {
                 var adjustment = Density switch
                 {
-                    ComponentDensity.Compact => -0.5,
-                    ComponentDensity.Dense => -0.25,
-                    ComponentDensity.Normal => 0,
-                    ComponentDensity.Spacious => 0.5,
+                    DensityType.Compact => -0.5,
+                    DensityType.Dense => -0.25,
+                    DensityType.Normal => 0,
+                    DensityType.Spacious => 0.5,
                     _ => 0
                 };
                 
@@ -125,10 +125,10 @@ namespace RR.Blazor.Components.Base
             {
                 var adjustment = Density switch
                 {
-                    ComponentDensity.Compact => -1,
-                    ComponentDensity.Dense => -0.5,
-                    ComponentDensity.Normal => 0,
-                    ComponentDensity.Spacious => 1,
+                    DensityType.Compact => -1,
+                    DensityType.Dense => -0.5,
+                    DensityType.Normal => 0,
+                    DensityType.Spacious => 1,
                     _ => 0
                 };
                 

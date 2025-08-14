@@ -19,7 +19,7 @@ public class RToggle : ComponentBase
     [Parameter] public string TrueIcon { get; set; }
     [Parameter] public string FalseIcon { get; set; }
     [Parameter] public ToggleVariant Variant { get; set; } = ToggleVariant.Standard;
-    [Parameter] public ButtonSize Size { get; set; } = ButtonSize.Medium;
+    [Parameter] public SizeType Size { get; set; } = SizeType.Medium;
     [Parameter] public bool Disabled { get; set; }
     [Parameter] public bool Loading { get; set; }
     [Parameter] public string Class { get; set; }

@@ -3,8 +3,6 @@
 @using RR.Blazor.Components.Base
 @inherits RInteractiveComponentBase
 
-@* RBaseModal - Enhanced modal component with standardized patterns and glass effects *@
-
 <RModal Visible="@Visible" 
         VisibleChanged="@VisibleChanged"
         Text="@Title" 
@@ -81,7 +79,7 @@
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public string Subtitle { get; set; }
     [Parameter] public string Icon { get; set; }
-    [Parameter] public ModalSize Size { get; set; } = ModalSize.Medium;
+    [Parameter] public SizeType Size { get; set; } = SizeType.Medium;
     [Parameter] public ModalVariant Variant { get; set; } = ModalVariant.Default;
     
     [Parameter] public BaseModalGlassVariant GlassVariant { get; set; } = BaseModalGlassVariant.Medium;
@@ -124,33 +122,20 @@
     {
         var classes = new List<string>();
         
-        switch (GlassVariant)
+        classes.Add(GlassVariant switch
         {
-            case BaseModalGlassVariant.Light:
-                classes.Add("glass-light");
-                break;
-            case BaseModalGlassVariant.Medium:
-                classes.Add("glass-medium");
-                break;
-            case BaseModalGlassVariant.Heavy:
-                classes.Add("glass-heavy");
-                break;
-            case BaseModalGlassVariant.Frost:
-                classes.Add("glass-frost");
-                break;
-            case BaseModalGlassVariant.Interactive:
-                classes.Add("glass-interactive");
-                break;
-        }
+            BaseModalGlassVariant.Light => "glass-light",
+            BaseModalGlassVariant.Medium => "glass-medium",
+            BaseModalGlassVariant.Heavy => "glass-heavy",
+            BaseModalGlassVariant.Frost => "glass-frost",
+            BaseModalGlassVariant.Interactive => "glass-interactive",
+            _ => "glass-medium"
+        });
         
         classes.Add("backdrop-blur-xl");
         classes.Add("shadow-2xl");
         
-        if (InteractiveGlass)
-        {
-            classes.Add("hover-lift-sm");
-            classes.Add("focus-ring-animate");
-        }
+        if (InteractiveGlass) classes.Add("hover-lift-sm focus-ring-animate");
         
         classes.Add(Class);
         
@@ -163,16 +148,8 @@
         
         if (ShowGlassContent)
         {
-            classes.Add("pa-6");
-            classes.Add("rounded-lg");
-            classes.Add("glass-light");
-            classes.Add("backdrop-blur-sm");
-            
-            if (InteractiveGlass)
-            {
-                classes.Add("hover-lift-sm");
-                classes.Add("transition-all");
-            }
+            classes.Add("pa-6 rounded-lg glass-light backdrop-blur-sm");
+            if (InteractiveGlass) classes.Add("hover-lift-sm transition-all");
         }
         
         return string.Join(" ", classes);
@@ -182,29 +159,17 @@
     {
         var classes = new List<string>
         {
-            "flex", "items-center", "gap-3", "mb-4", "pa-4", "glass-medium", "rounded-lg", "border-l-4", "backdrop-blur-sm"
+            "flex items-center gap-3 mb-4 pa-4 glass-medium rounded-lg border-l-4 backdrop-blur-sm"
         };
         
-        switch (AlertType)
+        var (bg, border) = AlertType switch
         {
-            case AlertType.Success:
-                classes.Add("bg-success-light");
-                classes.Add("border-success");
-                break;
-            case AlertType.Warning:
-                classes.Add("bg-warning-light");
-                classes.Add("border-warning");
-                break;
-            case AlertType.Error:
-                classes.Add("bg-error-light");
-                classes.Add("border-error");
-                break;
-            case AlertType.Info:
-            default:
-                classes.Add("bg-info-light");
-                classes.Add("border-info");
-                break;
-        }
+            AlertType.Success => ("bg-success-light", "border-success"),
+            AlertType.Warning => ("bg-warning-light", "border-warning"),
+            AlertType.Error => ("bg-error-light", "border-error"),
+            _ => ("bg-info-light", "border-info")
+        };
+        classes.Add($"{bg} {border}");
         
         return string.Join(" ", classes);
     }
@@ -213,24 +178,13 @@
     {
         var classes = new List<string>();
         
-        switch (AlertType)
+        classes.Add(AlertType switch
         {
-            case AlertType.Success:
-                classes.Add("text-success");
-                break;
-            case AlertType.Warning:
-                classes.Add("text-warning");
-                classes.Add("animate-pulse");
-                break;
-            case AlertType.Error:
-                classes.Add("text-error");
-                classes.Add("animate-pulse");
-                break;
-            case AlertType.Info:
-            default:
-                classes.Add("text-info");
-                break;
-        }
+            AlertType.Success => "text-success",
+            AlertType.Warning => "text-warning animate-pulse",
+            AlertType.Error => "text-error animate-pulse",
+            _ => "text-info"
+        });
         
         return string.Join(" ", classes);
     }
@@ -248,10 +202,10 @@
     {
         return Density switch
         {
-            ComponentDensity.Compact => "mt-4 pt-3 border-t border-light",
-            ComponentDensity.Dense => "mt-5 pt-3 border-t border-light",
-            ComponentDensity.Normal => "mt-6 pt-4 border-t border-light",
-            ComponentDensity.Spacious => "mt-8 pt-6 border-t border-light",
+            DensityType.Compact => "mt-4 pt-3 border-t border-light",
+            DensityType.Dense => "mt-5 pt-3 border-t border-light",
+            DensityType.Normal => "mt-6 pt-4 border-t border-light",
+            DensityType.Spacious => "mt-8 pt-6 border-t border-light",
             _ => "mt-6 pt-4 border-t border-light"
         };
     }
@@ -260,14 +214,9 @@
     {
         var classes = new List<string>
         {
-            "flex", "gap-3", "flex-wrap", "pa-4", "rounded-lg", "glass-medium", "backdrop-blur-sm"
+            "flex gap-3 flex-wrap pa-4 rounded-lg glass-medium backdrop-blur-sm"
         };
-        
-        if (InteractiveGlass)
-        {
-            classes.Add("hover-lift-sm");
-            classes.Add("transition-all");
-        }
+        if (InteractiveGlass) classes.Add("hover-lift-sm transition-all");
         
         return string.Join(" ", classes);
     }

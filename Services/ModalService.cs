@@ -131,7 +131,7 @@ public class ModalService : IModalService, IDisposable
         {
             Title = options.Title,
             Icon = options.Icon,
-            Size = ModalSize.Small,
+            Size = SizeType.Small,
             Variant = options.Variant,
             ComponentType = typeof(RConfirmationModal),
             Parameters = new Dictionary<string, object>
@@ -158,7 +158,7 @@ public class ModalService : IModalService, IDisposable
         {
             Title = title,
             Icon = variant == ModalVariant.Destructive ? "warning" : "help",
-            Size = ModalSize.Small,
+            Size = SizeType.Small,
             Variant = variant,
             ComponentType = typeof(RConfirmationModal),
             Parameters = new Dictionary<string, object>
@@ -178,7 +178,7 @@ public class ModalService : IModalService, IDisposable
         return await ShowAsync(modalOptions);
     }
 
-    public async Task<ModalResult<T>> ShowFormAsync<T>(string title, T initialData = default, ModalSize size = ModalSize.Medium)
+    public async Task<ModalResult<T>> ShowFormAsync<T>(string title, T initialData = default, SizeType size = SizeType.Medium)
     {
         var options = new FormModalOptions<T>
         {
@@ -233,7 +233,7 @@ public class ModalService : IModalService, IDisposable
         {
             Title = title,
             Icon = "info",
-            Size = ModalSize.Small,
+            Size = SizeType.Small,
             Variant = ModalVariant.Info,
             ComponentType = typeof(RMessageModal),
             Parameters = new Dictionary<string, object>
@@ -255,7 +255,7 @@ public class ModalService : IModalService, IDisposable
         {
             Title = title,
             Icon = "warning",
-            Size = ModalSize.Small,
+            Size = SizeType.Small,
             Variant = ModalVariant.Warning,
             ComponentType = typeof(RMessageModal),
             Parameters = new Dictionary<string, object>
@@ -277,7 +277,7 @@ public class ModalService : IModalService, IDisposable
         {
             Title = title,
             Icon = "error",
-            Size = ModalSize.Small,
+            Size = SizeType.Small,
             Variant = ModalVariant.Destructive,
             ComponentType = typeof(RMessageModal),
             Parameters = new Dictionary<string, object>
@@ -299,7 +299,7 @@ public class ModalService : IModalService, IDisposable
         {
             Title = title,
             Icon = "check_circle",
-            Size = ModalSize.Small,
+            Size = SizeType.Small,
             Variant = ModalVariant.Success,
             ComponentType = typeof(RMessageModal),
             Parameters = new Dictionary<string, object>
@@ -316,7 +316,7 @@ public class ModalService : IModalService, IDisposable
         await ShowAsync(options);
     }
 
-    public async Task ShowDetailAsync<T>(T data, string title = "", ModalSize size = ModalSize.Large)
+    public async Task ShowDetailAsync<T>(T data, string title = "", SizeType size = SizeType.Large)
     {
         var options = new ModalOptions<T>
         {
@@ -342,7 +342,7 @@ public class ModalService : IModalService, IDisposable
         var options = new ModalOptions
         {
             Title = title,
-            Size = ModalSize.Large,
+            Size = SizeType.Large,
             ComponentType = typeof(RPreviewModal),
             Parameters = new Dictionary<string, object>
             {
@@ -363,7 +363,7 @@ public class ModalService : IModalService, IDisposable
         var options = new ModalOptions<T>
         {
             Title = title,
-            Size = ModalSize.Medium,
+            Size = SizeType.Medium,
             ComponentType = typeof(RSelectModalGeneric<>).MakeGenericType(typeof(T)),
             Parameters = new Dictionary<string, object>
             {
@@ -387,7 +387,7 @@ public class ModalService : IModalService, IDisposable
         var options = new ModalOptions<IEnumerable<T>>
         {
             Title = title,
-            Size = ModalSize.Medium,
+            Size = SizeType.Medium,
             ComponentType = typeof(RSelectModalGeneric<>).MakeGenericType(typeof(T)),
             Parameters = new Dictionary<string, object>
             {
@@ -495,7 +495,7 @@ public class ModalBuilder<T>(ModalService modalService) : IModalBuilder<T>
         return this;
     }
 
-    public IModalBuilder<T> WithSize(ModalSize size)
+    public IModalBuilder<T> WithSize(SizeType size)
     {
         _options.Size = size;
         return this;

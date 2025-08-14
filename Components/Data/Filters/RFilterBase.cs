@@ -66,7 +66,7 @@ public abstract class RFilterBase<T> : ComponentBase
     /// <summary>
     /// Size variant for the filter UI
     /// </summary>
-    [Parameter] public ComponentDensity Density { get; set; } = ComponentDensity.Normal;
+    [Parameter] public DensityType Density { get; set; } = DensityType.Normal;
     
     #endregion
     
@@ -207,9 +207,9 @@ public abstract class RFilterBase<T> : ComponentBase
         
         classes.Add(Density switch
         {
-            ComponentDensity.Compact => "filter-compact",
-            ComponentDensity.Dense => "filter-dense",
-            ComponentDensity.Spacious => "filter-spacious",
+            DensityType.Compact => "filter-compact",
+            DensityType.Dense => "filter-dense",
+            DensityType.Spacious => "filter-spacious",
             _ => "filter-normal"
         });
         

@@ -66,6 +66,12 @@ namespace RR.Blazor.Components.Core
         
         [Parameter] public RenderFragment IconContent { get; set; }
         
+        [Parameter] public string Subtitle { get; set; }
+        
+        [Parameter] public bool ShowLine { get; set; } = true;
+        
+        [Parameter] public SizeType Size { get; set; } = SizeType.Medium;
+        
         [CascadingParameter(Name = "ParentListVariant")] private ListVariant? ParentListVariant { get; set; }
 
         protected override void BuildRenderTree(RenderTreeBuilder builder)
@@ -76,11 +82,10 @@ namespace RR.Blazor.Components.Core
             builder.OpenElement(++sequence, elementTag);
             builder.AddAttribute(++sequence, "class", GetDividerClasses());
             
-            // Forward additional attributes except our specific parameters
             ForwardParametersExcept(builder, ref sequence, 
                 nameof(Text), nameof(Variant), nameof(Style), nameof(TextAlign), 
-                nameof(SemanticVariant), nameof(Class), nameof(ChildContent),
-                nameof(Icon), nameof(IconSize), nameof(IconStyle), nameof(IconContent));
+                nameof(Variant), nameof(Class), nameof(ChildContent),
+                nameof(Icon), nameof(IconSize), nameof(IconStyle), nameof(IconContent), nameof(Size), nameof(Subtitle), nameof(ShowLine));
             
             if (!string.IsNullOrEmpty(Text) || ChildContent != null || !string.IsNullOrEmpty(Icon) || IconContent != null)
             {
@@ -101,7 +106,18 @@ namespace RR.Blazor.Components.Core
                 
                 if (!string.IsNullOrEmpty(Text))
                 {
+                    builder.OpenElement(++sequence, "span");
+                    builder.AddAttribute(++sequence, "class", "font-semibold");
                     builder.AddContent(++sequence, Text);
+                    builder.CloseElement();
+                }
+                
+                if (!string.IsNullOrEmpty(Subtitle))
+                {
+                    builder.OpenElement(++sequence, "span");
+                    builder.AddAttribute(++sequence, "class", "text-muted ml-2");
+                    builder.AddContent(++sequence, Subtitle);
+                    builder.CloseElement();
                 }
                 
                 if (ChildContent != null)
@@ -127,40 +143,27 @@ namespace RR.Blazor.Components.Core
             {
                 classes.Add("divider");
                 
-                if (Variant == DividerVariant.Vertical)
-                {
-                    classes.Add("divider-vertical");
-                }
+                if (Variant == DividerVariant.Vertical) classes.Add("divider-vertical");
+                if (Style == DividerStyle.Dashed) classes.Add("divider-dashed");
+                else if (Style == DividerStyle.Dotted) classes.Add("divider-dotted");
                 
-                if (Style != DividerStyle.Solid)
-                {
-                    classes.Add($"divider-{Style.ToString().ToLower()}");
-                }
-                
-                if (!string.IsNullOrEmpty(Text) || ChildContent != null || !string.IsNullOrEmpty(Icon) || IconContent != null)
+                if (!string.IsNullOrEmpty(Text) || ChildContent != null || !string.IsNullOrEmpty(Icon) || IconContent != null || !string.IsNullOrEmpty(Subtitle))
                 {
                     classes.Add($"divider-text-{TextAlign.ToString().ToLower()}");
-                    
-                    if (!string.IsNullOrEmpty(Icon) || IconContent != null)
-                    {
-                        classes.Add("divider-icon");
-                    }
                 }
                 else
                 {
                     classes.Add("divider-empty");
                 }
                 
-                if (!string.IsNullOrEmpty(SemanticVariant) && SemanticVariant != "Default")
-                {
-                    classes.Add($"divider-{SemanticVariant.ToLower()}");
-                }
+                if (!string.IsNullOrEmpty(SemanticVariant)) classes.Add($"divider-{SemanticVariant.ToLower()}");
+                if (!ShowLine) classes.Add("divider-no-line");
+                
+                if (Size == SizeType.Small) classes.Add("divider-compact");
+                else if (Size == SizeType.Large) classes.Add("divider-spacious");
             }
             
-            if (!string.IsNullOrEmpty(Class))
-            {
-                classes.Add(Class);
-            }
+            if (!string.IsNullOrEmpty(Class)) classes.Add(Class);
             
             return string.Join(" ", classes);
         }
@@ -169,23 +172,9 @@ namespace RR.Blazor.Components.Core
         {
             var classes = new List<string>();
             
-            // Use material-symbols-rounded as the base class
             classes.Add("material-symbols-rounded");
-            
-            // Add size class
             classes.Add($"icon-{IconSize}");
-            
-            // Add semantic color if specified
-            if (!string.IsNullOrEmpty(SemanticVariant) && SemanticVariant != "Default")
-            {
-                classes.Add($"icon-{SemanticVariant.ToLower()}");
-            }
-            
-            // Apply filled style through font-variation-settings
-            if (IconStyle == "filled")
-            {
-                classes.Add("material-symbols-rounded-filled");
-            }
+            if (IconStyle == "filled") classes.Add("material-symbols-rounded-filled");
             
             return string.Join(" ", classes);
         }

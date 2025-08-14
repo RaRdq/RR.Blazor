@@ -30,7 +30,7 @@ public abstract class RFormBase : ComponentBase
     [Parameter] public string SubmitText { get; set; } = "Submit";
     [Parameter] public string CancelText { get; set; } = "Cancel";
     [Parameter] public bool RequireValidation { get; set; } = true;
-    [Parameter] public ButtonSize SubmitButtonSize { get; set; } = ButtonSize.Medium;
+    [Parameter] public SizeType SubmitButtonSize { get; set; } = SizeType.Medium;
     [Parameter] public bool SubmitButtonFullWidth { get; set; }
     
     // Content

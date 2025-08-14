@@ -1,13 +1,3 @@
-@** 
-<summary>
-Action group for organizing multiple buttons with consistent spacing and standard patterns.
-</summary>
-<category>Core</category>
-<complexity>Simple</complexity>
-<ai-prompt>Create action group for organizing buttons</ai-prompt>
-<ai-common-use>form actions, toolbar buttons, navigation controls, modal actions</ai-common-use>
-<ai-avoid>Don't use for single buttons - use RButton directly</ai-avoid>
-**@
 @using RR.Blazor.Enums
 @using RR.Blazor.Attributes
 @using RR.Blazor.Components.Core
@@ -31,48 +21,20 @@ Action group for organizing multiple buttons with consistent spacing and standar
 </div>
 
 @code {
-    /// <summary>Layout direction for the action group - horizontal or vertical arrangement</summary>
-    /// <ai-hint>Horizontal for most forms and toolbars, Vertical for dropdown menus and mobile layouts</ai-hint>
-    [Parameter]
-    [AIParameter(Hint = "Horizontal for forms/toolbars, Vertical for dropdowns/mobile layouts", 
-                 SuggestedValues = new[] { "Horizontal", "Vertical" }, 
-                 IsRequired = false)]
-    public ActionGroupDirection Direction { get; set; } = ActionGroupDirection.Horizontal;
+    [Parameter] public ActionGroupDirection Direction { get; set; } = ActionGroupDirection.Horizontal;
     
-    /// <summary>Alignment for the action group - determines button positioning</summary>
-    /// <ai-hint>End for form actions (Save/Cancel), SpaceBetween for opposing actions, Center for balanced layouts</ai-hint>
-    [Parameter]
-    [AIParameter(Hint = "End for form actions, SpaceBetween for opposing actions, Center for balanced", 
-                 SuggestedValues = new[] { "Start", "Center", "End", "SpaceBetween", "SpaceAround", "SpaceEvenly" }, 
-                 IsRequired = false)]
-    public ActionGroupAlignment Alignment { get; set; } = ActionGroupAlignment.Start;
+    [Parameter] public ActionGroupAlignment Alignment { get; set; } = ActionGroupAlignment.Start;
     
-    /// <summary>Spacing between actions - controls gap between buttons</summary>
-    /// <ai-hint>Medium for most cases, Small for compact toolbars, Large for prominent spacing</ai-hint>
-    [Parameter]
-    [AIParameter(Hint = "Medium for most cases, Small for compact toolbars, Large for prominence", 
-                 SuggestedValues = new[] { "None", "Small", "Medium", "Large", "ExtraLarge" }, 
-                 IsRequired = false)]
-    public ActionGroupSpacing Spacing { get; set; } = ActionGroupSpacing.Medium;
+    [Parameter] public ActionGroupSpacing Spacing { get; set; } = ActionGroupSpacing.Medium;
     
     
-    /// <summary>Whether to wrap on small screens for responsive behavior</summary>
-    /// <ai-hint>True for responsive layouts that adapt to mobile, false for fixed layouts</ai-hint>
-    [Parameter]
-    [AIParameter(Hint = "True for responsive mobile layouts, false for fixed layouts")]
-    public bool Responsive { get; set; } = true;
+    [Parameter] public bool Responsive { get; set; } = true;
     
-    /// <summary>Standard action pattern for common button combinations</summary>
-    /// <ai-hint>Use CancelSave for forms, BackNext for wizards, ApproveReject for approvals, None for custom content</ai-hint>
-    [Parameter]
-    [AIParameter(Hint = "CancelSave for forms, BackNext for wizards, ApproveReject for approvals, None for custom", 
-                 SuggestedValues = new[] { "None", "CancelSave", "BackNext", "ApproveReject" }, 
-                 IsRequired = false)]
-    public ActionGroupPattern Pattern { get; set; } = ActionGroupPattern.None;
+    [Parameter] public ActionGroupPattern Pattern { get; set; } = ActionGroupPattern.None;
     
     [Parameter] public bool Processing { get; set; }
     [Parameter] public string ProcessingText { get; set; }
-    [Parameter] public ButtonSize ButtonSize { get; set; } = ButtonSize.Medium;
+    [Parameter] public SizeType ButtonSize { get; set; } = SizeType.Medium;
     
     [Parameter] public string CancelText { get; set; } = "Cancel";
     [Parameter] public string CancelIcon { get; set; }
@@ -114,17 +76,10 @@ Action group for organizing multiple buttons with consistent spacing and standar
     {
         var classes = new List<string> { "d-flex" };
         
-        if (Direction == ActionGroupDirection.Vertical)
+        classes.Add(Direction == ActionGroupDirection.Vertical ? "flex-col" : "flex-row");
+        if (Direction == ActionGroupDirection.Horizontal && Responsive)
         {
-            classes.Add("flex-col");
-        }
-        else
-        {
-            classes.Add("flex-row");
-            if (Responsive)
-            {
-                classes.Add("flex-wrap");
-            }
+            classes.Add("flex-wrap");
         }
         
         classes.Add(GetSpacingClasses());
@@ -153,15 +108,8 @@ Action group for organizing multiple buttons with consistent spacing and standar
             });
         }
         
-        if (FullWidth && Direction == ActionGroupDirection.Vertical)
-        {
-            classes.Add("w-full");
-        }
-        
-        if (!string.IsNullOrEmpty(Class))
-        {
-            classes.Add(Class);
-        }
+        if (FullWidth && Direction == ActionGroupDirection.Vertical) classes.Add("w-full");
+        if (!string.IsNullOrEmpty(Class)) classes.Add(Class);
         
         return string.Join(" ", classes);
     }
@@ -180,10 +128,10 @@ Action group for organizing multiple buttons with consistent spacing and standar
 
         return Density switch
         {
-            ComponentDensity.Compact => ApplyCompactSpacing(),
-            ComponentDensity.Dense => ApplyDenseSpacing(),
-            ComponentDensity.Normal => baseSpacing,
-            ComponentDensity.Spacious => ApplySpaciousSpacing(),
+            DensityType.Compact => ApplyCompactSpacing(),
+            DensityType.Dense => ApplyDenseSpacing(),
+            DensityType.Normal => baseSpacing,
+            DensityType.Spacious => ApplySpaciousSpacing(),
             _ => baseSpacing
         };
     }

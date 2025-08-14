@@ -41,7 +41,7 @@ namespace RR.Blazor.Components.Base
         /// Component density affecting spacing and sizing
         /// </summary>
         [Parameter] 
-        public ComponentDensity Density { get; set; } = ComponentDensity.Normal;
+        public DensityType Density { get; set; } = DensityType.Normal;
         
         /// <summary>
         /// Whether the component should take the full width of its container
@@ -154,10 +154,10 @@ namespace RR.Blazor.Components.Base
         {
             return Density switch
             {
-                ComponentDensity.Compact => "density-compact",
-                ComponentDensity.Dense => "density-dense",
-                ComponentDensity.Normal => "density-normal",
-                ComponentDensity.Spacious => "density-spacious",
+                DensityType.Compact => "density-compact",
+                DensityType.Dense => "density-dense",
+                DensityType.Normal => "density-normal",
+                DensityType.Spacious => "density-spacious",
                 _ => "density-normal"
             };
         }

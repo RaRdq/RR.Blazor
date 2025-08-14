@@ -51,7 +51,7 @@ namespace RR.Blazor.Components.Form
         
         [Parameter]
         [AIParameter("Input size", SuggestedValues = new[] { "Small", "Medium", "Large" })]
-        public TextInputSize Size { get; set; } = TextInputSize.Medium;
+        public SizeType Size { get; set; } = SizeType.Medium;
         
         
         [Parameter]
