@@ -16,13 +16,6 @@ namespace RR.Blazor.Enums
         Subtle
     }
     
-    public enum AlertSize
-    {
-        Small,
-        Medium,
-        Large
-    }
-    
     public enum AlertContentAlignment
     {
         Start,

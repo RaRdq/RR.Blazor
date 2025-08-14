@@ -10,10 +10,4 @@ namespace RR.Blazor.Enums
         Info
     }
 
-    public enum ProgressSize
-    {
-        Small,
-        Medium,
-        Large
     }
-}

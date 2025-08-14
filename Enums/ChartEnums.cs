@@ -22,14 +22,6 @@ namespace RR.Blazor.Enums
         Elevated
     }
 
-    public enum ChartSize
-    {
-        Small,
-        Medium,
-        Large,
-        Full
-    }
-
     public enum ChartLegendPosition
     {
         None,

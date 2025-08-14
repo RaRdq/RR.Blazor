@@ -9,10 +9,4 @@ namespace RR.Blazor.Enums
         Buttons
     }
 
-    public enum SwitcherSize
-    {
-        Small,
-        Medium,
-        Large
     }
-}

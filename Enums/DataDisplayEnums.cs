@@ -2,18 +2,6 @@ using System.ComponentModel;
 
 namespace RR.Blazor.Enums;
 
-public enum DataDisplaySize
-{
-    [Description("Small, compact display")]
-    Small,
-    
-    [Description("Standard medium size")]
-    Medium,
-    
-    [Description("Large, prominent display")]
-    Large
-}
-
 public enum DataDisplayLayout
 {
     [Description("Vertical label-value arrangement")]
@@ -79,3 +67,4 @@ public enum DataDisplayVariant
     [Description("Premium glass effect")]
     Premium
 }
+

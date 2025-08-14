@@ -13,15 +13,4 @@ namespace RR.Blazor.Enums
     }
     
     /// <summary>Calendar size variants</summary>
-    public enum CalendarSize
-    {
-        /// <summary>Small calendar for compact spaces</summary>
-        Small,
-        
-        /// <summary>Default calendar size</summary>
-        Default,
-        
-        /// <summary>Large calendar for detailed views</summary>
-        Large
     }
-}

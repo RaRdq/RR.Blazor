@@ -21,13 +21,6 @@ namespace RR.Blazor.Enums
         Dark
     }
     
-    public enum TooltipSize
-    {
-        Small,
-        Medium,
-        Large
-    }
-    
     public enum TooltipTrigger
     {
         Hover,

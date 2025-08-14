@@ -3,16 +3,6 @@ namespace RR.Blazor.Enums;
 /// <summary>
 /// Size variants for avatars
 /// </summary>
-public enum AvatarSize
-{
-    ExtraSmall,
-    Small,
-    Medium,
-    Large,
-    ExtraLarge,
-    ExtraLarge2X
-}
-
 /// <summary>
 /// Style variants for avatars
 /// </summary>

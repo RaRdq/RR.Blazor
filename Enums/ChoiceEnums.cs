@@ -16,13 +16,6 @@ public enum ChoiceStyle
     Buttons     // Button-style items
 }
 
-public enum ChoiceSize
-{
-    Small,
-    Medium,
-    Large
-}
-
 public enum ChoiceDirection
 {
     Horizontal,

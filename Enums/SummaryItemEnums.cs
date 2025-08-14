@@ -3,13 +3,6 @@ namespace RR.Blazor.Enums;
 /// <summary>
 /// Size variants for summary items
 /// </summary>
-public enum SummaryItemSize
-{
-    Small,
-    Medium,
-    Large
-}
-
 /// <summary>
 /// Layout variants for summary items
 /// </summary>

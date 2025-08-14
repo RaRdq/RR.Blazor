@@ -3,14 +3,6 @@ namespace RR.Blazor.Enums;
 /// <summary>
 /// List size variants
 /// </summary>
-public enum ListSize
-{
-    Default,
-    Compact,
-    Spacious,
-    Loose
-}
-
 /// <summary>
 /// List layout variants
 /// </summary>
@@ -48,13 +40,6 @@ public enum ListItemVariant
 /// <summary>
 /// Icon size variants
 /// </summary>
-public enum IconSize
-{
-    Small,
-    Medium,
-    Large
-}
-
 /// <summary>
 /// Divider orientation variants
 /// </summary>

@@ -13,17 +13,17 @@ namespace RR.Blazor.Utilities
         /// <summary>
         /// Gets text size classes based on generic size enum and density
         /// </summary>
-        public static string GetTextSize<TSize>(TSize size, ComponentDensity density) where TSize : Enum
+        public static string GetTextSize<TSize>(TSize size, DensityType density) where TSize : Enum
         {
             var sizeMap = GetSizeMap<TSize>();
             var baseSize = sizeMap.GetValueOrDefault(size.ToString(), "text-base");
             
             return density switch
             {
-                ComponentDensity.Compact => AdjustTextSize(baseSize, -1),
-                ComponentDensity.Dense => AdjustTextSize(baseSize, -0.5),
-                ComponentDensity.Normal => baseSize,
-                ComponentDensity.Spacious => AdjustTextSize(baseSize, 1),
+                DensityType.Compact => AdjustTextSize(baseSize, -1),
+                DensityType.Dense => AdjustTextSize(baseSize, -0.5),
+                DensityType.Normal => baseSize,
+                DensityType.Spacious => AdjustTextSize(baseSize, 1),
                 _ => baseSize
             };
         }
@@ -31,17 +31,17 @@ namespace RR.Blazor.Utilities
         /// <summary>
         /// Gets icon size classes based on generic size enum and density
         /// </summary>
-        public static string GetIconSize<TSize>(TSize size, ComponentDensity density) where TSize : Enum
+        public static string GetIconSize<TSize>(TSize size, DensityType density) where TSize : Enum
         {
             var sizeMap = GetIconSizeMap<TSize>();
             var baseSize = sizeMap.GetValueOrDefault(size.ToString(), "text-lg");
             
             return density switch
             {
-                ComponentDensity.Compact => AdjustIconSize(baseSize, -1),
-                ComponentDensity.Dense => AdjustIconSize(baseSize, -0.5),
-                ComponentDensity.Normal => baseSize,
-                ComponentDensity.Spacious => AdjustIconSize(baseSize, 1),
+                DensityType.Compact => AdjustIconSize(baseSize, -1),
+                DensityType.Dense => AdjustIconSize(baseSize, -0.5),
+                DensityType.Normal => baseSize,
+                DensityType.Spacious => AdjustIconSize(baseSize, 1),
                 _ => baseSize
             };
         }
@@ -51,27 +51,27 @@ namespace RR.Blazor.Utilities
         #region Button Size Utilities
         
         /// <summary>
-        /// Gets button size classes based on ButtonSize enum and density
+        /// Gets button size classes based on SizeType enum and density
         /// </summary>
-        public static string GetButtonSize(ButtonSize size, ComponentDensity density)
+        public static string GetButtonSize(SizeType size, DensityType density)
         {
             var sizeClass = size switch
             {
-                ButtonSize.ExtraSmall => "button-xs",
-                ButtonSize.Small => "button-sm",
-                ButtonSize.Medium => "", // Default size
-                ButtonSize.Large => "button-lg",
-                ButtonSize.ExtraLarge => "button-xl",
+                SizeType.ExtraSmall => "button-xs",
+                SizeType.Small => "button-sm",
+                SizeType.Medium => "", // Default size
+                SizeType.Large => "button-lg",
+                SizeType.ExtraLarge => "button-xl",
                 _ => ""
             };
             
             // Apply density modifiers
             var densityClass = density switch
             {
-                ComponentDensity.Compact => "button-compact",
-                ComponentDensity.Dense => "button-dense",
-                ComponentDensity.Normal => "",
-                ComponentDensity.Spacious => "button-spacious",
+                DensityType.Compact => "button-compact",
+                DensityType.Dense => "button-dense",
+                DensityType.Normal => "",
+                DensityType.Spacious => "button-spacious",
                 _ => ""
             };
             
@@ -81,15 +81,15 @@ namespace RR.Blazor.Utilities
         /// <summary>
         /// Gets button icon size classes
         /// </summary>
-        public static string GetButtonIconSize(ButtonSize size, ComponentDensity density)
+        public static string GetButtonIconSize(SizeType size, DensityType density)
         {
             var baseSize = size switch
             {
-                ButtonSize.ExtraSmall => "text-sm",
-                ButtonSize.Small => "text-base",
-                ButtonSize.Medium => "text-lg",
-                ButtonSize.Large => "text-xl",
-                ButtonSize.ExtraLarge => "text-2xl",
+                SizeType.ExtraSmall => "text-sm",
+                SizeType.Small => "text-base",
+                SizeType.Medium => "text-lg",
+                SizeType.Large => "text-xl",
+                SizeType.ExtraLarge => "text-2xl",
                 _ => "text-lg"
             };
             
@@ -101,15 +101,15 @@ namespace RR.Blazor.Utilities
         #region Badge Size Utilities
         
         /// <summary>
-        /// Gets badge size classes based on BadgeSize enum and density
+        /// Gets badge size classes based on SizeType enum and density
         /// </summary>
-        public static string GetBadgeSize(BadgeSize size, ComponentDensity density)
+        public static string GetBadgeSize(SizeType size, DensityType density)
         {
             var baseClasses = size switch
             {
-                BadgeSize.Small => "px-2 py-0.5 text-xs",
-                BadgeSize.Medium => "px-2.5 py-1 text-sm",
-                BadgeSize.Large => "px-3 py-1.5 text-base",
+                SizeType.Small => "px-2 py-0.5 text-xs",
+                SizeType.Medium => "px-2.5 py-1 text-sm",
+                SizeType.Large => "px-3 py-1.5 text-base",
                 _ => "px-2.5 py-1 text-sm"
             };
             
@@ -121,15 +121,15 @@ namespace RR.Blazor.Utilities
         #region Chip Size Utilities
         
         /// <summary>
-        /// Gets chip size classes based on ChipSize enum and density
+        /// Gets chip size classes based on SizeType enum and density
         /// </summary>
-        public static string GetChipSize(ChipSize size, ComponentDensity density)
+        public static string GetChipSize(SizeType size, DensityType density)
         {
             var baseClasses = size switch
             {
-                ChipSize.Small => "px-2 py-1 text-xs",
-                ChipSize.Medium => "px-3 py-1.5 text-sm",
-                ChipSize.Large => "px-4 py-2 text-base",
+                SizeType.Small => "px-2 py-1 text-xs",
+                SizeType.Medium => "px-3 py-1.5 text-sm",
+                SizeType.Large => "px-4 py-2 text-base",
                 _ => "px-3 py-1.5 text-sm"
             };
             
@@ -141,16 +141,16 @@ namespace RR.Blazor.Utilities
         #region Avatar Size Utilities
         
         /// <summary>
-        /// Gets avatar size classes based on AvatarSize enum and density
+        /// Gets avatar size classes based on SizeType enum and density
         /// </summary>
-        public static string GetAvatarSize(AvatarSize size, ComponentDensity density)
+        public static string GetAvatarSize(SizeType size, DensityType density)
         {
             var baseClasses = size switch
             {
-                AvatarSize.Small => "w-8 h-8 text-sm",
-                AvatarSize.Medium => "w-10 h-10 text-base",
-                AvatarSize.Large => "w-12 h-12 text-lg",
-                AvatarSize.ExtraLarge => "w-16 h-16 text-xl",
+                SizeType.Small => "w-8 h-8 text-sm",
+                SizeType.Medium => "w-10 h-10 text-base",
+                SizeType.Large => "w-12 h-12 text-lg",
+                SizeType.ExtraLarge => "w-16 h-16 text-xl",
                 _ => "w-10 h-10 text-base"
             };
             
@@ -168,31 +168,13 @@ namespace RR.Blazor.Utilities
         {
             return typeof(TSize).Name switch
             {
-                "ButtonSize" => new Dictionary<string, string>
+                "SizeType" => new Dictionary<string, string>
                 {
                     { "ExtraSmall", "text-xs" },
                     { "Small", "text-sm" },
                     { "Medium", "text-base" },
                     { "Large", "text-lg" },
                     { "ExtraLarge", "text-xl" }
-                },
-                "BadgeSize" => new Dictionary<string, string>
-                {
-                    { "Small", "text-xs" },
-                    { "Medium", "text-sm" },
-                    { "Large", "text-base" }
-                },
-                "ChipSize" => new Dictionary<string, string>
-                {
-                    { "Small", "text-xs" },
-                    { "Medium", "text-sm" },
-                    { "Large", "text-base" }
-                },
-                "TextInputSize" => new Dictionary<string, string>
-                {
-                    { "Small", "text-sm" },
-                    { "Medium", "text-base" },
-                    { "Large", "text-lg" }
                 },
                 _ => new Dictionary<string, string>
                 {
@@ -210,17 +192,13 @@ namespace RR.Blazor.Utilities
         {
             return typeof(TSize).Name switch
             {
-                "ButtonSize" => new Dictionary<string, string>
+                "SizeType" => new Dictionary<string, string>
                 {
+                    { "ExtraSmall", "text-sm" },
                     { "Small", "text-base" },
                     { "Medium", "text-lg" },
-                    { "Large", "text-xl" }
-                },
-                "BadgeSize" => new Dictionary<string, string>
-                {
-                    { "Small", "text-sm" },
-                    { "Medium", "text-base" },
-                    { "Large", "text-lg" }
+                    { "Large", "text-xl" },
+                    { "ExtraLarge", "text-2xl" }
                 },
                 _ => new Dictionary<string, string>
                 {
@@ -259,7 +237,7 @@ namespace RR.Blazor.Utilities
         /// <summary>
         /// Applies density adjustments to a set of CSS classes
         /// </summary>
-        private static string ApplyDensityToClasses(string baseClasses, ComponentDensity density)
+        private static string ApplyDensityToClasses(string baseClasses, DensityType density)
         {
             var classes = baseClasses.Split(' ');
             var adjustedClasses = new List<string>();
@@ -286,14 +264,14 @@ namespace RR.Blazor.Utilities
         /// <summary>
         /// Applies density to text size classes
         /// </summary>
-        private static string ApplyDensityToTextSize(string textSize, ComponentDensity density)
+        private static string ApplyDensityToTextSize(string textSize, DensityType density)
         {
             return density switch
             {
-                ComponentDensity.Compact => AdjustTextSize(textSize, -1),
-                ComponentDensity.Dense => AdjustTextSize(textSize, -0.5),
-                ComponentDensity.Normal => textSize,
-                ComponentDensity.Spacious => AdjustTextSize(textSize, 1),
+                DensityType.Compact => AdjustTextSize(textSize, -1),
+                DensityType.Dense => AdjustTextSize(textSize, -0.5),
+                DensityType.Normal => textSize,
+                DensityType.Spacious => AdjustTextSize(textSize, 1),
                 _ => textSize
             };
         }
@@ -301,17 +279,17 @@ namespace RR.Blazor.Utilities
         /// <summary>
         /// Adjusts spacing classes based on density
         /// </summary>
-        private static string AdjustSpacingClass(string spacingClass, ComponentDensity density)
+        private static string AdjustSpacingClass(string spacingClass, DensityType density)
         {
             var parts = spacingClass.Split('-');
             if (parts.Length >= 2 && double.TryParse(parts[1], out var value))
             {
                 var adjustment = density switch
                 {
-                    ComponentDensity.Compact => -0.5,
-                    ComponentDensity.Dense => -0.25,
-                    ComponentDensity.Normal => 0,
-                    ComponentDensity.Spacious => 0.5,
+                    DensityType.Compact => -0.5,
+                    DensityType.Dense => -0.25,
+                    DensityType.Normal => 0,
+                    DensityType.Spacious => 0.5,
                     _ => 0
                 };
                 

@@ -11,13 +11,6 @@ namespace RR.Blazor.Enums
         Info
     }
 
-    public enum SectionDividerSize
-    {
-        Compact,
-        Default,
-        Large
-    }
-
     public enum SectionDividerAlignment
     {
         Left,

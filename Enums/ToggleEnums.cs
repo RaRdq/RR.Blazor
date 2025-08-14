@@ -7,10 +7,4 @@ namespace RR.Blazor.Enums
         Square
     }
 
-    public enum ToggleSize
-    {
-        Small,
-        Medium,
-        Large
     }
-}

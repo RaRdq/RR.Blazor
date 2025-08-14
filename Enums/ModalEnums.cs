@@ -1,15 +1,5 @@
 namespace RR.Blazor.Enums;
 
-public enum ModalSize
-{
-    Small = 0,
-    Medium = 1,
-    Large = 2,
-    XLarge = 3,
-    Wide = 4,
-    Full = 5
-}
-
 public enum ModalVariant
 {
     Default = 0,

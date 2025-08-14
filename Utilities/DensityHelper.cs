@@ -12,14 +12,14 @@ namespace RR.Blazor.Utilities
         /// <summary>
         /// Gets padding classes based on density and base size
         /// </summary>
-        public static string GetPadding(ComponentDensity density, string baseSize = "3")
+        public static string GetPadding(DensityType density, string baseSize = "3")
         {
             return density switch
             {
-                ComponentDensity.Compact => $"p-{AdjustSize(baseSize, -1)}",
-                ComponentDensity.Dense => $"p-{AdjustSize(baseSize, -0.5)}",
-                ComponentDensity.Normal => $"p-{baseSize}",
-                ComponentDensity.Spacious => $"p-{AdjustSize(baseSize, 1)}",
+                DensityType.Compact => $"p-{AdjustSize(baseSize, -1)}",
+                DensityType.Dense => $"p-{AdjustSize(baseSize, -0.5)}",
+                DensityType.Normal => $"p-{baseSize}",
+                DensityType.Spacious => $"p-{AdjustSize(baseSize, 1)}",
                 _ => $"p-{baseSize}"
             };
         }
@@ -27,14 +27,14 @@ namespace RR.Blazor.Utilities
         /// <summary>
         /// Gets horizontal padding classes based on density
         /// </summary>
-        public static string GetHorizontalPadding(ComponentDensity density, string baseSize = "4")
+        public static string GetHorizontalPadding(DensityType density, string baseSize = "4")
         {
             return density switch
             {
-                ComponentDensity.Compact => $"px-{AdjustSize(baseSize, -1)}",
-                ComponentDensity.Dense => $"px-{AdjustSize(baseSize, -0.5)}",
-                ComponentDensity.Normal => $"px-{baseSize}",
-                ComponentDensity.Spacious => $"px-{AdjustSize(baseSize, 1)}",
+                DensityType.Compact => $"px-{AdjustSize(baseSize, -1)}",
+                DensityType.Dense => $"px-{AdjustSize(baseSize, -0.5)}",
+                DensityType.Normal => $"px-{baseSize}",
+                DensityType.Spacious => $"px-{AdjustSize(baseSize, 1)}",
                 _ => $"px-{baseSize}"
             };
         }
@@ -42,14 +42,14 @@ namespace RR.Blazor.Utilities
         /// <summary>
         /// Gets vertical padding classes based on density
         /// </summary>
-        public static string GetVerticalPadding(ComponentDensity density, string baseSize = "3")
+        public static string GetVerticalPadding(DensityType density, string baseSize = "3")
         {
             return density switch
             {
-                ComponentDensity.Compact => $"py-{AdjustSize(baseSize, -1)}",
-                ComponentDensity.Dense => $"py-{AdjustSize(baseSize, -0.5)}",
-                ComponentDensity.Normal => $"py-{baseSize}",
-                ComponentDensity.Spacious => $"py-{AdjustSize(baseSize, 1)}",
+                DensityType.Compact => $"py-{AdjustSize(baseSize, -1)}",
+                DensityType.Dense => $"py-{AdjustSize(baseSize, -0.5)}",
+                DensityType.Normal => $"py-{baseSize}",
+                DensityType.Spacious => $"py-{AdjustSize(baseSize, 1)}",
                 _ => $"py-{baseSize}"
             };
         }
@@ -61,14 +61,14 @@ namespace RR.Blazor.Utilities
         /// <summary>
         /// Gets gap classes based on density
         /// </summary>
-        public static string GetGap(ComponentDensity density)
+        public static string GetGap(DensityType density)
         {
             return density switch
             {
-                ComponentDensity.Compact => "gap-1",
-                ComponentDensity.Dense => "gap-2",
-                ComponentDensity.Normal => "gap-3",
-                ComponentDensity.Spacious => "gap-4",
+                DensityType.Compact => "gap-1",
+                DensityType.Dense => "gap-2",
+                DensityType.Normal => "gap-3",
+                DensityType.Spacious => "gap-4",
                 _ => "gap-3"
             };
         }
@@ -76,14 +76,14 @@ namespace RR.Blazor.Utilities
         /// <summary>
         /// Gets horizontal gap classes based on density
         /// </summary>
-        public static string GetHorizontalGap(ComponentDensity density)
+        public static string GetHorizontalGap(DensityType density)
         {
             return density switch
             {
-                ComponentDensity.Compact => "gap-x-1",
-                ComponentDensity.Dense => "gap-x-2",
-                ComponentDensity.Normal => "gap-x-3",
-                ComponentDensity.Spacious => "gap-x-4",
+                DensityType.Compact => "gap-x-1",
+                DensityType.Dense => "gap-x-2",
+                DensityType.Normal => "gap-x-3",
+                DensityType.Spacious => "gap-x-4",
                 _ => "gap-x-3"
             };
         }
@@ -91,14 +91,14 @@ namespace RR.Blazor.Utilities
         /// <summary>
         /// Gets vertical gap classes based on density
         /// </summary>
-        public static string GetVerticalGap(ComponentDensity density)
+        public static string GetVerticalGap(DensityType density)
         {
             return density switch
             {
-                ComponentDensity.Compact => "gap-y-1",
-                ComponentDensity.Dense => "gap-y-2",
-                ComponentDensity.Normal => "gap-y-3",
-                ComponentDensity.Spacious => "gap-y-4",
+                DensityType.Compact => "gap-y-1",
+                DensityType.Dense => "gap-y-2",
+                DensityType.Normal => "gap-y-3",
+                DensityType.Spacious => "gap-y-4",
                 _ => "gap-y-3"
             };
         }
@@ -110,14 +110,14 @@ namespace RR.Blazor.Utilities
         /// <summary>
         /// Gets margin classes based on density
         /// </summary>
-        public static string GetMargin(ComponentDensity density, string baseSize = "2")
+        public static string GetMargin(DensityType density, string baseSize = "2")
         {
             return density switch
             {
-                ComponentDensity.Compact => $"m-{AdjustSize(baseSize, -1)}",
-                ComponentDensity.Dense => $"m-{AdjustSize(baseSize, -0.5)}",
-                ComponentDensity.Normal => $"m-{baseSize}",
-                ComponentDensity.Spacious => $"m-{AdjustSize(baseSize, 1)}",
+                DensityType.Compact => $"m-{AdjustSize(baseSize, -1)}",
+                DensityType.Dense => $"m-{AdjustSize(baseSize, -0.5)}",
+                DensityType.Normal => $"m-{baseSize}",
+                DensityType.Spacious => $"m-{AdjustSize(baseSize, 1)}",
                 _ => $"m-{baseSize}"
             };
         }
@@ -154,14 +154,14 @@ namespace RR.Blazor.Utilities
         /// <summary>
         /// Gets button-specific density classes
         /// </summary>
-        public static string GetButtonDensityClasses(ComponentDensity density)
+        public static string GetButtonDensityClasses(DensityType density)
         {
             return density switch
             {
-                ComponentDensity.Compact => "px-2 py-1",
-                ComponentDensity.Dense => "px-3 py-1.5",
-                ComponentDensity.Normal => "px-4 py-2",
-                ComponentDensity.Spacious => "px-6 py-3",
+                DensityType.Compact => "px-2 py-1",
+                DensityType.Dense => "px-3 py-1.5",
+                DensityType.Normal => "px-4 py-2",
+                DensityType.Spacious => "px-6 py-3",
                 _ => "px-4 py-2"
             };
         }
@@ -169,14 +169,14 @@ namespace RR.Blazor.Utilities
         /// <summary>
         /// Gets input-specific density classes
         /// </summary>
-        public static string GetInputDensityClasses(ComponentDensity density)
+        public static string GetInputDensityClasses(DensityType density)
         {
             return density switch
             {
-                ComponentDensity.Compact => "px-2 py-1 text-sm",
-                ComponentDensity.Dense => "px-3 py-1.5 text-sm",
-                ComponentDensity.Normal => "px-3 py-2 text-base",
-                ComponentDensity.Spacious => "px-4 py-3 text-base",
+                DensityType.Compact => "px-2 py-1 text-sm",
+                DensityType.Dense => "px-3 py-1.5 text-sm",
+                DensityType.Normal => "px-3 py-2 text-base",
+                DensityType.Spacious => "px-4 py-3 text-base",
                 _ => "px-3 py-2 text-base"
             };
         }
@@ -184,14 +184,14 @@ namespace RR.Blazor.Utilities
         /// <summary>
         /// Gets card-specific density classes
         /// </summary>
-        public static string GetCardDensityClasses(ComponentDensity density)
+        public static string GetCardDensityClasses(DensityType density)
         {
             return density switch
             {
-                ComponentDensity.Compact => "p-3",
-                ComponentDensity.Dense => "p-4",
-                ComponentDensity.Normal => "p-6",
-                ComponentDensity.Spacious => "p-8",
+                DensityType.Compact => "p-3",
+                DensityType.Dense => "p-4",
+                DensityType.Normal => "p-6",
+                DensityType.Spacious => "p-8",
                 _ => "p-6"
             };
         }
