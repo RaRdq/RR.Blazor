@@ -19,7 +19,6 @@
       display: none;
     }
     
-    // Keep only avatar/icon visible
     .choice-avatar,
     .choice-icon {
       display: flex;
@@ -30,18 +29,15 @@
     
     @include icon-context-action;
     
-    // Remove chevron in compact mode
     &::after {
       display: none;
     }
   }
   
-  // Dropdown content adjustments for compact mode - positioning handled by JS
   .choice-viewport {
     width: auto;
   }
   
-  // Keep full content in dropdown items
   .choice-content .choice-item {
     .choice-text,
     .choice-label {
@@ -54,7 +50,6 @@
   position: relative;
   width: 100%;
   
-  // Header for grouped choices
   &-header {
     padding: var(--space-2) var(--space-3);
     font-size: var(--text-xs);
@@ -69,7 +64,6 @@
     border-radius: var(--radius-sm);
   }
   
-  // Footer for choices
   &-footer {
     padding: var(--space-2) var(--space-3);
     font-size: var(--text-xs);
@@ -101,14 +95,11 @@
     }
   }
   
-  // Auto width choice
   &-auto {
     width: auto;
     min-width: max-content;
   }
   
-  
-  // Inline choice layout
   &-inline {
     display: inline-flex;
     width: auto;
@@ -119,12 +110,10 @@
     }
   }
   
-  // Compact variant for collapsed sidebar/mobile
   &-compact {
     @include choice-compact-style();
   }
   
-  // Avatar-only variant (extreme compact)
   &-avatar-only {
     @extend .choice-compact;
     
@@ -148,7 +137,6 @@
     }
   }
   
-  // Auto-responsive behavior in sidebar contexts
   .app-sidebar.collapsed &:not(.choice-force-full),
   .sidebar-collapsed &:not(.choice-force-full) {
     @include choice-compact-style();
@@ -196,7 +184,6 @@
     }
   }
   
-  // Label for choices
   &-label {
     font-size: var(--text-sm);
     font-weight: var(--font-medium);
@@ -205,7 +192,6 @@
     display: block;
   }
   
-  // Checkmark indicator
   &-check {
     display: inline-flex;
     align-items: center;
@@ -231,33 +217,26 @@
     }
   }
   
-  // Common item styling for all variants
   &-item {
+    @extend %touch-target;
     @include button-reset;
+    @include touch-interaction(default, visual);
+    @include spacing-density(normal, padding);
+    @include icon-context-action;
     position: relative;
     display: flex;
     align-items: center;
     justify-content: flex-start;
     gap: var(--space-2);
-    padding: var(--space-2) var(--space-3);
     border-radius: var(--radius-md);
     width: 100%;
     text-align: left;
-    background: transparent; // Changed from var(--color-surface-elevated) to transparent
-    border: var(--border-1) solid transparent; // Changed border to transparent
+    background: transparent;
+    border: var(--border-1) solid transparent;
     color: var(--color-text-muted);
-    font-size: var(--text-sm);
     font-weight: var(--font-medium);
-    transition: var(--transition-normal);
-    cursor: pointer;
     user-select: none;
     
-    &:hover:not(&-disabled):not(&-loading) {
-      background: color-mix(in srgb, var(--color-surface-elevated) 15%, transparent);
-      color: var(--color-text);
-      border-color: var(--color-border);
-      transform: translateY(-0.0625rem);
-    }
     
     &:focus-visible {
       outline: none;
@@ -403,25 +382,21 @@
     }
   }
 
-  // Universal choice trigger styles (for all dropdown triggers)
   &-trigger {
+    @extend %touch-target;
     @include button-reset;
+    @include touch-interaction(default, visual);
     display: flex;
     align-items: center;
     gap: var(--space-2);
-    padding: var(--space-3);
     width: 100%;
     background: var(--color-surface-elevated);
     border: var(--border-1) solid var(--color-border);
     border-radius: var(--radius-lg);
     color: var(--color-text);
-    font-size: var(--text-sm);
     font-weight: var(--font-medium);
     text-align: left;
-    cursor: pointer;
-    transition: all var(--duration-fast) var(--ease-out);
     
-    // Dropdown chevron indicator for ALL choice triggers
     position: relative;
     
     &::after {
@@ -439,14 +414,6 @@
       opacity: 0.6; // Ensure visibility
     }
     
-    &:hover:not(:disabled) {
-      background: var(--color-surface-elevated);
-      border-color: var(--color-primary);
-      
-      &::after {
-        opacity: 1; // Full opacity on hover
-      }
-    }
     
     &:focus-visible {
       outline: none;
@@ -467,11 +434,9 @@
     }
   }
 
-  // Dropdown variant
   &-dropdown {
     position: relative;
     
-    // Semantic variants using mixins (strictly &- pattern)  
     @include semantic-variants((primary, success, warning, error, info), (ghost));
     
     .choice-viewport {
@@ -480,7 +445,6 @@
       pointer-events: none;
       z-index: var(--z-popup);
       
-      // Smooth animation transitions to prevent flickers  
       transition: opacity 0.15s ease-out, transform 0.15s ease-out;
       transform: translateY(-4px); // Start slightly above for smooth slide-in
       
@@ -665,6 +629,58 @@
       }
     }
   }
+  &-xs {
+    .choice-item, .choice-trigger {
+      @include spacing-density(compact, padding);
+      font-size: var(--text-xs);
+    }
+  }
+  
+  &-sm {
+    .choice-item, .choice-trigger {
+      @include spacing-density(dense, padding);
+      font-size: var(--text-sm);
+    }
+  }
+  
+  &-lg {
+    .choice-item, .choice-trigger {
+      @include spacing-density(comfortable, padding);
+      font-size: var(--text-base);
+    }
+  }
+  
+  &-xl {
+    .choice-item, .choice-trigger {
+      @include spacing-density(spacious, padding);
+      font-size: var(--text-lg);
+    }
+  }
+  
+  // Density variants that work with size variants (TODO: refactor to &- consistent pattern)
+  &.density-compact {
+    @include form-density(compact);
+    
+    .choice-item, .choice-trigger {
+      @include spacing-density(compact, padding);
+    }
+  }
+  
+  &.density-dense {
+    @include form-density(dense);
+    
+    .choice-item, .choice-trigger {
+      @include spacing-density(dense, padding);
+    }
+  }
+  
+  &.density-spacious {
+    @include form-density(spacious);
+    
+    .choice-item, .choice-trigger {
+      @include spacing-density(spacious, padding);
+    }
+  }
 }
 
 // Scrollbar styling for dropdown content
@@ -693,4 +709,3 @@
   scrollbar-width: thin;
   scrollbar-color: var(--color-border) transparent;
 }
-
