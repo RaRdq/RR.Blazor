@@ -49,8 +49,8 @@ The RR.Blazor Smart Table System provides a modern, type-safe, and efficient tab
     <RColumn Property="@nameof(Employee.Status)">
         <Template Context="emp">
             <RChip Text="@emp.Status" 
-                   Variant="@(emp.Status == "Active" ? ChipVariant.Success : ChipVariant.Secondary)" 
-                   Size="ChipSize.Small" />
+                   Variant="@(emp.Status == "Active" ? VariantType.Success : VariantType.Secondary)" 
+                   Size="SizeType.Small" />
         </Template>
     </RColumn>
 </RTable>
@@ -368,7 +368,7 @@ CustomTemplate="@(context => @<div>@(((Employee)context).Name)</div>)"
         <Template Context="emp">
             <RChip Text="@emp.Status" 
                    Variant="@(GetStatusVariant(emp.Status))" 
-                   Size="ChipSize.Small" />
+                   Size="SizeType.Small" />
         </Template>
     </RColumn>
     

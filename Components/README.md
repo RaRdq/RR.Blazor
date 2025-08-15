@@ -105,7 +105,7 @@ Components that work together as integrated systems:
     <RColumn Property="@nameof(Employee.Status)">
         <Template Context="emp">
             <RChip Text="@emp.Status" 
-                   Variant="@(emp.Status == "Active" ? ChipVariant.Success : ChipVariant.Secondary)" />
+                   Variant="@(emp.Status == "Active" ? VariantType.Success : VariantType.Secondary)" />
         </Template>
     </RColumn>
     @* Other columns auto-generated *@

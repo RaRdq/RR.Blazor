@@ -104,6 +104,7 @@ class AutosuggestPositioning {
         }
 
         this.removeEventListeners(elementId);
+        window.RRBlazor.ClickOutside.unregister(`autosuggest-${elementId}`);
         this.activeAutosuggest.delete(elementId);
     }
 
@@ -210,11 +211,6 @@ class AutosuggestPositioning {
 // Singleton instance
 const autosuggestPositioning = new AutosuggestPositioning();
 
-export function registerClickOutside(elementId, dotNetRef) {
-    const autosuggest = document.querySelector(`[data-autosuggest-id="${elementId}"]`);
-    if (autosuggest?._portalId) {
-    }
-}
 
 // Public API
 export async function createAutosuggestPortal(elementId, options) {
@@ -276,7 +272,6 @@ window.RRAutosuggest = {
     destroyPortal: destroyAutosuggestPortal,
     updatePosition: updateAutosuggestPosition,
     getDirection: getAutosuggestDirection,
-    registerClickOutside: registerClickOutside,
     calculateOptimalPosition: calculateOptimalPosition
 };
 
@@ -296,7 +291,6 @@ export default {
     destroyAutosuggestPortal,
     updateAutosuggestPosition,
     getAutosuggestDirection,
-    registerClickOutside,
     calculateOptimalPosition,
     initialize,
     cleanup

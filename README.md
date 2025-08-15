@@ -3,13 +3,17 @@
 [![.NET](https://img.shields.io/badge/.NET-9-512BD4?logo=.net&logoColor=white)](https://dotnet.microsoft.com/en-us/download/dotnet/9.0)
 [![Blazor](https://img.shields.io/badge/Blazor-WebAssembly%20%7C%20Server-512BD4?logo=blazor&logoColor=white)](https://blazor.net)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Buy me a coffee 🐾](https://img.shields.io/badge/Support%20Us-Buy%20Me%20A%20Coffee-FF813F?logo=buy-me-a-coffee&logoColor=white)](https://rr-store.lemonsqueezy.com/buy/ef6f32b3-19ae-4d3f-a9d3-bfa83022f594)
+<img src="https://cdn3.emoji.gg/emojis/5963-shrek-cat.png" alt="Shrek Cat" width="24" height="24" style="vertical-align:middle; margin-left:8px;" />
 
-Modern Blazor component library with 64 components, utility-first styling, and AI-optimized documentation.
+Modern Blazor component library with 62 components, utility-first styling, and AI-optimized documentation.
 
 ## Features
 
 - **Zero Configuration** - Works out-of-the-box with sensible defaults
-- **64 Components** - Complete UI toolkit from buttons to data grids
+- **62 Components** - Complete UI toolkit from buttons to data grids
+- **📊 Smart Table-Chart Integration** - Tables as data sources for charts with real-time binding
+- **⚡ Enterprise Virtualization** - Handle 100k+ rows with `RTableVirtualized` and `RVirtualList`
 - **🔍 Intelligent Search System** - Built-in search with collapsible interface and role-based filtering
 - **Smart Type Detection** - Auto-detects generics, eliminating boilerplate
 - **3,300+ Utilities** - Comprehensive CSS utility classes
@@ -115,6 +119,34 @@ For AI agents (Claude, GPT-4, etc.), add a rule or manually refer to [`@RR.Blazo
 <RForm Model="user" OnValidSubmit="SaveUser" />
 ```
 
+### 📊 Smart Data Tables & Chart Integration
+
+**Zero-Config Tables with Built-in Chart Integration:**
+
+```razor
+<!-- Auto-generates columns, includes search, sorting, pagination -->
+<RTable Items="@salesData" 
+        Title="Sales Report"
+        ShowChartButton="true"
+        ShowSearch="true" />
+
+<!-- High-performance virtualization for large datasets -->
+<RTableVirtualized Items="@largeDataset" 
+                   Height="600px"
+                   ShowChartButton="true"
+                   ExportEnabled="true" />
+
+<!-- Smart chart that auto-detects best visualization -->
+<RChart Data="@tableRef.FilteredData" 
+        Title="Dynamic Analytics" />
+```
+
+**Table-Chart Data Binding:**
+- Tables automatically expose `FilteredData` property for chart binding
+- Real-time chart updates as table data changes
+- Built-in chart modal with one-click visualization
+- Smart chart type detection based on data structure
+
 ### Professional UI Components
 
 ```razor
@@ -197,13 +229,13 @@ public class MySearchProvider : ISearchProvider
 
 | Category | Components | Examples |
 |----------|------------|----------|
-| **Core** | 8 components | RButton, RCard, RBadge, RAvatar |
-| **Forms** | 10 components | RForm, RTextInput, RCheckbox, RDatePicker |
-| **Data** | 6 components | RDataTable, RList, RVirtualList, RFilterBar |
-| **Display** | 10 components | RAccordion, RTimeline, RStatsCard, RProgressBar |
-| **Feedback** | 10 components | RModal, RToastContainer, RConfirmModal, RAlert |
-| **Navigation** | 5 components | RBreadcrumbs, RDropdown, RNavMenu, RTabs |
-| **Layout** | 3 components | RAppShell, RSection, RGrid |
+| **Core** | 11 components | RButton, RCard, RBadge, RAvatar, RChip, RDivider, RActionGroup, RHeaderCard |
+| **Forms** | 10 components | RForm, RTextInput, RCheckbox, RDatePicker, RRadio, RSelectField, RFileUpload, RToggle |
+| **Data** | 9 components | RTable, RTableVirtualized, RList, RVirtualList, RFilterBar, RCalendar, RColumn |
+| **Display** | 14 components | RChart, RAccordion, RTimeline, RStatsCard, RProgressBar, RMetric, REmptyState, RSkeleton |
+| **Feedback** | 10 components | RModal, RToastContainer, RConfirmationModal, RAlert, RTooltip, RErrorBoundary, RDetailModal |
+| **Navigation** | 4 components | RBreadcrumbs, RNavMenu, RTabs, RTabItem |
+| **Layout** | 4 components | RAppShell, RSection, RGrid, RContent |
 | **🔍 Search** | Built-in system | Global search, role-based filtering, collapsible interface |
 
 ## Styling System

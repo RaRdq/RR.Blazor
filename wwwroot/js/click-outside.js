@@ -9,6 +9,7 @@ class ClickOutsideManager {
     initialize() {
         if (this.initialized) return;
         document.addEventListener('click', this.globalHandler, true);
+        
         this.initialized = true;
     }
     
@@ -66,10 +67,3 @@ if (document.readyState === 'loading') {
 
 export default clickOutsideManager;
 
-export function registerClickOutside(elementId, element, options) {
-    return clickOutsideManager.register(elementId, element, options);
-}
-
-export function unregisterClickOutside(elementId) {
-    return clickOutsideManager.unregister(elementId);
-}

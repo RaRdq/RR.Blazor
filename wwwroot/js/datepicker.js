@@ -16,6 +16,11 @@ async function positionPopup(element, immediate = false) {
     
     if (!datepickerInstances.has(element)) {
         const portalId = `datepicker-${element.id || Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        const datepickerId = element.dataset.datepickerId || element.id || portalId;
+        
+        window.RRBlazor.ClickOutside.register(datepickerId, element, {
+            excludeSelectors: ['.rr-datepicker-popup', '.datepicker-portal']
+        });
         
         const result = window.RRBlazor.Portal.create(popup, {
             id: portalId,
@@ -23,19 +28,14 @@ async function positionPopup(element, immediate = false) {
             anchor: trigger,
             className: 'datepicker-portal',
             width: 320,
-            height: 400,
-            onClickOutside: () => {
-                element.dispatchEvent(new CustomEvent('datePickerClickOutside', {
-                    detail: { datepicker: element }
-                }));
-            }
+            height: 400
         });
         
         if (result) {
-            datepickerInstances.set(element, portalId);
+            datepickerInstances.set(element, { portalId, datepickerId });
         }
     } else {
-        const portalId = datepickerInstances.get(element);
+        const { portalId } = datepickerInstances.get(element);
         window.RRBlazor.Portal.position(portalId);
     }
 }
@@ -44,7 +44,9 @@ function cleanupDatepicker(element) {
     if (!element) return;
     
     if (datepickerInstances.has(element)) {
-        const portalId = datepickerInstances.get(element);
+        const { portalId, datepickerId } = datepickerInstances.get(element);
+        
+        window.RRBlazor.ClickOutside.unregister(datepickerId);
         
         if (window.RRBlazor?.Portal) {
             window.RRBlazor.Portal.destroy(portalId);
@@ -57,7 +59,7 @@ function cleanupDatepicker(element) {
 function setupDatepickerEvents(element, dotNetRef) {
     if (!element) return;
     
-    element.addEventListener('datePickerClickOutside', function(event) {
+    element.addEventListener('click-outside', function(event) {
         if (dotNetRef) {
             dotNetRef.invokeMethodAsync('HandleClickOutside');
         }

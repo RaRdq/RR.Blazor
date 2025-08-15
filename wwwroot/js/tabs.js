@@ -162,7 +162,6 @@ export function initializeTabs(element, navContainer, navWrapper) {
         }
     };
     
-    // Adaptive tab sizing based on viewport
     const updateTabSizing = () => {
         const viewport = {
             width: window.innerWidth,

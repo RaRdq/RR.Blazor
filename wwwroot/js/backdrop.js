@@ -9,10 +9,9 @@ class BackdropManagerBase {
     #backdrops = new Map();
     #sharedBackdrops = new Map();
     #registry = new WeakRegistry();
-    #animationDuration = 200; // Default duration
+    #animationDuration = 200;
     
     constructor() {
-        // Initialize animation duration from CSS variables
         this.#animationDuration = this.#getAnimationDuration();
     }
     
@@ -27,11 +26,9 @@ class BackdropManagerBase {
         let backdrop;
         
         if (useShared && this.#sharedBackdrops.has(level)) {
-            // Reuse existing shared backdrop
             backdrop = this.#sharedBackdrops.get(level);
             backdrop.refCount++;
         } else {
-            // Create new backdrop
             backdrop = this.#createBackdropElement(portalId, level, config);
             
             if (useShared) {
@@ -50,7 +47,6 @@ class BackdropManagerBase {
         this.#backdrops.set(portalId, backdropData);
         this.#registry.register(portalId, backdropData);
         
-        // Animate in
         this.#animateIn(backdrop.element, config.animationDuration);
         
         return backdrop.element;

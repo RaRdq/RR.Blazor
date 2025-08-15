@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
 using System.Linq.Expressions;
 using RR.Blazor.Models;
+using RR.Blazor.Components.Base;
 
 namespace RR.Blazor.Components.Data;
 
@@ -10,6 +11,7 @@ public class RTableForwarder<TItem> : ComponentBase where TItem : class
 {
     [Parameter] public IEnumerable<TItem> Items { get; set; }
     [Parameter] public RenderFragment ChildContent { get; set; }
+    [Parameter] public int PageSize { get; set; } = 50;
     [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object> AdditionalAttributes { get; set; } = new();
     
     protected override void BuildRenderTree(RenderTreeBuilder builder)
@@ -22,16 +24,37 @@ public class RTableForwarder<TItem> : ComponentBase where TItem : class
         {
             contextBuilder.OpenComponent<RTableGeneric<TItem>>(0);
             contextBuilder.AddAttribute(1, "Items", Items);
+            contextBuilder.AddAttribute(2, "PageSize", PageSize);
             
             if (AdditionalAttributes != null)
             {
-                foreach (var attr in AdditionalAttributes)
+                var safeAttributes = RAttributeForwarder.GetSafeAttributes(AdditionalAttributes);
+                if (safeAttributes?.Any() == true)
                 {
-                    contextBuilder.AddAttribute(2, attr.Key, attr.Value);
+                    // Handle PageSize casting fix at the attribute forwarding level
+                    var processedAttributes = new Dictionary<string, object>();
+                    foreach (var attr in safeAttributes)
+                    {
+                        var value = attr.Value;
+                        
+                        // Fix PageSize casting error: ensure PageSize is always an integer
+                        if (attr.Key == "PageSize" && value is string strPageSize)
+                        {
+                            if (int.TryParse(strPageSize, out var intPageSize))
+                            {
+                                value = intPageSize;
+                            }
+                        }
+                        
+                        processedAttributes[attr.Key] = value;
+                    }
+                    
+                    contextBuilder.AddMultipleAttributes(3, processedAttributes);
                 }
             }
             
-            contextBuilder.AddAttribute(3, "ChildContent", ChildContent);
+            var childContentSeq = AdditionalAttributes?.Count ?? 0;
+            contextBuilder.AddAttribute(4 + childContentSeq, "ChildContent", ChildContent);
             contextBuilder.CloseComponent();
         }));
         builder.CloseComponent();

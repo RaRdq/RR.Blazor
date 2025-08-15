@@ -143,23 +143,37 @@ else
 
     protected override async Task OnErrorAsync(Exception exception)
     {
-        hasError = true;
-        currentException = exception;
-        
-        // Generate technical details for debugging
-        technicalDetails = GenerateTechnicalDetails(exception);
-        
-        // Log error with proper context
-        Logger.LogError(exception, "Error boundary caught exception in {ComponentName}: {Message}", 
-            ComponentName, exception.Message);
-        
-        // Force state update to ensure UI shows error
-        await InvokeAsync(StateHasChanged);
-        
-        // Notify parent component
-        if (OnError.HasDelegate)
+        try
         {
-            await OnError.InvokeAsync(exception);
+            hasError = true;
+            currentException = exception;
+            
+            technicalDetails = GenerateTechnicalDetails(exception);
+            
+            Logger.LogError(exception, "Error boundary caught exception in {ComponentName}: {Message}", 
+                ComponentName, exception.Message);
+            
+            await InvokeAsync(StateHasChanged);
+            await Task.Yield();
+            
+            if (!OnError.HasDelegate) return;
+
+            try
+            {
+                await OnError.InvokeAsync(exception);
+            }
+            catch (Exception callbackException)
+            {
+                Logger.LogError(callbackException, "Error in OnError callback");
+            }
+        }
+        catch (Exception errorHandlingException)
+        {
+            Logger.LogError(errorHandlingException, "Error while handling error in error boundary");
+            hasError = true;
+            currentException = exception;
+            technicalDetails = $"Original Error: {exception.Message}\nError Handling Error: {errorHandlingException.Message}";
+            StateHasChanged();
         }
     }
 

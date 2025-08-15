@@ -22,18 +22,15 @@ const Choice = {
             const trigger = choiceElement.querySelector('.choice-trigger');
             if (!trigger) throw new Error(`Trigger not found: ${choiceElementId}`);
             
-            // Viewport is a sibling of choice element within the form wrapper
             const viewport = choiceElement.parentElement?.querySelector('.choice-viewport');
             if (!viewport) throw new Error(`[Choice] Viewport not found for ${choiceElementId}`);
             
-            // Close any other open dropdown first
             if (activeDropdown && activeDropdown !== choiceElementId) {
                 await this.closeDropdown(activeDropdown);
             }
 
             const portalId = `choice-${choiceElementId}`;
             
-            // Request portal cleanup via events (Dependency Inversion)
             document.dispatchEvent(new CustomEvent('portal-destroy-request', {
                 detail: { requesterId: `choice-${choiceElementId}`, portalId: `choice-portal-${choiceElementId}` },
                 bubbles: true
@@ -45,7 +42,6 @@ const Choice = {
             const baseMinWidth = isUserMenu ? 280 : 200;
             const minWidth = Math.max(triggerRect.width, baseMinWidth);
             
-            // Use reasonable height estimate for positioning (not max height)
             const itemCount = viewport.querySelectorAll('.choice-item').length;
             const estimatedHeight = Math.min(itemCount * 40 + 16, dropdownMaxHeight); // 40px per item + padding
             const targetDimensions = {
@@ -58,7 +54,6 @@ const Choice = {
             if (!options.direction || options.direction === 'auto') {
                 desiredPosition = positioningEngine.detectOptimalPosition(triggerRect, targetDimensions);
             } else {
-                // Map legacy direction format to positioning engine format
                 const directionMap = {
                     'bottom': PositioningEngine.POSITIONS.BOTTOM_START,
                     'bottom-start': PositioningEngine.POSITIONS.BOTTOM_START,
@@ -80,11 +75,9 @@ const Choice = {
                 desiredPosition = directionMap[options.direction] || PositioningEngine.POSITIONS.BOTTOM_START;
             }
             
-            // Detect container constraints for ultra-generic positioning
             const containerElement = choiceElement.closest('[data-container], .sidebar, .app-sidebar, .modal, .dialog, [class*="sidebar"], [class*="panel"]');
             const containerRect = containerElement?.getBoundingClientRect();
             
-            // Ultra-generic width adaptation for container constraints
             let adaptedDimensions = { ...targetDimensions };
             if (containerRect) {
                 const maxContainerWidth = containerRect.width - 16; // Leave 16px total margin
@@ -93,7 +86,6 @@ const Choice = {
                 }
             }
             
-            // Use positioning engine to calculate optimal position
             const position = positioningEngine.calculatePosition(
                 triggerRect,
                 adaptedDimensions,
@@ -119,32 +111,26 @@ const Choice = {
                 bubbles: true
             }));
             
-            // Wait for portal creation response
             const portal = await portalPromise;
             
             viewport._originalParent = viewport.parentNode;
             viewport._originalNextSibling = viewport.nextSibling;
             
-            // Clear any existing positioning styles before applying new ones
             viewport.style.position = '';
             viewport.style.top = '';
             viewport.style.left = '';
             viewport.style.transform = '';
             
-            // Portal or inline positioning
             if (portal && portal.element) {
-                // Portal is just a container at body level
                 portal.element.appendChild(viewport);
                 viewportLocations.set(choiceElementId, portal.element);
                 
-                // Position the viewport using calculated coordinates (positioning engine handles container constraints)
                 viewport.style.position = 'fixed';
                 viewport.style.left = `${position.x}px`;
                 viewport.style.top = `${position.y}px`;
                 viewport.style.width = `${adaptedDimensions.width}px`;
                 viewport.style.maxHeight = `${dropdownMaxHeight}px`;
             } else {
-                // No portal - position viewport directly with fixed positioning (positioning engine handles container constraints)
                 viewport.style.position = 'fixed';
                 viewport.style.left = `${position.x}px`;
                 viewport.style.top = `${position.y}px`;
@@ -155,7 +141,6 @@ const Choice = {
 
             this.applyDropdownStyles(viewport, adaptedDimensions.width);
             
-            // Apply visibility with modern JS
             Object.assign(viewport.style, {
                 visibility: 'visible',
                 display: 'block',
@@ -171,6 +156,23 @@ const Choice = {
 
             activeDropdown = choiceElementId;
             activePortals.set(choiceElementId, portalId);
+            
+            window.RRBlazor.ClickOutside.register(`choice-${choiceElementId}`, choiceElement, {
+                excludeSelectors: [
+                    '.choice-trigger',
+                    '.choice-viewport', 
+                    '.choice-content',
+                    '.choice-portal',
+                    `[data-choice-id="${choiceElementId}"]`
+                ]
+            });
+
+            // Add click-outside listener
+            choiceElement.addEventListener('click-outside', (event) => {
+                if (event.detail.elementId === `choice-${choiceElementId}`) {
+                    this.closeDropdown(choiceElementId);
+                }
+            });
 
             this.enableKeyboardNavigation(choiceElementId);
             this.scrollSelectedIntoView(viewport);
@@ -190,7 +192,6 @@ const Choice = {
             return false;
         }
 
-        // Find viewport - check viewportLocations first as source of truth
         let viewport = null;
         
         if (viewportLocations.has(choiceElementId)) {
@@ -200,7 +201,6 @@ const Choice = {
             }
         }
         
-        // Fallback to original DOM location
         if (!viewport) {
             viewport = choiceElement.querySelector('.choice-viewport') || 
                       choiceElement.parentElement?.querySelector('.choice-viewport');
@@ -215,7 +215,6 @@ const Choice = {
         viewport.classList.add('choice-viewport-closed');
         choiceElement.classList.remove('choice-open');
 
-        // Restore viewport to original hidden position
         if (viewport._originalParent) {
             if (viewport._originalNextSibling) {
                 viewport._originalParent.insertBefore(viewport, viewport._originalNextSibling);
@@ -223,7 +222,6 @@ const Choice = {
                 viewport._originalParent.appendChild(viewport);
             }
             
-            // Restore hidden state
             viewport.style.position = 'absolute';
             viewport.style.top = '-9999px';
             viewport.style.left = '-9999px';
@@ -240,6 +238,7 @@ const Choice = {
             }));
 
         this.disableKeyboardNavigation();
+        window.RRBlazor.ClickOutside.unregister(`choice-${choiceElementId}`);
         activeDropdown = null;
         activePortals.delete(choiceElementId);
         viewportLocations.delete(choiceElementId);
@@ -247,11 +246,9 @@ const Choice = {
     },
 
 
-    // Apply visual specifications from plan
     applyDropdownStyles(viewport, triggerWidth) {
         const minWidth = Math.max(triggerWidth, 200); // From plan
         
-        // Apply styles following visual specifications
         viewport.style.minWidth = `${minWidth}px`;
         viewport.style.maxHeight = '320px'; // From plan
         viewport.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)'; // From plan
@@ -267,12 +264,10 @@ const Choice = {
         }
     },
 
-    // Handle arrow key navigation via events (Dependency Inversion)
     enableKeyboardNavigation(choiceElementId) {
         const choiceElement = document.querySelector(`[data-choice-id="${choiceElementId}"]`);
         if (!choiceElement) return;
         
-        // Find viewport for keyboard navigation
         let viewport = null;
         if (viewportLocations.has(choiceElementId)) {
             const location = viewportLocations.get(choiceElementId);
@@ -287,7 +282,6 @@ const Choice = {
         }
         
         if (viewport) {
-            // Event-driven keyboard navigation
             document.dispatchEvent(new CustomEvent('choice-keyboard-enable', {
                 detail: { choiceId: choiceElementId, viewport },
                 bubbles: true
@@ -299,7 +293,6 @@ const Choice = {
     },
 
     disableKeyboardNavigation() {
-        // Event-driven keyboard navigation
         document.dispatchEvent(new CustomEvent('choice-keyboard-disable', {
             bubbles: true
         }));
@@ -313,7 +306,6 @@ const Choice = {
         const choiceElement = document.querySelector(`[data-choice-id="${activeDropdown}"]`);
         if (!choiceElement) return;
 
-        // Find viewport - check viewportLocations first as it's the source of truth
         let viewport = null;
         
         if (viewportLocations.has(activeDropdown)) {
@@ -323,7 +315,6 @@ const Choice = {
             }
         }
         
-        // Fallback to portal lookup
         if (!viewport) {
             const portalId = activePortals.get(activeDropdown);
             if (portalId) {
@@ -334,7 +325,6 @@ const Choice = {
             }
         }
         
-        // Final fallback to original DOM location
         if (!viewport) {
             viewport = choiceElement.querySelector('.choice-viewport') || 
                       choiceElement.parentElement?.querySelector('.choice-viewport');
@@ -369,7 +359,6 @@ const Choice = {
     },
 
     highlightItem(items, index) {
-        // Remove previous highlight
         items.forEach(item => item.classList.remove('choice-item-highlighted'));
 
         if (index >= 0 && index < items.length) {
@@ -379,7 +368,6 @@ const Choice = {
         }
     },
 
-    // Scroll selected item into view on open
     scrollSelectedIntoView(viewport) {
         const selectedItem = viewport.querySelector('.choice-item-active');
         if (selectedItem) {
@@ -388,29 +376,24 @@ const Choice = {
     },
 
 
-    // Handle item selection
     selectItem(choiceElementId, item) {
         const choiceElement = document.querySelector(`[data-choice-id="${choiceElementId}"]`);
         if (!choiceElement) return;
 
-        // Update UI state
         const items = choiceElement.querySelectorAll('.choice-item');
         items.forEach(i => i.classList.remove('choice-item-active'));
         item.classList.add('choice-item-active');
 
-        // Update trigger display
         const trigger = choiceElement.querySelector('.choice-trigger');
         const triggerText = trigger?.querySelector('.choice-text');
         if (triggerText) {
             triggerText.textContent = item.textContent.trim();
         }
 
-        // Close dropdown after selection
         this.closeDropdown(choiceElementId);
     },
     
 
-    // Wait for portal creation response
     async _waitForPortal(choiceElementId, timeout = 1000) {
         return new Promise((resolve, reject) => {
             const requesterId = `choice-${choiceElementId}`;
@@ -432,31 +415,7 @@ const Choice = {
     }
 };
 
-// Setup event listeners for infrastructure responses
-document.addEventListener('choice-click-outside', (event) => {
-    const { choiceId } = event.detail;
-    if (activeDropdown === choiceId) {
-        Choice.closeDropdown(choiceId);
-    }
-});
-
-document.addEventListener('choice-keyboard-select', (event) => {
-    const { choiceId, item, index } = event.detail;
-    if (activeDropdown === choiceId) {
-        Choice.selectItem(choiceId, item);
-    }
-});
-
-document.addEventListener('choice-keyboard-escape', (event) => {
-    const { choiceId } = event.detail;
-    if (activeDropdown === choiceId) {
-        Choice.closeDropdown(choiceId);
-    }
-});
-
-// Event delegation for choice item clicks only (trigger clicks handled by Blazor)
 document.addEventListener('click', (event) => {
-    // Handle item clicks
     const item = event.target.closest('.choice-item');
     if (item && !item.disabled) {
         event.preventDefault();
@@ -469,7 +428,6 @@ document.addEventListener('click', (event) => {
     }
 });
 
-// Export for RRBlazor proxy system
 export default {
     openDropdown: (choiceElementId, options) => Choice.openDropdown(choiceElementId, options),
     closeDropdown: (choiceElementId) => Choice.closeDropdown(choiceElementId),
@@ -478,7 +436,6 @@ export default {
         if (activeDropdown) {
             return Choice.closeDropdown(activeDropdown);
         }
-        // Clean up any orphaned portals and viewport locations
         activePortals.clear();
         viewportLocations.clear();
         return Promise.resolve(true);

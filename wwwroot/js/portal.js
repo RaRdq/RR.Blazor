@@ -89,7 +89,6 @@ class PortalManagerBase {
             throw new Error(`Portal ${id} not found - cannot destroy non-existent portal`);
         }
         
-        // Emit event before destroying (Dependency Inversion)
         const destroyEvent = new CustomEvent('portal-destroying', {
             detail: { portalId: id, portal: portal.element },
             bubbles: true,
@@ -97,22 +96,18 @@ class PortalManagerBase {
         });
         document.dispatchEvent(destroyEvent);
         
-        // Track if we're removing the highest z-index portal
         const wasMaxZIndex = portal.zIndex === this._maxZIndex;
         
         this._portals.delete(id);
         this._registry.delete(id);
         
-        // Update max z-index efficiently
         if (wasMaxZIndex && this._portals.size > 0) {
-            // Only recalculate if we removed the highest portal
             let newMax = PortalManagerBase._baseZIndex;
             this._portals.forEach(p => {
                 if (p.zIndex > newMax) newMax = p.zIndex;
             });
             this._maxZIndex = newMax;
         } else if (this._portals.size === 0) {
-            // Reset to base if no portals left
             this._maxZIndex = PortalManagerBase._baseZIndex;
         }
         
@@ -123,7 +118,6 @@ class PortalManagerBase {
         
         this._reindexPortals();
         
-        // Emit event after destroying
         const destroyedEvent = new CustomEvent('portal-destroyed', {
             detail: { portalId: id },
             bubbles: true
@@ -222,7 +216,6 @@ class PortalManagerBase {
     }
     
     _calculateZIndex() {
-        // Find the highest z-index among existing portals
         let maxZIndex = PortalManagerBase._baseZIndex;
         this._portals.forEach(portal => {
             if (portal.zIndex >= maxZIndex) {
@@ -241,7 +234,6 @@ class PortalManagerBase {
         let level = 0;
         this._portals.forEach((portal, id) => {
             const zIndex = PortalManagerBase._baseZIndex + (level * PortalManagerBase._zIndexIncrement);
-            // Update z-index directly to avoid error throwing
             portal.element.style.zIndex = zIndex.toString();
             portal.element.dataset.zIndex = zIndex.toString();
             portal.zIndex = zIndex;
@@ -251,23 +243,19 @@ class PortalManagerBase {
         });
     }
     
-    // Move element into portal and preserve original position
     moveToPortal(id, element) {
         const portal = this.getPortal(id);
         if (!portal) {
             throw new Error(`Portal ${id} not found`);
         }
         
-        // Store original position for restoration
         element._originalParent = element.parentElement;
         element._originalNextSibling = element.nextElementSibling;
         
-        // Move element into portal
         portal.element.appendChild(element);
         element.setAttribute('data-portal-positioned', 'true');
         element._portalPositioned = true;
         
-        // Emit event for other modules to react (Dependency Inversion)
         const moveEvent = new CustomEvent('portal-element-moved', {
             detail: { portalId: id, element },
             bubbles: true
@@ -277,13 +265,11 @@ class PortalManagerBase {
         return portal.element;
     }
     
-    // Restore element from portal to original position
     restoreFromPortal(id, element) {
         if (!element._portalPositioned) {
             return false;
         }
         
-        // Restore to original position
         if (element._originalParent) {
             if (element._originalNextSibling) {
                 element._originalParent.insertBefore(element, element._originalNextSibling);
@@ -294,18 +280,15 @@ class PortalManagerBase {
             delete element._originalNextSibling;
         }
         
-        // Clean up attributes
         element.removeAttribute('data-portal-positioned');
         delete element._portalPositioned;
         
-        // Emit event for cleanup (Dependency Inversion)
         const restoreEvent = new CustomEvent('portal-element-restored', {
             detail: { portalId: id, element },
             bubbles: true
         });
         document.dispatchEvent(restoreEvent);
         
-        // Destroy the portal itself
         this.destroy(id);
         
         return true;
@@ -347,7 +330,6 @@ document.addEventListener('portal-cleanup-all-request', () => {
     document.dispatchEvent(responseEvent);
 });
 
-// Auto-cleanup on page unload
 window.addEventListener('beforeunload', () => {
     if (PortalManager.hasInstance()) {
         PortalManager.getInstance().destroyAll();
@@ -355,10 +337,8 @@ window.addEventListener('beforeunload', () => {
     }
 });
 
-// Export for ES6 modules
 export default PortalManager;
 
-// Export pure DOM manipulation functions
 export function getInstance() {
     return PortalManager.getInstance();
 }

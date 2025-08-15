@@ -5,7 +5,6 @@ const RRDebugAPI = (() => {
         if (obj === null || obj === undefined) return obj;
         if (typeof obj === 'string') {
             try {
-                // AGGRESSIVE Unicode cleaning to prevent Claude Code API errors
                 let clean = obj
                     .replace(/[\u0000-\u001F\u007F-\u009F]/g, '') // Control characters
                     .replace(/[\uD800-\uDFFF]/g, '') // ALL surrogates - prevent "no low surrogate" errors
@@ -14,7 +13,6 @@ const RRDebugAPI = (() => {
                     .replace(/[^\x09\x0A\x0D\x20-\x7E\u00A0-\u017F\u0400-\u04FF]/g, '') // Only basic Latin + common extended
                     .trim();
                 
-                // Reasonable size limit while preserving useful data
                 if (clean.length > 1000) {
                     clean = clean.substring(0, 1000) + '...';
                 }
@@ -31,7 +29,6 @@ const RRDebugAPI = (() => {
         if (typeof obj === 'boolean') return obj;
         if (Array.isArray(obj)) {
             try {
-                // Keep reasonable amount of data while preventing Unicode issues
                 return obj.slice(0, 15).map(sanitizeForJSON).filter(item => item !== undefined);
             } catch (e) {
                 return [];
@@ -69,12 +66,10 @@ const RRDebugAPI = (() => {
             const sanitized = sanitizeForJSON(obj);
             const jsonString = JSON.stringify(sanitized);
             
-            // Additional validation - try to parse it back
             JSON.parse(jsonString);
             return jsonString;
         } catch (e) {
             try {
-                // Fallback: create minimal safe object
                 const fallback = {
                     error: 'JSON_STRINGIFY_FAILED',
                     message: String(e.message || 'Unknown error').substring(0, 100),
@@ -82,19 +77,15 @@ const RRDebugAPI = (() => {
                 };
                 return JSON.stringify(fallback);
             } catch (fallbackError) {
-                // Ultimate fallback
                 return '{"error":"COMPLETE_JSON_FAILURE","timestamp":"' + new Date().toISOString() + '"}';
             }
         }
     }
     
-    // CRITICAL ISSUES ONLY - Real problems that need fixing, not normal SPA patterns
     const CRITICAL_ISSUES = {
-        // Layout & Display Issues - Only truly broken elements
         brokenRender: el => {
             const s = getComputedStyle(el);
             const rect = el.getBoundingClientRect();
-            // Only flag visible elements that should have content but are broken
             return s.display !== 'none' && s.visibility !== 'hidden' && 
                    rect.width === 0 && rect.height === 0 && 
                    el.textContent?.trim() && el.textContent.length > 5;
@@ -103,13 +94,11 @@ const RRDebugAPI = (() => {
         criticalOverflow: el => {
             const rect = el.getBoundingClientRect();
             const s = getComputedStyle(el);
-            // Only flag elements that break layout AND are visible
             return s.display !== 'none' && s.visibility !== 'hidden' && 
                    rect.width > window.innerWidth * 1.5 && s.overflow === 'visible';
         },
         
         brokenForm: el => {
-            // Forms that can't be used
             return ['INPUT', 'BUTTON', 'SELECT', 'TEXTAREA'].includes(el.tagName) &&
                    !el.disabled && getComputedStyle(el).display !== 'none' &&
                    (getComputedStyle(el).opacity === '0' || 
@@ -117,7 +106,6 @@ const RRDebugAPI = (() => {
         },
         
         brokenInteraction: el => {
-            // Interactive elements that can't be clicked
             const rect = el.getBoundingClientRect();
             const s = getComputedStyle(el);
             const isInteractive = ['BUTTON', 'A'].includes(el.tagName) || el.onclick;
@@ -127,7 +115,6 @@ const RRDebugAPI = (() => {
         
         cssCorruption: el => {
             const s = getComputedStyle(el);
-            // Only flag truly corrupted CSS rules
             return s.minHeight === '44px' && 
                    !['BUTTON', 'INPUT', 'A', 'LABEL', 'SELECT', 'TEXTAREA'].includes(el.tagName);
         },
@@ -135,13 +122,11 @@ const RRDebugAPI = (() => {
         brokenLayout: el => {
             const rect = el.getBoundingClientRect();
             const s = getComputedStyle(el);
-            // Elements with impossible dimensions
             return rect.height > window.innerHeight * 10 || 
                    (s.display === 'grid' && !s.gridTemplateColumns && !s.gridTemplateRows && el.children.length > 5);
         },
         
         invalidCSS: el => {
-            // Only flag truly invalid CSS classes that break rendering
             return Array.from(el.classList).some(cls => 
                 cls.includes('undefined') || cls.includes('NaN') || cls.includes('null'));
         },
@@ -149,13 +134,11 @@ const RRDebugAPI = (() => {
         invisibleText: el => {
             const s = getComputedStyle(el);
             const hasText = el.textContent?.trim();
-            // Only flag text that is truly invisible but should be visible
             return hasText && hasText.length > 3 && s.display !== 'none' &&
                    (s.color === s.backgroundColor && s.color !== 'transparent' ||
                     s.color === 'transparent' && s.backgroundColor !== 'transparent');
         },
         
-        // Accessibility Issues - Only critical ones
         missingAltText: el => {
             return el.tagName === 'IMG' && !el.alt && !el.getAttribute('aria-label') && 
                    getComputedStyle(el).display !== 'none';
@@ -167,17 +150,14 @@ const RRDebugAPI = (() => {
                    getComputedStyle(el).display !== 'none';
         },
         
-        // Critical JavaScript Issues
         jsErrors: () => {
             return window.__RR_CONSOLE_ERRORS?.length > 0;
         },
         
-        // Critical Framework Issues  
         blazorError: el => {
             return el.getAttribute('b-error') || el.className.includes('blazor-error-boundary');
         },
         
-        // Duplicated IDs break functionality
         duplicateId: el => {
             if (!el.id) return false;
             try {
@@ -188,10 +168,8 @@ const RRDebugAPI = (() => {
             }
         },
         
-        // Critical Style Mismatches - Only check CSS class vs computed conflicts
         styleMismatch: el => {
             const s = getComputedStyle(el);
-            // Flag serious conflicts between CSS classes and computed styles
             const flexClassButNotFlex = (el.className.includes('flex') || el.className.includes('d-flex')) && 
                                       !s.display.includes('flex') && s.display !== 'none';
             
@@ -202,25 +180,20 @@ const RRDebugAPI = (() => {
         }
     };
 
-    // Removed external styles dependency - debug script should be self-contained
     
-    // Simple built-in expectations for common CSS classes
     function getBuiltInExpectations() {
         return {
-            // Form elements - critical for functionality
             'input': { padding: '!= 0px', border: '!= none', fontSize: '>= 14px' },
             'input-outlined': { border: 'includes solid', borderRadius: '!= 0px' },
             'input-filled': { backgroundColor: '!= rgba(0, 0, 0, 0)' },
             'input-lg': { fontSize: '>= 16px', minHeight: '>= 44px' },
             'input-sm': { fontSize: '<= 14px' },
             
-            // Buttons - critical for interaction
             'button': { padding: '!= 0px', cursor: '== pointer' },
             'button-primary': { backgroundColor: '!= rgba(0, 0, 0, 0)' },
             'button-lg': { minHeight: '>= 44px' },
             'btn': { padding: '!= 0px', cursor: '== pointer' },
             
-            // Layout utilities
             'w-full': { width: 'includes 100%' },
             'h-full': { height: 'includes 100%' },
             'flex': { display: '== flex' },
@@ -231,17 +204,14 @@ const RRDebugAPI = (() => {
             'absolute': { position: '== absolute' },
             'fixed': { position: '== fixed' },
             
-            // Spacing
             'p-0': { padding: '== 0px' },
             'm-0': { margin: '== 0px' },
             'm-auto': { margin: 'includes auto' },
             
-            // Typography
             'text-lg': { fontSize: '>= 18px' },
             'text-sm': { fontSize: '<= 14px' },
             'font-bold': { fontWeight: '>= 700' },
             
-            // Interactive states
             'cursor-pointer': { cursor: '== pointer' },
             'cursor-not-allowed': { cursor: '== not-allowed' },
             'opacity-50': { opacity: '== 0.5' },
@@ -494,7 +464,6 @@ const RRDebugAPI = (() => {
                     issues[type]++;
                     issues.total++;
                     
-                    // Store reference to problematic element for AI agents
                     detectedIssues.push({
                         type,
                         element: el,
@@ -509,7 +478,6 @@ const RRDebugAPI = (() => {
             });
         });
 
-        // More reasonable scoring: Only critical issues matter
         const criticalCount = issues.cssCorruption + issues.brokenForm + issues.brokenInteraction + 
                              issues.blazorError + issues.jsErrors + issues.invalidCSS;
         const score = Math.max(0, 100 - (criticalCount * 5) - (issues.total * 0.5));

@@ -12,15 +12,19 @@
 @using RR.Blazor.Components.Form
 @using RR.Blazor.Enums
 @using RR.Blazor.Services
+@using RR.Blazor.Utilities
+@using static RR.Blazor.Enums.ChoiceVariant
+@using static RR.Blazor.Enums.ChoiceType
+@using static RR.Blazor.Enums.ChoiceDirection
 @implements IAsyncDisposable
 
-<div class="@GetFormWrapperClasses()">
+<div class="@GetComponentClasses()">
     @if (!string.IsNullOrEmpty(Label))
     {
         <label class="@GetLabelClasses()">@Label</label>
     }
     
-    @if (EffectiveVariant == ChoiceVariant.Dropdown || TriggerContent != null)
+    @if (EffectiveVariant == Dropdown || TriggerContent != null)
     {
         <div @ref="choiceElement" class="choice choice-dropdown relative @GetDropdownDensityClass()" 
              data-choice-id="@choiceElementId">
@@ -34,7 +38,7 @@
                         aria-label="@(AriaLabel ?? "Open dropdown")"
                         disabled="@Disabled"
                         @onclick="ToggleDropdown">
-                    <div class="d-flex align-center justify-between w-full">
+                    <div class="@GetTriggerContentClasses()">
                         @TriggerContent
                     </div>
                 </button>
@@ -48,12 +52,12 @@
                         aria-label="@(AriaLabel ?? "Open dropdown")"
                         disabled="@Disabled"
                         @onclick="ToggleDropdown">
-                    <div class="d-flex align-center gap-2">
+                    <div class="@GetTriggerClasses()">
                         @if (!string.IsNullOrEmpty(GetSelectedItemIcon()))
                         {
-                            <i class="material-symbols-rounded choice-icon">@GetSelectedItemIcon()</i>
+                            <i class="@GetIconClasses()">@GetSelectedItemIcon()</i>
                         }
-                        <span class="choice-text">@GetSelectedItemLabel()</span>
+                        <span class="@GetTextClasses()">@GetSelectedItemLabel()</span>
                     </div>
                 </button>
             }
@@ -89,11 +93,11 @@
                                     @onclick="() => OnItemSelected(item)">
                                 @if (IsItemActive(item) && ShowActiveIndicator)
                                 {
-                                    <i class="material-symbols-rounded choice-check">check</i>
+                                    <i class="@GetCheckIconClasses()">check</i>
                                 }
                                 else if (!string.IsNullOrEmpty(GetItemIcon(item)))
                                 {
-                                    <i class="material-symbols-rounded choice-icon">@GetItemIcon(item)</i>
+                                    <i class="@GetItemIconClasses()">@GetItemIcon(item)</i>
                                 }
                                 <span class="choice-text">@GetItemLabel(item)</span>
                             </button>
@@ -118,7 +122,7 @@
                             @onclick="() => OnItemSelected(item)">
                         @if (!string.IsNullOrEmpty(GetItemIcon(item)))
                         {
-                            <i class="material-symbols-rounded choice-icon">@GetItemIcon(item)</i>
+                            <i class="@GetItemIconClasses()">@GetItemIcon(item)</i>
                         }
                         @if (ShowLabels && !string.IsNullOrEmpty(GetItemLabel(item)))
                         {
@@ -126,12 +130,12 @@
                         }
                         @if (IsItemActive(item) && ShowActiveIndicator)
                         {
-                            <i class="material-symbols-rounded choice-check">check</i>
+                            <i class="@GetCheckIconClasses()">check</i>
                         }
                         @if (IsItemLoading(item))
                         {
                             <div class="choice-loading">
-                                <i class="material-symbols-rounded animate-spin">hourglass_empty</i>
+                                <i class="@GetLoadingIconClasses()">hourglass_empty</i>
                             </div>
                         }
                     </button>
@@ -143,7 +147,7 @@
     @if (HasError && !string.IsNullOrEmpty(ErrorMessage))
     {
         <div class="@GetErrorMessageClasses()">
-            <i class="material-symbols-rounded text-error mr-1">error</i>
+            <i class="@GetErrorIconClasses()">error</i>
             @ErrorMessage
         </div>
     }
@@ -173,8 +177,7 @@
     [Parameter] public Func<TValue, string> ItemAriaLabelSelectorTyped { get; set; }
     [Parameter] public Func<TValue, bool> ItemDisabledSelectorTyped { get; set; }
     [Parameter] public Func<TValue, bool> ItemLoadingSelectorTyped { get; set; }
-    [Parameter] public ChoiceVariant EffectiveVariant { get; set; } = ChoiceVariant.Inline;
-    [Parameter] public ChoiceStyle Style { get; set; } = ChoiceStyle.Standard;
+    [Parameter] public ChoiceVariant EffectiveVariant { get; set; } = Inline;
     [Parameter] public RenderFragment TriggerContent { get; set; }
     [Parameter] public RenderFragment<object> ItemTemplate { get; set; }
     [Parameter] public EventCallback<TValue> OnItemClick { get; set; }
@@ -191,63 +194,116 @@
     private string GetInlineClass()
     {
         var styleClass = GetStyleClass();
-        var densityClass = GetDensityClass();
-        var directionClass = Direction == ChoiceDirection.Vertical ? " choice-vertical flex-col" : "";
+        var densityClass = DensityHelper.GetGap(Density);
+        var directionClass = Direction == Vertical ? " choice-vertical flex-col" : "";
         
         return $"choice-inline {styleClass} {densityClass}{directionClass}";
     }
     
-    private string GetStyleClass() => Style switch
+    private string GetStyleClass() => Type switch
     {
-        ChoiceStyle.Pills => "choice-pills d-flex gap-2",
-        ChoiceStyle.Tabs => "choice-tabs d-flex border-b border-light", 
-        ChoiceStyle.Buttons => "choice-buttons d-flex gap-1",
-        ChoiceStyle.Compact => "choice-compact d-flex gap-0-5",
-        _ => "choice-switcher d-flex gap-1 p-1 bg-surface rounded-lg"
+        ChoiceType.Pills => "choice-pills d-flex",
+        ChoiceType.Tabs => "choice-tabs d-flex border-b border-light", 
+        ChoiceType.Buttons => "choice-buttons d-flex",
+        ChoiceType.Compact => "choice-compact d-flex",
+        _ => "choice-switcher d-flex p-1 bg-surface rounded-lg"
     };
     
     private string GetDensityClass() => Density switch
     {
-        DensityType.Compact => "choice-compact gap-0-5 p-0-5",
-        DensityType.Dense => "choice-dense gap-1 p-1", 
-        DensityType.Spacious => "choice-spacious gap-3 p-3",
-        _ => "choice-normal gap-2 p-2"
+        DensityType.Compact => "choice-compact",
+        DensityType.Dense => "choice-dense", 
+        DensityType.Spacious => "choice-spacious",
+        _ => "choice-normal"
     };
 
-    private string GetDropdownDensityClass() => Density switch
-    {
-        DensityType.Compact => "choice-compact py-1 px-2 text-sm",
-        DensityType.Dense => "choice-dense py-2 px-3 text-sm", 
-        DensityType.Spacious => "choice-spacious py-4 px-6 text-lg",
-        _ => "choice-normal py-3 px-4 text-base"
-    };
+    private string GetDropdownDensityClass() => 
+        $"choice-dropdown {GetDensityClass()} {DensityHelper.GetInputDensityClasses(Density)}";
 
     private string GetItemClass(TValue item)
     {
-        var baseClass = "choice-item d-flex align-center gap-2 px-3 py-2 text-sm cursor-pointer transition-all hover-bg-surface-elevated";
+        var baseClasses = new List<string>
+        {
+            "choice-item",
+            GetTextSizeClasses(),
+            DensityHelper.GetInputDensityClasses(Density)
+        };
         
-        if (IsItemDisabled(item)) return $"{baseClass} choice-item-disabled opacity-50 cursor-not-allowed hover-bg-transparent";
-        if (IsItemLoading(item)) return $"{baseClass} choice-item-loading opacity-75";
-        if (IsItemActive(item)) return $"{baseClass} choice-item-active bg-primary text-on-primary font-medium";
+        if (IsItemDisabled(item)) baseClasses.Add("choice-item-disabled");
+        if (IsItemLoading(item)) baseClasses.Add("choice-item-loading");
+        if (IsItemActive(item)) baseClasses.Add("choice-item-active");
         
-        return $"{baseClass} text-secondary hover-text-primary";
+        return string.Join(" ", baseClasses);
     }
 
-    private string GetFormWrapperClasses()
+    /// <summary>
+    /// Gets the main component wrapper classes using design system patterns
+    /// </summary>
+    private string GetComponentClasses()
     {
-        var baseClass = "choice-form-wrapper form-wrapper";
-        var customClass = !string.IsNullOrEmpty(Class) ? $" {Class}" : "";
-        var errorClass = HasError ? " choice-error form-error border-error" : "";
-        var disabledClass = Disabled ? " choice-disabled opacity-50 cursor-not-allowed" : "";
+        var classes = new List<string>();
         
-        return $"{baseClass}{customClass}{errorClass}{disabledClass}";
+        // Use %component-foundation pattern
+        var needsFormWrapper = !string.IsNullOrEmpty(Label) || !string.IsNullOrEmpty(ErrorMessage) || HasError;
+        if (needsFormWrapper) classes.Add("form-wrapper");
+        
+        classes.Add(GetBaseClasses());
+        classes.Add(GetSizeClassesWithDensity());
+        
+        if (HasError) classes.Add("choice-error form-error");
+        if (Disabled) classes.Add("choice-disabled");
+        
+        return string.Join(" ", classes.Where(c => !string.IsNullOrEmpty(c)));
     }
     
     private string GetLabelClasses() => 
-        "choice-label form-label text-sm font-medium text-secondary mb-2" + (Required ? " choice-label-required form-label-required" : "");
+        $"choice-label form-label {GetTextSizeClasses()} font-medium text-secondary mb-2" + (Required ? " choice-label-required form-label-required" : "");
     
-    private string GetErrorMessageClasses() => "choice-error-message form-error text-error text-sm mt-1 d-flex align-center gap-1";
-    private string GetHelpTextClasses() => "choice-help-text form-help text-muted text-sm mt-1";
+    private string GetErrorMessageClasses() => 
+        $"choice-error-message form-error text-error {GetTextSizeClasses()} mt-1 d-flex align-center {DensityHelper.GetGap(Density)}";
+        
+    private string GetHelpTextClasses() => 
+        $"choice-help-text form-help text-muted {GetTextSizeClasses()} mt-1";
+    
+    #region New Semantic CSS Class Methods
+    
+    /// <summary>
+    /// Gets trigger content wrapper classes using design system patterns
+    /// </summary>
+    private string GetTriggerContentClasses() =>
+        $"d-flex align-center justify-between w-full {DensityHelper.GetGap(Density)}";
+    
+    /// <summary>
+    /// Gets trigger classes using design system patterns
+    /// </summary>
+    private string GetTriggerClasses() =>
+        $"d-flex align-center {DensityHelper.GetGap(Density)}";
+    
+    /// <summary>
+    /// Gets icon classes using design system patterns  
+    /// </summary>
+    private string GetItemIconClasses() =>
+        $"material-symbols-rounded choice-icon {GetIconSizeClasses()}";
+    
+    /// <summary>
+    /// Gets check icon classes using design system patterns
+    /// </summary>
+    private string GetCheckIconClasses() =>
+        $"material-symbols-rounded choice-check {GetIconSizeClasses()}";
+    
+    /// <summary>
+    /// Gets loading icon classes using design system patterns
+    /// </summary>
+    private string GetLoadingIconClasses() =>
+        $"material-symbols-rounded animate-spin {GetIconSizeClasses()}";
+    
+    /// <summary>
+    /// Gets error icon classes using design system patterns
+    /// </summary>
+    private string GetErrorIconClasses() =>
+        $"material-symbols-rounded text-error mr-1 {GetIconSizeClasses()}";
+    
+    #endregion
 
     private bool IsItemActive(TValue item) => EqualityComparer<TValue>.Default.Equals(item, SelectedValue);
     private bool IsItemDisabled(TValue item) => ItemDisabledSelectorTyped?.Invoke(item) ?? false;
@@ -321,14 +377,12 @@
         if (SelectedValueChangedTyped.HasDelegate) await SelectedValueChangedTyped.InvokeAsync(item);
         if (SelectedValueChangedObject.HasDelegate) await SelectedValueChangedObject.InvokeAsync(item);
         
-        if (EffectiveVariant == ChoiceVariant.Dropdown && CloseOnSelect) await CloseDropdown();
+        if (EffectiveVariant == Dropdown && CloseOnSelect) await CloseDropdown();
     }
     
     public async ValueTask DisposeAsync()
     {
         if (disposed) return;
         disposed = true;
-        
-        // No cleanup needed - JS handles state
     }
 }

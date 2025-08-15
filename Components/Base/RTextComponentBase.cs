@@ -62,11 +62,12 @@ namespace RR.Blazor.Components.Base
         /// </summary>
         protected virtual string GetTextClasses()
         {
-            var classes = new List<string>();
-            
-            classes.Add(GetTextSizeClasses());
-            classes.Add(GetDensityTextClasses());
-            
+            var classes = new List<string>
+            {
+                GetTextSizeClasses(),
+                GetDensityTextClasses()
+            };
+
             return string.Join(" ", classes.Where(c => !string.IsNullOrEmpty(c)));
         }
         
@@ -77,12 +78,11 @@ namespace RR.Blazor.Components.Base
         {
             var classes = new List<string>
             {
-                "material-symbols-rounded"
+                "material-symbols-rounded",
+                GetIconSizeClasses(),
+                GetDensityIconClasses()
             };
-            
-            classes.Add(GetIconSizeClasses());
-            classes.Add(GetDensityIconClasses());
-            
+
             return string.Join(" ", classes.Where(c => !string.IsNullOrEmpty(c)));
         }
         

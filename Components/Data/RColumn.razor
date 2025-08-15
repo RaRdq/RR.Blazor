@@ -1,6 +1,5 @@
 @using RR.Blazor.Models
 @using System.Linq.Expressions
-@using System.Reflection
 @inherits RColumnBase
 
 @code {
@@ -14,6 +13,12 @@
     
     protected override void OnInitialized()
     {
+        // Validate required parameters
+        if (string.IsNullOrEmpty(Property) && For == null)
+        {
+            throw new InvalidOperationException("Column must specify either Property or For parameter");
+        }
+        
         if (ParentTable != null && TableContext?.ItemType != null)
         {
             var columnDef = CreateColumnDefinition();
@@ -32,207 +37,101 @@
         
         if (!string.IsNullOrEmpty(Property))
         {
-            return CreateColumnFromProperty(Property);
+            return CreateColumnFromProperty(Property, itemType);
         }
         
         if (For != null)
         {
-            return CreateColumnFromLambda(For);
+            return CreateColumnFromLambda(For, itemType);
         }
         
         throw new InvalidOperationException("Column must specify either Property or For parameter");
     }
     
-    private object CreateColumnFromProperty(string propertyName)
-    {
-        var itemType = TableContext.ItemType;
-        var propertyInfo = itemType.GetProperty(propertyName);
-        
-        var parameter = Expression.Parameter(itemType, "x");
-        var propertyAccess = Expression.Property(parameter, propertyInfo);
-        var converted = propertyInfo.PropertyType != typeof(object) 
-            ? Expression.Convert(propertyAccess, typeof(object))
-            : (Expression)propertyAccess;
-            
-        var funcType = typeof(Func<,>).MakeGenericType(itemType, typeof(object));
-        var lambda = Expression.Lambda(funcType, converted, parameter);
-        
-        return CreateColumnDefinition(itemType, lambda, propertyName);
-    }
-    
-    private object CreateColumnFromLambda(object lambda)
-    {
-        var itemType = TableContext.ItemType;
-        var lambdaExpr = (LambdaExpression)lambda;
-        var propertyName = GetPropertyNameFromLambda(lambdaExpr);
-        var convertedLambda = ConvertLambdaExpression(lambdaExpr, itemType);
-        
-        return CreateColumnDefinition(itemType, convertedLambda, propertyName);
-    }
-    
-    private object CreateColumnDefinition(Type itemType, object typedLambda, string propertyName)
+    private object CreateColumnFromProperty(string propertyName, Type itemType)
     {
         var columnDefType = typeof(ColumnDefinition<>).MakeGenericType(itemType);
         var columnDef = Activator.CreateInstance(columnDefType);
         
-        SetProperty(columnDef, "Property", typedLambda);
-        SetProperty(columnDef, "CompiledProperty", CompileExpression(typedLambda));
-        SetProperty(columnDef, "Title", Header ?? Title ?? propertyName);
-        SetProperty(columnDef, "Key", propertyName);
-        SetProperty(columnDef, "Sortable", Sortable ?? true); // Default: sortable
-        SetProperty(columnDef, "Searchable", Searchable ?? true); // Default: searchable
-        SetProperty(columnDef, "Width", Width);
-        SetProperty(columnDef, "Format", Format);
-        SetProperty(columnDef, "EmptyText", EmptyText ?? "-");
-        SetProperty(columnDef, "Order", Order);
-        SetProperty(columnDef, "Visible", Visible);
+        SetColumnProperties(columnDef, propertyName);
+        return columnDef;
+    }
+    
+    private object CreateColumnFromLambda(object lambda, Type itemType)
+    {
+        var columnDefType = typeof(ColumnDefinition<>).MakeGenericType(itemType);
+        var columnDef = Activator.CreateInstance(columnDefType);
         
-        // Handle custom template - prioritize CellTemplate parameter, then ChildContent
-        RenderFragment<object> templateToUse = null;
-        if (CellTemplate != null)
-        {
-            // Direct CellTemplate parameter (for programmatic use)
-            templateToUse = CellTemplate;
-        }
-        else if (ChildContent != null)
-        {
-            // ChildContent might contain a CellTemplate component or direct content
-            // We'll treat it as a template either way
-            templateToUse = context => ChildContent;
-        }
-        
-        if (templateToUse != null)
-        {
-            // Create a typed RenderFragment<TItem> from the template
-            var typedTemplate = CreateTypedTemplate(itemType, templateToUse);
-            SetProperty(columnDef, "CustomTemplate", typedTemplate);
-        }
+        var propertyName = ExtractPropertyName(lambda);
+        SetColumnProperties(columnDef, propertyName);
         
         return columnDef;
     }
     
-    private string GetPropertyNameFromLambda(LambdaExpression lambda)
+    private void SetColumnProperties(object columnDef, string propertyName)
     {
-        return lambda.Body switch
-        {
-            MemberExpression member => member.Member.Name,
-            UnaryExpression { Operand: MemberExpression member } => member.Member.Name,
-            _ => ""
-        };
-    }
-    
-    private void SetProperty(object obj, string propertyName, object value)
-    {
-        var property = obj.GetType().GetProperty(propertyName);
-        property.SetValue(obj, value);
-    }
-    
-    private object CreateTypedTemplate(Type itemType, RenderFragment<object> template)
-    {
-        // Use reflection to create a typed RenderFragment<TItem> from RenderFragment<object>
-        var renderMethod = typeof(RColumn).GetMethod(nameof(CreateRenderFragment), BindingFlags.NonPublic | BindingFlags.Static);
-        var genericMethod = renderMethod.MakeGenericMethod(itemType);
-        return genericMethod.Invoke(null, new object[] { template });
-    }
-    
-    private static RenderFragment<TItem> CreateRenderFragment<TItem>(RenderFragment<object> template) where TItem : class
-    {
-        // Convert RenderFragment<object> to RenderFragment<TItem>
-        // The template expects 'context' as the parameter name, which is the default
-        return (TItem item) => template(item);
-    }
-    
-    private object ConvertLambdaExpression(object lambda, Type itemType)
-    {
-        var lambdaExpr = (LambdaExpression)lambda;
-        var funcType = typeof(Func<,>).MakeGenericType(itemType, typeof(object));
+        var type = columnDef.GetType();
         
-        var parameter = lambdaExpr.Parameters[0];
-        var body = lambdaExpr.Body;
+        SetProperty(type, columnDef, "Title", Header ?? Title ?? propertyName);
+        SetProperty(type, columnDef, "Key", propertyName);
+        SetProperty(type, columnDef, "Sortable", Sortable ?? true);
+        SetProperty(type, columnDef, "Searchable", Searchable ?? true);
+        SetProperty(type, columnDef, "Width", Width);
+        SetProperty(type, columnDef, "MinWidth", MinWidth);
+        SetProperty(type, columnDef, "MaxWidth", MaxWidth);
+        SetProperty(type, columnDef, "Format", Format);
+        SetProperty(type, columnDef, "EmptyText", EmptyText ?? "-");
+        SetProperty(type, columnDef, "Order", Order);
+        SetProperty(type, columnDef, "Visible", Visible);
+        SetProperty(type, columnDef, "Class", Class);
+        SetProperty(type, columnDef, "HeaderClass", HeaderClass);
+        SetProperty(type, columnDef, "CellClass", CellClass);
         
-        if (body.Type != typeof(object) && body.Type.IsValueType)
+        if (CellTemplate != null)
         {
-            body = Expression.Convert(body, typeof(object));
+            SetProperty(type, columnDef, "CustomTemplate", CellTemplate);
         }
-        
-        var newParameter = Expression.Parameter(itemType, parameter.Name);
-        var visitor = new ParameterReplacerVisitor(parameter, newParameter);
-        var newBody = visitor.Visit(body);
-        
-        return Expression.Lambda(funcType, newBody, newParameter);
-    }
-    
-    private object CompileExpression(object expression)
-    {
-        var compileMethod = expression.GetType().GetMethod("Compile", Type.EmptyTypes);
-        return compileMethod.Invoke(expression, null);
-    }
-    
-    private string GetPropertyName()
-    {
-        // First try Property parameter (string-based, compile-time safe)
-        if (!string.IsNullOrEmpty(Property))
-            return Property;
-            
-        // Then try extracting from lambda expression (if it compiled successfully)
-        if (For is LambdaExpression lambda)
+        else if (ChildContent != null)
         {
-            return lambda.Body switch
+            var template = new RenderFragment<object>(context => ChildContent);
+            SetProperty(type, columnDef, "CustomTemplate", template);
+        }
+    }
+    
+    private void SetProperty(Type type, object obj, string propertyName, object value)
+    {
+        var property = type.GetProperty(propertyName);
+        if (property != null && property.CanWrite)
+        {
+            try
             {
-                MemberExpression member => member.Member.Name,
-                UnaryExpression { Operand: MemberExpression member } => member.Member.Name,
-                _ => ""
-            };
+                property.SetValue(obj, value);
+            }
+            catch
+            {
+                // Ignore property setting errors for compatibility
+            }
         }
-        return "";
     }
     
-    private object CreateTypedExpressionFromProperty(string propertyName, Type itemType)
+    private string ExtractPropertyName(object lambda)
     {
         try
         {
-            // Get the property info
-            var propertyInfo = itemType.GetProperty(propertyName);
-            if (propertyInfo == null)
-                return null;
-                
-            // Create parameter: x => 
-            var parameter = Expression.Parameter(itemType, "x");
-            
-            // Create property access: x.PropertyName
-            var propertyAccess = Expression.Property(parameter, propertyInfo);
-            
-            // Convert to object if needed: (object)x.PropertyName
-            var body = propertyInfo.PropertyType != typeof(object) 
-                ? Expression.Convert(propertyAccess, typeof(object))
-                : (Expression)propertyAccess;
-                
-            // Create the lambda: x => (object)x.PropertyName
-            var funcType = typeof(Func<,>).MakeGenericType(itemType, typeof(object));
-            var lambda = Expression.Lambda(funcType, body, parameter);
-            
-            return lambda;
+            if (lambda is LambdaExpression lambdaExpr)
+            {
+                return lambdaExpr.Body switch
+                {
+                    MemberExpression member => member.Member.Name,
+                    UnaryExpression { Operand: MemberExpression member } => member.Member.Name,
+                    _ => "Column"
+                };
+            }
+            return "Column";
         }
         catch
         {
-            return null;
-        }
-    }
-    
-    private class ParameterReplacerVisitor : ExpressionVisitor
-    {
-        private readonly ParameterExpression _oldParameter;
-        private readonly ParameterExpression _newParameter;
-        
-        public ParameterReplacerVisitor(ParameterExpression oldParameter, ParameterExpression newParameter)
-        {
-            _oldParameter = oldParameter;
-            _newParameter = newParameter;
-        }
-        
-        protected override Expression VisitParameter(ParameterExpression node)
-        {
-            return node == _oldParameter ? _newParameter : base.VisitParameter(node);
+            return "Column";
         }
     }
 }

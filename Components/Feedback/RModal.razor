@@ -65,7 +65,19 @@
                             </div>
                         </div>
                     }
-                    @ChildContent
+                    @if (EnableSmartSkeleton)
+                    {
+                        <RSkeleton Loading="@Loading" 
+                                   SmartMode="true" 
+                                   UseGlassEffect="@UseSkeletonGlass"
+                                   Class="@GetSkeletonWrapperClasses()">
+                            @ChildContent
+                        </RSkeleton>
+                    }
+                    else
+                    {
+                        @ChildContent
+                    }
                 </div>
                 
                 @if (ShowFooter)
@@ -159,6 +171,9 @@
     [Parameter] public string ProcessingButtonText { get; set; }
     [Parameter] public bool ShowProcessingOverlay { get; set; } = true;
     [Parameter] public bool ShowPrimaryButtonSpinner { get; set; } = true;
+
+    [Parameter] public bool EnableSmartSkeleton { get; set; } = true;
+    [Parameter] public bool UseSkeletonGlass { get; set; } = true;
 
     [Parameter] public bool ShowUnsavedIndicator { get; set; }
     [Parameter] public bool HasUnsavedChanges { get; set; }
@@ -305,13 +320,6 @@
         isPortalCreated = false;
     }
     
-    private string GetFullViewportStyles()
-    {
-        return $@"
-            z-index: {modalZIndex} !important;
-        ";
-    }
-    
     private string GetBackdropClass()
     {
         var variantClass = Variant switch
@@ -356,6 +364,18 @@
     }
     
     
+    private string GetSkeletonWrapperClasses()
+    {
+        var classes = new List<string>();
+        
+        if (Density == DensityType.Compact)
+            classes.Add("skeleton-compact");
+        else if (Density == DensityType.Spacious)
+            classes.Add("skeleton-spacious");
+            
+        return string.Join(" ", classes);
+    }
+
     private async Task HandleClose()
     {
         if (!Processing)
@@ -618,7 +638,4 @@ public async ValueTask DisposeAsync()
     }
     
     #endregion
-    
-    // Modal.js already handles backdrop/escape events via custom DOM events
-    // The existing HandleClose() method handles all closing scenarios correctly
 }

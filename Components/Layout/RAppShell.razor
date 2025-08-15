@@ -17,6 +17,7 @@
 @inject IToastService ToastService
 @inject IAppSearchService SearchService
 @inject IAppConfigurationService ConfigService
+@inject NavigationManager NavigationManager
 @implements IAsyncDisposable
 
 @attribute [Component("RAppShell", Category = "Layout", Complexity = ComponentComplexity.Complex)]
@@ -99,50 +100,35 @@
             <div class="app-header-right">
                 @if (ShowSearch)
                 {
-                    <div class="relative d-flex align-center gap-2 transition-all @(SearchCollapsible && searchExpanded ? "search-expanded z-dropdown" : "")">
-                        @if (!SearchCollapsible || searchExpanded)
-                        {
-                            <div class="transition-all overflow-hidden @(SearchCollapsible ? (searchExpanded ? "w-64 md:w-56 sm:w-48 visible" : "w-0 invisible") : "w-64 md:w-56 sm:w-48")">
-                                <RAutosuggestGeneric 
-                                                   Value="@selectedSearchResult"
-                                                   ValueChanged="@(EventCallback.Factory.Create<AppSearchResult>(this, HandleSearchResultSelected))"
-                                                   SearchFunc="@HandleSearchAsync"
-                                                   ItemTextSelector="@(result => result.Title)"
-                                                   ItemIconSelector="@(result => result.Icon)"
-                                                   ItemTemplate="@SearchResultTemplate"
-                                                   Placeholder="Search..."
-                                                   StartIcon="search"
-                                                   MinSearchLength="1"
-                                                   DebounceDelay="300"
-                                                   MaxSuggestions="8"
-                                                   ShowLoading="true"
-                                                   ShowDropdownIcon="false"
-                                                   OnItemSelected="@(EventCallback.Factory.Create<AppSearchResult>(this, HandleSearchItemSelected))"
-                                                   OnSearchChanged="@HandleSearchQueryChanged"
-                                                   OnBlur="@(SearchCollapsible ? HandleSearchBlur : null)"
-                                                   Class="w-full" />
+                    <div class="app-search-container" data-search-container>
+                        <div class="search-icon-container @(searchExpanded ? "search-expanded" : "")">
+                            @if (!searchExpanded && SearchCollapsible)
+                            {
+                                <RButton Icon="search" 
+                                         Variant="ButtonVariant.Ghost"
+                                         Size="SizeType.Small"
+                                         OnClick="@ExpandSearch"
+                                         AriaLabel="Open search"
+                                         Class="search-toggle-button touch-target" />
+                            }
+                            
+                            <div class="search-input-container">
+                                <RAutosuggestGeneric TItem="AppSearchResult" 
+                                                     @bind-Value="selectedSearchResult"
+                                                     SearchFunc="@SearchAppSearchResultsAsync"
+                                                     ItemTextSelector="@(r => r.Title)"
+                                                     ItemIconSelector="@(r => r.Icon)"
+                                                     Placeholder="Search..."
+                                                     Size="SizeType.Small"
+                                                     Icon="search"
+                                                     ShowDropdownIcon="false"
+                                                     ClearOnSelect="true"
+                                                     MinSearchLength="1"
+                                                     DebounceDelay="300"
+                                                     OnItemSelected="@HandleSearchItemSelected"
+                                                     Class="search-autosuggest" />
                             </div>
-                        }
-                        
-                        @if (SearchCollapsible && !searchExpanded)
-                        {
-                            <RButton Icon="search" 
-                                     Variant="ButtonVariant.Ghost" 
-                                     Size="SizeType.Small"
-                                     OnClick="@ExpandSearch" 
-                                     AriaLabel="Open search" 
-                                     Class="touch-target" />
-                        }
-                        
-                        @if (SearchCollapsible && searchExpanded)
-                        {
-                            <RButton Icon="close" 
-                                     Variant="ButtonVariant.Ghost" 
-                                     Size="SizeType.Small"
-                                     OnClick="@CollapseSearch" 
-                                     AriaLabel="Close search" 
-                                     Class="shrink-0 touch-target" />
-                        }
+                        </div>
                     </div>
                 }
                 
@@ -292,8 +278,6 @@
     [Parameter, AIParameter("Control app shell features", "AppShellFeatures.All for full features, AppShellFeatures.Minimal for basic layout")] 
     public AppShellFeatures Features { get; set; } = AppShellFeatures.All;
     
-    /// <summary>Make search collapsible on mobile</summary>
-    [Parameter] public bool SearchCollapsible { get; set; } = true;
     
     /// <summary>Notification count for badge</summary>
     [Parameter] public int NotificationCount { get; set; }
@@ -404,8 +388,8 @@
     /// <summary>Sidebar state changed callback</summary>
     [Parameter] public EventCallback<bool> SidebarCollapsedChanged { get; set; }
     
-    /// <summary>Search query changed callback</summary>
-    [Parameter] public EventCallback<string> SearchChanged { get; set; }
+    /// <summary>Make search collapsible on mobile</summary>
+    [Parameter] public bool SearchCollapsible { get; set; } = true;
     
     /// <summary>Notification button clicked callback</summary>
     [Parameter] public EventCallback NotificationsClicked { get; set; }
@@ -419,9 +403,8 @@
     private bool disposed = false;
     private bool sidebarCollapsed = false;
     private bool sidebarOpen = true;
-    private bool searchExpanded = false;
     private AppSearchResult selectedSearchResult;
-    private string currentSearchQuery = string.Empty;
+    private bool searchExpanded = false;
     private bool ShowSidebar => Features.HasFlag(AppShellFeatures.Sidebar);
     private bool ShowHeader => Features.HasFlag(AppShellFeatures.Header);
     private bool ShowToasts => Features.HasFlag(AppShellFeatures.Toasts);
@@ -459,16 +442,17 @@
         {
             try
             {
-                // Import the app-shell module to register global functions
                 appShellModule = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/RR.Blazor/js/app-shell.js");
                 await appShellModule.InvokeVoidAsync("initialize");
                 IsMobile = await JS.InvokeAsync<bool>("RRAppShell.isMobile");
+                
+                dotNetRef = DotNetObjectReference.Create(this);
+                await appShellModule.InvokeVoidAsync("setDotNetRef", dotNetRef);
                 
                 if (IsMobile)
                 {
                     sidebarOpen = false;
                 }
-                
                 
                 StateHasChanged();
             }
@@ -538,103 +522,59 @@
         await NotificationsClicked.InvokeAsync();
     }
     
-    private RenderFragment<AppSearchResult> SearchResultTemplate => result => __builder =>
-    {
-        <div class="search-result-content">
-            @if (!string.IsNullOrEmpty(result.Icon))
-            {
-                <i class="material-symbols-rounded search-result-icon">@result.Icon</i>
-            }
-            <div class="search-result-text">
-                <div class="search-result-title">@result.Title</div>
-                @if (!string.IsNullOrEmpty(result.Description))
-                {
-                    <div class="search-result-description">@result.Description</div>
-                }
-            </div>
-            <span class="search-result-category">@result.Category</span>
-        </div>
-    };
 
-    private async Task<IEnumerable<AppSearchResult>> HandleSearchAsync(string query, CancellationToken cancellationToken)
+    private async Task<IEnumerable<AppSearchResult>> SearchAppSearchResultsAsync(string query, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(query)) return Enumerable.Empty<AppSearchResult>();
-        
         try
         {
-            var results = await SearchService.SearchAsync(query, cancellationToken);
-            return results ?? Enumerable.Empty<AppSearchResult>();
-        }
-        catch (OperationCanceledException)
-        {
-            return Enumerable.Empty<AppSearchResult>();
+            if (string.IsNullOrWhiteSpace(query)) return Enumerable.Empty<AppSearchResult>();
+            return await SearchService.SearchAsync(query, cancellationToken);
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"Search error: {ex.Message}");
+            Console.WriteLine($"Search error: {ex.Message}");
             return Enumerable.Empty<AppSearchResult>();
-        }
-    }
-
-    private async Task HandleSearchResultSelected(AppSearchResult result)
-    {
-        selectedSearchResult = result;
-        if (SearchCollapsible)
-        {
-            await CollapseSearch();
         }
     }
 
     private async Task HandleSearchItemSelected(AppSearchResult result)
     {
-        await SearchService.AddToRecentAsync(result);
-        
-        if (result.OnClick != null)
+        if (result != null)
         {
-            await result.OnClick();
-        }
-        else if (!string.IsNullOrEmpty(result.Url))
-        {
-            await JS.InvokeVoidAsync("window.location.href", result.Url);
+            await SearchService.AddToRecentAsync(result);
+            if (!string.IsNullOrEmpty(result.Url))
+            {
+                NavigationManager.NavigateTo(result.Url);
+            }
         }
     }
 
-    private async Task HandleSearchQueryChanged(string query)
-    {
-        currentSearchQuery = query ?? string.Empty;
-        await SearchChanged.InvokeAsync(query);
-    }
-
-    private async Task HandleSearchBlur()
-    {
-        await Task.Yield(); // Let Blazor render
-        if (string.IsNullOrWhiteSpace(currentSearchQuery) && searchExpanded)
-        {
-            await CollapseSearch();
-        }
-    }
-
-    private async Task ExpandSearch()
+    private async Task ExpandSearch(MouseEventArgs args = null)
     {
         searchExpanded = true;
         StateHasChanged();
         
-        await Task.Yield(); // Let render complete
-        try
+        await Task.Yield();
+        
+        if (appShellModule != null)
         {
-            await JS.InvokeVoidAsync("RRAppShell.focusElement", ".search-expanded input");
+            try
+            {
+                await appShellModule.InvokeVoidAsync("expandSearch");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Warning: App shell JS expandSearch failed: {ex.Message}");
+            }
         }
-        catch { }
     }
 
-    private async Task CollapseSearch()
+    [JSInvokable]
+    public void OnSearchCollapsed()
     {
         searchExpanded = false;
-        selectedSearchResult = null;
-        currentSearchQuery = string.Empty;
         StateHasChanged();
     }
-    
 
     
     private string GetAppShellClasses()
@@ -676,23 +616,6 @@
         return "app-logo";
     }
     
-    private string GetSearchClasses()
-    {
-        var classes = new List<string>();
-        
-        if (SearchCollapsible)
-        {
-            classes.Add("search-collapsible");
-            if (searchExpanded)
-                classes.Add("search-expanded");
-        }
-        else
-        {
-            classes.Add("search-fixed");
-        }
-            
-        return string.Join(" ", classes);
-    }
     
     private string GetSidebarClasses()
     {

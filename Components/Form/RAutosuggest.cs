@@ -176,7 +176,7 @@ public class RAutosuggest : ComponentBase
         
         foreach (var item in Items)
         {
-            if (item != null && itemType.IsAssignableFrom(item.GetType()))
+            if (item != null && itemType.IsInstanceOfType(item))
             {
                 addMethod.Invoke(list, new[] { item });
             }

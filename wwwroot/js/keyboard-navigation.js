@@ -177,7 +177,6 @@ class KeyboardNavigationManager {
 
 const keyboardNavigationManager = new KeyboardNavigationManager();
 
-// Auto-initialize
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => keyboardNavigationManager.initialize());
 } else {

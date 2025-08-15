@@ -1,4 +1,3 @@
-// RTableScrollManager - Professional table scroll management and mobile enhancements
 export const RTableScrollManager = {
     
     scrollManagers: new Map(),
@@ -19,10 +18,8 @@ export const RTableScrollManager = {
                 return false;
             }
             
-            // Clean up existing manager if present
             this.dispose(tableId);
             
-            // Create manager instance
             const manager = new TableScrollInstance(tableId, tableContainer, scrollContainer);
             this.scrollManagers.set(tableId, manager);
             
@@ -81,33 +78,26 @@ class TableScrollInstance {
     }
     
     initialize() {
-        // Bind methods to preserve context
         this.handleScroll = this.handleScroll.bind(this);
         this.handleResize = this.handleResize.bind(this);
         this.handleHeaderFocus = this.handleHeaderFocus.bind(this);
         
-        // Initialize scroll shadows
         this.updateScrollShadows();
         
-        // Add scroll event listener with passive mode for performance
         this.scrollContainer.addEventListener('scroll', this.handleScroll, { passive: true });
         
-        // Use ResizeObserver for better performance than window resize events
         if (window.ResizeObserver) {
             this.resizeObserver = new ResizeObserver(this.handleResize);
             this.resizeObserver.observe(this.scrollContainer);
         } else {
-            // Fallback for older browsers
             window.addEventListener('resize', this.handleResize, { passive: true });
         }
         
-        // Enhanced accessibility - smooth scroll to focused columns
         this.setupHeaderFocusHandling();
     }
     
     handleScroll() {
-        // Use requestAnimationFrame for smooth performance
-        if (this.scrollTimeout) return;
+            if (this.scrollTimeout) return;
         
         this.scrollTimeout = requestAnimationFrame(() => {
             this.updateScrollShadows();
@@ -116,8 +106,7 @@ class TableScrollInstance {
     }
     
     handleResize() {
-        // Use requestAnimationFrame for resize handling
-        if (!this.resizeScheduled) {
+            if (!this.resizeScheduled) {
             this.resizeScheduled = true;
             requestAnimationFrame(() => {
                 this.updateScrollShadows();
@@ -133,10 +122,8 @@ class TableScrollInstance {
             const clientWidth = this.scrollContainer.clientWidth;
             const scrollRight = scrollWidth - clientWidth - scrollLeft;
             
-            // Remove all scroll state classes
             this.scrollContainer.classList.remove('scrolled-left', 'scrolled-right', 'scrolled-both');
             
-            // Add appropriate classes based on scroll position (10px threshold for smooth UX)
             if (scrollLeft > 10 && scrollRight > 10) {
                 this.scrollContainer.classList.add('scrolled-both');
             } else if (scrollLeft > 10) {
@@ -145,7 +132,6 @@ class TableScrollInstance {
                 this.scrollContainer.classList.add('scrolled-right');
             }
             
-            // Legacy mobile scroll class for backward compatibility
             if (this.tableContainer.classList.contains('table-mobile-scroll')) {
                 if (scrollLeft > 10) {
                     this.tableContainer.classList.add('scrolled');
@@ -180,9 +166,7 @@ class TableScrollInstance {
             const containerLeft = this.scrollContainer.scrollLeft;
             const containerRight = containerLeft + this.scrollContainer.clientWidth;
             
-            // Check if header is outside visible area
             if (headerLeft < containerLeft || headerRight > containerRight) {
-                // Calculate optimal scroll position with padding
                 const targetScrollLeft = Math.max(0, headerLeft - 20);
                 
                 this.scrollContainer.scrollTo({
@@ -198,10 +182,8 @@ class TableScrollInstance {
     
     dispose() {
         try {
-            // Remove scroll event listener
             this.scrollContainer.removeEventListener('scroll', this.handleScroll);
             
-            // Clean up resize observer
             if (this.resizeObserver) {
                 this.resizeObserver.disconnect();
                 this.resizeObserver = null;
@@ -209,13 +191,11 @@ class TableScrollInstance {
                 window.removeEventListener('resize', this.handleResize);
             }
             
-            // Clean up header focus handlers
             const headers = this.scrollContainer.querySelectorAll('.r-table-header-cell[data-column-key]');
             headers.forEach(header => {
                 header.removeEventListener('focus', this.handleHeaderFocus);
             });
             
-            // Clear any pending timeouts
             if (this.scrollTimeout) {
                 cancelAnimationFrame(this.scrollTimeout);
                 this.scrollTimeout = null;
@@ -232,7 +212,6 @@ class TableScrollInstance {
     }
 }
 
-// Export for global access
 window.RTableScrollManager = RTableScrollManager;
 
 export default RTableScrollManager;

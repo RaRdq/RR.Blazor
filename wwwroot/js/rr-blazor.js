@@ -78,7 +78,6 @@ class ModuleManager {
         this.moduleExports = new Map();
         
         this.moduleConfigs = {
-            // Critical modules (preloaded)
             'portal': { path: './portal.js', preload: true },
             'backdrop': { path: './backdrop.js', preload: true },
             'positioning': { path: './positioning.js', preload: true },
@@ -87,10 +86,7 @@ class ModuleManager {
             'clickOutside': { path: './click-outside.js', preload: true },
             'keyboardNavigation': { path: './keyboard-navigation.js', preload: true },
             'modalEvents': { path: './modal-events.js', preload: true },
-            'choiceEvents': { path: './choice-events.js', preload: true },
             'scrollLock': { path: './scroll-lock.js', preload: true },
-            
-            // Standard modules (lazy loaded)
             'tooltip': { path: './tooltip.js' },
             'focusTrap': { path: './focus-trap.js' },
             'autosuggest': { path: './autosuggest.js' },
@@ -362,17 +358,14 @@ const RRBlazor = {
     debug: debugLogger,
     moduleManager: moduleManager,
     
-    // Portal system modules
     Portal: createUniversalProxy('portal'),
     Backdrop: createUniversalProxy('backdrop'),
     Positioning: createUniversalProxy('positioning'),
     ClickOutside: createUniversalProxy('clickOutside'),
     KeyboardNavigation: createUniversalProxy('keyboardNavigation'),
     ModalEvents: createUniversalProxy('modalEvents'),
-    ChoiceEvents: createUniversalProxy('choiceEvents'),
     ScrollLock: createUniversalProxy('scrollLock'),
     
-    // Component modules
     Modal: createUniversalProxy('modal'),
     Choice: createUniversalProxy('choice'),
     Forms: createUniversalProxy('forms'),
@@ -470,7 +463,6 @@ window.addEventListener('beforeunload', () => {
     RRBlazor.dispose();
 });
 
-// Blazor ElementReference validation
 window.RRBlazor.elementExists = function(elementReference) {
     try {
         return elementReference && elementReference.tagName !== undefined;
@@ -479,7 +471,6 @@ window.RRBlazor.elementExists = function(elementReference) {
     }
 };
 
-// Element verification for choice components
 window.RRBlazor.elementExistsInParent = function(choiceId, selector) {
     try {
         const choice = document.querySelector(`[data-choice-id="${choiceId}"]`);

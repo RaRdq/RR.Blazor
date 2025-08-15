@@ -3,9 +3,10 @@ using Microsoft.AspNetCore.Components.Rendering;
 using RR.Blazor.Attributes;
 using RR.Blazor.Enums;
 using RR.Blazor.Components.Base;
+using RR.Blazor.Utilities;
 using System.Collections;
 using static RR.Blazor.Enums.ChoiceVariant;
-using static RR.Blazor.Enums.ChoiceStyle;
+using static RR.Blazor.Enums.ChoiceType;
 using static RR.Blazor.Enums.SizeType;
 using static RR.Blazor.Enums.ChoiceDirection;
 
@@ -13,8 +14,9 @@ namespace RR.Blazor.Components.Form;
 
 /// <summary>
 /// Base class for choice components with shared parameters
+/// Integrates with RR.Blazor design system inheritance chain
 /// </summary>
-public abstract class RChoiceBase : ComponentBase
+public abstract class RChoiceBase : RSizedComponentBase<SizeType>
 {
     #region Form Integration Parameters
     
@@ -24,7 +26,6 @@ public abstract class RChoiceBase : ComponentBase
     [Parameter] public string FieldName { get; set; } = "";
     [Parameter] public bool Required { get; set; }
     [Parameter] public bool ReadOnly { get; set; }
-    [Parameter] public bool Loading { get; set; }
     
     #endregion
     
@@ -46,16 +47,61 @@ public abstract class RChoiceBase : ComponentBase
     [Parameter] public Func<object, bool> ItemLoadingSelector { get; set; }
     [Parameter] public bool ShowLabels { get; set; } = true;
     [Parameter] public bool ShowActiveIndicator { get; set; }
-    [Parameter] public SizeType Size { get; set; } = Medium;
-    [Parameter] public DensityType Density { get; set; } = DensityType.Normal;
     [Parameter] public ChoiceDirection Direction { get; set; } = Horizontal;
-    [Parameter] public bool Disabled { get; set; }
     [Parameter] public bool CloseOnSelect { get; set; } = true;
-    [Parameter] public string AriaLabel { get; set; }
     [Parameter] public int? MaxItemsInline { get; set; } = 5;
     [Parameter] public int? MaxLabelLength { get; set; } = 20;
-    [Parameter] public string Class { get; set; }
-    [Parameter] public RenderFragment ChildContent { get; set; }
+    
+    #endregion
+    
+    #region Choice Styling
+    
+    /// <summary>
+    /// Style variant for the choice component
+    /// </summary>
+    [Parameter, AIParameter("Style variant for choice component", "ChoiceType.Standard")]
+    public ChoiceType Type { get; set; } = Standard;
+    
+    #endregion
+    
+    #region RSizedComponentBase Implementation
+    
+    /// <summary>
+    /// Gets size-specific CSS classes using DensityHelper
+    /// </summary>
+    protected override string GetSizeClasses()
+    {
+        return Size switch
+        {
+            ExtraSmall => "choice-xs " + DensityHelper.GetInputDensityClasses(Density),
+            Small => "choice-sm " + DensityHelper.GetInputDensityClasses(Density),
+            Medium => "choice-md " + DensityHelper.GetInputDensityClasses(Density),
+            Large => "choice-lg " + DensityHelper.GetInputDensityClasses(Density),
+            ExtraLarge => "choice-xl " + DensityHelper.GetInputDensityClasses(Density),
+            _ => "choice-md " + DensityHelper.GetInputDensityClasses(Density)
+        };
+    }
+    
+    /// <summary>
+    /// Gets default size for choice components
+    /// </summary>
+    protected override SizeType GetDefaultSize() => Medium;
+    
+    /// <summary>
+    /// Gets text size classes for choice components
+    /// </summary>
+    protected override string GetTextSizeClasses()
+    {
+        return SizeHelper.GetTextSize(Size, Density);
+    }
+    
+    /// <summary>
+    /// Gets icon size classes for choice components  
+    /// </summary>
+    protected override string GetIconSizeClasses()
+    {
+        return SizeHelper.GetIconSize(Size, Density);
+    }
     
     #endregion
 }
@@ -76,8 +122,8 @@ public abstract class RChoiceBase : ComponentBase
 /// 
 /// COMMON PATTERNS:
 /// - Status selection: RChoice Items="@statuses" Variant="ChoiceVariant.Auto" ItemIconSelector for icons
-/// - View switching: Style="ChoiceStyle.Tabs" for tab-like behavior  
-/// - Filters: Style="ChoiceStyle.Pills" Density="DensityType.Compact"
+/// - View switching: Type="ChoiceType.Tabs" for tab-like behavior  
+/// - Filters: Type="ChoiceType.Pills" Density="DensityType.Compact"
 /// - Settings: Use with form integration (Label, Required, HelpText, ErrorMessage)
 /// 
 /// DROPDOWN FEATURES:
@@ -96,7 +142,7 @@ public abstract class RChoiceBase : ComponentBase
             AvoidUsage = "Don't use for boolean toggles (use RToggle), large datasets (use searchable), immediate actions (use buttons)")]
 public class RChoice : RChoiceBase
 {
-    private object _items;
+    private object _items = new List<object>();
     private IDictionary _originalDictionary;
     
     [Parameter, AIParameter("Collection of items to choose between - supports arrays, lists, dictionaries", "new[] { \"Option1\", \"Option2\" }")]
@@ -145,22 +191,14 @@ public class RChoice : RChoiceBase
     [Parameter, AIParameter("Auto detects inline vs dropdown, or force specific mode", "ChoiceVariant.Auto")]
     public ChoiceVariant Variant { get; set; } = Auto;
     
-    [Parameter, AIParameter("Visual style for inline mode: Standard, Pills, Tabs, Buttons, Compact", "ChoiceStyle.Standard")]
-    public ChoiceStyle Style { get; set; } = Standard;
 
     // RSwitcher compatibility parameters
     [Parameter] public SwitcherVariant? SwitcherVariant { get; set; }
     [Parameter] public SizeType? CompatibleSize { get; set; }
-    [Parameter] public string LoadingText { get; set; } = "Loading...";
     [Parameter] public EventCallback<object> OnSelectionChanged { get; set; }
 
     private Type _valueType;
     private bool _valueTypeResolved;
-
-    public RChoice()
-    {
-        _items = new List<object>();
-    }
 
     protected override void OnParametersSet()
     {
@@ -176,7 +214,7 @@ public class RChoice : RChoiceBase
     {
         var itemsToUse = Items ?? new List<object>();
         
-        var itemsCollection = itemsToUse as System.Collections.IEnumerable ?? new[] { itemsToUse };
+        var itemsCollection = itemsToUse as IEnumerable ?? new[] { itemsToUse };
         var itemsList = itemsCollection.Cast<object>().ToList();
         
         // Resolve value type if not already done
@@ -224,15 +262,15 @@ public class RChoice : RChoiceBase
             return Activator.CreateInstance(listType);
         }
         
-        if (items is System.Collections.IEnumerable enumerable)
+        if (items is IEnumerable enumerable)
         {
             // Convert to generic List<TValue>
             var listType = typeof(List<>).MakeGenericType(valueType);
-            var list = Activator.CreateInstance(listType) as System.Collections.IList;
+            var list = Activator.CreateInstance(listType) as IList;
             
             foreach (var item in enumerable)
             {
-                if (item != null && valueType.IsAssignableFrom(item.GetType()))
+                if (item != null && valueType.IsInstanceOfType(item))
                 {
                     list.Add(item);
                 }
@@ -260,13 +298,13 @@ public class RChoice : RChoiceBase
         
         // Single item - wrap in generic list
         var singleItemListType = typeof(List<>).MakeGenericType(valueType);
-        var singleItemList = Activator.CreateInstance(singleItemListType) as System.Collections.IList;
+        var singleItemList = Activator.CreateInstance(singleItemListType) as IList;
         
-        if (items != null && valueType.IsAssignableFrom(items.GetType()))
+        if (valueType.IsInstanceOfType(items))
         {
             singleItemList.Add(items);
         }
-        else if (items != null)
+        else
         {
             try
             {
@@ -320,11 +358,13 @@ public class RChoice : RChoiceBase
         });
     }
     
-    private void ForwardBaseParameters(RenderTreeBuilder builder, Type itemType, ChoiceStyle effectiveStyle, SizeType effectiveSize)
+    private void ForwardBaseParameters(RenderTreeBuilder builder, Type itemType, ChoiceType effectiveStyle, SizeType effectiveSize)
     {
+        var sequence = 100;
+        
         // Forward events using object-based parameters - only add if they have delegates
         if (SelectedValueChanged.HasDelegate)
-            builder.AddAttribute(100, "SelectedValueChangedObject", SelectedValueChanged);
+            builder.AddAttribute(sequence++, "SelectedValueChangedObject", SelectedValueChanged);
         
         // Smart ItemLabelSelector for dictionaries
         var labelSelector = ItemLabelSelector;
@@ -340,34 +380,25 @@ public class RChoice : RChoiceBase
             };
         }
         
-        builder.AddAttribute(101, "ItemLabelSelectorTyped", labelSelector);
-        builder.AddAttribute(102, "ItemIconSelectorTyped", ItemIconSelector);
-        builder.AddAttribute(103, "ItemTitleSelectorTyped", ItemTitleSelector);
-        builder.AddAttribute(104, "ItemAriaLabelSelectorTyped", ItemAriaLabelSelector);
-        builder.AddAttribute(105, "ItemDisabledSelectorTyped", ItemDisabledSelector);
-        builder.AddAttribute(106, "ItemLoadingSelectorTyped", ItemLoadingSelector);
-        builder.AddAttribute(107, "ShowLabels", ShowLabels);
-        builder.AddAttribute(108, "ShowActiveIndicator", ShowActiveIndicator);
-        builder.AddAttribute(109, "Size", effectiveSize);
-        builder.AddAttribute(110, "Density", Density);
-        builder.AddAttribute(111, "Direction", Direction);
-        builder.AddAttribute(112, "Disabled", Disabled);
-        builder.AddAttribute(113, "CloseOnSelect", CloseOnSelect);
-        builder.AddAttribute(114, "AriaLabel", AriaLabel);
-        builder.AddAttribute(115, "Style", effectiveStyle);
-        builder.AddAttribute(116, "Class", Class);
-        builder.AddAttribute(117, "ChildContent", ChildContent);
+        // Forward component-specific parameters that can't be auto-forwarded
+        builder.AddAttribute(sequence++, "ItemLabelSelectorTyped", labelSelector);
+        builder.AddAttribute(sequence++, "ItemIconSelectorTyped", ItemIconSelector);
+        builder.AddAttribute(sequence++, "ItemTitleSelectorTyped", ItemTitleSelector);
+        builder.AddAttribute(sequence++, "ItemAriaLabelSelectorTyped", ItemAriaLabelSelector);
+        builder.AddAttribute(sequence++, "ItemDisabledSelectorTyped", ItemDisabledSelector);
+        builder.AddAttribute(sequence++, "ItemLoadingSelectorTyped", ItemLoadingSelector);
+        builder.AddAttribute(sequence++, "ShowLabels", ShowLabels);
+        builder.AddAttribute(sequence++, "ShowActiveIndicator", ShowActiveIndicator);
+        builder.AddAttribute(sequence++, "Size", effectiveSize);
+        builder.AddAttribute(sequence++, "Type", effectiveStyle);
+        builder.AddAttribute(sequence++, "ChildContent", ChildContent);
         
-        // Forward form integration parameters
-        builder.AddAttribute(118, "Label", Label);
-        builder.AddAttribute(119, "Placeholder", Placeholder);
-        builder.AddAttribute(120, "HelpText", HelpText);
-        builder.AddAttribute(121, "FieldName", FieldName);
-        builder.AddAttribute(122, "Required", Required);
-        builder.AddAttribute(123, "ReadOnly", ReadOnly);
-        builder.AddAttribute(124, "Loading", Loading);
-        builder.AddAttribute(125, "HasError", HasError);
-        builder.AddAttribute(126, "ErrorMessage", ErrorMessage);
+        // Use RAttributeForwarder for all remaining parameters
+        builder.ForwardParameters(ref sequence, this, 
+            "Items", "SelectedValue", "Variant", "SwitcherVariant", "CompatibleSize", "OnSelectionChanged",
+            "ItemLabelSelector", "ItemIconSelector", "ItemTitleSelector", "ItemAriaLabelSelector",
+            "ItemDisabledSelector", "ItemLoadingSelector", "ShowLabels", "ShowActiveIndicator",
+            "Size", "Type", "ChildContent", "SelectedValueChanged");
     }
 
     private Type GetValueType()
@@ -408,7 +439,7 @@ public class RChoice : RChoiceBase
         return typeof(object);
     }
 
-    private ChoiceStyle GetEffectiveStyle()
+    private ChoiceType GetEffectiveStyle()
     {
         // RSwitcher compatibility - SwitcherVariant takes precedence
         if (SwitcherVariant.HasValue)
@@ -418,12 +449,12 @@ public class RChoice : RChoiceBase
                 Enums.SwitcherVariant.Tabs => Tabs,
                 Enums.SwitcherVariant.Pills => Pills,
                 Enums.SwitcherVariant.Buttons => Buttons,
-                Enums.SwitcherVariant.Compact => ChoiceStyle.Compact,
+                Enums.SwitcherVariant.Compact => ChoiceType.Compact,
                 _ => Standard
             };
         }
         
-        return Style;
+        return Type;
     }
 
     private SizeType GetEffectiveSize()

@@ -2,11 +2,29 @@ const debugLogger = {
     error: (...args) => console.error('[RAppShell]', ...args)
 };
 
+let appShellDotNetRef = null;
+
 export function initialize() {
     setupKeyboardShortcuts();
     setupClickOutside();
     setupResponsive();
     setupAccessibility();
+    setupSearchClickOutside();
+}
+
+export function setDotNetRef(dotNetRef) {
+    appShellDotNetRef = dotNetRef;
+}
+
+export function expandSearch() {
+    const searchContainer = document.querySelector('[data-search-container]');
+    
+    if (searchContainer) {
+        document.dispatchEvent(new CustomEvent('search-expanded', {
+            detail: { searchContainer },
+            bubbles: true
+        }));
+    }
 }
 
 
@@ -52,8 +70,11 @@ function setupKeyboardShortcuts() {
 
 function setupClickOutside() {
     document.addEventListener('click', (e) => {
-        const searchContainer = e.target.closest('.search-container');
-        if (!searchContainer) {
+        const searchContainer = e.target.closest('[data-search-container]');
+        const searchButton = e.target.closest('.search-toggle-button, [aria-label="Open search"]');
+        
+        // Don't close search if clicking the search button or inside search container
+        if (!searchContainer && !searchButton) {
             closeSearch();
         }
         
@@ -120,6 +141,9 @@ function setupAccessibility() {
     document.body.appendChild(announcer);
 }
 
+function setupSearchClickOutside() {
+}
+
 function focusSearch() {
     const searchInput = document.querySelector('input[type="search"], .search-container input');
     if (searchInput) {
@@ -165,9 +189,12 @@ function toggleSidebar() {
 }
 
 function closeSearch() {
-    const searchResults = document.querySelector('.search-results');
-    if (searchResults) {
-        searchResults.style.display = 'none';
+    const searchContainer = document.querySelector('[data-search-container]');
+    const searchIconContainer = searchContainer?.querySelector('.search-icon-container');
+    if (searchIconContainer && searchIconContainer.classList.contains('search-expanded')) {
+        if (appShellDotNetRef) {
+            appShellDotNetRef.invokeMethodAsync('OnSearchCollapsed');
+        }
     }
 }
 
@@ -253,6 +280,9 @@ export function updateUrlWithoutScroll(newUrl) {
     return RRBlazor.updateUrlWithoutScroll(newUrl);
 }
 
+export function dispose() {
+    // rr-blazor disposal of modules
+}
 
 window.RRAppShell = {
     isMobile,
@@ -267,7 +297,7 @@ window.RRAppShell = {
     updateUrlWithoutScroll,
     focusElement,
     initialize,
-    cleanup
+    dispose
 };
 
 export default {
@@ -283,5 +313,5 @@ export default {
     updateUrlWithoutScroll,
     focusElement,
     initialize,
-    cleanup
+    dispose
 };

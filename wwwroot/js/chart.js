@@ -82,7 +82,6 @@ function initializeTooltip(element, options = {}) {
         tooltip.classList.remove('visible');
     };
     
-    // Chart-specific tooltip handling
     if (element.querySelector('.pie-slice')) {
         element.querySelectorAll('.pie-slice').forEach(slice => {
             slice.addEventListener('mouseenter', (e) => {
@@ -136,12 +135,10 @@ function exportChartData(element, format = 'csv') {
 function extractChartData(element) {
     const data = [];
     
-    // Extract from pie chart
     const pieSlices = element.querySelectorAll('.pie-slice');
     pieSlices.forEach(slice => {
         const label = slice.getAttribute('aria-label');
         if (label) {
-            // Parse aria-label: "Category: Value (Percentage)"
             const matches = label.match(/(.+?):\s*(.+?)\s*\((.+?)\)/);
             if (matches) {
                 data.push({
@@ -153,12 +150,10 @@ function extractChartData(element) {
         }
     });
     
-    // Extract from column chart
     const columnBars = element.querySelectorAll('.column-chart-bar');
     columnBars.forEach(bar => {
         const label = bar.getAttribute('aria-label');
         if (label) {
-            // Parse aria-label: "Category: Value"
             const matches = label.match(/(.+?):\s*(.+)/);
             if (matches) {
                 data.push({

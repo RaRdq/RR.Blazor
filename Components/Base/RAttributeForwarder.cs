@@ -144,6 +144,16 @@ public static class RAttributeForwarder
         foreach (var property in properties)
         {
             var value = property.GetValue(component);
+            
+            // Fix PageSize casting error: convert string PageSize values to int
+            if (property.Name == "PageSize" && value is string strPageSize)
+            {
+                if (int.TryParse(strPageSize, out var intPageSize))
+                {
+                    value = intPageSize;
+                }
+            }
+            
             if (value != null || property.PropertyType.IsValueType)
             {
                 var htmlAttributeName = ToHtmlAttributeName(property.Name);
@@ -155,6 +165,7 @@ public static class RAttributeForwarder
     /// <summary>
     /// Gets safe HTML attributes from AdditionalAttributes dictionary, filtering out Blazor-specific attributes.
     /// Use this for @attributes directive in components that use CaptureUnmatchedValues.
+    /// Handles PageSize string-to-int conversion to fix casting errors.
     /// </summary>
     public static Dictionary<string, object> GetSafeAttributes(Dictionary<string, object> additionalAttributes)
     {
@@ -164,9 +175,20 @@ public static class RAttributeForwarder
         
         foreach (var attr in additionalAttributes)
         {
-            if (ShouldForwardAttribute(attr.Key, attr.Value?.GetType() ?? typeof(object)))
+            var value = attr.Value;
+            
+            // Fix PageSize casting error: convert string PageSize values to int
+            if (attr.Key == "PageSize" && value is string strPageSize)
             {
-                filtered[attr.Key] = attr.Value;
+                if (int.TryParse(strPageSize, out var intPageSize))
+                {
+                    value = intPageSize;
+                }
+            }
+            
+            if (ShouldForwardAttribute(attr.Key, value?.GetType() ?? typeof(object)))
+            {
+                filtered[attr.Key] = value;
             }
         }
         

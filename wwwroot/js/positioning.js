@@ -1,16 +1,5 @@
-/**
- * PositioningEngine - Pure position calculation engine
- * SRP: Calculate optimal positions ONLY - no DOM manipulation
- * Fail-fast: Throws on invalid inputs, no protective coding
- * 
- * @module positioning
- */
 
 export class PositioningEngine {
-    /**
-     * Position variants (12 total)
-     * Format: {placement}_{alignment}
-     */
     static POSITIONS = {
         TOP_START: 'top_start',
         TOP_CENTER: 'top_center',
@@ -26,21 +15,7 @@ export class PositioningEngine {
         RIGHT_END: 'right_end'
     };
 
-    /**
-     * Calculate optimal position for target element relative to trigger
-     * 
-     * @param {DOMRect} triggerRect - Bounding rect of trigger element
-     * @param {Object} targetDimensions - Target element dimensions { width, height }
-     * @param {Object} options - Positioning options
-     * @param {string} options.position - Desired position from POSITIONS
-     * @param {number} options.offset - Distance from trigger (default: 8)
-     * @param {boolean} options.flip - Auto-flip on viewport collision (default: true)
-     * @param {boolean} options.constrain - Constrain to viewport (default: true)
-     * @param {Object} options.viewport - Viewport dimensions (default: window)
-     * @returns {Object} Calculated position { x, y, placement, flipped }
-     */
     calculatePosition(triggerRect, targetDimensions, options = {}) {
-        // Fail fast - no protective coding
         if (!triggerRect) {
             throw new Error('PositioningEngine: triggerRect is required');
         }
@@ -62,10 +37,8 @@ export class PositioningEngine {
             }
         } = options;
 
-        // Parse position into placement and alignment
         const [placement, alignment] = position.split('_');
         
-        // Calculate base position
         let result = this._calculateBasePosition(
             triggerRect,
             targetDimensions,
@@ -75,7 +48,6 @@ export class PositioningEngine {
             viewport
         );
 
-        // Check if position needs flipping
         if (flip) {
             const collision = this._detectCollision(result, targetDimensions, viewport);
             if (collision) {
@@ -89,7 +61,6 @@ export class PositioningEngine {
                     viewport
                 );
                 
-                // Only use flipped position if it's better
                 const flippedCollision = this._detectCollision(flippedResult, targetDimensions, viewport);
                 if (!flippedCollision || this._collisionScore(flippedCollision) < this._collisionScore(collision)) {
                     result = { ...flippedResult, flipped: true };
@@ -97,12 +68,10 @@ export class PositioningEngine {
             }
         }
 
-        // Constrain to viewport if needed
         if (constrain) {
             result = this._constrainToViewport(result, targetDimensions, viewport);
         }
 
-        // Ultra-generic container constraint handling (all directions)
         if (container) {
             result = this._constrainToContainer(result, targetDimensions, container, offset);
         }
@@ -115,14 +84,6 @@ export class PositioningEngine {
         };
     }
 
-    /**
-     * Detect optimal position based on available space
-     * 
-     * @param {DOMRect} triggerRect - Trigger element bounding rect
-     * @param {Object} targetDimensions - Target dimensions
-     * @param {Object} viewport - Viewport dimensions
-     * @returns {string} Optimal position from POSITIONS
-     */
     detectOptimalPosition(triggerRect, targetDimensions, viewport = null) {
         if (!triggerRect) {
             throw new Error('PositioningEngine: triggerRect is required for optimal detection');
@@ -138,8 +99,6 @@ export class PositioningEngine {
             scrollY: window.scrollY
         };
 
-        // Calculate available space in each direction
-        // For fixed positioning, use viewport-relative coordinates directly
         const space = {
             top: triggerRect.top,
             bottom: viewport.height - triggerRect.bottom,
@@ -159,11 +118,9 @@ export class PositioningEngine {
         } else if (space.left >= targetDimensions.width) {
             placement = 'left';
         } else {
-            // Use placement with most space
             placement = Object.keys(space).reduce((a, b) => space[a] > space[b] ? a : b);
         }
 
-        // Determine best alignment
         let alignment = 'start'; // Default alignment
         if (placement === 'top' || placement === 'bottom') {
             const centerX = triggerRect.left + triggerRect.width / 2;
@@ -190,14 +147,9 @@ export class PositioningEngine {
         return `${placement}_${alignment}`;
     }
 
-    /**
-     * Calculate base position without collision detection
-     * @private
-     */
     _calculateBasePosition(triggerRect, targetDimensions, placement, alignment, offset, viewport) {
         let x, y;
 
-        // Calculate position based on placement
         switch (placement) {
             case 'top':
                 y = triggerRect.top - targetDimensions.height - offset;
@@ -215,7 +167,6 @@ export class PositioningEngine {
                 throw new Error(`PositioningEngine: Invalid placement "${placement}"`);
         }
 
-        // Calculate alignment
         if (placement === 'top' || placement === 'bottom') {
             switch (alignment) {
                 case 'start':
@@ -249,12 +200,7 @@ export class PositioningEngine {
         return { x, y, placement };
     }
 
-    /**
-     * Detect collision with viewport boundaries
-     * @private
-     */
     _detectCollision(position, targetDimensions, viewport) {
-        // For fixed positioning, check against viewport boundaries directly
         const collision = {
             top: position.y < 0,
             bottom: position.y + targetDimensions.height > viewport.height,
@@ -262,15 +208,10 @@ export class PositioningEngine {
             right: position.x + targetDimensions.width > viewport.width
         };
 
-        // Return null if no collision
         const hasCollision = Object.values(collision).some(v => v);
         return hasCollision ? collision : null;
     }
 
-    /**
-     * Get flipped placement based on collision
-     * @private
-     */
     _getFlippedPlacement(placement, collision) {
         switch (placement) {
             case 'top':
@@ -286,23 +227,14 @@ export class PositioningEngine {
         }
     }
 
-    /**
-     * Calculate collision severity score
-     * @private
-     */
     _collisionScore(collision) {
         if (!collision) return 0;
         return Object.values(collision).filter(v => v).length;
     }
 
-    /**
-     * Constrain position to viewport boundaries
-     * @private
-     */
     _constrainToViewport(position, targetDimensions, viewport) {
         const constrained = { ...position };
 
-        // Constrain X axis for fixed positioning (viewport boundaries)
         constrained.x = Math.max(
             0,
             Math.min(
@@ -311,7 +243,6 @@ export class PositioningEngine {
             )
         );
 
-        // Constrain Y axis for fixed positioning (viewport boundaries)
         constrained.y = Math.max(
             0,
             Math.min(
@@ -323,27 +254,16 @@ export class PositioningEngine {
         return constrained;
     }
 
-    /**
-     * Ultra-generic container constraint handling (all directions with auto-adaptation)
-     * Automatically handles left, right, top, bottom boundaries with offset
-     * 
-     * @param {Object} position - Current position { x, y, placement }
-     * @param {Object} targetDimensions - Target dimensions { width, height }
-     * @param {DOMRect} container - Container bounds
-     * @param {number} offset - Minimum distance from container edges
-     * @returns {Object} Constrained position
-     */
     _constrainToContainer(position, targetDimensions, container, offset = 8) {
         const constrained = { ...position };
 
-        // Ultra-generic X-axis constraint (left/right adaptive)
         if (constrained.x < container.left + offset) {
             constrained.x = container.left + offset;
         } else if (constrained.x + targetDimensions.width > container.right - offset) {
             constrained.x = container.right - targetDimensions.width - offset;
         }
 
-        // Ultra-generic Y-axis constraint (top/bottom adaptive)  
+  
         if (constrained.y < container.top + offset) {
             constrained.y = container.top + offset;
         } else if (constrained.y + targetDimensions.height > container.bottom - offset) {
@@ -353,14 +273,6 @@ export class PositioningEngine {
         return constrained;
     }
 
-    /**
-     * Calculate arrow position for tooltips/popovers
-     * 
-     * @param {string} placement - Current placement
-     * @param {DOMRect} triggerRect - Trigger element rect
-     * @param {Object} targetPosition - Calculated target position
-     * @returns {Object} Arrow position { x, y, side }
-     */
     calculateArrowPosition(placement, triggerRect, targetPosition) {
         if (!placement || !triggerRect || !targetPosition) {
             throw new Error('PositioningEngine: All parameters required for arrow calculation');
@@ -402,16 +314,6 @@ export class PositioningEngine {
         };
     }
 
-    /**
-     * Update position on scroll/resize
-     * Returns new position or null if no change needed
-     * 
-     * @param {Object} currentPosition - Current position
-     * @param {DOMRect} triggerRect - Updated trigger rect
-     * @param {Object} targetDimensions - Target dimensions
-     * @param {Object} options - Positioning options
-     * @returns {Object|null} New position or null
-     */
     updatePosition(currentPosition, triggerRect, targetDimensions, options = {}) {
         if (!currentPosition || !triggerRect || !targetDimensions) {
             throw new Error('PositioningEngine: All parameters required for position update');
@@ -422,7 +324,6 @@ export class PositioningEngine {
             position: currentPosition.placement
         });
 
-        // Check if position actually changed
         if (newPosition.x === currentPosition.x && 
             newPosition.y === currentPosition.y &&
             newPosition.placement === currentPosition.placement) {
@@ -433,8 +334,6 @@ export class PositioningEngine {
     }
 }
 
-// Export singleton instance for convenience
 export const positioningEngine = new PositioningEngine();
 
-// Default export
 export default PositioningEngine;

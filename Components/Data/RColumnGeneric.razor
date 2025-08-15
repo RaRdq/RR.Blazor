@@ -61,14 +61,27 @@ Usage:
             columnDef.CompiledProperty = For.Compile();
             columnDef.Key = GetPropertyName(For);
         }
-        
-        // Handle CustomTemplate (strongly typed)
-        if (CustomTemplate != null)
+        else
         {
-            columnDef.CustomTemplate = CustomTemplate;
+            var title = GetEffectiveTitle();
+            if (string.IsNullOrEmpty(title))
+                throw new InvalidOperationException("RColumnGeneric requires For parameter or Title/Header for key generation");
+            
+            columnDef.Key = GenerateKeyFromTitle(title);
         }
         
+        if (string.IsNullOrEmpty(columnDef.Key))
+            throw new InvalidOperationException("Column key generation failed");
+        
+        if (CustomTemplate != null)
+            columnDef.CustomTemplate = CustomTemplate;
+        
         return columnDef;
+    }
+    
+    private string GenerateKeyFromTitle(string title)
+    {
+        return title.Replace(" ", "").Replace("-", "").Replace("_", "");
     }
     
     private static string GetPropertyName(Expression<Func<TItem, object>> expr)

@@ -7,7 +7,7 @@ public enum ChoiceVariant
     Dropdown    // Always show as dropdown
 }
 
-public enum ChoiceStyle
+public enum ChoiceType
 {
     Standard,   // Default styling
     Compact,    // Compact layout with no gaps

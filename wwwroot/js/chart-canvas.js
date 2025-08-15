@@ -73,7 +73,6 @@ class CanvasChart {
     }
 
     setupEventListeners() {
-        // Resize observer
         this.resizeObserver = new ResizeObserver(() => {
             this.updateCanvasSize();
             this.render();
@@ -86,12 +85,10 @@ class CanvasChart {
     }
 
     setupTouchEvents() {
-        // Touch events for pan/zoom
         this.canvas.addEventListener('touchstart', this.handleTouchStart.bind(this));
         this.canvas.addEventListener('touchmove', this.handleTouchMove.bind(this));
         this.canvas.addEventListener('touchend', this.handleTouchEnd.bind(this));
         
-        // Mouse events for desktop
         this.canvas.addEventListener('mousedown', this.handleMouseDown.bind(this));
         this.canvas.addEventListener('mousemove', this.handleMouseMove.bind(this));
         this.canvas.addEventListener('mouseup', this.handleMouseUp.bind(this));
@@ -99,7 +96,6 @@ class CanvasChart {
     }
 
     setupObservers() {
-        // Intersection observer for performance
         this.intersectionObserver = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
@@ -158,7 +154,6 @@ class CanvasChart {
     }
 
     renderChart() {
-        // Override in subclasses
     }
 
     renderOverlays() {
