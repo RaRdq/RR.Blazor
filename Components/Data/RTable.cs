@@ -203,6 +203,19 @@ public class RTable : RTableBase
         // Forward PageSize explicitly first to ensure it's handled correctly
         builder.AddAttribute(++seq, nameof(PageSize), PageSize);
         
+        // Forward critical table parameters explicitly
+        builder.AddAttribute(++seq, nameof(ShowToolbar), ShowToolbar);
+        builder.AddAttribute(++seq, nameof(ShowColumnManager), ShowColumnManager);
+        builder.AddAttribute(++seq, nameof(ShowSearch), ShowSearch);
+        builder.AddAttribute(++seq, nameof(EnableColumnReordering), EnableColumnReordering);
+        builder.AddAttribute(++seq, nameof(EnableStickyColumns), EnableStickyColumns);
+        builder.AddAttribute(++seq, nameof(EnableHorizontalScroll), EnableHorizontalScroll);
+        builder.AddAttribute(++seq, nameof(Density), Density);
+        builder.AddAttribute(++seq, nameof(Hover), Hover);
+        builder.AddAttribute(++seq, nameof(Bordered), Bordered);
+        builder.AddAttribute(++seq, nameof(AutoGenerateColumns), AutoGenerateColumns);
+        builder.AddAttribute(++seq, nameof(Style), Style);
+        
         if (AdditionalAttributes != null)
         {
             // Remove PageSize from additional attributes to avoid duplication

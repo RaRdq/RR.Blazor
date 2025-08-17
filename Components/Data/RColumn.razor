@@ -1,5 +1,7 @@
 @using RR.Blazor.Models
 @using System.Linq.Expressions
+@using System.Reflection
+@using System
 @inherits RColumnBase
 
 @code {
@@ -13,10 +15,10 @@
     
     protected override void OnInitialized()
     {
-        // Validate required parameters
-        if (string.IsNullOrEmpty(Property) && For == null)
+        // Validate required parameters - allow CellTemplate-only columns
+        if (string.IsNullOrEmpty(Property) && For == null && CellTemplate == null && ChildContent == null)
         {
-            throw new InvalidOperationException("Column must specify either Property or For parameter");
+            throw new InvalidOperationException("Column must specify either Property, For parameter, or CellTemplate");
         }
         
         if (ParentTable != null && TableContext?.ItemType != null)
@@ -45,7 +47,12 @@
             return CreateColumnFromLambda(For, itemType);
         }
         
-        throw new InvalidOperationException("Column must specify either Property or For parameter");
+        if (CellTemplate != null || ChildContent != null)
+        {
+            return CreateColumnFromTemplate(itemType);
+        }
+        
+        throw new InvalidOperationException("Column must specify either Property, For parameter, or CellTemplate");
     }
     
     private object CreateColumnFromProperty(string propertyName, Type itemType)
@@ -54,6 +61,19 @@
         var columnDef = Activator.CreateInstance(columnDefType);
         
         SetColumnProperties(columnDef, propertyName);
+        
+        // Create property expression for value access
+        var propertyInfo = itemType.GetProperty(propertyName);
+        if (propertyInfo != null)
+        {
+            var parameter = Expression.Parameter(itemType, "x");
+            var propertyAccess = Expression.Property(parameter, propertyInfo);
+            var conversion = Expression.Convert(propertyAccess, typeof(object));
+            var lambda = Expression.Lambda(conversion, parameter);
+            
+            SetProperty(columnDefType, columnDef, "Property", lambda);
+        }
+        
         return columnDef;
     }
     
@@ -64,6 +84,31 @@
         
         var propertyName = ExtractPropertyName(lambda);
         SetColumnProperties(columnDef, propertyName);
+        
+        if (lambda is LambdaExpression lambdaExpr)
+        {
+            var param = lambdaExpr.Parameters[0];
+            var body = lambdaExpr.Body.Type == typeof(object) 
+                ? lambdaExpr.Body 
+                : Expression.Convert(lambdaExpr.Body, typeof(object));
+                
+            var typedLambda = Expression.Lambda(body, param);
+            SetProperty(columnDefType, columnDef, "Property", typedLambda);
+        }
+        
+        return columnDef;
+    }
+    
+    private object CreateColumnFromTemplate(Type itemType)
+    {
+        var columnDefType = typeof(ColumnDefinition<>).MakeGenericType(itemType);
+        var columnDef = Activator.CreateInstance(columnDefType);
+        
+        // Use Header as the property name for template-only columns
+        var propertyName = Header ?? "Column";
+        SetColumnProperties(columnDef, propertyName);
+        
+        // No Property accessor needed for template-only columns
         
         return columnDef;
     }
@@ -87,14 +132,29 @@
         SetProperty(type, columnDef, "HeaderClass", HeaderClass);
         SetProperty(type, columnDef, "CellClass", CellClass);
         
+        // Auto-detect Template based on CellTemplate/ChildContent
+        var effectiveTemplate = Template;
+        if (CellTemplate != null || ChildContent != null)
+        {
+            effectiveTemplate = ColumnTemplate.Custom;
+        }
+        SetProperty(type, columnDef, "Template", effectiveTemplate);
+        
         if (CellTemplate != null)
         {
-            SetProperty(type, columnDef, "CustomTemplate", CellTemplate);
+            // Convert RenderFragment<object> to RenderFragment<TItem>
+            var itemType = TableContext.ItemType;
+            var templateType = typeof(RenderFragment<>).MakeGenericType(itemType);
+            var convertedTemplate = ConvertTemplate(CellTemplate, itemType);
+            SetProperty(type, columnDef, "CustomTemplate", convertedTemplate);
         }
         else if (ChildContent != null)
         {
-            var template = new RenderFragment<object>(context => ChildContent);
-            SetProperty(type, columnDef, "CustomTemplate", template);
+            // Convert RenderFragment to RenderFragment<TItem>  
+            var itemType = TableContext.ItemType;
+            var templateType = typeof(RenderFragment<>).MakeGenericType(itemType);
+            var convertedTemplate = ConvertChildContentTemplate(ChildContent, itemType);
+            SetProperty(type, columnDef, "CustomTemplate", convertedTemplate);
         }
     }
     
@@ -133,5 +193,53 @@
         {
             return "Column";
         }
+    }
+    
+    private object ConvertTemplate(RenderFragment<object> template, Type itemType)
+    {
+        // Create RenderFragment<TItem> that casts the item to object and calls the original template
+        var delegateType = typeof(RenderFragment<>).MakeGenericType(itemType);
+        
+        // Use dynamic to create the generic RenderFragment<TItem>
+        dynamic convertedTemplate = CreateGenericRenderFragment(template, itemType);
+        return convertedTemplate;
+    }
+    
+    private object ConvertChildContentTemplate(RenderFragment content, Type itemType)
+    {
+        // Create RenderFragment<TItem> that ignores the item and renders the ChildContent
+        var delegateType = typeof(RenderFragment<>).MakeGenericType(itemType);
+        
+        // Use dynamic to create the generic RenderFragment<TItem>
+        dynamic convertedTemplate = CreateGenericRenderFragmentFromChildContent(content, itemType);
+        return convertedTemplate;
+    }
+    
+    private object CreateGenericRenderFragment(RenderFragment<object> template, Type itemType)
+    {
+        // Create a method that takes TItem and renders with the template
+        var method = GetType().GetMethod(nameof(GenericTemplateRenderer), BindingFlags.NonPublic | BindingFlags.Instance);
+        var genericMethod = method.MakeGenericMethod(itemType);
+        
+        return genericMethod.Invoke(this, new object[] { template });
+    }
+    
+    private object CreateGenericRenderFragmentFromChildContent(RenderFragment content, Type itemType)
+    {
+        // Create a method that ignores TItem and renders ChildContent
+        var method = GetType().GetMethod(nameof(GenericChildContentRenderer), BindingFlags.NonPublic | BindingFlags.Instance);
+        var genericMethod = method.MakeGenericMethod(itemType);
+        
+        return genericMethod.Invoke(this, new object[] { content });
+    }
+    
+    private RenderFragment<T> GenericTemplateRenderer<T>(RenderFragment<object> template)
+    {
+        return item => template((object)item);
+    }
+    
+    private RenderFragment<T> GenericChildContentRenderer<T>(RenderFragment content)
+    {
+        return item => content;
     }
 }

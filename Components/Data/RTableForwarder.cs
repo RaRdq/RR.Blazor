@@ -28,27 +28,27 @@ public class RTableForwarder<TItem> : ComponentBase where TItem : class
             
             if (AdditionalAttributes != null)
             {
-                var safeAttributes = RAttributeForwarder.GetSafeAttributes(AdditionalAttributes);
-                if (safeAttributes?.Any() == true)
+                // Forward ALL Blazor component parameters for RTableGeneric
+                // RTableForwarder forwards to a Blazor component, not HTML element
+                var processedAttributes = new Dictionary<string, object>();
+                foreach (var attr in AdditionalAttributes)
                 {
-                    // Handle PageSize casting fix at the attribute forwarding level
-                    var processedAttributes = new Dictionary<string, object>();
-                    foreach (var attr in safeAttributes)
+                    var value = attr.Value;
+                    
+                    // Fix PageSize casting error using RAttributeForwarder logic
+                    if (attr.Key == "PageSize" && value is string strPageSize)
                     {
-                        var value = attr.Value;
-                        
-                        // Fix PageSize casting error: ensure PageSize is always an integer
-                        if (attr.Key == "PageSize" && value is string strPageSize)
+                        if (int.TryParse(strPageSize, out var intPageSize))
                         {
-                            if (int.TryParse(strPageSize, out var intPageSize))
-                            {
-                                value = intPageSize;
-                            }
+                            value = intPageSize;
                         }
-                        
-                        processedAttributes[attr.Key] = value;
                     }
                     
+                    processedAttributes[attr.Key] = value;
+                }
+                
+                if (processedAttributes.Any())
+                {
                     contextBuilder.AddMultipleAttributes(3, processedAttributes);
                 }
             }
