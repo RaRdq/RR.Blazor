@@ -1,8 +1,6 @@
 const textareaCache = new WeakMap();
 
 export function autoResizeTextarea(element) {
-    if (!element) throw new Error('Element required for textarea resize');
-    
     const cached = textareaCache.get(element);
     const currentValue = element.value;
     
@@ -25,7 +23,6 @@ export function autoResizeTextarea(element) {
 
 export function initializeFormField(element, options) {
     const input = element.querySelector('input, textarea, select');
-    if (!input) throw new Error('Input element not found in form field');
     
     const cleanupFunctions = [];
     
@@ -52,8 +49,6 @@ export function initializeFormField(element, options) {
     if (options.showCharacterCount && options.maxLength) {
         const updateCount = () => {
             const counter = element.querySelector('.rr-form-field__character-count');
-            if (!counter) throw new Error('Character counter element required');
-            
             const count = input.value.length;
             counter.textContent = `${count} / ${options.maxLength}`;
             
@@ -87,8 +82,8 @@ export function initializeFormField(element, options) {
 
 export function focusElement(elementId) {
     const element = document.getElementById(elementId);
-    if (!element) throw new Error(`Element not found: ${elementId}`);
     element.focus();
+    return true;
 }
 
 export function copyToClipboard(text) {
@@ -116,6 +111,8 @@ export function copyToClipboard(text) {
 }
 
 export function cleanupComponent(elementId) {
+    if (!elementId) return;
+    
     const element = document.getElementById(elementId);
     if (!element) return;
     

@@ -1,8 +1,6 @@
 
 export function getTabIndicatorPosition(tabElementId, wrapperElement) {
     const element = document.getElementById(tabElementId);
-    if (!element) throw new Error(`Tab element not found: ${tabElementId}`);
-    if (!wrapperElement) throw new Error('Wrapper element required');
     
     element.offsetHeight;
     const tabRect = element.getBoundingClientRect();
@@ -18,7 +16,6 @@ export function getTabIndicatorPosition(tabElementId, wrapperElement) {
 }
 
 export function getTabScrollInfo(wrapperElement) {
-    if (!wrapperElement) throw new Error('Wrapper element required');
     
     const scrollLeft = wrapperElement.scrollLeft;
     const scrollWidth = wrapperElement.scrollWidth;
@@ -35,7 +32,6 @@ export function getTabScrollInfo(wrapperElement) {
 }
 
 export function scrollTabsLeft(wrapperElement) {
-    if (!wrapperElement) throw new Error('Wrapper element required');
     
     const tabs = wrapperElement.querySelectorAll('[role="tab"]');
     const containerRect = wrapperElement.getBoundingClientRect();
@@ -65,7 +61,6 @@ export function scrollTabsLeft(wrapperElement) {
 }
 
 export function scrollTabsRight(wrapperElement) {
-    if (!wrapperElement) throw new Error('Wrapper element required');
     
     const tabs = wrapperElement.querySelectorAll('[role="tab"]');
     const containerRect = wrapperElement.getBoundingClientRect();
@@ -95,10 +90,7 @@ export function scrollTabsRight(wrapperElement) {
 }
 
 export function scrollToTab(wrapperElement, tabElementId) {
-    if (!wrapperElement) throw new Error('Wrapper element required');
-    
     const tabElement = document.getElementById(tabElementId);
-    if (!tabElement) throw new Error(`Tab element not found: ${tabElementId}`);
     
     const wrapperRect = wrapperElement.getBoundingClientRect();
     const tabRect = tabElement.getBoundingClientRect();
@@ -121,8 +113,6 @@ export function scrollToTab(wrapperElement, tabElementId) {
 }
 
 export function initializeTabs(element, navContainer, navWrapper) {
-    if (!element) throw new Error('Element required');
-    if (!navWrapper) throw new Error('Nav wrapper required');
     const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
     const isSmallViewport = () => window.innerWidth <= 768;
     const isLandscape = () => window.innerWidth > window.innerHeight;
@@ -135,10 +125,13 @@ export function initializeTabs(element, navContainer, navWrapper) {
     const updateIndicator = () => {
         const activeTab = element.querySelector('[role="tab"][aria-selected="true"]');
         if (activeTab) {
-            const event = new CustomEvent('rr-tab-indicator-update', {
-                detail: { tabId: activeTab.id }
-            });
-            element.dispatchEvent(event);
+            if (window.RRBlazor && window.RRBlazor.EventDispatcher) {
+                window.RRBlazor.EventDispatcher.dispatch(
+                    'rr-tab-indicator-update',
+                    { tabId: activeTab.id }
+                );
+            }
+            element.dispatchEvent(new Event('rr-tab-indicator-update'));
         }
     };
     
@@ -177,10 +170,13 @@ export function initializeTabs(element, navContainer, navWrapper) {
         element.classList.toggle('tabs-ultra-wide', viewport.aspectRatio > 2.1);
         element.classList.toggle('tabs-square', viewport.aspectRatio < 1.3 && viewport.aspectRatio > 0.77);
         
-        const event = new CustomEvent('rr-tabs-viewport-change', {
-            detail: viewport
-        });
-        element.dispatchEvent(event);
+        if (window.RRBlazor && window.RRBlazor.EventDispatcher) {
+            window.RRBlazor.EventDispatcher.dispatch(
+                'rr-tabs-viewport-change',
+                viewport
+            );
+        }
+        element.dispatchEvent(new Event('rr-tabs-viewport-change'));
     };
     
     if (isTouchDevice && navWrapper) {
@@ -282,13 +278,11 @@ export function initializeTabs(element, navContainer, navWrapper) {
 }
 
 export function initialize(element, dotNetRef) {
-    if (!element) throw new Error('Element required');
     initializeTabs(element);
     return true;
 }
 
 export function cleanup(element) {
-    if (!element) throw new Error('Element required');
     if (element._rrCleanup) {
         element._rrCleanup();
         delete element._rrCleanup;

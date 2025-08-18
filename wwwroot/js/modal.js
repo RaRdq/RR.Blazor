@@ -11,7 +11,7 @@ class ModalManager {
     }
     
     _setupEventListeners() {
-        document.addEventListener('portal-destroyed', (event) => {
+        document.addEventListener(window.RRBlazor.Events.PORTAL_DESTROYED, (event) => {
             const { portalId } = event.detail;
             const modal = Array.from(this.activeModals.entries())
                 .find(([id, data]) => data.portalId === portalId);
@@ -37,13 +37,25 @@ class ModalManager {
             createdAt: Date.now()
         });
         
+        this._setupCloseRequestListener(modalId);
+        
         if (this.activeModals.size === 1) {
             await window.RRBlazor.ScrollLock.lock();
+            
+            window.RRBlazor.EventDispatcher.dispatch(
+                window.RRBlazor.Events.UI_COMPONENT_OPENING,
+                {
+                    componentType: window.RRBlazor.ComponentTypes.MODAL,
+                    componentId: modalId,
+                    priority: window.RRBlazor.EventPriorities.HIGH
+                }
+            );
         }
         
         if (options.useBackdrop !== false) {
-            const backdropRequest = new CustomEvent('backdrop-create-request', {
-                detail: {
+            window.RRBlazor.EventDispatcher.dispatch(
+                window.RRBlazor.Events.BACKDROP_CREATE_REQUEST,
+                {
                     requesterId: modalId,
                     config: {
                         level: this.activeModals.size - 1,
@@ -52,16 +64,15 @@ class ModalManager {
                         animationDuration: this.animationDurations[options.animationSpeed || 'normal'],
                         shared: true
                     }
-                },
-                bubbles: true
-            });
-            document.dispatchEvent(backdropRequest);
+                }
+            );
         }
         
         const portalPromise = this._waitForPortal(modalId);
         
-        const portalRequest = new CustomEvent('portal-create-request', {
-            detail: {
+        window.RRBlazor.EventDispatcher.dispatch(
+            window.RRBlazor.Events.PORTAL_CREATE_REQUEST,
+            {
                 requesterId: modalId,
                 config: {
                     id: modalId,
@@ -71,10 +82,8 @@ class ModalManager {
                         'data-modal-id': modalId
                     }
                 }
-            },
-            bubbles: true
-        });
-        document.dispatchEvent(portalRequest);
+            }
+        );
         
         await portalPromise;
         
@@ -126,6 +135,14 @@ class ModalManager {
         if (modal) {
             modal.state = 'open';
             modal.portalId = modalId;
+            
+            window.RRBlazor.EventDispatcher.dispatch(
+                window.RRBlazor.Events.UI_COMPONENT_OPENED,
+                {
+                    componentType: window.RRBlazor.ComponentTypes.MODAL,
+                    componentId: modalId
+                }
+            );
         }
         
         return modalId;
@@ -144,6 +161,14 @@ class ModalManager {
         modal.state = 'closing';
         modal.destroyStartedAt = Date.now();
         
+        window.RRBlazor.EventDispatcher.dispatch(
+            window.RRBlazor.Events.UI_COMPONENT_CLOSING,
+            {
+                componentType: window.RRBlazor.ComponentTypes.MODAL,
+                componentId: modalId
+            }
+        );
+        
         this._cleanupEventHandlers(modalId);
         
         await window.RRBlazor.FocusTrap.destroy(modalId);
@@ -152,22 +177,28 @@ class ModalManager {
             this._applyClosingAnimation(modal.element, modal.options);
         }
         
-        const destroyPortalRequest = new CustomEvent('portal-destroy-request', {
-            detail: { requesterId: modalId, portalId: modalId },
-            bubbles: true
-        });
-        document.dispatchEvent(destroyPortalRequest);
+        window.RRBlazor.EventDispatcher.dispatch(
+            window.RRBlazor.Events.PORTAL_DESTROY_REQUEST,
+            { requesterId: modalId, portalId: modalId }
+        );
         
-        if (modal.options?.useBackdrop !== false) {
-            const destroyBackdropRequest = new CustomEvent('backdrop-destroy-request', {
-                detail: { requesterId: modalId },
-                bubbles: true
-            });
-            document.dispatchEvent(destroyBackdropRequest);
+        if (modal.options.useBackdrop !== false) {
+            window.RRBlazor.EventDispatcher.dispatch(
+                window.RRBlazor.Events.BACKDROP_DESTROY_REQUEST,
+                { requesterId: modalId }
+            );
         }
         
         modal.state = 'closed';
         this.activeModals.delete(modalId);
+        
+        window.RRBlazor.EventDispatcher.dispatch(
+            window.RRBlazor.Events.UI_COMPONENT_CLOSED,
+            {
+                componentType: window.RRBlazor.ComponentTypes.MODAL,
+                componentId: modalId
+            }
+        );
         
         if (this.activeModals.size === 0) {
             await window.RRBlazor.ScrollLock.unlock();
@@ -203,15 +234,16 @@ class ModalManager {
         const modalIds = Array.from(this.activeModals.keys());
         
         modalIds.forEach(modalId => {
-            this._forceCleanup(modalId);
+            this._cleanupEventHandlers(modalId);
+            window.RRBlazor.FocusTrap.destroy(modalId);
         });
         
         this.activeModals.clear();
         this.eventHandlers.clear();
         window.RRBlazor.ScrollLock.forceUnlock();
         
-        document.dispatchEvent(new CustomEvent('portal-cleanup-all-request', { bubbles: true }));
-        document.dispatchEvent(new CustomEvent('backdrop-cleanup-all-request', { bubbles: true }));
+        window.RRBlazor.EventDispatcher.dispatch(window.RRBlazor.Events.PORTAL_CLEANUP_ALL_REQUEST);
+        window.RRBlazor.EventDispatcher.dispatch(window.RRBlazor.Events.BACKDROP_CLEANUP_ALL_REQUEST);
     }
     
     
@@ -306,36 +338,36 @@ class ModalManager {
         }
     }
     
-    _forceCleanup(modalId) {
-        this._cleanupEventHandlers(modalId);
-        window.RRBlazor.FocusTrap.destroy(modalId);
-        
-        document.dispatchEvent(new CustomEvent('portal-destroy-request', { 
-            detail: { requesterId: modalId, portalId: modalId },
-            bubbles: true 
-        }));
-        document.dispatchEvent(new CustomEvent('backdrop-destroy-request', { 
-            detail: { requesterId: modalId },
-            bubbles: true 
-        }));
+    
+    _setupCloseRequestListener(modalId) {
+        const handler = (event) => {
+            if (event.detail.componentId === modalId && event.detail.componentType === window.RRBlazor.ComponentTypes.MODAL) {
+                this.destroyModal(modalId);
+                document.removeEventListener(window.RRBlazor.Events.UI_COMPONENT_CLOSE_REQUEST, handler);
+            }
+        };
+        document.addEventListener(window.RRBlazor.Events.UI_COMPONENT_CLOSE_REQUEST, handler);
+        this._storeEventHandler(modalId, 'close-request', () => {
+            document.removeEventListener(window.RRBlazor.Events.UI_COMPONENT_CLOSE_REQUEST, handler);
+        });
     }
     
     async _waitForPortal(modalId, timeout = 1000) {
         return new Promise((resolve, reject) => {
             const timeoutId = setTimeout(() => {
-                document.removeEventListener('portal-created', handler);
+                document.removeEventListener(window.RRBlazor.Events.PORTAL_CREATED, handler);
                 reject(new Error(`Portal creation timeout for modal ${modalId}`));
             }, timeout);
             
             const handler = (event) => {
                 if (event.detail.requesterId === modalId) {
                     clearTimeout(timeoutId);
-                    document.removeEventListener('portal-created', handler);
+                    document.removeEventListener(window.RRBlazor.Events.PORTAL_CREATED, handler);
                     resolve(event.detail.portal);
                 }
             };
             
-            document.addEventListener('portal-created', handler);
+            document.addEventListener(window.RRBlazor.Events.PORTAL_CREATED, handler);
         });
     }
 }

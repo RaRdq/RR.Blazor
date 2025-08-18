@@ -174,10 +174,10 @@ namespace RR.Blazor.Utilities
             return density switch
             {
                 DensityType.Compact => "px-2 py-1 text-sm",
-                DensityType.Dense => "px-3 py-1.5 text-sm",
-                DensityType.Normal => "px-3 py-2 text-base",
+                DensityType.Dense => "px-2 py-1.5 text-sm",
+                DensityType.Normal => "px-2 py-2 text-base",
                 DensityType.Spacious => "px-4 py-3 text-base",
-                _ => "px-3 py-2 text-base"
+                _ => "px-2 py-2 text-base"
             };
         }
         

@@ -89,12 +89,13 @@ class PortalManagerBase {
             throw new Error(`Portal ${id} not found - cannot destroy non-existent portal`);
         }
         
-        const destroyEvent = new CustomEvent('portal-destroying', {
-            detail: { portalId: id, portal: portal.element },
-            bubbles: true,
-            cancelable: false
-        });
-        document.dispatchEvent(destroyEvent);
+        if (window.RRBlazor && window.RRBlazor.EventDispatcher) {
+            window.RRBlazor.EventDispatcher.dispatch(
+                window.RRBlazor.Events.PORTAL_DESTROYING,
+                { portalId: id, portal: portal.element },
+                { cancelable: false }
+            );
+        }
         
         const wasMaxZIndex = portal.zIndex === this._maxZIndex;
         
@@ -118,11 +119,12 @@ class PortalManagerBase {
         
         this._reindexPortals();
         
-        const destroyedEvent = new CustomEvent('portal-destroyed', {
-            detail: { portalId: id },
-            bubbles: true
-        });
-        document.dispatchEvent(destroyedEvent);
+        if (window.RRBlazor && window.RRBlazor.EventDispatcher) {
+            window.RRBlazor.EventDispatcher.dispatch(
+                window.RRBlazor.Events.PORTAL_DESTROYED,
+                { portalId: id }
+            );
+        }
     }
     
     destroyAll() {
@@ -256,11 +258,12 @@ class PortalManagerBase {
         element.setAttribute('data-portal-positioned', 'true');
         element._portalPositioned = true;
         
-        const moveEvent = new CustomEvent('portal-element-moved', {
-            detail: { portalId: id, element },
-            bubbles: true
-        });
-        document.dispatchEvent(moveEvent);
+        if (window.RRBlazor && window.RRBlazor.EventDispatcher) {
+            window.RRBlazor.EventDispatcher.dispatch(
+                window.RRBlazor.Events.PORTAL_ELEMENT_MOVED,
+                { portalId: id, element }
+            );
+        }
         
         return portal.element;
     }
@@ -283,11 +286,12 @@ class PortalManagerBase {
         element.removeAttribute('data-portal-positioned');
         delete element._portalPositioned;
         
-        const restoreEvent = new CustomEvent('portal-element-restored', {
-            detail: { portalId: id, element },
-            bubbles: true
-        });
-        document.dispatchEvent(restoreEvent);
+        if (window.RRBlazor && window.RRBlazor.EventDispatcher) {
+            window.RRBlazor.EventDispatcher.dispatch(
+                window.RRBlazor.Events.PORTAL_ELEMENT_RESTORED,
+                { portalId: id, element }
+            );
+        }
         
         this.destroy(id);
         
@@ -297,38 +301,47 @@ class PortalManagerBase {
 
 export const PortalManager = createSingleton(PortalManagerBase, 'PortalManager');
 
-document.addEventListener('portal-create-request', (event) => {
-    const { requesterId, config } = event.detail;
-    const portal = PortalManager.getInstance().create(config);
-    
-    const responseEvent = new CustomEvent('portal-created', {
-        detail: { requesterId, portal },
-        bubbles: true
-    });
-    document.dispatchEvent(responseEvent);
-});
-
-document.addEventListener('portal-destroy-request', (event) => {
-    const { requesterId, portalId } = event.detail;
-    if (PortalManager.getInstance().isPortalActive(portalId)) {
-        PortalManager.getInstance().destroy(portalId);
-        
-        const responseEvent = new CustomEvent('portal-destroyed', {
-            detail: { requesterId, portalId },
-            bubbles: true
-        });
-        document.dispatchEvent(responseEvent);
+// Defer event listener registration until RRBlazor.Events is available
+function setupPortalEventListeners() {
+    if (!window.RRBlazor || !window.RRBlazor.Events) {
+        setTimeout(setupPortalEventListeners, 10);
+        return;
     }
-});
-
-document.addEventListener('portal-cleanup-all-request', () => {
-    PortalManager.getInstance().destroyAll();
     
-    const responseEvent = new CustomEvent('portal-all-destroyed', {
-        bubbles: true
+    document.addEventListener(window.RRBlazor.Events.PORTAL_CREATE_REQUEST, (event) => {
+        const { requesterId, config } = event.detail;
+        const portal = PortalManager.getInstance().create(config);
+        
+        window.RRBlazor.EventDispatcher.dispatch(
+            window.RRBlazor.Events.PORTAL_CREATED,
+            { requesterId, portal }
+        );
     });
-    document.dispatchEvent(responseEvent);
-});
+    
+    document.addEventListener(window.RRBlazor.Events.PORTAL_DESTROY_REQUEST, (event) => {
+        const { requesterId, portalId } = event.detail;
+        if (PortalManager.getInstance().isPortalActive(portalId)) {
+            PortalManager.getInstance().destroy(portalId);
+            
+            window.RRBlazor.EventDispatcher.dispatch(
+                window.RRBlazor.Events.PORTAL_DESTROYED,
+                { requesterId, portalId }
+            );
+        }
+    });
+    
+    document.addEventListener(window.RRBlazor.Events.PORTAL_CLEANUP_ALL_REQUEST, () => {
+        PortalManager.getInstance().destroyAll();
+        
+        window.RRBlazor.EventDispatcher.dispatch(
+            window.RRBlazor.Events.PORTAL_ALL_DESTROYED
+        );
+    });
+}
+
+setupPortalEventListeners();
+
+
 
 window.addEventListener('beforeunload', () => {
     if (PortalManager.hasInstance()) {

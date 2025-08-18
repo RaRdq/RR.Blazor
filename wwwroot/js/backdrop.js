@@ -156,6 +156,7 @@ class BackdropManagerBase {
                 return parseFloat(durationValue) * 1000;
             }
         } catch (error) {
+            throw error;
         }
         return 200;
     }
@@ -220,8 +221,8 @@ class BackdropManagerBase {
     }
     
     #removeBackdropElement(element, duration = this.#animationDuration) {
-        if (!element || !element.parentNode) {
-            return;
+        if (!element.parentNode) {
+            throw new Error('[BackdropManager] Element has no parent node');
         }
         
         if (element.dataset.removing === 'true') {
@@ -246,38 +247,47 @@ class BackdropManagerBase {
 }
 
 export const BackdropManager = createSingleton(BackdropManagerBase, 'BackdropManager');
-document.addEventListener('backdrop-create-request', (event) => {
-    const { requesterId, config } = event.detail;
-    const backdrop = BackdropManager.getInstance().create(requesterId, config);
-    
-    const responseEvent = new CustomEvent('backdrop-created', {
-        detail: { requesterId, backdrop },
-        bubbles: true
-    });
-    document.dispatchEvent(responseEvent);
-});
-
-document.addEventListener('backdrop-destroy-request', (event) => {
-    const { requesterId } = event.detail;
-    if (BackdropManager.getInstance().hasBackdrop(requesterId)) {
-        BackdropManager.getInstance().destroy(requesterId);
-        
-        const responseEvent = new CustomEvent('backdrop-destroyed', {
-            detail: { requesterId },
-            bubbles: true
-        });
-        document.dispatchEvent(responseEvent);
+// Defer event listener registration until RRBlazor.Events is available
+function setupBackdropEventListeners() {
+    if (!window.RRBlazor || !window.RRBlazor.Events) {
+        setTimeout(setupBackdropEventListeners, 10);
+        return;
     }
-});
-
-document.addEventListener('backdrop-cleanup-all-request', () => {
-    BackdropManager.getInstance().destroyAll();
     
-    const responseEvent = new CustomEvent('backdrop-all-destroyed', {
-        bubbles: true
+    document.addEventListener(window.RRBlazor.Events.BACKDROP_CREATE_REQUEST, (event) => {
+        const { requesterId, config } = event.detail;
+        const backdrop = BackdropManager.getInstance().create(requesterId, config);
+        
+        window.RRBlazor.EventDispatcher.dispatch(
+            window.RRBlazor.Events.BACKDROP_CREATED,
+            { requesterId, backdrop }
+        );
     });
-    document.dispatchEvent(responseEvent);
-});
+    
+    document.addEventListener(window.RRBlazor.Events.BACKDROP_DESTROY_REQUEST, (event) => {
+        const { requesterId } = event.detail;
+        if (BackdropManager.getInstance().hasBackdrop(requesterId)) {
+            BackdropManager.getInstance().destroy(requesterId);
+            
+            window.RRBlazor.EventDispatcher.dispatch(
+                window.RRBlazor.Events.BACKDROP_DESTROYED,
+                { requesterId }
+            );
+        }
+    });
+    
+    document.addEventListener(window.RRBlazor.Events.BACKDROP_CLEANUP_ALL_REQUEST, () => {
+        BackdropManager.getInstance().destroyAll();
+        
+        window.RRBlazor.EventDispatcher.dispatch(
+            window.RRBlazor.Events.BACKDROP_ALL_DESTROYED
+        );
+    });
+}
+
+setupBackdropEventListeners();
+
+
 
 window.addEventListener('beforeunload', () => {
     if (BackdropManager.hasInstance()) {

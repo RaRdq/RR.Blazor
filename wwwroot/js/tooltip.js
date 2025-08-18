@@ -1,9 +1,6 @@
 
 export async function createTooltipPortal(popupElement, triggerElement, position, portalId) {
-    if (!popupElement) throw new Error('Popup element required');
-    if (!triggerElement) throw new Error('Trigger element required');
-        
-        const portalManager = await window.RRBlazor.Portal.getInstance();
+    const portalManager = await window.RRBlazor.Portal.getInstance();
         const portalResult = portalManager.create({
             id: portalId,
             className: 'tooltip-portal'
@@ -130,9 +127,6 @@ export async function updateTooltipPosition(portalId, triggerElement, position) 
 }
 
 export function getTooltipPosition(triggerElement, tooltipElement, preferredPosition = 'top') {
-    if (!triggerElement) throw new Error('Trigger element required');
-    if (!tooltipElement) throw new Error('Tooltip element required');
-    
     const triggerRect = triggerElement.getBoundingClientRect();
     const tooltipWidth = tooltipElement.offsetWidth || 200;
     const tooltipHeight = tooltipElement.offsetHeight || 100;

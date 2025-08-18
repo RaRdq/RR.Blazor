@@ -26,7 +26,9 @@ namespace RR.Blazor.Extensions
             services.AddSingleton(options);
             
             // Core services
-            services.AddScoped<IModalService, ModalService>();
+            // Register the refactored modal service that works directly with JavaScript portal system
+            services.AddScoped<IModalServiceCore, ModalService>();
+            services.AddScoped<IModalService>(provider => provider.GetRequiredService<IModalServiceCore>() as IModalService);
             services.AddScoped<IThemeService, BlazorThemeService>();
             services.AddScoped<IAppSearchService, AppSearchService>();
             
@@ -80,6 +82,9 @@ namespace RR.Blazor.Extensions
         
         /// <summary>Whether animations are enabled</summary>
         public bool AnimationsEnabled { get; set; } = true;
+        
+        /// <summary>Use portal-based modals that render directly to DOM (recommended)</summary>
+        public bool UsePortalBasedModals { get; set; } = true;
         
         /// <summary>Configure theme settings</summary>
         public RRBlazorOptions WithTheme(Action<ThemeConfiguration> configure)

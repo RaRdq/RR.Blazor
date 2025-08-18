@@ -23,7 +23,7 @@ export const RTableScrollManager = {
             const manager = new TableScrollInstance(tableId, tableContainer, scrollContainer);
             this.scrollManagers.set(tableId, manager);
             
-            if (window.debugLogger?.isDebugMode) {
+            if (window.debugLogger && window.debugLogger.isDebugMode) {
                 window.debugLogger.log('[RTableScrollManager] Initialized:', { tableId });
             }
             
@@ -42,7 +42,7 @@ export const RTableScrollManager = {
                 manager.dispose();
                 this.scrollManagers.delete(tableId);
                 
-                if (window.debugLogger?.isDebugMode) {
+                if (window.debugLogger && window.debugLogger.isDebugMode) {
                     window.debugLogger.log('[RTableScrollManager] Disposed:', tableId);
                 }
             }

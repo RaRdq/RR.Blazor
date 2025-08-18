@@ -100,6 +100,7 @@ public class ModalInstance<T>
 
 public class ModalInstance : ModalInstance<object>
 {
+    public Enums.ModalResult? LastResult { get; set; }
 }
 
 public class ModalResult

@@ -6,38 +6,45 @@ class ModalEventCoordinator {
     }
     
     setupInfrastructureEventHandlers() {
-        document.addEventListener('portal-created', (event) => {
+        if (!window.RRBlazor || !window.RRBlazor.Events) {
+            setTimeout(() => this.setupInfrastructureEventHandlers(), 10);
+            return;
+        }
+        
+        document.addEventListener(window.RRBlazor.Events.PORTAL_CREATED, (event) => {
             const { requesterId, portal } = event.detail;
             if (requesterId.startsWith('modal-')) {
                 this.handlePortalCreated(requesterId, portal);
             }
         });
         
-        document.addEventListener('portal-destroyed', (event) => {
+        document.addEventListener(window.RRBlazor.Events.PORTAL_DESTROYED, (event) => {
             const { requesterId, portalId } = event.detail;
-            if (requesterId?.startsWith('modal-') || portalId?.startsWith('modal-')) {
+            if ((requesterId && requesterId.startsWith('modal-')) || (portalId && portalId.startsWith('modal-'))) {
                 this.handlePortalDestroyed(requesterId || portalId);
             }
         });
         
-        document.addEventListener('backdrop-created', (event) => {
+        document.addEventListener(window.RRBlazor.Events.BACKDROP_CREATED, (event) => {
             const { requesterId } = event.detail;
-            if (requesterId?.startsWith('modal-')) {
+            if (requesterId.startsWith('modal-')) {
                 this.handleBackdropCreated(requesterId);
             }
         });
         
-        document.addEventListener('backdrop-destroyed', (event) => {
+        document.addEventListener(window.RRBlazor.Events.BACKDROP_DESTROYED, (event) => {
             const { requesterId } = event.detail;
-            if (requesterId?.startsWith('modal-')) {
+            if (requesterId.startsWith('modal-')) {
                 this.handleBackdropDestroyed(requesterId);
             }
         });
     }
     
     requestPortal(modalId, config) {
-        const portalRequest = new CustomEvent('portal-create-request', {
-            detail: {
+        
+        window.RRBlazor.EventDispatcher.dispatch(
+            window.RRBlazor.Events.PORTAL_CREATE_REQUEST,
+            {
                 requesterId: modalId,
                 config: {
                     id: modalId,
@@ -48,86 +55,87 @@ class ModalEventCoordinator {
                     },
                     ...config
                 }
-            },
-            bubbles: true
-        });
-        document.dispatchEvent(portalRequest);
+            }
+        );
     }
     
     destroyPortal(modalId) {
-        const destroyRequest = new CustomEvent('portal-destroy-request', {
-            detail: {
+        
+        window.RRBlazor.EventDispatcher.dispatch(
+            window.RRBlazor.Events.PORTAL_DESTROY_REQUEST,
+            {
                 requesterId: modalId,
                 portalId: modalId
-            },
-            bubbles: true
-        });
-        document.dispatchEvent(destroyRequest);
+            }
+        );
     }
     
     requestBackdrop(modalId, config) {
-        const backdropRequest = new CustomEvent('backdrop-create-request', {
-            detail: {
+        
+        window.RRBlazor.EventDispatcher.dispatch(
+            window.RRBlazor.Events.BACKDROP_CREATE_REQUEST,
+            {
                 requesterId: modalId,
                 config
-            },
-            bubbles: true
-        });
-        document.dispatchEvent(backdropRequest);
+            }
+        );
     }
     
     destroyBackdrop(modalId) {
-        const destroyRequest = new CustomEvent('backdrop-destroy-request', {
-            detail: {
+        
+        window.RRBlazor.EventDispatcher.dispatch(
+            'backdrop-destroy-request',
+            {
                 requesterId: modalId
-            },
-            bubbles: true
-        });
-        document.dispatchEvent(destroyRequest);
+            }
+        );
     }
     
     forceCleanupAll() {
-        const cleanupRequest = new CustomEvent('portal-cleanup-all-request', {
-            bubbles: true
-        });
-        document.dispatchEvent(cleanupRequest);
         
-        const backdropCleanupRequest = new CustomEvent('backdrop-cleanup-all-request', {
-            bubbles: true
-        });
-        document.dispatchEvent(backdropCleanupRequest);
+        window.RRBlazor.EventDispatcher.dispatch(
+            window.RRBlazor.Events.PORTAL_CLEANUP_ALL_REQUEST
+        );
+        
+        window.RRBlazor.EventDispatcher.dispatch(
+            window.RRBlazor.Events.BACKDROP_CLEANUP_ALL_REQUEST
+        );
     }
     
     handlePortalCreated(modalId, portal) {
-        const modalCreatedEvent = new CustomEvent('modal-portal-ready', {
-            detail: { modalId, portal },
-            bubbles: true
-        });
-        document.dispatchEvent(modalCreatedEvent);
+        if (!window.RRBlazor || !window.RRBlazor.EventDispatcher) return;
+        
+        window.RRBlazor.EventDispatcher.dispatch(
+            window.RRBlazor.Events.MODAL_PORTAL_READY,
+            { modalId, portal }
+        );
     }
     
     handlePortalDestroyed(modalId) {
-        const modalPortalDestroyedEvent = new CustomEvent('modal-portal-destroyed', {
-            detail: { modalId },
-            bubbles: true
-        });
-        document.dispatchEvent(modalPortalDestroyedEvent);
+        if (!window.RRBlazor || !window.RRBlazor.EventDispatcher) return;
+        
+        window.RRBlazor.EventDispatcher.dispatch(
+            window.RRBlazor.Events.MODAL_PORTAL_DESTROYED,
+            { modalId }
+        );
     }
     
     handleBackdropCreated(modalId) {
-        const backdropReadyEvent = new CustomEvent('modal-backdrop-ready', {
-            detail: { modalId },
-            bubbles: true
-        });
-        document.dispatchEvent(backdropReadyEvent);
+        if (!window.RRBlazor || !window.RRBlazor.EventDispatcher) return;
+        
+        window.RRBlazor.EventDispatcher.dispatch(
+            window.RRBlazor.Events.MODAL_BACKDROP_READY,
+            { modalId }
+        );
     }
     
     handleBackdropDestroyed(modalId) {
-        const backdropDestroyedEvent = new CustomEvent('modal-backdrop-destroyed', {
-            detail: { modalId },
-            bubbles: true
-        });
-        document.dispatchEvent(backdropDestroyedEvent);
+        if (!window.RRBlazor || !window.RRBlazor.EventDispatcher) return;
+        
+        window.RRBlazor.EventDispatcher.dispatch(
+            window.RRBlazor.Events.MODAL_BACKDROP_DESTROYED,
+            { modalId }
+        );
     }
 }
 

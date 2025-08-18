@@ -443,7 +443,6 @@
             try
             {
                 appShellModule = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/RR.Blazor/js/app-shell.js");
-                await appShellModule.InvokeVoidAsync("initialize");
                 IsMobile = await JS.InvokeAsync<bool>("RRAppShell.isMobile");
                 
                 dotNetRef = DotNetObjectReference.Create(this);
@@ -455,6 +454,18 @@
                 }
                 
                 StateHasChanged();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[RAppShell] Initialization error: {ex.Message}");
+            }
+        }
+        
+        if (!firstRender && appShellModule != null && !disposed)
+        {
+            try
+            {
+                await appShellModule.InvokeVoidAsync("initialize");
             }
             catch (Exception ex)
             {

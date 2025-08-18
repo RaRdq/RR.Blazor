@@ -11,30 +11,38 @@ let activePortals = new Map();
 let viewportLocations = new Map();
 
 const Choice = {
+    initialize() {
+        document.addEventListener(window.RRBlazor.Events.UI_COMPONENT_CLOSE_REQUEST, (event) => {
+            if (event.detail.componentType === window.RRBlazor.ComponentTypes.CHOICE && activeDropdown === event.detail.componentId) {
+                this.closeDropdown(event.detail.componentId);
+            }
+        });
+    },
+    
     async openDropdown(choiceElementId, options = {}) {
         if (pendingOperations.has(choiceElementId)) return;
         
         pendingOperations.add(choiceElementId);
         try {
             const choiceElement = document.querySelector(`[data-choice-id="${choiceElementId}"]`);
-            if (!choiceElement) throw new Error(`Choice element not found: ${choiceElementId}`);
-            
-            const trigger = choiceElement.querySelector('.choice-trigger');
-            if (!trigger) throw new Error(`Trigger not found: ${choiceElementId}`);
-            
-            const viewport = choiceElement.parentElement?.querySelector('.choice-viewport');
-            if (!viewport) throw new Error(`[Choice] Viewport not found for ${choiceElementId}`);
+            const trigger = choiceElement.querySelector('.choice-trigger') || choiceElement.querySelector('.choice-trigger-wrapper');
+            const viewport = choiceElement.parentElement.querySelector('.choice-viewport');
             
             if (activeDropdown && activeDropdown !== choiceElementId) {
                 await this.closeDropdown(activeDropdown);
             }
+            
+            window.RRBlazor.EventDispatcher.dispatch(
+                window.RRBlazor.Events.UI_COMPONENT_OPENING,
+                {
+                    componentType: window.RRBlazor.ComponentTypes.CHOICE,
+                    componentId: choiceElementId,
+                    priority: window.RRBlazor.EventPriorities.NORMAL
+                }
+            );
 
             const portalId = `choice-${choiceElementId}`;
             
-            document.dispatchEvent(new CustomEvent('portal-destroy-request', {
-                detail: { requesterId: `choice-${choiceElementId}`, portalId: `choice-portal-${choiceElementId}` },
-                bubbles: true
-            }));
 
             const triggerRect = trigger.getBoundingClientRect();
             const dropdownMaxHeight = 320;
@@ -76,7 +84,7 @@ const Choice = {
             }
             
             const containerElement = choiceElement.closest('[data-container], .sidebar, .app-sidebar, .modal, .dialog, [class*="sidebar"], [class*="panel"]');
-            const containerRect = containerElement?.getBoundingClientRect();
+            const containerRect = containerElement.getBoundingClientRect();
             
             let adaptedDimensions = { ...targetDimensions };
             if (containerRect) {
@@ -100,16 +108,16 @@ const Choice = {
 
             const portalPromise = this._waitForPortal(choiceElementId);
             
-            document.dispatchEvent(new CustomEvent('portal-create-request', {
-                detail: {
+            window.RRBlazor.EventDispatcher.dispatch(
+                window.RRBlazor.Events.PORTAL_CREATE_REQUEST,
+                {
                     requesterId: `choice-${choiceElementId}`,
                     config: {
                         id: `choice-portal-${choiceElementId}`,
                         className: 'choice-portal'
                     }
-                },
-                bubbles: true
-            }));
+                }
+            );
             
             const portal = await portalPromise;
             
@@ -157,18 +165,30 @@ const Choice = {
             activeDropdown = choiceElementId;
             activePortals.set(choiceElementId, portalId);
             
+            window.RRBlazor.EventDispatcher.dispatch(
+                window.RRBlazor.Events.UI_COMPONENT_OPENED,
+                {
+                    componentType: window.RRBlazor.ComponentTypes.CHOICE,
+                    componentId: choiceElementId
+                }
+            );
+            
             window.RRBlazor.ClickOutside.register(`choice-${choiceElementId}`, choiceElement, {
                 excludeSelectors: [
                     '.choice-trigger',
                     '.choice-viewport', 
                     '.choice-content',
                     '.choice-portal',
-                    `[data-choice-id="${choiceElementId}"]`
+                    '.modal-portal',
+                    '.modal-content',
+                    '[data-modal-id]',
+                    `[data-choice-id="${choiceElementId}"]`,
+                    `[data-viewport-id="${choiceElementId}"]`
                 ]
             });
 
             // Add click-outside listener
-            choiceElement.addEventListener('click-outside', (event) => {
+            choiceElement.addEventListener(window.RRBlazor.Events.CLICK_OUTSIDE, (event) => {
                 if (event.detail.elementId === `choice-${choiceElementId}`) {
                     this.closeDropdown(choiceElementId);
                 }
@@ -185,6 +205,14 @@ const Choice = {
 
     async closeDropdown(choiceElementId) {
         if (!choiceElementId || activeDropdown !== choiceElementId) return false;
+        
+        window.RRBlazor.EventDispatcher.dispatch(
+            window.RRBlazor.Events.UI_COMPONENT_CLOSING,
+            {
+                componentType: window.RRBlazor.ComponentTypes.CHOICE,
+                componentId: choiceElementId
+            }
+        );
 
         const choiceElement = document.querySelector(`[data-choice-id="${choiceElementId}"]`);
         if (!choiceElement) {
@@ -203,7 +231,7 @@ const Choice = {
         
         if (!viewport) {
             viewport = choiceElement.querySelector('.choice-viewport') || 
-                      choiceElement.parentElement?.querySelector('.choice-viewport');
+                      choiceElement.parentElement.querySelector('.choice-viewport');
         }
         
         if (!viewport) {
@@ -232,16 +260,25 @@ const Choice = {
         }
 
         // Request portal cleanup via events (Dependency Inversion)
-        document.dispatchEvent(new CustomEvent('portal-destroy-request', {
-                detail: { requesterId: `choice-${choiceElementId}`, portalId: `choice-portal-${choiceElementId}` },
-                bubbles: true
-            }));
+        window.RRBlazor.EventDispatcher.dispatch(
+            window.RRBlazor.Events.PORTAL_DESTROY_REQUEST,
+            { requesterId: `choice-${choiceElementId}`, portalId: `choice-portal-${choiceElementId}` }
+        );
 
         this.disableKeyboardNavigation();
         window.RRBlazor.ClickOutside.unregister(`choice-${choiceElementId}`);
         activeDropdown = null;
         activePortals.delete(choiceElementId);
         viewportLocations.delete(choiceElementId);
+        
+        window.RRBlazor.EventDispatcher.dispatch(
+            window.RRBlazor.Events.UI_COMPONENT_CLOSED,
+            {
+                componentType: window.RRBlazor.ComponentTypes.CHOICE,
+                componentId: choiceElementId
+            }
+        );
+        
         return true;
     },
 
@@ -278,14 +315,14 @@ const Choice = {
         
         if (!viewport) {
             viewport = choiceElement.querySelector('.choice-viewport') || 
-                      choiceElement.parentElement?.querySelector('.choice-viewport');
+                      choiceElement.parentElement.querySelector('.choice-viewport');
         }
         
         if (viewport) {
-            document.dispatchEvent(new CustomEvent('choice-keyboard-enable', {
-                detail: { choiceId: choiceElementId, viewport },
-                bubbles: true
-            }));
+            window.RRBlazor.EventDispatcher.dispatch(
+                window.RRBlazor.Events.CHOICE_KEYBOARD_ENABLE,
+                { choiceId: choiceElementId, viewport }
+            );
         }
         
         keyboardNavigationEnabled = true;
@@ -293,9 +330,9 @@ const Choice = {
     },
 
     disableKeyboardNavigation() {
-        document.dispatchEvent(new CustomEvent('choice-keyboard-disable', {
-            bubbles: true
-        }));
+        window.RRBlazor.EventDispatcher.dispatch(
+            window.RRBlazor.Events.CHOICE_KEYBOARD_DISABLE
+        );
         keyboardNavigationEnabled = false;
         currentHighlightedIndex = -1;
     },
@@ -327,7 +364,7 @@ const Choice = {
         
         if (!viewport) {
             viewport = choiceElement.querySelector('.choice-viewport') || 
-                      choiceElement.parentElement?.querySelector('.choice-viewport');
+                      choiceElement.parentElement.querySelector('.choice-viewport');
         }
         
         if (!viewport) return;
@@ -385,7 +422,7 @@ const Choice = {
         item.classList.add('choice-item-active');
 
         const trigger = choiceElement.querySelector('.choice-trigger');
-        const triggerText = trigger?.querySelector('.choice-text');
+        const triggerText = trigger.querySelector('.choice-text');
         if (triggerText) {
             triggerText.textContent = item.textContent.trim();
         }
@@ -398,35 +435,43 @@ const Choice = {
         return new Promise((resolve, reject) => {
             const requesterId = `choice-${choiceElementId}`;
             const timeoutId = setTimeout(() => {
-                document.removeEventListener('portal-created', handler);
+                document.removeEventListener(window.RRBlazor.Events.PORTAL_CREATED, handler);
                 reject(new Error(`Portal creation timeout for choice ${choiceElementId}`));
             }, timeout);
             
             const handler = (event) => {
                 if (event.detail.requesterId === requesterId) {
                     clearTimeout(timeoutId);
-                    document.removeEventListener('portal-created', handler);
+                    document.removeEventListener(window.RRBlazor.Events.PORTAL_CREATED, handler);
                     resolve(event.detail.portal);
                 }
             };
             
-            document.addEventListener('portal-created', handler);
+            document.addEventListener(window.RRBlazor.Events.PORTAL_CREATED, handler);
         });
     }
 };
 
 document.addEventListener('click', (event) => {
+    // Skip if inside any interactive element
+    if (event.target.closest('[data-column-manager]')) return;
+    if (event.target.matches('input, button')) return;
+    
     const item = event.target.closest('.choice-item');
-    if (item && !item.disabled) {
-        event.preventDefault();
-        const choiceElement = item.closest('[data-choice-id]');
-        if (choiceElement) {
-            const choiceId = choiceElement.dataset.choiceId;
-            Choice.selectItem(choiceId, item);
-        }
-        return;
-    }
+    if (!item || item.disabled) return;
+    
+    // Skip if item contains interactive content
+    if (item.querySelector('[data-column-manager], input, button')) return;
+    
+    event.preventDefault();
+    const choiceElement = item.closest('[data-choice-id]');
+    if (!choiceElement) return;
+    
+    const choiceId = choiceElement.dataset.choiceId;
+    Choice.selectItem(choiceId, item);
 });
+
+Choice.initialize();
 
 export default {
     openDropdown: (choiceElementId, options) => Choice.openDropdown(choiceElementId, options),
@@ -439,5 +484,6 @@ export default {
         activePortals.clear();
         viewportLocations.clear();
         return Promise.resolve(true);
-    }
+    },
+    initialize: () => Choice.initialize()
 };

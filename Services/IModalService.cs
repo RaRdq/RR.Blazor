@@ -41,6 +41,13 @@ public interface IModalService
     bool HasVisibleModals { get; }
     IEnumerable<ModalInstance> ActiveModals { get; }
     
+    // Builder pattern
+    IModalBuilder<T> Create<T>();
+    
+    // Confirmation modal callbacks
+    void ConfirmModal(string modalId);
+    void CancelModal(string modalId);
+    
     // Events
     event Action<ModalInstance> OnModalOpened;
     event Action<ModalInstance> OnModalClosed;

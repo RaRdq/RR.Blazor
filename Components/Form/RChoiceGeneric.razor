@@ -26,22 +26,16 @@
     
     @if (EffectiveVariant == Dropdown || TriggerContent != null)
     {
-        <div @ref="choiceElement" class="choice choice-dropdown relative @GetDropdownDensityClass()" 
+        <div @ref="choiceElement" class="choice choice-dropdown relative @(TriggerContent != null ? "w-auto" : "") @(TriggerContent != null ? "" : GetDropdownDensityClass())" 
              data-choice-id="@choiceElementId">
         
             @if (TriggerContent != null)
             {
-                <button class="choice-trigger w-full"
-                        type="button"
-                        aria-haspopup="true"
-                        aria-expanded="false"
-                        aria-label="@(AriaLabel ?? "Open dropdown")"
-                        disabled="@Disabled"
-                        @onclick="ToggleDropdown">
-                    <div class="@GetTriggerContentClasses()">
-                        @TriggerContent
-                    </div>
-                </button>
+                <div class="choice-trigger-wrapper"
+                     @onclick="ToggleDropdown"
+                     @onclick:stopPropagation="true">
+                    @TriggerContent
+                </div>
             }
             else
             {
@@ -72,15 +66,25 @@
                     {
                         @if (ItemTemplate != null)
                         {
-                            <button class="choice-item @GetItemClass(item)"
-                                    type="button"
-                                    disabled="@IsItemDisabled(item)"
-                                    title="@GetItemTitle(item)"
-                                    aria-label="@GetItemAriaLabel(item)"
-                                    data-value="@GetItemValue(item)"
-                                    @onclick="() => OnItemSelected(item)">
+                            @if (IsItemDivider(item))
+                            {
                                 @ItemTemplate(item)
-                            </button>
+                            }
+                            else if (OnItemClick.HasDelegate)
+                            {
+                                <div class="choice-item @GetItemClass(item)"
+                                     data-value="@GetItemValue(item)"
+                                     @onclick="() => OnItemSelected(item)"
+                                     @onclick:stopPropagation="true"
+                                     style="cursor: pointer;">
+                                    @ItemTemplate(item)
+                                </div>
+                            }
+                            else
+                            {
+                                @* Don't wrap in button if no OnItemClick - let ItemTemplate handle its own clicks *@
+                                @ItemTemplate(item)
+                            }
                         }
                         else
                         {
@@ -308,6 +312,7 @@
     private bool IsItemActive(TValue item) => EqualityComparer<TValue>.Default.Equals(item, SelectedValue);
     private bool IsItemDisabled(TValue item) => ItemDisabledSelectorTyped?.Invoke(item) ?? false;
     private bool IsItemLoading(TValue item) => ItemLoadingSelectorTyped?.Invoke(item) ?? false;
+    private bool IsItemDivider(TValue item) => item?.ToString()?.StartsWith("divider") ?? false;
 
     private string GetItemLabel(TValue item) => ItemLabelSelectorTyped?.Invoke(item) ?? item.ToString();
     private string GetItemIcon(TValue item) => ItemIconSelectorTyped?.Invoke(item) ?? "";

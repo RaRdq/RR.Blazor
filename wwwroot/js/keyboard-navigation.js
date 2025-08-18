@@ -116,23 +116,23 @@ class KeyboardNavigationManager {
         
         if (!currentItem) throw new Error('No current item to select');
         
-        const selectEvent = new CustomEvent('keyboard-select', {
-            detail: { 
+        window.RRBlazor.EventDispatcher.dispatch(
+            window.RRBlazor.Events.KEYBOARD_NAV_ITEM_SELECTED,
+            { 
                 elementId: this.activeNavigation.elementId,
                 item: currentItem,
                 index: this.activeNavigation.currentIndex
-            },
-            bubbles: true
-        });
-        currentItem.dispatchEvent(selectEvent);
+            }
+        );
+        currentItem.dispatchEvent(new Event(window.RRBlazor.Events.KEYBOARD_NAV_ITEM_SELECTED));
     }
     
     emitEscape() {
-        const escapeEvent = new CustomEvent('keyboard-escape', {
-            detail: { elementId: this.activeNavigation.elementId },
-            bubbles: true
-        });
-        this.activeNavigation.container.dispatchEvent(escapeEvent);
+        window.RRBlazor.EventDispatcher.dispatch(
+            'keyboard-escape',
+            { elementId: this.activeNavigation.elementId }
+        );
+        this.activeNavigation.container.dispatchEvent(new Event('keyboard-escape'));
     }
     
     getNavigableItems() {

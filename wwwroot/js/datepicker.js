@@ -1,18 +1,8 @@
 const datepickerInstances = new Map();
 
 async function positionPopup(element, immediate = false) {
-    if (!element) return;
-    
-    if (!window.RRBlazor?.Portal) {
-        throw new Error('Portal system not available');
-    }
-    
     const popup = element.querySelector('.rr-datepicker-popup');
     const trigger = element.querySelector('.rr-datepicker-trigger');
-    
-    if (!popup || !trigger) {
-        throw new Error('Popup or trigger element not found');
-    }
     
     if (!datepickerInstances.has(element)) {
         const portalId = `datepicker-${element.id || Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -41,25 +31,21 @@ async function positionPopup(element, immediate = false) {
 }
 
 function cleanupDatepicker(element) {
-    if (!element) return;
     
     if (datepickerInstances.has(element)) {
         const { portalId, datepickerId } = datepickerInstances.get(element);
         
         window.RRBlazor.ClickOutside.unregister(datepickerId);
         
-        if (window.RRBlazor?.Portal) {
-            window.RRBlazor.Portal.destroy(portalId);
-        }
+        window.RRBlazor.Portal.destroy(portalId);
         
         datepickerInstances.delete(element);
     }
 }
 
 function setupDatepickerEvents(element, dotNetRef) {
-    if (!element) return;
     
-    element.addEventListener('click-outside', function(event) {
+    element.addEventListener(window.RRBlazor.Events.CLICK_OUTSIDE, function(event) {
         if (dotNetRef) {
             dotNetRef.invokeMethodAsync('HandleClickOutside');
         }
@@ -67,7 +53,6 @@ function setupDatepickerEvents(element, dotNetRef) {
 }
 
 async function initializeDatepicker(element, dotNetRef) {
-    if (!element || !dotNetRef) return;
     
     setupDatepickerEvents(element, dotNetRef);
     
@@ -78,13 +63,11 @@ async function initializeDatepicker(element, dotNetRef) {
 }
 
 async function openDatepicker(element) {
-    if (!element) return;
     
     await positionPopup(element, true);
 }
 
 async function closeDatepicker(element) {
-    if (!element) return;
     
     cleanupDatepicker(element);
 }

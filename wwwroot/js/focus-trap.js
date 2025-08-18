@@ -30,7 +30,6 @@ export class FocusTrap {
             if (event.key !== 'Tab') return;
 
             const currentModal = this.findPortaledModal(modalElement, trapId);
-            if (!currentModal) return;
 
             const currentFocusableElements = this.getFocusableElements(currentModal);
             if (currentFocusableElements.length === 0) return;
@@ -43,13 +42,13 @@ export class FocusTrap {
             if (event.shiftKey) {
                 if (!isWithinModal || document.activeElement === currentFirst) {
                     event.preventDefault();
-                    currentLast?.focus();
+                    currentLast.focus();
                 }
             } else {
   
                 if (!isWithinModal || document.activeElement === currentLast) {
                     event.preventDefault();
-                    currentFirst?.focus();
+                    currentFirst.focus();
                 }
             }
         };
@@ -66,12 +65,8 @@ export class FocusTrap {
 
         requestAnimationFrame(() => {
             const currentModal = this.findPortaledModal(modalElement, trapId);
-            if (currentModal) {
-                const firstFocusable = this.getFocusableElements(currentModal)[0];
-                if (firstFocusable) {
-                    firstFocusable.focus();
-                }
-            }
+            const firstFocusable = this.getFocusableElements(currentModal)[0];
+            firstFocusable.focus();
         });
 
         return true;
@@ -83,10 +78,13 @@ export class FocusTrap {
         if (!modal) {
             const modals = document.querySelectorAll('[role="dialog"]');
             modal = Array.from(modals).find(m => {
+                if (!m) return false;
+                
                 const rect = m.getBoundingClientRect();
                 return rect.width > 0 && rect.height > 0;
             });
         }
+        
         
         return modal;
     }

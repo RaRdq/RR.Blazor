@@ -173,7 +173,7 @@ function exportToCSV(data) {
     const headers = Object.keys(data[0]);
     const csvContent = [
         headers.join(','),
-        ...data.map(row => headers.map(header => `"${row[header] || ''}"`).join(','))
+        ...data.map(row => headers.map(header => `"${row[header]}"`).join(','))
     ].join('\n');
     
     return csvContent;
@@ -185,7 +185,7 @@ function exportToTSV(data) {
     const headers = Object.keys(data[0]);
     const tsvContent = [
         headers.join('\t'),
-        ...data.map(row => headers.map(header => row[header] || '').join('\t'))
+        ...data.map(row => headers.map(header => row[header]).join('\t'))
     ].join('\n');
     
     return tsvContent;
@@ -227,7 +227,7 @@ function enhanceChartAccessibility(element, options = {}) {
         if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
             const firstInteractive = element.querySelector('.pie-slice, .column-chart-bar');
-            firstInteractive?.click();
+            firstInteractive.click();
         }
     });
     
@@ -251,8 +251,8 @@ function generateChartSummary(dataTable) {
     const firstRow = rows[0];
     const lastRow = rows[rows.length - 1];
     
-    const firstLabel = firstRow.querySelector('td:first-child')?.textContent || '';
-    const lastLabel = lastRow.querySelector('td:first-child')?.textContent || '';
+    const firstLabel = firstRow.querySelector('td:first-child').textContent;
+    const lastLabel = lastRow.querySelector('td:first-child').textContent;
     
     return `Chart with ${total} data points, ranging from ${firstLabel} to ${lastLabel}`;
 }
@@ -302,7 +302,7 @@ function initializeChart(element, options = {}) {
             // Use ResizeObserver with requestAnimationFrame
             let resizeScheduled = false;
             const resizeObserver = new ResizeObserver(entries => {
-                if (!resizeScheduled && entries[0]?.contentRect?.width > 0) {
+                if (!resizeScheduled && entries[0].contentRect.width > 0) {
                     resizeScheduled = true;
                     requestAnimationFrame(() => {
                         updateLayout();
@@ -459,5 +459,5 @@ function cleanup(element) {
 
 window.addEventListener('beforeunload', () => {
     disposeAllCharts();
-    chartObserver?.disconnect();
+    chartObserver.disconnect();
 });

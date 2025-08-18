@@ -15,7 +15,7 @@
     </TriggerContent>
     
     <ItemTemplate Context="item">
-        <div class="min-w-80 max-w-96" @onclick:stopPropagation="true">
+        <div class="min-w-md max-w-lg" data-column-manager="true" @onclick:stopPropagation="true">
             <div class="p-4 border-b border-surface-outline">
                 <div class="text-h6 font-semibold">Manage Columns</div>
                 <p class="text-sm text-secondary">Show, hide, resize, and reorder table columns</p>
@@ -24,7 +24,13 @@
             <div class="max-h-80 overflow-y-auto">
                 @foreach (var column in GetSortedColumns())
                 {
-                    <div class="p-3 border-b border-surface-outline/50 hover:bg-surface-elevated transition-colors">
+                    <div class="p-3 border-b border-surface-outline/50 hover:bg-surface-elevated transition-colors" 
+                         data-column-row="@column.Key"
+                         draggable="@EnableReordering.ToString().ToLower()"
+                         @ondragstart="@(() => OnDragStart(column))"
+                         @ondragover="@((e) => OnDragOver(e, column))"
+                         @ondragover:preventDefault="true"
+                         @ondrop="@(() => OnDrop(column))">
                         <div class="d-flex items-center justify-between gap-3">
                             <div class="d-flex items-center gap-2 flex-1">
                                 @if (EnableReordering)
@@ -54,12 +60,14 @@
                                        class="w-4 h-4"
                                        checked="@IsColumnVisible(column.Key)"
                                        @onchange="@((e) => ToggleColumnVisibility(column.Key, (bool)e.Value!))"
+                                       @onclick:stopPropagation="true"
                                        title="Show/Hide Column" />
                                 
                                 @if (SupportsStickyColumns)
                                 {
                                     <button class="p-1 rounded hover:bg-surface-elevated transition-colors @(IsColumnPinned(column.Key) ? "text-primary" : "text-muted")"
                                             @onclick="@(() => ToggleColumnPin(column.Key))"
+                                            @onclick:stopPropagation="true"
                                             title="Pin/Unpin Column">
                                         <i class="material-symbols-rounded text-base">push_pin</i>
                                     </button>
@@ -73,11 +81,13 @@
             <div class="p-4 border-t border-surface-outline">
                 <div class="d-flex justify-between gap-2">
                     <button class="px-3 py-2 text-sm text-secondary hover:text-primary transition-colors"
-                            @onclick="ResetToDefaults">
+                            @onclick="ResetToDefaults"
+                            @onclick:stopPropagation="true">
                         Reset to Defaults
                     </button>
                     <button class="px-4 py-2 bg-primary text-primary-contrast rounded text-sm font-medium hover:bg-primary-dark transition-colors"
-                            @onclick="SavePreferences">
+                            @onclick="SavePreferences"
+                            @onclick:stopPropagation="true">
                         Save
                     </button>
                 </div>
@@ -95,6 +105,8 @@
     [Parameter] public bool SupportsStickyColumns { get; set; } = true;
     [Parameter] public string TableId { get; set; } = "";
     
+    private dynamic draggedColumn;
+    
     private List<dynamic> GetSortedColumns()
     {
         if (Columns is IEnumerable<object> columnList)
@@ -104,6 +116,50 @@
                 .ToList();
         }
         return new List<dynamic>();
+    }
+    
+    private void OnDragStart(dynamic column)
+    {
+        draggedColumn = column;
+    }
+    
+    private void OnDragOver(DragEventArgs e, dynamic column)
+    {
+        e.DataTransfer.DropEffect = "move";
+    }
+    
+    private async Task OnDrop(dynamic targetColumn)
+    {
+        if (draggedColumn == null || draggedColumn.Key == targetColumn.Key) return;
+        
+        var columns = GetSortedColumns();
+        var draggedIndex = columns.FindIndex(c => c.Key == draggedColumn.Key);
+        var targetIndex = columns.FindIndex(c => c.Key == targetColumn.Key);
+        
+        if (draggedIndex < 0 || targetIndex < 0) return;
+        
+        // Reorder columns
+        columns.RemoveAt(draggedIndex);
+        columns.Insert(targetIndex, draggedColumn);
+        
+        // Update preferences with new order
+        for (int i = 0; i < columns.Count; i++)
+        {
+            var key = columns[i].Key as string;
+            var prefs = Preferences.GetValueOrDefault(key) ?? new ColumnPreferences();
+            Preferences[key] = prefs with { Order = i };
+        }
+        
+        await PreferencesChanged.InvokeAsync(Preferences);
+        await OnColumnManagement.InvokeAsync(new ColumnManagementEventArgs
+        {
+            ColumnKey = draggedColumn.Key as string,
+            Action = ColumnManagementAction.Reorder,
+            NewValue = targetIndex,
+            OldValue = draggedIndex
+        });
+        
+        draggedColumn = null;
     }
     
     private bool IsColumnVisible(string columnKey)

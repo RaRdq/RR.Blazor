@@ -159,17 +159,17 @@ Components that work together as integrated systems:
 **Usage**: RFormSection components are defined within RForm's FormFields
 
 #### Modals (`/Feedback`)
-**Primary Component**: `RModal` + `RModalProvider`
+**Portal-Based Modal System** - No host component required
 - **RModal** - Base modal component
-- **RModalProvider** - Modal service provider (required for service-based modals)
-- **RConfirmModal** - Confirmation dialogs
-- **RConfirmationModal** - Enhanced confirmation dialogs
-- **RMessageModal** - Message display modals
-- **RDetailModal** - Detail view modals
-- **RFormModal** - Form wrapper modals
-- **RPreviewModal** - Content preview modals
-- **RSelectModal** - Selection modals
+- **RConfirmationModal** - Enterprise confirmation dialogs with validation
+- **ModalService** - Service for creating modals programmatically
 - **RToastContainer** - Toast notification system
+
+**Features:**
+- **Portal-based rendering** - Modals render directly to DOM portals
+- **Automatic z-index management** - No CSS conflicts
+- **Enterprise validation** - Input validation for destructive actions
+- **Accessibility compliant** - WCAG 2.1 AA support
 
 #### Action Groups (`/Core`)
 **Primary Component**: `RActionGroup`

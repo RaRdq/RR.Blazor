@@ -17,7 +17,7 @@ class DebugLogger {
         const hasDebugFlag = window.location.search.includes('debug=true') ||
             localStorage.getItem('RRBlazor.DebugMode') === 'true';
         
-        const isProductionOverride = window.RRBlazorConfig?.forceProduction === true;
+        const isProductionOverride = window.RRBlazorConfig && window.RRBlazorConfig.forceProduction === true;
         
         return !isProductionOverride && (isDevelopmentHost || hasDebugFlag);
     }
@@ -78,9 +78,11 @@ class ModuleManager {
         this.moduleExports = new Map();
         
         this.moduleConfigs = {
+            'eventConstants': { path: './event-constants.js', preload: true },
             'portal': { path: './portal.js', preload: true },
             'backdrop': { path: './backdrop.js', preload: true },
             'positioning': { path: './positioning.js', preload: true },
+            'uiCoordinator': { path: './ui-coordinator.js', preload: true },
             'modal': { path: './modal.js', preload: true },
             'choice': { path: './choice.js', preload: true },
             'clickOutside': { path: './click-outside.js', preload: true },
@@ -209,13 +211,31 @@ class ModuleManager {
         
         debugLogger.log(`Preloading critical modules: ${preloadModules.join(', ')}`);
         
+        // Load event-constants first as other modules depend on it
+        try {
+            const eventConstantsModule = await this.loadModule('eventConstants');
+            if (eventConstantsModule) {
+                // Make events available globally immediately
+                window.RRBlazor = window.RRBlazor || {};
+                window.RRBlazor.Events = eventConstantsModule.EVENTS || eventConstantsModule.default;
+                window.RRBlazor.EventPriorities = eventConstantsModule.EVENT_PRIORITIES;
+                window.RRBlazor.ComponentTypes = eventConstantsModule.COMPONENT_TYPES;
+                window.RRBlazor.EventDispatcher = eventConstantsModule.EventDispatcher;
+                debugLogger.log('Event constants loaded and exposed early');
+            }
+        } catch (error) {
+            debugLogger.error('Failed to preload eventConstants:', error);
+        }
+        
+        // Now load other critical modules
+        const otherModules = preloadModules.filter(name => name !== 'eventConstants');
         const results = await Promise.allSettled(
-            preloadModules.map(name => this.loadModule(name))
+            otherModules.map(name => this.loadModule(name))
         );
         
         results.forEach((result, index) => {
             if (result.status === 'rejected') {
-                debugLogger.error(`Failed to preload ${preloadModules[index]}: ${result.reason}`);
+                debugLogger.error(`Failed to preload ${otherModules[index]}: ${result.reason}`);
             }
         });
         
@@ -358,9 +378,11 @@ const RRBlazor = {
     debug: debugLogger,
     moduleManager: moduleManager,
     
+    EventConstants: createUniversalProxy('eventConstants'),
     Portal: createUniversalProxy('portal'),
     Backdrop: createUniversalProxy('backdrop'),
     Positioning: createUniversalProxy('positioning'),
+    UICoordinator: createUniversalProxy('uiCoordinator'),
     ClickOutside: createUniversalProxy('clickOutside'),
     KeyboardNavigation: createUniversalProxy('keyboardNavigation'),
     ModalEvents: createUniversalProxy('modalEvents'),
@@ -401,7 +423,13 @@ const RRBlazor = {
         debugLogger.log('RR.Blazor initializing...');
         await moduleManager.preloadCriticalModules();
         
-        const portalModule = await moduleManager.loadModule('portal');
+        // Event constants are already loaded in preloadCriticalModules
+        // Just verify they're available
+        if (!window.RRBlazor.Events) {
+            debugLogger.error('Event constants not available after preload!');
+        }
+        
+        const portalModule = moduleManager.modules.get('portal');
         if (portalModule) {
             debugLogger.log('Portal module event listeners registered');
         } else {

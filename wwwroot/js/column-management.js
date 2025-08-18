@@ -1,9 +1,6 @@
 export const RTableColumnManager = {
     
     initialize: function(tableId, dotNetRef) {
-        if (!tableId || !dotNetRef) {
-            throw new Error('Missing required parameters for initialization');
-        }
         
         window.RRTableManagers = window.RRTableManagers || {};
         window.RRTableManagers[tableId] = {
@@ -13,9 +10,6 @@ export const RTableColumnManager = {
     },
     
     loadColumnPreferences: function(tableId) {
-        if (!tableId) {
-            throw new Error('No table ID provided');
-        }
         
         const storageKey = `rtable-columns-${tableId}`;
         const stored = localStorage.getItem(storageKey);
@@ -24,9 +18,6 @@ export const RTableColumnManager = {
     },
     
     saveColumnPreferences: function(tableId, preferences) {
-        if (!tableId || !preferences) {
-            throw new Error('Missing parameters for saving preferences');
-        }
         
         const storageKey = `rtable-columns-${tableId}`;
         localStorage.setItem(storageKey, JSON.stringify(preferences));
@@ -34,9 +25,6 @@ export const RTableColumnManager = {
     },
     
     clearColumnPreferences: function(tableId) {
-        if (!tableId) {
-            throw new Error('No table ID provided');
-        }
         
         const storageKey = `rtable-columns-${tableId}`;
         localStorage.removeItem(storageKey);

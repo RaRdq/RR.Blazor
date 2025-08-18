@@ -85,7 +85,7 @@ Choose the appropriate file based on your Blazor hosting model:
 </RAppShell>
 ```
 
-**That's it!** RAppShell includes theme provider, modal provider, toast container, intelligent search system, and styles.
+**That's it!** RAppShell includes theme provider, portal-based modal system, toast container, intelligent search system, and styles.
 
 ### Alternative: Manual Setup
 
@@ -98,7 +98,6 @@ Choose the appropriate file based on your Blazor hosting model:
 ```razor
 <!-- MainLayout.razor -->
 <RThemeProvider>
-    <RModalProvider />
     <RToastContainer />
     @Body
 </RThemeProvider>
@@ -177,6 +176,29 @@ For AI agents (Claude, GPT-4, etc.), add a rule or manually refer to [`@RR.Blazo
 
 <RButton Text="Show Success" 
          OnClick="@(() => ToastService.ShowSuccess("Operation completed!"))" />
+```
+
+### Modal System
+
+```razor
+@inject IModalService ModalService
+
+<!-- Simple confirmation -->
+<RButton Text="Delete Item" 
+         OnClick="@(async () => {
+             var confirmed = await ModalService.ConfirmAsync("Are you sure?", "Delete Item", true);
+             if (confirmed) await DeleteItem();
+         })" />
+
+<!-- Enterprise confirmation with validation -->
+<RButton Text="Delete Employee" 
+         OnClick="@(async () => {
+             var result = await ModalService.ShowAsync<bool>(typeof(RConfirmationModal), new Dictionary<string, object> {
+                 ["ShowInputField"] = true,
+                 ["InputLabel"] = "Type employee name to confirm",
+                 ["OnInputValidate"] = new Func<string, Task<bool>>(input => Task.FromResult(input == employee.Name))
+             });
+         })" />
 ```
 
 ### 🔍 Intelligent Search System
@@ -361,6 +383,7 @@ Compatible with all modern browsers.
 
 - [Component Reference](wwwroot/rr-ai-components.json) - Machine-readable component docs
 - [Utility Classes](wwwroot/rr-ai-styles.json) - Complete styling reference
+- [Modal System](_Documentation/MODAL_SYSTEM.md) - Portal-based modal system guide
 - [Contributing Guide](CONTRIBUTING.md) - Development guidelines
 
 ## 🎨 Custom Theming

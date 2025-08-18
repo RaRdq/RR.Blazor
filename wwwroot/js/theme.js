@@ -161,11 +161,10 @@ function notifyThemeChange(themeData) {
         window.RRAppShell.onThemeChanged(themeData);
     }
     
-    const event = new CustomEvent('themeChanged', { 
-        detail: themeData,
-        bubbles: true 
-    });
-    document.dispatchEvent(event);
+    window.RRBlazor.EventDispatcher.dispatch(
+        window.RRBlazor.Events.THEME_CHANGED,
+        themeData
+    );
 }
 
 export function setCSSVariable(property, value) {

@@ -12,8 +12,6 @@ export function scrollIntoView(elementId, options = {}) {
 
 export function getElementDimensions(elementId) {
     const element = document.getElementById(elementId);
-    if (!element) throw new Error(`Element not found: ${elementId}`);
-    
     const rect = element.getBoundingClientRect();
     return {
         width: rect.width,
@@ -48,7 +46,7 @@ export function downloadContent(content, fileName, contentType = 'text/plain') {
     link.download = fileName;
     document.body.appendChild(link);
     link.click();
-    link?.remove();
+    link.remove();
     window.URL.revokeObjectURL(url);
 }
 
@@ -59,9 +57,9 @@ export async function downloadFileFromStream(fileName, contentStream) {
     
     const anchorElement = document.createElement('a');
     anchorElement.href = url;
-    anchorElement.download = fileName ?? '';
+    anchorElement.download = fileName;
     anchorElement.click();
-    anchorElement?.remove();
+    anchorElement.remove();
     
     URL.revokeObjectURL(url);
     return true;
@@ -70,16 +68,15 @@ export async function downloadFileFromStream(fileName, contentStream) {
 export function downloadFile(url, fileName) {
     const link = document.createElement('a');
     link.href = url;
-    link.download = fileName || 'download';
+    link.download = fileName;
     link.style.display = 'none';
     document.body.appendChild(link);
     link.click();
-    link?.remove();
+    link.remove();
 }
 
 export function setupOutsideClickHandler(containerId, callback) {
     const container = document.querySelector(containerId);
-    if (!container) throw new Error(`Container not found: ${containerId}`);
 
     const outsideClickHandler = function(event) {
         if (!container.contains(event.target)) {
@@ -105,8 +102,6 @@ export function removeOutsideClickHandler(containerId) {
 
 export function addEventListener(elementId, eventName, dotNetRef, methodName, options = {}) {
     const element = document.getElementById(elementId);
-    if (!element) throw new Error(`Element not found: ${elementId}`);
-    if (!dotNetRef) throw new Error('DotNet reference required');
 
     const passiveEvents = ['scroll', 'wheel', 'touchstart', 'touchmove', 'touchend'];
     const eventOptions = {
@@ -118,7 +113,7 @@ export function addEventListener(elementId, eventName, dotNetRef, methodName, op
         if (dotNetRef && typeof dotNetRef.invokeMethodAsync === 'function') {
             const invoke = () => {
                 dotNetRef.invokeMethodAsync(methodName, e.detail).catch(err => {
-                    if (!err.message?.includes('disposed')) {
+                    if (!err.message.includes('disposed')) {
                         console.error('JSInterop error:', err);
                     }
                 });

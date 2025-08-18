@@ -36,15 +36,19 @@ class ClickOutsideManager {
             
             if (element.contains(target)) return;
             
+            // Check base exclude selectors
             for (const selector of excludeSelectors) {
                 if (target.closest(selector)) return;
             }
             
-            const outsideClickEvent = new CustomEvent('click-outside', {
-                detail: { elementId, target, originalEvent: event },
-                bubbles: true
-            });
-            element.dispatchEvent(outsideClickEvent);
+            // Check if target is inside any modal portal (common exclusion)
+            if (target.closest('.modal-portal, [data-modal-id], .modal-content')) return;
+            
+            window.RRBlazor.EventDispatcher.dispatch(
+                window.RRBlazor.Events.CLICK_OUTSIDE,
+                { elementId, target, originalEvent: event }
+            );
+            element.dispatchEvent(new Event(window.RRBlazor.Events.CLICK_OUTSIDE));
         });
     }
     

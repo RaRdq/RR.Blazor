@@ -2,7 +2,6 @@
 export const RRFileUpload = {
     initialize: function(elementId, options = {}) {
         const element = document.getElementById(elementId);
-        if (!element) return;
 
         const settings = {
             allowedTypes: options.allowedTypes || [],
@@ -25,7 +24,6 @@ export const RRFileUpload = {
 
     setupDragDrop: function(element, settings) {
         const dropZone = element.querySelector('.upload-area, .file-preview-container');
-        if (!dropZone) return;
 
         let dragCounter = 0;
         const dragOverlay = element.querySelector('.upload-drag-overlay');
@@ -116,7 +114,6 @@ export const RRFileUpload = {
 
     setupFileInput: function(element, settings) {
         const fileInput = element.querySelector('input[type="file"]');
-        if (!fileInput) return;
 
         fileInput.addEventListener('change', (e) => {
             this.handleFiles(e.target.files, element, settings);
@@ -203,10 +200,11 @@ export const RRFileUpload = {
             fileInfos.push(fileInfo);
         }
 
-        const event = new CustomEvent('rr-files-selected', {
-            detail: { files: fileInfos, originalFiles: files }
-        });
-        element.dispatchEvent(event);
+        window.RRBlazor.EventDispatcher.dispatch(
+            'rr-files-selected',
+            { files: fileInfos, originalFiles: files }
+        );
+        element.dispatchEvent(new Event('rr-files-selected'));
     },
 
     generateThumbnail: function(file, maxWidth = 150, maxHeight = 150) {
@@ -275,8 +273,9 @@ export const RRFileUpload = {
     },
 
     updateProgress: function(elementId, fileId, progress) {
+        if (!elementId || !fileId) return;
+        
         const element = document.getElementById(elementId);
-        if (!element) return;
 
         const progressBar = element.querySelector(`[data-file-id="${fileId}"] .upload-progress__bar__fill`);
         if (progressBar) {
@@ -290,18 +289,20 @@ export const RRFileUpload = {
     },
 
     removeFile: function(elementId, fileId) {
+        if (!elementId || !fileId) return;
+        
         const element = document.getElementById(elementId);
-        if (!element) return;
 
         const fileElement = element.querySelector(`[data-file-id="${fileId}"]`);
         if (fileElement) {
             fileElement.remove();
         }
 
-        const event = new CustomEvent('rr-file-removed', {
-            detail: { fileId }
-        });
-        element.dispatchEvent(event);
+        window.RRBlazor.EventDispatcher.dispatch(
+            'rr-file-removed',
+            { fileId }
+        );
+        element.dispatchEvent(new Event('rr-file-removed'));
     },
 
     formatFileSize: function(bytes) {
@@ -368,9 +369,8 @@ export const RRFileUpload = {
 
     triggerFileSelect: function(inputId) {
         const fileInput = document.getElementById(inputId);
-        if (fileInput) {
-            fileInput.click();
-        }
+        
+        fileInput.click();
     },
 
     getCurrentFileCount: function(element) {
@@ -398,10 +398,11 @@ export const RRFileUpload = {
             }.bind(this), { once: true });
         }
 
-        const event = new CustomEvent('rr-file-removed', {
-            detail: { fileId }
-        });
-        element.dispatchEvent(event);
+        window.RRBlazor.EventDispatcher.dispatch(
+            'rr-file-removed',
+            { fileId }
+        );
+        element.dispatchEvent(new Event('rr-file-removed'));
     },
 
     showEmptyState: function(element) {
@@ -442,7 +443,6 @@ export const RRFileUpload = {
 
     setupBlazorEventListeners: function(elementId, dotNetObjectRef) {
         const element = document.getElementById(elementId);
-        if (!element) return;
 
         const filesSelectedHandler = function(e) {
             dotNetObjectRef.invokeMethodAsync('OnFilesSelectedFromJS', e.detail);
@@ -461,6 +461,8 @@ export const RRFileUpload = {
     },
 
     cleanup: function(elementId) {
+        if (!elementId) return;
+        
         const element = document.getElementById(elementId);
         if (element) {
             if (element._rrDropZoneCleanup) {

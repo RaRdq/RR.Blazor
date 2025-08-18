@@ -24,16 +24,8 @@ class AutosuggestPositioning {
 
     async createAutosuggestPortal(elementId, options = {}) {
         const autosuggestElement = document.querySelector(`[data-autosuggest-id="${elementId}"]`);
-        if (!autosuggestElement) {
-            throw new Error(`Autosuggest element not found: ${elementId}`);
-        }
-
         const triggerElement = autosuggestElement.querySelector('.autosuggest-input input');
         const viewportElement = autosuggestElement.querySelector('.autosuggest-viewport');
-
-        if (!triggerElement || !viewportElement) {
-            throw new Error(`Autosuggest elements missing for: ${elementId}`);
-        }
 
             // Create portal using RRBlazor proxy
             const portalManager = await window.RRBlazor.Portal.getInstance();
@@ -118,21 +110,19 @@ class AutosuggestPositioning {
     }
 
     positionPortal(portalContainer, triggerElement, options = {}) {
-        if (!portalContainer || !triggerElement) return;
-        
         const triggerRect = triggerElement.getBoundingClientRect();
         const viewportHeight = window.innerHeight;
         const viewportWidth = window.innerWidth;
         
         // Calculate optimal position
-        const buffer = options.buffer || 8;
-        const minWidth = Math.max(options.minWidth || 200, triggerRect.width);
+        const buffer = 8;
+        const minWidth = Math.max(200, triggerRect.width);
         const maxWidth = Math.min(400, viewportWidth - 16);
         const width = Math.min(minWidth, maxWidth);
         
         const spaceBelow = viewportHeight - triggerRect.bottom - buffer;
         const spaceAbove = triggerRect.top - buffer;
-        const estimatedHeight = Math.min(options.maxHeight || 320, 320);
+        const estimatedHeight = Math.min(320, 320);
         
         let x = triggerRect.left;
         let y = triggerRect.bottom + buffer;
@@ -244,8 +234,6 @@ export function getAutosuggestDirection(elementId) {
 }
 
 export function calculateOptimalPosition(triggerElement, options = {}) {
-    if (!triggerElement) return { direction: 'down', position: 'start' };
-    
     const triggerRect = triggerElement.getBoundingClientRect();
     const viewportHeight = window.innerHeight;
     const dropdownHeight = options.estimatedHeight || 300;

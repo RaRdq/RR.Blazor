@@ -20,10 +20,10 @@ export function expandSearch() {
     const searchContainer = document.querySelector('[data-search-container]');
     
     if (searchContainer) {
-        document.dispatchEvent(new CustomEvent('search-expanded', {
-            detail: { searchContainer },
-            bubbles: true
-        }));
+        window.RRBlazor.EventDispatcher.dispatch(
+            'search-expanded',
+            { searchContainer }
+        );
     }
 }
 
@@ -93,18 +93,15 @@ function setupResponsive() {
         document.documentElement.style.setProperty('--is-tablet', isTablet() ? '1' : '0');
         document.documentElement.style.setProperty('--is-desktop', isDesktop() ? '1' : '0');
         
-        const sidebarSelectors = ['.sidebar', '[class*="sidebar"]', '.app-shell .sidebar', 'aside[role="navigation"]'];
-        const sidebar = sidebarSelectors.map(sel => document.querySelector(sel)).find(Boolean);
-        const mainContent = document.querySelector('.main-content');
+        const sidebar = document.querySelector('.app-sidebar');
+        const mainContent = document.querySelector('.app-main');
         
         if (isMobile()) {
-            sidebar?.classList.add('sidebar-closed', 'mobile-hidden');
+            sidebar.classList.add('collapsed');
             document.documentElement.classList.add('mobile-layout');
-            mainContent?.classList.add('mobile-sidebar');
         } else {
-            sidebar?.classList.remove('mobile-hidden', 'sidebar-closed');
+            sidebar.classList.remove('collapsed');
             document.documentElement.classList.remove('mobile-layout');
-            mainContent?.classList.remove('mobile-sidebar');
         }
     };
     
@@ -190,7 +187,7 @@ function toggleSidebar() {
 
 function closeSearch() {
     const searchContainer = document.querySelector('[data-search-container]');
-    const searchIconContainer = searchContainer?.querySelector('.search-icon-container');
+    const searchIconContainer = searchContainer.querySelector('.search-icon-container');
     if (searchIconContainer && searchIconContainer.classList.contains('search-expanded')) {
         if (appShellDotNetRef) {
             appShellDotNetRef.invokeMethodAsync('OnSearchCollapsed');
@@ -202,8 +199,8 @@ function closeAllDropdowns() {
     const dropdowns = document.querySelectorAll('.dropdown__viewport');
     dropdowns.forEach(viewport => {
         const dropdown = viewport.closest('.dropdown');
-        const trigger = dropdown?.querySelector('.dropdown__trigger');
-        trigger?.click();
+        const trigger = dropdown.querySelector('.dropdown__trigger');
+        trigger.click();
     });
 }
 
@@ -248,12 +245,14 @@ export function getPerformanceMetrics() {
     
     const navigation = performance.getEntriesByType('navigation')[0];
     const paint = performance.getEntriesByType('paint');
+    const firstPaint = paint.find(p => p.name === 'first-paint');
+    const firstContentfulPaint = paint.find(p => p.name === 'first-contentful-paint');
     
     return {
-        loadTime: navigation?.loadEventEnd - navigation?.loadEventStart,
-        domContentLoaded: navigation?.domContentLoadedEventEnd - navigation?.domContentLoadedEventStart,
-        firstPaint: paint.find(p => p.name === 'first-paint')?.startTime,
-        firstContentfulPaint: paint.find(p => p.name === 'first-contentful-paint')?.startTime
+        loadTime: navigation.loadEventEnd - navigation.loadEventStart,
+        domContentLoaded: navigation.domContentLoadedEventEnd - navigation.domContentLoadedEventStart,
+        firstPaint: firstPaint.startTime,
+        firstContentfulPaint: firstContentfulPaint.startTime
     };
 }
 
@@ -263,7 +262,7 @@ export function scrollToTop() {
 
 export function scrollToElement(selector) {
     const element = document.querySelector(selector);
-    element?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    element.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 export function copyToClipboard(text) {
