@@ -423,12 +423,6 @@ const RRBlazor = {
         debugLogger.log('RR.Blazor initializing...');
         await moduleManager.preloadCriticalModules();
         
-        // Event constants are already loaded in preloadCriticalModules
-        // Just verify they're available
-        if (!window.RRBlazor.Events) {
-            debugLogger.error('Event constants not available after preload!');
-        }
-        
         const portalModule = moduleManager.modules.get('portal');
         if (portalModule) {
             debugLogger.log('Portal module event listeners registered');
