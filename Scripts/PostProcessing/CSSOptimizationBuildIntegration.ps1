@@ -1,4 +1,3 @@
-#Requires -Version 7.0
 <#
 .SYNOPSIS
     RR.Blazor Build Integration Script for CSS Tree-Shaking
@@ -38,6 +37,33 @@ param(
     
     [switch]$Silent = $false
 )
+
+# PowerShell version check and auto-install
+function Ensure-PowerShell7 {
+    $currentVersion = $PSVersionTable.PSVersion
+    if ($currentVersion.Major -lt 7) {
+        Write-Host "⚠️  PowerShell 7+ required. Current: $currentVersion" -ForegroundColor Yellow
+        
+        if ($IsWindows -or $env:OS -eq "Windows_NT") {
+            Write-Host "🔧 Installing PowerShell 7 via winget..." -ForegroundColor Cyan
+            try {
+                winget install Microsoft.PowerShell --silent --accept-package-agreements --accept-source-agreements
+                Write-Host "✅ PowerShell 7 installed. Restart terminal and re-run script." -ForegroundColor Green
+                exit 0
+            }
+            catch {
+                Write-Host "❌ Winget failed. Manual install: https://aka.ms/powershell-release" -ForegroundColor Red
+                exit 1
+            }
+        }
+        else {
+            Write-Host "❌ Install PowerShell 7+: https://aka.ms/powershell-release" -ForegroundColor Red
+            exit 1
+        }
+    }
+}
+
+Ensure-PowerShell7
 
 # Set error handling
 $ErrorActionPreference = "Stop"
