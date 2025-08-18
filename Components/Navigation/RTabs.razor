@@ -127,22 +127,25 @@ Tab container for organizing content with smooth animations.
         <div class="tabs-content flex-1 position-relative @GetContentClasses()">
             @foreach (var tab in tabs)
             {
-                <div id="panel-@tab.Id"
-                     class="tabs-panel @(tab.Id == ActiveTabId ? "tabs-panel-active" : "") @(FadeOnly ? "tabs-panel-fade-only" : "")"
-                     role="tabpanel"
-                     aria-labelledby="tab-@tab.Id"
-                     tabindex="0">
-                    @if (Loading && tab.Id == ActiveTabId)
-                    {
-                        <RSkeleton Loading="true" Type="SkeletonType.Card">
+                @if (KeepPanelsAlive || tab.Id == ActiveTabId)
+                {
+                    <div id="panel-@tab.Id"
+                         class="tabs-panel @(tab.Id == ActiveTabId ? "tabs-panel-active" : "") @(FadeOnly ? "tabs-panel-fade-only" : "")"
+                         role="tabpanel"
+                         aria-labelledby="tab-@tab.Id"
+                         tabindex="0">
+                        @if (Loading && tab.Id == ActiveTabId)
+                        {
+                            <RSkeleton Loading="true" Type="SkeletonType.Card">
+                                @tab.Content
+                            </RSkeleton>
+                        }
+                        else
+                        {
                             @tab.Content
-                        </RSkeleton>
-                    }
-                    else
-                    {
-                        @tab.Content
-                    }
-                </div>
+                        }
+                    </div>
+                }
             }
         </div>
         }
@@ -183,6 +186,10 @@ Tab container for organizing content with smooth animations.
     /// <summary>Whether tabs are loading - shows skeleton for tab content</summary>
     [Parameter, AIParameter("Show loading skeleton for tab content", "true when tab data is loading asynchronously")] 
     public bool Loading { get; set; }
+    
+    /// <summary>Whether to keep all tab panels alive (renders all content, disables lazy loading)</summary>
+    [Parameter, AIParameter("Keep all tab panels alive in DOM", "false for lazy loading (performance), true to keep all panels rendered")] 
+    public bool KeepPanelsAlive { get; set; } = false;
     
     /// <summary>Additional CSS classes</summary>
     [Parameter] public string Class { get; set; }
