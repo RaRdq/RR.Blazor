@@ -13,6 +13,8 @@
 @implements IDisposable
 @inject IJSRuntime JSRuntime
 @using RR.Blazor.Components.Base
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Web
 @attribute [Component("RTextInput", Category = "Form", Complexity = ComponentComplexity.Simple)]
 @attribute [AIOptimized(
     Prompt = "Specific text input component - single line, multi-line, with icons, validation, and modern styling",
@@ -38,8 +40,8 @@
         {
             <textarea id="@inputId"
                       class="@GetInputClasses()"
-                      @bind="@CurrentValue"
-                      @bind:event="oninput"
+                      value="@Value"
+                      @oninput="@(async (ChangeEventArgs e) => await HandleInput(e))"
                       placeholder="@GetEffectivePlaceholder()"
                       disabled="@Disabled"
                       readonly="@ReadOnly"
@@ -48,8 +50,8 @@
                       maxlength="@MaxLength"
                       data-field="@GetEffectiveFieldName()"
                       data-has-value="@(HasValue().ToString().ToLower())"
-                      @onfocus="@HandleFocus"
-                      @onblur="@HandleBlur"
+                      @onfocus="@(async (e) => await HandleFocus(e))"
+                      @onblur="@(async (e) => await HandleBlur(e))"
                       @onkeypress="@OnKeyPress"
                       @onkeydown="@OnKeyDown"
                       @attributes="GetSafeAttributes()"></textarea>
@@ -62,8 +64,8 @@
                    max="@(Max?.ToString())"
                    step="@(Step?.ToString())"
                    class="@GetInputClasses()"
-                   @bind="@CurrentValue"
-                   @bind:event="oninput"
+                   value="@Value"
+                   @oninput="@(async (ChangeEventArgs e) => await HandleInput(e))"
                    placeholder="@GetEffectivePlaceholder()"
                    disabled="@Disabled"
                    readonly="@ReadOnly"
@@ -71,8 +73,8 @@
                    autocomplete="@AutoComplete"
                    data-field="@GetEffectiveFieldName()"
                    data-has-value="@(HasValue().ToString().ToLower())"
-                   @onfocus="@HandleFocus"
-                   @onblur="@HandleBlur"
+                   @onfocus="@(async (e) => await HandleFocus(e))"
+                   @onblur="@(async (e) => await HandleBlur(e))"
                    @onkeypress="@OnKeyPress"
                    @onkeydown="@OnKeyDown"
                    @attributes="GetSafeAttributes()" />
@@ -136,12 +138,10 @@
     
     #region Parameters
     
-    [Parameter] 
-    [AIParameter("Input value", Example = "\"John Doe\"")]
+    [Parameter]
     public string Value { get; set; } = "";
     
-    [Parameter] 
-    [AIParameter("Value changed callback")]
+    [Parameter]
     public EventCallback<string> ValueChanged { get; set; }
     
     [Parameter] 
@@ -209,46 +209,48 @@
         showPassword = !showPassword;
     }
     
-
-    
     #endregion
     
     #region Methods
     
-    
-    protected string CurrentValue
+    private async Task HandleInput(ChangeEventArgs e)
     {
-        get => Value ?? "";
-        set
-        {
-            if (Value != value)
-            {
-                Value = value;
-                
-                // Fire ValueChanged only when needed, not on every keystroke  
-                if (ValueChanged.HasDelegate)
-                    _ = ValueChanged.InvokeAsync(Value);
-                    
-                _ = HandleUserInteraction(!string.IsNullOrEmpty(value));
-            }
-        }
+        var newValue = e.Value?.ToString() ?? string.Empty;
+        Value = newValue;
+        await ValueChanged.InvokeAsync(newValue);
+        
+        // Also trigger base class immediate mode callbacks if configured
+        await HandleImmediateInput(e);
     }
     
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+    }
+    
+    private bool HasUserInteracted { get; set; }
+    private bool IsFocused { get; set; }
     
     protected override async Task HandleFocus(FocusEventArgs e)
     {
-        await base.HandleFocus(e);
+        IsFocused = true;
+        await base.HandleFocus(e); // Delegate to base class
     }
     
     protected override async Task HandleBlur(FocusEventArgs e)
     {
-        await base.HandleBlur(e);
+        IsFocused = false;
         
         // Fire OnTextChanged callback if available (blur event only)
         if (OnTextChanged.HasDelegate)
             await OnTextChanged.InvokeAsync(Value);
+            
+        // Delegate to base class for standard blur handling
+        await base.HandleBlur(e);
+        
+        // Fire base class regular change event
+        await HandleRegularChange(new ChangeEventArgs { Value = Value });
     }
-    
     
     private string GetContainerClasses()
     {
@@ -268,9 +270,6 @@
         {
             classes.Add("input-floating");
         }
-        
-
-
         
         return string.Join(" ", classes);
     }
@@ -377,28 +376,26 @@
         return (Size, Density) switch
         {
             // Small size variations
-            (Small, DensityType.Compact) => "px-2 py-1 text-xs",
-            (Small, DensityType.Dense) => "px-3 py-1 text-sm",
-            (Small, DensityType.Normal) => "px-3 py-2 text-sm",
-            (Small, DensityType.Spacious) => "px-4 py-2 text-sm",
+            (SizeType.Small, DensityType.Compact) => "px-2 py-1 text-xs",
+            (SizeType.Small, DensityType.Dense) => "px-3 py-1 text-sm",
+            (SizeType.Small, DensityType.Normal) => "px-3 py-2 text-sm",
+            (SizeType.Small, DensityType.Spacious) => "px-4 py-2 text-sm",
             
             // Medium size variations (default)
-            (Medium, DensityType.Compact) => "px-3 py-1 text-sm",
-            (Medium, DensityType.Dense) => "px-3 py-2 text-base",
-            (Medium, DensityType.Normal) => "px-4 py-3 text-base",
-            (Medium, DensityType.Spacious) => "px-5 py-4 text-base",
+            (SizeType.Medium, DensityType.Compact) => "px-3 py-1 text-sm",
+            (SizeType.Medium, DensityType.Dense) => "px-3 py-2 text-base",
+            (SizeType.Medium, DensityType.Normal) => "px-4 py-3 text-base",
+            (SizeType.Medium, DensityType.Spacious) => "px-5 py-4 text-base",
             
             // Large size variations
-            (Large, DensityType.Compact) => "px-3 py-2 text-base",
-            (Large, DensityType.Dense) => "px-4 py-2 text-lg",
-            (Large, DensityType.Normal) => "px-5 py-3 text-lg",
-            (Large, DensityType.Spacious) => "px-6 py-4 text-lg",
+            (SizeType.Large, DensityType.Compact) => "px-3 py-2 text-base",
+            (SizeType.Large, DensityType.Dense) => "px-4 py-2 text-lg",
+            (SizeType.Large, DensityType.Normal) => "px-5 py-3 text-lg",
+            (SizeType.Large, DensityType.Spacious) => "px-6 py-4 text-lg",
             
             _ => "px-4 py-3 text-base" // Default to medium/normal
         };
     }
-    
-    
     
     private string GetStartIconContainerClasses()
     {
@@ -414,15 +411,15 @@
     {
         return Size switch
         {
-            Small => "text-sm",
-            Large => "text-xl",
+            SizeType.Small => "text-sm",
+            SizeType.Large => "text-xl",
             _ => "text-lg"
         };
     }
     
     private string GetLabelClasses()
     {
-        return "block text-sm font-medium text-secondary uppercase tracking-wide mb-1";
+        return "block text-sm font-medium  text-muted uppercase tracking-wide mb-1";
     }
     
     private string GetErrorMessageClasses()
@@ -452,7 +449,6 @@
     
     private string GetFloatingLabelClasses()
     {
-
         return "form-label form-label-floating";
     }
     
@@ -466,6 +462,16 @@
             DensityType.Spacious => "absolute bottom-3 right-4 text-base text-secondary",
             _ => "absolute bottom-2 right-3 text-sm text-secondary"
         };
+    }
+    
+    // Override base class method to use our Name parameter
+    protected override string GetEffectiveFieldName()
+    {
+        if (!string.IsNullOrEmpty(Name))
+            return Name;
+            
+        // Delegate to base class implementation
+        return base.GetEffectiveFieldName();
     }
     
     #endregion

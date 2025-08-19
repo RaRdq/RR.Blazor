@@ -44,8 +44,8 @@
         <input type="checkbox" 
                id="@Id"
                name="@Name"
-               @bind="InternalValue"
-               @bind:after="OnValueChanged"
+               checked="@InternalValue"
+               @onchange="HandleToggleChange"
                disabled="@Disabled"
                class="peer absolute opacity-0 w-full h-full cursor-pointer disabled:cursor-not-allowed z-10"
                @attributes="GetSafeAttributes()" />
@@ -231,7 +231,7 @@
 
     private string GetDescriptionClasses()
     {
-        return $"text-xs text-secondary mt-1 {(Disabled ? "text-muted" : "")}";
+        return $"text-xs text-muted mt-1 {(Disabled ? "text-muted" : "")}";
     }
 
     private string GetStateIconClasses()
@@ -257,6 +257,15 @@
         return RAttributeForwarder.GetSafeAttributes(AdditionalAttributes);
     }
 
+    private async Task HandleToggleChange(ChangeEventArgs e)
+    {
+        if (Disabled) return;
+        
+        var newValue = (bool)(e.Value ?? false);
+        InternalValue = newValue;
+        await OnValueChanged();
+    }
+    
     private async Task OnValueChanged()
     {
         var newValue = _internalState;
