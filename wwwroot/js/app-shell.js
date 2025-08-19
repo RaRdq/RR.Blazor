@@ -196,12 +196,7 @@ function closeSearch() {
 }
 
 function closeAllDropdowns() {
-    const dropdowns = document.querySelectorAll('.dropdown__viewport');
-    dropdowns.forEach(viewport => {
-        const dropdown = viewport.closest('.dropdown');
-        const trigger = dropdown.querySelector('.dropdown__trigger');
-        trigger.click();
-    });
+    window.RRBlazor.Choice.closeAllDropdowns();
 }
 
 

@@ -19,14 +19,44 @@ const Choice = {
         });
     },
     
+    /**
+     * Find viewport element for a choice component - always a child
+     */
+    findViewport(choiceElement, choiceElementId) {
+        if (!choiceElement) {
+            console.error(`Choice element not found for id: ${choiceElementId}`);
+            return null;
+        }
+        
+        const viewport = choiceElement.querySelector('.choice-viewport');
+        if (!viewport) {
+            console.error(`Viewport not found as child of choice element: ${choiceElementId}`);
+        }
+        return viewport;
+    },
+    
     async openDropdown(choiceElementId, options = {}) {
         if (pendingOperations.has(choiceElementId)) return;
         
         pendingOperations.add(choiceElementId);
         try {
             const choiceElement = document.querySelector(`[data-choice-id="${choiceElementId}"]`);
+            if (!choiceElement) {
+                console.warn(`Choice element not found: ${choiceElementId}`);
+                return;
+            }
+            
             const trigger = choiceElement.querySelector('.choice-trigger') || choiceElement.querySelector('.choice-trigger-wrapper');
-            const viewport = choiceElement.parentElement.querySelector('.choice-viewport');
+            if (!trigger) {
+                console.warn(`Trigger element not found for choice: ${choiceElementId}`);
+                return;
+            }
+            
+            const viewport = this.findViewport(choiceElement, choiceElementId);
+            if (!viewport) {
+                console.warn(`Viewport element not found for choice: ${choiceElementId}`);
+                return;
+            }
             
             if (activeDropdown && activeDropdown !== choiceElementId) {
                 await this.closeDropdown(activeDropdown);
@@ -84,7 +114,7 @@ const Choice = {
             }
             
             const containerElement = choiceElement.closest('[data-container], .sidebar, .app-sidebar, .modal, .dialog, [class*="sidebar"], [class*="panel"]');
-            const containerRect = containerElement.getBoundingClientRect();
+            const containerRect = containerElement ? containerElement.getBoundingClientRect() : null;
             
             let adaptedDimensions = { ...targetDimensions };
             if (containerRect) {
@@ -187,12 +217,51 @@ const Choice = {
                 ]
             });
 
-            // Add click-outside listener
-            choiceElement.addEventListener(window.RRBlazor.Events.CLICK_OUTSIDE, (event) => {
-                if (event.detail.elementId === `choice-${choiceElementId}`) {
+            // Add click-outside listener - listen for the EventDispatcher's CustomEvent on document
+            const clickOutsideHandler = (event) => {
+                if (event.detail && event.detail.elementId === `choice-${choiceElementId}`) {
                     this.closeDropdown(choiceElementId);
                 }
-            });
+            };
+            document.addEventListener(window.RRBlazor.Events.CLICK_OUTSIDE, clickOutsideHandler);
+            
+            // Store handler for cleanup
+            choiceElement._clickOutsideHandler = clickOutsideHandler;
+
+            // Add scroll and resize handlers to reposition dropdown
+            const repositionHandler = () => {
+                if (!trigger || !viewport) return;
+                
+                const triggerRect = trigger.getBoundingClientRect();
+                const position = positioningEngine.calculatePosition(
+                    triggerRect,
+                    adaptedDimensions,
+                    {
+                        position: desiredPosition,
+                        offset: 4,
+                        flip: true,
+                        constrain: true,
+                        container: containerRect
+                    }
+                );
+                
+                viewport.style.left = `${position.x}px`;
+                viewport.style.top = `${position.y}px`;
+            };
+            
+            // Throttle scroll/resize events
+            let repositionTimer;
+            const throttledReposition = () => {
+                clearTimeout(repositionTimer);
+                repositionTimer = setTimeout(repositionHandler, 10);
+            };
+            
+            window.addEventListener('scroll', throttledReposition, true);
+            window.addEventListener('resize', throttledReposition);
+            
+            // Store handlers for cleanup
+            choiceElement._scrollHandler = throttledReposition;
+            choiceElement._resizeHandler = throttledReposition;
 
             this.enableKeyboardNavigation(choiceElementId);
             this.scrollSelectedIntoView(viewport);
@@ -230,8 +299,7 @@ const Choice = {
         }
         
         if (!viewport) {
-            viewport = choiceElement.querySelector('.choice-viewport') || 
-                      choiceElement.parentElement.querySelector('.choice-viewport');
+            viewport = this.findViewport(choiceElement, choiceElementId);
         }
         
         if (!viewport) {
@@ -267,6 +335,23 @@ const Choice = {
 
         this.disableKeyboardNavigation();
         window.RRBlazor.ClickOutside.unregister(`choice-${choiceElementId}`);
+        
+        // Clean up click-outside handler if it exists
+        if (choiceElement && choiceElement._clickOutsideHandler) {
+            document.removeEventListener(window.RRBlazor.Events.CLICK_OUTSIDE, choiceElement._clickOutsideHandler);
+            delete choiceElement._clickOutsideHandler;
+        }
+        
+        // Clean up scroll and resize handlers
+        if (choiceElement && choiceElement._scrollHandler) {
+            window.removeEventListener('scroll', choiceElement._scrollHandler, true);
+            delete choiceElement._scrollHandler;
+        }
+        if (choiceElement && choiceElement._resizeHandler) {
+            window.removeEventListener('resize', choiceElement._resizeHandler);
+            delete choiceElement._resizeHandler;
+        }
+        
         activeDropdown = null;
         activePortals.delete(choiceElementId);
         viewportLocations.delete(choiceElementId);
@@ -314,8 +399,7 @@ const Choice = {
         }
         
         if (!viewport) {
-            viewport = choiceElement.querySelector('.choice-viewport') || 
-                      choiceElement.parentElement.querySelector('.choice-viewport');
+            viewport = this.findViewport(choiceElement, choiceElementId);
         }
         
         if (viewport) {
@@ -345,6 +429,7 @@ const Choice = {
 
         let viewport = null;
         
+        // First check if viewport is in a portal (when dropdown is open)
         if (viewportLocations.has(activeDropdown)) {
             const location = viewportLocations.get(activeDropdown);
             if (location) {
@@ -352,19 +437,9 @@ const Choice = {
             }
         }
         
+        // If not in portal, use standard lookup
         if (!viewport) {
-            const portalId = activePortals.get(activeDropdown);
-            if (portalId) {
-                const portal = document.getElementById(portalId);
-                if (portal) {
-                    viewport = portal.querySelector('.choice-viewport');
-                }
-            }
-        }
-        
-        if (!viewport) {
-            viewport = choiceElement.querySelector('.choice-viewport') || 
-                      choiceElement.parentElement.querySelector('.choice-viewport');
+            viewport = this.findViewport(choiceElement, activeDropdown);
         }
         
         if (!viewport) return;

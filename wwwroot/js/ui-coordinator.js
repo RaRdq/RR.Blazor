@@ -17,14 +17,14 @@ class UICoordinator {
     handleComponentOpening(event) {
         const { componentType, componentId, priority = 0 } = event.detail;
         
-        const higherPriorityComponents = Array.from(this.componentStates.entries())
+        const lowerPriorityComponents = Array.from(this.componentStates.entries())
             .filter(([id, state]) => 
                 state.status === 'open' && 
                 state.priority < priority &&
                 state.componentType !== componentType
             );
         
-        higherPriorityComponents.forEach(([id, state]) => {
+        lowerPriorityComponents.forEach(([id, state]) => {
             this.requestComponentClose(state.componentType, id);
         });
         
