@@ -24,13 +24,16 @@
             <div class="max-h-80 overflow-y-auto">
                 @foreach (var column in GetSortedColumns())
                 {
-                    <div class="p-3 border-b border-surface-outline/50 hover:bg-surface-elevated transition-colors" 
+                    <div class="p-3 border-b border-surface-outline/50 hover:bg-surface-elevated transition-all duration-200 @(draggedColumn?.Key == column.Key ? "opacity-50" : "")" 
                          data-column-row="@column.Key"
                          draggable="@EnableReordering.ToString().ToLower()"
-                         @ondragstart="@(() => OnDragStart(column))"
-                         @ondragover="@((e) => OnDragOver(e, column))"
+                         @ondragstart="@(async () => await OnDragStart(column))"
+                         @ondragend="@(async () => await OnDragEnd())"
+                         @ondragenter="@(async () => await OnDragEnter(column))"
+                         @ondragover="@(async (e) => await OnDragOver(e, column))"
                          @ondragover:preventDefault="true"
-                         @ondrop="@(() => OnDrop(column))">
+                         @ondrop="@(async () => await OnDrop(column))"
+                         @ondrop:preventDefault="true">
                         <div class="d-flex items-center justify-between gap-3">
                             <div class="d-flex items-center gap-2 flex-1">
                                 @if (EnableReordering)
@@ -59,7 +62,7 @@
                                 <input type="checkbox"
                                        class="w-4 h-4"
                                        checked="@IsColumnVisible(column.Key)"
-                                       @onchange="@((e) => ToggleColumnVisibility(column.Key, (bool)e.Value!))"
+                                       @onchange="@(async (e) => await ToggleColumnVisibility(column.Key, (bool)e.Value!))"
                                        @onclick:stopPropagation="true"
                                        title="Show/Hide Column" />
                                 
@@ -106,6 +109,7 @@
     [Parameter] public string TableId { get; set; } = "";
     
     private dynamic draggedColumn;
+    private dynamic dragOverColumn;
     
     private List<dynamic> GetSortedColumns()
     {
@@ -118,50 +122,88 @@
         return new List<dynamic>();
     }
     
-    private Task OnDragStart(dynamic column)
+    private async Task OnDragStart(dynamic column)
     {
         draggedColumn = column;
-        return Task.CompletedTask;
+        dragOverColumn = null;
+        await InvokeAsync(StateHasChanged);
     }
     
-    private Task OnDragOver(DragEventArgs e, dynamic column)
+    private async Task OnDragEnd()
     {
-        e.DataTransfer.DropEffect = "move";
-        return Task.CompletedTask;
+        if (draggedColumn != null)
+        {
+            draggedColumn = null;
+            dragOverColumn = null;
+            
+            // Persist the final order
+            await PreferencesChanged.InvokeAsync(Preferences);
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+    
+    private async Task OnDragEnter(dynamic column)
+    {
+        if (draggedColumn == null || draggedColumn.Key == column.Key) 
+            return;
+            
+        // Swap columns immediately for live reordering
+        var columns = GetSortedColumns();
+        var draggedIndex = columns.FindIndex(c => c.Key == draggedColumn.Key);
+        var targetIndex = columns.FindIndex(c => c.Key == column.Key);
+        
+        if (draggedIndex < 0 || targetIndex < 0) 
+            return;
+        
+        // Swap the order values in preferences
+        var draggedKey = draggedColumn.Key as string;
+        var targetKey = column.Key as string;
+        
+        var draggedPrefs = Preferences.GetValueOrDefault(draggedKey) ?? new ColumnPreferences();
+        var targetPrefs = Preferences.GetValueOrDefault(targetKey) ?? new ColumnPreferences();
+        
+        var draggedOrder = draggedPrefs.Order > 0 ? draggedPrefs.Order : draggedIndex;
+        var targetOrder = targetPrefs.Order > 0 ? targetPrefs.Order : targetIndex;
+        
+        Preferences[draggedKey] = draggedPrefs with { Order = targetOrder };
+        Preferences[targetKey] = targetPrefs with { Order = draggedOrder };
+        
+        dragOverColumn = column;
+        await InvokeAsync(StateHasChanged);
+    }
+    
+    private async Task OnDragOver(DragEventArgs e, dynamic column)
+    {
+        if (draggedColumn != null && draggedColumn.Key != column.Key)
+        {
+            e.DataTransfer.DropEffect = "move";
+        }
+        await Task.CompletedTask;
     }
     
     private async Task OnDrop(dynamic targetColumn)
     {
-        if (draggedColumn == null || draggedColumn.Key == targetColumn.Key) return;
-        
-        var columns = GetSortedColumns();
-        var draggedIndex = columns.FindIndex(c => c.Key == draggedColumn.Key);
-        var targetIndex = columns.FindIndex(c => c.Key == targetColumn.Key);
-        
-        if (draggedIndex < 0 || targetIndex < 0) return;
-        
-        // Reorder columns
-        columns.RemoveAt(draggedIndex);
-        columns.Insert(targetIndex, draggedColumn);
-        
-        // Update preferences with new order
-        for (int i = 0; i < columns.Count; i++)
+        if (draggedColumn == null) 
         {
-            var key = columns[i].Key as string;
-            var prefs = Preferences.GetValueOrDefault(key) ?? new ColumnPreferences();
-            Preferences[key] = prefs with { Order = i };
+            return;
         }
         
-        await PreferencesChanged.InvokeAsync(Preferences);
+        // Final cleanup and notification
+        var draggedKey = draggedColumn.Key as string;
+        
         await OnColumnManagement.InvokeAsync(new ColumnManagementEventArgs
         {
-            ColumnKey = draggedColumn.Key as string,
+            ColumnKey = draggedKey,
             Action = ColumnManagementAction.Reorder,
-            NewValue = targetIndex,
-            OldValue = draggedIndex
+            NewValue = Preferences.GetValueOrDefault(draggedKey)?.Order,
+            OldValue = 0
         });
         
         draggedColumn = null;
+        dragOverColumn = null;
+        
+        await PreferencesChanged.InvokeAsync(Preferences);
+        await InvokeAsync(StateHasChanged);
     }
     
     private bool IsColumnVisible(string columnKey)
@@ -183,6 +225,9 @@
     private async Task ToggleColumnVisibility(string columnKey, bool visible)
     {
         var currentPrefs = Preferences.GetValueOrDefault(columnKey) ?? new ColumnPreferences();
+        
+        if (currentPrefs.Visible == visible) return;
+        
         var newPrefs = currentPrefs with { Visible = visible };
         Preferences[columnKey] = newPrefs;
         
@@ -194,6 +239,8 @@
             NewValue = visible,
             OldValue = currentPrefs.Visible
         });
+        
+        await InvokeAsync(StateHasChanged);
     }
     
     private async Task ToggleColumnPin(string columnKey)

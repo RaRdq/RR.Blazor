@@ -336,10 +336,8 @@ Using RR.Blazor components, create a user management interface with:
 
 ## Performance
 
-- **Page Load**: <3s for 10,000 records
-- **Memory Usage**: <50MB typical applications
 - **Virtual Scrolling**: Built-in for large datasets
-- **🌳 CSS Tree Shaking**: 85%+ bundle size reduction (608KB → 86KB)
+- **CSS Tree Shaking**: 85%+ bundle size reduction (608KB → 86KB)
 
 ### Advanced CSS Optimization
 
@@ -367,13 +365,6 @@ builder.Services.AddRRBlazor(options => options
     })
 );
 ```
-
-**Benefits:**
-- ⚡ **85%+ smaller CSS bundles** for production
-- 🚀 **Faster page loads** and reduced bandwidth
-- 🎯 **Only used styles included** - eliminates dead CSS
-- 🔄 **Automatic component analysis** across your entire project
-- 📊 **Detailed optimization reports** with before/after metrics
 
 ## Browser Support
 
@@ -436,12 +427,6 @@ builder.Services.AddRRBlazor(options =>
 }
 ```
 
-**Features:**
-- 🔒 **Security-First**: Path traversal protection, input sanitization
-- ⚡ **Build-Time Compilation**: Zero runtime overhead
-- 🎯 **Complete Control**: Override any CSS variable
-- 📦 **VS Code Integration**: IntelliSense and snippets included
-
 See [Docs/THEMING.md](Docs/THEMING.md) for complete guide.
 
 ## Contributing
@@ -449,7 +434,7 @@ See [Docs/THEMING.md](Docs/THEMING.md) for complete guide.
 1. **Add as submodule** to your working project
 2. **Create feature/fix branch** for your changes
 3. **Commit and push** to your branch
-4. **Open pull request** to master - we'll squash merge
+4. **Open pull request** to master - we'll squash merge after review
 
 ```bash
 # In your project
@@ -457,16 +442,18 @@ git submodule add https://github.com/RaRdq/RR.Blazor.git
 cd RR.Blazor
 git checkout -b feature/my-new-component
 # Make your changes
-git add . && git commit -m "Add new component"
+git add . && git commit -m "Add new super duper component"
 git push origin feature/my-new-component
 # Open PR to master on GitHub
 ```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
 **Dual License:**
 - **MIT License** - Free for individuals and organizations <$5M revenue
-- **Commercial License** - $3,999 lifetime for enterprises ≥$5M revenue
+- **Commercial License** - $4,999 lifetime for enterprises ≥$5M revenue
 
 See [LICENSE](LICENSE) for details.
 

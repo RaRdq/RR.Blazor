@@ -16,9 +16,8 @@ async function positionPopup(element, immediate = false) {
             id: portalId,
             type: 'datepicker',
             anchor: trigger,
-            className: 'datepicker-portal',
-            width: 320,
-            height: 400
+            className: 'datepicker-portal'
+            // Width and height are handled by CSS using variables
         });
         
         if (result) {
@@ -30,13 +29,11 @@ async function positionPopup(element, immediate = false) {
     }
 }
 
-function cleanupDatepicker(element) {
-    
+function cleanup(element) {
     if (datepickerInstances.has(element)) {
         const { portalId, datepickerId } = datepickerInstances.get(element);
         
         window.RRBlazor.ClickOutside.unregister(datepickerId);
-        
         window.RRBlazor.Portal.destroy(portalId);
         
         datepickerInstances.delete(element);
@@ -44,7 +41,6 @@ function cleanupDatepicker(element) {
 }
 
 function setupDatepickerEvents(element, dotNetRef) {
-    
     element.addEventListener(window.RRBlazor.Events.CLICK_OUTSIDE, function(event) {
         if (dotNetRef) {
             dotNetRef.invokeMethodAsync('HandleClickOutside');
@@ -52,8 +48,7 @@ function setupDatepickerEvents(element, dotNetRef) {
     });
 }
 
-async function initializeDatepicker(element, dotNetRef) {
-    
+async function initialize(element, dotNetRef) {
     setupDatepickerEvents(element, dotNetRef);
     
     if (!element._datepickerInitialized) {
@@ -62,31 +57,17 @@ async function initializeDatepicker(element, dotNetRef) {
     }
 }
 
-async function openDatepicker(element) {
-    
+async function open(element, config) {
     await positionPopup(element, true);
 }
 
-async function closeDatepicker(element) {
-    
-    cleanupDatepicker(element);
-}
-
-function initialize(element, dotNetRef) {
-    return initializeDatepicker(element, dotNetRef);
-}
-
-function cleanup(element) {
-    cleanupDatepicker(element);
+async function close(element) {
+    cleanup(element);
 }
 
 export { 
-    positionPopup, 
-    cleanupDatepicker, 
-    setupDatepickerEvents, 
-    initializeDatepicker, 
-    openDatepicker, 
-    closeDatepicker,
     initialize,
+    open,
+    close,
     cleanup
 };
