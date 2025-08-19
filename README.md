@@ -449,6 +449,27 @@ git push origin feature/my-new-component
 
 See [CONTRIBUTING.md](CONTRIBUTING.md).
 
+## Integration with AI Tools
+
+### Claude Code Instructions
+```bash
+# Add to Claude's context
+Provide @RR.Blazor/wwwroot/rr-ai-components.json and @RR.Blazor/wwwroot/rr-ai-styles.json to Claude and ask:
+"Update my Blazor project to use RR.Blazor unified smart components"
+
+# For new projects
+"Initialize a new Blazor project with RR.Blazor design system featuring smart type detection"
+```
+
+### Custom AI Commands
+```markdown
+/designer - Elite Frontend Architect with Plan-Implement-Reflect methodology
+/rr-blazor-init - Initialize RR.Blazor in current project
+/rr-blazor-upgrade - Upgrade components to latest patterns
+/rr-blazor-theme - Configure theme and styling
+/rr-blazor-component - Generate new component following patterns
+```
+
 ## License
 
 **Dual License:**

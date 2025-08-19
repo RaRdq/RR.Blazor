@@ -83,7 +83,7 @@ Always check these before modifying:
     // Private methods last
     private string GetClasses() => Variant switch
     {
-        ExampleVariant.Primary => "example example--primary",
+        ExampleVariant.Primary => "example example-primary",
         _ => "example"
     };
 }
@@ -97,8 +97,8 @@ Always check these before modifying:
   color: var(--color-text-primary);
   background: var(--color-background-elevated);
   
-  // BEM modifiers
-  &--primary {
+  // BEM modifiers - use &-* pattern, NOT --& or &--
+  &-primary {
     background: var(--color-primary);
     color: var(--color-text-on-primary);
   }
@@ -117,20 +117,19 @@ Always check these before modifying:
 - [ ] Uses RR.Blazor naming convention (R prefix)
 - [ ] Theme-aware (uses CSS variables)
 - [ ] WCAG 2.1 AA accessibility compliant (ARIA attributes, keyboard navigation)
-- [ ] Adaptive responsive design (mobile, PC, laptop, iPad portrait/landscape)
-- [ ] AI metadata added with @** blocks
+- [ ] Responsive (true Adaptive) design implemented (mobile, PC, laptop, iPad portrait/landscape)
+- [ ] AI metadata added with @** blocks or/and [AIParameter]
 - [ ] No hardcoded colors/spacing
-- [ ] Responsive design implemented
-- [ ] Loading/error states handled
-- [ ] Smart type detection implemented (if applicable)
-- [ ] Legacy, obsolete components removed after unified implementation
+- [ ] Loading/error states handled with [RErrorBoundary.razor] and [LoadingStateManager.razor] or custom
+- [ ] Smart type detection implemented (if applicable), see [SMART_COMPONENTS_ARCHITECTURE.md]
+- [ ] Legacy, obsolete components removed after unified implementation (add !breaking changes to commit)
 
 #### QA Debug Verification (Required for AI Agents)
-- [ ] `window.RRDebug.analyze()` shows 85%+ health score
-- [ ] `window.RRDebug.component('.your-component')` reports zero critical issues
-- [ ] `window.RRDebug.scan('interactive-elements')` shows WCAG 2.1 AA compliance
+- [ ] `window.RRDebug.health()` shows 85%+ health score
+- [ ] `window.RRDebug.css()` reports zero critical CSS issues
+- [ ] `window.RRDebug.responsive()` shows all breakpoints working
 - [ ] All responsive breakpoints tested (mobile, PC, laptop, iPad portrait/landscape)
-- [ ] All responsive breakpoints tested with debug tools
+- [ ] `window.RRDebug.report()` generates clean comprehensive report
 - [ ] Debug output included in PR/commit description
 
 ### For Human Developers
@@ -160,7 +159,7 @@ Always check these before modifying:
 When creating a PR, include:
 
 1. **Clear Description**: What does this PR accomplish?
-2. **QA Debug Output**: Include `window.RRDebug.analyze()` results for UI changes
+2. **QA Debug Output**: Include `window.RRDebug.health()` and `window.RRDebug.report()` results for UI changes
 3. **Testing Evidence**: Screenshots, test results, or debug reports
 4. **Breaking Changes**: List any breaking changes and migration steps
 5. **Component Impact**: List which components are affected
@@ -221,93 +220,79 @@ public class RComponentTests
 
 ### JavaScript Debug Utilities for QA Testing
 
-RR.Blazor includes enterprise-grade debug utilities that automatically load in development environments. These tools are essential for component validation and QA automation. Current validation coverage includes 246 Razor files with 14,569 utility class usages validated.
+RR.Blazor includes enterprise-grade debug utilities that automatically load in development environments. These tools are essential for component validation and QA automation.
 
 #### Accessing Debug Tools
 The debug utilities are available in development environments (localhost, dev ports, debug URLs):
 ```javascript
 // Tools are available on the global window object
-window.RRDebug.analyze()        // Full page analysis
-window.RRDebug.component()      // Component-specific analysis  
-window.RRDebug.scan()          // Element scanning
-window.RRDebug.checkComponent() // Quick health checks
+window.RRDebug.health()         // Health analysis with scoring
+window.RRDebug.report()         // Complete AI report
+window.RRDebug.css()           // CSS validation
+window.RRDebug.performance()   // Performance analysis
+window.RRDebug.responsive()    // Responsive design testing
 ```
 
 #### Core Debug Commands
 
-**1. Full Page Analysis**
+**1. Health Analysis**
 ```javascript
 // Complete page health analysis with scoring
-window.RRDebug.analyze()
-// Output: Health score, element statistics, issue recommendations
-
-// Quick page overview
-window.RRDebug.analyze({depth: 'summary'})
+const health = window.RRDebug.health()
+// Returns: { score, issues, summary, elements }
 ```
 
-**2. Component-Specific Analysis**
+**2. Complete Report Generation**
 ```javascript
-// Analyze specific component and all children
-window.RRDebug.component('.modal')
-window.RRDebug.component('#sidebar')
-window.RRDebug.component('.rr-card')
-
-// Quick component health check
-window.RRDebug.checkComponent('.nav-menu')
-// Output: Health score, issue count, element count
+// Generate comprehensive AI-friendly report
+const report = window.RRDebug.report()
+// Returns: { health, css, performance, responsive, logs, timestamp }
 ```
 
-**3. Element Scanning**
+**3. CSS Validation**
 ```javascript
-// Scan all buttons on page
-window.RRDebug.scan('button')
-
-// Scan first 5 cards with detailed analysis
-window.RRDebug.scan('.card', {limit: 5, detail: 'full'})
-
-// Quick scan of form inputs
-window.RRDebug.scan('input, textarea, select', {limit: 10})
+// Validate CSS classes and variables
+const cssReport = window.RRDebug.css()
+// Returns: { validClasses, invalidClasses, missingVariables }
 ```
 
-**4. QA Automation Reports**
+**4. Responsive Design Testing**
 ```javascript
-// Generate automation-friendly report
-const report = window.RRDebug.getQAReport()
-// Returns: {url, timestamp, score, status, issueCount, recommendations}
-
-// Check if page meets quality standards
-window.RRDebug.isHealthy() // returns true/false (70%+ score)
+// Test across all breakpoints
+const responsive = window.RRDebug.responsive()
+// Returns: { mobile, tablet, desktop, issues }
 ```
 
 #### Common QA Testing Workflow
 
 **For Component Development:**
 ```javascript
-// 1. Test component rendering
-window.RRDebug.component('.your-component')
+// 1. Check overall health
+const health = window.RRDebug.health()
+console.log(`Health Score: ${health.score}%`)
 
-// 2. Check accessibility compliance
-window.RRDebug.scan('[role="button"]', {detail: 'full'})
+// 2. Validate CSS usage
+const css = window.RRDebug.css()
+console.log('CSS Issues:', css.invalidClasses)
 
-// 3. Validate responsive behavior
-window.RRDebug.analyze({scope: 'component', target: '.responsive-element'})
+// 3. Test responsive behavior
+const responsive = window.RRDebug.responsive()
+console.log('Responsive Issues:', responsive.issues)
 
 // 4. Generate final report
-window.RRDebug.getQAReport()
+const report = window.RRDebug.report()
 ```
 
 **For Page-Level Testing:**
 ```javascript
-// 1. Overall page health
-window.RRDebug.analyze()
+// 1. Complete analysis
+const report = window.RRDebug.report()
+console.log('Full Report:', report)
 
-// 2. Check critical components
-window.RRDebug.checkComponent('.header')
-window.RRDebug.checkComponent('.sidebar') 
-window.RRDebug.checkComponent('.main-content')
-
-// 3. Scan interactive elements
-window.RRDebug.scan('button, [role="button"], .btn', {limit: 20})
+// 2. Check specific areas
+const health = window.RRDebug.health()
+const css = window.RRDebug.css()
+const performance = window.RRDebug.performance()
 ```
 
 #### Issue Detection Patterns
@@ -341,22 +326,21 @@ This will auto-run page analysis and log results to console.
 // Start QA session
 console.log('🧪 Starting QA Analysis...')
 
-// 1. Page overview
-const pageHealth = window.RRDebug.analyze()
-console.log(`Page Score: ${pageHealth.score}%`)
+// 1. Health overview
+const health = window.RRDebug.health()
+console.log(`Page Score: ${health.score}%`)
 
-// 2. Check key components  
-const headerHealth = window.RRDebug.checkComponent('.app-header')
-const sidebarHealth = window.RRDebug.checkComponent('.app-sidebar')
+// 2. CSS validation
+const css = window.RRDebug.css()
+console.log('CSS Issues:', css.invalidClasses?.length || 0)
 
-// 3. Scan problematic elements
-if (pageHealth.score < 85) {
-    window.RRDebug.scan('*', {limit: 20}) // Find problem elements
-}
+// 3. Responsive testing
+const responsive = window.RRDebug.responsive()
+console.log('Responsive Issues:', responsive.summary?.totalIssues || 0)
 
 // 4. Generate final report
-const qaReport = window.RRDebug.getQAReport()
-console.log('📋 QA Report Generated:', qaReport)
+const report = window.RRDebug.report()
+console.log('📋 Complete Report:', report)
 ```
 
 ## Documentation Standards
@@ -376,27 +360,6 @@ console.log('📋 QA Report Generated:', qaReport)
 - **Responsive Design**: Mobile, PC, laptop, iPad portrait/landscape support
 ```
 
-## Integration with AI Tools
-
-### Claude Code Instructions
-```bash
-# Add to Claude's context
-Provide @RR.Blazor/wwwroot/rr-ai-components.json and @RR.Blazor/wwwroot/rr-ai-styles.json to Claude and ask:
-"Update my Blazor project to use RR.Blazor unified smart components"
-
-# For new projects
-"Initialize a new Blazor project with RR.Blazor design system featuring smart type detection"
-```
-
-### Custom AI Commands
-```markdown
-/designer - Elite Frontend Architect with Plan-Implement-Reflect methodology
-/rr-blazor-init - Initialize RR.Blazor in current project
-/rr-blazor-upgrade - Upgrade components to latest patterns
-/rr-blazor-theme - Configure theme and styling
-/rr-blazor-component - Generate new component following patterns
-```
-
 ### AI Agent QA Integration
 
 **For Claude Code and other AI agents performing QA testing:**
@@ -404,9 +367,9 @@ Provide @RR.Blazor/wwwroot/rr-ai-components.json and @RR.Blazor/wwwroot/rr-ai-st
 1. **Always use debug tools** when analyzing UI components or pages:
 ```javascript
 // Mandatory QA commands for AI agents
-window.RRDebug.analyze()                    // Page health overview
-window.RRDebug.component('.target-component') // Component analysis
-window.RRDebug.getQAReport()               // Automation report
+window.RRDebug.health()      // Health analysis with scoring
+window.RRDebug.report()      // Complete automation report
+window.RRDebug.css()         // CSS validation
 ```
 
 2. **Include debug output in reports** - Copy console output to provide specific issue details
@@ -439,10 +402,10 @@ private async Task HandleChange(T value)
 
 ### 3. CSS Class Building
 ```csharp
-// Use pattern matching for variants
+// Use pattern matching for variants - use component-variant pattern
 private string GetClasses() => new CssBuilder("component")
-    .AddClass($"component--{Variant.ToString().ToLower()}")
-    .AddClass("component--disabled", Disabled)
+    .AddClass($"component-{Variant.ToString().ToLower()}")
+    .AddClass("component-disabled", Disabled)
     .AddClass(Class)
     .Build();
 ```
@@ -460,19 +423,11 @@ pwsh ./RR.Blazor/Scripts/GenerateDocumentation.ps1 -ProjectPath ./RR.Blazor
 dotnet build -c Release
 ```
 
-**Generated documentation includes**:
-- 66 components with complete APIs including unified smart components
-- 3,309+ utility patterns with AI hints
-- 336 CSS variables with semantic naming
-- Real-world usage patterns
-- WCAG 2.1 AA accessibility compliance guidelines
-- Cross-device responsive design patterns (mobile, PC, laptop, iPad)
-
 ## Questions or Issues?
 
 - **For AI Agents**: Include full context in your PR description
 - **For Humans**: Open an issue with the question template
-- **For Urgent**: Tag @RaRdq in the PR/issue
+- **Urgent**: Tag @RaRdq in the PR/issue
 
 ## Building from Source
 
