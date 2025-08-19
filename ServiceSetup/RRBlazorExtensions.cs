@@ -90,6 +90,15 @@ namespace RR.Blazor.ServiceSetup
                 NewestOnTop = true,
                 PreventDuplicates = false
             });
+
+            // Register tree-shaking options - enabled by default, disable what you don't need
+            serviceCollection.AddSingleton(new RRBlazorTreeShakingOptions
+            {
+                Enabled = true,
+                EnableInDevelopment = false,
+                OutputPath = "./wwwroot/css/optimized",
+                VerboseLogging = false
+            });
         }
 
         private static void RegisterDefaultConfiguration(IServiceCollection serviceCollection)
@@ -157,6 +166,23 @@ namespace RR.Blazor.ServiceSetup
             internal RRBlazorConfiguration(IServiceCollection serviceCollection)
             {
                 this.serviceCollection = serviceCollection;
+            }
+
+            /// <summary>
+            /// Enable tree-shaking optimization
+            /// </summary>
+            /// <param name="enabled">Whether to enable tree-shaking</param>
+            /// <returns>Configuration instance for chaining</returns>
+            public RRBlazorConfiguration WithTreeShaking(bool enabled = true)
+            {
+                OnBuild += () =>
+                {
+                    serviceCollection.AddSingleton(new RRBlazorTreeShakingOptions
+                    {
+                        Enabled = enabled
+                    });
+                };
+                return this;
             }
 
             /// <summary>
@@ -251,5 +277,23 @@ namespace RR.Blazor.ServiceSetup
             public int DefaultDuration { get; set; } = 200;
             public string DefaultEasing { get; set; } = "cubic-bezier(0, 0, 0.2, 1)";
         }
+    }
+
+    /// <summary>
+    /// Tree-shaking configuration options for RR.Blazor
+    /// </summary>
+    public class RRBlazorTreeShakingOptions
+    {
+        /// <summary>Enable tree-shaking optimization (default: true - disable what you don't need)</summary>
+        public bool Enabled { get; set; } = true;
+        
+        /// <summary>Enable in development environment (default: false)</summary>
+        public bool EnableInDevelopment { get; set; } = false;
+        
+        /// <summary>Output path for optimized CSS</summary>
+        public string OutputPath { get; set; } = "./wwwroot/css/optimized";
+        
+        /// <summary>Enable verbose logging</summary>
+        public bool VerboseLogging { get; set; } = false;
     }
 }
