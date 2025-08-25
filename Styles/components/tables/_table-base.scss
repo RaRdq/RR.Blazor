@@ -1,44 +1,45 @@
 @use '../../abstracts' as *;
 @use 'table-mixins' as mixins;
 
-
-.r-table {
+.table {
   width: 100%;
   border-collapse: collapse;
   font-feature-settings: "tnum";
   background: transparent;
   position: relative;
-  table-layout: fixed;
-  
-  // Table modifiers using correct syntax
-  &.has-hover tbody tr:hover {
+  table-layout: auto;
+
+transform: translateZ(0);
+  backface-visibility: hidden;
+  contain: layout style paint;
+
+&-has-hover tbody tr:hover {
     background: var(--state-hover-bg);
     cursor: pointer;
   }
-  
-  &.is-striped tbody tr:nth-child(odd) {
+
+  &-striped tbody tr:nth-child(odd) {
     background: var(--color-surface-elevated);
   }
-  
-  &.is-bordered {
+
+  &-bordered {
     border: var(--border-1) solid var(--color-border);
-    
+
     th, td {
       border: var(--border-1) solid var(--color-border-light);
     }
   }
 }
 
-// Table element styling using &- syntax
-.r-table {
+.table {
   &-header-cell {
     @include mixins.table-header-base;
-    
-    &.is-sortable {
+
+    &-sortable {
       cursor: pointer;
       user-select: none;
       transition: var(--transition-colors);
-      
+
       &:hover {
         background: var(--state-hover-bg);
         color: var(--color-primary);
@@ -48,21 +49,30 @@
 
   &-cell {
     @include mixins.table-cell-base;
+
+white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+
+contain: layout style paint;
   }
 
   &-row {
     transition: var(--transition-colors);
-    
+
+will-change: transform, box-shadow;
+    contain: layout style paint;
+    transform: translateZ(0);
+
     @include mixins.table-hover-state(var(--state-hover-bg), false);
-    
-    &.is-selected {
+
+    &-selected {
       @include mixins.table-selection-state;
     }
   }
 }
 
-// Table container - single source of truth
-.r-table-container {
+.table-container {
   position: relative;
   display: block;
   width: 100%;
@@ -73,25 +83,39 @@
   box-shadow: var(--shadow-sm);
   border: var(--border-1) solid var(--color-border-light);
   transition: var(--transition-colors);
-  
-  // Column width enforcement
-  .r-table {
+
+-webkit-overflow-scrolling: touch;
+  will-change: scroll-position;
+
+.table {
     th, td {
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      
-      // Force respect width attributes
-      &[style*="width"] {
+
+&[style*="width"] {
         width: var(--column-width);
         min-width: var(--column-min-width, auto);
         max-width: var(--column-max-width, none);
       }
     }
   }
+
+&.overflow-x-auto {
+    .table {
+      width: max-content;
+      min-width: 100%;
+
+      th, td {
+
+        &[width] {
+          min-width: attr(width);
+        }
+      }
+    }
+  }
 }
 
-// CSS Custom Properties for dynamic sizing
 .overflow-x-auto[style*="--table-height"] {
   height: var(--table-height);
 }

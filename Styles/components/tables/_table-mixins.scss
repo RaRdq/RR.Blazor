@@ -1,6 +1,5 @@
 @use '../../abstracts' as *;
 
-
 @mixin table-cell-base($padding: var(--space-3) var(--space-4)) {
   padding: $padding;
   vertical-align: middle;
@@ -17,7 +16,6 @@
   position: relative;
 }
 
-// Standard hover state
 @mixin table-hover-state($bg: var(--state-hover-bg), $transform: translateY(-1px)) {
   &:hover {
     background: $bg;
@@ -28,7 +26,6 @@
   }
 }
 
-// Selection state
 @mixin table-selection-state($bg: var(--color-primary-light), $border-width: 3px) {
   background: $bg;
   border-left: $border-width solid var(--color-primary);
@@ -40,17 +37,16 @@
     outline-offset: calc(var(--border-2) * -1);
     box-shadow: 0 0 0 var(--border-4) var(--color-primary-light);
     position: relative;
-    z-index: 1;
+    z-index: var(--z-base);
   }
 }
 
-// Truncate text with tooltip support
 @mixin table-text-truncate {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 0; // Enable ellipsis in table cells
-  
+  max-width: 0;
+
   &[title]:hover::after {
     content: attr(title);
     position: absolute;
@@ -61,7 +57,7 @@
     box-shadow: var(--shadow-xl);
     z-index: var(--z-tooltip);
     white-space: normal;
-    max-width: calc(var(--space-4) * 18.75); // ~300px using φ-system
+    max-width: calc(var(--space-4) * 18.75);
     word-wrap: break-word;
     border: var(--border-1) solid var(--color-border);
     font-size: var(--text-sm);
@@ -76,14 +72,13 @@
   line-height: 1.2;
 }
 
-// Sticky column shadows
 @mixin sticky-column-shadow($direction: left) {
   @if $direction == left {
     box-shadow: var(--shadow-sticky-right);
   } @else {
     box-shadow: var(--shadow-sticky-left);
   }
-  
+
   @include responsive-max(md) {
     @if $direction == left {
       box-shadow: var(--shadow-sticky-right-sm);
@@ -93,11 +88,10 @@
   }
 }
 
-// Action button base
 @mixin table-action-button {
-  
+
   transition: var(--transition-transform);
-  
+
   &:hover:not(:disabled) {
     transform: translateY(-1px);
     box-shadow: var(--shadow-md);
@@ -105,7 +99,7 @@
 }
 
 @mixin table-skeleton {
-  
+
   border-radius: var(--radius-sm);
   height: 16px;
   position: relative;
@@ -113,15 +107,53 @@
 }
 
 @mixin table-touch-target {
-  
+
   min-height: var(--touch-target-min);
-  
+
   @media (pointer: coarse) {
     padding: var(--space-3) var(--space-4);
   }
 }
 
-// Scroll shadow indicators
+@mixin sr-content($content) {
+  &::after {
+    content: $content;
+    position: absolute;
+    left: -10000px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+  }
+}
+
+@mixin table-focus-visible($outline-width: var(--border-width-thick), $outline-color: var(--primary)) {
+  &:focus-visible {
+    outline: $outline-width solid $outline-color;
+    outline-offset: 2px;
+    z-index: var(--z-floating);
+    position: relative;
+  }
+}
+
+@mixin table-tooltip-hover {
+  &[title]:hover::after {
+    content: attr(title);
+    position: absolute;
+    background: var(--surface-elevated);
+    color: var(--color-text);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-xl);
+    z-index: var(--z-tooltip);
+    white-space: normal;
+    max-width: 300px;
+    word-wrap: break-word;
+    border: 1px solid var(--border);
+    font-size: var(--text-sm);
+    margin-top: var(--space-2);
+  }
+}
+
 @mixin scroll-shadow-indicator($direction: horizontal) {
   &::before,
   &::after {
@@ -130,7 +162,7 @@
     pointer-events: none;
     z-index: var(--z-floating);
     transition: opacity var(--duration-normal) var(--ease-out);
-    
+
     @if $direction == horizontal {
       top: 0;
       bottom: 0;
@@ -141,22 +173,21 @@
       height: 20px;
     }
   }
-  
+
   @if $direction == horizontal {
     &::before {
       left: 0;
       background: linear-gradient(to right, var(--color-surface-elevated), transparent);
       opacity: 0;
     }
-    
+
     &::after {
       right: 0;
       background: linear-gradient(to left, var(--color-surface-elevated), transparent);
       opacity: 1;
     }
-    
-    &.scrolled-left::before { opacity: 1; }
-    &.scrolled-right::after { opacity: 0; }
+
+    &-scrolled-left::before { opacity: 1; }
+    &-scrolled-right::after { opacity: 0; }
   }
 }
-

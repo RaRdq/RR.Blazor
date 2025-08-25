@@ -12,44 +12,49 @@
     'focus-ring': true,
     'active-feedback': true,
     'hover-feedback': true,
-    'loading-component-type': $type  // Pass component type for context-aware loading
+    'loading-component-type': $type
   );
-  
+
   $merged-config: map.merge($default-config, $config);
-  
-  cursor: map.get($merged-config, 'cursor');
-  transition: all map.get($merged-config, 'transition-duration') map.get($merged-config, 'transition-easing');
-  position: relative;
-  
+
+  & {
+    cursor: map.get($merged-config, 'cursor');
+    transition: all map.get($merged-config, 'transition-duration') map.get($merged-config, 'transition-easing');
+    position: relative;
+  }
+
   @if map.get($merged-config, 'focus-ring') {
     &:focus-visible {
       @include interactive-focus-ring($type);
     }
   }
-  
+
   @if map.get($merged-config, 'hover-feedback') {
     &:hover {
       @include interactive-hover($type);
     }
   }
-  
+
   @if map.get($merged-config, 'active-feedback') {
     &:active {
       @include interactive-active($type);
     }
   }
-  
-  &:disabled, &[disabled], &.disabled {
+
+  &:disabled, &[disabled] {
     @include interactive-disabled();
   }
-  
-  &.loading {
-    // Use component type for context-aware loading
+
+  &[aria-disabled="true"] {
+    @include interactive-disabled();
+  }
+
+  &-loading {
     $loading-type: map.get($merged-config, 'loading-component-type');
     @if $loading-type == 'button' {
       @include button-loading();
     } @else if $loading-type == 'input' {
-      @include loading-inline('end', 'sm', 'default');
+      @include loading-inline('start', 'sm', 'default');
     } @else if $loading-type == 'card' {
       @include loading-overlay('md', 'default', 4px, 'card');
     } @else {
@@ -62,10 +67,10 @@
   @if $type == button {
     filter: brightness(1.05);
     transform: translateY(-1px);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 2px 4px var(--shadow-overlay-medium);
   } @else if $type == card {
     transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 4px 8px var(--shadow-overlay-medium);
     filter: brightness(1.01);
   } @else if $type == badge {
     transform: scale(1.05);
@@ -86,15 +91,15 @@
   @if $type == button {
     transform: scale(0.98) translateY(0);
     filter: brightness(0.95);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1); // Minimal shadow
+    box-shadow: 0 1px 2px var(--shadow-overlay-dark);
   } @else if $type == card {
     transform: scale(0.99) translateY(0);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+    box-shadow: 0 2px 4px var(--shadow-overlay-subtle);
   } @else if $type == badge {
     transform: scale(0.97);
     filter: brightness(0.9);
   } @else if $type == input {
-    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
+    box-shadow: inset 0 1px 2px var(--shadow-overlay-light);
   } @else if $type == icon {
     transform: scale(0.9);
     filter: brightness(0.9);
@@ -104,33 +109,26 @@
   }
 }
 
-/// Focus Ring System
-/// Consistent focus indicators with φ-based spacing
-/// @param {string} $type - Component type
-/// @param {string} $color - Focus ring color
 @mixin interactive-focus-ring($type: default, $color: var(--color-primary)) {
   outline: 2px solid #{$color};
   outline-offset: 2px;
   border-radius: inherit;
-  
+
   @if $type == card {
     outline-width: 2px;
     outline-offset: 3px;
   } @else if $type == input {
     outline-offset: 1px;
-    box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.1); // Clean focus shadow
+    box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.1);
   }
 }
 
-/// Disabled State
-/// Consistent disabled styling across all interactive components
 @mixin interactive-disabled() {
-  opacity: var(--opacity-disabled); // 0.6 from variables
+  opacity: var(--opacity-disabled);
   pointer-events: none;
   cursor: not-allowed;
   filter: grayscale(0.3);
-  
-  // Remove interactive effects
+
   &:hover, &:active, &:focus-visible {
     transform: none;
     filter: grayscale(0.3);
@@ -139,11 +137,6 @@
   }
 }
 
-
-/// Enhanced Interactive States
-/// For components requiring more sophisticated feedback
-/// @param {string} $type - Component type
-/// @param {map} $enhancements - Enhancement configuration
 @mixin interactive-enhanced($type: button, $enhancements: ()) {
   $default-enhancements: (
     'ripple-effect': false,
@@ -151,42 +144,36 @@
     'bounce-on-click': false,
     'magnetic-hover': false
   );
-  
+
   $merged-enhancements: map.merge($default-enhancements, $enhancements);
-  
+
   @include interactive-base($type);
-  
+
   @if map.get($merged-enhancements, 'glow-on-hover') {
     &:hover {
-      box-shadow: 0 4px 12px rgba(var(--color-primary-rgb), 0.15); // Single clean shadow
+      box-shadow: 0 4px 12px rgba(var(--color-primary-rgb), 0.15);
     }
   }
-  
+
   @if map.get($merged-enhancements, 'bounce-on-click') {
     &:active {
       animation: bounce calc(var(--duration-fast) * var(--φ)) var(--ease-out);
     }
   }
-  
+
   @if map.get($merged-enhancements, 'magnetic-hover') {
     transition: all var(--duration-fast) var(--ease-out), transform var(--duration-fast) var(--ease-out);
-    
+
     &:hover {
       transform: scale(calc(1 + var(--φ-inv) * 0.02));
     }
   }
 }
 
-/// Touch-Optimized Interactive States
-/// Enhanced for mobile/touch interfaces with larger hit targets
-/// @param {string} $type - Component type
-/// @param {boolean} $expand-hit-area - Whether to expand touch target
 @mixin interactive-touch($type: button, $expand-hit-area: true) {
   @include interactive-base($type);
-  
+
   @if $expand-hit-area {
-    position: relative;
-    
     &::before {
       content: '';
       position: absolute;
@@ -194,27 +181,22 @@
       left: calc(var(--touch-target-min) / -4);
       right: calc(var(--touch-target-min) / -4);
       bottom: calc(var(--touch-target-min) / -4);
-      min-width: var(--touch-target-min); // 44px minimum
+      min-width: var(--touch-target-min);
       min-height: var(--touch-target-min);
     }
   }
-  
+
   &:active {
     transform: scale(calc(1 - var(--φ-inv) * 0.05));
     transition-duration: calc(var(--duration-fast) * var(--φ-inv));
   }
-  
-  // Prevent touch callouts and selection
+
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   -moz-user-select: none;
   user-select: none;
 }
 
-/// Accessibility-Enhanced Interactive States
-/// WCAG 2.1 AA compliant interactive patterns
-/// @param {string} $type - Component type
-/// @param {map} $a11y-config - Accessibility configuration
 @mixin interactive-a11y($type: button, $a11y-config: ()) {
   $default-a11y: (
     'high-contrast': true,
@@ -222,61 +204,55 @@
     'focus-indicators': true,
     'keyboard-navigation': true
   );
-  
+
   $merged-a11y: map.merge($default-a11y, $a11y-config);
-  
+
   @if map.get($merged-a11y, 'high-contrast') {
     @media (prefers-contrast: high) {
       border: 2px solid currentColor;
-      
+
       &:focus-visible {
         outline-width: 3px;
         outline-offset: 3px;
       }
     }
   }
-  
+
   @if map.get($merged-a11y, 'reduced-motion') {
     @media (prefers-reduced-motion: reduce) {
       transition: none;
-      
+
       &:hover, &:active {
         transform: none;
         animation: none;
       }
-      
-      &.loading::after {
+
+      &-loading::after {
         animation: none;
         border: 2px solid currentColor;
       }
     }
   }
-  
+
   @if map.get($merged-a11y, 'keyboard-navigation') {
     &:focus-visible {
       outline: 3px solid var(--color-primary);
       outline-offset: 3px;
       box-shadow: 0 0 0 1px var(--color-text-inverse);
-      z-index: 1;
+      z-index: var(--z-base);
     }
   }
 }
 
-/// Multi-State Interactive System
-/// Comprehensive system for components with multiple states
-/// @param {list} $states - States to support (hover, active, focus, disabled, loading)
-/// @param {string} $type - Component type
-/// @param {map} $config - Configuration options
 @mixin interactive-multi-state($states: (hover, active, focus, disabled), $type: button, $config: ()) {
   @include interactive-base($type, $config);
-  
+
   @if list.index($states, loading) {
-    &.loading {
-      // Use component type for context-aware loading
+    &-loading {
       @if $type == 'button' {
         @include button-loading();
       } @else if $type == 'input' {
-        @include loading-inline('end', 'sm', 'default');
+        @include loading-inline('start', 'sm', 'default');
       } @else if $type == 'card' {
         @include loading-overlay('md', 'default', 4px, 'card');
       } @else {
@@ -284,23 +260,23 @@
       }
     }
   }
-  
+
   @if list.index($states, success) {
-    &.success {
+    &-success {
       background: var(--color-success);
       color: var(--color-text-inverse);
-      
+
       &:hover {
         background: color-mix(in srgb, var(--color-success) 90%, var(--color-text-inverse));
       }
     }
   }
-  
+
   @if list.index($states, error) {
-    &.error {
+    &-error {
       background: var(--color-error);
       color: var(--color-text-inverse);
-      
+
       &:hover {
         background: color-mix(in srgb, var(--color-error) 90%, var(--color-text-inverse));
       }

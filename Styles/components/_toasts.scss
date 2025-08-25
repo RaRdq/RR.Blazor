@@ -10,34 +10,34 @@
   min-width: 320px;
   pointer-events: none;
   padding: var(--space-3);
-  
+
   &-top-left {
     top: 0;
     left: 0;
   }
-  
+
   &-top-center {
     top: 0;
     left: 50%;
     transform: translateX(-50%);
   }
-  
+
   &-top-right {
     top: 0;
     right: 0;
   }
-  
+
   &-bottom-left {
     bottom: 0;
     left: 0;
   }
-  
+
   &-bottom-center {
     bottom: 0;
     left: 50%;
     transform: translateX(-50%);
   }
-  
+
   &-bottom-right {
     bottom: 0;
     right: 0;
@@ -45,9 +45,9 @@
 }
 
 .toast {
-  @extend %glass-medium;
+  @extend %glass-heavy;
   @extend %interactive-base;
-  
+
   display: flex;
   align-items: flex-start;
   gap: var(--space-3);
@@ -57,61 +57,86 @@
   min-height: 56px;
   position: relative;
   overflow: hidden;
-  border: var(--border-1) solid var(--glass-border-light);
-  box-shadow: 
-    var(--shadow-xl),
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.1),
-    0 0 0 1px rgba(0, 0, 0, 0.05);
-  
-  // Glass intensity variants
-  &.glass-light {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.1) 0%,
+    rgba(255, 255, 255, 0.05) 100%
+  );
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow:
+    0 8px 32px 0 rgba(31, 38, 135, 0.37),
+    inset 0 2px 4px 0 rgba(255, 255, 255, 0.2),
+    inset 0 -1px 2px 0 rgba(0, 0, 0, 0.1);
+
+&-glass-light {
     @extend %glass-light;
   }
-  
-  &.glass-heavy {
+
+  &-glass-heavy {
     @extend %glass-heavy;
   }
-  
-  // Initial state - all toasts start hidden
-  opacity: 0;
+
+opacity: 0;
   transform: translateY(-20px) scale(0.9);
   transition: all var(--duration-normal) var(--ease-spring);
-  
-  // Animation states using generic keyframes
-  &-entering {
+
+&.entering {
     opacity: 0;
     transform: translateY(-20px) scale(0.9);
     animation: fadeSlideIn var(--duration-normal) var(--ease-spring) forwards;
   }
-  
-  &-visible {
+
+  &.visible {
     opacity: 1;
     transform: translate(0) scale(1);
-    
+
     &:hover {
       transform: translateY(-2px) scale(1.02);
-      box-shadow: 
+      box-shadow:
         var(--shadow-2xl),
         inset 0 1px 0 0 rgba(255, 255, 255, 0.15),
         0 0 0 1px rgba(0, 0, 0, 0.1);
-      
-      // Enhanced glass effect on hover
+
       backdrop-filter: blur(16px) saturate(140%);
       -webkit-backdrop-filter: blur(16px) saturate(140%);
     }
   }
-  
-  &-exiting {
+
+  &.exiting {
     animation: fadeSlideOut var(--duration-fast) var(--ease-in) forwards;
   }
-  
-  // Semantic variant styles using mixins
-  &-success {
-    @include semantic-glass();
-    border-left: 3px solid var(--color-success);
-    @include glass-gradient(success, light);
+
+&-success {
+    --toast-color: var(--color-success);
+    --toast-rgb: 76, 175, 80;
+    
+    background: linear-gradient(
+      135deg,
+      rgba(var(--toast-rgb), 0.08) 0%,
+      rgba(var(--toast-rgb), 0.03) 50%,
+      rgba(255, 255, 255, 0.05) 100%
+    );
+    border-left: 3px solid var(--toast-color);
+    border-right: 1px solid rgba(var(--toast-rgb), 0.2);
     
     &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 100%;
+      background: linear-gradient(
+        90deg,
+        rgba(var(--toast-rgb), 0.15) 0%,
+        transparent 30%
+      );
+      pointer-events: none;
+    }
+
+    &::after {
       content: '';
       position: absolute;
       top: 0;
@@ -121,23 +146,42 @@
       background: linear-gradient(
         90deg,
         transparent,
-        var(--color-success),
+        rgba(var(--toast-rgb), 0.8),
         transparent
       );
-      opacity: 0.5;
-    }
-    
-    .toast-icon {
-      @include icon-container(sm, transparent, var(--color-success));
+      opacity: 0.7;
     }
   }
-  
+
   &-error {
-    @include semantic-glass();
-    border-left: 3px solid var(--color-error);
-    @include glass-gradient(error, light);
+    --toast-color: var(--color-error);
+    --toast-rgb: 244, 67, 54;
+    
+    background: linear-gradient(
+      135deg,
+      rgba(var(--toast-rgb), 0.08) 0%,
+      rgba(var(--toast-rgb), 0.03) 50%,
+      rgba(255, 255, 255, 0.05) 100%
+    );
+    border-left: 3px solid var(--toast-color);
+    border-right: 1px solid rgba(var(--toast-rgb), 0.2);
     
     &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 100%;
+      background: linear-gradient(
+        90deg,
+        rgba(var(--toast-rgb), 0.15) 0%,
+        transparent 30%
+      );
+      pointer-events: none;
+    }
+
+    &::after {
       content: '';
       position: absolute;
       top: 0;
@@ -147,24 +191,43 @@
       background: linear-gradient(
         90deg,
         transparent,
-        var(--color-error),
+        rgba(var(--toast-rgb), 0.8),
         transparent
       );
-      opacity: 0.5;
+      opacity: 0.7;
       animation: pulse 2s ease-in-out infinite;
     }
-    
-    .toast-icon {
-      @include icon-container(sm, transparent, var(--color-error));
-    }
   }
-  
+
   &-warning {
-    @include semantic-glass();
-    border-left: 3px solid var(--color-warning);
-    @include glass-gradient(warning, light);
+    --toast-color: var(--color-warning);
+    --toast-rgb: 255, 152, 0;
+    
+    background: linear-gradient(
+      135deg,
+      rgba(var(--toast-rgb), 0.08) 0%,
+      rgba(var(--toast-rgb), 0.03) 50%,
+      rgba(255, 255, 255, 0.05) 100%
+    );
+    border-left: 3px solid var(--toast-color);
+    border-right: 1px solid rgba(var(--toast-rgb), 0.2);
     
     &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 100%;
+      background: linear-gradient(
+        90deg,
+        rgba(var(--toast-rgb), 0.15) 0%,
+        transparent 30%
+      );
+      pointer-events: none;
+    }
+
+    &::after {
       content: '';
       position: absolute;
       top: 0;
@@ -174,23 +237,42 @@
       background: linear-gradient(
         90deg,
         transparent,
-        var(--color-warning),
+        rgba(var(--toast-rgb), 0.8),
         transparent
       );
-      opacity: 0.5;
-    }
-    
-    .toast-icon {
-      @include icon-container(sm, transparent, var(--color-warning));
+      opacity: 0.7;
     }
   }
-  
+
   &-info {
-    @include semantic-glass();
-    border-left: 3px solid var(--color-info);
-    @include glass-gradient(info, light);
+    --toast-color: var(--color-info);
+    --toast-rgb: 33, 150, 243;
+    
+    background: linear-gradient(
+      135deg,
+      rgba(var(--toast-rgb), 0.08) 0%,
+      rgba(var(--toast-rgb), 0.03) 50%,
+      rgba(255, 255, 255, 0.05) 100%
+    );
+    border-left: 3px solid var(--toast-color);
+    border-right: 1px solid rgba(var(--toast-rgb), 0.2);
     
     &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 100%;
+      background: linear-gradient(
+        90deg,
+        rgba(var(--toast-rgb), 0.15) 0%,
+        transparent 30%
+      );
+      pointer-events: none;
+    }
+
+    &::after {
       content: '';
       position: absolute;
       top: 0;
@@ -200,14 +282,10 @@
       background: linear-gradient(
         90deg,
         transparent,
-        var(--color-info),
+        rgba(var(--toast-rgb), 0.8),
         transparent
       );
-      opacity: 0.5;
-    }
-    
-    .toast-icon {
-      @include icon-container(sm, transparent, var(--color-info));
+      opacity: 0.7;
     }
   }
 
@@ -217,13 +295,12 @@
     align-items: center;
     justify-content: center;
     transition: all var(--transition-fast);
-    
-    @include icon-context-display;
-    
-    .material-symbols-rounded,
-    i {
-      font-size: var(--icon-md);
+    color: var(--toast-color, var(--color-text));
+
+    .material-icons {
+      font-size: 20px;
       line-height: 1;
+      color: inherit;
     }
   }
 
@@ -234,7 +311,7 @@
     flex-direction: column;
     gap: var(--space-1);
   }
-  
+
   &-title {
     margin: 0;
     font-size: var(--text-sm);
@@ -252,7 +329,7 @@
     font-weight: var(--font-medium);
     word-break: break-word;
   }
-  
+
   &-progress {
     margin-top: var(--space-2);
     height: 3px;
@@ -260,7 +337,7 @@
     border-radius: var(--radius-full);
     overflow: hidden;
     position: relative;
-    
+
     &-bar {
       height: 100%;
       background: linear-gradient(
@@ -273,11 +350,11 @@
       box-shadow: var(--shadow-glow-sm);
     }
   }
-  
+
   &-action {
     @extend %button-base;
     @include semantic-base(primary, filter);
-    
+
     margin-top: var(--space-2);
     padding: var(--space-1-5) var(--space-3);
     border-radius: var(--radius-md);
@@ -287,7 +364,7 @@
     min-width: 64px;
     letter-spacing: 0.02em;
     text-transform: uppercase;
-    
+
     &:active {
       transform: scale(0.96);
     }
@@ -295,35 +372,32 @@
 
   &-close {
     @extend %icon-button;
-    
+
     flex-shrink: 0;
     width: 32px;
     height: 32px;
     opacity: 0.7;
     transition: all var(--transition-fast);
-    
+
     &:hover {
       opacity: 1;
       background: var(--state-hover-bg);
       transform: rotate(90deg) scale(1.1);
     }
-    
+
     &:active {
       transform: rotate(90deg) scale(0.9);
     }
-    
-    @include icon-context-button;
-    
-    .material-symbols-rounded,
-    i {
-      font-size: var(--icon-sm);
+
+    .material-icons {
+      font-size: 18px;
+      color: var(--color-text-muted);
     }
   }
-  
-  // Sticky toast variant (no auto-dismiss)
-  &.sticky {
+
+&-sticky {
     border-width: 2px;
-    
+
     &::after {
       content: '';
       position: absolute;
@@ -341,9 +415,8 @@
       animation: shimmer 3s linear infinite;
     }
   }
-  
-  // Duration indicator using generic animation
-  &-duration {
+
+&-duration {
     position: absolute;
     bottom: 0;
     left: 0;
@@ -354,83 +427,81 @@
   }
 }
 
-// Position-specific animations using generic keyframes
 .toast-container {
   &-top-left .toast {
-    &-entering {
+    &.entering {
       opacity: 0;
       transform: translateX(-100%) scale(0.8);
       animation: slideInLeftScale var(--duration-normal) var(--ease-spring) forwards;
     }
-    &-exiting {
+    &.exiting {
       animation: slideInLeftScale var(--duration-fast) var(--ease-in) reverse forwards;
     }
   }
-  
+
   &-bottom-left .toast {
-    &-entering {
+    &.entering {
       opacity: 0;
       transform: translateX(-100%) scale(0.8);
       animation: slideInLeftScale var(--duration-normal) var(--ease-spring) forwards;
     }
-    &-exiting {
+    &.exiting {
       animation: slideInLeftScale var(--duration-fast) var(--ease-in) reverse forwards;
     }
   }
-  
+
   &-top-right .toast {
-    &-entering {
+    &.entering {
       opacity: 0;
       transform: translateX(100%) scale(0.8);
       animation: slideInRightScale var(--duration-normal) var(--ease-spring) forwards;
     }
-    &-exiting {
+    &.exiting {
       animation: slideInRightScale var(--duration-fast) var(--ease-in) reverse forwards;
     }
   }
-  
+
   &-bottom-right .toast {
-    &-entering {
+    &.entering {
       opacity: 0;
       transform: translateX(100%) scale(0.8);
       animation: slideInRightScale var(--duration-normal) var(--ease-spring) forwards;
     }
-    &-exiting {
+    &.exiting {
       animation: slideInRightScale var(--duration-fast) var(--ease-in) reverse forwards;
     }
   }
-  
+
   &-top-center .toast {
-    &-entering {
+    &.entering {
       opacity: 0;
       transform: translateY(-100%) scale(0.8);
       animation: slideInTopScale var(--duration-normal) var(--ease-spring) forwards;
     }
-    &-exiting {
+    &.exiting {
       animation: slideInTopScale var(--duration-fast) var(--ease-in) reverse forwards;
     }
   }
-  
+
   &-bottom-center .toast {
-    &-entering {
+    &.entering {
       opacity: 0;
       transform: translateY(100%) scale(0.8);
       animation: slideInBottomScale var(--duration-normal) var(--ease-spring) forwards;
     }
-    &-exiting {
+    &.exiting {
       animation: slideInBottomScale var(--duration-fast) var(--ease-in) reverse forwards;
     }
   }
 }
 
-// Responsive adjustments
 @include responsive-max(sm) {
   .toast-container {
     max-width: calc(100vw - var(--space-4));
     min-width: 280px;
     gap: var(--space-1-5);
     padding: var(--space-2);
-    
+
     &-top-left,
     &-top-right,
     &-top-center,
@@ -442,53 +513,49 @@
       transform: none;
     }
   }
-  
+
   .toast {
     padding: var(--space-2-5) var(--space-3);
     min-height: 48px;
     gap: var(--space-2);
-    
+
     &-title {
       font-size: var(--text-xs);
     }
-    
+
     &-message {
       font-size: var(--text-2xs);
       line-height: 1.4;
     }
-    
+
     &-action {
       padding: var(--space-1) var(--space-2);
       height: 28px;
       font-size: var(--text-3xs);
     }
-    
+
     &-close {
       width: 28px;
       height: 28px;
     }
-    
+
     &-icon {
-      @include icon-context-display;
-      
-      .material-symbols-rounded,
-      i {
-        font-size: var(--icon-sm);
+      .material-icons {
+        font-size: 18px;
       }
     }
   }
 }
 
-// Dark theme adjustments
 [data-theme="dark"] {
   .toast {
     background: var(--glass-bg-medium);
     border-color: var(--glass-border-light);
-    
+
     &::before {
       opacity: 0.3;
     }
-    
+
     &-success,
     &-error,
     &-warning,
@@ -498,25 +565,24 @@
   }
 }
 
-// Accessibility
 @media (prefers-reduced-motion: reduce) {
   .toast {
-    &-entering,
-    &-exiting,
-    &-visible {
+    &.entering,
+    &.exiting,
+    &.visible {
       animation: none;
       transition: opacity var(--duration-fast);
     }
-    
-    &-entering {
+
+    &.entering {
       opacity: 0;
     }
-    
-    &-visible {
+
+    &.visible {
       opacity: 1;
     }
-    
-    &-exiting {
+
+    &.exiting {
       opacity: 0;
     }
   }

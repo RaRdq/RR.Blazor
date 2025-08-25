@@ -1,16 +1,91 @@
 @use '../abstracts' as *;
 @use '../utilities/icons' as *;
 
+@mixin divider-dashed($color: border-dark) {
+  @if $color == border-dark {
+    &::before,
+    &::after {
+      background: transparent;
+      height: 0;
+      border-top: 2px dashed var(--color-border-dark);
+    }
+  } @else {
+    &::before,
+    &::after {
+      background: transparent;
+      height: 0;
+      border-top: 2px dashed var(--color-#{$color});
+    }
+  }
+}
+
+@mixin divider-dotted($color: border-dark) {
+  @if $color == border-dark {
+    &::before,
+    &::after {
+      background: transparent;
+      height: 0;
+      border-top: 2px dotted var(--color-border-dark);
+    }
+  } @else {
+    &::before,
+    &::after {
+      background: transparent;
+      height: 0;
+      border-top: 2px dotted var(--color-#{$color});
+    }
+  }
+}
+
+@mixin divider-vertical-dashed($color: border-dark) {
+  @if $color == border-dark {
+    &::before,
+    &::after {
+      background: transparent;
+      width: 0;
+      border-left: 2px dashed var(--color-border-dark);
+      border-top: none;
+    }
+  } @else {
+    &::before,
+    &::after {
+      background: transparent;
+      width: 0;
+      border-left: 2px dashed var(--color-#{$color});
+      border-top: none;
+    }
+  }
+}
+
+@mixin divider-vertical-dotted($color: border-dark) {
+  @if $color == border-dark {
+    &::before,
+    &::after {
+      background: transparent;
+      width: 0;
+      border-left: 2px dotted var(--color-border-dark);
+      border-top: none;
+    }
+  } @else {
+    &::before,
+    &::after {
+      background: transparent;
+      width: 0;
+      border-left: 2px dotted var(--color-#{$color});
+      border-top: none;
+    }
+  }
+}
+
 .divider {
   display: flex;
   align-items: center;
   position: relative;
-  
   margin: var(--space-6) 0;
   color: var(--color-text-muted);
   font-size: var(--text-sm);
   font-weight: var(--font-medium);
-  
+
   &::before,
   &::after {
     content: '';
@@ -19,8 +94,8 @@
     background: var(--color-border-dark);
     transition: background var(--duration-normal) var(--ease-out);
   }
-  
-  .content {
+
+  .divider-content {
     display: inline-flex;
     align-items: center;
     gap: var(--space-2);
@@ -28,18 +103,55 @@
     background: transparent;
     white-space: nowrap;
     position: relative;
-    z-index: 1;
-    
+    z-index: var(--z-base);
+    width: auto;
+    flex: 0 0 auto;
+
     @include icon-context-label;
-    
-    i.material-symbols-rounded {
-      font-size: var(--icon-sm);
+
+    i.icon {
       line-height: 1;
       vertical-align: middle;
       flex-shrink: 0;
     }
   }
 
+  // Base dashed/dotted styles
+  &-dashed {
+    @include divider-dashed;
+  }
+
+  &-dotted {
+    @include divider-dotted;
+  }
+
+  // Semantic variants using standard patterns
+  @each $color in (primary, success, warning, error, info) {
+    &-#{$color} {
+      .divider-content { 
+        color: var(--color-#{$color}); 
+      }
+      
+      &:not(.divider-dashed):not(.divider-dotted) {
+        &::before,
+        &::after {
+          background: var(--color-#{$color});
+        }
+      }
+    }
+
+    // Dashed variants with semantic colors
+    &-dashed-#{$color} {
+      @include divider-dashed($color);
+    }
+
+    // Dotted variants with semantic colors  
+    &-dotted-#{$color} {
+      @include divider-dotted($color);
+    }
+  }
+
+  // Vertical Layout
   &-vertical {
     display: inline-flex;
     flex-direction: column;
@@ -49,30 +161,44 @@
     margin: 0 var(--space-2);
     align-items: center;
     align-self: stretch;
-    
+
     &::before,
     &::after {
-      width: 1px;
-      height: auto;
+      width: var(--divider-width, 1px);
+      height: var(--divider-height, auto);
       flex: 1;
-      background: var(--color-border-dark);
+      background: var(--divider-background, var(--color-border-dark));
+      border-left: var(--divider-border-left, none);
+      border-top: var(--divider-border-top, none);
       min-height: var(--space-2);
     }
-    
-    .content {
+
+    .divider-content {
       padding: var(--space-2) 0;
       writing-mode: vertical-lr;
       text-orientation: mixed;
       flex-shrink: 0;
-      
-      .material-symbols-rounded,
-      .material-symbols-rounded-filled {
+
+      .icon,
+      .icon-filled {
         writing-mode: initial;
         text-orientation: initial;
       }
     }
 
-    &.divider-empty {
+    &-compact {
+      height: var(--space-4);
+      margin: 0 var(--space-1);
+      .divider-content { padding: var(--space-1) 0; }
+    }
+
+    &-spacious {
+      height: var(--space-8);
+      margin: 0 var(--space-3);
+      .divider-content { padding: var(--space-3) 0; }
+    }
+
+    &-empty {
       &::before {
         flex: 1;
         margin: 0;
@@ -82,148 +208,83 @@
       }
     }
 
-    &.divider-compact {
-      height: var(--space-4);
-      margin: 0 var(--space-1);
-      .content { padding: var(--space-1) 0; }
+    // Vertical dashed/dotted
+    &.divider-dashed {
+      @include divider-vertical-dashed;
     }
 
-    &.divider-spacious {
-      height: var(--space-8);
-      margin: 0 var(--space-3);
-      .content { padding: var(--space-3) 0; }
-    }
-  }
-
-  &-dashed {
-    &::before,
-    &::after {
-      background: none;
-      border-top: 2px dashed var(--color-border-dark);
-      height: 0;
+    &.divider-dotted {
+      @include divider-vertical-dotted;
     }
 
-    &.divider-vertical {
-      &::before,
-      &::after {
-        background: none;
-        border-left: 2px dashed var(--color-border-dark);
-        border-top: none;
-        width: 0;
-        min-height: var(--space-2);
+    // Vertical semantic variants
+    @each $color in (primary, success, warning, error, info) {
+      &-dashed-#{$color} {
+        @include divider-vertical-dashed($color);
+      }
+
+      &-dotted-#{$color} {
+        @include divider-vertical-dotted($color);
       }
     }
   }
 
-  &-dotted {
-    &::before,
-    &::after {
-      background: none;
-      border-top: 2px dotted var(--color-border-dark);
-      height: 0;
-    }
-
-    &.divider-vertical {
-      &::before,
-      &::after {
-        background: none;
-        border-left: 2px dotted var(--color-border-dark);
-        border-top: none;
-        width: 0;
-        min-height: var(--space-2);
-      }
-    }
-  }
-
+  // Text Alignment
   &-text-center {
     &::before,
     &::after {
       flex: 1;
     }
-    .content {
+    .divider-content {
       padding: 0 var(--space-4);
+      flex-shrink: 0;
     }
   }
 
   &-text-left {
-    &::before { display: none; }
-    &::after { 
-      flex: 1;
-      margin-left: var(--space-4); 
+    &::before { 
+      display: none; 
     }
-    .content { 
+    &::after {
+      flex: 1;
+      margin-left: var(--space-4);
+    }
+    .divider-content {
       padding-left: 0;
-      padding-right: 0;
+      padding-right: var(--space-4);
+      flex-shrink: 0;
+      flex-grow: 0;
     }
   }
 
   &-text-right {
-    &::before { 
+    &::before {
       flex: 1;
-      margin-right: var(--space-4); 
+      margin-right: var(--space-4);
     }
-    &::after { display: none; }
-    .content { 
-      padding-left: 0;
+    &::after { 
+      display: none; 
+    }
+    .divider-content {
       padding-right: 0;
+      padding-left: var(--space-4);
+      flex-shrink: 0;
+      flex-grow: 0;
     }
   }
 
+  // Empty State
   &-empty {
     &::before { margin: 0; }
     &::after { display: none; }
   }
 
-  &-primary {
-    &::before,
-    &::after {
-      border-color: var(--color-primary);
-      background: var(--color-primary);
-    }
-    .content { color: var(--color-primary); }
-  }
-
-  &-success {
-    &::before,
-    &::after {
-      border-color: var(--color-success);
-      background: var(--color-success);
-    }
-    .content { color: var(--color-success); }
-  }
-
-  &-warning {
-    &::before,
-    &::after {
-      border-color: var(--color-warning);
-      background: var(--color-warning);
-    }
-    .content { color: var(--color-warning); }
-  }
-
-  &-error {
-    &::before,
-    &::after {
-      border-color: var(--color-error);
-      background: var(--color-error);
-    }
-    .content { color: var(--color-error); }
-  }
-
-  &-info {
-    &::before,
-    &::after {
-      border-color: var(--color-info);
-      background: var(--color-info);
-    }
-    .content { color: var(--color-info); }
-  }
-
+  // Size Variants
   &-compact {
     margin: var(--space-2) 0;
     font-size: var(--text-xs);
-    
-    .content { 
+
+    .divider-content {
       padding: 0 var(--space-3);
       font-size: var(--text-xs);
     }
@@ -232,17 +293,18 @@
   &-spacious {
     margin: var(--space-8) 0;
     font-size: var(--text-base);
-    
-    .content { 
+
+    .divider-content {
       padding: 0 var(--space-5);
       font-size: var(--text-base);
     }
   }
 
+  // No Line
   &-no-line {
     &::before,
     &::after { display: none; }
-    .content { padding: 0; }
+    .divider-content { padding: 0; }
   }
 }
 

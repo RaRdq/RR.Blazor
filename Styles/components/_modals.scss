@@ -2,21 +2,17 @@
 
 .modal-provider,
 .modal-backdrop-container {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  @include fixed-cover;
   width: 100vw;
   height: 100vh;
-  z-index: var(--z-modal);
+  z-index: var(--z-modal-backdrop);
   pointer-events: auto;
-  
+
   min-width: 100vw;
   min-height: 100vh;
-  
+
   transition: opacity 0.2s ease-out, visibility 0.2s ease-out;
-  
+
   &.active {
     pointer-events: auto;
     opacity: 1;
@@ -25,45 +21,39 @@
 }
 
 .modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  @include fixed-cover;
   width: 100vw;
   height: 100vh;
-  z-index: var(--z-modal);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  z-index: var(--z-modal-container);
+  @include flex-center;
   padding: var(--space-4);
-  
+  gap: var(--space-4);
+
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
-  
+
   @include responsive-max(sm) {
     padding: var(--space-2);
     align-items: safe center;
     justify-content: safe center;
   }
-  
-  &-visible {
+
+  &.visible {
     opacity: 1;
     visibility: visible;
     transform: scale(1);
     pointer-events: auto;
     animation: var(--modal-animation, scaleIn var(--duration-normal) var(--ease-out));
   }
-  
-  &-hidden {
+
+  &.hidden {
     opacity: 0;
     visibility: hidden;
     transform: scale(0.95);
     pointer-events: none;
   }
-  
-  // Backdrop variants
+
   &-backdrop {
     position: fixed;
     top: 0;
@@ -72,27 +62,27 @@
     bottom: 0;
     width: 100vw;
     height: 100vh;
-    z-index: var(--z-modal);
+    z-index: var(--z-modal-overlay);
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     animation: fadeIn var(--modal-backdrop-duration, var(--duration-fast)) var(--ease-out);
-    
+
     &-dark {
-      background: rgba(15, 23, 42, 0.7);
-      backdrop-filter: blur(8px);
+      background: var(--overlay-heavy);
+      backdrop-filter: blur(var(--blur-sm));
     }
-    
+
     &-glass {
-      background: rgba(15, 23, 42, 0.5);
-      backdrop-filter: blur(12px) saturate(180%);
-      -webkit-backdrop-filter: blur(12px) saturate(180%);
+      background: var(--overlay-medium);
+      backdrop-filter: blur(var(--blur-md)) saturate(180%);
+      -webkit-backdrop-filter: blur(var(--blur-md)) saturate(180%);
     }
-    
+
     &-protected {
-      background: rgba(220, 38, 38, 0.15);
-      backdrop-filter: blur(8px);
+      background: color-mix(in srgb, var(--color-error) 15%, transparent);
+      backdrop-filter: blur(var(--blur-sm));
     }
   }
 
@@ -102,15 +92,14 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 100%;
-    height: 100%;
+    @include full-size;
     position: relative;
   }
-  
+
   &-content {
     @extend %card-base-enhanced;
     position: relative;
-    z-index: var(--z-modal);
+    z-index: var(--z-modal-content);
     max-width: 90vw;
     max-height: 90vh;
     width: auto;
@@ -118,66 +107,64 @@
     display: flex;
     flex-direction: column;
     overflow: visible;
-    
-    
-    // Mobile adjustments
+
     @include responsive-max(sm) {
       max-width: calc(100vw - var(--space-4));
       max-height: calc(100vh - var(--space-4));
       margin: 0;
     }
   }
-  
-  // Size variant classes matching RModal.razor GetSizeClass()
+
   &-small {
     width: min(600px, 90vw);
     max-width: min(600px, 90vw);
   }
-  
+
   &-medium {
     width: min(800px, 90vw);
     max-width: min(800px, 90vw);
   }
-  
+
   &-large {
     width: min(1200px, 90vw);
     max-width: min(1200px, 90vw);
   }
-  
+
   &-xlarge {
     width: min(1600px, 90vw);
     max-width: min(1600px, 90vw);
   }
-  
+
   &-wide {
     width: min(1400px, 95vw);
     max-width: 95vw;
   }
-  
+
   &-full {
     width: 95vw;
     height: 95vh;
     max-width: 98vw;
     max-height: 98vh;
     border-radius: 0;
-    
+
     @include responsive-max(sm) {
       border-radius: 0;
       width: 100vw;
       height: 100vh;
     }
   }
-  
-  // Header
+
   &-header {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-start;
     align-items: center;
+    gap: var(--space-3);
     padding: var(--space-4);
     border-bottom: 1px solid var(--color-border);
     flex-shrink: 0;
     min-height: 64px;
-    
+    position: relative;
+
     @include responsive-max(sm) {
       padding: var(--space-3);
       min-height: 56px;
@@ -186,14 +173,13 @@
       overflow: auto;
     }
   }
-  
-  // Body with proper scrolling
+
   &-body {
     flex: 1 1 auto;
     padding: var(--space-4);
     overflow-y: auto;
     overflow-x: hidden;
-    
+
     @include responsive-max(sm) {
       padding: var(--space-3);
       max-height: calc(100vh - 180px);
@@ -201,8 +187,7 @@
       -webkit-overflow-scrolling: touch;
     }
   }
-  
-  // Footer
+
   &-footer {
     display: flex;
     justify-content: space-between;
@@ -211,18 +196,17 @@
     border-top: 1px solid var(--color-border);
     flex-shrink: 0;
     gap: var(--space-2);
-    
+
     @include responsive-max(sm) {
       padding: var(--space-3);
       flex-direction: column-reverse;
-      
+
       > * {
         width: 100%;
       }
     }
   }
-  
-  // Title
+
   &-title {
     font-size: var(--text-lg);
     font-weight: 600;
@@ -230,7 +214,7 @@
     margin: 0;
     flex: 1 1 auto;
     min-width: 0;
-    
+
     @include responsive-max(sm) {
       font-size: var(--text-base);
       max-width: calc(100% - 56px);
@@ -239,13 +223,12 @@
       hyphens: auto;
     }
   }
-  
-  // Subtitle
+
   &-subtitle {
     font-size: var(--text-sm);
     color: var(--color-text-muted);
     margin-top: var(--space-1);
-    
+
     @include responsive-max(sm) {
       max-width: calc(100% - 56px);
       word-wrap: break-word;
@@ -255,58 +238,59 @@
 }
 
 .modal-close {
-  min-width: 48px;
-  min-height: 48px;
-  width: 48px;
-  height: 48px;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  right: var(--space-4);
+  min-width: 36px;
+  min-height: 36px;
+  width: 36px;
+  height: 36px;
   padding: 0;
-  background: var(--color-surface-elevated);
-  border: 1px solid var(--color-border);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  @include flex-center;
+  border-radius: var(--radius-full);
   cursor: pointer;
   transition: all var(--duration-fast) var(--ease-out);
-  flex-shrink: 0;
-  z-index: var(--z-modal);
-  position: relative;
+  z-index: calc(var(--z-modal-content) + 1);
   pointer-events: auto;
-  opacity: 1;
+  opacity: 0.8;
   visibility: visible;
-  
+
   &:hover {
-    @include semantic-tint(error, 10);
-    border-color: var(--color-error);
-    transform: scale(1.05);
+    background: rgba(244, 67, 54, 0.15);
+    border-color: rgba(244, 67, 54, 0.5);
+    transform: translateY(-50%) scale(1.05) rotate(90deg);
+    opacity: 1;
   }
-  
+
   &:active {
-    transform: scale(0.95);
+    transform: translateY(-50%) scale(0.95);
   }
-  
+
   @include icon-context-button;
-  
-  .material-symbols-rounded,
+
+  .icon,
   i {
     font-size: 20px;
     line-height: 1;
     color: var(--color-text-muted);
   }
-  
+
   &:hover {
-    .material-symbols-rounded,
-    i {
+    .icon,
+  i {
       color: var(--color-error);
     }
   }
-  
-  // Touch device adjustments
+
   @media (pointer: coarse) {
     min-width: 48px;
     min-height: 48px;
   }
-  
+
   @include responsive-max(sm) {
     min-width: 48px;
     min-height: 48px;
@@ -315,7 +299,7 @@
     margin: 0;
     padding: 0;
     position: relative;
-    z-index: var(--z-modal);
+    z-index: var(--z-modal-content);
     flex-shrink: 0;
     justify-self: end;
     align-self: center;
@@ -326,14 +310,13 @@
   }
 }
 
-// Nested modal support and dropdown elevation
 .modal-popup {
   z-index: var(--z-modal-popup);
-  
+
   .modal-backdrop {
     z-index: var(--z-modal-popup);
   }
-  
+
 }
 
 .modal-content {
@@ -343,97 +326,55 @@
   .autosuggest-portal,
   .datepicker-portal,
   .popover-portal {
-    z-index: 10;
+    z-index: var(--z-modal-popup);
     position: relative;
   }
-  
+
   .choice-dropdown,
   .select-dropdown,
   .autosuggest-dropdown {
-    z-index: 10;
+    z-index: var(--z-modal-popup);
     position: relative;
   }
-  
+
   .tooltip {
-    z-index: 20;
+    z-index: var(--z-tooltip);
     position: relative;
   }
 }
 
 .modal-content .modal-content {
-  
+
   .dropdown-menu,
   .dropdown-portal {
     z-index: calc(var(--z-modal-popup) + 60);
   }
 }
 
-// Modal state machine animations
-.modal-animating {
-  transition: all var(--modal-duration, 200ms) var(--modal-timing, ease-out);
+// Modal animation classes - using modal-in/modal-out pattern
+.modal-in {
+  opacity: 1;
+  transform: scale(1) translateY(0);
 }
 
-.modal-scale {
-  &.modal-in {
-    opacity: 1;
-    transform: scale(1);
-  }
-  &.modal-out {
-    opacity: 0;
-    transform: scale(0.95);
-  }
+.modal-out {
+  opacity: 0;
+  transform: scale(0.95) translateY(20px);
 }
 
-.modal-fade {
-  &.modal-in {
-    opacity: 1;
-  }
-  &.modal-out {
-    opacity: 0;
-  }
-}
-
-.modal-slide {
-  &.modal-in {
-    opacity: 1;
-    transform: translateY(0);
-  }
-  &.modal-out {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-}
-
-// Animation speed classes
-.modal-speed-fast {
-  --modal-duration: var(--duration-fast);
-}
-
-.modal-speed-normal {
-  --modal-duration: var(--duration-normal);
-}
-
-.modal-speed-slow {
-  --modal-duration: var(--duration-slow);
-}
-
-// Glass morphism variant
 .modal-glass {
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
-  
+  background: var(--glass-bg-heavy);
+  backdrop-filter: blur(var(--blur-xl)) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--blur-xl)) saturate(180%);
+  border: 1px solid var(--glass-border-light);
+  box-shadow: var(--shadow-xl);
+
   @media (prefers-color-scheme: dark) {
-    background: rgba(30, 41, 59, 0.85);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: var(--theme-glass-backdrop);
+    border: 1px solid var(--glass-border-strong);
   }
 }
 
-// Animations - Use existing keyframes from abstracts/_animations.scss
-
-// Utility classes for modal control
 .modal-open {
   overflow: hidden;
 }
@@ -442,31 +383,27 @@
   animation: shake 0.5s;
 }
 
-// Use existing shake animation from abstracts/_animations.scss
-
-// Scrollbar styling for modal body
 .modal-body {
   &::-webkit-scrollbar {
     width: 8px;
     height: 8px;
   }
-  
+
   &::-webkit-scrollbar-track {
     background: var(--color-surface);
     border-radius: var(--radius-sm);
   }
-  
+
   &::-webkit-scrollbar-thumb {
     background: var(--color-border);
     border-radius: var(--radius-sm);
-    
+
     &:hover {
       background: var(--color-text-muted);
     }
   }
 }
 
-// Focus trap styling
 .modal-focus-trap {
   position: absolute;
   width: 1px;
@@ -479,54 +416,52 @@
   border: 0;
 }
 
-// Modal variants
 .modal {
   &-error {
     .modal-header {
       @include semantic-tint(error, 10);
       border-color: var(--color-error);
     }
-    
+
     .modal-title {
       color: var(--color-error);
     }
   }
-  
+
   &-warning {
     .modal-header {
       @include semantic-tint(warning, 10);
       border-color: var(--color-warning);
     }
-    
+
     .modal-title {
       color: var(--color-warning-dark);
     }
   }
-  
+
   &-success {
     .modal-header {
       @include semantic-tint(success, 10);
       border-color: var(--color-success);
     }
-    
+
     .modal-title {
       color: var(--color-success-dark);
     }
   }
-  
+
   &-info {
     .modal-header {
       @include semantic-tint(info, 10);
       border-color: var(--color-info);
     }
-    
+
     .modal-title {
       color: var(--color-info-dark);
     }
   }
 }
 
-// Header alignment utilities
 .modal-header {
   &-actions {
     display: flex;
@@ -535,19 +470,9 @@
     margin-left: auto;
     flex-shrink: 0;
   }
-  
-  &-compact {
-    min-height: 48px;
-    padding: var(--space-3);
-  }
-  
-  &-large {
-    min-height: 80px;
-    padding: var(--space-5) var(--space-4);
-  }
+
 }
 
-// Responsive behavior for nested content
 .modal-responsive {
   @include responsive-max(sm) {
     position: static;

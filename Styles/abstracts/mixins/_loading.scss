@@ -1,10 +1,9 @@
-// Modern Loading System - Using existing animations and BEM patterns
+
 @use '../variables' as *;
 @use '../animations' as *;
 @use 'core' as *;
 @use 'sass:map';
 
-// Component loading configuration - defines behavior per component type
 $component-loading-config: (
   'button': (preserve-height: true, min-height: null),
   'input': (preserve-height: true, min-height: null),
@@ -22,7 +21,6 @@ $component-loading-config: (
   'default': (preserve-height: false, min-height: 3rem)
 );
 
-// Loading types configuration
 $loading-types: (
   'replace': 'Content is hidden and replaced with spinner',
   'overlay': 'Content remains visible with loading overlay',
@@ -34,16 +32,14 @@ $loading-types: (
   'dots': 'Animated dots loading indicator'
 );
 
-// Size configuration using em units for proper scaling with button text
 $loading-sizes: (
   'xs': (size: 0.75em, border: 1.5px, speed: var(--duration-fast)),
-  'sm': (size: 0.875em, border: 2px, speed: var(--duration-normal)), 
+  'sm': (size: 0.875em, border: 2px, speed: var(--duration-normal)),
   'md': (size: 1em, border: 2px, speed: var(--duration-normal)),
   'lg': (size: 1.125em, border: 2.5px, speed: var(--duration-slow)),
   'xl': (size: 1.25em, border: 3px, speed: var(--duration-very-slow))
 );
 
-// Theme configuration  
 $loading-themes: (
   'default': (spinner: var(--color-text), track: var(--color-border)),
   'current': (spinner: currentColor, track: color-mix(in srgb, currentColor 20%, transparent)),
@@ -57,53 +53,61 @@ $loading-themes: (
   'white': (spinner: white, track: color-mix(in srgb, white 30%, transparent))
 );
 
-// Foundation mixin for all loading states - context-aware
 @mixin loading-foundation($component-type: 'default', $custom-min-height: null) {
-  // Get component-specific configuration
+
   $config: map.get($component-loading-config, $component-type);
-  
-  // Fallback to default if component type not found
-  @if not $config {
+
+@if not $config {
     $config: map.get($component-loading-config, 'default');
   }
-  
+
   $preserve: map.get($config, 'preserve-height');
   $min-h: if($custom-min-height, $custom-min-height, map.get($config, 'min-height'));
-  
+
   position: relative;
-  
-  // Only apply min-height if component needs it
-  @if $min-h and not $preserve {
+
+@if $min-h and not $preserve {
     min-height: $min-h;
   }
-  
+
   contain: layout style;
   isolation: isolate;
   will-change: contents;
-  z-index: 1;
+  z-index: var(--z-base);
   transition: opacity var(--duration-normal) var(--ease-out);
   transform: translateZ(0);
   backface-visibility: hidden;
 }
 
-// Core spinner mixin using existing spin animation
-@mixin spinner-core($size: 'md', $theme: 'default') {
+@mixin spinner-core($size: 'md', $theme: 'default', $use-variables: false) {
   $size-config: map.get($loading-sizes, $size);
   $theme-config: map.get($loading-themes, $theme);
-  
+
   $spinner-size: map.get($size-config, 'size');
-  $border-width: map.get($size-config, 'border'); 
+  $border-width: map.get($size-config, 'border');
   $speed: map.get($size-config, 'speed');
-  
+
   $spinner-color: map.get($theme-config, 'spinner');
   $track-color: map.get($theme-config, 'track');
+
+  @if $use-variables {
+    width: var(--spinner-size, #{$spinner-size});
+    height: var(--spinner-size, #{$spinner-size});
+    border-width: var(--spinner-border, #{$border-width});
+  } @else {
+    width: $spinner-size;
+    height: $spinner-size;
+    border: $border-width solid $track-color;
+  }
   
-  width: $spinner-size;
-  height: $spinner-size;
   border-radius: 50%;
-  border: $border-width solid $track-color;
+  @if not $use-variables {
+    border: $border-width solid $track-color;
+  } @else {
+    border: var(--spinner-border, #{$border-width}) solid $track-color;
+  }
   border-top-color: $spinner-color;
-  // Use existing spin animation from animations.scss
+
   animation: spin $speed linear infinite;
   will-change: transform;
   transform-origin: center;
@@ -111,35 +115,32 @@ $loading-themes: (
   flex-shrink: 0;
 }
 
-// Replace content with spinner - context-aware
 @mixin loading-replace($size: 'md', $theme: 'default', $component-type: 'default', $supports-loading-text: false) {
   @include loading-foundation($component-type);
-  
-  // Hide original content (unless LoadingText present)
-  > *:not(.loading-text):not(.loading-spinner) {
+
+> *:not(.loading-text):not(.loading-spinner) {
     visibility: hidden;
     opacity: 0;
     pointer-events: none;
   }
-  
-  // Loading text styling (inherits parent font properties)
-  .loading-text {
+
+.loading-text {
     visibility: visible;
     opacity: 1;
     color: inherit;
     font-size: inherit;
     pointer-events: none;
   }
-  
+
   @if $supports-loading-text {
-    // LoadingText support: conditional rendering
+
     &:has(.loading-text) {
-      // Inline spinner with text
+
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 0.5em;
-      
+
       &::after {
         content: '';
         position: static;
@@ -151,16 +152,16 @@ $loading-themes: (
         flex-shrink: 0;
         margin-right: 0.5em;
       }
-      
+
       .loading-text {
         display: inline-flex;
         align-self: center;
         line-height: 1;
       }
     }
-    
+
     &:not(:has(.loading-text)) {
-      // Centered spinner without text
+
       &::after {
         content: '';
         position: absolute;
@@ -168,11 +169,11 @@ $loading-themes: (
         left: 50%;
         transform: translate(-50%, -50%);
         @include spinner-core($size, $theme);
-        z-index: 1;
+        z-index: var(--z-base);
       }
     }
   } @else {
-    // Standard centered spinner
+
     &::after {
       content: '';
       position: absolute;
@@ -180,15 +181,14 @@ $loading-themes: (
       left: 50%;
       transform: translate(-50%, -50%);
       @include spinner-core($size, $theme);
-      z-index: 1;
+      z-index: var(--z-base);
     }
   }
 }
 
-// Overlay with spinner - context-aware
 @mixin loading-overlay($size: 'md', $theme: 'default', $blur: 4px, $component-type: 'default') {
   @include loading-foundation($component-type);
-  
+
   &::before {
     content: '';
     position: absolute;
@@ -196,12 +196,12 @@ $loading-themes: (
     background: color-mix(in srgb, var(--color-surface) 80%, transparent);
     backdrop-filter: blur($blur);
     -webkit-backdrop-filter: blur($blur);
-    z-index: var(--z-loading-overlay);
+    z-index: var(--z-loading);
     border-radius: inherit;
-    // Use existing fadeIn animation
+
     animation: fadeIn var(--duration-fast) var(--ease-out);
   }
-  
+
   &::after {
     content: '';
     position: absolute;
@@ -213,24 +213,22 @@ $loading-themes: (
   }
 }
 
-// Inline loading spinner
-@mixin loading-inline($position: 'end', $size: 'sm', $theme: 'default') {
+@mixin loading-inline($position: 'start', $size: 'sm', $theme: 'default') {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  
-  @if $position == 'start' {
+
+  @if $position == 'end' {
     flex-direction: row-reverse;
   }
-  
-  &::after {
+
+  &::before {
     content: '';
     display: inline-block;
     @include spinner-core($size, $theme);
   }
 }
 
-// Skeleton loading using existing shimmer animation
 @mixin loading-skeleton($theme: 'default') {
   background: linear-gradient(
     90deg,
@@ -243,83 +241,85 @@ $loading-themes: (
   border-radius: var(--radius-sm);
   color: transparent;
   user-select: none;
-  
+
   &::before,
   &::after {
     display: none;
   }
-  
+
   * {
     visibility: hidden;
   }
 }
 
-// Loading dots using existing pulse animation
 @mixin loading-dots($size: 'sm', $color: 'primary') {
   $size-config: map.get($loading-sizes, $size);
   $dot-size: map.get($size-config, 'size');
   $gap-size: calc($dot-size * 0.3);
-  
+
   display: inline-flex;
   gap: $gap-size;
-  
+
   span {
     display: inline-block;
     width: $dot-size;
     height: $dot-size;
     background: var(--color-#{$color});
     border-radius: 50%;
-    // Use existing pulse animation from animations.scss
+
     animation: pulse calc(var(--duration-very-slow) * 1.4) ease-in-out infinite;
-    
+
     &:nth-child(1) { animation-delay: 0s; }
     &:nth-child(2) { animation-delay: 0.2s; }
     &:nth-child(3) { animation-delay: 0.4s; }
   }
 }
 
-// Button loading mixin - uses button-specific configuration
-@mixin button-loading($size: 'md') {
-  @include loading-replace($size, 'current', 'button', true); // component-type: 'button'
-  
-  // Additional button-specific styling
+@mixin button-loading($size: 'md', $use-variables: false) {
   pointer-events: none;
   cursor: wait;
   
-  // Ensure smooth transitions and professional appearance
-  transition: all var(--duration-fast) var(--ease-out);
-  
-  // Modern PRO styling with subtle shadow for depth
-  &:has(.loading-text) {
-    // Slightly more refined gap for professional look
-    gap: 0.5em;
-    
-    .loading-text {
-      font-weight: inherit;
-      letter-spacing: inherit;
+  // Hide original content except loading text
+  > *:not(.loading-text) {
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .loading-text {
+    visibility: visible;
+    opacity: 1;
+    color: inherit;
+    font-size: inherit;
+    font-weight: inherit;
+    letter-spacing: inherit;
+    pointer-events: none;
+  }
+
+  // Display as flex when loading
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5em;
+
+  // Single spinner on the left
+  &::before {
+    content: '';
+    display: inline-block;
+    @if $use-variables {
+      @include spinner-core($size, 'current', true);
+    } @else {
+      @include spinner-core($size, 'current', false);
     }
-  }
-  
-  // Spinner refinements for modern appearance
-  &::after {
-    // Professional spinner with perfect circular motion
-    border-width: max(2px, 0.125em);
-    
-    // Slower, smoother rotation for professional feel
-    animation-duration: var(--duration-slow);
-    animation-timing-function: linear;
-    
-    // Modern shadow for depth (subtle)
-    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
+    order: -1;
+    flex-shrink: 0;
   }
 }
 
-// Card loading state - uses card-specific configuration
 @mixin loading-card() {
-  @include loading-overlay('md', 'default', 4px, 'card'); // component-type: 'card'
+  @include loading-overlay('md', 'default', 4px, 'card');
 }
 
-// Table loading state
 @mixin loading-table() {
   tbody {
     tr {
@@ -330,81 +330,80 @@ $loading-themes: (
   }
 }
 
-// Modern BEM-style loading classes
 .loading {
   @include loading-replace('md', 'default', 'default');
-  
+
   &-xs { @include loading-replace('xs', 'default', 'default'); }
   &-sm { @include loading-replace('sm', 'default', 'default'); }
   &-md { @include loading-replace('md', 'default', 'default'); }
   &-lg { @include loading-replace('lg', 'default', 'default'); }
   &-xl { @include loading-replace('xl', 'default', 'default'); }
-  
+
   &-overlay {
     @include loading-overlay('md', 'default', 4px, 'default');
-    
+
     &-xs { @include loading-overlay('xs', 'default', 4px, 'default'); }
     &-sm { @include loading-overlay('sm', 'default', 4px, 'default'); }
     &-md { @include loading-overlay('md', 'default', 4px, 'default'); }
     &-lg { @include loading-overlay('lg', 'default', 4px, 'default'); }
     &-xl { @include loading-overlay('xl', 'default', 4px, 'default'); }
   }
-  
+
   &-inline {
-    @include loading-inline();
-    
+    @include loading-inline('start');
+
     &-start { @include loading-inline('start'); }
     &-end { @include loading-inline('end'); }
-    &-xs { @include loading-inline('end', 'xs'); }
-    &-sm { @include loading-inline('end', 'sm'); }
-    &-md { @include loading-inline('end', 'md'); }
-    &-lg { @include loading-inline('end', 'lg'); }
+    &-xs { @include loading-inline('start', 'xs'); }
+    &-sm { @include loading-inline('start', 'sm'); }
+    &-md { @include loading-inline('start', 'md'); }
+    &-lg { @include loading-inline('start', 'lg'); }
   }
-  
+
   &-skeleton {
     @include loading-skeleton();
-    
+
     &-text {
       height: 1rem;
       margin-bottom: var(--space-2);
-      
+
       &:last-child {
         width: 60%;
         margin-bottom: 0;
       }
     }
-    
+
     &-title {
       height: 2rem;
       margin-bottom: var(--space-3);
       width: 50%;
     }
-    
+
     &-avatar {
       width: 3rem;
       height: 3rem;
       border-radius: 50%;
     }
-    
+
     &-button {
       height: 2.5rem;
       width: 6rem;
     }
-    
+
     &-card {
       height: 10rem;
       border-radius: var(--radius-lg);
     }
   }
-  
+
   &-dots {
     @include loading-dots();
-    
+
     &-primary { @include loading-dots('sm', 'primary'); }
     &-secondary { @include loading-dots('sm', 'secondary'); }
     &-white { @include loading-dots('sm', 'white'); }
   }
-  
+
   &-container {
     @include loading-replace('lg', 'default', 'container');
     display: flex;
@@ -414,7 +413,7 @@ $loading-themes: (
     gap: var(--space-4);
     padding: var(--space-8);
     min-height: 20rem;
-    
+
     &-text {
       font-size: var(--text-sm);
       color: var(--color-text-muted);
@@ -423,13 +422,13 @@ $loading-themes: (
       opacity: 1;
     }
   }
-  
+
   &-text {
     display: inline-block;
     margin-top: var(--space-2);
     color: var(--color-text-muted);
     font-size: var(--text-sm);
-    // Use existing pulse animation
+
     animation: pulse calc(var(--duration-very-slow) * 2) ease-in-out infinite;
   }
 }
@@ -439,7 +438,7 @@ $loading-themes: (
   width: 2.5rem;
   height: 2.5rem;
   position: relative;
-  
+
   &::before {
     content: '';
     position: absolute;
@@ -449,7 +448,7 @@ $loading-themes: (
     border-radius: 50%;
     animation: spin var(--duration-very-slow) linear infinite;
   }
-  
+
   &::after {
     content: '';
     position: absolute;
@@ -459,77 +458,75 @@ $loading-themes: (
     border-radius: 50%;
     animation: spin calc(var(--duration-very-slow) * 1.5) linear infinite reverse;
   }
-  
-  // Size variants using &- pattern
-  &-xs {
+
+&-xs {
     width: 1rem;
     height: 1rem;
-    
+
     &::before { border-width: 2px; }
     &::after { display: none; }
   }
-  
+
   &-sm {
     width: 1.5rem;
     height: 1.5rem;
-    
+
     &::before { border-width: 2px; }
     &::after { border-width: 1px; inset: -2px; }
   }
-  
+
   &-lg {
     width: 3rem;
     height: 3rem;
   }
-  
+
   &-xl {
     width: 4rem;
     height: 4rem;
-    
+
     &::before { border-width: 4px; }
     &::after { border-width: 3px; inset: -6px; }
   }
-  
-  // Color variants
-  &-primary {
+
+&-primary {
     &::before { border-top-color: var(--color-primary); }
     &::after { border-top-color: color-mix(in srgb, var(--color-primary) 30%, transparent); }
   }
-  
+
   &-secondary {
     &::before { border-top-color: var(--color-secondary); }
     &::after { border-top-color: color-mix(in srgb, var(--color-secondary) 30%, transparent); }
   }
-  
+
   &-success {
     &::before { border-top-color: var(--color-success); }
     &::after { border-top-color: color-mix(in srgb, var(--color-success) 30%, transparent); }
   }
-  
+
   &-warning {
     &::before { border-top-color: var(--color-warning); }
     &::after { border-top-color: color-mix(in srgb, var(--color-warning) 30%, transparent); }
   }
-  
+
   &-error {
     &::before { border-top-color: var(--color-error); }
     &::after { border-top-color: color-mix(in srgb, var(--color-error) 30%, transparent); }
   }
-  
+
   &-white {
-    &::before { 
+    &::before {
       border-color: color-mix(in srgb, white 30%, transparent);
-      border-top-color: var(--theme-text); 
+      border-top-color: var(--theme-text);
     }
     &::after { border-top-color: color-mix(in srgb, white 30%, transparent); }
   }
-  
+
   &-inline {
     width: 1em;
     height: 1em;
     margin-right: var(--space-2);
     vertical-align: middle;
-    
+
     &::before,
     &::after {
       border-width: 2px;
@@ -537,51 +534,49 @@ $loading-themes: (
   }
 }
 
-// Additional utilities
 .skeleton {
   @include loading-skeleton();
-  
+
   &-pulse {
-    // Use existing pulse animation for shimmer effect
+
     animation: shimmer calc(var(--duration-very-slow) * 1.5) ease-in-out infinite;
   }
-  
+
   &-text {
     height: 1rem;
     margin-bottom: var(--space-2);
-    
+
     &:last-child {
       width: 60%;
       margin-bottom: 0;
     }
   }
-  
+
   &-title {
     height: 2rem;
     margin-bottom: var(--space-3);
     width: 50%;
   }
-  
+
   &-avatar {
     width: 3rem;
     height: 3rem;
     border-radius: 50%;
   }
-  
+
   &-button {
     height: 2.5rem;
     width: 6rem;
   }
-  
+
   &-card {
     height: 10rem;
     border-radius: var(--radius-lg);
   }
-  
+
   &-badge {
     height: 1.5rem;
     width: 4rem;
     border-radius: var(--radius-full);
   }
 }
-

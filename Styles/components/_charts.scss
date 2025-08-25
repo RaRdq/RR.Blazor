@@ -10,15 +10,13 @@
 }
 
 %chart-canvas {
-  width: 100%;
-  height: 100%;
+  @include full-size;
   position: relative;
   flex: 1;
-  min-height: 0; // Allow shrinking to container size
-  
+  min-height: 0;
+
   canvas, svg {
-    width: 100%;
-    height: 100%;
+    @include full-size;
     display: block;
   }
 }
@@ -26,12 +24,12 @@
 %chart-interactive {
   cursor: pointer;
   transition: all var(--duration-fast) var(--ease-out);
-  
+
   &:hover {
     transform: translateY(-0.5px);
   }
-  
-  &:active, &.selected {
+
+  &:active, &-selected {
     transform: translateY(-1px);
   }
 }
@@ -49,7 +47,7 @@
 
 @mixin chart-size($min-height, $min-height-mobile: null) {
   min-height: $min-height;
-  
+
   @if $min-height-mobile {
     @include responsive-max(md) {
       min-height: $min-height-mobile;
@@ -82,7 +80,7 @@
     .chart-value { font-size: var(--text-2xs); }
   } @else if $density == compact {
     gap: var(--space-1);
-    .chart-label { 
+    .chart-label {
       font-size: var(--text-2xs);
       @include text-truncate;
     }
@@ -97,7 +95,7 @@
   @extend %chart-animation-scale;
   animation-delay: $delay;
   transform-origin: bottom;
-  
+
   @for $i from 1 through 20 {
     &:nth-child(#{$i}) {
       animation-delay: calc(#{$delay} + var(--duration-fast) * #{$i});
@@ -118,8 +116,7 @@
 
   &-header {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    @include flex-between;
     margin-bottom: var(--space-4);
 
     &-title {
@@ -187,7 +184,7 @@
     height: 100%;
     border-radius: var(--radius-full);
     transition: width 0.3s ease;
-    
+
     &-primary { background: var(--color-primary); }
     &-success { background: var(--color-success); }
     &-warning { background: var(--color-warning); }
@@ -213,12 +210,12 @@
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: var(--space-4);
   margin-bottom: var(--space-8);
-  
+
   &-small {
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
     gap: var(--space-3);
   }
-  
+
   &-large {
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
     gap: var(--space-6);
@@ -234,10 +231,9 @@
   @extend %chart-base;
 
   &-responsive {
-    width: 100%;
-    height: 100%;
-    min-height: 200px; // Reasonable minimum
-    
+    @include full-size;
+    min-height: 200px;
+
     @include responsive-max(md) {
       min-height: var(--chart-mobile-min-height);
     }
@@ -246,25 +242,23 @@
   &-canvas {
     @extend %chart-canvas;
   }
-  
-  // Container-responsive chart behavior
-  &-responsive {
+
+&-responsive {
     .chart-container {
       height: 100%;
       min-height: 200px;
-      
+
       &-content {
         height: 100%;
         min-height: var(--chart-content-min-height);
         flex: 1 1 0;
       }
     }
-    
-    // Override when inside a sized container
-    &.chart-fitted {
+
+    &-fitted {
       .chart-container {
         height: 100%;
-        
+
         &-content {
           min-height: 120px;
         }
@@ -272,11 +266,10 @@
     }
   }
 
-  // Chart loading using unified system
-  &.loading,
+  &-loading,
   &-loading {
     @include loading-skeleton();
-    
+
     & {
       height: 200px;
     }
@@ -289,7 +282,7 @@
     color: var(--color-error);
     text-align: center;
     padding: var(--space-8);
-    
+
     .icon {
       font-size: var(--text-4xl);
       margin-bottom: var(--space-4);
@@ -303,7 +296,7 @@
     color: var(--color-text-muted);
     text-align: center;
     padding: var(--space-8);
-    
+
     .icon {
       font-size: var(--text-4xl);
       margin-bottom: var(--space-4);
@@ -318,7 +311,7 @@
   &-glass {
     @extend %glass-medium;
     box-shadow: var(--shadow-md);
-    
+
     &:hover {
       @extend %glass-medium;
       box-shadow: var(--shadow-lg);
@@ -335,21 +328,21 @@
   &-elevated {
     @extend %card-elevated;
     box-shadow: var(--shadow-lg);
-    
+
     @include hover-lift;
   }
 }
 
 .pie-chart {
   @extend .chart;
-  
+
   &-container {
     @extend .chart-canvas;
     display: flex;
     align-items: center;
     justify-content: center;
   }
-  
+
   &-svg-container {
     display: flex;
     align-items: center;
@@ -363,24 +356,24 @@
     max-width: 100%;
     max-height: 100%;
     animation: scaleIn var(--duration-normal) var(--ease-out);
-    
+
     .pie-slice {
       @extend %chart-interactive;
       @extend %chart-animation-fade;
-      
+
       @for $i from 1 through 12 {
         &:nth-child(#{$i}) {
           animation-delay: calc(var(--duration-fast) * #{$i - 1});
         }
       }
-      
+
       &:hover {
         opacity: 0.8;
         transform: scale(1.02);
         filter: brightness(1.05);
       }
-      
-      &.selected {
+
+      &-selected {
         opacity: 0.9;
         transform: scale(1.03);
         filter: brightness(1.08);
@@ -389,27 +382,25 @@
   }
 
   &-center-text {
-    position: absolute;
-    top: 50%;
-    left: 50%;
+    @include absolute-center;
     transform: translate(-50%, -50%);
     text-align: center;
     pointer-events: none;
     @extend %chart-animation-fade;
     animation-delay: calc(var(--duration-normal) * 2);
-    
+
     .value {
       font-size: var(--text-3xl);
       font-weight: var(--font-bold);
       color: var(--color-text);
       animation: slideInDown var(--duration-slow) ease-out;
       animation-delay: calc(var(--duration-normal) * 2.5);
-      
+
       @include responsive-max(sm) {
         font-size: var(--text-xl);
       }
     }
-    
+
     .label {
       font-size: var(--text-sm);
       color: var(--color-text-muted);
@@ -429,30 +420,29 @@
 
 .column-chart {
   @extend .chart;
-  
+
   &-container {
     @extend .chart-canvas;
     position: relative;
-    width: 100%;
-    height: 100%;
+    @include full-size;
     min-height: var(--chart-container-min-height);
     display: grid;
-    grid-template-areas: 
+    grid-template-areas:
       "y-labels chart-area"
       "empty x-labels";
-    grid-template-columns: minmax(40px, 80px) 1fr; // Optimized for chart width
+    grid-template-columns: minmax(40px, 80px) 1fr;
     grid-template-rows: minmax(100px, 1fr) auto;
     gap: var(--space-2);
     padding: var(--space-4);
     animation: slideInBottomScale var(--duration-slow) ease-out;
-    
-    &.chart-xs { @include chart-responsive-labels(xs); @include chart-density(compact); }
-    &.chart-sm { @include chart-responsive-labels(sm); @include chart-density(compact); }
-    &.chart-md { gap: var(--space-2); }
-    &.chart-lg { @include chart-responsive-labels(lg); gap: var(--space-3); }
-    &.chart-dense { @include chart-density(dense); }
-    &.chart-compact { @include chart-density(compact); }
-    &.chart-spacious { @include chart-density(spacious); }
+
+    &-xs { @include chart-responsive-labels(xs); @include chart-density(compact); }
+    &-sm { @include chart-responsive-labels(sm); @include chart-density(compact); }
+    &-md { gap: var(--space-2); }
+    &-lg { @include chart-responsive-labels(lg); gap: var(--space-3); }
+    &-dense { @include chart-density(dense); }
+    &-compact { @include chart-density(compact); }
+    &-spacious { @include chart-density(spacious); }
   }
 
   &-y-axis-labels {
@@ -464,8 +454,8 @@
     padding-right: var(--space-2);
     width: max-content;
     min-width: 40px;
-    max-width: 80px; // Optimized for chart width
-    
+    max-width: 80px;
+
     .label {
       font-size: var(--text-xs);
       color: var(--color-text-muted);
@@ -479,16 +469,14 @@
     grid-area: chart-area;
     display: flex;
     align-items: flex-end;
-    justify-content: space-between; // Distribute bars evenly
+    justify-content: space-between;
     gap: var(--space-2);
     min-height: var(--chart-bars-min-height);
-    height: 100%; // Fill available height
-    width: 100%; // Ensure full width usage
+    @include full-size;
     padding: var(--space-2) 0;
     position: relative;
-    
-    // Add baseline axis
-    &::after {
+
+&::after {
       content: '';
       position: absolute;
       bottom: 0;
@@ -505,7 +493,7 @@
     justify-content: space-between;
     align-items: flex-start;
     padding-top: var(--space-2);
-    
+
     .label {
       font-size: var(--text-xs);
       color: var(--color-text-muted);
@@ -518,30 +506,30 @@
 
   &-bar {
     @extend %chart-interactive;
-    flex: 1 1 auto; // Allow natural flex distribution
-    min-width: 20px; // Ensure minimum visible width
-    max-width: 150px; // Reasonable max width
-    width: 100%; // Ensure it takes available width
+    flex: 1 1 auto;
+    min-width: 20px;
+    max-width: 150px;
+    width: 100%;
     position: relative;
     display: flex;
     flex-direction: column;
-    align-items: stretch; // Stretch children to full width
+    align-items: stretch;
     justify-content: flex-end;
     height: 100%;
-    
+
     &:hover {
       .column-chart-bar-fill {
         transform: scaleY(1.02);
         filter: brightness(1.05);
       }
-      
+
       .column-chart-bar-value {
         opacity: 1;
         transform: translateY(-6px);
       }
     }
-    
-    &.selected {
+
+    &-selected {
       .column-chart-bar-fill {
         transform: scaleY(1.03);
         filter: brightness(1.08);
@@ -556,9 +544,9 @@
     @include chart-bar-animation;
     min-height: 4px;
     transition: all var(--duration-fast) var(--ease-out);
-    
+
     &[style*="height"] { min-height: 0; }
-    
+
     &-primary { background: var(--color-primary); }
     &-success { background: var(--color-success); }
     &-warning { background: var(--color-warning); }
@@ -581,8 +569,8 @@
     opacity: 0;
     transition: all var(--duration-normal) var(--ease-out);
     pointer-events: none;
-    z-index: 10;
-    
+    z-index: var(--z-tooltip);
+
     &::after {
       content: '';
       position: absolute;
@@ -601,13 +589,13 @@
     font-weight: var(--font-medium);
     text-align: center;
     width: 100%;
-    min-width: 0; // Allow shrinking
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
     @extend %chart-animation-fade;
     animation-delay: 0.5s;
-    
+
     @include responsive-max(sm) {
       font-size: var(--text-2xs);
     }
@@ -618,21 +606,21 @@
     inset: 0;
     pointer-events: none;
     z-index: 0;
-    
+
     .grid-line {
       position: absolute;
       background: var(--color-border);
       opacity: 0.2;
-      
+
       &:not([style*="left"]) {
-        // Horizontal lines
+
         left: 0;
         right: 0;
         height: 1px;
       }
-      
+
       &[style*="left"] {
-        // Vertical lines for horizontal charts
+
         top: 0;
         bottom: 0;
         width: 1px;
@@ -640,26 +628,25 @@
     }
   }
 
-
-  &-horizontal {
+&-horizontal {
     .column-chart-bars {
       flex-direction: column;
       align-items: flex-start;
     }
-    
+
     .column-chart-bar {
       width: 100%;
       flex-direction: row;
       margin-bottom: var(--space-2);
     }
-    
+
     .column-chart-bar-fill {
       height: var(--space-8);
       min-width: 4px;
       border-radius: var(--radius-sm) 0 0 var(--radius-sm);
       transform-origin: left;
     }
-    
+
     .column-chart-bar-label {
       margin-top: 0;
       margin-right: var(--space-3);
@@ -671,7 +658,7 @@
 
 .line-chart {
   @extend .chart;
-  
+
   &-container {
     padding: var(--space-4);
     position: relative;
@@ -683,8 +670,7 @@
   }
 
   &-svg {
-    width: 100%;
-    height: 100%;
+    @include full-size;
     overflow: visible;
     animation: scaleIn var(--duration-normal) var(--ease-out);
   }
@@ -692,7 +678,7 @@
   &-grid {
     &-line {
       transition: opacity var(--duration-fast) var(--ease-out);
-      
+
       &:hover { opacity: 0.6; }
     }
 
@@ -703,7 +689,7 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      max-width: 150px; // Prevent excessive label width
+      max-width: 150px;
     }
   }
 
@@ -713,18 +699,18 @@
     stroke-dasharray: 1000;
     stroke-dashoffset: 1000;
     animation: lineDrawIn var(--duration-slow) var(--ease-out) forwards;
-    
+
     @for $i from 1 through 10 {
       &-#{$i - 1} {
         animation-delay: calc(var(--duration-fast) * #{$i});
       }
     }
-    
+
     &:hover {
       stroke-width: 4;
-      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+      filter: drop-shadow(var(--shadow-sm));
     }
-    
+
     &-smooth {
       stroke-linecap: round;
       stroke-linejoin: round;
@@ -734,13 +720,13 @@
   &-area-fill {
     @extend %chart-animation-fade;
     animation-delay: var(--duration-slow);
-    
+
     &:hover { opacity: 0.4; }
   }
 
   &-point {
     @extend %chart-animation-scale;
-    
+
     @for $series from 0 through 9 {
       @for $point from 0 through 19 {
         &-#{$series}-#{$point} {
@@ -748,18 +734,18 @@
         }
       }
     }
-    
+
     &:hover {
       @extend %chart-interactive;
       transform: scale(1.2);
-      filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
+      filter: drop-shadow(var(--shadow-xs));
     }
-    
-    &.selected {
+
+    &-selected {
       transform: scale(1.3);
-      filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.25));
+      filter: drop-shadow(var(--shadow-sm));
     }
-    
+
     &:focus {
       @include focus-ring;
     }
@@ -776,13 +762,13 @@
 .chart-legend {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-2); // Reduced gap to prevent excessive spacing
+  gap: var(--space-2);
   padding: var(--space-3) 0;
-  margin-top: var(--space-3); // Reduced margin for tighter layout
-  min-height: auto; // Allow natural height
+  margin-top: var(--space-3);
+  min-height: auto;
   animation: slideInDown var(--duration-slow) ease-out;
   animation-delay: var(--duration-normal);
-  
+
   &-top {
     order: -1;
     margin-bottom: var(--space-4);
@@ -790,16 +776,16 @@
     padding-bottom: var(--space-3);
     animation: slideInTopScale var(--duration-slow) ease-out;
   }
-  
+
   &-bottom {
     order: 1;
-    margin-top: var(--space-6); // Increased margin from chart
+    margin-top: var(--space-6);
     border-top: 1px solid var(--color-border);
-    padding-top: var(--space-4); // More padding
-    clear: both; // Ensure proper clearing
+    padding-top: var(--space-4);
+    clear: both;
     animation: slideInBottomScale var(--duration-slow) ease-out;
   }
-  
+
   &-left {
     flex-direction: column;
     margin-right: var(--space-4);
@@ -807,7 +793,7 @@
     padding-right: var(--space-3);
     animation: slideInLeftScale var(--duration-slow) ease-out;
   }
-  
+
   &-right {
     flex-direction: column;
     margin-left: var(--space-4);
@@ -820,35 +806,35 @@
     @extend %chart-interactive;
     display: flex;
     align-items: center;
-    gap: var(--space-1); // Reduced internal gap
-    padding: var(--space-2) var(--space-3); // Reduced padding to prevent bloating
-    margin: 0; // Remove all margins to rely on gap
-    min-height: 28px; // Reduced height for compact layout
-    min-width: 30px; // Ensure minimum 30px width for accessibility
+    gap: var(--space-1);
+    padding: var(--space-2) var(--space-3);
+    margin: 0;
+    min-height: 28px;
+    min-width: 30px;
     border-radius: var(--radius-sm);
-    white-space: nowrap; // Prevent text wrapping within items
-    flex: 0 0 auto; // Prevent flex growing/shrinking
-    max-width: 200px; // Prevent oversized items
+    white-space: nowrap;
+    flex: 0 0 auto;
+    max-width: 200px;
     @extend %chart-animation-fade;
-    
+
     @for $i from 1 through 20 {
       &:nth-child(#{$i}) {
         animation-delay: calc(var(--duration-normal) + var(--duration-fast) * #{$i});
       }
     }
-    
+
     &:hover {
       background: var(--color-surface-elevated);
     }
-    
-    &.selected {
+
+    &-selected {
       background: var(--color-surface-elevated);
       opacity: 0.95;
     }
-    
-    &.inactive {
+
+    &-inactive {
       opacity: 0.5;
-      
+
       .chart-legend-indicator {
         background: var(--color-surface);
       }
@@ -859,12 +845,12 @@
     width: 10px;
     height: 10px;
     border-radius: var(--radius-full);
-    flex-shrink: 0; // Fixed size indicator
+    flex-shrink: 0;
     @extend %chart-animation-scale;
     animation-delay: calc(var(--duration-normal) * 1.5);
-    
+
     &-square { border-radius: var(--radius-sm); }
-    
+
     &-line {
       height: 2px;
       border-radius: var(--radius-full);
@@ -880,19 +866,19 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 80px; // Reduced width for better fit
-    flex-shrink: 1; // Allow shrinking if needed
+    max-width: 80px;
+    flex-shrink: 1;
   }
-  
+
   &-value {
     font-size: var(--text-xs);
     color: var(--color-text);
     font-weight: var(--font-semibold);
     user-select: none;
     white-space: nowrap;
-    flex-shrink: 0; // Keep values intact
+    flex-shrink: 0;
   }
-  
+
   &-percentage {
     font-size: var(--text-xs);
     color: var(--color-text-muted);
@@ -915,13 +901,13 @@
   opacity: 0;
   transform: translateY(-8px);
   transition: all var(--duration-fast) var(--ease-out);
-  
-  &.visible {
+
+  &-visible {
     opacity: 1;
     transform: translateY(0);
     animation: slideInDown var(--duration-slow) ease-out;
   }
-  
+
   &::after {
     content: '';
     position: absolute;
@@ -931,18 +917,18 @@
     border: 6px solid transparent;
     border-top-color: var(--color-text);
   }
-  
+
   &-title {
     font-weight: var(--font-semibold);
     margin-bottom: var(--space-1);
     color: var(--color-text-inverse);
   }
-  
+
   &-value {
     font-size: var(--text-base);
     font-weight: var(--font-bold);
   }
-  
+
   &-percentage {
     font-size: var(--text-sm);
     opacity: 0.8;
@@ -953,25 +939,25 @@
 .chart-accessibility {
   &-table {
     @extend %sr-only;
-    
-    &.visible {
+
+    &-visible {
       position: static;
       width: auto;
       height: auto;
       overflow: visible;
       clip: auto;
       margin-top: var(--space-4);
-      
+
       table {
         width: 100%;
         border-collapse: collapse;
-        
+
         th, td {
           padding: var(--space-2);
           text-align: left;
           border-bottom: 1px solid var(--color-border);
         }
-        
+
         th {
           font-weight: var(--font-semibold);
           color: var(--color-text);
@@ -979,11 +965,11 @@
       }
     }
   }
-  
+
   &-summary {
     @extend %sr-only;
-    
-    &.visible {
+
+    &-visible {
       position: static;
       width: auto;
       height: auto;
@@ -998,28 +984,27 @@
 
 @include responsive-max(sm) {
   .chart-legend {
-    gap: var(--space-1); // Tighter spacing on mobile
-    
+    gap: var(--space-1);
+
     &-left, &-right {
       flex-direction: row;
       margin: var(--space-2) 0;
       border: none;
       padding: 0;
     }
-    
+
     &-item {
-      padding: var(--space-1) var(--space-2); // Reduced padding on mobile
-      min-height: 24px; // Smaller height on mobile
-      max-width: 150px; // Smaller max width on mobile
+      padding: var(--space-1) var(--space-2);
+      min-height: 24px;
+      max-width: 150px;
     }
-    
+
     &-label {
-      max-width: 60px; // Much smaller label width on mobile
+      max-width: 60px;
     }
   }
-  
-  
-  .progress-bar {
+
+.progress-bar {
     flex-direction: column;
     align-items: stretch;
     gap: var(--space-2);
@@ -1032,4 +1017,19 @@
       text-align: left;
     }
   }
+}
+.chart-item-selected {
+  @include semantic-base(primary);
+  transform: scale(1.1);
+  z-index: var(--z-above);
+}
+
+.comparison-enabled {
+  @include semantic-base(info);
+  border: 2px dashed var(--color-info);
+}
+
+.select-modal-item-selected {
+  @include semantic-base(primary);
+  border-left: 4px solid var(--color-primary);
 }

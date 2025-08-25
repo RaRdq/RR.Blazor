@@ -1,44 +1,46 @@
 @use '../../abstracts' as *;
+@use 'table-mixins' as mixins;
 
 @layer components {
 
+.table {
 
-.r-table-container {
   @media (prefers-contrast: high) {
     --table-border: var(--color-text);
     --table-header-border: var(--color-text);
     --table-cell-border: var(--color-text);
     --table-row-selected-border: var(--color-text);
-    
-    .r-table-header-cell {
+
+    &-header-cell {
       border: var(--border-width-regular) solid var(--color-text);
       background: var(--canvas);
       color: var(--color-text);
     }
-    
-    .r-table-cell {
+
+    &-cell {
       border: var(--border-width-thin) solid var(--color-text);
     }
-    
+
     tbody tr:hover {
       background: var(--color-text);
       color: var(--canvas);
     }
   }
-  
-  // Reduced motion support 
-  @media (prefers-reduced-motion: reduce) {
-    .skeleton-cell::after {
-      animation: none;
-    }
-    
-    .empty-icon {
-      animation: none;
+
+&-container {
+
+    @media (prefers-reduced-motion: reduce) {
+      .skeleton-cell::after {
+        animation: none;
+      }
+
+      .empty-icon {
+        animation: none;
+      }
     }
   }
 }
 
-// Accessibility overrides - !important needed for user preferences
 @layer overrides {
   @media (prefers-reduced-motion: reduce) {
     * {
@@ -48,144 +50,115 @@
       scroll-behavior: auto !important;
     }
   }
-  
-  .r-table-header-cell {
-    &:focus-visible {
-      outline: var(--border-width-thick) solid var(--primary);
-      outline-offset: 2px;
-      background: var(--primary-light);
-      z-index: var(--z-floating);
-      position: relative;
+
+  .table {
+    &-header-cell {
+      @include mixins.table-focus-visible;
+
+&[aria-sort="ascending"] {
+        @include mixins.sr-content(" (sorted ascending)");
+      }
+
+      &[aria-sort="descending"] {
+        @include mixins.sr-content(" (sorted descending)");
+      }
     }
-    
-    // Screen reader support
-    &[aria-sort="ascending"]::after {
-      content: " (sorted ascending)";
-      position: absolute;
-      left: -10000px;
-      width: 1px;
-      height: 1px;
-      overflow: hidden;
-    }
-    
-    &[aria-sort="descending"]::after {
-      content: " (sorted descending)";
-      position: absolute;
-      left: -10000px;
-      width: 1px;
-      height: 1px;
-      overflow: hidden;
+
+    &-cell {
+      &:focus-visible {
+        outline: var(--border-width-regular) solid var(--primary);
+        outline-offset: -2px;
+        box-shadow: 0 0 0 4px var(--primary-20);
+        z-index: var(--z-floating);
+        position: relative;
+      }
+
+      @include mixins.table-tooltip-hover;
     }
   }
-  
-  .r-table-cell {
-    &:focus-visible {
-      outline: var(--border-width-regular) solid var(--primary);
-      outline-offset: -2px;
-      box-shadow: 0 0 0 4px var(--primary-20);
-      z-index: var(--z-floating);
-      position: relative;
+
+.table {
+    &-cell {
+      &:focus-visible {
+        outline: var(--border-width-regular) solid var(--primary);
+        outline-offset: -2px;
+        box-shadow: 0 0 0 4px var(--primary-20);
+        z-index: var(--z-floating);
+        position: relative;
+      }
+    }
+
+    &-header {
+      &-cell.table-header-resizable {
+
+        &:focus-within {
+          overflow: visible;
+          z-index: var(--z-floating);
+          position: relative;
+
+          &::after {
+            content: attr(title);
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background: var(--surface-elevated);
+            color: var(--color-text);
+            padding: var(--space-2) var(--space-3);
+            border-radius: var(--radius-sm);
+            box-shadow: var(--shadow-lg);
+            white-space: normal;
+            max-width: 300px;
+            z-index: var(--z-tooltip);
+            border: 1px solid var(--border);
+          }
+        }
+      }
+    }
+
+    &-loading-skeleton {
+      &[aria-live="polite"] {
+        .skeleton-row:first-child::before {
+          content: "Loading table data";
+          position: absolute;
+          left: -10000px;
+          width: 1px;
+          height: 1px;
+          overflow: hidden;
+        }
+      }
     }
   }
-  
+
   tbody tr {
-    &:focus-visible {
-      outline: var(--border-width-thick) solid var(--primary);
-      outline-offset: 2px;
-      z-index: var(--z-floating);
-      position: relative;
-    }
-    
+    @include mixins.table-focus-visible;
+
     &[aria-selected="true"] {
       background: var(--primary-light);
       border-left: calc(var(--border-width-regular) * 2) solid var(--primary);
-      
-      .r-table-cell {
+
+      .table-cell,
+      .table-cell {
         background: transparent;
       }
     }
   }
-  
-  // Checkbox and radio accessibility
-  input[type="checkbox"],
+
+input[type="checkbox"],
   input[type="radio"] {
     &:focus-visible {
       outline: var(--border-width-thick) solid var(--primary);
       outline-offset: 2px;
     }
-    
-    // High contrast mode
-    @media (prefers-contrast: high) {
+
+@media (prefers-contrast: high) {
       border: var(--border-width-regular) solid var(--color-text);
-      
+
       &:checked {
         background: var(--color-text);
         border-color: var(--color-text);
       }
     }
   }
-  
-  .r-table-loading-skeleton {
-    &[aria-live="polite"] {
-      .skeleton-row:first-child::before {
-        content: "Loading table data";
-        position: absolute;
-        left: -10000px;
-        width: 1px;
-        height: 1px;
-        overflow: hidden;
-      }
-    }
-  }
-  
-  // Empty state accessibility - applies to main empty-state component
 }
 
-// Smart text handling for accessibility
-.r-table-header-cell {
-  &.r-table-header-resizable {
-    // Show full text on focus for truncated headers
-    &:focus-within {
-      overflow: visible;
-      z-index: var(--z-floating);
-      position: relative;
-      
-      &::after {
-        content: attr(title);
-        position: absolute;
-        top: 100%;
-        left: 0;
-        background: var(--surface-elevated);
-        color: var(--color-text);
-        padding: var(--space-2) var(--space-3);
-        border-radius: var(--radius-sm);
-        box-shadow: var(--shadow-lg);
-        white-space: normal;
-        max-width: 300px;
-        z-index: var(--z-tooltip);
-        border: 1px solid var(--border);
-      }
-    }
-  }
 }
-
-.r-table-cell {
-  &[title]:hover::after {
-    content: attr(title);
-    position: absolute;
-    background: var(--surface-elevated);
-    color: var(--color-text);
-    padding: var(--space-2) var(--space-3);
-    border-radius: var(--radius-sm);
-    box-shadow: var(--shadow-xl);
-    z-index: var(--z-tooltip);
-    white-space: normal;
-    max-width: 300px;
-    word-wrap: break-word;
-    border: 1px solid var(--border);
-    font-size: var(--text-sm);
-    margin-top: var(--space-2);
-  }
-}
-
-} // End @layer components

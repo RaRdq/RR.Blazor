@@ -1,19 +1,16 @@
 @use '../../abstracts' as *;
 @use 'table-mixins' as mixins;
 
-
 .table-loading-skeleton {
   .skeleton-row {
     display: flex;
     align-items: center;
     gap: var(--space-4);
     padding: var(--space-3) var(--space-4);
-    
+
     .skeleton-cell {
-      // Use unified loading skeleton
       @include loading-skeleton();
-      
-      // Different widths for variety
+
       &:nth-child(1) { flex: 0 0 120px; }
       &:nth-child(2) { flex: 0 0 200px; }
       &:nth-child(3) { flex: 0 0 80px; }
@@ -21,19 +18,19 @@
       &:nth-child(5) { flex: 0 0 100px; }
       &:nth-child(n+6) { flex: 0 0 120px; }
     }
-    
+
     .skeleton-checkbox {
       width: 16px;
       height: 16px;
       border-radius: var(--radius-sm);
       flex: 0 0 16px;
     }
-    
+
     .skeleton-actions {
       display: flex;
       gap: var(--space-2);
       flex: 0 0 auto;
-      
+
       .skeleton-action {
         width: 32px;
         height: 32px;
@@ -45,124 +42,335 @@
   }
 }
 
-// Use main empty-state from components/_states.scss - no duplicates
+.table {
+  &-row-inactive {
+    opacity: var(--opacity-60);
 
-// Row states
-.table-row-inactive {
-  opacity: var(--opacity-60);
-  
-  &:hover {
-    opacity: var(--opacity-80);
+    &:hover {
+      opacity: var(--opacity-80);
+    }
   }
-}
 
-.table-row-selected {
-  @include mixins.table-selection-state;
-}
+  &.row-selected {
+    @include mixins.table-selection-state;
+  }
 
-.r-table-row {
-  &-highlighted {
+  &-row-highlighted {
     background: var(--warning-10);
   }
 
-  &-striped {
-    &:nth-child(even) {
-      background: var(--surface-elevated-50);
+  &-row-striped:nth-child(even) {
+    background: var(--surface-elevated-50);
+  }
+
+  &-row-selected-enhanced {
+    @include mixins.table-selection-state(var(--primary-5));
+    position: relative;
+
+    &:hover {
+      background: var(--primary-8);
+    }
+
+    .table-cell {
+      background: transparent;
+    }
+
+    &::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 3px;
+      background: var(--primary);
+      border-radius: 0 var(--radius-xs) var(--radius-xs) 0;
+      opacity: 0;
+      animation: slideLeft 0.2s var(--ease-out) forwards;
+    }
+
+    &-multi-selected {
+      background: var(--primary-8);
+
+      &::after {
+        content: '';
+        position: absolute;
+        right: 8px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 16px;
+        height: 16px;
+        background: var(--primary);
+        mask: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M6 10l4-4" stroke="currentColor" stroke-width="2"/></svg>');
+        opacity: 0.8;
+      }
     }
   }
-}
 
-.table-row-selected-enhanced {
-  @include mixins.table-selection-state(var(--primary-5));
-  
-  &:hover {
-    background: var(--primary-8);
+  &-hover-enhanced {
+    tbody tr {
+      transition: all var(--transition-normal);
+      position: relative;
+
+      &:hover {
+        background: var(--state-hover-bg);
+        transform: translateY(-1px);
+        box-shadow:
+          0 2px 8px rgba(var(--shadow-color), 0.08),
+          0 1px 3px rgba(var(--shadow-color), 0.12);
+        z-index: var(--z-base);
+
+        &::after {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(90deg,
+            transparent,
+            rgba(var(--primary-rgb), 0.03),
+            transparent);
+          pointer-events: none;
+          animation: shimmer 2s ease-in-out infinite;
+        }
+      }
+
+      &.is-selected:hover {
+        background: var(--primary-10);
+        transform: translateY(-2px);
+        box-shadow:
+          0 4px 12px rgba(var(--primary-rgb), 0.15),
+          0 2px 6px rgba(var(--primary-rgb), 0.1);
+      }
+    }
+
+    tbody tr:active {
+      transform: translateY(0);
+      transition: transform 0.1s var(--ease-out);
+    }
   }
 
-  .table-cell {
+  &-checkbox-enhanced {
+    input[type="checkbox"] {
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border: 2px solid var(--color-border);
+      border-radius: var(--radius-sm);
+      background: var(--color-surface);
+      position: relative;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+
+      &:hover {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.1);
+      }
+
+      &:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.2);
+      }
+
+      &:checked {
+        background: var(--primary);
+        border-color: var(--primary);
+
+        &::before {
+          content: '';
+          position: absolute;
+          top: 1px;
+          left: 4px;
+          width: 6px;
+          height: 10px;
+          border: 2px solid var(--white);
+          border-top: 0;
+          border-left: 0;
+          transform: rotate(45deg);
+          animation: scaleIn 0.2s var(--ease-out) forwards;
+        }
+      }
+
+      &:indeterminate {
+        background: var(--primary);
+        border-color: var(--primary);
+
+        &::before {
+          content: '';
+          position: absolute;
+          top: 7px;
+          left: 3px;
+          width: 10px;
+          height: 2px;
+          background: var(--white);
+          border-radius: var(--radius-xs);
+          animation: scaleIn 0.2s var(--ease-out) forwards;
+        }
+      }
+
+      &:disabled {
+        opacity: var(--opacity-40);
+        cursor: not-allowed;
+
+        &:hover {
+          border-color: var(--color-border);
+          box-shadow: none;
+        }
+      }
+    }
+  }
+
+  &-keyboard-navigation {
+    tbody tr {
+      &:focus {
+        outline: 2px solid var(--primary);
+        outline-offset: -2px;
+        background: var(--primary-5);
+      }
+
+      &.keyboard-selected {
+        background: var(--primary-8);
+
+        &::before {
+          content: '';
+          position: absolute;
+          left: -2px;
+          top: -2px;
+          right: -2px;
+          bottom: -2px;
+          border: 2px solid var(--primary);
+          border-radius: var(--radius-sm);
+          pointer-events: none;
+          animation: fadeIn 0.3s var(--ease-out);
+        }
+      }
+    }
+  }
+
+  &-header-sortable {
+    position: relative;
     background: transparent;
-  }
-}
+    border: none;
+    padding: var(--space-3) var(--space-4);
+    @include full-size;
+    display: flex;
+    @include flex-between;
+    text-align: left;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+    transition: var(--transition-colors);
 
-// Hover states
-.table-hover-enhanced tbody tr {
-  transition: var(--transition-normal);
-  
-  &:hover {
-    background: var(--surface-elevated);
-    transform: translateY(-1px);
-    box-shadow: 0 2px 8px var(--shadow-color-10);
-  }
-}
-
-// Sort indicators
-.table-header-sortable {
-  position: relative;
-  background: transparent;
-  border: none;
-  padding: var(--space-3) var(--space-4);
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  text-align: left;
-  font: inherit;
-  color: inherit;
-  cursor: pointer;
-  transition: var(--transition-colors);
-  
-  &:hover {
-    background: var(--state-hover-bg);
-    color: var(--color-primary);
-  }
-  
-  .table-sort-icon {
-    margin-left: var(--space-2);
-    font-size: var(--text-sm);
-    opacity: 0.7;
-    transition: all var(--transition-normal);
-  }
-  
-  &.table-header-active-sort {
-    background: var(--color-primary-light);
-    color: var(--color-primary);
-    font-weight: var(--font-semibold);
-    
-    .table-sort-icon {
-      opacity: 1;
-      transform: scale(1.1);
+    &:hover {
+      background: var(--state-hover-bg);
       color: var(--color-primary);
     }
+
+    .table-sort-icon {
+      margin-left: var(--space-2);
+      font-size: var(--text-sm);
+      opacity: 0.7;
+      transition: all var(--transition-normal);
+    }
+
+    &.active-sort {
+      background: var(--color-primary-light);
+      color: var(--color-primary);
+      font-weight: var(--font-semibold);
+
+      .table-sort-icon {
+        opacity: 1;
+        transform: scale(1.1);
+        color: var(--color-primary);
+      }
+    }
+
+    &-sort-desc .table-sort-icon {
+      transform: rotate(180deg);
+    }
+
+    &-sort-asc .table-sort-icon {
+      transform: rotate(0deg);
+    }
   }
-  
-  &.table-sort-desc .table-sort-icon {
-    transform: rotate(180deg);
+
+  &-sort-priority-badge {
+    display: inline-flex;
+    @include flex-center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 var(--space-1);
+    background: var(--primary);
+    color: var(--color-text-inverse);
+    border-radius: var(--radius-full);
+    font-size: var(--text-xs);
+    font-weight: var(--font-semibold);
+    line-height: 1;
+    margin-left: var(--space-1);
+    animation: scaleIn var(--duration-fast) var(--ease-out);
   }
-  
-  &.table-sort-asc .table-sort-icon {
-    transform: rotate(0deg);
+
+  &-cell {
+    @include mixins.table-focus-state;
+
+    &.is-editing {
+      background: var(--warning-5);
+      box-shadow: inset 0 0 0 2px var(--warning);
+
+      input, textarea, select {
+        border: none;
+        background: transparent;
+        outline: none;
+        width: 100%;
+        padding: var(--space-1);
+      }
+    }
+
+    &-has-error {
+      background: var(--error-5);
+
+      &::after {
+        content: '';
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        width: 6px;
+        height: 6px;
+        background: var(--error);
+        border-radius: var(--radius-full);
+        animation: errorPulse 2s ease-in-out infinite;
+      }
+    }
+
+    &-is-loading {
+      position: relative;
+
+      &::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(90deg,
+          transparent 0%,
+          rgba(var(--primary-rgb), 0.1) 50%,
+          transparent 100%);
+        animation: progress 1.5s ease-in-out infinite;
+      }
+    }
   }
+
 }
 
-// Sort priority badge
-.sort-priority-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 var(--space-1);
-  background: var(--primary);
-  color: var(--color-text-inverse);
-  border-radius: var(--radius-full);
-  font-size: var(--text-xs);
-  font-weight: var(--font-semibold);
-  line-height: 1;
-  margin-left: var(--space-1);
-  animation: scaleIn var(--duration-fast) var(--ease-out);
-}
+@media (prefers-reduced-motion: reduce) {
+  .table {
+    &-row-selected-enhanced,
+    &-hover-enhanced tbody tr,
+    &-checkbox-enhanced input[type="checkbox"],
+    &-keyboard-navigation tbody tr {
+      animation: none !important;
+      transition: none !important;
+      transform: none !important;
+    }
 
-.table-cell {
-  @include mixins.table-focus-state;
+    &-hover-enhanced tbody tr:hover {
+      transform: none !important;
+    }
+  }
 }

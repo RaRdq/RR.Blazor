@@ -1,79 +1,48 @@
 @use '../abstracts' as *;
 
-// Select field styling with dropdown arrow
+@mixin input-semantic-state($color, $focus-opacity: 15%) {
+  border-color: var(--color-#{$color});
+  background: color-mix(in srgb, var(--color-#{$color}) 3%, var(--color-surface-elevated));
+
+  @include interactive-hover(input);
+  @include interactive-focus-ring(input, var(--color-#{$color}));
+
+  &:focus {
+    background: var(--color-surface-elevated);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-#{$color}) #{$focus-opacity}, transparent);
+  }
+}
+
 .select-field {
+  @extend %input-base-style;
   position: relative;
-  
-  // Hide native browser dropdown arrow completely
-  -webkit-appearance: none;
-  -moz-appearance: none;
   appearance: none;
-  
-  // Add custom dropdown arrow via pseudo-element
-  position: relative;
-  
+  padding-right: var(--space-12);
+
   &::after {
     content: "";
     position: absolute;
-    right: var(--space-3); // 12px -> space-3
+    right: var(--space-3);
     top: 50%;
     transform: translateY(-50%);
     width: 0;
     height: 0;
-    border-left: var(--space-1) solid transparent; // 4px -> space-1
-    border-right: var(--space-1) solid transparent; // 4px -> space-1
-    border-top: var(--space-1) solid currentColor; // 4px -> space-1
+    border: var(--space-1) solid transparent;
+    border-top-color: currentColor;
     pointer-events: none;
     opacity: 0.7;
     transition: all var(--duration-fast) var(--ease-out);
   }
-  
-  // Ensure padding for the arrow
-  padding-right: 40px;
-  
-  // Density-specific adjustments
-  &.h-6 { // Compact
-    padding-right: var(--space-8); // 32px -> space-8
-    
-    &::after {
-      right: var(--space-2); // 8px -> space-2
-      border-left-width: calc(var(--space-1) * 0.75); // 3px
-      border-right-width: calc(var(--space-1) * 0.75); // 3px
-      border-top-width: calc(var(--space-1) * 0.75); // 3px
-    }
-  }
-  
-  &.h-8 { // Small/Dense
-    padding-right: var(--space-9); // 36px -> space-9
-    
-    &::after {
-      right: var(--space-2-5); // 10px -> space-2-5
-      border-left-width: calc(var(--space-1) * 0.875); // 3.5px
-      border-right-width: calc(var(--space-1) * 0.875); // 3.5px
-      border-top-width: calc(var(--space-1) * 0.875); // 3.5px
-    }
-  }
-  
-  &.h-12, &.h-16 { // Large/Spacious
-    padding-right: var(--space-12); // 48px -> space-12
-    
-    &::after {
-      right: var(--space-4); // 16px -> space-4
-      border-left-width: calc(var(--space-1) * 1.25); // 5px
-      border-right-width: calc(var(--space-1) * 1.25); // 5px
-      border-top-width: calc(var(--space-1) * 1.25); // 5px
-    }
-  }
-  
-  // Ensure arrow color matches text color
-  color: var(--color-text);
-  
-  // Hover state for arrow
+
+  @include modifier(compact) { padding-right: var(--space-8); }
+  @include modifier(dense) { padding-right: var(--space-9); }
+  @include modifier(spacious) { padding-right: var(--space-12); }
+
   &:hover:not(:disabled)::after {
     opacity: 1;
     transform: translateY(-50%) scale(1.1);
   }
-  
+
   &:focus::after {
     opacity: 1;
     color: var(--color-primary);
@@ -81,758 +50,291 @@
 }
 
 .input {
-  @include input-base-styles;
-  
-  // ULTRA MODERN HOVER - Subtle lift effect with filter
+  @extend %input-base-style;
+  @include interactive-base(input);
+
   &:hover:not(:focus):not(:disabled) {
     transform: translateY(-1px);
-    box-shadow: 0 8px 25px -8px var(--overlay-light);
-    border-color: var(--color-border);
     filter: brightness(1.02) saturate(1.05);
   }
-  
-  // MODERN PRO FOCUS - Subtle and professional
+
   &:focus {
     border-color: var(--color-primary);
     background: var(--color-surface-elevated);
-    @include focus-shadow(var(--color-primary), 15%);
-    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   }
-  
-  // PERFECT DISABLED STATE
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    background: var(--color-surface);
-    transform: none;
-    box-shadow: none;
+
+  @include modifier(clean) {
+    @include semantic-ghost(surface, 0);
   }
-  
-  // Variant modifiers - explicit styling
-  &-clean {
-    background: var(--color-surface);
-    border: 1px solid transparent;
-    
-    &:hover:not(:focus):not(:disabled) {
-      background: var(--color-surface-elevated);
-      border-color: var(--color-border);
-      filter: brightness(1.02);
-    }
-    
-    &:focus {
-      background: var(--color-surface-elevated);
-      border-color: var(--color-primary);
-    }
+
+  @include modifier(filled) {
+    @include semantic-ghost(surface, 5);
   }
-  
-  &-filled {
-    background: var(--color-surface);
-    border: 1px solid transparent;
-    
-    &:hover:not(:focus):not(:disabled) {
-      background: var(--color-surface-elevated);
-      filter: brightness(1.02);
-    }
-    
-    &:focus {
-      background: var(--color-surface-elevated);
-      border-color: var(--color-primary);
-    }
+
+  @include modifier(outlined) {
+    @include semantic-outlined(border);
   }
-  
-  &-outlined {
-    background: transparent;
-    border: var(--border-width-regular) solid var(--color-border);
-    
-    &:hover:not(:focus):not(:disabled) {
-      border-color: var(--color-border);
-      background: color-mix(in srgb, var(--color-surface-elevated) 50%, transparent);
-      filter: brightness(1.02) saturate(1.05);
-    }
-    
-    &:focus {
-      background: var(--color-surface-elevated);
-      @include focus-shadow(var(--color-primary), 15%);
-    }
+
+  @include modifier(ghost) {
+    @include semantic-ghost(surface, 8);
   }
-  
-  &-ghost {
-    background: transparent;
-    border: 1px solid transparent;
-    
-    &:hover:not(:focus):not(:disabled) {
-      background: color-mix(in srgb, var(--color-surface-elevated) 30%, transparent);
-      border-color: var(--color-border);
-      filter: brightness(1.02);
-    }
-    
-    &:focus {
-      background: var(--color-surface-elevated);
-      border-color: var(--color-primary);
-    }
+
+  @include modifier(sm) {
+    @extend %spacing-compact;
+    min-height: var(--space-10);
   }
-  
-  &-sm {
-    padding: var(--space-2) var(--space-3);
-    min-height: var(--space-10); // φ^2.9 ≈ 2.5rem
-    font-size: var(--text-sm);
-    border-radius: var(--radius-md);
-  }
-  
-  &-lg {
-    padding: var(--space-5) var(--space-5);
-    min-height: var(--space-16); // φ^3.6 ≈ 4rem
+
+  @include modifier(lg) {
+    @extend %spacing-default;
+    min-height: var(--space-16);
     font-size: var(--text-lg);
-    border-radius: var(--radius-xl);
   }
-  
-  // State modifiers using &- pattern
-  // Input loading state using the mixin system
-  &.loading,
-  &-loading {
-    @include loading-inline('end', 'sm', 'default');
+
+  @include modifier(loading) {
+    @include loading-inline('start', 'sm', 'default');
   }
-  
-  &-error {
-    border-color: var(--color-error);
-    border-width: var(--border-width-regular); // Thicker border for better visibility
-    background: color-mix(in srgb, var(--color-error) 3%, var(--color-surface-elevated));
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-error) 20%, transparent);
-    
-    &:focus {
-      border-color: var(--color-error);
-      border-width: var(--border-width-regular);
-      @include focus-shadow(var(--color-error), 25%);
-      background: var(--color-surface-elevated);
-      box-shadow: 
-        0 0 0 3px color-mix(in srgb, var(--color-error) 20%, transparent),
-        0 4px 12px color-mix(in srgb, var(--color-error) 15%, transparent);
-    }
-    
-    &:hover:not(:focus) {
-      border-color: var(--color-error);
-      background: color-mix(in srgb, var(--color-error) 5%, var(--color-surface-elevated));
-      box-shadow: 
-        0 0 0 1px color-mix(in srgb, var(--color-error) 25%, transparent),
-        0 2px 8px color-mix(in srgb, var(--color-error) 12%, transparent);
-      transform: translateY(-1px);
-    }
-    
-    // Animate error state entrance
-    animation: errorStateIn 0.3s ease-out;
+
+  @include semantic-variants((error, success, warning, info, primary), (filled));
+
+  @include modifier(compact) {
+    @extend %spacing-minimal;
+    min-height: var(--space-10);
   }
-  
-  &-success {
-    border-color: var(--color-success);
-    background: color-mix(in srgb, var(--color-success) 3%, var(--color-surface-elevated));
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-success) 20%, transparent);
-    
-    &:focus {
-      border-color: var(--color-success);
-      @include focus-shadow(var(--color-success), 15%);
-      background: var(--color-surface-elevated);
-      box-shadow: 
-        0 0 0 3px color-mix(in srgb, var(--color-success) 15%, transparent),
-        0 4px 12px color-mix(in srgb, var(--color-success) 10%, transparent);
-    }
-    
-    &:hover:not(:focus) {
-      border-color: var(--color-success);
-      background: color-mix(in srgb, var(--color-success) 5%, var(--color-surface-elevated));
-      box-shadow: 
-        0 0 0 1px color-mix(in srgb, var(--color-success) 25%, transparent),
-        0 2px 8px color-mix(in srgb, var(--color-success) 12%, transparent);
-      transform: translateY(-1px);
-    }
+
+  @include modifier(dense) {
+    @extend %spacing-compact;
+    min-height: var(--space-12);
   }
-  
-  &-primary {
-    border-color: var(--color-primary);
-    background: color-mix(in srgb, var(--color-primary) 3%, var(--color-surface-elevated));
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-primary) 20%, transparent);
-    
-    &:focus {
-      border-color: var(--color-primary);
-      @include focus-shadow(var(--color-primary), 15%);
-      background: var(--color-surface-elevated);
-      box-shadow: 
-        0 0 0 3px color-mix(in srgb, var(--color-primary) 15%, transparent),
-        0 4px 12px color-mix(in srgb, var(--color-primary) 10%, transparent);
-    }
-    
-    &:hover:not(:focus) {
-      border-color: var(--color-primary);
-      background: color-mix(in srgb, var(--color-primary) 5%, var(--color-surface-elevated));
-      box-shadow: 
-        0 0 0 1px color-mix(in srgb, var(--color-primary) 25%, transparent),
-        0 2px 8px color-mix(in srgb, var(--color-primary) 12%, transparent);
-      transform: translateY(-1px);
-    }
+
+  @include modifier(spacious) {
+    @extend %spacing-default;
+    min-height: var(--space-16);
   }
-  
-  &-warning {
-    border-color: var(--color-warning);
-    background: color-mix(in srgb, var(--color-warning) 3%, var(--color-surface-elevated));
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-warning) 20%, transparent);
-    
-    &:focus {
-      border-color: var(--color-warning);
-      @include focus-shadow(var(--color-warning), 15%);
-      background: var(--color-surface-elevated);
-      box-shadow: 
-        0 0 0 3px color-mix(in srgb, var(--color-warning) 15%, transparent),
-        0 4px 12px color-mix(in srgb, var(--color-warning) 10%, transparent);
-    }
-    
-    &:hover:not(:focus) {
-      border-color: var(--color-warning);
-      background: color-mix(in srgb, var(--color-warning) 5%, var(--color-surface-elevated));
-      box-shadow: 
-        0 0 0 1px color-mix(in srgb, var(--color-warning) 25%, transparent),
-        0 2px 8px color-mix(in srgb, var(--color-warning) 12%, transparent);
-      transform: translateY(-1px);
-    }
-  }
-  
-  &-info {
-    border-color: var(--color-info);
-    background: color-mix(in srgb, var(--color-info) 3%, var(--color-surface-elevated));
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-info) 20%, transparent);
-    
-    &:focus {
-      border-color: var(--color-info);
-      @include focus-shadow(var(--color-info), 15%);
-      background: var(--color-surface-elevated);
-      box-shadow: 
-        0 0 0 3px color-mix(in srgb, var(--color-info) 15%, transparent),
-        0 4px 12px color-mix(in srgb, var(--color-info) 10%, transparent);
-    }
-    
-    &:hover:not(:focus) {
-      border-color: var(--color-info);
-      background: color-mix(in srgb, var(--color-info) 5%, var(--color-surface-elevated));
-      box-shadow: 
-        0 0 0 1px color-mix(in srgb, var(--color-info) 25%, transparent),
-        0 2px 8px color-mix(in srgb, var(--color-info) 12%, transparent);
-      transform: translateY(-1px);
-    }
-  }
-  
-  // Density variants - PROPER HEIGHT AND PROFESSIONAL
-  &-compact {
-    padding: var(--space-2) var(--space-3);
-    min-height: var(--space-10); // φ^2.9 ≈ 2.5rem
-    font-size: var(--text-sm);
-  }
-  
-  &-dense {
-    padding: var(--space-3) var(--space-3);
-    min-height: var(--space-12); // φ^3.1 ≈ 3rem
-    font-size: var(--text-base);
-  }
-  
-  &-normal {
-    padding: var(--space-3) var(--space-4);
-    min-height: var(--space-14); // φ^3.35 ≈ 3.5rem
-    font-size: var(--text-base);
-  }
-  
-  &-spacious {
-    padding: var(--space-4) var(--space-4);
-    min-height: var(--space-16); // φ^3.6 ≈ 4rem
-    font-size: var(--text-base);
-  }
-  
-  // Interactive variants using &- pattern
-  &-floating {
-    padding-top: var(--space-5);
-    padding-bottom: var(--space-3);
-    
-    &.input-sm {
-      padding-top: var(--space-4);
-      padding-bottom: var(--space-2);
-    }
-    
-    &.input-lg {
-      padding-top: var(--space-6);
-      padding-bottom: var(--space-4);
-    }
-  }
-  
-  &-glass {
+
+  @include modifier(glass) {
     @extend %glass-medium;
-    box-shadow: var(--shadow-md);
-    
+
     &:hover:not(:focus) {
       @extend %glass-heavy;
-      box-shadow: var(--shadow-lg);
     }
   }
-  
-  &-modern {
-    @include interactive-card(var(--shadow-lg), var(--shadow-md), translateY(-1px));
-    
-    &:focus {
-      box-shadow: 
-        0 0 0 3px var(--color-primary), 
-        var(--shadow-lg),
-        0 8px 25px -5px rgba(0, 0, 0, 0.1);
-    }
+
+  @include modifier(modern) {
+    @include interactive-enhanced(input, ('glow-on-hover': true));
   }
 }
 
-// Input Group System - Utility-first composition  
 .input-group {
   @extend %form-group-base;
-  margin-bottom: 0;
-  width: 100%;
-  max-width: none;
-  position: relative; // For absolute positioning of icons
-  
-  &-label {
+  position: relative;
+
+  @include element(label) {
     @extend %section-title;
     font-size: var(--text-sm);
-    margin-bottom: var(--space-0-5);
     text-transform: uppercase;
     letter-spacing: var(--tracking-wide);
   }
-  
-  &-icon {
+
+  @include element(icon) {
     @extend %icon-base;
     position: absolute;
     top: 50%;
-    left: var(--space-4); // 16px - Perfect centering for default size
+    left: var(--space-4);
     transform: translateY(-50%);
     pointer-events: none;
-    z-index: calc(var(--z-base) + 10); // Higher z-index to appear above input
-    width: var(--space-6); // 24px
-    height: var(--space-6); // 24px
-    color: var(--color-text-muted);
-    font-size: var(--space-6); // 24px
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    
+    z-index: calc(var(--z-base) + 10);
+    transition: all var(--duration-normal) var(--ease-out);
+
     .input:focus + & {
       color: var(--color-primary);
       transform: translateY(-50%) scale(1.05);
     }
   }
-  
-  // Size-specific icon positioning - target icon before input with specific size
-  .input-group-icon + .input-sm {
-    ~ .floating-label {
-      left: calc(var(--space-5) + var(--space-3) + var(--space-2)); // Match small input padding
-    }
-  }
-  
-  .input-group-icon + .input-lg {
-    ~ .floating-label {
-      left: calc(var(--space-7) + var(--space-5) + var(--space-5)); // Match large input padding
-    }
-  }
-  
-  .input-sm ~ .input-group-icon,
-  .input-group-icon:has(+ .input-sm) {
-    left: var(--space-3); // 12px for small inputs
-    width: var(--space-5); // 20px
-    height: var(--space-5); // 20px
-    font-size: var(--space-5); // 20px
-  }
-  
-  .input-lg ~ .input-group-icon,
-  .input-group-icon:has(+ .input-lg) {
-    left: var(--space-5); // 20px for large inputs  
-    width: var(--space-7); // 28px
-    height: var(--space-7); // 28px
-    font-size: var(--space-7); // 28px
-  }
-  
-  &-icon-end {
+
+  @include element(icon-end) {
     @extend %icon-base;
     position: absolute;
     top: 50%;
-    right: var(--space-4); // 16px from right edge - inside input boundary
+    right: var(--space-4);
     transform: translateY(-50%);
-    z-index: calc(var(--z-base) + 10); // Higher z-index to appear above input
-    width: var(--space-6); // 24px touch target width
-    height: var(--space-6); // 24px touch target height
+    z-index: calc(var(--z-base) + 10);
     pointer-events: auto;
-    color: var(--color-text-muted);
-    font-size: var(--space-6); // 24px - Keep icon size reasonable
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    
-    // Size-specific positioning - targeting based on parent container size class
-    .input-sm & {
-      right: var(--space-5); // 20px from right edge for small
-      width: var(--space-5); // 20px touch target
-      height: var(--space-5);
-      font-size: var(--space-5); // 20px
-    }
-    
-    .input-lg & {
-      right: var(--space-7); // 28px from right edge for large
-      width: var(--space-7); // 28px touch target
-      height: var(--space-7);
-      font-size: var(--space-7); // 28px
-    }
-    
-    & button {
+
+    button {
       @extend %interactive-base;
-      padding: 0; // No padding needed - container provides the size
-      border-radius: var(--radius-sm);
-      transition: all var(--duration-normal) var(--ease-out);
+      @include interactive-base(button);
+      padding: 0;
       border: none;
       background: transparent;
-      color: inherit;
-      width: 100%; // Use full container 
-      height: 100%; // Use full container
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      
-      &:hover {
-        background: var(--color-surface-elevated);
-        color: var(--color-text);
-      }
-      
-      &:focus {
-        outline: none;
-        outline-offset: 1px;
-        background: var(--color-surface-elevated);
-      }
-      
-      &:active {
-        transform: scale(0.95);
-      }
+      width: 100%;
+      height: 100%;
     }
   }
-  
-  &-error {
+
+  @include element(error) {
     color: var(--color-error);
     font-size: var(--text-sm);
-    font-weight: 600; // Bolder for better visibility
-    margin-top: var(--space-2); // More space from input
-    padding: var(--space-2) var(--space-3); // Better padding
-    line-height: 1.4;
-    display: flex;
-    align-items: flex-start;
-    gap: var(--space-2); // More gap between icon and text
+    margin-top: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    @include semantic-ghost(error, 8);
+    border-left: calc(var(--space-1) * 0.75) solid var(--color-error);
     animation: slideUpSmooth 0.3s ease-out;
-    background: color-mix(in srgb, var(--color-error) 8%, var(--color-surface));
-    border-radius: var(--radius-md);
-    border-left: calc(var(--space-1) * 0.75) solid var(--color-error); // 3px
-    box-shadow: 0 1px 3px color-mix(in srgb, var(--color-error) 10%, transparent);
-    
-    // Better icon integration
-    i {
-      color: var(--color-error);
-      font-size: var(--text-base);
-      margin-top: 1px;
-      flex-shrink: 0;
-    }
-    
-    // Remove the pseudo-element since we use proper icon
-    &::before {
-      display: none;
-    }
   }
-  
-  &-help {
+
+  @include element(help) {
     color: var(--color-text-subtle);
     font-size: var(--text-sm);
     margin-top: var(--space-1);
-    padding-left: var(--space-1);
-    line-height: 1.4;
   }
-  
-  // Error animations - Using existing keyframes from abstracts/_animations.scss
-  
-  // Select loading state using the mixin system
-  &.loading,
-  &-loading {
-    @include loading-inline('end', 'sm', 'default');
+
+  @include modifier(loading) {
+    @include loading-inline('start', 'sm', 'default');
   }
 }
 
-// REVOLUTIONARY TEXTAREA SYSTEM - UNIFIED WITH INPUT
 .textarea {
-  @include input-base-styles;
-  min-height: calc(var(--space-10) * 3); // 120px -> 3x space-10
+  @extend %input-base-style;
+  @include interactive-base(input);
+  min-height: calc(var(--space-10) * 3);
   resize: vertical;
-  line-height: 1.6; // OPTIMAL readability
-  
-  // Auto-resize capability
-  &-auto {
+  line-height: 1.6;
+
+  @extend %scrollable-area-base;
+
+  @include modifier(auto) {
     resize: none;
     overflow: hidden;
-    field-sizing: content; // Modern CSS auto-resize
+    field-sizing: content;
   }
-  
-  &-fixed {
+
+  @include modifier(fixed) {
     resize: none;
     overflow-y: auto;
   }
-  
-  &-sm {
-    min-height: calc(var(--space-10) * 2); // 80px -> 2x space-10
+
+  @include modifier(sm) {
+    min-height: calc(var(--space-10) * 2);
     font-size: var(--text-sm);
-    line-height: 1.5;
   }
-  
-  &-lg {
-    min-height: calc(var(--space-10) * 4); // 160px -> 4x space-10
+
+  @include modifier(lg) {
+    min-height: calc(var(--space-10) * 4);
     font-size: var(--text-lg);
-    line-height: 1.7;
-  }
-  
-  // Perfect scrollbar styling
-  &::-webkit-scrollbar {
-    width: 8px;
-  }
-  
-  &::-webkit-scrollbar-track {
-    background: var(--color-surface);
-    border-radius: var(--radius-sm);
-  }
-  
-  &::-webkit-scrollbar-thumb {
-    background: var(--color-border);
-    border-radius: var(--radius-sm);
-    
-    &:hover {
-      background: var(--color-border);
-    }
   }
 }
 
-// Select System - Base styling without arrow (use .select-field for arrows)
 .select {
-  @include input-base-styles;
+  @extend %input-base-style;
+  @include interactive-base(input);
   cursor: pointer;
-  -webkit-appearance: none;
-  -moz-appearance: none;
   appearance: none;
 }
 
-// Checkbox System - Matches RCheckbox component structure
 .checkbox {
   @extend %touch-target;
   @extend %interactive-base;
+  @include interactive-base(button);
   display: flex;
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-3);
   border-radius: var(--radius-lg);
   cursor: pointer;
-  pointer-events: auto;
-  
-  &:hover {
-    background: var(--color-surface-elevated);
+
+  @include modifier(disabled) {
+    @include interactive-disabled();
   }
-  
-  &-disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-    pointer-events: none;
-  }
-  
-  // Checkbox input positioned above visual elements with z-index
-  &-input,
-  &-checkbox-input { // Use class-based selector instead of element[type]
-    position: absolute;
-    top: var(--space-3);
-    left: var(--space-3);
-    width: var(--space-5);
-    height: var(--space-5);
-    opacity: 0;
-    z-index: var(--z-above);
-    cursor: pointer;
-    pointer-events: auto;
-    
-    &:disabled {
-      cursor: not-allowed;
-    }
-    
-    // When checked, style the checkbox mark
+
+  @include element(input) {
+    @extend %sr-only;
+
     &:checked ~ .checkbox-mark {
-      background: var(--color-primary);
-      border-color: var(--color-primary);
-      
+      @include semantic-base(primary);
+
       .checkbox-icon {
         opacity: 1;
         transform: scale(1);
       }
     }
-    
-    // Also support Blazor's checked attribute binding
-    &[checked="true"] ~ .checkbox-mark {
-      background: var(--color-primary);
-      border-color: var(--color-primary);
-      
-      .checkbox-icon {
-        opacity: 1;
-        transform: scale(1);
-      }
-    }
-    
-    // Focus styles
+
     &:focus ~ .checkbox-mark {
-      outline: none;
-      outline-offset: calc(var(--base-unit) * 0.125); // φ-optimized
+      @include interactive-focus-ring();
     }
   }
-  
-  &-mark {
+
+  @include element(mark) {
     @extend %icon-base;
     width: var(--space-5);
     height: var(--space-5);
-    min-width: var(--space-5);
-    min-height: var(--space-5);
     border: var(--border-width-regular) solid var(--color-border);
     border-radius: var(--radius-sm);
     background: var(--color-surface-elevated);
     flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
     transition: all var(--duration-normal) var(--ease-out);
-    position: relative;
-    pointer-events: none;
-    
-    &:has(.checkbox-icon) {
-      background: var(--color-primary);
-      border-color: var(--color-primary);
-    }
-    
-    &:hover {
-      border-color: var(--color-primary);
-    }
-    
-    &-primary {
-      border: var(--border-width-regular) solid var(--color-primary);
-    }
-    
-    &-success {
-      border: var(--border-width-regular) solid var(--color-success);
-    }
-    
-    &-warning {
-      border: var(--border-width-regular) solid var(--color-warning);
-    }
-    
-    &-danger {
-      border: var(--border-width-regular) solid var(--color-error);
-    }
-    
-    &-small {
+
+    @include semantic-variants((primary, success, warning, error), (outlined));
+
+    @include modifier(small) {
       width: var(--space-4);
       height: var(--space-4);
     }
-    
-    &-large {
+
+    @include modifier(large) {
       width: var(--space-6);
       height: var(--space-6);
     }
   }
-  
-  &-icon {
-    color: var(--color-surface);
-    font-size: var(--text-sm);
-    opacity: 1;
-    transform: scale(1);
-    transition: all var(--duration-normal) var(--ease-out);
-  }
-  
-  &-label {
+
+  @include element(label) {
     color: var(--color-text);
     font-weight: var(--font-medium);
     font-size: var(--text-sm);
     cursor: pointer;
     flex: 1;
-    pointer-events: auto;
-    
-    &-disabled {
+
+    @include modifier(disabled) {
       color: var(--color-text-subtle);
       cursor: not-allowed;
     }
   }
-  
-  &-content {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-  }
-  
-  &-text {
-    color: var(--color-text);
-    font-weight: var(--font-medium);
-    font-size: var(--text-sm);
-  }
-  
-  &-text-icon {
-    color: var(--color-primary);
-    font-size: var(--text-base);
-    margin-right: var(--space-1);
-  }
-  
-  &-description {
-    color: var(--color-text-muted);
-    font-size: var(--text-xs);
-    margin-top: var(--space-1);
-    line-height: var(--leading-relaxed);
-  }
 }
 
-// Validation message styling
 .validation-message {
+  @extend %icon-text-base;
   color: var(--color-error);
   font-size: var(--text-sm);
   margin-top: var(--space-2);
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
 }
-
-
-// Radio System - Utility-first with extends
 .radio {
   @extend %touch-target;
   @extend %interactive-base;
-  
-  &-group {
+
+  @include element(group) {
     @extend %form-group-base;
     gap: var(--space-3);
   }
-  
-  &-option {
+
+  @include element(option) {
     @extend %card-base-enhanced;
-    @include interactive-card(var(--shadow-md), var(--shadow-sm), translateY(-0.5px));
-    
-    & {
-      display: flex;
-      align-items: flex-start;
-      gap: var(--space-3);
-      padding: var(--space-4);
-      cursor: pointer;
-    }
-    
-    .radio-input { // Use class-based selector instead of element[type]
-      @extend %sr-only;
-    }
-    
-    .radio-input:checked ~ .radio-mark { // Use class-based selector
+    @include interactive-enhanced(card, ('glow-on-hover': true));
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+    padding: var(--space-4);
+    cursor: pointer;
+  }
+
+  @include element(input) {
+    @extend %sr-only;
+
+    &:checked ~ .radio-mark {
       border-color: var(--color-primary);
-      
+
       &::after {
         content: '';
         position: absolute;
-        width: var(--radio-mark-size);
-        height: var(--radio-mark-size);
+        width: 50%;
+        height: 50%;
         background: var(--color-primary);
         border-radius: var(--radius-full);
         top: 50%;
@@ -841,279 +343,82 @@
       }
     }
   }
-  
-  &-mark {
+
+  @include element(mark) {
     @extend %icon-base;
     width: var(--space-5);
     height: var(--space-5);
     border: var(--border-width-regular) solid var(--color-border);
     border-radius: var(--radius-full);
     flex-shrink: 0;
-    margin-top: 2px;
   }
-  
-  &-content {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-    
-    strong {
-      font-size: var(--text-base);
-      font-weight: var(--font-semibold);
-      color: var(--color-text);
-    }
-    
-    span {
-      font-size: var(--text-sm);
-      color: var(--color-text-muted);
-    }
-  }
-  
-  // Card variant for radio options
-  &-card {
+
+  @include element(card) {
     @extend %card-base-enhanced;
-    @include interactive-card(var(--shadow-lg), var(--shadow-md), translateY(-1px));
-    
-    & {
-      position: relative;
-      cursor: pointer;
-      text-align: center;
-    }
-    
-    .radio-input { // Use class-based selector instead of element[type]
-      @extend %sr-only;
-      
-      &:checked + .radio-card-content {
-        border-color: var(--color-primary);
-        background: var(--color-primary);
-        color: var(--color-text-inverse);
-        
-        i, strong, span {
-          color: var(--color-text-inverse);
-        }
-      }
-    }
-    
-    &-content {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: var(--space-6);
-      
-      i {
-        font-size: var(--space-12);
-        color: var(--color-primary);
-        margin-bottom: var(--space-3);
-      }
+    @include interactive-enhanced(card, ('glow-on-hover': true, 'bounce-on-click': true));
+    position: relative;
+    cursor: pointer;
+    text-align: center;
+
+    .radio-input:checked + .radio-card-content {
+      @include semantic-base(primary);
     }
   }
 }
 
-// CONSOLIDATED ICON PADDING SYSTEM - ROOT CAUSE FIX
-// Support both native elements and component classes for backward compatibility
-.input, .textarea, .select,
-.input-component, .textarea-component, .select-component {
-  // Base icon spacing - universal coverage with proper &- pattern
-  &-with-start-icon {
-    padding-left: calc(var(--space-6) + var(--space-4) + var(--space-3)); // Icon(24px) + Position(16px) + Gap(12px) = 52px
-    
-    // Size variants using &- pattern  
-    &-sm,
-    &.h-6,
-    &.h-8 {
-      padding-left: calc(var(--space-5) + var(--space-3) + var(--space-2)); // Icon(20px) + Position(12px) + Gap(8px) = 40px
+.input, .textarea, .select {
+  @include modifier(with-start-icon) {
+    padding-left: calc(var(--space-6) + var(--space-4) + var(--space-3));
+
+    @include modifier(sm) {
+      padding-left: calc(var(--space-5) + var(--space-3) + var(--space-2));
     }
-    
-    &-lg,
-    &.h-12,
-    &.h-16 {
-      padding-left: calc(var(--space-7) + var(--space-5) + var(--space-4)); // Icon(28px) + Position(20px) + Gap(16px) = 64px
+
+    @include modifier(lg) {
+      padding-left: calc(var(--space-7) + var(--space-5) + var(--space-4));
     }
   }
-  
-  &-with-end-icon {
-    padding-right: calc(var(--space-6) + var(--space-4) + var(--space-3)); // Icon(24px) + Position(16px) + Gap(12px) = 52px
-    
-    // Size variants using &- pattern
-    &-sm,
-    &.h-6,
-    &.h-8 {
-      padding-right: calc(var(--space-5) + var(--space-3) + var(--space-2)); // Icon(20px) + Position(12px) + Gap(8px) = 40px
+
+  @include modifier(with-end-icon) {
+    padding-right: calc(var(--space-6) + var(--space-4) + var(--space-3));
+
+    @include modifier(sm) {
+      padding-right: calc(var(--space-5) + var(--space-3) + var(--space-2));
     }
-    
-    &-lg,
-    &.h-12,
-    &.h-16 {
-      padding-right: calc(var(--space-7) + var(--space-5) + var(--space-4)); // Icon(28px) + Position(20px) + Gap(16px) = 64px
+
+    @include modifier(lg) {
+      padding-right: calc(var(--space-7) + var(--space-5) + var(--space-4));
     }
   }
 }
 
-// Universal icon-aware padding for all inputs following icons
 .input-group-icon ~ .input,
-.input-group-icon ~ .textarea,
-.input-group-icon ~ .input-component,
-.input-group-icon ~ .textarea-component {
-  padding-left: calc(var(--space-6) + var(--space-4) + var(--space-3)); // Icon(24px) + Position(16px) + Gap(12px) = 52px
-}
-
-// Container-based icon detection
-.input-group .input-group-icon ~ .input,
-.input-group .input-group-icon ~ .textarea,
-.input-group .input-group-icon ~ .input-component,
-.input-group .input-group-icon ~ .textarea-component,
-.relative .input-group-icon ~ .input,
-.relative .input-group-icon ~ .textarea,
-.relative .input-group-icon ~ .input-component,
-.relative .input-group-icon ~ .textarea-component {
-  padding-left: calc(var(--space-6) + var(--space-4) + var(--space-3)); // Icon(24px) + Position(16px) + Gap(12px) = 52px
+.input-group-icon ~ .textarea {
+  padding-left: calc(var(--space-6) + var(--space-4) + var(--space-3));
 }
 
 .input {
-  &-animate {
-    &:focus {
-      animation: none;
-    }
-    
-    &.animate-focus:focus {
-      animation: scaleIn 0.2s ease-out;
-    }
-    
-    &.animate-error {
-      animation: shake 0.4s ease-in-out;
-    }
-    
-    &.animate-success {
-      animation: successFadeIn 0.5s ease-out;
-    }
-  }
-  
-  &-touch {
+  @include modifier(touch) {
     @extend %touch-target;
   }
-  
-  // Interactive utilities using &- pattern
-  &-interactive {
-    @extend %interactive-base;
-    
-    &:hover {
-      transform: translateY(-1px);
-      box-shadow: var(--shadow-lg);
-    }
+
+  @include modifier(interactive) {
+    @include interactive-enhanced(input, ('glow-on-hover': true, 'magnetic-hover': true));
   }
 }
-
-
-// SIMPLE FLOATING LABEL SYSTEM
 .input-floating {
   position: relative;
   width: 100%;
-  padding: 0;
-  
-  // Ensure the input inside takes full width
+
   > .input,
-  > .textarea,
-  > .input-component,
-  > .textarea-component {
+  > .textarea {
     width: 100%;
-  }
-  
-  &:has(.input-sm) .input-group-icon {
-    left: var(--space-3); // 12px
-    width: var(--space-5); // 20px
-    height: var(--space-5); // 20px
-    font-size: var(--space-5); // 20px
-  }
-  
-  &:has(.input-lg) .input-group-icon {
-    left: var(--space-5); // 20px
-    width: var(--space-7); // 28px  
-    height: var(--space-7); // 28px
-    font-size: var(--space-7); // 28px
-  }
-  
-  .floating-label {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    color: var(--color-text-subtle);
-    font-size: 16px;
-    font-weight: 400;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    pointer-events: none;
-    z-index: calc(var(--z-base) + 11);
-    white-space: nowrap;
-    transform-origin: left center;
-    background: transparent;
-    padding: 0;
-    line-height: 1.2;
-    
-    left: var(--space-4); // 16px default
-  }
-  
-  // Adjust floating label position when start icon is present
-  .input-group-icon ~ .input-with-start-icon ~ .floating-label {
-    left: calc(var(--space-6) + var(--space-4) + var(--space-3)); // Icon(24px) + Position(16px) + Gap(12px) = 52px
-    
-    // Small size adjustments
-    &:has(~ .input-sm) {
-      left: calc(var(--space-5) + var(--space-3) + var(--space-2)); // Icon(20px) + Position(12px) + Gap(8px) = 40px
-    }
-    
-    // Large size adjustments
-    &:has(~ .input-lg) {
-      left: calc(var(--space-7) + var(--space-5) + var(--space-5)); // Icon(28px) + Position(20px) + Gap(20px) = 68px
-    }
-  }
-  
-  // Also handle direct sibling relationship for better compatibility
-  .input-with-start-icon ~ .floating-label {
-    left: calc(var(--space-6) + var(--space-4) + var(--space-3)); // Icon(24px) + Position(16px) + Gap(12px) = 52px
-  }
-  
-  .input-with-start-icon.input-sm ~ .floating-label {
-    left: calc(var(--space-5) + var(--space-3) + var(--space-2)); // Icon(20px) + Position(12px) + Gap(8px) = 40px
-  }
-  
-  .input-with-start-icon.input-lg ~ .floating-label {
-    left: calc(var(--space-7) + var(--space-5) + var(--space-5)); // Icon(28px) + Position(20px) + Gap(20px) = 68px
-  }
-  
-  // CRITICAL FIX: Add actual padding to inputs with start icons
-  .input-with-start-icon {
-    padding-left: calc(var(--space-6) + var(--space-4) + var(--space-3)) !important; // Icon(24px) + Position(16px) + Gap(12px) = 52px
-    
-    &.input-sm {
-      padding-left: calc(var(--space-5) + var(--space-3) + var(--space-2)) !important; // Icon(20px) + Position(12px) + Gap(8px) = 40px
-    }
-    
-    &.input-lg {
-      padding-left: calc(var(--space-7) + var(--space-5) + var(--space-4)) !important; // Icon(28px) + Position(20px) + Gap(16px) = 64px
-    }
-  }
-  
-  // Add padding for inputs with end icons
-  .input-with-end-icon {
-    padding-right: calc(var(--space-6) + var(--space-4) + var(--space-3)) !important; // Icon(24px) + Position(16px) + Gap(12px) = 52px
-    
-    &.input-sm {
-      padding-right: calc(var(--space-5) + var(--space-3) + var(--space-2)) !important; // Icon(20px) + Position(12px) + Gap(8px) = 40px
-    }
-    
-    &.input-lg {
-      padding-right: calc(var(--space-7) + var(--space-5) + var(--space-4)) !important; // Icon(28px) + Position(20px) + Gap(16px) = 64px
-    }
-  }
-  
-  .input, .textarea,
-  .input-component, .textarea-component {
-    // COMPLETELY HIDE placeholder - label is the visual indicator
+
     &::placeholder {
       opacity: 0;
       color: transparent;
     }
-    
-    // Floating state - only apply when actually floating
+
     &:focus ~ .floating-label,
     &:not(:placeholder-shown) ~ .floating-label,
     &[data-has-value="true"] ~ .floating-label {
@@ -1121,88 +426,55 @@
       transform: translateY(-50%) scale(0.75);
       color: var(--color-primary);
       font-weight: 500;
-      z-index: calc(var(--z-base) + 20);
       background: var(--color-surface-elevated);
       padding: 0 var(--space-2);
       border-radius: var(--radius-sm);
-      // Keep the left position from base state (don't reset it)
     }
-    
-    &.input-error ~ .floating-label {
-      color: var(--color-error);
-      font-weight: 600; // Bolder for error emphasis
-      
-      // Only apply background when floating
-      &[style*="top: 0"] {
-        background: var(--color-surface-elevated);
-        padding: 0 8px;
-        margin: 0 -4px;
-        border-radius: 4px;
-        box-shadow: 0 0 0 2px var(--color-surface-elevated);
-      }
+
+    &:-webkit-autofill ~ .floating-label {
+      top: 0;
+      transform: translateY(-50%) scale(0.8);
+      color: var(--color-primary);
+      background: var(--color-surface-elevated);
+      padding: 0 var(--space-2);
     }
-    
-    &.input-success ~ .floating-label {
-      color: var(--color-success);
-      
-      // Only apply background when floating
-      &[style*="top: 0"] {
-        background: var(--color-surface-elevated);
-        padding: 0 8px;
-        margin: 0 -4px;
-        border-radius: 4px;
-        box-shadow: 0 0 0 2px var(--color-surface-elevated);
+  }
+
+  .floating-label {
+    position: absolute;
+    top: 50%;
+    left: var(--space-4);
+    transform: translateY(-50%);
+    color: var(--color-text-subtle);
+    font-size: 16px;
+    transition: all var(--duration-normal) var(--ease-out);
+    pointer-events: none;
+    z-index: calc(var(--z-base) + 11);
+    white-space: nowrap;
+    transform-origin: left center;
+  }
+
+  .input-with-start-icon {
+    padding-left: calc(var(--space-6) + var(--space-4) + var(--space-3)) !important;
+
+    ~ .floating-label {
+      left: calc(var(--space-6) + var(--space-4) + var(--space-3));
+    }
+
+    @include modifier(sm) {
+      padding-left: calc(var(--space-5) + var(--space-3) + var(--space-2)) !important;
+
+      ~ .floating-label {
+        left: calc(var(--space-5) + var(--space-3) + var(--space-2));
       }
     }
 
-    // AUTOFILL SUPPORT - CRITICAL FIX FOR ISSUE #9
-    &:-webkit-autofill,
-    &:-webkit-autofill:hover,
-    &:-webkit-autofill:focus,
-    &:-webkit-autofill:active {
-      -webkit-box-shadow: 0 0 0 1000px var(--color-surface) inset;
-      -webkit-text-fill-color: var(--color-text);
-      border-color: var(--color-border-light);
-      caret-color: var(--color-text);
-      transition: background-color 5000s ease-in-out 0s;
-    }
-    
-    // Autofill floating labels
-    &:-webkit-autofill ~ .floating-label,
-    &:-webkit-autofill:hover ~ .floating-label,
-    &:-webkit-autofill:focus ~ .floating-label,
-    &:-webkit-autofill:active ~ .floating-label {
-      top: 0;
-      left: 20px;
-      transform: translateY(-50%) scale(0.8);
-      color: var(--color-primary);
-      font-weight: 500;
-      z-index: calc(var(--z-base) + 4);
-      background: var(--color-surface-elevated);
-      padding: 0 8px;
-      margin: 0 -4px;
-      border-radius: 4px;
-      box-shadow: 0 0 0 2px var(--color-surface-elevated);
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
-    }
-    
-    &:focus ~ .floating-label {
-      color: var(--color-primary);
-    }
-    
-    // Filled but not focused - SUBTLE GRAY with cutout effect
-    &:not(:focus):not(:placeholder-shown) ~ .floating-label,
-    &:not(:focus)[data-has-value="true"] ~ .floating-label {
-      color: var(--color-text-muted);
-      // Keep background for cutout effect even when not focused
-      background: var(--color-surface-elevated);
-      padding: 0 8px;
-      margin: 0 -4px;
-      border-radius: 4px;
-      box-shadow: 0 0 0 2px var(--color-surface-elevated);
+    @include modifier(lg) {
+      padding-left: calc(var(--space-7) + var(--space-5) + var(--space-4)) !important;
+
+      ~ .floating-label {
+        left: calc(var(--space-7) + var(--space-5) + var(--space-4));
+      }
     }
   }
-  
-  
 }

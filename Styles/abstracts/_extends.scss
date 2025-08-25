@@ -7,9 +7,7 @@
 }
 
 %flex-center {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  @include flex-center;
 }
 
 %flex-row {
@@ -24,30 +22,20 @@
 
 %flex-between {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  @include flex-between;
 }
 
 %flex-column-center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  @include flex-center-column;
 }
 
 %position-full-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  @include absolute-cover;
 }
 
 %position-center-absolute {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  @include absolute-center;
+  margin: var(--space-1);
 }
 
 %position-corner-bottom-right {
@@ -57,8 +45,7 @@
 }
 
 %position-full-size {
-  width: 100%;
-  height: 100%;
+  @include full-size;
 }
 
 %loading-overlay {
@@ -90,9 +77,10 @@
 %button-icon-base {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-2);
-  
-  .material-symbols-rounded,
+  gap: var(--space-4);
+  min-height: var(--touch-target-min, 2.75rem);
+
+  .icon,
   i {
     font-size: calc(1em * var(--φ));
     width: calc(1em * var(--φ));
@@ -101,19 +89,17 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    margin: 0;
     flex-shrink: 0;
     position: relative;
-    z-index: var(--z-base);
+    z-index: 1;
   }
-  
   span {
     line-height: 1;
     vertical-align: baseline;
     display: inline-flex;
     align-items: center;
     position: relative;
-    z-index: var(--z-base);
+    z-index: 2;
   }
 }
 
@@ -160,8 +146,7 @@
     position: absolute;
     top: 0;
     left: -100%;
-    width: 100%;
-    height: 100%;
+    @include full-size;
     background: linear-gradient(
       90deg,
       transparent,
@@ -169,8 +154,10 @@
       transparent
     );
     transition: left var(--duration-slow) var(--ease-out);
+    z-index: var(--z-base);
+    pointer-events: none;
   }
-  
+
   &:hover::before {
     left: 100%;
   }
@@ -209,16 +196,42 @@
   cursor: pointer;
   transition: var(--transition-colors);
   border-radius: var(--radius-sm);
-  
+
   &:hover {
     color: var(--color-primary-hover);
     background: var(--color-surface);
   }
-  
+
   &:active {
     color: var(--color-primary-active);
     background: var(--state-active-bg);
   }
+}
+
+%icon-material-symbols {
+  @extend %icon-base;
+  font-family: 'Material Symbols Rounded';
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+%icon-material-filled {
+  @extend %icon-material-symbols;
+  font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+%icon-component-base {
+  @extend %icon-base;
+  margin: 0;
+  flex-shrink: 0;
+  position: relative;
+  z-index: var(--z-base);
+}
+
+%icon-component-sized {
+  @extend %icon-component-base;
+  font-size: calc(1em * var(--φ));
+  width: calc(1em * var(--φ));
+  height: calc(1em * var(--φ));
 }
 
 %card-base-enhanced {
@@ -233,20 +246,17 @@
 }
 
 %card-elevated {
-  @extend %card-base-enhanced !optional;
+  @extend %card-base-enhanced;
   box-shadow: var(--shadow-lg);
   border: var(--border-1) solid var(--color-border);
-  
+
   &:hover {
     box-shadow: var(--shadow-xl);
   }
 }
 
-
 %icon-container-base {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  @include flex-center;
   border-radius: var(--radius-lg);
   background: linear-gradient(135deg, var(--color-surface) 0%, var(--color-surface-elevated) 100%);
   color: var(--color-primary);
@@ -255,19 +265,19 @@
 }
 
 %icon-container-sm {
-  @extend %icon-container-base !optional;
+  @extend %icon-container-base;
   width: var(--space-8);
   height: var(--space-8);
 }
 
 %icon-container-md {
-  @extend %icon-container-base !optional;
+  @extend %icon-container-base;
   width: var(--space-10);
   height: var(--space-10);
 }
 
 %icon-container-lg {
-  @extend %icon-container-base !optional;
+  @extend %icon-container-base;
   width: var(--space-12);
   height: var(--space-12);
 }
@@ -281,12 +291,12 @@
 }
 
 %section-title-with-icon {
-  @extend %section-title !optional;
+  @extend %section-title;
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  
-  & i, & .material-symbols-rounded {
+
+  & i, & .icon {
     color: var(--color-primary);
     font-size: var(--icon-lg);
     line-height: 1;
@@ -296,7 +306,7 @@
     justify-content: center;
     margin: 0;
     position: relative;
-    z-index: 1;
+    z-index: var(--z-base);
   }
 }
 
@@ -305,8 +315,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  
-  gap: var(--space-2);
+
+  gap: var(--space-4);
   font-weight: var(--font-medium);
   text-align: center;
   text-decoration: none;
@@ -319,8 +329,9 @@
   outline: none;
   position: relative;
   min-height: var(--touch-target-min);
-  
-  .material-symbols-rounded,
+  padding: var(--space-2) var(--space-4);
+
+  .icon,
   i {
     font-size: calc(1em * var(--φ));
     width: calc(1em * var(--φ));
@@ -329,35 +340,34 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    margin: 0;
     flex-shrink: 0;
     position: relative;
     z-index: 1;
   }
-  
   span {
     line-height: 1;
     vertical-align: baseline;
     display: inline-flex;
     align-items: center;
     position: relative;
-    z-index: 1;
+    z-index: 2;
   }
-  
+
   &:focus {
-    outline: none;
-    outline-offset: var(--space-0-5);
+    outline: 2px solid var(--color-focus);
+    outline-offset: var(--offset-safe);
   }
-  
+
   &:disabled {
     opacity: 0.6;
     cursor: not-allowed;
     pointer-events: none;
   }
-  
+
   @include responsive-max(md) {
     min-height: 2.75rem;
     font-size: var(--text-base);
+    gap: var(--space-2);
   }
 }
 
@@ -366,12 +376,12 @@
   cursor: pointer;
   border: none;
   outline: none;
-  
+
   &:focus {
     outline: none;
     outline-offset: var(--space-0-5);
   }
-  
+
   &:disabled {
     opacity: 0.6;
     cursor: not-allowed;
@@ -381,28 +391,38 @@
 
 %icon-button {
   @extend %button-state-base;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: calc(var(--base-unit) * var(--φ) * 1.55); // φ-based icon button
+  @include flex-center;
+  width: calc(var(--base-unit) * var(--φ) * 1.55);
   height: calc(var(--base-unit) * var(--φ) * 1.55);
   border-radius: var(--radius-lg);
   background: transparent;
   color: var(--color-text);
   border: var(--border-1) solid transparent;
+  margin: var(--space-1);
+  position: relative;
   
+  i,
+  .icon {
+    margin: 0;
+    position: relative;
+    z-index: var(--z-above);
+  }
+
   &:hover {
     background: var(--color-surface);
+    transform: scale(1.05);
   }
-  
+
   &:focus {
     background: var(--color-surface);
     border-color: var(--color-primary);
+    outline: 2px solid var(--color-focus);
+    outline-offset: var(--offset-safe);
   }
 }
 
 %icon-loading {
-  animation: spin calc(var(--duration-normal) * var(--φ) * 6) linear infinite; // φ-based 970ms rotation
+  animation: spin calc(var(--duration-normal) * var(--φ) * 6) linear infinite;
 }
 
 %glass-base {
@@ -448,7 +468,6 @@
   @include form-control;
 }
 
-
 %form-group-base {
   display: flex;
   flex-direction: column;
@@ -460,7 +479,7 @@
   display: flex;
   gap: var(--space-4);
   align-items: flex-start;
-  
+
   @include responsive-max(md) {
     flex-direction: column;
     gap: var(--space-3);
@@ -481,20 +500,20 @@
   text-align: left;
   border-bottom: var(--border-1) solid var(--color-border);
   vertical-align: middle;
-  
+
   &:first-child {
     padding-left: var(--space-6);
   }
-  
+
   &:last-child {
     padding-right: var(--space-6);
   }
 }
 
 %loading-skeleton-base {
-  background: linear-gradient(90deg, 
-    var(--color-surface-elevated), 
-    var(--color-surface), 
+  background: linear-gradient(90deg,
+    var(--color-surface-elevated),
+    var(--color-surface),
     var(--color-surface-elevated)
   );
   background-size: 200% 100%;
@@ -509,12 +528,12 @@
   padding: 0;
   margin: 0;
   list-style: none;
-  
+
   &-item {
     padding: var(--space-3) var(--space-4);
     border-radius: var(--radius-md);
     transition: var(--transition-normal);
-    
+
     &:hover {
       background: var(--color-surface);
     }
@@ -529,7 +548,7 @@
   text-align: center;
   padding: var(--space-12) var(--space-6);
   color: var(--color-text-muted);
-  
+
   & i {
     font-size: var(--space-16);
     margin-bottom: var(--space-4);
@@ -540,31 +559,30 @@
 %scrollable-area-base {
   overflow-y: auto;
   padding-right: var(--space-2);
-  
+
   &::-webkit-scrollbar {
-    width: calc(var(--base-unit) * 0.375); // φ-based scrollbar width
+    width: calc(var(--base-unit) * 0.375);
   }
-  
+
   &::-webkit-scrollbar-track {
     background: var(--color-surface);
     border-radius: var(--radius-full);
   }
-  
+
   &::-webkit-scrollbar-thumb {
     background: var(--color-border);
     border-radius: var(--radius-full);
-    
+
     &:hover {
       background: var(--color-border-dark);
     }
   }
 }
 
-
 %responsive-grid-base {
   display: grid;
   gap: var(--space-4);
-  
+
   @include responsive-max(md) {
     grid-template-columns: 1fr;
     gap: var(--space-3);
@@ -572,23 +590,22 @@
 }
 
 %responsive-grid-auto-fit {
-  @extend %responsive-grid-base !optional;
+  @extend %responsive-grid-base;
   grid-template-columns: repeat(auto-fit, minmax(17.5rem, 1fr));
 }
 
 %responsive-grid-auto-sm {
-  @extend %responsive-grid-base !optional;
+  @extend %responsive-grid-base;
   grid-template-columns: repeat(auto-fit, minmax(12.5rem, 1fr));
 }
 
 %responsive-grid-auto-lg {
-  @extend %responsive-grid-base !optional;
+  @extend %responsive-grid-base;
   grid-template-columns: repeat(auto-fit, minmax(21.875rem, 1fr));
 }
 
 %img-avatar {
-  width: 100%;
-  height: 100%;
+  @include full-size;
   object-fit: cover;
   border-radius: var(--radius-full);
 }
@@ -600,14 +617,12 @@
 }
 
 %img-cover {
-  width: 100%;
-  height: 100%;
+  @include full-size;
   object-fit: cover;
 }
 
 %img-contain {
-  width: 100%;
-  height: 100%;
+  @include full-size;
   object-fit: contain;
 }
 
@@ -620,12 +635,12 @@
 %list-styled {
   margin: 0 0 var(--space-4) 0;
   padding-left: var(--space-6);
-  
+
   li {
     margin-bottom: var(--space-2);
     line-height: var(--leading-relaxed);
     color: var(--color-text-muted);
-    
+
     &:last-child {
       margin-bottom: 0;
     }
@@ -643,18 +658,18 @@
   font-size: inherit;
   line-height: inherit;
   transition: var(--transition-normal);
-  
+
   &:focus {
     outline: none;
     border-color: var(--color-primary);
     box-shadow: 0 0 0 3px var(--color-primary);
   }
-  
+
   &::placeholder {
     color: var(--color-text-subtle);
     opacity: 1;
   }
-  
+
   &:disabled {
     background: var(--color-surface);
     color: var(--color-text-subtle);
@@ -663,17 +678,16 @@
   }
 }
 
-
 %responsive-card-base {
-  @extend %card-base-enhanced !optional;
+  @extend %card-base-enhanced;
   padding: var(--space-3);
   gap: var(--space-3);
-  
+
   @include responsive-min(md) {
     padding: var(--space-4);
     gap: var(--space-4);
   }
-  
+
   @include responsive-min(lg) {
     padding: var(--space-6);
     gap: var(--space-6);
@@ -683,19 +697,19 @@
 %touch-target {
   min-height: var(--touch-target-min);
   min-width: var(--touch-target-min);
-  
+
   @include responsive-min(md) {
-    min-height: 2.5rem; // 40px on desktop is acceptable
+    min-height: 2.5rem;
   }
 }
 
 %touch-friendly-button {
-  @extend %button-base !optional;
-  @extend %touch-target !optional;
+  @extend %button-base;
+  @extend %touch-target;
   padding: var(--space-3) var(--space-4);
-  
+
   @include responsive-min(md) {
-    min-height: 2.5rem; // 40px on desktop is acceptable
+    min-height: 2.5rem;
     padding: var(--space-3) var(--space-6);
   }
   &:focus-visible {
@@ -705,22 +719,22 @@
 }
 
 %mobile-first-form {
-  @extend %form-base !optional;
+  @extend %form-base;
   padding: var(--space-4);
   gap: var(--space-4);
-  
+
   @include responsive-min(md) {
     padding: var(--space-6);
     gap: var(--space-6);
   }
-  
+
   @include responsive-min(lg) {
     padding: var(--space-8);
     gap: var(--space-8);
   }
 }
 
-%dashboard-grid-adaptive {
+%dashboargrid-adaptive {
   display: grid;
   gap: var(--space-4);
   padding: var(--space-4);
@@ -728,13 +742,13 @@
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-lg);
   border: var(--border-1) solid var(--color-border);
-  
+
   @include responsive-min(md) {
     gap: var(--space-6);
     padding: var(--space-6);
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   }
-  
+
   @include responsive-min(lg) {
     gap: var(--space-8);
     padding: var(--space-8);
@@ -743,11 +757,11 @@
 }
 
 %table-enhanced {
-  @extend %table-base !optional;
+  @extend %table-base;
   background: var(--color-surface-elevated);
   box-shadow: var(--shadow-md);
   border: var(--border-1) solid var(--color-border);
-  
+
   thead th {
     background: var(--color-surface);
     font-weight: var(--font-semibold);
@@ -757,14 +771,14 @@
     letter-spacing: var(--tracking-wide);
     padding: var(--space-4) var(--space-6);
   }
-  
+
   tbody tr {
     transition: var(--transition-normal);
-    
+
     &:hover {
       background: var(--color-surface);
     }
-    
+
     &:not(:last-child) {
       border-bottom: var(--border-1) solid var(--color-border);
     }
@@ -772,19 +786,19 @@
 }
 
 %form-elevated {
-  @extend %mobile-first-form !optional;
+  @extend %mobile-first-form;
   background: var(--color-surface-elevated);
   box-shadow: var(--shadow-lg);
   border: var(--border-1) solid var(--color-border);
-  
+
   .form-section {
     padding: var(--space-6);
     border-bottom: var(--border-1) solid var(--color-border);
-    
+
     &:last-child {
       border-bottom: none;
     }
-    
+
     &-title {
       font-size: var(--text-lg);
       font-weight: var(--font-semibold);
@@ -813,7 +827,7 @@
     outline: none;
     outline-offset: var(--space-0-5);
   }
-  
+
   &:focus:not(:focus-visible) {
     outline: none;
   }
@@ -822,19 +836,19 @@
 %spacing-default {
   margin-bottom: var(--space-6);
   gap: var(--space-2);
-  
+
   .label {
     margin-bottom: var(--space-2);
     font-size: var(--text-sm);
   }
-  
+
   .input,
   .textarea,
   .select {
     padding: var(--space-4) var(--space-3);
     min-height: var(--form-element-min-height);
   }
-  
+
   .help,
   .error {
     margin-top: var(--space-2);
@@ -844,12 +858,12 @@
 %spacing-compact {
   margin-bottom: var(--space-4);
   gap: var(--space-1);
-  
+
   .label {
     margin-bottom: var(--space-1);
     font-size: var(--text-xs);
   }
-  
+
   .input,
   .textarea,
   .select {
@@ -857,16 +871,16 @@
     min-height: 3rem;
     font-size: var(--text-sm);
   }
-  
+
   .help,
   .error {
     margin-top: var(--space-1);
     font-size: var(--text-xs);
   }
-  
+
   .icon-container {
     width: var(--space-10);
-    
+
     > i {
       font-size: var(--icon-sm);
     }
@@ -875,14 +889,14 @@
 
 %spacing-minimal {
   margin-bottom: var(--space-2);
-  gap: calc(var(--base-unit) * 0.125); // φ-based micro gap
-  
+  gap: calc(var(--base-unit) * 0.125);
+
   .label {
     margin-bottom: 2px;
     font-size: var(--text-xs);
     font-weight: var(--font-medium);
   }
-  
+
   .input,
   .textarea,
   .select {
@@ -890,21 +904,21 @@
     min-height: 2.5rem;
     font-size: var(--text-sm);
   }
-  
+
   .help,
   .error {
     margin-top: 2px;
     font-size: var(--text-xs);
   }
-  
+
   .icon-container {
     width: var(--space-8);
-    
+
     > i {
       font-size: var(--icon-sm);
     }
   }
-  
+
   .textarea {
     min-height: var(--space-16);
   }
@@ -914,22 +928,22 @@
   .fields {
     gap: var(--space-2);
   }
-  
+
   .header {
     margin-bottom: var(--space-4);
   }
-  
+
   .actions {
     margin-top: var(--space-4);
     padding-top: var(--space-3);
     gap: var(--space-2);
   }
-  
+
   .section {
     padding: var(--space-3);
     margin-bottom: var(--space-4);
   }
-  
+
   .grid-2,
   .grid-3,
   .grid-4 {
@@ -941,47 +955,47 @@
   .fields {
     gap: var(--space-1);
   }
-  
+
   .header {
     margin-bottom: var(--space-2);
-    
+
     .title {
       margin-bottom: var(--space-1);
       font-size: var(--text-lg);
     }
-    
+
     .description {
       font-size: var(--text-sm);
       line-height: 1.3;
     }
   }
-  
+
   .actions {
     margin-top: var(--space-2);
     padding-top: var(--space-2);
     gap: var(--space-2);
   }
-  
+
   .section {
     padding: var(--space-2);
     margin-bottom: var(--space-2);
-    
+
     &-title {
       font-size: var(--text-base);
       margin-bottom: var(--space-2);
     }
   }
-  
+
   .grid-2,
   .grid-3,
   .grid-4 {
     gap: var(--space-1) var(--space-2);
   }
-  
+
   .group {
     margin-bottom: var(--space-2);
     gap: var(--space-1);
-    
+
     &-label {
       margin-bottom: 1px;
       font-size: var(--text-xs);
@@ -990,18 +1004,18 @@
 }
 
 %form-comfortable {
-  @extend %spacing-default !optional;
+  @extend %spacing-default;
 }
 
 %form-container-comfortable {
   .fields {
     gap: var(--space-4);
   }
-  
+
   .header {
     margin-bottom: var(--space-6);
   }
-  
+
   .actions {
     margin-top: var(--space-6);
     padding-top: var(--space-4);
@@ -1010,19 +1024,19 @@
 }
 
 %form-dense {
-  @extend %spacing-compact !optional;
+  @extend %spacing-compact;
 }
 
 %form-container-dense {
-  @extend %container-compact !optional;
+  @extend %container-compact;
 }
 
 %form-ultra-dense {
-  @extend %spacing-minimal !optional;
+  @extend %spacing-minimal;
 }
 
 %form-container-ultra-dense {
-  @extend %container-minimal !optional;
+  @extend %container-minimal;
 }
 
 %sr-only {
@@ -1038,13 +1052,7 @@
 }
 
 %fixed-full {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  width: 100%;
-  height: 100%;
+  @include fixed-cover;
 }
 
 .app-shell {
@@ -1053,13 +1061,13 @@
   position: relative;
   overflow-x: hidden;
   overflow-y: auto;
-  grid-template-areas: 
+  grid-template-areas:
     "header header"
     "sidebar main";
   grid-template-columns: var(--sidebar-width) 1fr;
   grid-template-rows: var(--header-height) 1fr;
   @include responsive-max(lg) {
-    grid-template-areas: 
+    grid-template-areas:
       "header"
       "main";
     grid-template-columns: 1fr;
@@ -1075,15 +1083,14 @@
   right: 0;
   height: var(--header-height);
   z-index: var(--z-header);
-  
+
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  
+  @include flex-between;
+
   background: var(--color-surface-elevated);
   backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--color-border);
-  
+
   > * {
     display: flex;
     align-items: center;
@@ -1099,26 +1106,26 @@
   bottom: 0;
   width: var(--sidebar-width);
   z-index: var(--z-sidebar);
-  
+
   display: flex;
   flex-direction: column;
   overflow-y: auto;
   overflow-x: hidden;
-  
+
   background: var(--color-surface-elevated);
   backdrop-filter: blur(12px);
   border-right: 1px solid var(--color-border);
-  
+
   transition: all var(--duration-normal) var(--ease-out);
-  
-  &.collapsed {
+
+  &-collapsed {
     width: var(--sidebar-width-collapsed);
   }
-  
+
   @include responsive-max(lg) {
     transform: translateX(-100%);
-    
-    &.open {
+
+    &-open {
       transform: translateX(0);
     }
   }
@@ -1128,20 +1135,20 @@
   grid-area: main;
   position: relative;
   overflow-x: hidden;
-  
+
   padding-top: var(--header-height);
   min-height: calc(100vh - var(--header-height));
-  
+
   @include responsive-min(lg) {
     padding-left: var(--sidebar-width);
     padding-right: var(--space-6);
     padding-top: calc(var(--header-height) + var(--space-6));
-    
+
     .app-shell.sidebar-collapsed & {
       padding-left: var(--sidebar-width-collapsed);
     }
   }
-  
+
   @include responsive-max(lg) {
     padding-left: var(--space-4);
     padding-right: var(--space-4);
@@ -1152,14 +1159,14 @@
 %nav-item {
   @include app-interaction(subtle);
   @include app-focus();
-  
+
   display: flex;
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
   margin: var(--space-1) var(--space-2);
   border-radius: var(--radius-lg);
-  
+
   color: var(--color-text);
   text-decoration: none;
   font-size: var(--text-sm);
@@ -1193,9 +1200,7 @@
 }
 
 .header-center {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  @include flex-center;
   flex: 2;
   height: 100%;
 }
@@ -1212,7 +1217,7 @@
 
 .app-logo {
   @include app-interaction(scale);
-  
+
   display: flex;
   align-items: center;
   gap: var(--space-3);
@@ -1220,7 +1225,7 @@
   text-decoration: none;
   font-size: var(--text-lg);
   font-weight: var(--font-bold);
-  
+
   img {
     height: var(--logo-height);
     width: auto;
@@ -1228,14 +1233,11 @@
   }
 }
 
-
 %action-button {
   @include app-interaction(subtle);
   @include app-focus();
-  
-  display: flex;
-  align-items: center;
-  justify-content: center;
+
+  @include flex-center;
   width: var(--space-10);
   height: var(--space-10);
   border-radius: var(--radius-lg);
@@ -1273,7 +1275,7 @@
     opacity: 0;
     visibility: hidden;
     transition: all var(--duration-normal) var(--ease-out);
-    
+
     &.active {
       opacity: 1;
       visibility: visible;
@@ -1289,7 +1291,7 @@
     background: var(--color-primary-light);
     border-color: var(--color-primary);
   }
-  
+
   &:hover:not(.active) {
     background: var(--color-surface);
     color: var(--color-text);
@@ -1300,7 +1302,7 @@
   @include app-interaction(subtle);
   @include app-focus();
   position: relative;
-  
+
   &:disabled {
     opacity: var(--opacity-disabled);
     cursor: not-allowed;
@@ -1312,19 +1314,19 @@
 %icon-text-base {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-3);
-  
-  & i, & .material-symbols-rounded {
+  gap: var(--space-4);
+
+  & i, & .icon {
     line-height: 1;
     flex-shrink: 0;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    margin: 0;
+    margin: 0 var(--space-1) 0 0;
     position: relative;
-    z-index: 1;
+    z-index: var(--z-above);
   }
-  
+
   &-xs { gap: var(--space-1); }
   &-sm { gap: var(--space-2); }
   &-lg { gap: var(--space-4); }
@@ -1332,16 +1334,15 @@
 }
 
 %header-with-icon {
-  @extend %icon-text-base !optional;
-  
+  @extend %icon-text-base;
+
   & h1, & h2, & h3, & h4, & h5, & h6 {
     margin: 0;
     line-height: 1.2;
   }
-  
-  & i, & .material-symbols-rounded {
+
+  & i, & .icon {
     font-size: var(--icon-lg);
     color: var(--color-primary);
   }
 }
-

@@ -1,23 +1,43 @@
 @use '../abstracts' as *;
 
+@mixin toggle-semantic-variant($color, $hover-color: null) {
+  &-checked {
+    background: var(--color-#{$color});
+    border-color: var(--color-#{$color});
+
+    &:hover:not(.toggle-track-disabled) {
+      @if $hover-color {
+        background: var(--color-#{$hover-color});
+      } @else {
+        background: var(--color-#{$color}-hover);
+      }
+    }
+  }
+
+  .toggle-thumb-with-icon {
+    .toggle-track-checked & {
+      color: var(--color-text-inverse);
+    }
+  }
+}
 
 .toggle {
   &-container {
     @include flex-center;
     gap: var(--space-3);
-    
-    &.toggle-disabled {
+
+    &-disabled {
       opacity: 0.6;
       cursor: not-allowed;
     }
-    
-    &.toggle-error {
+
+    &-error {
       .toggle-track {
         @include status-variant(error);
       }
     }
   }
-  
+
   &-track {
     position: relative;
     border-radius: var(--radius-full);
@@ -25,173 +45,94 @@
     background: var(--color-surface);
     transition: var(--transition-normal);
     cursor: pointer;
-    
+
     &:hover:not(.toggle-track-disabled) {
       border-color: var(--color-focus);
     }
-    
+
     &:focus-within {
       @include focus-ring;
     }
-    
+
     &-small {
       width: 2.5rem;
       height: 1.25rem;
     }
-    
+
     &-medium {
       width: 3rem;
       height: 1.5rem;
     }
-    
+
     &-large {
       width: 3.5rem;
       height: 1.75rem;
     }
-    
+
     &-checked {
       background: var(--color-primary);
       border-color: var(--color-primary);
-      
+
       &:hover:not(.toggle-track-disabled) {
         background: var(--color-primary-hover);
       }
     }
-    
-    // Semantic color variants
-    &-primary {
-      &.toggle-track-checked {
-        background: var(--color-primary);
-        border-color: var(--color-primary);
-        
-        &:hover:not(.toggle-track-disabled) {
-          background: var(--color-primary-hover);
-        }
-      }
-      
-      .toggle-thumb-with-icon {
-        .toggle-track-checked & {
-          color: var(--color-text-inverse);
-        }
-      }
+
+&-primary {
+      @include toggle-semantic-variant(primary);
     }
-    
+
     &-success {
-      &.toggle-track-checked {
-        background: var(--color-success);
-        border-color: var(--color-success);
-        
-        &:hover:not(.toggle-track-disabled) {
-          background: var(--color-success-dark);
-        }
-      }
-      
-      .toggle-thumb-with-icon {
-        .toggle-track-checked & {
-          color: var(--color-text-inverse);
-        }
-      }
+      @include toggle-semantic-variant(success, success-dark);
     }
-    
+
     &-warning {
-      &.toggle-track-checked {
-        background: var(--color-warning);
-        border-color: var(--color-warning);
-        
-        &:hover:not(.toggle-track-disabled) {
-          background: var(--color-warning-dark);
-        }
-      }
-      
-      .toggle-thumb-with-icon {
-        .toggle-track-checked & {
-          color: var(--color-text-inverse);
-        }
-      }
+      @include toggle-semantic-variant(warning, warning-dark);
     }
-    
+
     &-error {
-      &.toggle-track-checked {
-        background: var(--color-error);
-        border-color: var(--color-error);
-        
-        &:hover:not(.toggle-track-disabled) {
-          background: var(--color-error-dark);
-        }
-      }
-      
-      .toggle-thumb-with-icon {
-        .toggle-track-checked & {
-          color: var(--color-text-inverse);
-        }
-      }
+      @include toggle-semantic-variant(error, error-dark);
     }
-    
+
     &-info {
-      &.toggle-track-checked {
-        background: var(--color-info);
-        border-color: var(--color-info);
-        
-        &:hover:not(.toggle-track-disabled) {
-          background: var(--color-info-dark);
-        }
-      }
-      
-      .toggle-thumb-with-icon {
-        .toggle-track-checked & {
-          color: var(--color-text-inverse);
-        }
-      }
+      @include toggle-semantic-variant(info, info-dark);
     }
-    
+
     &-ghost {
       background: transparent;
       border-color: var(--color-border);
-      
-      &.toggle-track-checked {
+
+      &-checked {
         background: var(--color-surface-elevated);
         border-color: var(--color-primary);
         box-shadow: 0 0 0 2px var(--color-primary-light);
       }
-      
-      &:hover:not(.toggle-track-disabled) {
+
+      &:hover:not(.toggle-track-disabled):not(.toggle-track-ghost-checked) {
         background: var(--color-surface-elevated);
         border-color: var(--color-primary);
-        
-        &.toggle-track-checked {
-          background: var(--color-primary-light);
-        }
+      }
+
+      &:hover.toggle-track-ghost-checked:not(.toggle-track-disabled) {
+        background: var(--color-primary-light);
       }
     }
-    
+
     &-neutral {
-      &.toggle-track-checked {
-        background: var(--color-text-muted);
-        border-color: var(--color-text-muted);
-        
-        &:hover:not(.toggle-track-disabled) {
-          background: var(--color-text);
-        }
-      }
-      
-      .toggle-thumb-with-icon {
-        .toggle-track-checked & {
-          color: var(--color-text-inverse);
-        }
-      }
+      @include toggle-semantic-variant(text-muted, text);
     }
-    
+
     &-disabled {
       cursor: not-allowed;
       opacity: 0.5;
-      
+
       &:hover {
         background: inherit;
         border-color: inherit;
       }
     }
   }
-  
+
   &-thumb {
     position: absolute;
     background: var(--color-surface-elevated);
@@ -199,45 +140,45 @@
     box-shadow: var(--shadow-sm);
     transition: var(--transition-normal);
     @include flex-center;
-    
+
     &-small {
       width: 0.875rem;
       height: 0.875rem;
       top: 1px;
       left: 1px;
     }
-    
+
     &-medium {
       width: 1rem;
       height: 1rem;
       top: 2px;
       left: 2px;
     }
-    
+
     &-large {
       width: 1.125rem;
       height: 1.125rem;
       top: 3px;
       left: 2px;
     }
-    
+
     &-checked {
-      &.toggle-thumb-small {
+      &-small {
         transform: translateX(1.25rem);
       }
-      
-      &.toggle-thumb-medium {
+
+      &-medium {
         transform: translateX(1.5rem);
       }
-      
-      &.toggle-thumb-large {
+
+      &-large {
         transform: translateX(1.75rem);
       }
     }
-    
+
     &-with-icon {
       color: var(--color-text-muted);
-      
+
       .toggle-track-checked & {
         color: var(--color-primary);
       }
@@ -255,13 +196,13 @@
 @media (prefers-contrast: high) {
   .toggle-track {
     border-width: 3px;
-    
+
     &-checked {
       background: var(--color-text-inverse);
       border-color: var(--color-text);
     }
   }
-  
+
   .toggle-thumb {
     border: 2px solid var(--color-text);
   }

@@ -1,23 +1,81 @@
 @use '../abstracts' as *;
 @use 'sass:list';
 
-// φ-based icon sizes (already defined in _variables.scss)
+i {
+  @extend %icon-component-base;
+}
+
 $icon-sizes: (
-  'xs': var(--icon-xs),     // φ^-1 = 0.618rem
-  'sm': var(--icon-sm),     // φ^0 = 1rem  
-  'base': var(--icon-base), // φ^0.5 ≈ 1.272rem
-  'lg': var(--icon-lg),     // φ^1 = 1.618rem
-  'xl': var(--icon-xl),     // φ^1.5 ≈ 2.058rem  
-  '2xl': var(--icon-2xl),   // φ^2 = 2.618rem
-  '3xl': var(--icon-3xl),   // φ^2.5 ≈ 3.33rem
-  '4xl': var(--icon-4xl),   // φ^3 = 4.236rem
-  '5xl': var(--icon-5xl)    // φ^3.5 ≈ 5.388rem
+  'xs': var(--icon-xs),
+  'sm': var(--icon-sm),
+  'base': var(--icon-base),
+  'lg': var(--icon-lg),
+  'xl': var(--icon-xl),
+  '2xl': var(--icon-2xl),
+  '3xl': var(--icon-3xl),
+  '4xl': var(--icon-4xl),
+  '5xl': var(--icon-5xl)
 );
 
+$icon-colors: (
+  'primary': var(--color-primary),
+  'secondary': var(--color-text-muted),
+  'tertiary': var(--color-text-subtle),
+  'success': var(--color-success),
+  'warning': var(--color-warning),
+  'error': var(--color-error),
+  'danger': var(--color-error),
+  'info': var(--color-info),
+  'muted': var(--color-text-muted),
+  'inverse': var(--color-text-inverse)
+);
+
+$icon-gaps: (
+  'xs': var(--space-1),
+  'sm': var(--space-1-5),
+  'base': var(--space-2-5),
+  'lg': var(--space-4),
+  'xl': var(--space-6)
+);
+
+// Generic icon class - uses Material Symbols by default but is library agnostic
 .icon {
-  @extend %icon-base; // Provides: display, align, justify, line-height, flex-shrink, transitions, φ-based defaults
+  @extend %icon-material-symbols;
+  @extend %icon-component-base;
   
-  // φ-based size variants (consolidated from duplicates)
+  font-size: var(--icon-base);
+  width: 1em;
+  height: 1em;
+  line-height: 1;
+  vertical-align: middle;
+  
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  
+  // Font variation settings for Material Symbols
+  [data-theme="dark"] & {
+    opacity: 0.95;
+    font-variation-settings:
+      'FILL' 0,
+      'wght' 300,
+      'GRAD' 25,
+      'opsz' 24;
+  }
+  
+  &-thin    { font-variation-settings: 'FILL' 0, 'wght' 100, 'GRAD' 0, 'opsz' 24; }
+  &-light   { font-variation-settings: 'FILL' 0, 'wght' 200, 'GRAD' 0, 'opsz' 24; }
+  &-regular { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+  &-medium  { font-variation-settings: 'FILL' 0, 'wght' 500, 'GRAD' 0, 'opsz' 24; }
+  &-bold    { font-variation-settings: 'FILL' 0, 'wght' 700, 'GRAD' 0, 'opsz' 24; }
+  
+  &-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+  &-filled   { font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+  
+  &-low-emphasis  { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' -25, 'opsz' 24; }
+  &-high-emphasis { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 200, 'opsz' 24; }
+
+  // Size variants
   @each $name, $size in $icon-sizes {
     &-#{$name} {
       font-size: #{$size};
@@ -26,39 +84,23 @@ $icon-sizes: (
     }
   }
 
-  $icon-colors: (
-    'primary': var(--color-primary),
-    'secondary': var(--color-text-muted), 
-    'tertiary': var(--color-text-subtle),
-    'success': var(--color-success),
-    'warning': var(--color-warning),
-    'error': var(--color-error),
-    'danger': var(--color-error),
-    'info': var(--color-info),
-    'muted': var(--color-text-muted),
-    'inverse': var(--color-text-inverse)
-  );
-
+  // Color variants
   @each $name, $color in $icon-colors {
     &-#{$name} { color: #{$color}; }
   }
 
-  // Interactive states (using existing %icon-interactive extend)
   &-interactive {
-    @extend %icon-interactive; // Provides: cursor, transitions, hover/active states
-    
-    &:hover { transform: scale(calc(1 + var(--φ-inv) * 0.1)); } // φ-based 1.062 scale
-    &:active { transform: scale(var(--φ-inv)); } // φ-based 0.618 scale  
+    @extend %icon-interactive;
+    &:hover { transform: scale(calc(1 + var(--φ-inv) * 0.1)); }
+    &:active { transform: scale(var(--φ-inv)); }
   }
-  
-  
-  // Status icons with automatic colors
+
   &-status {
     &-success { color: var(--color-success); }
     &-warning { color: var(--color-warning); }
     &-error { color: var(--color-error); }
     &-info { color: var(--color-info); }
-    &-pending { 
+    &-pending {
       color: var(--color-warning);
       animation: pulse 2s ease-in-out infinite;
     }
@@ -67,73 +109,118 @@ $icon-sizes: (
   }
 
   &-circle {
-    @extend %icon-container-base; // Provides: display, align, justify, gradient bg, transitions
+    @extend %icon-container-base;
     border-radius: var(--radius-full);
-    
-    // φ-based container sizes (using existing extends)
-    &-sm { 
-      @extend %icon-container-sm; // var(--space-8) = φ^2 sized 
-      padding: var(--space-1); // φ^-3 padding
+
+    &-sm {
+      @extend %icon-container-sm;
+      padding: var(--space-1);
     }
-    &-md { 
-      @extend %icon-container-md; // var(--space-10) = φ^2 sized
-      padding: var(--space-2); // φ^-1.5 padding  
+    &-md {
+      @extend %icon-container-md;
+      padding: var(--space-2);
     }
-    &-lg { 
-      @extend %icon-container-lg; // var(--space-12) = φ^2.5 sized
-      padding: var(--space-3); // φ^-0.5 padding
+    &-lg {
+      @extend %icon-container-lg;
+      padding: var(--space-3);
     }
   }
 
   &-muted { color: var(--color-text-muted); opacity: 0.7; }
 
   &-button {
-    @extend %icon-button; // Provides: φ-based sizing, states, transitions, borders
-    
-    // Additional states for comprehensive button behavior
+    @extend %icon-button;
+
     &:disabled {
       opacity: var(--opacity-disabled);
       cursor: not-allowed;
       pointer-events: none;
     }
-    
+
     &:focus-visible {
       outline: var(--state-focus-ring);
       outline-offset: 2px;
     }
-    
-    &.loading {
+
+    &-loading {
       pointer-events: none;
-      
-      .icon { 
-        @extend %icon-loading; // Will be defined below
+      .icon {
+        @extend %icon-loading;
       }
     }
   }
 
   &-loading {
-    animation: spin calc(var(--duration-normal) * var(--φ) * 6) linear infinite; // φ-based 970ms rotation
+    animation: spin calc(var(--duration-normal) * var(--φ) * 6) linear infinite;
   }
-  
+
   &-disabled {
     opacity: var(--opacity-disabled);
     pointer-events: none;
     cursor: not-allowed;
   }
-  
+
   &-focus {
     outline: var(--state-focus-ring);
     outline-offset: 2px;
   }
-}
 
-.icon {
   &-inherit { color: inherit; }
   &-current { color: currentColor; }
+
+  &-container {
+    @extend %icon-container-base;
+
+    &-xl {
+      @extend %icon-container-base;
+      width: var(--space-12);
+      height: var(--space-12);
+    }
+  }
+
+  &[aria-hidden="true"] {
+    pointer-events: none;
+  }
+
+  &[aria-label],
+  &[role="img"] {
+    &:focus-visible {
+      outline: 2px solid var(--color-primary);
+      outline-offset: 2px;
+      border-radius: var(--radius-sm);
+    }
+  }
+
+  @media (prefers-contrast: high) {
+    font-variation-settings:
+      'FILL' 1,
+      'wght' 700,
+      'GRAD' 200,
+      'opsz' 24;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    &-loading,
+    &-interactive {
+      animation: none;
+      transition: none;
+      transform: none;
+
+      &:hover, &:active {
+        transform: none;
+      }
+    }
+  }
+
+  &-interactive,
+  &-button {
+    min-width: var(--touch-target-min);
+    min-height: var(--touch-target-min);
+  }
 }
 
 .icon-material {
-  font-family: 'Material Icons';
+  font-family: 'Material Symbols Rounded';
   font-weight: normal;
   font-style: normal;
   font-size: 24px;
@@ -149,164 +236,31 @@ $icon-sizes: (
   word-wrap: normal;
   direction: ltr;
   flex-shrink: 0;
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
   -webkit-font-feature-settings: 'liga';
   -webkit-font-smoothing: antialiased;
 }
-
-// Material Symbols 3.0 with φ-based sizing and advanced controls
-.material-symbols-rounded {
-  @extend %icon-base;
-  font-family: 'Material Symbols Rounded';
-  font-size: var(--icon-base);
-  width: 1em;
-  height: 1em;
-  line-height: 1;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  vertical-align: middle;
-  position: relative;
-  z-index: 1;
-  
-  // Material Symbols 3.0 Variable Font Controls
-  font-variation-settings:
-    'FILL' 0,    // 0 (outlined) to 1 (filled)
-    'wght' 400,  // 100-700 weight range 
-    'GRAD' 0,    // -25 to 200 grade range
-    'opsz' 24;   // 20-48 optical size range
-  
-  // Advanced font rendering
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-rendering: optimizeLegibility;
-  -webkit-font-feature-settings: 'liga';
-  font-feature-settings: 'liga';
-  
-  // Theme adaptations
-  [data-theme="dark"] & {
-    opacity: 0.95;
-    font-variation-settings:
-      'FILL' 0,
-      'wght' 300, // Lighter weight for dark theme
-      'GRAD' 25,  // Slightly higher grade for dark theme  
-      'opsz' 24;
-  }
-  
-  // Weight variants (Material Symbols 3.0)
-  &-thin    { font-variation-settings: 'FILL' 0, 'wght' 100, 'GRAD' 0, 'opsz' 24; }
-  &-light   { font-variation-settings: 'FILL' 0, 'wght' 200, 'GRAD' 0, 'opsz' 24; }
-  &-regular { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
-  &-medium  { font-variation-settings: 'FILL' 0, 'wght' 500, 'GRAD' 0, 'opsz' 24; }
-  &-bold    { font-variation-settings: 'FILL' 0, 'wght' 700, 'GRAD' 0, 'opsz' 24; }
-  
-  // Fill variants
-  &-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
-  &-filled   { font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
-  
-  // Grade variants (for emphasis)
-  &-low-emphasis  { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' -25, 'opsz' 24; }
-  &-high-emphasis { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 200, 'opsz' 24; }
-}
-
-// φ-based icon gaps for harmonious spacing
-$icon-gaps: (
-  'xs': var(--space-1),   // φ^-3 ≈ 0.236rem
-  'sm': var(--space-1-5), // φ^-2 ≈ 0.382rem 
-  'base': var(--space-2-5), // φ^-1 = 0.618rem
-  'lg': var(--space-4),   // φ^0 = 1rem
-  'xl': var(--space-6)    // φ^1 = 1.618rem
-);
 
 .icon-text {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2-5);
   position: relative;
-  
+
   @each $name, $gap in $icon-gaps {
     &-#{$name} { gap: #{$gap}; }
   }
-  
-  i, .material-symbols-rounded {
+
+  .icon,
+  i {
     flex-shrink: 0;
     position: relative;
-    z-index: 1;
+    z-index: var(--z-base);
   }
-  
+
   span, .text {
     position: relative;
-    z-index: 1;
+    z-index: var(--z-base);
     line-height: 1.2;
-  }
-}
-
-// Comprehensive accessibility support
-.icon {
-  // Screen reader support
-  &[aria-hidden="true"] {
-    // Decorative icons hidden from screen readers
-    pointer-events: none;
-  }
-  
-  &[aria-label], 
-  &[role="img"] {
-    // Informative icons with labels - ensure proper focus
-    &:focus-visible {
-      outline: 2px solid var(--color-primary);
-      outline-offset: 2px;
-      border-radius: var(--radius-sm);
-    }
-  }
-  
-  // High contrast mode support
-  @media (prefers-contrast: high) {
-    &, .material-symbols-rounded {
-      font-variation-settings:
-        'FILL' 1,    // Always filled for high contrast
-        'wght' 700,  // Bold weight for visibility
-        'GRAD' 200,  // High grade for maximum contrast
-        'opsz' 24;
-    }
-  }
-  
-  // Reduced motion support
-  @media (prefers-reduced-motion: reduce) {
-    &-loading, 
-    &-interactive {
-      animation: none;
-      transition: none;
-      transform: none;
-      
-      &:hover, &:active {
-        transform: none;
-      }
-    }
-  }
-  
-  // Focus management for interactive icons
-  &-interactive,
-  &-button {
-    // Ensure minimum touch target size (44px minimum)
-    min-width: var(--touch-target-min);
-    min-height: var(--touch-target-min);
-  }
-}
-
-// Simplified container system - use existing bg- utilities and %icon-container extends
-// φ-based sizes already defined in extends: %icon-container-sm/md/lg
-.icon {
-  &-container {
-    @extend %icon-container-base;
-    
-    // Additional XL size using φ-based scaling
-    &-xl {
-      @extend %icon-container-base;
-      width: var(--space-12);  // φ^2.5 ≈ 3.33rem
-      height: var(--space-12);
-    }
-    
-    // Use existing bg- utility classes for colors (already handles text-inverse)
-    // Examples: .icon-container.bg-primary, .icon-container.bg-success
-    // This eliminates duplicate color definitions and leverages existing system
   }
 }
