@@ -35,6 +35,17 @@ git submodule add https://github.com/RaRdq/RR.Blazor.git
 ### 2. Register services
 
 ```csharp
+// Program.cs (for Blazor Server projects)
+var builder = WebApplication.CreateBuilder(args);
+
+// REQUIRED: Enable static web assets from referenced projects
+builder.WebHost.UseStaticWebAssets();
+
+builder.Services.AddRRBlazor();
+```
+
+For Blazor WebAssembly projects:
+```csharp
 // Program.cs
 builder.Services.AddRRBlazor();
 ```
@@ -470,6 +481,22 @@ Provide @RR.Blazor/wwwroot/rr-ai-components.json and @RR.Blazor/wwwroot/rr-ai-st
 /rr-blazor-theme - Configure theme and styling
 /rr-blazor-component - Generate new component following patterns
 ```
+
+## Troubleshooting
+
+### Static Files Returning 404 Errors
+
+**Problem**: CSS/JS files from `_content/RR.Blazor/` return 404 errors
+
+**Solution for Blazor Server projects**:
+```csharp
+// Program.cs - Add this BEFORE builder.Build()
+builder.WebHost.UseStaticWebAssets();
+```
+
+- CSS should load from: `http[s]://yourapp/_content/RR.Blazor/css/main.css`
+- JS should load from: `http[s]://yourapp/_content/RR.Blazor/js/rr-blazor.js`
+
 
 ## License
 
