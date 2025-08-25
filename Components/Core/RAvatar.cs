@@ -66,8 +66,6 @@ namespace RR.Blazor.Components.Core
         [AIParameter(Hint = "Set to true for interactive avatars that open profiles or menus")]
         public bool IsClickable { get; set; }
         
-        [Parameter] public string Class { get; set; }
-        
         [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
 
         protected override void BuildRenderTree(RenderTreeBuilder builder)
@@ -210,7 +208,7 @@ namespace RR.Blazor.Components.Core
                 _ => "text-lg"
             };
             
-            return $"material-symbols-rounded {iconSizeClass} text-center";
+            return $"icon {iconSizeClass} text-center";
         }
         
         private string GetTextClasses()

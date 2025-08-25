@@ -4,6 +4,8 @@ namespace RR.Blazor.Enums
     {
         Button,
         Submit,
-        Reset
+        Reset,
+        Primary,
+        Secondary
     }
 }

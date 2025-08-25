@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Components;
 using RR.Blazor.Enums;
 using RR.Blazor.Services;
+using RR.Blazor.Templates;
 using System.Linq.Expressions;
 
 namespace RR.Blazor.Models;
@@ -25,6 +26,16 @@ public class ColumnDefinition<TItem> where TItem : class
     public RenderFragment<TItem> CustomTemplate { get; set; }
     public RenderFragment HeaderTemplate { get; set; }
     
+    // Universal Templates
+    public BadgeTemplate<TItem> BadgeTemplate { get; set; }
+    public CurrencyTemplate<TItem> CurrencyTemplate { get; set; }
+    public StackTemplate<TItem> StackTemplate { get; set; }
+    public GroupTemplate<TItem> GroupTemplate { get; set; }
+    public AvatarTemplate<TItem> AvatarTemplate { get; set; }
+    public ProgressTemplate<TItem> ProgressTemplate { get; set; }
+    public RatingTemplate<TItem> RatingTemplate { get; set; }
+    public Templates.Actions.ActionsTemplate<TItem> ActionsTemplate { get; set; }
+    
     // Formatting
     public string Format { get; set; }
     public string EmptyText { get; set; } = "-";
@@ -34,13 +45,34 @@ public class ColumnDefinition<TItem> where TItem : class
     public bool Sortable { get; set; } = true;
     public bool Filterable { get; set; } = true;
     public bool Searchable { get; set; } = true;
-    public FilterType FilterType { get; set; } = FilterType.Auto;
+    public FilterType? FilterType { get; set; } = null;
+    public string Field { get; set; }
+    public List<FilterOperator> SupportedOperators { get; set; }
     
     // Layout
     public string Width { get; set; }
     public string MinWidth { get; set; }
     public string MaxWidth { get; set; }
     public ColumnAlign Align { get; set; } = ColumnAlign.Auto;
+    
+    // Column Resizing - Radzen-inspired
+    public bool Resizable { get; set; } = true;
+    public string MinResizeWidth { get; set; } = "50px";
+    public string MaxResizeWidth { get; set; } = "500px";
+    public EventCallback<ColumnResizeEventArgs> OnResize { get; set; }
+    
+    // Sticky Columns
+    public StickyColumnType Sticky { get; set; } = StickyColumnType.None;
+    public int StickyOrder { get; set; } = 0;
+    
+    // Row Selection Enhancement
+    public bool EnableRowSelection { get; set; } = true;
+    public RowSelectionMode SelectionMode { get; set; } = RowSelectionMode.Auto;
+    
+    // Animation and Visual Effects
+    public bool EnableHoverAnimation { get; set; } = true;
+    public string HoverEffect { get; set; } = "fade";
+    public TimeSpan AnimationDuration { get; set; } = TimeSpan.FromMilliseconds(200);
     
     // Styling
     public string HeaderClass { get; set; }
@@ -62,7 +94,32 @@ public class ColumnDefinition<TItem> where TItem : class
             return builder => CustomTemplate(item)(builder);
         }
         
-        // Use built-in template rendering based on Template property
+        // Try universal templates first
+        if (BadgeTemplate != null)
+            return BadgeTemplate.Render(item);
+        
+        if (CurrencyTemplate != null)
+            return CurrencyTemplate.Render(item);
+            
+        if (StackTemplate != null)
+            return StackTemplate.Render(item);
+            
+        if (GroupTemplate != null)
+            return GroupTemplate.Render(item);
+            
+        if (AvatarTemplate != null)
+            return AvatarTemplate.Render(item);
+            
+        if (ProgressTemplate != null)
+            return ProgressTemplate.Render(item);
+            
+        if (RatingTemplate != null)
+            return RatingTemplate.Render(item);
+            
+        if (ActionsTemplate != null)
+            return ActionsTemplate.Render(item);
+        
+        // Fall back to built-in template rendering based on Template property
         return builder =>
         {
             var renderer = new ColumnTemplateRenderer<TItem>(this);
@@ -71,7 +128,7 @@ public class ColumnDefinition<TItem> where TItem : class
     }
     
     /// <summary>
-    /// Gets the value of the column for the given item
+    /// Gets the value of the column for the given item.
     /// </summary>
     public object GetValue(TItem item)
     {
@@ -88,6 +145,18 @@ public class ColumnDefinition<TItem> where TItem : class
         }
         
         return null;
+    }
+    
+    /// <summary>
+    /// Ensures the property accessor is compiled and ready for high-performance access.
+    /// Call this during column initialization to avoid compilation during data processing.
+    /// </summary>
+    public void EnsureCompiled()
+    {
+        if (CompiledProperty == null && Property != null)
+        {
+            CompiledProperty = Property.Compile();
+        }
     }
     
     /// <summary>
@@ -146,4 +215,26 @@ public enum ColumnTemplate
     Tags,          // Tag list
     Actions,       // Action buttons
     Custom         // Fully custom template
+}
+
+/// <summary>
+/// Sticky column positioning options
+/// </summary>
+public enum StickyColumnType
+{
+    None,
+    Left,
+    Right
+}
+
+/// <summary>
+/// Row selection mode for enhanced selection features
+/// </summary>
+public enum RowSelectionMode
+{
+    Auto,          // Auto-detect based on data type
+    Checkbox,      // Show selection checkbox
+    Radio,         // Radio button selection
+    RowClick,      // Select entire row on click
+    None           // Disable selection for this column
 }

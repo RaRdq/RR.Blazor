@@ -11,12 +11,11 @@ namespace RR.Blazor.Components.Form;
 [AIOptimized(Prompt = "Create smart form for any model type", 
              CommonUse = "any form scenario - automatically detects model type", 
              AvoidUsage = "None - this is the universal form component")]
-public abstract class RFormBase : ComponentBase
+public abstract class RFormBase : RComponentBase
 {
     // Core form parameters - shared by all variants
     [Parameter] public ValidationMode ValidationMode { get; set; } = ValidationMode.DataAnnotations;
     [Parameter] public FormLayout Layout { get; set; } = FormLayout.Default;
-    [Parameter] public FormDensity Density { get; set; } = FormDensity.Normal;
     [Parameter] public FormOptions? Options { get; set; }
     
     // UI parameters
@@ -34,15 +33,10 @@ public abstract class RFormBase : ComponentBase
     [Parameter] public bool SubmitButtonFullWidth { get; set; }
     
     // Content
-    [Parameter] public RenderFragment ChildContent { get; set; }
     [Parameter] public RenderFragment FormFields { get; set; }
     [Parameter] public RenderFragment HeaderContent { get; set; }
     [Parameter] public RenderFragment FooterContent { get; set; }
-    [Parameter] public string Class { get; set; }
 
-    /// <summary>Captures any additional HTML attributes</summary>
-    [Parameter(CaptureUnmatchedValues = true)] 
-    public Dictionary<string, object> AdditionalAttributes { get; set; }
     
     /// <summary>
     /// Returns safely filtered HTML attributes using centralized RAttributeForwarder.

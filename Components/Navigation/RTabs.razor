@@ -13,9 +13,9 @@ Tab container for organizing content with smooth animations.
 @using RR.Blazor.Components
 @using RR.Blazor.Components.Base
 @using RR.Blazor.Components.Display
-@inherits RForwardingComponentBase
+@using RR.Blazor.Utilities
+@inherits RSizedComponentBase<SizeType>
 @implements IDisposable
-@inject IJSRuntime JSRuntime
 
 @attribute [Component("RTabs", Category = "Navigation", Complexity = ComponentComplexity.Complex)]
 @attribute [AIOptimized(Prompt = "Create professional tabs for content organization", 
@@ -41,7 +41,7 @@ Tab container for organizing content with smooth animations.
                 class="tabs-nav-arrow tabs-nav-arrow-left @GetScrollArrowClasses(canScrollLeft)"
                 @onclick="ScrollLeft"
                 aria-label="Scroll tabs left">
-            <i class="material-symbols-rounded">chevron_left</i>
+            <i class="icon">chevron_left</i>
         </button>
         
         <!-- Scrollable Tab Container -->
@@ -70,7 +70,7 @@ Tab container for organizing content with smooth animations.
                         
                         @if (!string.IsNullOrEmpty(tab.Icon) && tab.IconPosition == IconPosition.Start)
                         {
-                            <i class="material-symbols-rounded @GetTabIconSize() mr-2">@tab.Icon</i>
+                            <i class="icon @GetTabIconSize() mr-2">@tab.Icon</i>
                         }
                         
                         @if (!string.IsNullOrEmpty(tab.Text))
@@ -87,7 +87,7 @@ Tab container for organizing content with smooth animations.
                         
                         @if (!string.IsNullOrEmpty(tab.Icon) && tab.IconPosition == IconPosition.End)
                         {
-                            <i class="material-symbols-rounded @GetTabIconSize() ml-2">@tab.Icon</i>
+                            <i class="icon @GetTabIconSize() ml-2">@tab.Icon</i>
                         }
                         
                         @if (tab.Closable)
@@ -96,7 +96,7 @@ Tab container for organizing content with smooth animations.
                                     class="ml-2 p-1 rounded hover-scale-sm active-scale-sm transition-transform"
                                     @onclick="() => CloseTab(tab.Id)"
                                     @onclick:stopPropagation="true">
-                                <i class="material-symbols-rounded text-xs">close</i>
+                                <i class="icon text-xs">close</i>
                             </button>
                         }
                     </button>
@@ -108,7 +108,7 @@ Tab container for organizing content with smooth animations.
                     <button type="button" 
                             class="touch-target px-3 py-2 rounded-md hover-lift-sm transition-all border border-dashed border-secondary"
                             @onclick="HandleAddTab">
-                        <i class="material-symbols-rounded text-sm">add</i>
+                        <i class="icon text-sm">add</i>
                     </button>
                 }
             </div>
@@ -119,7 +119,7 @@ Tab container for organizing content with smooth animations.
                 class="tabs-nav-arrow tabs-nav-arrow-right @GetScrollArrowClasses(canScrollRight)"
                 @onclick="ScrollRight"
                 aria-label="Scroll tabs right">
-            <i class="material-symbols-rounded">chevron_right</i>
+            <i class="icon">chevron_right</i>
         </button>
     </nav>
     
@@ -157,12 +157,6 @@ Tab container for organizing content with smooth animations.
     [Parameter, AIParameter("Visual style of tabs", "TabsVariant.Default, TabsVariant.Pills, TabsVariant.Card")] 
     public TabsVariant Variant { get; set; } = TabsVariant.Default;
     
-    /// <summary>Size of tabs</summary>
-    [Parameter, AIParameter("Size of tab items", "SizeType.Small, SizeType.Medium, SizeType.Large")] 
-    public SizeType Size { get; set; } = SizeType.Medium;
-    
-    /// <summary>Component density for ultra-dense layouts</summary>
-    [Parameter] public DensityType Density { get; set; } = DensityType.Normal;
     
     /// <summary>Active tab ID</summary>
     [Parameter, AIParameter("ID of currently active tab", "Use with @bind-ActiveTabId for two-way binding")] 
@@ -183,22 +177,13 @@ Tab container for organizing content with smooth animations.
     /// <summary>Use fade only animation (no slide)</summary>
     [Parameter] public bool FadeOnly { get; set; }
     
-    /// <summary>Whether tabs are loading - shows skeleton for tab content</summary>
-    [Parameter, AIParameter("Show loading skeleton for tab content", "true when tab data is loading asynchronously")] 
-    public bool Loading { get; set; }
     
     /// <summary>Whether to keep all tab panels alive (renders all content, disables lazy loading)</summary>
     [Parameter, AIParameter("Keep all tab panels alive in DOM", "false for lazy loading (performance), true to keep all panels rendered")] 
     public bool KeepPanelsAlive { get; set; } = false;
     
-    /// <summary>Additional CSS classes</summary>
-    [Parameter] public string Class { get; set; }
     
-    /// <summary>Aria label for accessibility</summary>
-    [Parameter] public string AriaLabel { get; set; }
     
-    /// <summary>Child content containing RTabItem components</summary>
-    [Parameter] public RenderFragment ChildContent { get; set; }
     
     /// <summary>Called when tab selection changes</summary>
     [Parameter] public EventCallback<TabChangedEventArgs> OnTabChanged { get; set; }
@@ -248,7 +233,7 @@ Tab container for organizing content with smooth animations.
         {
             try
             {
-                await JSRuntime.InvokeVoidAsync("RRBlazor.Tabs.initializeTabs", tabsElement, navContainer, navWrapper);
+                await SafeInvokeAsync("RRBlazor.Tabs.initializeTabs", tabsElement, navContainer, navWrapper);
                 
                 if (tabs.Count > 0)
                 {
@@ -478,7 +463,7 @@ Tab container for organizing content with smooth animations.
             var activeTab = tabs.FirstOrDefault(t => t.Id == ActiveTabId);
             if (activeTab != null)
             {
-                var result = await JSRuntime.InvokeAsync<TabIndicatorPosition>("RRBlazor.Tabs.getTabIndicatorPosition", $"tab-{ActiveTabId}", navWrapper);
+                var result = await SafeInvokeAsync<TabIndicatorPosition>("RRBlazor.Tabs.getTabIndicatorPosition", $"tab-{ActiveTabId}", navWrapper);
                 
                 // Only update if values have actually changed to prevent unnecessary re-renders
                 if (Math.Abs(indicatorLeft - result.Left) > 0.5 || Math.Abs(indicatorWidth - result.Width) > 0.5)
@@ -518,7 +503,7 @@ Tab container for organizing content with smooth animations.
                 return;
             }
             
-            var scrollInfo = await JSRuntime.InvokeAsync<ScrollInfo>("RRBlazor.Tabs.getTabScrollInfo", navWrapper);
+            var scrollInfo = await SafeInvokeAsync<ScrollInfo>("RRBlazor.Tabs.getTabScrollInfo", navWrapper);
             
 
             if (isScrollable != scrollInfo.IsScrollable || 
@@ -552,7 +537,7 @@ Tab container for organizing content with smooth animations.
     {
         try
         {
-            await JSRuntime.InvokeVoidAsync("RRBlazor.Tabs.scrollTabsLeft", navWrapper);
+            await SafeInvokeAsync("RRBlazor.Tabs.scrollTabsLeft", navWrapper);
             await UpdateScrollState();
         }
         catch
@@ -564,7 +549,7 @@ Tab container for organizing content with smooth animations.
     {
         try
         {
-            await JSRuntime.InvokeVoidAsync("RRBlazor.Tabs.scrollTabsRight", navWrapper);
+            await SafeInvokeAsync("RRBlazor.Tabs.scrollTabsRight", navWrapper);
             await UpdateScrollState();
         }
         catch
@@ -576,7 +561,7 @@ Tab container for organizing content with smooth animations.
     {
         try
         {
-            await JSRuntime.InvokeVoidAsync("RRBlazor.Tabs.scrollToTab", navWrapper, $"tab-{tabId}");
+            await SafeInvokeAsync("RRBlazor.Tabs.scrollToTab", navWrapper, $"tab-{tabId}");
             await UpdateScrollState();
         }
         catch
@@ -588,19 +573,14 @@ Tab container for organizing content with smooth animations.
     {
         var classes = new List<string>();
         
-        // Base classes
         classes.Add("tabs-tab touch-target d-flex align-center justify-center gap-2");
         
-        // Size and density utilities
         classes.Add(GetTabSizeUtilities());
         
-        // Common interaction utilities
         classes.Add("rounded-lg transition-all cursor-pointer border border-transparent");
         
-        // Background and hover states
         classes.Add("bg-transparent hover:bg-surface-elevated");
         
-        // Active state
         if (tab.Id == ActiveTabId)
         {
             classes.Add("tabs-tab-active");
@@ -610,7 +590,6 @@ Tab container for organizing content with smooth animations.
             classes.Add("hover-lift-sm  text-muted hover:text-primary");
         }
         
-        // Disabled state utilities
         if (tab.IsDisabled)
         {
             classes.Add("state-disabled");
@@ -621,75 +600,20 @@ Tab container for organizing content with smooth animations.
 
     private string GetTabSizeUtilities()
     {
-        // Combine size and density into utility classes
-        return (Size, Density) switch
-        {
-            (SizeType.Small, DensityType.Compact) => "px-2 py-1 text-xs gap-1",
-            (SizeType.Small, DensityType.Dense) => "px-3 py-1 text-sm gap-1",
-            (SizeType.Small, DensityType.Normal) => "px-3 py-2 text-sm gap-2",
-            (SizeType.Small, DensityType.Spacious) => "px-4 py-2 text-sm gap-2",
-            
-            (SizeType.Medium, DensityType.Compact) => "px-3 py-1 text-sm gap-1",
-            (SizeType.Medium, DensityType.Dense) => "px-3 py-2 text-base gap-2",
-            (SizeType.Medium, DensityType.Normal) => "px-4 py-3 text-base gap-2",
-            (SizeType.Medium, DensityType.Spacious) => "px-6 py-4 text-base gap-3",
-            
-            (SizeType.Large, DensityType.Compact) => "px-3 py-2 text-base gap-2",
-            (SizeType.Large, DensityType.Dense) => "px-4 py-2 text-base gap-2",
-            (SizeType.Large, DensityType.Normal) => "px-5 py-3 text-lg gap-3",
-            (SizeType.Large, DensityType.Spacious) => "px-6 py-4 text-lg gap-3",
-            
-            _ => "px-4 py-3 text-base gap-2" // Default medium/normal
-        };
+        var buttonClasses = SizeHelper.GetButtonSize(Size, Density);
+        var textClass = SizeHelper.GetTextSize(Size, Density);
+        var gap = DensityHelper.GetGap(Density);
+        
+        var hPadding = DensityHelper.GetHorizontalPadding(Density, "4");
+        var vPadding = DensityHelper.GetVerticalPadding(Density, "3");
+        var paddingClass = $"px-{hPadding} py-{vPadding}";
+        
+        return $"{paddingClass} {textClass} gap-{gap}";
     }
     
     private string GetTabIconSize()
     {
-        var baseSizeClasses = Size switch
-        {
-            SizeType.Small => "text-sm",
-            SizeType.Large => "text-lg",
-            _ => "text-base"
-        };
-
-        return Density switch
-        {
-            DensityType.Compact => ApplyCompactIconSizing(),
-            DensityType.Dense => ApplyDenseIconSizing(),
-            DensityType.Normal => baseSizeClasses,
-            DensityType.Spacious => ApplySpacious​IconSizing(),
-            _ => baseSizeClasses
-        };
-    }
-
-    private string ApplyCompactIconSizing()
-    {
-        return Size switch
-        {
-            SizeType.Small => "text-xs",
-            SizeType.Large => "text-base",
-            _ => "text-sm"
-        };
-    }
-
-    private string ApplyDenseIconSizing()
-    {
-        return Size switch
-        {
-            SizeType.Small => "text-xs",
-            SizeType.Large => "text-base",
-            _ => "text-sm"
-        };
-    }
-
-    private string ApplySpacious​IconSizing()
-    {
-        return Size switch
-        {
-            SizeType.Small => "text-base",
-            SizeType.Large => "text-xl",
-            _ => "text-lg"
-        };
+        return SizeHelper.GetIconSize(Size, Density);
     }
     
     private string GetBadgeVariant(string variant) => variant switch
@@ -702,14 +626,13 @@ Tab container for organizing content with smooth animations.
     
     private string GetIndicatorStyle()
     {
-        return $"--indicator-left: {indicatorLeft}px; --indicator-width: {indicatorWidth}px;";
+        return $"--indicator-left: {indicatorLeft.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)}px; --indicator-width: {indicatorWidth.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)}px;";
     }
     
     private string GetTabsClasses()
     {
         var classes = new List<string> { "d-flex flex-col w-full" };
         
-        // Variant-specific container classes
         classes.Add(Variant switch
         {
             TabsVariant.Elevated => "shadow-4 rounded-lg",
@@ -746,7 +669,6 @@ Tab container for organizing content with smooth animations.
             classes.Add("pa-6");
         }
         
-        // Variant-specific content styling
         if (Variant == TabsVariant.Card)
         {
             classes.Add("border border-light rounded-b-lg rounded-tr-lg");
@@ -770,6 +692,21 @@ Tab container for organizing content with smooth animations.
         
         return string.Join(" ", classes);
     }
+    
+    protected override string GetSizeClasses()
+    {
+        return Size switch
+        {
+            SizeType.ExtraSmall => "tabs-xs",
+            SizeType.Small => "tabs-sm",
+            SizeType.Medium => "tabs-md",
+            SizeType.Large => "tabs-lg",
+            SizeType.ExtraLarge => "tabs-xl",
+            _ => "tabs-md"
+        };
+    }
+    
+    protected override SizeType GetDefaultSize() => SizeType.Medium;
     
     public void Dispose()
     {

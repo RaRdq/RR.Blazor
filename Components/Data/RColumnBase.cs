@@ -1,10 +1,11 @@
 using Microsoft.AspNetCore.Components;
 using RR.Blazor.Enums;
 using RR.Blazor.Models;
+using RR.Blazor.Components.Base;
 
 namespace RR.Blazor.Components.Data;
 
-public abstract class RColumnBase : ComponentBase
+public abstract class RColumnBase : RComponentBase
 {
     [Parameter] public string Header { get; set; }
     [Parameter] public string Title { get; set; }
@@ -22,7 +23,7 @@ public abstract class RColumnBase : ComponentBase
     [Parameter] public ColumnAlign Align { get; set; } = ColumnAlign.Auto;
     [Parameter] public string HeaderClass { get; set; }
     [Parameter] public string CellClass { get; set; }
-    [Parameter] public string Class { get; set; }
+    // Class inherited from RForwardingComponentBase
     [Parameter] public bool Visible { get; set; } = true;
     [Parameter] public bool Exportable { get; set; } = true;
     [Parameter] public string ExportHeader { get; set; }

@@ -25,10 +25,9 @@ namespace RR.Blazor.Components.Core
         public string Icon { get; set; }
         
         [Parameter]
-        [AIParameter(Hint = "Icon size variant: xs, sm, base, lg, xl", 
-                     SuggestedValues = new[] { "xs", "sm", "base", "lg", "xl" }, 
+        [AIParameter(Hint = "Icon size using standard size types", 
                      IsRequired = false)]
-        public string IconSize { get; set; } = "base";
+        public SizeType IconSize { get; set; } = SizeType.Medium;
         
         [Parameter]
         [AIParameter(Hint = "Icon style: outlined or filled", 
@@ -46,7 +45,7 @@ namespace RR.Blazor.Components.Core
         [AIParameter(Hint = "Solid for standard, Dashed for softer, Dotted for subtle separation", 
                      SuggestedValues = new[] { "Solid", "Dashed", "Dotted" }, 
                      IsRequired = false)]
-        public DividerStyle Style { get; set; } = DividerStyle.Solid;
+        public DividerStyle DividerStyle { get; set; } = DividerStyle.Solid;
         
         [Parameter]
         [AIParameter(Hint = "Center for balanced labels, Left for section headers, Right for special cases", 
@@ -59,10 +58,6 @@ namespace RR.Blazor.Components.Core
                      SuggestedValues = new[] { "Default", "Primary", "Success", "Warning", "Error", "Info" }, 
                      IsRequired = false)]
         public string SemanticVariant { get; set; }
-        
-        [Parameter] public string Class { get; set; }
-        
-        [Parameter] public RenderFragment ChildContent { get; set; }
         
         [Parameter] public RenderFragment IconContent { get; set; }
         
@@ -83,14 +78,14 @@ namespace RR.Blazor.Components.Core
             builder.AddAttribute(++sequence, "class", GetDividerClasses());
             
             ForwardParametersExcept(builder, ref sequence, 
-                nameof(Text), nameof(Variant), nameof(Style), nameof(TextAlign), 
+                nameof(Text), nameof(Variant), nameof(DividerStyle), nameof(TextAlign), 
                 nameof(Variant), nameof(Class), nameof(ChildContent),
                 nameof(Icon), nameof(IconSize), nameof(IconStyle), nameof(IconContent), nameof(Size), nameof(Subtitle), nameof(ShowLine));
             
             if (!string.IsNullOrEmpty(Text) || ChildContent != null || !string.IsNullOrEmpty(Icon) || IconContent != null)
             {
                 builder.OpenElement(++sequence, "span");
-                builder.AddAttribute(++sequence, "class", "content");
+                builder.AddAttribute(++sequence, "class", "divider-content");
                 
                 if (!string.IsNullOrEmpty(Icon))
                 {
@@ -144,8 +139,10 @@ namespace RR.Blazor.Components.Core
                 classes.Add("divider");
                 
                 if (Variant == DividerVariant.Vertical) classes.Add("divider-vertical");
-                if (Style == DividerStyle.Dashed) classes.Add("divider-dashed");
-                else if (Style == DividerStyle.Dotted) classes.Add("divider-dotted");
+                
+                // Build style-variant combination classes like semantic-variants mixin
+                var styleVariant = GetStyleVariantClass();
+                if (!string.IsNullOrEmpty(styleVariant)) classes.Add(styleVariant);
                 
                 if (!string.IsNullOrEmpty(Text) || ChildContent != null || !string.IsNullOrEmpty(Icon) || IconContent != null || !string.IsNullOrEmpty(Subtitle))
                 {
@@ -167,14 +164,42 @@ namespace RR.Blazor.Components.Core
             
             return string.Join(" ", classes);
         }
+
+        private string GetStyleVariantClass()
+        {
+            var style = DividerStyle.ToString().ToLower();
+            if (style == "solid") return string.Empty;
+            
+            var baseClass = $"divider-{style}";
+            
+            if (!string.IsNullOrEmpty(SemanticVariant))
+            {
+                return $"{baseClass}-{SemanticVariant.ToLower()}";
+            }
+            
+            return baseClass;
+        }
         
         private string GetIconClasses()
         {
             var classes = new List<string>();
             
-            classes.Add("material-symbols-rounded");
-            classes.Add($"icon-{IconSize}");
-            if (IconStyle == "filled") classes.Add("material-symbols-rounded-filled");
+            classes.Add("icon");
+            
+            // Map SizeType to icon size classes
+            var sizeClass = IconSize switch
+            {
+                SizeType.ExtraSmall => "icon-xs",
+                SizeType.Small => "icon-sm",
+                SizeType.Medium or SizeType.Default => "icon-base",
+                SizeType.Large => "icon-lg",
+                SizeType.ExtraLarge or SizeType.XLarge => "icon-xl",
+                SizeType.ExtraLarge2X => "icon-2xl",
+                _ => "icon-base"
+            };
+            classes.Add(sizeClass);
+            
+            if (IconStyle == "filled") classes.Add("icon-filled");
             
             return string.Join(" ", classes);
         }

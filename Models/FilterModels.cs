@@ -1,190 +1,220 @@
 using RR.Blazor.Enums;
+using System.Linq.Expressions;
 
 namespace RR.Blazor.Models;
 
-// =============================================================================
-// MODERN FILTER SYSTEM - Primary filter models and definitions
-// Legacy event args are in FilterEventArgs.cs for backward compatibility
-// =============================================================================
+/// <summary>
+/// Universal filter configuration for smart components
+/// </summary>
+public class UniversalFilterConfig
+{
+    // Basic Display
+    public bool ShowSearch { get; set; } = true;
+    public string SearchPlaceholder { get; set; } = "Search...";
+    public bool ShowQuickFilters { get; set; } = true;
+    public bool ShowAdvancedPanel { get; set; } = true;
+    public bool ShowClearButton { get; set; } = true;
+    public bool ShowFilterCount { get; set; } = true;
+    public bool ShowFilterChips { get; set; } = true;
+    public bool ShowDateRange { get; set; } = false;
+    
+    // Layout & Density
+    public DensityType Density { get; set; } = DensityType.Normal;
+    public bool Minimal { get; set; } = false;
+    public bool Compact { get; set; } = false;
+    
+    // Behavior
+    public bool EnableRealTime { get; set; } = true;
+    public bool EnableRealTimeFiltering => EnableRealTime; // Alias for compatibility
+    public int DebounceMs { get; set; } = 300;
+    public bool AllowMultipleFilters { get; set; } = true;
+    public FilterLogic DefaultLogic { get; set; } = FilterLogic.And;
+    
+    // Performance
+    public int VirtualScrollThreshold { get; set; } = 1000;
+    public bool EnableVirtualScrolling { get; set; } = true;
+    
+    // Persistence
+    public bool EnablePersistence { get; set; } = false;
+    public string PersistenceKey { get; set; } = string.Empty;
+}
 
 /// <summary>
-/// Represents a single filter condition
+/// Universal filter criteria that works with any data type
 /// </summary>
-public record FilterState(
-    string ColumnKey,
+public class UniversalFilterCriteria<TItem> where TItem : class
+{
+    public string SearchTerm { get; set; } = string.Empty;
+    public DateTime? DateFrom { get; set; }
+    public DateTime? DateTo { get; set; }
+    public List<FilterCondition> Filters { get; set; } = new();
+    public FilterLogic Logic { get; set; } = FilterLogic.And;
+    
+    // Compatibility properties
+    public (DateTime? From, DateTime? To) DateRange 
+    { 
+        get => (DateFrom, DateTo); 
+        set => (DateFrom, DateTo) = value; 
+    }
+    public List<QuickFilterState> QuickFilters { get; set; } = new();
+}
+
+/// <summary>
+/// Individual filter condition
+/// </summary>
+public class FilterCondition
+{
+    public string ColumnKey { get; set; } = string.Empty;
+    public FilterType Type { get; set; } = FilterType.Text;
+    public FilterOperator Operator { get; set; } = FilterOperator.Contains;
+    public object? Value { get; set; }
+    public object? SecondValue { get; set; } // For range operators
+    public bool IsActive { get; set; } = false;
+    public bool IsCaseSensitive { get; set; } = false;
+    
+    public FilterCondition() { }
+    
+    public FilterCondition(string columnKey, FilterType type, FilterOperator op, object? value, object? secondValue = null, bool isActive = true)
+    {
+        ColumnKey = columnKey;
+        Type = type;
+        Operator = op;
+        Value = value;
+        SecondValue = secondValue;
+        IsActive = isActive;
+    }
+}
+
+/// <summary>
+/// Column definition for filters
+/// </summary>
+public record FilterColumnDefinition(
+    string Key,
+    string DisplayName,
     FilterType Type,
-    FilterOperator Operator,
-    object? Value,
-    object? SecondValue = null,
-    bool IsActive = true,
-    string? DisplayName = null
-)
+    bool IsFilterable,
+    bool IsSearchable,
+    bool IsSortable,
+    List<FilterOperator> SupportedOperators,
+    List<object>? UniqueValues = null,
+    object? MinValue = null,
+    object? MaxValue = null,
+    string? Format = null
+);
+
+/// <summary>
+/// Quick filter state for toggle buttons
+/// </summary>
+public class QuickFilterState
 {
-    /// <summary>
-    /// Gets a display-friendly representation of the filter
-    /// </summary>
-    public string GetDisplayText()
-    {
-        var columnName = DisplayName ?? ColumnKey;
-        var operatorText = GetOperatorText();
-        var valueText = GetValueText();
-        
-        return $"{columnName} {operatorText} {valueText}";
-    }
-    
-    private string GetOperatorText() => Operator switch
-    {
-        FilterOperator.Contains => "contains",
-        FilterOperator.StartsWith => "starts with",
-        FilterOperator.EndsWith => "ends with",
-        FilterOperator.Equals => "equals",
-        FilterOperator.NotEquals => "does not equal",
-        FilterOperator.GreaterThan => ">",
-        FilterOperator.LessThan => "<",
-        FilterOperator.GreaterThanOrEqual => ">=",
-        FilterOperator.LessThanOrEqual => "<=",
-        FilterOperator.Between => "between",
-        FilterOperator.On => "on",
-        FilterOperator.Before => "before",
-        FilterOperator.After => "after",
-        FilterOperator.IsTrue => "is true",
-        FilterOperator.IsFalse => "is false",
-        FilterOperator.In => "in",
-        FilterOperator.IsEmpty => "is empty",
-        FilterOperator.IsNotEmpty => "is not empty",
-        _ => Operator.ToString().ToLower()
-    };
-    
-    private string GetValueText()
-    {
-        if (Value == null) return "null";
-        
-        return Operator switch
-        {
-            FilterOperator.Between or FilterOperator.NotBetween when SecondValue != null => 
-                $"{Value} and {SecondValue}",
-            FilterOperator.IsEmpty or FilterOperator.IsNotEmpty or 
-            FilterOperator.IsTrue or FilterOperator.IsFalse => "",
-            _ => Value.ToString() ?? ""
-        };
-    }
+    public string Key { get; set; } = string.Empty;
+    public string Label { get; set; } = string.Empty;
+    public string Icon { get; set; } = string.Empty;
+    public bool IsActive { get; set; } = false;
+    public Expression<Func<object, bool>>? FilterExpression { get; set; }
+    public string Description { get; set; } = string.Empty;
 }
 
 /// <summary>
-/// Represents a group of filter conditions with logical operators
+/// Filter state change event arguments
 /// </summary>
-public record FilterGroup(
-    List<FilterState> Filters,
-    FilterLogic Logic = FilterLogic.And,
-    bool IsActive = true
-)
+public class FilterStateChangedEventArgs
 {
-    /// <summary>
-    /// Gets all active filters in the group
-    /// </summary>
-    public IEnumerable<FilterState> ActiveFilters => Filters.Where(f => f.IsActive);
-    
-    /// <summary>
-    /// Checks if the group has any active filters
-    /// </summary>
-    public bool HasActiveFilters => ActiveFilters.Any();
+    public string FilterId { get; set; } = string.Empty;
+    public FilterChangeType ChangeType { get; set; }
+    public bool HasActiveFilters { get; set; }
+    public int ActiveFilterCount { get; set; }
+    public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+    public Dictionary<string, object> Filters { get; set; } = new();
+    public Expression<Func<object, bool>> Predicate { get; set; }
 }
 
 /// <summary>
-/// Represents a saved filter template
+/// Types of filter changes
 /// </summary>
-public record FilterTemplate(
-    string Id,
-    string Name,
-    string? Description,
-    FilterGroup FilterGroup,
-    DateTime Created,
-    string CreatedBy,
-    bool IsGlobal = false,
-    Dictionary<string, object>? Metadata = null
-);
+public enum FilterChangeType
+{
+    ConditionsChanged,
+    QuickFilterToggled,
+    SearchChanged,
+    DateRangeChanged,
+    FiltersCleared,
+    TemplateLoaded
+}
+
 
 /// <summary>
-/// Event arguments for filter changes
+/// Filter result containing filtered data and metadata
 /// </summary>
-public record FilterEventArgs(
-    string ColumnKey,
-    FilterState? OldFilter,
-    FilterState? NewFilter,
-    FilterGroup CurrentFilters,
-    bool IsCleared = false
-);
+public class FilterResult<T>
+{
+    public IEnumerable<T> FilteredData { get; set; } = Enumerable.Empty<T>();
+    public IEnumerable<T> Data => FilteredData; // Alias for compatibility
+    public int TotalCount { get; set; }
+    public int FilteredCount { get; set; }
+    public bool HasActiveFilters { get; set; }
+    public Dictionary<string, object> Metadata { get; set; } = new();
+}
 
 /// <summary>
-/// Event arguments for filter template operations
+/// Column filter state for individual columns
 /// </summary>
-public record FilterTemplateEventArgs(
-    string TemplateId,
-    FilterTemplate Template,
-    string Action // "Save", "Load", "Delete"
-);
+public class RColumnFilterState
+{
+    public string ColumnKey { get; set; } = string.Empty;
+    public FilterOperator Operator { get; set; } = FilterOperator.Contains;
+    public object? Value { get; set; }
+    public object? SecondValue { get; set; } // For range operators
+    public bool IsActive { get; set; } = false;
+    public FilterType FilterType { get; set; } = FilterType.Text;
+    public string QuickFilterValue { get; set; } = string.Empty;
+}
 
 /// <summary>
-/// Configuration for smart filter detection
+/// Advanced filter state for complex filtering scenarios
 /// </summary>
-public record SmartFilterConfig(
-    int SampleSize = 100,
-    double TextThreshold = 0.7,
-    double NumberThreshold = 0.8,
-    double DateThreshold = 0.6,
-    double BooleanThreshold = 0.9,
-    int MaxSelectOptions = 50,
-    bool EnableAutoSuggestions = true,
-    Dictionary<string, FilterType>? ColumnTypeOverrides = null
-);
+public class AdvancedFilterState
+{
+    public string Id { get; set; } = Guid.NewGuid().ToString();
+    public string ColumnKey { get; set; } = string.Empty;
+    public FilterOperator Operator { get; set; } = FilterOperator.Contains;
+    public object? Value { get; set; }
+    public object? SecondValue { get; set; }
+    public bool IsActive { get; set; } = false;
+    public FilterType FilterType { get; set; } = FilterType.Text;
+    public FilterType Type => FilterType; // Alias for compatibility
+    public string Label { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+}
 
 /// <summary>
-/// Result of smart filter analysis
+/// Grid filter state for comprehensive grid filtering
 /// </summary>
-public record SmartFilterAnalysis(
-    string ColumnKey,
-    FilterType RecommendedType,
-    List<FilterOperator> SuggestedOperators,
-    IEnumerable<object>? SuggestedValues = null,
-    double Confidence = 0.0,
-    string? Reasoning = null,
-    Dictionary<string, object>? Metadata = null
-);
+public class GridFilterState
+{
+    public string SearchTerm { get; set; } = string.Empty;
+    public List<AdvancedFilterState> Filters { get; set; } = new();
+    public Dictionary<string, RColumnFilterState> ColumnFilters { get; set; } = new();
+    public DateTime? DateFrom { get; set; }
+    public DateTime? DateTo { get; set; }
+    public FilterLogic Logic { get; set; } = FilterLogic.And;
+    public string GridId { get; set; } = string.Empty;
+    public DateTime LastSaved { get; set; } = DateTime.UtcNow;
+}
 
 /// <summary>
-/// Configuration for filter UI behavior
+/// Saved filter configuration
 /// </summary>
-public record FilterUIConfig(
-    bool ShowOperatorSelection = true,
-    bool ShowClearButton = true,
-    bool ShowQuickFilters = true,
-    bool EnableFilterHistory = true,
-    bool EnableFilterTemplates = true,
-    int MaxRecentFilters = 10,
-    string? Placeholder = null,
-    Dictionary<FilterOperator, string>? CustomOperatorLabels = null
-);
-
-/// <summary>
-/// Represents filter options for Select/MultiSelect types
-/// </summary>
-public record FilterOption(
-    object Value,
-    string Label,
-    bool IsSelected = false,
-    string? Description = null,
-    string? Group = null,
-    bool IsDisabled = false
-);
-
-/// <summary>
-/// Performance metrics for filtering operations
-/// </summary>
-public record FilterPerformanceMetrics(
-    TimeSpan FilterTime,
-    int TotalRows,
-    int FilteredRows,
-    string ColumnKey,
-    FilterOperator Operator,
-    DateTime Timestamp
-);
+public class FilterConfiguration
+{
+    public string Id { get; set; } = Guid.NewGuid().ToString();
+    public string Name { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public string ColumnKey { get; set; } = string.Empty; // For single-column configurations
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime LastModified { get; set; } = DateTime.UtcNow;
+    public Dictionary<string, RColumnFilterState> ColumnFilters { get; set; } = new();
+    public List<AdvancedFilterState> Filters { get; set; } = new();
+    public string SearchTerm { get; set; } = string.Empty;
+    public bool IsDefault { get; set; } = false;
+}

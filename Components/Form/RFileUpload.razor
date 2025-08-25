@@ -19,11 +19,11 @@
 @using RR.Blazor.Components.Base
 @inherits RForwardingComponentBase
 @implements IAsyncDisposable
-@inject IJSRuntime JSRuntime
 
 <div id="@ComponentId" class="@GetContainerClasses()" data-rr-component="file-upload">
     @* Persistent input element - NEVER recreated to preserve file selection *@
-    <InputFile id="@InputId"
+    <InputFile @ref="inputElement"
+               id="@InputId"
                class="upload-area-input"
                accept="@GetAcceptString()"
                multiple="@Multiple"
@@ -45,7 +45,7 @@
                  @onkeydown="@HandleDropZoneKeyDown">
 
                 <label for="@InputId" class="upload-area-label">
-                    <i class="material-symbols-rounded">@GetUploadIcon()</i>
+                    <i class="icon">@GetUploadIcon()</i>
                     <h5 class="upload-area-text">@GetUploadText()</h5>
                     <p id="@($"{ComponentId}-hint")" class="upload-area-hint">@GetUploadHint()</p>
                     <p class="sr-only">Press Enter or Space to select files, or drag and drop files here</p>
@@ -73,7 +73,7 @@
                 @* Smart drag overlay for add/replace modes *@
                 <div class="upload-drag-overlay hidden" id="@($"{ComponentId}-drag-overlay")">
                     <div class="upload-drag-content">
-                        <i class="material-symbols-rounded upload-drag-icon">@GetDragOverIcon()</i>
+                        <i class="icon upload-drag-icon">@GetDragOverIcon()</i>
                         <h5 class="upload-drag-text">@GetDragOverText()</h5>
                         <p class="upload-drag-hint">@GetDragOverHint()</p>
                     </div>
@@ -97,14 +97,14 @@
                                     <div class="file-preview-thumbnail">
                                         <img src="@file.ThumbnailUrl" alt="@file.Name" class="file-preview-image" />
                                         <div class="file-preview-overlay">
-                                            <i class="material-symbols-rounded">@GetFileIcon(file.Extension)</i>
+                                            <i class="icon">@GetFileIcon(file.Extension)</i>
                                         </div>
                                     </div>
                                 }
                                 else
                                 {
                                     <div class="file-preview-icon-container">
-                                        <i class="material-symbols-rounded file-preview-icon">@GetFileIcon(file.Extension)</i>
+                                        <i class="icon file-preview-icon">@GetFileIcon(file.Extension)</i>
                                     </div>
                                 }
                                 
@@ -129,18 +129,18 @@
                                             title="Replace file"
                                             aria-label="Replace file"
                                             @onclick="@(() => ReplaceFile(file.Id))">
-                                        <i class="material-symbols-rounded">swap_horiz</i>
+                                        <i class="icon">swap_horiz</i>
                                     </button>
                                 }
                                 
                                 @if (AllowRemove && file.Status != RFileUploadStatus.Uploading)
                                 {
                                     <button type="button" 
-                                            class="file-preview-action-btn danger" 
+                                            class="file-preview-action-btn file-action-btn-danger" 
                                             title="Remove file"
                                             aria-label="@($"Remove {file.Name}")"
                                             @onclick="@(() => RemoveFile(file.Id))">
-                                        <i class="material-symbols-rounded">delete</i>
+                                        <i class="icon">delete</i>
                                     </button>
                                 }
                             </div>
@@ -165,15 +165,15 @@
                                     <div class="file-preview-status">
                                         @if (file.Status == RFileUploadStatus.Completed)
                                         {
-                                            <i class="material-symbols-rounded file-status-success" aria-label="Upload completed">check_circle</i>
+                                            <i class="icon file-preview-status-success" aria-label="Upload completed">check_circle</i>
                                         }
                                         else if (file.Status == RFileUploadStatus.Failed)
                                         {
-                                            <i class="material-symbols-rounded file-status-error" aria-label="Upload failed">error</i>
+                                            <i class="icon file-preview-status-error" aria-label="Upload failed">error</i>
                                         }
                                         else
                                         {
-                                            <i class="material-symbols-rounded file-status-pending" aria-label="Ready for upload">schedule</i>
+                                            <i class="icon file-preview-status-pending" aria-label="Ready for upload">schedule</i>
                                         }
                                     </div>
                                 }
@@ -186,7 +186,7 @@
                     {
                         <div class="file-add-more-card">
                             <label for="@InputId" class="file-add-more-button">
-                                <i class="material-symbols-rounded">add</i>
+                                <i class="icon">add</i>
                                 <span>Add More</span>
                                 <small>@GetAddMoreHint()</small>
                             </label>
@@ -203,7 +203,7 @@
             <label for="@InputId" class="@GetButtonClasses()">
                 @if (!string.IsNullOrEmpty(GetEffectiveIcon()))
                 {
-                    <i class="material-symbols-rounded">@GetEffectiveIcon()</i>
+                    <i class="icon">@GetEffectiveIcon()</i>
                 }
                 @ButtonText
             </label>
@@ -225,7 +225,7 @@
     {
         <div class="flex items-center gap-3">
             <label for="@InputId" class="@GetInlineButtonClasses()">
-                <i class="material-symbols-rounded">attach_file</i>
+                <i class="icon">attach_file</i>
                 Attach Files
             </label>
             
@@ -239,7 +239,7 @@
     }
 
     @* Error Display *@
-    <div class="file-upload-errors hidden"></div>
+    <div class="file-upload-errors file-upload-errors-hidden"></div>
 
     @* Legacy file preview for other display modes *@
     @if (ShowPreview && SelectedFiles.Any() && DisplayMode != RFileUploadDisplayMode.DropZone)
@@ -262,7 +262,7 @@
                         }
                         else
                         {
-                            <i class="material-symbols-rounded">@GetFileIcon(file.Extension)</i>
+                            <i class="icon">@GetFileIcon(file.Extension)</i>
                         }
                         
                         <div class="file-preview-details">
@@ -292,11 +292,11 @@
                         }
                         else if (file.Status == RFileUploadStatus.Completed)
                         {
-                            <i class="material-symbols-rounded text-success" aria-label="Upload completed">check_circle</i>
+                            <i class="icon text-success" aria-label="Upload completed">check_circle</i>
                         }
                         else if (file.Status == RFileUploadStatus.Failed)
                         {
-                            <i class="material-symbols-rounded text-error" aria-label="Upload failed">error</i>
+                            <i class="icon text-error" aria-label="Upload failed">error</i>
                         }
 
                         @if (AllowRemove && file.Status != RFileUploadStatus.Uploading)
@@ -339,11 +339,6 @@
     /// <summary>Display mode for the upload component</summary>
     [Parameter] [AIParameter("Visual style mode (DropZone, Button, Inline, Minimal)", Example = "RFileUploadDisplayMode.DropZone")] public RFileUploadDisplayMode DisplayMode { get; set; } = RFileUploadDisplayMode.DropZone;
     
-    /// <summary>Whether component is disabled</summary>
-    [Parameter] public bool Disabled { get; set; }
-    
-    /// <summary>Additional CSS classes</summary>
-    [Parameter] public string Class { get; set; }
 
 
     /// <summary>Allowed file types (extensions like .pdf, .jpg or MIME types)</summary>
@@ -373,6 +368,9 @@
     
     /// <summary>Generate thumbnails for images</summary>
     [Parameter] public bool GenerateThumbnails { get; set; } = true;
+    
+    /// <summary>Thumbnail size in pixels</summary>
+    [Parameter] public int ThumbnailSize { get; set; } = 150;
     
     /// <summary>Allow file removal</summary>
     [Parameter] public bool AllowRemove { get; set; } = true;
@@ -439,6 +437,7 @@
     private int TotalUploads => SelectedFiles.Count;
     
     private DotNetObjectReference<RFileUpload> dotNetRef;
+    private InputFile inputElement;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -460,9 +459,9 @@
                     generateThumbnails = GenerateThumbnails
                 };
                 
-                await JSRuntime.InvokeVoidAsync("RRFileUpload.initialize", ComponentId, settings);
+                await SafeInvokeAsync("RRFileUpload.initialize", ComponentId, settings);
                 
-                await JSRuntime.InvokeVoidAsync("RRFileUpload.setupBlazorEventListeners", ComponentId, dotNetRef);
+                await SafeInvokeAsync("RRFileUpload.setupBlazorEventListeners", ComponentId, dotNetRef);
             }
             catch (Exception ex)
             {
@@ -503,9 +502,7 @@
         result.Files = newFiles;
 
         await FilesChanged.InvokeAsync(SelectedFiles);
-        await JSRuntime.InvokeVoidAsync("console.log", $"🔧 RFileUpload: About to invoke OnFilesSelected with {result.Files?.Count ?? 0} files, Success: {result.Success}");
         await OnFilesSelected.InvokeAsync(result);
-        await JSRuntime.InvokeVoidAsync("console.log", $"🔧 RFileUpload: OnFilesSelected invoked successfully");
         
         StateHasChanged();
     }
@@ -529,7 +526,11 @@
         {
             try
             {
-                // TODO: 
+                var canvas = await SafeInvokeAsync<IJSObjectReference>("RRBlazor.FileUpload.createImageThumbnail", inputElement.Element, file, ThumbnailSize);
+                if (canvas != null)
+                {
+                    fileInfo.ThumbnailUrl = await SafeInvokeAsync<string>("RRBlazor.FileUpload.getCanvasDataUrl", canvas);
+                }
             }
             catch (Exception ex)
             {
@@ -602,7 +603,7 @@
     {
         try
         {
-            await JSRuntime.InvokeVoidAsync("RRFileUpload.triggerFileSelect", InputId);
+            await SafeInvokeAsync("RRFileUpload.triggerFileSelect", InputId);
         }
         catch (Exception ex)
         {
@@ -615,11 +616,11 @@
         if (e.Key == "Enter" || e.Key == " " || e.Key == "Spacebar")
         {
             // Use native click on the input element to avoid double prompts
-            await JSRuntime.InvokeVoidAsync("RRBlazor.DOMUtils.clickElement", $"#{InputId}");
+            await SafeInvokeAsync("RRBlazor.DOMUtils.clickElement", $"#{InputId}");
         }
         else if (e.Key == "Escape")
         {
-            await JSRuntime.InvokeVoidAsync("RRBlazor.DOMUtils.blurActiveElement");
+            await SafeInvokeAsync("RRBlazor.DOMUtils.blurActiveElement");
         }
     }
 
@@ -659,7 +660,7 @@
                 if (nextIndex != currentIndex)
                 {
                     var nextFileId = SelectedFiles[nextIndex].Id;
-                    await JSRuntime.InvokeVoidAsync("RRBlazor.DOMUtils.focusElement", $"[data-file-id=\"{nextFileId}\"]");
+                    await SafeInvokeAsync("RRBlazor.DOMUtils.focusElement", $"[data-file-id=\"{nextFileId}\"]");
                 }
             }
         }
@@ -699,7 +700,7 @@
 
     private string GetContainerClasses()
     {
-        var classes = new List<string> { "r-file-upload" };
+        var classes = new List<string> { "file-upload" };
         
         if (!string.IsNullOrEmpty(Class))
         {
@@ -747,7 +748,7 @@
         // Single file mode when MaxFiles is 1, otherwise multi-file mode
         if (MaxFiles == 1)
         {
-            classes.Add("single-file");
+            classes.Add("file-preview-grid-single-file");
         }
         
         return string.Join(" ", classes);
@@ -811,7 +812,7 @@
 
     private string GetInlineButtonClasses()
     {
-        return "button button-ghost button-sm flex items-center gap-1";
+        return "button-ghost button-sm flex items-center gap-1";
     }
 
     private string GetAcceptString()
@@ -906,7 +907,7 @@
     {
         try
         {
-            await JSRuntime.InvokeVoidAsync("RRFileUpload.cleanup", ComponentId);
+            await SafeInvokeAsync("RRFileUpload.cleanup", ComponentId);
             
             dotNetRef?.Dispose();
         }

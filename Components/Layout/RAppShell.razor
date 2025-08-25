@@ -254,6 +254,7 @@
         <RToastContainer />
     }
     
+    <RModalProvider />
 </div>
 </RThemeProvider>
 
@@ -419,12 +420,18 @@
     {
         sidebarCollapsed = SidebarCollapsedDefault;
 
-        await ConfigService.LoadAsync();
-        if (ConfigService.Current != null)
+        try
         {
-            var config = ConfigService.Current;
-            if (string.IsNullOrEmpty(PageTitle) && !string.IsNullOrEmpty(config.Title))
+            await ConfigService.LoadAsync();
+            var config = ConfigService?.Current;
+            if (config != null && string.IsNullOrEmpty(PageTitle) && !string.IsNullOrEmpty(config.Title))
+            {
                 PageTitle = config.Title;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[RAppShell] Config loading error: {ex.Message}");
         }
         
         if (NavigationItems?.Any() == true && ShowSearch)
@@ -442,11 +449,13 @@
         {
             try
             {
-                appShellModule = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/RR.Blazor/js/app-shell.js");
-                IsMobile = await JS.InvokeAsync<bool>("RRAppShell.isMobile");
+                appShellModule = await JS.InvokeAsync<IJSObjectReference>("RRBlazor.getModuleReference", "appShell");
+                IsMobile = await appShellModule.InvokeAsync<bool>("isMobile");
                 
                 dotNetRef = DotNetObjectReference.Create(this);
                 await appShellModule.InvokeVoidAsync("setDotNetRef", dotNetRef);
+                
+                await appShellModule.InvokeVoidAsync("initialize");
                 
                 if (IsMobile)
                 {
@@ -461,17 +470,6 @@
             }
         }
         
-        if (!firstRender && appShellModule != null && !disposed)
-        {
-            try
-            {
-                await appShellModule.InvokeVoidAsync("initialize");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Warning: App shell JS initialization failed: {ex.Message}");
-            }
-        }
     }
     
     private List<NavMenuItem> GetVisibleNavItems()

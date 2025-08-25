@@ -1,0 +1,181 @@
+@** 
+<summary>Container component for managing a group of radio buttons with proper state management</summary>
+<category>Form</category>
+<complexity>Medium</complexity>
+<ai-prompt>Create a radio button group container that manages selection state for child radio buttons</ai-prompt>
+<ai-common-use>form fields with exclusive selection, settings pages, configuration options</ai-common-use>
+<ai-avoid>Don't use for checkboxes or multi-select scenarios</ai-avoid>
+<ai-pattern name="basic-group">@bind-Value="@selectedValue" Name="options"</ai-pattern>
+<ai-pattern name="with-validation">@bind-Value="@selectedValue" Required="true" ValidationMessage="@validationError"</ai-pattern>
+<ai-pattern name="inline-options">Orientation="Orientation.Horizontal" @bind-Value="@selectedValue"</ai-pattern>
+**@
+
+@using RR.Blazor.Components.Base
+@using RR.Blazor.Enums
+@inherits RForwardingComponentBase
+@implements IDisposable
+@attribute [Component("RRadioGroup", Category = "Form")]
+@attribute [AIOptimized(Prompt = "Create radio button group with state management")]
+@typeparam TValue
+
+<CascadingValue Value="this" IsFixed="true">
+    <div class="@GetContainerClasses()">
+        @if (!string.IsNullOrEmpty(Label))
+        {
+            <label class="@GetLabelClasses()">
+                @Label
+                @if (Required)
+                {
+                    <span class="text-error ml-1">*</span>
+                }
+            </label>
+        }
+        
+        <div class="@GetOptionsContainerClasses()">
+            @ChildContent
+        </div>
+        
+        @if (!string.IsNullOrEmpty(ValidationMessage))
+        {
+            <div class="text-error text-sm mt-1">@ValidationMessage</div>
+        }
+    </div>
+</CascadingValue>
+
+@code {
+    /// <summary>The selected value in the group</summary>
+    [Parameter] public TValue? Value { get; set; }
+    
+    /// <summary>Callback when value changes</summary>
+    [Parameter] public EventCallback<TValue?> ValueChanged { get; set; }
+    
+    /// <summary>Group name for the radio buttons</summary>
+    [Parameter] public string Name { get; set; } = $"radio-group-{Guid.NewGuid():N}";
+    
+    /// <summary>Label for the radio group</summary>
+    [Parameter] public string? Label { get; set; }
+    
+    /// <summary>Whether the field is required</summary>
+    [Parameter] public bool Required { get; set; }
+    
+    /// <summary>Validation error message</summary>
+    [Parameter] public string? ValidationMessage { get; set; }
+    
+    /// <summary>Layout orientation of radio buttons</summary>
+    [Parameter] public Orientation Orientation { get; set; } = Orientation.Vertical;
+    
+    /// <summary>Spacing between radio buttons</summary>
+    [Parameter] public SpacingType Spacing { get; set; } = SpacingType.Medium;
+    
+    /// <summary>Whether to allow no selection (null value)</summary>
+    [Parameter] public bool AllowEmpty { get; set; } = true;
+    
+    
+    /// <summary>Whether the entire group is disabled</summary>
+    [Parameter] public bool Disabled { get; set; }
+    
+    private List<RRadioGroupItem<TValue>> _items = new();
+    
+    /// <summary>Register a radio item with the group</summary>
+    internal void RegisterItem(RRadioGroupItem<TValue> item)
+    {
+        if (!_items.Contains(item))
+        {
+            _items.Add(item);
+            item.SetGroupInfo(Name, Value, Disabled);
+        }
+    }
+    
+    /// <summary>Unregister a radio item from the group</summary>
+    internal void UnregisterItem(RRadioGroupItem<TValue> item)
+    {
+        _items.Remove(item);
+    }
+    
+    /// <summary>Handle selection change from a radio item</summary>
+    internal async Task OnItemSelected(TValue? value)
+    {
+        if (!EqualityComparer<TValue>.Default.Equals(Value, value))
+        {
+            Value = value;
+            await ValueChanged.InvokeAsync(value);
+            
+            // Update all items with new selection
+            foreach (var item in _items)
+            {
+                item.UpdateSelection(Value);
+            }
+        }
+    }
+    
+    /// <summary>Check if a value is currently selected</summary>
+    internal bool IsValueSelected(TValue? value)
+    {
+        return EqualityComparer<TValue>.Default.Equals(Value, value);
+    }
+    
+    protected override async Task OnParametersSetAsync()
+    {
+        // Update all registered items when parameters change
+        foreach (var item in _items)
+        {
+            item.SetGroupInfo(Name, Value, Disabled);
+        }
+        await base.OnParametersSetAsync();
+    }
+    
+    private string GetContainerClasses()
+    {
+        var classes = new List<string> { "radio-group" };
+        
+        if (Disabled)
+            classes.Add("opacity-60");
+            
+        if (!string.IsNullOrEmpty(ValidationMessage))
+            classes.Add("has-error");
+            
+        if (!string.IsNullOrEmpty(Class))
+            classes.Add(Class);
+            
+        return string.Join(" ", classes);
+    }
+    
+    private string GetLabelClasses()
+    {
+        return "block text-primary font-medium mb-2";
+    }
+    
+    private string GetOptionsContainerClasses()
+    {
+        var classes = new List<string> { "radio-group-options" };
+        
+        if (Orientation == Orientation.Horizontal)
+        {
+            classes.Add("flex flex-wrap items-start");
+            classes.Add(Spacing switch
+            {
+                SpacingType.None => "gap-0",
+                SpacingType.Small => "gap-2",
+                SpacingType.Large => "gap-6",
+                _ => "gap-4"
+            });
+        }
+        else
+        {
+            classes.Add("space-y-" + Spacing switch
+            {
+                SpacingType.None => "0",
+                SpacingType.Small => "1",
+                SpacingType.Large => "4",
+                _ => "2"
+            });
+        }
+        
+        return string.Join(" ", classes);
+    }
+    
+    public void Dispose()
+    {
+        _items.Clear();
+    }
+}

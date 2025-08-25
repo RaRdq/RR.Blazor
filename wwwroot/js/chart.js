@@ -12,7 +12,7 @@ function animatePieChart(element) {
         slice.classList.add('hover-lift');
         
         slice.addEventListener('click', () => {
-            slice.classList.toggle('active');
+            slice.classList.toggle('chart-item-selected');
         });
     });
 }
@@ -28,7 +28,7 @@ function animateColumnChart(element) {
         bar.classList.add('hover-lift');
         
         bar.addEventListener('click', () => {
-            bar.classList.toggle('active');
+            bar.classList.toggle('chart-item-selected');
         });
     });
 }

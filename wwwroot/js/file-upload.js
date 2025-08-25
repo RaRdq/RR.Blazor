@@ -193,7 +193,6 @@ export const RRFileUpload = {
                 try {
                     fileInfo.thumbnailUrl = await this.generateThumbnail(file);
                 } catch (error) {
-                    console.error('Failed to generate thumbnail:', error);
                 }
             }
 
@@ -475,7 +474,14 @@ export const RRFileUpload = {
             }
             delete element._rrFileUploadSettings;
         }
+    },
+
+    init: function(dotNetObjectRef) {
+        this._dotNetObjectRef = dotNetObjectRef;
+        return true;
     }
 };
 
 window.RRFileUpload = RRFileUpload;
+
+export default RRFileUpload;

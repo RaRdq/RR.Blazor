@@ -1,22 +1,9 @@
-@** 
-<summary>
-Chip component for tags, badges, and status indicators with style variants.
-</summary>
-<category>Core</category>
-<complexity>Simple</complexity>
-<ai-prompt>Create a chip for badges, status, tags, or filters</ai-prompt>
-<ai-common-use>status indicators, counts, labels, notifications, tags, filters, removable selections</ai-common-use>
-<ai-avoid>Don't use for navigation buttons - use RButton instead. Avoid for large text content.</ai-avoid>
-<ai-pattern name="status-chip">Text="Active" Style="ChipStyle.Status" Variant="VariantType.Success"</ai-pattern>
-<ai-pattern name="count-badge">Text="5" Style="ChipStyle.Badge" Variant="VariantType.Primary"</ai-pattern>
-<ai-pattern name="removable-tag">Text="Filter" Style="ChipStyle.Chip" Closeable="true"</ai-pattern>
-<ai-pattern name="clickable-chip">Text="Category" Clickable="true"</ai-pattern>
-**@
 @namespace RR.Blazor.Components
 @using RR.Blazor.Enums
 @using RR.Blazor.Attributes
 @using RR.Blazor.Components.Base
-@inherits RForwardingComponentBase
+@using RR.Blazor.Utilities
+@inherits RSizedComponentBase<SizeType>
 
 @attribute [Component("RChip", Category = "Core", Complexity = ComponentComplexity.Simple)]
 @attribute [AIOptimized(Prompt = "Create a chip for badges, status, tags, or filters", 
@@ -24,12 +11,13 @@ Chip component for tags, badges, and status indicators with style variants.
                        AvoidUsage = "Don't use for navigation - use RButton instead")]
 
 <span class="@GetChipClasses()" 
-      @onclick="HandleClick" 
+      @onclick="HandleClick"
+      @onclick:stopPropagation="true" 
       @attributes="GetForwardedAttributes()">
     
     @if (!string.IsNullOrEmpty(Icon))
     {
-        <i class="material-symbols-rounded chip-icon">@Icon</i>
+        <i class="icon chip-icon">@Icon</i>
     }
     
     @if (!string.IsNullOrEmpty(Text))
@@ -48,7 +36,7 @@ Chip component for tags, badges, and status indicators with style variants.
                 @onclick="HandleClose" 
                 @onclick:stopPropagation="true" 
                 aria-label="@($"Remove {Text}")">
-            <i class="material-symbols-rounded">close</i>
+            <i class="icon">close</i>
         </button>
     }
     
@@ -59,82 +47,40 @@ Chip component for tags, badges, and status indicators with style variants.
 </span>
 
 @code {
-    /// <summary>Chip style - determines the primary visual approach and behavior</summary>
-    /// <ai-hint>Badge for counts/notifications, Chip for tags/filters, Status for state indicators</ai-hint>
     [Parameter]
     [AIParameter(Hint = "Badge for counts, Chip for tags/filters, Status for state indicators", 
                  SuggestedValues = new[] { "Badge", "Chip", "Status" })]
-    public ChipStyle Style { get; set; } = ChipStyle.Chip;
+    public ChipStyle StyleVariant { get; set; } = ChipStyle.Chip;
     
-    /// <summary>Color/semantic variant - determines color scheme and meaning</summary>
-    /// <ai-hint>Primary for emphasis, Success for positive, Warning for attention, Error for problems</ai-hint>
     [Parameter]
     [AIParameter(Hint = "Primary for emphasis, Success for positive, Warning for attention, Error for problems", 
                  SuggestedValues = new[] { "Primary", "Secondary", "Success", "Warning", "Error", "Info" })]
     public VariantType Variant { get; set; } = VariantType.Secondary;
     
-    /// <summary>Chip text content</summary>
-    /// <ai-hint>Keep short: "Active", "5", "New", "Pending", "JavaScript". Use 1-20 characters max</ai-hint>
-    [Parameter]
-    [AIParameter(Hint = "Keep short: Active, 5, New, Pending. Use 1-20 characters max")]
-    public string Text { get; set; } = "";
     
-    /// <summary>Material icon name to display</summary>
-    /// <ai-hint>Common icons: check_circle, warning, error, info, star, notifications, close</ai-hint>
-    [Parameter]
-    [AIParameter(Hint = "Common icons: check_circle, warning, error, info, star, notifications", 
-                 SuggestedValues = new[] { "check_circle", "warning", "error", "info", "star", "notifications" })]
-    public string Icon { get; set; } = "";
-    
-    /// <summary>Size variant</summary>
-    /// <ai-hint>Small for compact, Medium for standard, Large for prominence</ai-hint>
-    [Parameter]
-    [AIParameter(Hint = "Small for compact, Medium for standard, Large for prominence", 
-                 SuggestedValues = new[] { "Small", "Medium", "Large" })]
-    public SizeType Size { get; set; } = SizeType.Medium;
-    
-    /// <summary>Density level for ultra-compact layouts</summary>
-    /// <ai-hint>Normal is default, Compact for ultra-dense, Dense for data-heavy</ai-hint>
-    [Parameter]
-    [AIParameter(Hint = "Normal is default, Compact for ultra-dense, Dense for data-heavy", 
-                 SuggestedValues = new[] { "Normal", "Dense", "Compact", "Spacious" })]
-    public DensityType Density { get; set; } = DensityType.Normal;
-    
-    /// <summary>Whether chip is clickable</summary>
-    /// <ai-hint>Set to true for interactive chips that perform actions when clicked</ai-hint>
     [Parameter]
     [AIParameter(Hint = "Set to true for interactive chips that perform actions")]
     public bool Clickable { get; set; }
     
-    /// <summary>Whether chip can be closed/removed</summary>
-    /// <ai-hint>Set to true for removable tags and filter chips</ai-hint>
     [Parameter]
     [AIParameter(Hint = "Set to true for removable tags and filter chips")]
     public bool Closeable { get; set; }
     
     [Parameter] public bool Selected { get; set; }
     
-    [Parameter] public bool Disabled { get; set; }
-    
-    /// <summary>Whether to show pulse animation for processing states</summary>
-    /// <ai-hint>Automatically enabled for Processing variant when Style is Status</ai-hint>
     [Parameter]
     [AIParameter(Hint = "Shows pulse animation for processing/loading states")]
     public bool ShowPulse { get; set; }
     
-    [Parameter] public EventCallback OnClick { get; set; }
-    
     [Parameter] public EventCallback OnClose { get; set; }
     
-    [Parameter] public RenderFragment ChildContent { get; set; }
     
-    [Parameter] public string Class { get; set; } = "";
 
     private string GetChipClasses()
     {
         var classes = new List<string>();
         
-        var baseClass = Style switch
+        var baseClass = StyleVariant switch
         {
             ChipStyle.Badge => "chip chip-badge",
             ChipStyle.Status => "chip chip-status", 
@@ -145,8 +91,10 @@ Chip component for tags, badges, and status indicators with style variants.
         
         classes.Add($"chip-{Variant.ToString().ToLower()}");
         if (ShouldShowPulse()) classes.Add("chip-pulsing");
-        if (Size != SizeType.Medium) classes.Add($"chip-{Size.ToString().ToLower()}");
-        if (Density != DensityType.Normal) classes.Add($"chip-{Density.ToString().ToLower()}");
+        
+        var sizeClasses = SizeHelper.GetChipSize(Size, Density);
+        classes.Add(sizeClasses);
+        
         if (Clickable && !Disabled) classes.Add("chip-clickable");
         if (Selected) classes.Add("chip-selected");
         if (Closeable) classes.Add("chip-closeable");
@@ -157,10 +105,25 @@ Chip component for tags, badges, and status indicators with style variants.
         return string.Join(" ", classes);
     }
     
-
-    private async Task HandleClick()
+    protected override string GetSizeClasses()
     {
-        if (Clickable && !Disabled && OnClick.HasDelegate) await OnClick.InvokeAsync();
+        return Size switch
+        {
+            SizeType.ExtraSmall => "chip-xs",
+            SizeType.Small => "chip-sm",
+            SizeType.Medium => "chip-md",
+            SizeType.Large => "chip-lg",
+            SizeType.ExtraLarge => "chip-xl",
+            _ => "chip-md"
+        };
+    }
+    
+    protected override SizeType GetDefaultSize() => SizeType.Medium;
+    
+
+    private void HandleClick(MouseEventArgs args)
+    {
+        // Click is handled by parent via @onclick binding when Clickable is true
     }
 
     private async Task HandleClose()
@@ -170,22 +133,43 @@ Chip component for tags, badges, and status indicators with style variants.
 
     private Dictionary<string, object> GetForwardedAttributes()
     {
-        var excludeProperties = new HashSet<string> 
+        var excludeProperties = new HashSet<string>(StringComparer.OrdinalIgnoreCase) 
         { 
-            nameof(Style), nameof(Variant), nameof(Text), nameof(Icon), nameof(Size), 
+            nameof(StyleVariant), nameof(Variant), nameof(Text), nameof(Icon), nameof(Size), 
             nameof(Density), nameof(Clickable), nameof(Closeable), nameof(Selected), 
-            nameof(Disabled), nameof(ShowPulse), nameof(OnClick), nameof(OnClose), nameof(ChildContent), nameof(Class) 
+            nameof(Disabled), nameof(ShowPulse), nameof(OnClick), nameof(OnClose), nameof(ChildContent), 
+            nameof(Class), nameof(Title), nameof(Subtitle), nameof(Loading), nameof(LoadingText), 
+            nameof(AriaLabel), nameof(TabIndex)
         };
 
-        return GetType().GetProperties()
+        var forwarded = new Dictionary<string, object>();
+        var componentType = GetType();
+        var properties = componentType.GetProperties()
             .Where(p => p.GetCustomAttributes(typeof(ParameterAttribute), true).Any() 
-                       && !excludeProperties.Contains(p.Name))
-            .Where(p => p.GetValue(this) != null || p.PropertyType.IsValueType)
-            .ToDictionary(p => p.Name, p => p.GetValue(this));
+                       && !excludeProperties.Contains(p.Name)
+                       && p.CanRead);
+
+        foreach (var property in properties)
+        {
+            try
+            {
+                var value = property.GetValue(this);
+                if (value != null || property.PropertyType.IsValueType)
+                {
+                    forwarded[property.Name] = value;
+                }
+            }
+            catch
+            {
+                // Skip properties that can't be accessed
+            }
+        }
+        
+        return forwarded;
     }
 
     private bool ShouldShowPulse()
     {
-        return (Style == ChipStyle.Status && Variant == VariantType.Warning) || ShowPulse;
+        return (StyleVariant == ChipStyle.Status && Variant == VariantType.Warning) || ShowPulse;
     }
 }

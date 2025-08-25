@@ -19,6 +19,7 @@
 @using Microsoft.JSInterop
 @typeparam TModel where TModel : class
 @inherits RFormBase
+@inject IJSRuntime JSRuntime
 @implements IAsyncDisposable
 
 <CascadingValue Value="@GetFormValidationContext()">
@@ -37,7 +38,7 @@
                 <h2 class="form-title text-h4 font-semibold mb-2">
                     @if (!string.IsNullOrEmpty(Icon))
                     {
-                        <i class="material-symbols-rounded mr-3">@Icon</i>
+                        <i class="icon mr-3">@Icon</i>
                     }
                     @Title
                 </h2>
@@ -95,7 +96,7 @@
                     @if (!string.IsNullOrEmpty(validationResult?.GeneralError))
                     {
                         <div class="flex items-center gap-2 mb-2">
-                            <i class="material-symbols-rounded text-error" aria-hidden="true">error</i>
+                            <i class="icon text-error" aria-hidden="true">error</i>
                             <span class="text-body-2 text-error font-medium">@validationResult.GeneralError</span>
                         </div>
                     }
@@ -153,7 +154,7 @@
     {
         <div class="form-success pa-4 mt-4 bg-success-light border-light rounded" role="alert" aria-live="polite">
             <div class="flex items-center gap-2">
-                <i class="material-symbols-rounded text-success">check_circle</i>
+                <i class="icon text-success">check_circle</i>
                 <span class="text-body-2 text-success font-medium">@Options.SuccessMessage</span>
             </div>
         </div>
@@ -229,7 +230,7 @@
             }
         }
     }
-    public string FormId { get; private set; } = $"r-form-{Guid.NewGuid():N}";
+    public string FormId { get; private set; } = $"form-{Guid.NewGuid():N}";
     public bool HasAttemptedSubmit { get; private set; }
     
     private FormValidationResult validationResult = new();
@@ -237,8 +238,6 @@
     private Timer? validationDebounceTimer;
     private ElementReference formElement;
     private bool disposed = false;
-    
-    [Inject] private IJSRuntime JSRuntime { get; set; } = default!;
     
     protected override void OnInitialized()
     {
@@ -421,7 +420,7 @@
             if (ValidationMode == ValidationMode.DataAnnotations || ValidationMode == ValidationMode.Hybrid)
             {
                 var context = new ValidationContext(Model);
-                var validationResults = new List<ValidationResult>();
+                var validationResults = new List<System.ComponentModel.DataAnnotations.ValidationResult>();
                 
                 if (!Validator.TryValidateObject(Model, context, validationResults, true))
                 {
@@ -552,7 +551,7 @@
 
                 var firstFieldName = validationResult.FieldErrors.Keys.First();
                 var fieldSelector = $"#{FormId} input[data-field='{firstFieldName}'], #{FormId} select[data-field='{firstFieldName}'], #{FormId} textarea[data-field='{firstFieldName}']";
-                await JSRuntime.InvokeVoidAsync("RRBlazor.DOMUtils.focusElement", fieldSelector);
+                await SafeInvokeAsync("RRBlazor.DOMUtils.focusElement", fieldSelector);
             }
         }
         catch (Exception ex)
@@ -575,13 +574,20 @@
     
     private string GetFormDensityClass()
     {
-        return Density switch
+        var densityClass = Density switch
         {
-            FormDensity.Compact => "form-compact",
-            FormDensity.Dense => "form-dense",
-            FormDensity.Spacious => "form-spacious",
-            _ => "form-normal"
+            DensityType.Compact => "form-compact",
+            DensityType.Dense => "form-dense",
+            DensityType.Spacious => "form-spacious",
+            _ => "form-density-normal"
         };
+        
+        // Avoid duplicate classes - if layout already provides compact, don't add density compact
+        // TODO: implement more delicate density enforcement
+        if (Layout == FormLayout.Compact && Density == DensityType.Compact)
+            return "";
+        
+        return densityClass;
     }
     
     private FormValidationContext GetFormValidationContext()
@@ -636,7 +642,7 @@
             try
             {
                 var editContext = new EditContext(Model);
-                var validationResults = new List<ValidationResult>();
+                var validationResults = new List<System.ComponentModel.DataAnnotations.ValidationResult>();
                 var context = new ValidationContext(Model);
                 
                 if (!Validator.TryValidateObject(Model, context, validationResults, true))
@@ -692,7 +698,7 @@
     {
         try
         {
-            await JSRuntime.InvokeVoidAsync("RRBlazor.DOMUtils.focusElement", fieldSelector);
+            await SafeInvokeAsync("RRBlazor.DOMUtils.focusElement", fieldSelector);
         }
         catch (Exception ex)
         {

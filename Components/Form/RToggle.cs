@@ -9,7 +9,7 @@ namespace RR.Blazor.Components.Form;
 /// Smart toggle component that defaults to boolean values for most common use cases.
 /// This eliminates the need for explicit TValue specification for boolean toggles.
 /// </summary>
-public class RToggle : ComponentBase
+public class RToggle : RComponentBase
 {
     [Parameter] public bool Value { get; set; }
     [Parameter] public EventCallback<bool> ValueChanged { get; set; }
@@ -20,9 +20,7 @@ public class RToggle : ComponentBase
     [Parameter] public string FalseIcon { get; set; }
     [Parameter] public ToggleVariant Variant { get; set; } = ToggleVariant.Standard;
     [Parameter] public SizeType Size { get; set; } = SizeType.Medium;
-    [Parameter] public bool Disabled { get; set; }
     [Parameter] public bool Loading { get; set; }
-    [Parameter] public string Class { get; set; }
     [Parameter] public string AriaLabel { get; set; }
     [Parameter] public EventCallback<bool> OnToggle { get; set; }
 

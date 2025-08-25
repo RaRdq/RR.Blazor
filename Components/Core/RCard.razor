@@ -1,16 +1,7 @@
-@** 
-<summary>
-Card component with header, media, content areas, and loading states.
-</summary>
-<category>Core</category>
-<complexity>Simple</complexity>
-<ai-prompt>Create card for content display</ai-prompt>
-<ai-common-use>dashboards, data display, content organization</ai-common-use>
-<ai-avoid>Don't use for navigation - use RLink instead</ai-avoid>
-**@
 @using RR.Blazor.Enums
 @using RR.Blazor.Attributes
 @using RR.Blazor.Components.Base
+@using RR.Blazor.Utilities
 @inherits RComponentBase
 
 @attribute [Component("RCard", Category = "Core", Complexity = ComponentComplexity.Simple)]
@@ -27,13 +18,12 @@ Card component with header, media, content areas, and loading states.
      tabindex="@(Clickable ? 0 : null)"
      aria-label="@AriaLabel">
     
-    @* Header *@
     @if (HasHeader)
     {
         <div class="@GetHeaderClasses()">
             @if (!string.IsNullOrEmpty(Icon))
             {
-                <i class="material-symbols-rounded mr-3 @GetIconSizeClass() icon-dynamic">@Icon</i>
+                <i class="icon mr-3 @GetIconSizeClass() icon-dynamic">@Icon</i>
             }
             
             <div class="grow">
@@ -52,7 +42,6 @@ Card component with header, media, content areas, and loading states.
         </div>
     }
     
-    @* Media/Image *@
     @if (!string.IsNullOrEmpty(ImageSrc) || MediaContent != null)
     {
         <div class="@GetMediaClasses()">
@@ -67,12 +56,10 @@ Card component with header, media, content areas, and loading states.
         </div>
     }
     
-    @* Content *@
     @if (ChildContent != null || !string.IsNullOrEmpty(Content))
     {
         @if (NoPadding && string.IsNullOrEmpty(Content) && string.IsNullOrEmpty(BodyClass))
         {
-            @* No wrapper div when NoPadding is true, no Content text, and no custom BodyClass *@
             @ChildContent
         }
         else
@@ -87,7 +74,6 @@ Card component with header, media, content areas, and loading states.
         }
     }
     
-    @* Footer *@
     @if (FooterContent != null)
     {
         <div class="@GetFooterClasses()">
@@ -95,7 +81,6 @@ Card component with header, media, content areas, and loading states.
         </div>
     }
     
-    @* Loading Overlay - handled by CSS loading-overlay mixin *@
     @if (Loading)
     {
         <div class="@GetLoadingOverlayClasses()">
@@ -107,7 +92,6 @@ Card component with header, media, content areas, and loading states.
     }
     
     
-    @* Ribbon/Badge (Legacy Support) *@
     @if (!string.IsNullOrEmpty(RibbonText))
     {
         <div class="@GetRibbonClasses()">
@@ -117,50 +101,39 @@ Card component with header, media, content areas, and loading states.
 </div>
 
 @code {
-    /// <summary>Card variant style</summary>
     [Parameter]
     [AIParameter(Hint = "Default for standard, Elevated for prominence, Glass for overlays, Gradient for hero sections, GlassGradient for premium features", 
                  SuggestedValues = new[] { "Default", "Outlined", "Elevated", "Glass", "Flat", "Gradient", "GlassGradient" }, 
                  IsRequired = false)]
     public CardVariant Variant { get; set; } = CardVariant.Default;
     
-    /// <summary>Card title text</summary>
     [Parameter]
     [AIParameter(Hint = "Card title text", IsRequired = false)]
     public string Text { get; set; }
     
-    /// <summary>Card subtitle text</summary>
     [Parameter]
     [AIParameter(Hint = "Secondary text below title", IsRequired = false)]
     public string Subtitle { get; set; }
     
-    /// <summary>Card content text</summary>
     [Parameter]
     [AIParameter(Hint = "Simple text content", IsRequired = false)]
     public string Content { get; set; }
     
-    /// <summary>Material icon name</summary>
     [Parameter]
     [AIParameter(Hint = "Icon name", 
                  SuggestedValues = new[] { "dashboard", "person", "settings", "analytics", "payment", "work" })]
     public string Icon { get; set; }
     
-    /// <summary>Image source URL for media content</summary>
-    /// <ai-hint>Use for hero images, thumbnails, or visual content in cards</ai-hint>
     [Parameter]
     [AIParameter(Hint = "Use for hero images, thumbnails, or visual content", IsRequired = false)]
     public string ImageSrc { get; set; }
     
     [Parameter] public string ImageAlt { get; set; }
     
-    /// <summary>Whether card is clickable - adds hover effects and cursor pointer</summary>
-    /// <ai-hint>Set to true for interactive cards that perform actions when clicked</ai-hint>
     [Parameter]
     [AIParameter(Hint = "Set to true for interactive cards that perform actions")]
     public bool Clickable { get; set; }
     
-    /// <summary>Whether card is in loading state - shows overlay with spinner</summary>
-    /// <ai-hint>Use during async operations to indicate processing state</ai-hint>
     [Parameter]
     [AIParameter(Hint = "Use during async operations to show processing state")]
     public bool Loading { get; set; }
@@ -179,8 +152,6 @@ Card component with header, media, content areas, and loading states.
     [Parameter] public bool FullBleedImage { get; set; }
     
     
-    /// <summary>CSS classes for the card body/content wrapper - provides full control over content area styling</summary>
-    /// <ai-hint>Use to customize padding, layout, spacing of the card content area. Overrides default padding when specified.</ai-hint>
     [Parameter]
     [AIParameter(Hint = "Customize content area styling - padding, layout, spacing. Overrides defaults.", IsRequired = false)]
     public string BodyClass { get; set; }
@@ -245,7 +216,10 @@ Card component with header, media, content areas, and loading states.
     {
         var classes = new List<string> { "card-header" };
         
-        if (Density != DensityType.Normal) classes.Add(GetDensityPaddingClasses());
+        if (Density != DensityType.Normal) 
+        {
+            classes.Add(DensityHelper.GetCardDensityClasses(Density));
+        }
         
         return string.Join(" ", classes);
     }
@@ -259,16 +233,8 @@ Card component with header, media, content areas, and loading states.
     {
         var classes = new List<string> { "card-title" };
         
-        if (Density != DensityType.Normal)
-        {
-            classes.Add(Density switch
-            {
-                DensityType.Compact => "text-base",
-                DensityType.Dense => "text-lg", 
-                DensityType.Spacious => "text-xl",
-                _ => "text-lg"
-            });
-        }
+        var textSize = SizeHelper.GetTextSize(SizeType.Large, Density);
+        classes.Add(textSize);
         
         return string.Join(" ", classes);
     }
@@ -277,14 +243,12 @@ Card component with header, media, content areas, and loading states.
     {
         var classes = new List<string> { "text-secondary", "mb-0" };
         
-        classes.Add(Density switch
-        {
-            DensityType.Compact => "text-xs mt-0",
-            DensityType.Dense => "text-sm mt-0",
-            DensityType.Normal => "text-sm mt-1",
-            DensityType.Spacious => "text-base mt-2",
-            _ => "text-sm mt-1"
-        });
+        var textSize = SizeHelper.GetTextSize(SizeType.Small, Density);
+        var margin = DensityHelper.GetMargin(Density, "1");
+        var marginClass = $"mt-{margin}";
+        
+        classes.Add(textSize);
+        classes.Add(marginClass);
         
         return string.Join(" ", classes);
     }
@@ -339,32 +303,20 @@ Card component with header, media, content areas, and loading states.
     
     private string GetDensityPaddingClasses()
     {
-        return Density switch
-        {
-            DensityType.Compact => "pa-2",
-            DensityType.Dense => "pa-3",
-            DensityType.Normal => "pa-4",
-            DensityType.Spacious => "pa-6",
-            _ => "pa-4"
-        };
+        var padding = DensityHelper.GetPadding(Density, "4");
+        return $"pa-{padding}";
     }
     
     private string GetDensityMarginClasses()
     {
-        return Density switch
-        {
-            DensityType.Compact => "mt-2",
-            DensityType.Dense => "mt-3",
-            DensityType.Normal => "mt-4",
-            DensityType.Spacious => "mt-6",
-            _ => "mt-4"
-        };
+        var margin = DensityHelper.GetMargin(Density, "4");
+        return $"mt-{margin}";
     }
     
     
     private string GetLoadingOverlayClasses()
     {
-        return "absolute inset-0 loading-overlay";
+        return "card-loading";
     }
     
     private string GetRibbonClasses()

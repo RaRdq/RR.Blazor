@@ -13,19 +13,17 @@
 **@
 
 @using RR.Blazor.Components.Base
+@using RR.Blazor.Enums
 @inherits RForwardingComponentBase
 @attribute [Component("RRadio", Category = "Form")]
 @attribute [AIOptimized(Prompt = "Create professional radio button with validation")]
-
-@using RR.Blazor.Enums
-@using RR.Blazor.Components.Base
 
 <div class="flex items-start gap-3 @GetContainerClasses()">
     <div class="relative flex items-center justify-center">
         <input type="radio" 
                id="@Id"
                name="@Name"
-               value="@Value"
+               value="@(Value?.ToString())"
                checked="@IsSelected"
                @onchange="OnSelectionChanged"
                disabled="@Disabled"
@@ -46,7 +44,7 @@
             <div class="flex items-center gap-2">
                 @if (!string.IsNullOrEmpty(Icon))
                 {
-                    <i class="material-symbols-rounded @GetIconClasses()">@Icon</i>
+                    <i class="icon @GetIconClasses()">@Icon</i>
                 }
                 @if (!string.IsNullOrEmpty(Text))
                 {
@@ -85,7 +83,7 @@
     [Parameter] public string? Name { get; set; }
     
     /// <summary>Value of this radio option</summary>
-    [Parameter] public string? Value { get; set; }
+    [Parameter] public object? Value { get; set; }
     
     /// <summary>Currently selected value in the radio group</summary>
     [Parameter] public string? SelectedValue { get; set; }
@@ -108,26 +106,40 @@
     /// <summary>Size of the radio button</summary>
     [Parameter] public SizeType Size { get; set; } = Medium;
     
-    /// <summary>Whether the radio button is disabled</summary>
-    [Parameter] public bool Disabled { get; set; }
-    
     /// <summary>Whether the field is required</summary>
     [Parameter] public bool Required { get; set; }
     
     /// <summary>Validation error message to display</summary>
     [Parameter] public string? ValidationMessage { get; set; }
     
-    /// <summary>Additional CSS classes to apply</summary>
-    [Parameter] public string? Class { get; set; }
-    
-    /// <summary>Custom content to render alongside the radio button</summary>
-    [Parameter] public RenderFragment? ChildContent { get; set; }
-    
     /// <summary>Callback when radio button is clicked</summary>
     [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
+    
+    /// <summary>Track the previous selected value to detect actual changes</summary>
+    private object? _previousSelectedValue;
 
-
-    private bool IsSelected => Value == SelectedValue;
+    private bool IsSelected => AreValuesEqual(Value, SelectedValue);
+    
+    private bool AreValuesEqual(object? value1, object? value2)
+    {
+        if (value1 == null && value2 == null) return true;
+        if (value1 == null || value2 == null) return false;
+        
+        // Handle string comparison
+        var str1 = value1.ToString();
+        var str2 = value2.ToString();
+        return string.Equals(str1, str2, StringComparison.Ordinal);
+    }
+    
+    protected override void OnParametersSet()
+    {
+        // Track when SelectedValue changes externally
+        if (!AreValuesEqual(_previousSelectedValue, SelectedValue))
+        {
+            _previousSelectedValue = SelectedValue;
+        }
+        base.OnParametersSet();
+    }
     
     /// <summary>
     /// Returns safely filtered HTML attributes using centralized RAttributeForwarder.
@@ -139,23 +151,30 @@
 
     private async Task OnSelectionChanged(ChangeEventArgs e)
     {
-        var newValue = e.Value?.ToString();
-        await SelectedValueChanged.InvokeAsync(newValue);
-        await OnClick.InvokeAsync();
+        // Only fire events when this radio is becoming selected (not already selected)
+        // Radio buttons in HTML automatically deselect others in the same name group
+        // So we only need to handle the selection event, not deselection
+        var isBecomingSelected = e.Value?.ToString() == "on" || e.Value?.ToString() == "true";
+        
+        if (isBecomingSelected && !IsSelected)
+        {
+            await SelectedValueChanged.InvokeAsync(Value?.ToString());
+            await OnClick.InvokeAsync();
+        }
     }
 
     private string GetContainerClasses()
     {
-        var classes = new List<string> { "r-radio" };
+        var classes = new List<string> { "radio" };
         
         if (Disabled)
-            classes.Add("is-disabled");
+            classes.Add("radio-disabled");
             
         if (!string.IsNullOrEmpty(ValidationMessage))
             classes.Add("is-error");
             
         if (IsSelected)
-            classes.Add("is-selected");
+            classes.Add("radio-selected");
 
         if (!string.IsNullOrEmpty(Class))
             classes.Add(Class);

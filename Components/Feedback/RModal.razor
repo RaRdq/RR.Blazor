@@ -27,7 +27,7 @@
                         <div class="d-flex items-center @GetModalHeaderClasses()">
                             @if (!string.IsNullOrEmpty(Icon))
                             {
-                                <i class="material-symbols-rounded text-primary @GetIconSizeClass()" aria-hidden="true">@Icon</i>
+                                <i class="icon text-primary @GetIconSizeClass()" aria-hidden="true">@Icon</i>
                             }
                             <div class="d-flex flex-col">
                                 <h3 id="@ModalTitleId" class="modal-title ma-0 @GetTitleClasses()">@Title</h3>
@@ -48,7 +48,7 @@
                                         @onclick:stopPropagation="true"
                                         disabled="@Processing"
                                         aria-label="Close dialog">
-                                    <i class="material-symbols-rounded icon-no-pointer" aria-hidden="true">close</i>
+                                    <i class="icon icon-no-pointer" aria-hidden="true">close</i>
                                 </button>
                             }
                         </div>
@@ -120,7 +120,7 @@
                             @if (ShowUnsavedIndicator && HasUnsavedChanges)
                             {
                                 <div class="d-flex items-center gap-2 pa-3 bg-info-light text-info rounded-lg">
-                                    <i class="material-symbols-rounded">info</i>
+                                    <i class="icon">info</i>
                                     <span class="text-sm">You have unsaved changes</span>
                                 </div>
                             }
@@ -288,7 +288,7 @@
             trapFocus = true
         };
         
-        var result = await JSRuntime.InvokeAsync<string>("RRBlazor.Modal.create", modalElement, options);
+        var result = await SafeInvokeAsync<string>("RRBlazor.Modal.create", modalElement, options);
         
         actualPortalId = result;
         isPortalCreated = true;
@@ -309,7 +309,7 @@
         }
         
         // Use the modal state machine destroy API - let it throw if it fails
-        var success = await JSRuntime.InvokeAsync<bool>("RRBlazor.Modal.destroy", actualPortalId);
+        var success = await SafeInvokeAsync<bool>("RRBlazor.Modal.destroy", actualPortalId);
         
         if (!success)
         {
@@ -324,7 +324,7 @@
     {
         var variantClass = Variant switch
         {
-            ModalVariant.Glass => "modal-backdrop-glass",
+            ModalVariant.Glass => "portal-backdrop-glass",
             ModalVariant.Protected => "modal-backdrop-protected",
             _ => "modal-backdrop-dark"
         };
@@ -356,7 +356,7 @@
     {
         if (e.Key == "Escape" && CloseOnEscape && !Processing && Variant != ModalVariant.Protected && currentState == ModalState.Open)
         {
-            if (await JSRuntime.InvokeAsync<bool>("RRBlazor.Modal.isTopModal", portalId))
+            if (await SafeInvokeAsync<bool>("RRBlazor.Modal.isTopModal", portalId))
             {
                 await HandleClose();
             }

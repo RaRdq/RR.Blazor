@@ -334,6 +334,11 @@ export class PositioningEngine {
     }
 }
 
-export const positioningEngine = new PositioningEngine();
+const positioningEngine = new PositioningEngine();
 
-export default PositioningEngine;
+export default {
+    PositioningEngine,
+    getInstance: () => positioningEngine,
+    getPositioningEngine: () => ({ PositioningEngine }),
+    ...positioningEngine
+};

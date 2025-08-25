@@ -1,0 +1,103 @@
+@using RR.Blazor.Services
+@inject IModalServiceCore ModalService
+@implements IDisposable
+
+@foreach (var modal in _activeModals.Values)
+{
+    if (modal.ComponentType == typeof(RConfirmationModal))
+    {
+        <RConfirmationModal @key="@modal.Id"
+                           ModalId="@modal.Id"
+                           Title="@(GetParam<string>(modal.Parameters, nameof(RConfirmationModal.Title)))"
+                           Message="@(GetParam<string>(modal.Parameters, nameof(RConfirmationModal.Message)))"
+                           ConfirmText="@(GetParam<string>(modal.Parameters, nameof(RConfirmationModal.ConfirmText)))"
+                           CancelText="@(GetParam<string>(modal.Parameters, nameof(RConfirmationModal.CancelText)))"
+                           Icon="@(GetParam<string>(modal.Parameters, nameof(RConfirmationModal.Icon)))"
+                           Variant="@(GetParam<ConfirmationVariant>(modal.Parameters, nameof(RConfirmationModal.Variant)))"
+                           Visible="@(GetParam<bool>(modal.Parameters, nameof(RConfirmationModal.Visible)))"
+                           OnConfirm="@((result) => HandleModalResult(modal.Id, result))" />
+    }
+    else if (modal.ComponentType != null)
+    {
+        @RenderCustomModal(modal)
+    }
+}
+
+@code {
+    private readonly Dictionary<string, ModalData> _activeModals = new();
+
+    protected override void OnInitialized()
+    {
+        if (ModalService is ModalService service)
+        {
+            service.OnModalOpened += HandleModalOpened;
+            service.OnModalClosed += HandleModalClosed;
+        }
+    }
+
+    private void HandleModalOpened(ModalInstance instance)
+    {
+        _activeModals[instance.Id] = new ModalData
+        {
+            Id = instance.Id,
+            ComponentType = instance.Options?.ComponentType,
+            Parameters = instance.Options?.Parameters ?? new Dictionary<string, object>()
+        };
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void HandleModalClosed(ModalInstance instance)
+    {
+        _activeModals.Remove(instance.Id);
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async void HandleModalResult(string modalId, bool result)
+    {
+        if (ModalService is ModalService service)
+        {
+            await service.CloseAsync(modalId, result ? Enums.ModalResult.Ok : Enums.ModalResult.Cancel);
+        }
+    }
+
+    private RenderFragment RenderCustomModal(ModalData modal) => builder =>
+    {
+        if (modal.ComponentType == null) return;
+
+        builder.OpenComponent(0, modal.ComponentType);
+        builder.AddAttribute(1, "ModalId", modal.Id);
+        
+        foreach (var param in modal.Parameters)
+        {
+            builder.AddAttribute(2, param.Key, param.Value);
+        }
+        
+        builder.AddAttribute(3, "OnConfirm", EventCallback.Factory.Create<bool>(this, (result) => HandleModalResult(modal.Id, result)));
+        builder.CloseComponent();
+    };
+
+    private T GetParam<T>(Dictionary<string, object> parameters, string key)
+    {
+        if (parameters?.TryGetValue(key, out var value) == true && value is T typedValue)
+        {
+            return typedValue;
+        }
+        return default(T);
+    }
+
+    public void Dispose()
+    {
+        if (ModalService is ModalService service)
+        {
+            service.OnModalOpened -= HandleModalOpened;
+            service.OnModalClosed -= HandleModalClosed;
+        }
+    }
+
+    private class ModalData
+    {
+        public string Id { get; set; }
+        public Type ComponentType { get; set; }
+        public Dictionary<string, object> Parameters { get; set; }
+    }
+}

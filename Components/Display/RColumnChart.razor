@@ -31,7 +31,7 @@
     </HeaderContent>
     
     <ChildContent>
-        <div class="column-chart-container @(IsHorizontal ? "column-chart-horizontal" : "")" @ref="chartContainer" style="height: @Height;">
+        <div class="column-chart-container @(IsHorizontal ? "column-chart-horizontal" : "")" @ref="chartContainer" style="--chart-height: @Height; height: @Height;">
             @if (Data != null && Data.Any())
             {
                 var maxValue = Data.Max(d => d.Value);
@@ -60,7 +60,7 @@
                             @for (int i = 0; i <= GridLineCount; i++)
                             {
                                 var gridPosition = i * (100.0 / GridLineCount);
-                                <div class="grid-line" style="@(IsHorizontal ? $"left: {gridPosition}%" : $"bottom: {gridPosition}%")"></div>
+                                <div class="grid-line" style="@(IsHorizontal ? $"left: {gridPosition:F2}%;" : $"bottom: {gridPosition:F2}%;")"></div>
                             }
                         </div>
                     }
@@ -73,7 +73,7 @@
                         var color = GetBarColor(dataPoint, index);
                         var shouldShowValue = ShowValues || selectedIndex == index || hoveredIndex == index;
                         
-                        <div class="column-chart-bar @(selectedIndex == index ? "active" : "") @(GetBarResponsiveClass())"
+                        <div class="column-chart-bar @(selectedIndex == index ? "chart-item-selected" : "") @(GetBarResponsiveClass())"
                              @onclick="@(async () => await HandleBarClick(dataPoint, index))"
                              @onmouseover="@(async () => await HandleBarHover(dataPoint, index))"
                              @onmouseout="@(async () => await HandleBarLeave())"
@@ -83,13 +83,13 @@
                             
                             @if (shouldShowValue)
                             {
-                                <div class="column-chart-bar-value" style="position: absolute; bottom: calc(@(height)% + 5px); left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: 11px; font-weight: bold; color: var(--color-text); z-index: 10;">
+                                <div class="column-chart-bar-value position-absolute left-1/2 -translate-x-1/2 whitespace-nowrap text-xs font-bold z-10" style="@(IsHorizontal ? $"left: {height}%;" : $"bottom: {height}%;")">
                                     @GetFormattedValue(dataPoint.Value)
                                 </div>
                             }
                             
                             <div class="column-chart-bar-fill column-chart-bar-fill-@GetColorVariant(dataPoint, index)"
-                                 style="height: @(height)%;">
+                                 style="@(IsHorizontal ? $"width: {height}%;" : $"height: {height}%;")">
                             </div>
                         </div>
                     }
@@ -116,13 +116,13 @@
             {
                 var color = GetBarColor(dataPoint, index);
                 
-                <div class="chart-legend-item @(selectedIndex == index ? "active" : "")"
+                <div class="chart-legend-item @(selectedIndex == index ? "chart-item-selected" : "")"
                      @onclick="@(async () => await HandleLegendClick(dataPoint, index))"
                      role="button"
                      tabindex="0"
                      aria-label="@GetLegendAriaLabel(dataPoint)">
                     <div class="chart-legend-indicator" 
-                         style="background: @(color);"></div>
+                         style="background: @color;"></div>
                     <span class="chart-legend-label">@dataPoint.Label</span>
                     @if (ShowLegendValues)
                     {
@@ -411,13 +411,14 @@
 
     private string GetBarWrapperStyle(double heightPercentage)
     {
+        var percentage = heightPercentage.ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
         if (IsHorizontal)
         {
-            return $"width: {heightPercentage}%; height: 100%;";
+            return $"width: {percentage}%; height: 100%;";
         }
         else
         {
-            return $"height: {heightPercentage}%; width: 100%; position: relative; display: flex; flex-direction: column; justify-content: flex-end;";
+            return $"height: {percentage}%; width: 100%; position: relative; display: flex; flex-direction: column; justify-content: flex-end;";
         }
     }
     
@@ -537,11 +538,11 @@ Usage Examples:
     
     <HeaderContent>
         <div class="d-flex gap-2">
-            <button class="button button-outline button-sm">
-                <i class="material-symbols-rounded mr-1">download</i>
+            <button class="button-outline button-sm">
+                <i class="icon mr-1">download</i>
                 Export
             </button>
-            <select class="form-input form-input-sm">
+            <select class="form-select-sm">
                 <option>Daily</option>
                 <option>Weekly</option>
                 <option>Monthly</option>

@@ -11,7 +11,7 @@ namespace RR.Blazor.Components.Data;
 /// Smart table wrapper that enables ultra-simple syntax: <RTable Items="@data" />
 /// Uses RTableForwarder internally for compile-time type optimization
 /// </summary>
-public abstract class RTableBase : ComponentBase
+public abstract class RTableBase : RComponentBase
 {
     public override async Task SetParametersAsync(ParameterView parameters)
     {
@@ -46,11 +46,19 @@ public abstract class RTableBase : ComponentBase
                 nameof(ShowSearch) => ConvertToBool(value, true),
                 nameof(ShowToolbar) => ConvertToBool(value, true),
                 nameof(ShowChartButton) => ConvertToBool(value, false),
+                nameof(ShowExportButton) => ConvertToBool(value, true),
                 nameof(ShowColumnManager) => ConvertToBool(value, false),
                 nameof(EnableColumnReordering) => ConvertToBool(value, false),
                 nameof(EnableStickyColumns) => ConvertToBool(value, false),
                 nameof(EnableHorizontalScroll) => ConvertToBool(value, false),
+                nameof(EnableSorting) => ConvertToBool(value, false),
+                nameof(EnableFiltering) => ConvertToBool(value, false),
+                nameof(EnableSelection) => ConvertToBool(value, false),
+                nameof(EnableExport) => ConvertToBool(value, false),
+                nameof(EnablePaging) => ConvertToBool(value, true),
                 nameof(Loading) => ConvertToBool(value, false),
+                "ShowFilters" => ConvertToBool(value, false),
+                "EnableColumnFilters" => ConvertToBool(value, false),
                 _ => value // Keep original value for all other parameters
             };
             
@@ -121,10 +129,7 @@ public abstract class RTableBase : ComponentBase
     [Parameter] public string RowHeight { get; set; }
     [Parameter] public string HeaderHeight { get; set; }
     [Parameter] public string FooterHeight { get; set; }
-    [Parameter] public string Class { get; set; }
-    [Parameter] public string Style { get; set; }
     [Parameter] public string CssClass { get; set; }
-    [Parameter] public RenderFragment ChildContent { get; set; }
     [Parameter] public RenderFragment ColumnsContent { get; set; }
     [Parameter] public RenderFragment BulkOperations { get; set; }
     [Parameter] public RenderFragment TableActions { get; set; }
@@ -138,17 +143,20 @@ public abstract class RTableBase : ComponentBase
     [Parameter] public bool ShowSearch { get; set; } = true;
     [Parameter] public bool ShowToolbar { get; set; } = true;
     [Parameter] public bool ShowChartButton { get; set; }
+    [Parameter] public bool ShowExportButton { get; set; } = true;
     [Parameter] public string ChartButtonText { get; set; } = "Show as Chart";
     [Parameter] public RR.Blazor.Enums.ChartType? DefaultChartType { get; set; }
-    [Parameter] public RR.Blazor.Enums.DensityType Density { get; set; } = RR.Blazor.Enums.DensityType.Normal;
     
-    // Column management and table features
     [Parameter] public bool ShowColumnManager { get; set; }
     [Parameter] public bool EnableColumnReordering { get; set; }
     [Parameter] public bool EnableStickyColumns { get; set; }
     [Parameter] public bool EnableHorizontalScroll { get; set; }
+    [Parameter] public bool EnableSorting { get; set; }
+    [Parameter] public bool EnableFiltering { get; set; }
+    [Parameter] public bool EnableSelection { get; set; }
+    [Parameter] public bool EnableExport { get; set; }
+    [Parameter] public bool EnablePaging { get; set; } = true;
     
-    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object> AdditionalAttributes { get; set; }
 }
 
 /// <summary>
@@ -210,11 +218,9 @@ public class RTable : RTableBase
         builder.AddAttribute(++seq, nameof(EnableColumnReordering), EnableColumnReordering);
         builder.AddAttribute(++seq, nameof(EnableStickyColumns), EnableStickyColumns);
         builder.AddAttribute(++seq, nameof(EnableHorizontalScroll), EnableHorizontalScroll);
-        builder.AddAttribute(++seq, nameof(Density), Density);
         builder.AddAttribute(++seq, nameof(Hover), Hover);
         builder.AddAttribute(++seq, nameof(Bordered), Bordered);
         builder.AddAttribute(++seq, nameof(AutoGenerateColumns), AutoGenerateColumns);
-        builder.AddAttribute(++seq, nameof(Style), Style);
         
         if (AdditionalAttributes != null)
         {

@@ -1,7 +1,3 @@
-const debugLogger = {
-    error: (...args) => console.error('[RR.Blazor]', ...args)
-};
-
 class AutosuggestPositioning {
     constructor() {
         this.activeAutosuggest = new Map();
@@ -27,7 +23,6 @@ class AutosuggestPositioning {
         const triggerElement = autosuggestElement.querySelector('.autosuggest-input input');
         const viewportElement = autosuggestElement.querySelector('.autosuggest-viewport');
 
-            // Create portal using RRBlazor proxy
             const portalManager = await window.RRBlazor.Portal.getInstance();
             const portalResult = portalManager.create({
                 id: `autosuggest-${elementId}`,

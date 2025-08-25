@@ -2,26 +2,30 @@
 @using RR.Blazor.Components.Core
 @using RR.Blazor.Components.Form
 @using RR.Blazor.Components.Data
-@using RR.Blazor.Components.Data.Filters
 @using RR.Blazor.Components.Display
 @using RR.Blazor.Components.Feedback
 @using RR.Blazor.Enums
+@using RR.Blazor.Configuration
 @using RR.Blazor.Models
 @using RR.Blazor.Services
-@using RR.Blazor.Configuration
+@using RR.Blazor.Templates
+@using RR.Blazor.Interfaces
 @using System.Linq.Expressions
 @using System.Collections.Concurrent
 @using System.Reflection
+@using Microsoft.JSInterop
 @typeparam TItem where TItem : class
 @inherits RTableBase
 @implements ITableParent
+@implements IFilterable<TItem>
 @implements IAsyncDisposable
+@inject IJSRuntime JSRuntime
 
 @* Data table with sorting, filtering, pagination, and row selection *@
 
 <CascadingValue Value="@_tableContext" IsFixed="true">
     <CascadingValue Value="@((ITableParent)this)" IsFixed="true">
-        <div class="r-table-container @GetContainerClasses()" data-table-id="@TableId">
+        <div class="table-container @GetContainerClasses()" data-table-id="@TableId">
             @* Header Section *@
             @if (ShowTitle && (!string.IsNullOrEmpty(Title) || HeaderContent != null))
             {
@@ -32,7 +36,7 @@
                             <div class="text-h5 font-semibold">
                                 @if (!string.IsNullOrEmpty(Icon))
                                 {
-                                    <i class="material-symbols-rounded">@Icon</i>
+                                    <i class="icon">@Icon</i>
                                 }
                                 @Title
                             </div>
@@ -50,14 +54,26 @@
                     }
                 </div>
             }
+            
+            @* Enhanced Filter Integration *@
+            @if (ShowEnhancedFilters && EnhancementsEnabled)
+            {
+                <div class="table-enhanced-filters mb-4">
+                    <RFilter DataSource="@Items.AsQueryable()" 
+                            InitialCriteria="@_initialFilterCriteria"
+                            OnPredicateChanged="@(async (predicate) => await OnFilterPredicateChanged(predicate))"
+                            OnCriteriaChanged="@(async (criteria) => await OnFilterCriteriaChanged(criteria))"
+                            Config="@GetFilterConfig()" />
+                </div>
+            }
 
-            @if (ShowToolbar && (ShowSearch || ShowFilters || ShowChartButton || ShowColumnManager || ToolbarContent != null))
+            @if (ShowToolbar && (ShowSearch || ShowFilters || ShowChartButton || ShowExportButton || ShowColumnManager || ToolbarContent != null))
             {
                 <div class="table-toolbar">
                     @if (ShowSearch)
                     {
                         <div class="table-search">
-                            <i class="material-symbols-rounded">search</i>
+                            <i class="icon">search</i>
                             <input type="text" 
                                    class="table-search-input" 
                                    placeholder="@SearchPlaceholder"
@@ -66,12 +82,36 @@
                                    @oninput="@OnSearchInput" />
                         </div>
                     }
+                    @if (ShowFilters)
+                    {
+                        <div class="table-filters">
+                            <button class="button-outline button-sm" @onclick="@ToggleFilterPanel">
+                                <i class="icon mr-2">filter_list</i>
+                                Filters
+                                @if (_filterPanelExpanded)
+                                {
+                                    <i class="icon ml-2">expand_less</i>
+                                }
+                                else
+                                {
+                                    <i class="icon ml-2">expand_more</i>
+                                }
+                            </button>
+                        </div>
+                    }
                     @if (ShowChartButton)
                     {
-                        <button class="button button-outline button-sm" @onclick="@ShowChartModal" disabled="@(!FilteredData.Any())">
-                            <i class="material-symbols-rounded mr-2">analytics</i>
+                        <button class="button-outline button-sm" @onclick="@ShowChartModal" disabled="@(!FilteredData.Any())">
+                            <i class="icon mr-2">analytics</i>
                             @ChartButtonText
                         </button>
+                    }
+                    @if (ShowExportButton)
+                    {
+                        <RExportButton DataSource="@FilteredData" 
+                                      ButtonClass="button-outline button-sm"
+                                      Text="Export"
+                                      Icon="download" />
                     }
                     @if (ShowColumnManager)
                     {
@@ -89,8 +129,19 @@
                 </div>
             }
 
-            <div class="table-scroll-container @(EnableHorizontalScroll ? "table-content scroll-container-x" : "") @(FixedHeader ? "table-fixed-header" : "")" 
-                 style="@GetScrollContainerStyle()">
+            @* Filter Panel (shown when expanded) *@
+            @if (ShowFilters && _filterPanelExpanded)
+            {
+                <div class="table-filter-panel pa-4 border-b border-surface-outline bg-surface-elevated">
+                    <RFilterGeneric TItem="TItem" 
+                             DataSource="@_allData.AsQueryable()"
+                             OnDataFiltered="@OnFilterApplied"
+                             Config="@(new UniversalFilterConfig { ShowAdvancedPanel = true, ShowSearch = false })" />
+                </div>
+            }
+
+            <div class="table-scroll-container @(EnableHorizontalScroll ? "table-content table-content-scroll-container-x" : "") @(FixedHeader ? "table-scroll-container-fixed-header" : "") @(EnableHorizontalScroll ? "overflow-x-auto" : "")"
+                 style="--scroll-height: @Height; height: @Height; max-height: @MaxHeight;">
                 @if (Loading && !Items.Any())
                 {
                     <div class="table-loading">
@@ -108,19 +159,20 @@
                         }
                         else
                         {
-                            <i class="material-symbols-rounded empty-icon">inbox</i>
+                            <i class="icon empty-icon">inbox</i>
                             <p class="empty-description">@EmptyMessage</p>
                         }
                     </div>
                 }
                 else
                 {
-                    <table class="r-table @GetTableClasses()" style="@GetTableStyle()">
+                    <table class="@GetTableClasses() @GetEnhancedTableClasses() @(EnhancementsEnabled ? "table-advanced" : "") " 
+                           data-table-id="@TableId">
                         <thead>
                             <tr>
                                 @if (Selectable)
                                 {
-                                    <th class="r-table-header-cell r-table-cell-checkbox">
+                                    <th class="table-header-cell table-cell-checkbox">
                                         @if (MultiSelect)
                                         {
                                             <input type="checkbox"
@@ -132,41 +184,66 @@
                                 }
                                 @foreach (var column in GetVisibleColumns())
                                 {
-                                    <th class="r-table-header-cell @(column.Sortable ? "is-sortable" : "") @column.HeaderClass"
-                                        style="@GetColumnStyle(column)">
+                                    <th class="table-header-cell @(column.Sortable ? "table-header-cell-sortable" : "") @column.HeaderClass @GetEnhancedHeaderClasses(column) "
+                                        data-sticky="@(column.Sticky != StickyColumnType.None ? column.Sticky.ToString().ToLower() : null)"
+                                        data-sticky-order="@(column.Sticky != StickyColumnType.None ? column.StickyOrder : null)"
+                                        data-column-key="@column.Key"
+                                        style="--cell-width: @column.Width; width: @column.Width; min-width: @column.MinWidth; max-width: @column.MaxWidth;">
                                         @if (column.HeaderTemplate != null)
                                         {
                                             @column.HeaderTemplate
                                         }
                                         else
                                         {
-                                            @if (column.Sortable)
-                                            {
-                                                <button class="table-header-content table-header-sortable @GetSortClass(column.Key)"
-                                                        @onclick="@(() => OnSort(column.Key))">
-                                                    <span>@column.Title</span>
-                                                    <i class="material-symbols-rounded table-sort-icon">@GetSortIcon(column.Key)</i>
-                                                </button>
-                                            }
-                                            else
-                                            {
-                                                <div class="table-header-content">
-                                                    <span>@column.Title</span>
+                                            <div class="table-header-wrapper">
+                                                <div class="table-header-content-group">
+                                                    @if (column.Sortable)
+                                                    {
+                                                        <button class="table-header-content table-header-sortable @GetSortClass(column.Key)"
+                                                                @onclick="@((e) => OnSortClick(column.Key))">
+                                                            <span>@column.Title</span>
+                                                            <i class="icon table-sort-icon">@GetSortIcon(column.Key)</i>
+                                                        </button>
+                                                    }
+                                                    else
+                                                    {
+                                                        <div class="table-header-content">
+                                                            <span>@column.Title</span>
+                                                        </div>
+                                                    }
+                                                    
+                                                    @if (EnableColumnFilters && column.Filterable)
+                                                    {
+                                                        @* Tiny filter icon button next to sort *@
+                                                        <button class="table-header-filter-icon @(_activeColumnFilters.ContainsKey(column.Key) ? "active" : "")"
+                                                                data-filter-column="@column.Key"
+                                                                @onclick="@((e) => OnFilterClick(column.Key))"
+                                                                title="Filter @column.Title">
+                                                            <i class="icon">@(_activeColumnFilters.ContainsKey(column.Key) ? "filter_alt" : "filter_list")</i>
+                                                            @if (_activeColumnFilters.ContainsKey(column.Key) && GetColumnFilterCount(column.Key) > 0)
+                                                            {
+                                                                <span class="filter-badge">@GetColumnFilterCount(column.Key)</span>
+                                                            }
+                                                        </button>
+                                                    }
                                                 </div>
-                                            }
+                                                
+                                            </div>
                                         }
                                     </th>
                                 }
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach (var item in GetPagedItems())
+                            @foreach (var (item, index) in GetPagedItems().Select((item, index) => (item, index)))
                             {
-                                <tr class="r-table-row @GetRowClass(item)" 
-                                    @onclick="@(() => OnRowClick(item))">
+                                <tr class="table-row @GetEnhancedRowClass(item, index)" 
+                                    data-row-index="@index"
+                                    tabindex="@(EnhancementsConfig.SelectionConfig.KeyboardNavigation ? "0" : "-1")"
+                                    @onclick="@(() => HandleEnhancedRowClick(item, index))">
                                     @if (Selectable)
                                     {
-                                        <td class="r-table-cell r-table-cell-checkbox">
+                                        <td class="table-cell table-cell-checkbox">
                                             <input type="@(MultiSelect ? "checkbox" : "radio")"
                                                    name="@(MultiSelect ? null : $"table-{TableId}")"
                                                    checked="@IsSelected(item)"
@@ -177,7 +254,10 @@
                                     }
                                     @foreach (var column in GetVisibleColumns())
                                     {
-                                        <td class="r-table-cell @column.CellClass" style="@GetColumnStyle(column)">
+                                        <td class="table-cell @column.CellClass @GetEnhancedCellClasses(column) "
+                                            data-sticky="@(column.Sticky != StickyColumnType.None ? column.Sticky.ToString().ToLower() : null)"
+                                            data-sticky-order="@(column.Sticky != StickyColumnType.None ? column.StickyOrder : null)"
+                                            style="--cell-width: @column.Width; width: @column.Width; min-width: @column.MinWidth; max-width: @column.MaxWidth;">
                                             @{
                                                 var cellContent = column.GetCellContent(item);
                                                 if (cellContent != null)
@@ -197,78 +277,52 @@
             @* Footer Section *@
             @if (ShowPagination && _processedItems.Any())
             {
-                <div class="table-footer">
-                    <div class="table-footer-desktop d-flex justify-between items-center px-4 py-3">
-                        <div class="table-footer-left d-flex items-center gap-3">
-                            <div class="text-sm text-secondary">
-                                Showing @GetStartIndex() to @GetEndIndex() of @_processedItems.Count() results
-                            </div>
-                            @if (_selectedItems.Any())
-                            {
-                                <RChip Style="ChipStyle.Badge" Variant="VariantType.Primary" Size="@TableConfig.GetPaginationChipSize(Density)">
-                                    @_selectedItems.Count selected
-                                </RChip>
-                            }
-                        </div>
-                        <div class="table-footer-right d-flex items-center gap-3">
-                            @if (_effectivePageSizeOptions?.Any() == true)
-                            {
-                                <div class="page-size-selector d-flex items-center gap-2">
-                                    <span class="text-sm text-secondary">Show:</span>
-                                    <select class="form-select form-select-sm" value="@PageSize" @onchange="OnPageSizeChangedEvent">
-                                        @foreach (var size in _effectivePageSizeOptions)
-                                        {
-                                            <option value="@size">@size</option>
-                                        }
-                                    </select>
-                                    <span class="text-sm text-secondary">per page</span>
-                                </div>
-                            }
-                            <div class="d-flex items-center @TableConfig.GetTableGap(Density)">
-                                <RButton Variant="ButtonVariant.Ghost"
-                                        Size="@TableConfig.GetPaginationButtonSize(Density)"
-                                        Disabled="@(CurrentPage <= 1)"
-                                        OnClick="@(() => OnPageChanged(1))"
-                                        Dense="true">
-                                    <i class="material-symbols-rounded">first_page</i>
-                                </RButton>
-                                <RButton Variant="ButtonVariant.Ghost"
-                                        Size="@TableConfig.GetPaginationButtonSize(Density)"
-                                        Disabled="@(CurrentPage <= 1)"
-                                        OnClick="@(() => OnPageChanged(CurrentPage - 1))"
-                                        Dense="true">
-                                    <i class="material-symbols-rounded">chevron_left</i>
-                                </RButton>
-                                <div class="text-sm font-medium @TableConfig.GetTablePadding(Density)">
-                                    Page @CurrentPage of @TotalPages
-                                </div>
-                                <RButton Variant="ButtonVariant.Ghost"
-                                        Size="@TableConfig.GetPaginationButtonSize(Density)"
-                                        Disabled="@(CurrentPage >= TotalPages)"
-                                        OnClick="@(() => OnPageChanged(CurrentPage + 1))"
-                                        Dense="true">
-                                    <i class="material-symbols-rounded">chevron_right</i>
-                                </RButton>
-                                <RButton Variant="ButtonVariant.Ghost"
-                                        Size="@TableConfig.GetPaginationButtonSize(Density)"
-                                        Disabled="@(CurrentPage >= TotalPages)"
-                                        OnClick="@(() => OnPageChanged(TotalPages))"
-                                        Dense="true">
-                                    <i class="material-symbols-rounded">last_page</i>
-                                </RButton>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <RPaginationFooter CurrentPage="@CurrentPage"
+                                  CurrentPageChanged="@OnPageChanged"
+                                  PageSize="@PageSize"
+                                  PageSizeChanged="@OnPageSizeChanged"
+                                  TotalItems="@_processedItems.Count()"
+                                  SelectedCount="@_selectedItems.Count"
+                                  PageSizeOptions="@_effectivePageSizeOptions?.ToList()"
+                                  ShowPageSizeSelector="@(_effectivePageSizeOptions?.Any() == true)"
+                                  UseDropdown="false"
+                                  Class="@GetFooterClass()" />
             }
 
             @* Column definitions from child content *@
-            <div style="display: none;">
+            <div class="d-none">
                 @ChildContent
             </div>
         </div>
     </CascadingValue>
 </CascadingValue>
+
+@* Column Filter Dropdown Portal *@
+@if (EnableColumnFilters && !string.IsNullOrEmpty(_openFilterColumn))
+{
+    <div class="table-column-filter-portal" @onclick:stopPropagation="true">
+        <div class="table-column-filter-backdrop" @onclick="@(() => OpenFilterColumn = null)"></div>
+        <div class="table-column-filter-dropdown z-max" id="@($"filter-dropdown-{_openFilterColumn}")" 
+             style="position: fixed !important; top: 200px; left: 200px; width: 300px; z-index: 10000;">
+            <div class="filter-dropdown-header">
+                <div class="filter-dropdown-title">Filter: @_openFilterColumn</div>
+                <button class="filter-dropdown-close" @onclick="@(() => OpenFilterColumn = null)">
+                    <i class="icon">close</i>
+                </button>
+            </div>
+            <div class="filter-dropdown-body">
+                <div class="filter-input-group">
+                    <label>Search @_openFilterColumn</label>
+                    <input type="text" class="filter-text-input" placeholder="Enter text..." />
+                </div>
+                <div class="debug-info text-xs text-muted mt-2">
+                    Debug: EnableColumnFilters=@EnableColumnFilters, _openFilterColumn="@_openFilterColumn"
+                </div>
+            </div>
+        </div>
+    </div>
+}
+}
 
 @* Chart Modal *@
 @if (_showChartModal && _chartModalReady)
@@ -279,7 +333,7 @@
         
         <HeaderContent>
             <div class="d-flex items-center gap-2">
-                <i class="material-symbols-rounded text-primary">analytics</i>
+                <i class="icon text-primary">analytics</i>
                 <span>@Title Chart</span>
             </div>
         </HeaderContent>
@@ -307,7 +361,7 @@
             else
             {
                 <div class="d-flex flex-col items-center justify-center pa-12 text-center">
-                    <i class="material-symbols-rounded text-6xl  text-muted mb-4">insert_chart</i>
+                    <i class="icon text-6xl  text-muted mb-4">insert_chart</i>
                     <div class="text-lg font-semibold text-secondary">No Data Available</div>
                     <p class="text-secondary mt-2">There's no data to display in the chart.</p>
                 </div>
@@ -368,11 +422,23 @@
     [Parameter] public EventCallback<TItem> OnRowClicked { get; set; }
     [Parameter] public bool RowClickable { get; set; }
     
-    // Styling - Class and Style inherited from RTableBase
-    [Parameter] public bool Disabled { get; set; }
+    // Styling: Class, Style, Disabled inherited from RForwardingComponentBase
     
     // Auto-generation - AutoGenerateColumns inherited from RTableBase
     [Parameter] public List<string> ExcludeColumns { get; set; } = new();
+    
+    // Enhanced Table Features
+    [Parameter] public bool EnhancementsEnabled { get; set; } = true;
+    [Parameter] public RR.Blazor.Models.TableConfiguration EnhancementsConfig { get; set; } = new();
+    [Parameter] public bool ShowEnhancedFilters { get; set; }
+    [Parameter] public EventCallback<ColumnResizeEventArgs> OnColumnResized { get; set; }
+    [Parameter] public EventCallback<RowClickEventArgs<TItem>> OnEnhancedRowClick { get; set; }
+    
+    // RFilter Integration - SOLID Compliant Inverted Control Pattern
+    [Parameter] public IFilterProvider<TItem>? BindFilter { get; set; }
+    [Parameter] public bool EnableColumnFilters { get; set; } = false;
+    [Parameter] public FilterLogic ColumnFilterLogic { get; set; } = FilterLogic.And;
+    [Parameter] public bool ShowFilterBadges { get; set; } = true;
 
     #endregion
 
@@ -383,17 +449,51 @@
     private readonly List<ColumnDefinition<TItem>> _autoGeneratedColumns = new();
     private readonly HashSet<TItem> _selectedItems = new();
     private string _searchTerm = "";
+    private bool _filterPanelExpanded = false;
     private IEnumerable<TItem> _processedItems = Enumerable.Empty<TItem>();
+    private IEnumerable<TItem> _allData => Items ?? Enumerable.Empty<TItem>();
+    private int _filteredCount = 0;
     private string TableId => $"table-{GetHashCode()}";
-    private int[] _effectivePageSizeOptions = TableConfig.DefaultPageSizeOptions;
+    private int[] _effectivePageSizeOptions = TableConstants.DefaultPageSizeOptions;
 
     private bool _showChartModal = false;
     private bool _chartModalReady = false;
     private readonly ChartDataAnalyzer _chartAnalyzer = new();
 
+    // Enhanced table features
+    private ElementReference _selectAllCheckbox;
+    private IJSObjectReference _jsModule;
+    private Dictionary<string, string> _persistedColumnWidths = new();
+    private RowSelectionState<TItem> _selectionState = new();
+    private UniversalFilterCriteria<TItem> _initialFilterCriteria = new();
+    private TableFilterContext<TItem> _filterContext = new();
+
     // Performance: Cache compiled expressions
     private static readonly ConcurrentDictionary<string, Func<TItem, object>> _propertyGetterCache = new();
     private static readonly ConcurrentDictionary<string, PropertyInfo> _propertyInfoCache = new();
+    
+    private IFilterProvider<TItem>? _lastBindFilter;
+    
+    // Column filter UI state
+    private string? _openFilterColumn = null;
+    
+    protected string? OpenFilterColumn
+    {
+        get => _openFilterColumn;
+        set
+        {
+            if (_openFilterColumn != value)
+            {
+                _openFilterColumn = value;
+                InvokeAsync(StateHasChanged);
+            }
+        }
+    }
+    private readonly Dictionary<string, HashSet<string>> _activeColumnFilters = new();
+    private readonly Dictionary<string, string> _columnFilterSearchTerms = new();
+    private readonly Dictionary<string, string> _columnFilterValues = new();
+    private readonly Dictionary<string, string> _columnFilterOperators = new();
+    private readonly Dictionary<string, DateTime?> _columnFilterDates = new();
 
     #endregion
 
@@ -414,6 +514,20 @@
 
     protected override void OnParametersSet()
     {
+        // Subscribe to BindFilter changes if bound - SOLID inverted control pattern
+        if (BindFilter != null && _lastBindFilter != BindFilter)
+        {
+            // Unsubscribe from previous filter
+            if (_lastBindFilter != null)
+            {
+                _lastBindFilter.OnFilterChanged -= OnBindFilterChanged;
+            }
+            
+            // Subscribe to new filter
+            BindFilter.OnFilterChanged += OnBindFilterChanged;
+            _lastBindFilter = BindFilter;
+        }
+        
         ProcessItems();
         UpdateSelection();
         UpdatePageSizeOptions();
@@ -424,9 +538,34 @@
     {
         if (firstRender)
         {
+            // Initialize JavaScript module for enhanced features
+            if (EnhancementsEnabled)
+            {
+                try
+                {
+                    // Initialize the RTableManager from table.js
+                    var jsConfig = new
+                    {
+                        minColumnWidth = EnhancementsConfig.ResizeConfig.MinColumnWidth,
+                        maxColumnWidth = EnhancementsConfig.ResizeConfig.MaxColumnWidth,
+                        liveResize = EnhancementsConfig.ResizeConfig.LiveResize,
+                        persistWidths = EnhancementsConfig.ResizeConfig.PersistWidths,
+                        rowClickSelection = EnhancementsConfig.SelectionConfig.RowClickSelection,
+                        stickyColumns = GetStickyColumnsConfig()
+                    };
+                    
+                    await SafeInvokeAsync("RTableManager.initialize", TableId, jsConfig);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Failed to initialize table enhancements: {ex.Message}");
+                }
+            }
+            
             // Only auto-generate after first render when component tree is built
             if (AutoGenerateColumns && !_columns.Any())
             {
+                PropertyColumnGenerator.ClearCache();
                 var generatedColumns = PropertyColumnGenerator.GenerateColumns<TItem>();
                 
                 // Filter out excluded columns
@@ -548,6 +687,20 @@
             query = ApplySearch(query, _searchTerm);
         }
 
+        // Apply BindFilter predicate - SOLID compliant: component controls its own filtering
+        if (BindFilter != null)
+        {
+            var filterPredicate = BindFilter.GetPredicate();
+            query = query.Where(filterPredicate);
+        }
+
+        // Apply column filters
+        if (EnableColumnFilters && (_activeColumnFilters.Any() || _columnFilterSearchTerms.Any()))
+        {
+            var columnFilterPredicate = BuildColumnFilterPredicate();
+            query = query.Where(columnFilterPredicate);
+        }
+
         // Apply sorting
         if (!string.IsNullOrEmpty(SortBy))
         {
@@ -594,6 +747,7 @@
             ? query.OrderByDescending(item => getter(item))
             : query.OrderBy(item => getter(item));
     }
+    
 
     #endregion
 
@@ -811,6 +965,22 @@
         await CurrentPageChanged.InvokeAsync(CurrentPage);
     }
 
+    private void ToggleFilterPanel()
+    {
+        _filterPanelExpanded = !_filterPanelExpanded;
+        StateHasChanged();
+    }
+
+    private void OnFilterApplied(object result)
+    {
+        if (result is FilterResult<TItem> filterResult)
+        {
+            _processedItems = filterResult.Data ?? _allData;
+            CurrentPage = 1; // Reset to first page on filter
+            StateHasChanged();
+        }
+    }
+
     private async Task OnRowClick(TItem item)
     {
         if (RowClickable && OnRowClicked.HasDelegate)
@@ -833,7 +1003,7 @@
 
     private string GetContainerClasses()
     {
-        var classes = new List<string> { "r-table-container", "w-full" };
+        var classes = new List<string> { "table-container", "w-full" };
         
         if (!string.IsNullOrEmpty(Class))
             classes.Add(Class);
@@ -849,18 +1019,18 @@
 
     private string GetTableClasses()
     {
-        var classes = new List<string>();
+        var classes = new List<string> { "table" };
 
         if (Hover)
-            classes.Add("has-hover");
+            classes.Add("table-has-hover");
 
         if (Striped)
-            classes.Add("is-striped");
+            classes.Add("table-striped");
 
         if (Bordered)
-            classes.Add("is-bordered");
+            classes.Add("table-bordered");
 
-        classes.Add($"r-table-{Density.ToString().ToLower()}");
+        classes.Add($"table-{Density.ToString().ToLower()}");
 
         return string.Join(" ", classes);
     }
@@ -870,10 +1040,10 @@
         var classes = new List<string>();
 
         if (IsSelected(item))
-            classes.Add("r-is-selected");
+            classes.Add("table-row-selected");
 
         if (RowClickable)
-            classes.Add("r-table-row-clickable");
+            classes.Add("table-row-clickable");
 
         if (RowClass != null)
         {
@@ -885,46 +1055,18 @@
         return string.Join(" ", classes);
     }
 
-    private string GetColumnStyle(ColumnDefinition<TItem> column)
+    // Note: GetColumnStyle and GetScrollContainerStyle removed - use CSS classes instead
+    
+    private string GetFooterClass()
     {
-        var styles = new List<string>();
-
-        if (!string.IsNullOrEmpty(column.Width))
-            styles.Add($"width: {column.Width}");
-
-        if (!string.IsNullOrEmpty(column.MinWidth))
-            styles.Add($"min-width: {column.MinWidth}");
-
-        if (!string.IsNullOrEmpty(column.MaxWidth))
-            styles.Add($"max-width: {column.MaxWidth}");
-
-        return string.Join("; ", styles);
-    }
-
-    private string GetScrollContainerStyle()
-    {
-        var styles = new List<string>();
+        var classes = new List<string>();
         
-        if (!string.IsNullOrEmpty(Height))
-            styles.Add($"height: {Height}");
+        if (Density == DensityType.Dense)
+            classes.Add("dense");
+        else if (Density == DensityType.Spacious)
+            classes.Add("comfortable");
             
-        if (!string.IsNullOrEmpty(MaxHeight))
-            styles.Add($"max-height: {MaxHeight}");
-            
-        if (EnableHorizontalScroll)
-            styles.Add("overflow-x: auto");
-            
-        return string.Join("; ", styles);
-    }
-
-    private string GetTableStyle()
-    {
-        var styles = new List<string>();
-        
-        if (!string.IsNullOrEmpty(Style))
-            styles.Add(Style);
-            
-        return string.Join("; ", styles);
+        return string.Join(" ", classes);
     }
 
     #endregion
@@ -942,32 +1084,32 @@
         
         var totalCount = _processedItems.Count();
         
-        var breakpoint = TableConfig.SmartPageSizeBreakpoints.FirstOrDefault(b => totalCount <= b.threshold);
-        _effectivePageSizeOptions = breakpoint.options ?? TableConfig.DefaultPageSizeOptions;
+        var breakpoint = TableConstants.SmartPageSizeBreakpoints.FirstOrDefault(b => totalCount <= b.threshold);
+        _effectivePageSizeOptions = breakpoint.options ?? TableConstants.DefaultPageSizeOptions;
         
-        if (totalCount > TableConfig.SmartPageSizeBreakpoints[3].threshold) // > 1000 records
+        if (totalCount > TableConstants.SmartPageSizeBreakpoints[3].threshold) // > 1000 records
         {
             var options = _effectivePageSizeOptions.ToList();
             
-            var smartOption = (int)Math.Round(totalCount * TableConfig.SmartOptionPercentage / TableConfig.SmartOptionRounding) * TableConfig.SmartOptionRounding;
-            if (smartOption > options.Max() && smartOption <= TableConfig.MaxPageSize)
+            var smartOption = (int)Math.Round(totalCount * TableConstants.SmartOptionPercentage / TableConstants.SmartOptionRounding) * TableConstants.SmartOptionRounding;
+            if (smartOption > options.Max() && smartOption <= TableConstants.MaxPageSize)
             {
                 options.Add(smartOption);
             }
             
-            if (totalCount > TableConfig.SmartPageSizeBreakpoints[4].threshold) // > 10K records
+            if (totalCount > TableConstants.SmartPageSizeBreakpoints[4].threshold) // > 10K records
             {
                 var log = Math.Log10(totalCount);
                 var factor = (int)Math.Pow(10, Math.Floor(log - 1));
                 
                 var logOption = (factor / 100) * 100;
-                if (logOption > options.Max() && logOption <= TableConfig.MaxPageSize)
+                if (logOption > options.Max() && logOption <= TableConstants.MaxPageSize)
                 {
                     options.Add(logOption);
                 }
             }
             
-            _effectivePageSizeOptions = options.Distinct().OrderBy(x => x).Take(TableConfig.MaxSmartOptions).ToArray();
+            _effectivePageSizeOptions = options.Distinct().OrderBy(x => x).Take(TableConstants.MaxSmartOptions).ToArray();
         }
         
         if (PageSize > 0 && !_effectivePageSizeOptions.Contains(PageSize))
@@ -977,21 +1119,626 @@
             _effectivePageSizeOptions = list.OrderBy(x => x).ToArray();
         }
         
-        if (PageSize <= TableConfig.MinPageSize)
+        if (PageSize <= TableConstants.MinPageSize)
         {
-            PageSize = _effectivePageSizeOptions.Length > 0 ? _effectivePageSizeOptions[0] : TableConfig.DefaultPageSize;
+            PageSize = _effectivePageSizeOptions.Length > 0 ? _effectivePageSizeOptions[0] : TableConstants.DefaultPageSize;
         }
     }
     
     #endregion
 
-    #region Cleanup
+    #region Enhanced Features
 
-    public ValueTask DisposeAsync()
+    private string GetEnhancedTableClasses()
     {
-        // Cleanup if needed
-        return ValueTask.CompletedTask;
+        var classes = new List<string>();
+        
+        if (EnhancementsEnabled)
+        {
+            classes.Add("table-enhanced");
+            
+            if (EnhancementsConfig.SelectionConfig.Enabled)
+                classes.Add("table-container-hover-enhanced");
+                
+            if (EnhancementsConfig.ResizeConfig.Enabled)
+                classes.Add("table-resizable");
+                
+            if (EnhancementsConfig.StickyConfig.Enabled)
+                classes.Add("table-sticky-enabled");
+        }
+        
+        return string.Join(" ", classes);
+    }
+
+    private string GetEnhancedHeaderClasses(ColumnDefinition<TItem> column)
+    {
+        var classes = new List<string>();
+        
+        if (column.Resizable && EnhancementsConfig.ResizeConfig.Enabled)
+            classes.Add("table-header-resizable");
+            
+        if (column.Sticky != StickyColumnType.None)
+            classes.Add($"table-column-sticky-{column.Sticky.ToString().ToLower()}");
+            
+        return string.Join(" ", classes);
+    }
+    
+    private object GetStickyColumnsConfig()
+    {
+        var stickyColumns = GetVisibleColumns()
+            .Where(c => c.Sticky != StickyColumnType.None)
+            .Select(c => new
+            {
+                key = c.Key,
+                sticky = c.Sticky.ToString().ToLower(),
+                order = c.StickyOrder,
+                width = c.Width ?? c.MinWidth
+            })
+            .ToList();
+            
+        return new
+        {
+            enabled = EnhancementsConfig.StickyConfig.Enabled,
+            columns = stickyColumns,
+            hasCheckbox = Selectable
+        };
+    }
+
+    private string GetEnhancedCellClasses(ColumnDefinition<TItem> column)
+    {
+        var classes = new List<string>();
+        
+        if (column.Sticky != StickyColumnType.None)
+            classes.Add($"table-column-sticky-{column.Sticky.ToString().ToLower()}");
+            
+        return string.Join(" ", classes);
+    }
+
+    private string GetEnhancedRowClass(TItem item, int index)
+    {
+        var classes = new List<string> { GetRowClass(item) };
+        
+        if (EnhancementsConfig.SelectionConfig.Enabled && IsSelected(item))
+            classes.Add("table-row-selected-enhanced");
+            
+        return string.Join(" ", classes);
+    }
+
+    private RenderFragment GetEnhancedCellContent(ColumnDefinition<TItem> column, TItem item)
+    {
+        // First try the existing cell content
+        var content = column.GetCellContent(item);
+        if (content != null)
+            return content;
+            
+        // If no content and universal templates are enabled, try universal template rendering
+        return builder =>
+        {
+            var context = new UniversalTemplateContext<TItem>
+            {
+                Item = item,
+                Column = column,
+                IsSelected = IsSelected(item)
+            };
+            
+            // Use column's universal template if available
+            if (column.BadgeTemplate != null)
+                column.BadgeTemplate.Render(item)(builder);
+            else if (column.CurrencyTemplate != null)
+                column.CurrencyTemplate.Render(item)(builder);
+            else if (column.StackTemplate != null)
+                column.StackTemplate.Render(item)(builder);
+            else
+            {
+                // Fall back to standard rendering
+                var value = column.GetValue(item);
+                builder.AddContent(0, value?.ToString() ?? column.EmptyText);
+            }
+        };
+    }
+
+    private async Task HandleEnhancedRowClick(TItem item, int index)
+    {
+        // First handle the standard row click
+        await OnRowClick(item);
+        
+        // Then handle enhanced row click if enabled
+        if (OnEnhancedRowClick.HasDelegate)
+        {
+            var args = new RowClickEventArgs<TItem>
+            {
+                Item = item,
+                Index = index,
+                IsSelected = IsSelected(item),
+                Timestamp = DateTime.UtcNow
+            };
+            
+            await OnEnhancedRowClick.InvokeAsync(args);
+        }
+        
+        // Handle row selection if enabled
+        if (EnhancementsConfig.SelectionConfig.RowClickSelection && !Disabled)
+        {
+            var isCurrentlySelected = IsSelected(item);
+            await OnSelectionChanged(item, !isCurrentlySelected);
+        }
+    }
+
+    private UniversalFilterConfig GetFilterConfig()
+    {
+        return new UniversalFilterConfig()
+        {
+            ShowSearch = true,
+            ShowQuickFilters = true,
+            ShowDateRange = false,
+            ShowAdvancedPanel = true,
+            ShowClearButton = true,
+            ShowFilterCount = true
+        };
+    }
+
+    private async Task OnDataFiltered(FilterResult<TItem> result)
+    {
+        // Update items with filtered data
+        _processedItems = result.Data.ToList();
+        
+        // Update filter context
+        _filterContext.FilteredCount = _processedItems.Count();
+        _filterContext.TotalCount = Items?.Count() ?? 0;
+        
+        // Reset to first page if we have items but current page is invalid
+        if (TotalPages > 0 && CurrentPage > TotalPages)
+        {
+            CurrentPage = 1;
+        }
+        StateHasChanged();
+    }
+
+    private async Task OnFilterPredicateChanged(object predicate)
+    {
+        // Handle predicate changes from RFilter
+        ProcessItems();
+        await InvokeAsync(StateHasChanged);
+    }
+    
+    private async Task ProcessDataAsync()
+    {
+        ProcessItems();
+        await InvokeAsync(StateHasChanged);
+    }
+    
+    private async Task OnFilterCriteriaChanged(UniversalFilterCriteria<TItem> criteria)
+    {
+        _initialFilterCriteria = criteria;
+        
+        // Update filter context with extracted active filters
+        _filterContext.ActiveFilters = ExtractActiveFilters(criteria);
+        
+        // The actual filtering is handled by OnDataFiltered
+        await Task.CompletedTask;
+    }
+    
+    private async Task OnFilterCriteriaChanged(object criteria)
+    {
+        if (criteria is UniversalFilterCriteria<TItem> typedCriteria)
+        {
+            await OnFilterCriteriaChanged(typedCriteria);
+        }
+    }
+
+    private Dictionary<string, object> ExtractActiveFilters(UniversalFilterCriteria<TItem> criteria)
+    {
+        var filters = new Dictionary<string, object>();
+        
+        if (criteria != null)
+        {
+            if (!string.IsNullOrEmpty(criteria.SearchTerm))
+                filters["SearchTerm"] = criteria.SearchTerm;
+                
+            if (criteria.DateFrom != null || criteria.DateTo != null)
+                filters["DateRange"] = (criteria.DateFrom, criteria.DateTo);
+                
+            if (criteria.QuickFilters?.Any(qf => qf.IsActive) == true)
+                filters["QuickFilters"] = criteria.QuickFilters.Where(qf => qf.IsActive);
+                
+            if (criteria.Filters?.Any() == true)
+                filters["FieldFilters"] = criteria.Filters;
+        }
+        
+        return filters;
+    }
+
+    private bool IsDefaultValue(object value)
+    {
+        if (value == null) return true;
+        if (value is string str) return string.IsNullOrEmpty(str);
+        if (value is DateTime date) return date == default;
+        if (value is bool) return false; // bools are always significant
+        if (value.GetType().IsValueType) return value.Equals(Activator.CreateInstance(value.GetType()));
+        return false;
     }
 
     #endregion
+
+    #region Cleanup
+
+    public async ValueTask DisposeAsync()
+    {
+        // Unsubscribe from BindFilter if subscribed
+        if (_lastBindFilter != null)
+        {
+            _lastBindFilter.OnFilterChanged -= OnBindFilterChanged;
+        }
+        
+        if (_jsModule != null)
+        {
+            try
+            {
+                await _jsModule.InvokeVoidAsync("cleanup", TableId);
+                await _jsModule.DisposeAsync();
+            }
+            catch (Exception)
+            {
+                // Ignore disposal errors
+            }
+        }
+    }
+
+    #endregion
+    
+    #region IFilterable Implementation - SOLID Compliant Inverted Control
+    
+    /// <summary>
+    /// Component applies the provided predicate to its own data
+    /// This implements proper inverted control - filter provides predicate, component applies it
+    /// </summary>
+    public async Task ApplyPredicateAsync(Expression<Func<TItem, bool>>? predicate)
+    {
+        // This method is called when external code wants to apply a predicate
+        // For RTable, we trigger a reprocess which will use BindFilter.GetPredicate()
+        ProcessItems();
+        await InvokeAsync(StateHasChanged);
+    }
+    
+    /// <summary>
+    /// Notifies component that bound filter state has changed
+    /// Component reprocesses data using BindFilter.GetPredicate()
+    /// </summary>
+    public async Task OnFilterChangedAsync()
+    {
+        ProcessItems();
+        await InvokeAsync(StateHasChanged);
+    }
+    
+    /// <summary>
+    /// Handle BindFilter change events - reprocess data when filter changes
+    /// </summary>
+    private async void OnBindFilterChanged(FilterStateChangedEventArgs args)
+    {
+        await OnFilterChangedAsync();
+    }
+    
+    /// <summary>
+    /// Non-generic IFilterable implementation
+    /// </summary>
+    async Task IFilterable.ApplyPredicateAsync(object predicate)
+    {
+        if (predicate is Expression<Func<TItem, bool>> typedPredicate)
+        {
+            await ApplyPredicateAsync(typedPredicate);
+        }
+    }
+    
+    /// <summary>
+    /// Non-generic filter change handler
+    /// </summary>
+    async Task IFilterable.OnFilterChangedAsync() => await OnFilterChangedAsync();
+    
+    /// <summary>
+    /// Apply filter to non-generic data
+    /// </summary>
+    async Task IFilterable.ApplyFilterAsync(object filteredData)
+    {
+        if (filteredData is IEnumerable<TItem> typedData)
+        {
+            await InvokeAsync(() =>
+            {
+                Items = typedData.ToList();
+                StateHasChanged();
+            });
+        }
+    }
+    
+    /// <summary>
+    /// Get filterable data as non-generic enumerable
+    /// </summary>
+    IEnumerable<object> IFilterable.GetFilterableData() => Items.Cast<object>();
+    
+    /// <summary>
+    /// Get strongly-typed filterable data
+    /// </summary>
+    IEnumerable<TItem> IFilterable<TItem>.GetTypedFilterableData() => Items;
+    
+    /// <summary>
+    /// Get filterable field names
+    /// </summary>
+    IEnumerable<string> IFilterable.GetFilterableFields() => 
+        typeof(TItem).GetProperties().Where(p => p.CanRead).Select(p => p.Name);
+    
+    #endregion
+
+    #region Button Click Handlers
+    
+    private void OnSortClick(string columnKey)
+    {
+        Console.WriteLine($"SORT CLICK: {columnKey}");
+        OnSort(columnKey);
+    }
+    
+    #endregion
+    
+    #region Column Filter Methods
+
+    private async Task OnFilterClick(string columnKey)
+    {
+        Console.WriteLine($"FILTER CLICK: {columnKey}");
+        await HandleFilterClick(columnKey);
+    }
+    
+    private async Task HandleFilterClick(string columnKey)
+    {
+        Console.WriteLine($"HandleFilterClick called with columnKey: {columnKey}");
+        Console.WriteLine($"BEFORE: _openFilterColumn = '{_openFilterColumn}'");
+        
+        if (_openFilterColumn == columnKey)
+        {
+            OpenFilterColumn = null;
+        }
+        else  
+        {
+            OpenFilterColumn = columnKey;
+        }
+        
+        Console.WriteLine($"AFTER: _openFilterColumn = '{_openFilterColumn}'");
+        await InvokeAsync(StateHasChanged);
+    }
+    
+    private async Task ToggleColumnFilter(string columnKey)
+    {
+        if (_openFilterColumn == columnKey)
+        {
+            _openFilterColumn = null;
+        }
+        else
+        {
+            _openFilterColumn = columnKey;
+            // Position dropdown after render
+            StateHasChanged();
+            await Task.Yield();
+            await PositionFilterDropdown(columnKey);
+        }
+        StateHasChanged();
+    }
+
+    private async Task PositionFilterDropdown(string columnKey)
+    {
+        if (JSRuntime != null)
+        {
+            await JSRuntime.InvokeVoidAsync("eval", $@"
+                (function() {{
+                    const filterIcon = document.querySelector('[data-filter-column=""{columnKey}""]');
+                    const dropdown = document.getElementById('filter-dropdown-{columnKey}');
+                    if (filterIcon && dropdown) {{
+                        const rect = filterIcon.getBoundingClientRect();
+                        dropdown.style.top = (rect.bottom + 4) + 'px';
+                        dropdown.style.left = Math.min(rect.left, window.innerWidth - 280) + 'px';
+                        dropdown.style.position = 'fixed';
+                        dropdown.style.zIndex = '10010';
+                    }}
+                }})();
+            ");
+        }
+    }
+
+    private int GetColumnFilterCount(string columnKey)
+    {
+        return _activeColumnFilters.TryGetValue(columnKey, out var filters) ? filters.Count : 0;
+    }
+
+    private List<string> GetColumnUniqueValues(string columnKey)
+    {
+        var column = GetVisibleColumns().FirstOrDefault(c => c.Key == columnKey);
+        if (column == null) return new List<string>();
+
+        var values = new HashSet<string>();
+        foreach (var item in FilteredData)
+        {
+            var value = column.GetValue(item);
+            if (value != null)
+            {
+                values.Add(value.ToString() ?? "");
+            }
+        }
+        return values.OrderBy(v => v).ToList();
+    }
+
+    private void ApplyColumnFilter(string columnKey)
+    {
+        _openFilterColumn = null;
+        ProcessItems();
+        StateHasChanged();
+    }
+
+    private void ClearColumnFilter(string columnKey)
+    {
+        _activeColumnFilters.Remove(columnKey);
+        _columnFilterSearchTerms.Remove(columnKey);
+        _columnFilterValues.Remove(columnKey);
+        _columnFilterOperators.Remove(columnKey);
+        _columnFilterDates.Remove(columnKey);
+        _openFilterColumn = null;
+        ProcessItems();
+        StateHasChanged();
+    }
+
+    private void UpdateColumnFilterSearch(string columnKey, string searchTerm)
+    {
+        if (string.IsNullOrWhiteSpace(searchTerm))
+        {
+            _columnFilterSearchTerms.Remove(columnKey);
+        }
+        else
+        {
+            _columnFilterSearchTerms[columnKey] = searchTerm;
+        }
+    }
+
+    private void ToggleColumnFilterValue(string columnKey, string value, bool isChecked)
+    {
+        if (!_activeColumnFilters.TryGetValue(columnKey, out var filters))
+        {
+            filters = new HashSet<string>();
+            _activeColumnFilters[columnKey] = filters;
+        }
+
+        if (isChecked)
+        {
+            filters.Add(value);
+        }
+        else
+        {
+            filters.Remove(value);
+            if (filters.Count == 0)
+            {
+                _activeColumnFilters.Remove(columnKey);
+            }
+        }
+    }
+
+    private bool IsColumnValueSelected(string columnKey, string value)
+    {
+        return _activeColumnFilters.TryGetValue(columnKey, out var filters) && filters.Contains(value);
+    }
+
+    private bool IsValueSelected(string columnKey, string value)
+    {
+        return IsColumnValueSelected(columnKey, value);
+    }
+
+    private void ToggleColumnValue(string columnKey, string value, bool isChecked)
+    {
+        ToggleColumnFilterValue(columnKey, value, isChecked);
+    }
+
+    private void SelectAllColumnValues(string columnKey)
+    {
+        var values = GetColumnUniqueValues(columnKey);
+        if (!_activeColumnFilters.TryGetValue(columnKey, out var filters))
+        {
+            filters = new HashSet<string>();
+            _activeColumnFilters[columnKey] = filters;
+        }
+        filters.Clear();
+        foreach (var value in values)
+        {
+            filters.Add(value);
+        }
+    }
+
+    private void OnColumnFilterKeyUp(KeyboardEventArgs e, string columnKey)
+    {
+        if (e.Key == "Enter")
+        {
+            ApplyColumnFilter(columnKey);
+        }
+    }
+
+    private string GetColumnFilterDate(string columnKey, bool isFrom)
+    {
+        var key = $"{columnKey}_{(isFrom ? "from" : "to")}";
+        return _columnFilterDates.TryGetValue(key, out var date) && date.HasValue 
+            ? date.Value.ToString("yyyy-MM-dd") 
+            : string.Empty;
+    }
+
+    private void SetColumnFilterDate(string columnKey, bool isFrom, string? value)
+    {
+        var key = $"{columnKey}_{(isFrom ? "from" : "to")}";
+        if (string.IsNullOrEmpty(value))
+        {
+            _columnFilterDates.Remove(key);
+        }
+        else if (DateTime.TryParse(value, out var date))
+        {
+            _columnFilterDates[key] = date;
+        }
+    }
+
+    private Expression<Func<TItem, bool>> BuildColumnFilterPredicate()
+    {
+        if (!_activeColumnFilters.Any() && !_columnFilterSearchTerms.Any() && 
+            !_columnFilterValues.Any() && !_columnFilterDates.Any())
+        {
+            return item => true;
+        }
+
+        var parameter = Expression.Parameter(typeof(TItem), "item");
+        Expression? combinedExpression = null;
+
+        foreach (var column in GetVisibleColumns().Where(c => c.Filterable))
+        {
+            Expression? columnExpression = null;
+
+            // Handle checkbox filters
+            if (_activeColumnFilters.TryGetValue(column.Key, out var selectedValues) && selectedValues.Any())
+            {
+                var property = Expression.Property(parameter, column.Key);
+                Expression? valuesExpression = null;
+
+                foreach (var value in selectedValues)
+                {
+                    var constant = Expression.Constant(value);
+                    var toString = Expression.Call(property, "ToString", null);
+                    var equals = Expression.Equal(toString, constant);
+                    
+                    valuesExpression = valuesExpression == null ? equals : 
+                        Expression.OrElse(valuesExpression, equals);
+                }
+
+                columnExpression = valuesExpression;
+            }
+
+            // Handle search filters
+            if (_columnFilterSearchTerms.TryGetValue(column.Key, out var searchTerm) && !string.IsNullOrWhiteSpace(searchTerm))
+            {
+                var property = Expression.Property(parameter, column.Key);
+                var toString = Expression.Call(property, "ToString", null);
+                var toLower = Expression.Call(toString, "ToLower", null);
+                var searchConstant = Expression.Constant(searchTerm.ToLower());
+                var contains = Expression.Call(toLower, "Contains", null, searchConstant);
+                
+                columnExpression = columnExpression == null ? contains : 
+                    Expression.AndAlso(columnExpression, contains);
+            }
+
+            // Combine column expressions
+            if (columnExpression != null)
+            {
+                combinedExpression = combinedExpression == null ? columnExpression :
+                    (ColumnFilterLogic == FilterLogic.And ? 
+                        Expression.AndAlso(combinedExpression, columnExpression) :
+                        Expression.OrElse(combinedExpression, columnExpression));
+            }
+        }
+
+        if (combinedExpression == null)
+        {
+            return item => true;
+        }
+
+        return Expression.Lambda<Func<TItem, bool>>(combinedExpression, parameter);
+    }
+
+    #endregion
+    
 }

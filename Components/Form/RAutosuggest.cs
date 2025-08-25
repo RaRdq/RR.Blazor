@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Components;
 using RR.Blazor.Models;
 using RR.Blazor.Enums;
+using RR.Blazor.Components.Base;
 
 namespace RR.Blazor.Components;
 
@@ -8,7 +9,7 @@ namespace RR.Blazor.Components;
 /// Smart autosuggest wrapper that automatically detects value types and provides 
 /// type-safe suggestions. Supports string search, custom objects, and extensible patterns.
 /// </summary>
-public class RAutosuggest : ComponentBase
+public class RAutosuggest : RComponentBase
 {
     [Parameter] public object Value { get; set; }
     [Parameter] public EventCallback<object> ValueChanged { get; set; }
@@ -33,12 +34,10 @@ public class RAutosuggest : ComponentBase
     [Parameter] public bool ShowDropdownIcon { get; set; } = true;
     [Parameter] public bool ClearOnSelect { get; set; }
     [Parameter] public bool OpenOnFocus { get; set; }
-    [Parameter] public bool Disabled { get; set; }
     [Parameter] public bool ReadOnly { get; set; }
     [Parameter] public bool Required { get; set; }
     [Parameter] public EventCallback<object> OnItemSelected { get; set; }
     [Parameter] public EventCallback<string> OnSearchChanged { get; set; }
-    [Parameter] public string Class { get; set; }
     [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object> AdditionalAttributes { get; set; }
 
     protected override void BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder)

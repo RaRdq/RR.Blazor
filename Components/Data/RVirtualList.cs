@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
 using RR.Blazor.Enums;
+using RR.Blazor.Components.Base;
 using System.Collections;
 
 namespace RR.Blazor.Components.Data;
@@ -9,7 +10,7 @@ namespace RR.Blazor.Components.Data;
 /// Smart virtual list component that automatically infers item type from Items collection.
 /// This eliminates the need for explicit T specification for virtualized lists.
 /// </summary>
-public class RVirtualList<TItem> : ComponentBase
+public class RVirtualList<TItem> : RComponentBase
 {
     [Parameter] public IEnumerable<TItem> Items { get; set; }
     [Parameter] public RenderFragment<TItem> ItemTemplate { get; set; }
@@ -22,7 +23,6 @@ public class RVirtualList<TItem> : ComponentBase
     [Parameter] public EventCallback OnEndReached { get; set; }
     [Parameter] public EventCallback<TItem> OnItemClick { get; set; }
     [Parameter] public bool ShowScrollbar { get; set; } = true;
-    [Parameter] public string Class { get; set; }
     [Parameter] public string ItemClass { get; set; }
 
 

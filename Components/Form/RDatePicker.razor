@@ -15,7 +15,6 @@
 
 @attribute [Component("RDatePicker", Category = "Form")]
 @using System.Globalization
-@inject IJSRuntime JSRuntime
 @implements IAsyncDisposable
 
 <div class="rr-datepicker @GetClasses()" @ref="elementRef">
@@ -33,10 +32,10 @@
         
         @if (!string.IsNullOrEmpty(GetStartIcon()))
         {
-            <i class="rr-datepicker-icon rr-datepicker-icon-start material-symbols-rounded">@GetStartIcon()</i>
+            <i class="rr-datepicker-icon rr-datepicker-icon-start icon">@GetStartIcon()</i>
         }
         
-        <i class="rr-datepicker-icon rr-datepicker-icon-end material-symbols-rounded" 
+        <i class="rr-datepicker-icon rr-datepicker-icon-end icon" 
            @onclick="HandleEndIconClick" 
            @onclick:stopPropagation="true">
             @GetEndIcon()
@@ -49,7 +48,7 @@
              @onclick:stopPropagation="true">
             <div class="rr-datepicker-header">
                 <button type="button" class="rr-datepicker-nav" @onclick="PreviousMonth">
-                    <i class="material-symbols-rounded">chevron_left</i>
+                    <i class="icon">chevron_left</i>
                 </button>
                 
                 <button type="button" class="rr-datepicker-title" @onclick="ToggleYearPicker">
@@ -57,7 +56,7 @@
                 </button>
                 
                 <button type="button" class="rr-datepicker-nav" @onclick="NextMonth">
-                    <i class="material-symbols-rounded">chevron_right</i>
+                    <i class="icon">chevron_right</i>
                 </button>
             </div>
             
@@ -68,7 +67,7 @@
                     {
                         var yearValue = year;
                         <button type="button" 
-                                class="rr-datepicker-year @(year == currentViewDate.Year ? "selected" : "")"
+                                class="rr-datepicker-year @(year == currentViewDate.Year ? "rr-datepicker-year-selected" : "")"
                                 @onclick="() => SelectYear(yearValue)">
                             @year
                         </button>
@@ -129,14 +128,14 @@
                 <div class="rr-datepicker-footer">
                     @if (ShowTodayButton)
                     {
-                        <button type="button" class="rr-datepicker-btn secondary" @onclick="SelectToday">
+                        <button type="button" class="rr-datepicker-btn-secondary" @onclick="SelectToday">
                             Today
                         </button>
                     }
                     
                     @if (Range)
                     {
-                        <button type="button" class="rr-datepicker-btn primary" @onclick="ApplyRange">
+                        <button type="button" class="rr-datepicker-btn-primary" @onclick="ApplyRange">
                             Apply
                         </button>
                     }
@@ -170,7 +169,6 @@
     [Parameter] public SizeType Size { get; set; } = SizeType.Medium;
     [Parameter] public string Icon { get; set; } = "calendar_today";
     [Parameter] public IconPosition IconPosition { get; set; } = IconPosition.Start;
-    [Parameter] public string Class { get; set; }
     
     [Parameter] public bool Range { get; set; }
     [Parameter] public bool ShowTime { get; set; }
@@ -184,7 +182,6 @@
     [Parameter] public Func<DateTime, bool> DisabledDates { get; set; }
     [Parameter] public DayOfWeek[] DisabledDaysOfWeek { get; set; }
     
-    [Parameter] public bool Disabled { get; set; }
     [Parameter] public bool HasError { get; set; }
     [Parameter] public string ErrorMessage { get; set; }
     [Parameter] public bool Required { get; set; }
@@ -231,7 +228,7 @@
             {
                 await Task.Yield();
                 
-                await JSRuntime.InvokeVoidAsync("RRBlazor.DatePicker.initialize", elementRef, DotNetObjectReference.Create(this));
+                await SafeInvokeAsync("RRBlazor.DatePicker.initialize", elementRef, DotNetObjectReference.Create(this));
             }
             catch (Exception ex)
             {
@@ -281,7 +278,7 @@
                 closeOnEscape = CloseOnEscape
             };
             
-            await JSRuntime.InvokeVoidAsync("RRBlazor.DatePicker.open", elementRef, portalConfig);
+            await SafeInvokeAsync("RRBlazor.DatePicker.open", elementRef, portalConfig);
         }
         catch (Exception ex)
         {
@@ -298,7 +295,7 @@
         
         try
         {
-            await JSRuntime.InvokeVoidAsync("RRBlazor.DatePicker.close", elementRef);
+            await SafeInvokeAsync("RRBlazor.DatePicker.close", elementRef);
         }
         catch (Exception ex)
         {
@@ -605,10 +602,10 @@
         var classes = new List<string> { "rr-datepicker" };
         
         if (!string.IsNullOrEmpty(Class)) classes.Add(Class);
-        if (HasError) classes.Add("error");
-        if (Disabled) classes.Add("disabled");
-        if (isOpen) classes.Add("open");
-        if (Size != SizeType.Medium) classes.Add(Size.ToString().ToLower());
+        if (HasError) classes.Add("rr-datepicker-error");
+        if (Disabled) classes.Add("rr-datepicker-disabled");
+        if (isOpen) classes.Add("rr-datepicker-open");
+        if (Size != SizeType.Medium) classes.Add($"rr-datepicker-{Size.ToString().ToLower()}");
         
         return string.Join(" ", classes);
     }
@@ -627,8 +624,8 @@
             classes.Add("input-with-end-icon");
         }
         
-        if (HasError) classes.Add("error");
-        if (Disabled) classes.Add("disabled");
+        if (HasError) classes.Add("rr-datepicker-input-error");
+        if (Disabled) classes.Add("rr-datepicker-input-disabled");
         
         return string.Join(" ", classes);
     }
@@ -665,10 +662,10 @@
     {
         var classes = new List<string>();
 
-        if (!day.IsCurrentMonth) classes.Add("other-month");
-        if (day.IsToday) classes.Add("today");
-        if (day.IsWeekend) classes.Add("weekend");
-        if (IsDateDisabled(day.Date)) classes.Add("disabled");
+        if (!day.IsCurrentMonth) classes.Add("rr-datepicker-day-other-month");
+        if (day.IsToday) classes.Add("rr-datepicker-day-today");
+        if (day.IsWeekend) classes.Add("rr-datepicker-day-weekend");
+        if (IsDateDisabled(day.Date)) classes.Add("rr-datepicker-day-disabled");
 
         if (Range)
         {
@@ -676,18 +673,18 @@
             var end = tempEndDate ?? EndValue;
 
             if (start.HasValue && day.Date.Date == start.Value.Date)
-                classes.Add("range-start");
+                classes.Add("rr-datepicker-day-range-start");
 
             if (end.HasValue && day.Date.Date == end.Value.Date && start.HasValue && end.Value.Date != start.Value.Date)
-                classes.Add("range-end");
+                classes.Add("rr-datepicker-day-range-end");
 
             if (start.HasValue && end.HasValue && day.Date.Date > start.Value.Date && day.Date.Date < end.Value.Date)
-                classes.Add("range-middle");
+                classes.Add("rr-datepicker-day-range-middle");
         }
         else
         {
             if (Value.HasValue && day.Date.Date == Value.Value.Date)
-                classes.Add("selected");
+                classes.Add("rr-datepicker-day-selected");
         }
 
         return string.Join(" ", classes);
@@ -709,7 +706,7 @@
             {
                 await CloseCalendar();
             }
-            await JSRuntime.InvokeVoidAsync("RRBlazor.DatePicker.cleanup", elementRef);
+            await SafeInvokeAsync("RRBlazor.DatePicker.cleanup", elementRef);
         }
         catch
         {

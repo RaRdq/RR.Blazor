@@ -21,6 +21,15 @@ public static class PropertyColumnGenerator
     private static readonly ConcurrentDictionary<Type, Dictionary<string, PropertyMetadata>> _metadataCache = new();
 
     /// <summary>
+    /// Clear column cache to force regeneration with updated logic
+    /// </summary>
+    public static void ClearCache()
+    {
+        _columnCache.Clear();
+        _metadataCache.Clear();
+    }
+
+    /// <summary>
     /// Generate smart column definitions from a model type
     /// </summary>
     public static List<ColumnDefinition<TItem>> GenerateColumns<TItem>() where TItem : class
@@ -57,10 +66,41 @@ public static class PropertyColumnGenerator
             Sortable = metadata.IsSortable,
             Filterable = true,
             Searchable = true,
+            FilterType = DetectFilterType(property, metadata),
             Template = DetectColumnTemplate(property, metadata),
             CustomTemplate = CreateSmartCellTemplate<TItem>(property, metadata),
             Format = GetDefaultFormat(property, metadata)
         };
+    }
+    
+    /// <summary>
+    /// Detect appropriate filter type based on property metadata
+    /// </summary>
+    private static FilterType DetectFilterType(PropertyInfo property, PropertyMetadata metadata)
+    {
+        // Check for boolean types
+        if (metadata.IsBoolean || property.PropertyType == typeof(bool) || property.PropertyType == typeof(bool?))
+            return FilterType.Boolean;
+            
+        // Check for date types
+        if (metadata.IsDate || property.PropertyType == typeof(DateTime) || property.PropertyType == typeof(DateTime?) || 
+            property.PropertyType == typeof(DateOnly) || property.PropertyType == typeof(DateOnly?))
+            return FilterType.Date;
+            
+        // Check for numeric types
+        if (property.PropertyType == typeof(int) || property.PropertyType == typeof(int?) ||
+            property.PropertyType == typeof(long) || property.PropertyType == typeof(long?) ||
+            property.PropertyType == typeof(decimal) || property.PropertyType == typeof(decimal?) ||
+            property.PropertyType == typeof(double) || property.PropertyType == typeof(double?) ||
+            property.PropertyType == typeof(float) || property.PropertyType == typeof(float?))
+            return FilterType.Number;
+            
+        // Check for enums (should be select dropdown)
+        if (property.PropertyType.IsEnum || (Nullable.GetUnderlyingType(property.PropertyType)?.IsEnum == true))
+            return FilterType.Select;
+            
+        // Default to text for strings and other types
+        return FilterType.Text;
     }
     
     /// <summary>
@@ -209,7 +249,7 @@ public static class PropertyColumnGenerator
     private static void RenderBooleanBadge(RenderTreeBuilder builder, object value)
     {
         var isTrue = value is bool b && b;
-        var badgeClass = isTrue ? "badge badge-success" : "badge badge-secondary";
+        var badgeClass = isTrue ? "badge-success" : "badge-secondary";
         var text = isTrue ? "Yes" : "No";
         
         builder.OpenElement(0, "span");
@@ -254,10 +294,10 @@ public static class PropertyColumnGenerator
     {
         var badgeClass = status.ToLowerInvariant() switch
         {
-            "active" or "enabled" or "success" => "badge badge-success",
-            "inactive" or "disabled" or "error" => "badge badge-danger", 
-            "pending" or "warning" => "badge badge-warning",
-            _ => "badge badge-secondary"
+            "active" or "enabled" or "success" => "badge-success",
+            "inactive" or "disabled" or "error" => "badge-danger", 
+            "pending" or "warning" => "badge-warning",
+            _ => "badge-secondary"
         };
         
         builder.OpenElement(0, "span");

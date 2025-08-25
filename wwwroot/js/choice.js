@@ -1,7 +1,5 @@
 
-import { PositioningEngine } from './positioning.js';
-
-const positioningEngine = new PositioningEngine();
+let positioningEngine = null;
 
 let activeDropdown = null;
 let keyboardNavigationEnabled = false;
@@ -11,7 +9,17 @@ let activePortals = new Map();
 let viewportLocations = new Map();
 
 const Choice = {
-    initialize() {
+    async initialize() {
+        // Get positioning engine through RRBlazor proxy
+        if (!positioningEngine && window.RRBlazor?.Positioning) {
+            const PositioningModule = await window.RRBlazor.Positioning.getPositioningEngine();
+            if (PositioningModule && PositioningModule.PositioningEngine) {
+                positioningEngine = new PositioningModule.PositioningEngine();
+            } else if (PositioningModule) {
+                positioningEngine = PositioningModule;
+            }
+        }
+        
         document.addEventListener(window.RRBlazor.Events.UI_COMPONENT_CLOSE_REQUEST, (event) => {
             if (event.detail.componentType === window.RRBlazor.ComponentTypes.CHOICE && activeDropdown === event.detail.componentId) {
                 this.closeDropdown(event.detail.componentId);
@@ -24,14 +32,10 @@ const Choice = {
      */
     findViewport(choiceElement, choiceElementId) {
         if (!choiceElement) {
-            console.error(`Choice element not found for id: ${choiceElementId}`);
             return null;
         }
         
         const viewport = choiceElement.querySelector('.choice-viewport');
-        if (!viewport) {
-            console.error(`Viewport not found as child of choice element: ${choiceElementId}`);
-        }
         return viewport;
     },
     
@@ -42,19 +46,16 @@ const Choice = {
         try {
             const choiceElement = document.querySelector(`[data-choice-id="${choiceElementId}"]`);
             if (!choiceElement) {
-                console.warn(`Choice element not found: ${choiceElementId}`);
                 return;
             }
             
             const trigger = choiceElement.querySelector('.choice-trigger') || choiceElement.querySelector('.choice-trigger-wrapper');
             if (!trigger) {
-                console.warn(`Trigger element not found for choice: ${choiceElementId}`);
                 return;
             }
             
             const viewport = this.findViewport(choiceElement, choiceElementId);
             if (!viewport) {
-                console.warn(`Viewport element not found for choice: ${choiceElementId}`);
                 return;
             }
             
@@ -190,7 +191,7 @@ const Choice = {
             
             viewport.classList.remove('choice-viewport-closed');
             viewport.classList.add('choice-viewport-open');
-            choiceElement.classList.add('choice-open');
+            choiceElement.classList.add('choice-dropdown-open');
 
             activeDropdown = choiceElementId;
             activePortals.set(choiceElementId, portalId);
@@ -309,7 +310,7 @@ const Choice = {
 
         viewport.classList.remove('choice-viewport-open');
         viewport.classList.add('choice-viewport-closed');
-        choiceElement.classList.remove('choice-open');
+        choiceElement.classList.remove('choice-dropdown-open');
 
         if (viewport._originalParent) {
             if (viewport._originalNextSibling) {
@@ -551,6 +552,10 @@ Choice.initialize();
 export default {
     openDropdown: (choiceElementId, options) => Choice.openDropdown(choiceElementId, options),
     closeDropdown: (choiceElementId) => Choice.closeDropdown(choiceElementId),
+    toggleDropdown: async (choiceElementId, options) => {
+        const isOpen = activeDropdown === choiceElementId;
+        return isOpen ? Choice.closeDropdown(choiceElementId) : Choice.openDropdown(choiceElementId, options);
+    },
     isDropdownOpen: (choiceElementId) => activeDropdown === choiceElementId,
     closeAllDropdowns: () => {
         if (activeDropdown) {

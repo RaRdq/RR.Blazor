@@ -1,4 +1,6 @@
 ﻿@using RR.Blazor.Enums
+@using RR.Blazor.Components.Base
+@inherits RComponentBase
 @* RPreviewModal - Content preview modal *@
 
 <div class="preview-modal">
@@ -6,7 +8,7 @@
     {
         <div class="preview-modal-toolbar">
             <div class="preview-modal-toolbar-left">
-                <RChip Text="@ContentType" Style="ChipStyle.Badge" Variant="VariantType.Secondary" />
+                <RChip Text="@ContentType" StyleVariant="ChipStyle.Badge" Variant="VariantType.Secondary" />
                 @if (ShowWordCount)
                 {
                     <span class="preview-modal-word-count">@GetWordCount() words</span>
@@ -124,8 +126,6 @@
     }
 </div>
 
-@inject IJSRuntime JSRuntime
-
 @code {
     [Parameter] public string Content { get; set; } = "";
     [Parameter] public string ContentType { get; set; } = "text/plain";
@@ -141,13 +141,13 @@
     {
         try
         {
-            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", Content);
+            await SafeInvokeAsync("navigator.clipboard.writeText", Content);
             await OnCopy.InvokeAsync();
         }
         catch (Exception)
         {
 
-            await JSRuntime.InvokeVoidAsync("previewModal.copyToClipboard", Content);
+            await SafeInvokeAsync("previewModal.copyToClipboard", Content);
         }
     }
 
@@ -156,7 +156,7 @@
         var extension = GetFileExtension();
         var fileName = $"{FileName}{extension}";
         
-        await JSRuntime.InvokeVoidAsync("previewModal.downloadContent", Content, fileName, ContentType);
+        await SafeInvokeAsync("previewModal.downloadContent", Content, fileName, ContentType);
         await OnDownload.InvokeAsync();
     }
 

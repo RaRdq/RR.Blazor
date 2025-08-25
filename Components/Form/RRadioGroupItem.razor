@@ -1,0 +1,281 @@
+@** 
+<summary>Radio button item designed to work within an RRadioGroup container</summary>
+<category>Form</category>
+<complexity>Simple</complexity>
+<ai-prompt>Create a radio button item for use within RRadioGroup</ai-prompt>
+<ai-common-use>exclusive selection within a group, form options</ai-common-use>
+<ai-avoid>Don't use outside of RRadioGroup container</ai-avoid>
+<ai-pattern name="basic-item">Value="@option1" Text="Option 1"</ai-pattern>
+<ai-pattern name="with-description">Value="@premium" Text="Premium Plan" Description="All features included"</ai-pattern>
+<ai-pattern name="disabled-item">Value="@enterprise" Text="Enterprise" Disabled="true"</ai-pattern>
+**@
+
+@using RR.Blazor.Components.Base
+@using RR.Blazor.Enums
+@inherits RForwardingComponentBase
+@implements IDisposable
+@attribute [Component("RRadioGroupItem", Category = "Form")]
+@attribute [AIOptimized(Prompt = "Create radio button item for group")]
+@typeparam TValue
+
+<div class="flex items-start gap-3 @GetContainerClasses()">
+    <div class="relative flex items-center justify-center">
+        <input type="radio" 
+               id="@_id"
+               name="@_groupName"
+               value="@Value?.ToString()"
+               checked="@IsSelected"
+               @onclick="OnClick"
+               @onchange="OnChange"
+               disabled="@IsDisabled"
+               class="peer absolute opacity-0 w-6 h-6 cursor-pointer disabled:cursor-not-allowed"
+               @attributes="GetSafeAttributes()" />
+        
+        <div class="@GetRadioClasses()">
+            @if (IsSelected)
+            {
+                <div class="@GetInnerDotClasses()"></div>
+            }
+        </div>
+    </div>
+    
+    @if (!string.IsNullOrEmpty(Text) || !string.IsNullOrEmpty(Description) || !string.IsNullOrEmpty(Icon))
+    {
+        <label for="@_id" class="@GetLabelClasses()">
+            <div class="flex items-center gap-2">
+                @if (!string.IsNullOrEmpty(Icon))
+                {
+                    <i class="icon @GetIconClasses()">@Icon</i>
+                }
+                @if (!string.IsNullOrEmpty(Text))
+                {
+                    <span class="@GetTextClasses()">@Text</span>
+                }
+            </div>
+            @if (!string.IsNullOrEmpty(Description))
+            {
+                <div class="@GetDescriptionClasses()">@Description</div>
+            }
+        </label>
+    }
+    
+    @if (ChildContent != null)
+    {
+        <div class="grow">
+            @ChildContent
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>Value of this radio option</summary>
+    [Parameter] public TValue? Value { get; set; }
+    
+    /// <summary>Label text for the radio button</summary>
+    [Parameter] public string? Text { get; set; }
+    
+    /// <summary>Description text shown below the label</summary>
+    [Parameter] public string? Description { get; set; }
+    
+    /// <summary>Icon displayed next to the text</summary>
+    [Parameter] public string? Icon { get; set; }
+    
+    /// <summary>Visual style variant</summary>
+    [Parameter] public RadioVariant Variant { get; set; } = RadioVariant.Default;
+    
+    /// <summary>Size of the radio button</summary>
+    [Parameter] public SizeType Size { get; set; } = SizeType.Medium;
+    
+    /// <summary>Whether this specific item is disabled</summary>
+    [Parameter] public bool Disabled { get; set; }
+    
+    /// <summary>Parent radio group (cascaded)</summary>
+    [CascadingParameter] private RRadioGroup<TValue>? RadioGroup { get; set; }
+    
+    private string _id = $"radio-item-{Guid.NewGuid():N}";
+    private string _groupName = string.Empty;
+    private TValue? _selectedValue;
+    private bool _groupDisabled;
+    
+    private bool IsSelected => RadioGroup?.IsValueSelected(Value) ?? false;
+    private bool IsDisabled => Disabled || _groupDisabled;
+    
+    protected override void OnInitialized()
+    {
+        if (RadioGroup != null)
+        {
+            RadioGroup.RegisterItem(this);
+        }
+        base.OnInitialized();
+    }
+    
+    internal void SetGroupInfo(string groupName, TValue? selectedValue, bool groupDisabled)
+    {
+        _groupName = groupName;
+        _selectedValue = selectedValue;
+        _groupDisabled = groupDisabled;
+        StateHasChanged();
+    }
+    
+    internal void UpdateSelection(TValue? selectedValue)
+    {
+        _selectedValue = selectedValue;
+        StateHasChanged();
+    }
+    
+    private async Task OnClick(MouseEventArgs e)
+    {
+        if (!IsDisabled && RadioGroup != null)
+        {
+            // Only process if not already selected
+            if (!IsSelected)
+            {
+                await RadioGroup.OnItemSelected(Value);
+            }
+        }
+    }
+    
+    private async Task OnChange(ChangeEventArgs e)
+    {
+        // Handle change event for keyboard navigation
+        if (!IsDisabled && RadioGroup != null && !IsSelected)
+        {
+            await RadioGroup.OnItemSelected(Value);
+        }
+    }
+    
+    private Dictionary<string, object> GetSafeAttributes()
+    {
+        return RAttributeForwarder.GetSafeAttributes(AdditionalAttributes);
+    }
+    
+    private string GetContainerClasses()
+    {
+        var classes = new List<string> { "radio-item" };
+        
+        if (IsDisabled)
+            classes.Add("radio-disabled");
+            
+        if (IsSelected)
+            classes.Add("radio-selected");
+            
+        if (!string.IsNullOrEmpty(Class))
+            classes.Add(Class);
+            
+        return string.Join(" ", classes);
+    }
+    
+    private string GetRadioClasses()
+    {
+        var classes = new List<string> 
+        { 
+            "rounded-full border-2 transition-all duration-200 flex items-center justify-center",
+            "peer-focus:ring-2 peer-focus:ring-primary peer-focus:ring-opacity-50"
+        };
+        
+        if (IsSelected)
+        {
+            classes.Add(Variant switch
+            {
+                RadioVariant.Primary => "bg-primary border-primary",
+                RadioVariant.Success => "bg-success border-success",
+                RadioVariant.Warning => "bg-warning border-warning",
+                RadioVariant.Danger => "bg-error border-error",
+                _ => "bg-primary border-primary"
+            });
+        }
+        else
+        {
+            classes.Add("bg-surface-elevated border-2 border-medium hover:border-primary");
+        }
+        
+        if (IsDisabled)
+        {
+            classes.Add("opacity-50 cursor-not-allowed");
+        }
+        else
+        {
+            classes.Add("cursor-pointer hover:shadow-sm");
+        }
+        
+        classes.Add(Size switch
+        {
+            SizeType.Small => "w-4 h-4",
+            SizeType.Large => "w-7 h-7",
+            _ => "w-6 h-6"
+        });
+        
+        return string.Join(" ", classes);
+    }
+    
+    private string GetInnerDotClasses()
+    {
+        var classes = new List<string> { "rounded-full bg-surface" };
+        
+        classes.Add(Size switch
+        {
+            SizeType.Small => "w-1.5 h-1.5",
+            SizeType.Large => "w-3 h-3",
+            _ => "w-2.5 h-2.5"
+        });
+        
+        return string.Join(" ", classes);
+    }
+    
+    private string GetLabelClasses()
+    {
+        var classes = new List<string> { "cursor-pointer select-none grow" };
+        
+        if (IsDisabled)
+            classes.Add("cursor-not-allowed opacity-60");
+            
+        return string.Join(" ", classes);
+    }
+    
+    private string GetTextClasses()
+    {
+        var classes = new List<string> { "text-primary font-medium" };
+        
+        classes.Add(Size switch
+        {
+            SizeType.Small => "text-sm",
+            SizeType.Large => "text-lg",
+            _ => "text-base"
+        });
+        
+        return string.Join(" ", classes);
+    }
+    
+    private string GetDescriptionClasses()
+    {
+        var classes = new List<string> { "text-secondary mt-1" };
+        
+        classes.Add(Size switch
+        {
+            SizeType.Small => "text-xs",
+            SizeType.Large => "text-base",
+            _ => "text-sm"
+        });
+        
+        return string.Join(" ", classes);
+    }
+    
+    private string GetIconClasses()
+    {
+        var classes = new List<string> { "text-primary" };
+        
+        classes.Add(Size switch
+        {
+            SizeType.Small => "text-base",
+            SizeType.Large => "text-xl",
+            _ => "text-lg"
+        });
+        
+        return string.Join(" ", classes);
+    }
+    
+    public void Dispose()
+    {
+        RadioGroup?.UnregisterItem(this);
+    }
+}

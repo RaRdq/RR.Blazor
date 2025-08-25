@@ -1,0 +1,89 @@
+@namespace RR.Blazor.Components.Form
+@using RR.Blazor.Components.Base
+@using Microsoft.AspNetCore.Components
+@inherits RComponentBase
+
+@* 
+    RSelectOption - Smart option component for RSelectField
+    No TValue needed - automatically handles any type!
+    
+    Usage:
+    <RSelectField @bind-Value="selectedValue">
+        <RSelectOption Value="" Text="Select..." />
+        <RSelectOption Value="1" Text="Option 1" />
+        <RSelectOption Value="@MyEnum.Value1" />  Auto-formats enum text
+        <RSelectOption Value="@employeeId">Employee Name</RSelectOption>
+    </RSelectField>
+*@
+
+<option value="@GetValueString()" disabled="@Disabled" selected="@Selected" @attributes="GetSafeAttributes()">
+    @if (ChildContent != null)
+    {
+        @ChildContent
+    }
+    else if (!string.IsNullOrEmpty(Text))
+    {
+        @Text
+    }
+    else
+    {
+        @GetDisplayText()
+    }
+</option>
+
+@code {
+    /// <summary>
+    /// The value of this option. Can be ANY type - automatically converted to string.
+    /// </summary>
+    [Parameter] public object Value { get; set; }
+    
+    /// <summary>
+    /// Display text for the option. If not provided, will intelligently format the Value.
+    /// </summary>
+    [Parameter] public string Text { get; set; }
+    
+    /// <summary>
+    /// Whether this option is disabled
+    /// </summary>
+    [Parameter] public new bool Disabled { get; set; }
+    
+    /// <summary>
+    /// Whether this option is selected by default
+    /// </summary>
+    [Parameter] public bool Selected { get; set; }
+    
+    /// <summary>
+    /// Custom content for the option
+    /// </summary>
+    [Parameter] public new RenderFragment ChildContent { get; set; }
+    
+    private string GetValueString()
+    {
+        if (Value == null)
+            return string.Empty;
+
+        return Value.ToString() ?? string.Empty;
+    }
+    
+    private string GetDisplayText()
+    {
+        if (Value == null)
+            return "";
+            
+        if (Value is Enum)
+        {
+            var enumText = Value.ToString();
+            // Convert PascalCase to readable text: "LeaveTypeAnnual" -> "Leave Type Annual"
+            return System.Text.RegularExpressions.Regex.Replace(enumText, "([a-z])([A-Z])", "$1 $2");
+        }
+        
+        if (Value is bool boolValue)
+            return boolValue ? "Yes" : "No";
+        
+        // Smart display for dates using current culture
+        if (Value is DateTime dateValue)
+            return dateValue.ToString("d", System.Globalization.CultureInfo.CurrentCulture);
+
+        return Value.ToString() ?? "";
+    }
+}

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
+using RR.Blazor.Components.Base;
 using System.Collections;
 
 namespace RR.Blazor.Components.Feedback;
@@ -8,7 +9,7 @@ namespace RR.Blazor.Components.Feedback;
 /// Smart select modal component that automatically infers item type from Items collection.
 /// This eliminates the need for explicit T specification for item selection modals.
 /// </summary>
-public class RSelectModal<TItem> : ComponentBase
+public class RSelectModal<TItem> : RComponentBase
 {
     [Parameter] public bool IsOpen { get; set; }
     [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
@@ -28,7 +29,6 @@ public class RSelectModal<TItem> : ComponentBase
     [Parameter] public string EmptyText { get; set; } = "No items found";
     [Parameter] public string LoadingText { get; set; } = "Loading...";
     [Parameter] public bool Loading { get; set; } = false;
-    [Parameter] public string Class { get; set; }
     [Parameter] public EventCallback<TItem> OnItemClick { get; set; }
     [Parameter] public EventCallback OnCancel { get; set; }
     [Parameter] public EventCallback OnConfirm { get; set; }

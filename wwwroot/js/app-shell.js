@@ -1,7 +1,3 @@
-const debugLogger = {
-    error: (...args) => console.error('[RAppShell]', ...args)
-};
-
 let appShellDotNetRef = null;
 
 export function initialize() {
@@ -291,6 +287,10 @@ window.RRAppShell = {
     updateUrlWithoutScroll,
     focusElement,
     initialize,
+    setDotNetRef,
+    expandSearch,
+    focusSearchInput,
+    registerSystemThemeListener,
     dispose
 };
 
@@ -307,5 +307,9 @@ export default {
     updateUrlWithoutScroll,
     focusElement,
     initialize,
+    setDotNetRef,
+    expandSearch,
+    focusSearchInput,
+    registerSystemThemeListener,
     dispose
 };

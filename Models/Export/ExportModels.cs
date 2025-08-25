@@ -1,3 +1,5 @@
+using RR.Blazor.Services.Export;
+
 namespace RR.Blazor.Models.Export;
 
 public record ExportOptions(
@@ -153,18 +155,6 @@ public record ExportProgressEventArgs(
     public bool CanCancel { get; init; } = true;
 }
 
-public enum ExportFormat
-{
-    CSV,
-    Excel,
-    JSON,
-    PDF,
-    PowerBI,
-    XML,
-    YAML,
-    HTML,
-    TSV
-}
 
 public enum ExportDataSource
 {

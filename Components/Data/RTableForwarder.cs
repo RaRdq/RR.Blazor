@@ -7,12 +7,10 @@ using RR.Blazor.Components.Base;
 namespace RR.Blazor.Components.Data;
 
 [CascadingTypeParameter(nameof(TItem))]
-public class RTableForwarder<TItem> : ComponentBase where TItem : class
+public class RTableForwarder<TItem> : RComponentBase where TItem : class
 {
     [Parameter] public IEnumerable<TItem> Items { get; set; }
-    [Parameter] public RenderFragment ChildContent { get; set; }
     [Parameter] public int PageSize { get; set; } = 50;
-    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object> AdditionalAttributes { get; set; } = new();
     
     protected override void BuildRenderTree(RenderTreeBuilder builder)
     {
@@ -26,10 +24,10 @@ public class RTableForwarder<TItem> : ComponentBase where TItem : class
             contextBuilder.AddAttribute(1, "Items", Items);
             contextBuilder.AddAttribute(2, "PageSize", PageSize);
             
-            if (AdditionalAttributes != null)
+            // Don't forward AdditionalAttributes as a parameter - RTableGeneric has CaptureUnmatchedValues
+            // Instead, forward individual attributes using AddMultipleAttributes
+            if (AdditionalAttributes != null && AdditionalAttributes.Count > 0)
             {
-                // Forward ALL Blazor component parameters for RTableGeneric
-                // RTableForwarder forwards to a Blazor component, not HTML element
                 var processedAttributes = new Dictionary<string, object>();
                 foreach (var attr in AdditionalAttributes)
                 {

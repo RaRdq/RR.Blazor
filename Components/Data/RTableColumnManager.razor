@@ -1,7 +1,8 @@
 @using RR.Blazor.Components.Form
+@using RR.Blazor.Components.Base
 @using RR.Blazor.Enums
 @using RR.Blazor.Models
-@inject IJSRuntime JSRuntime
+@inherits RComponentBase
 
 <RChoiceGeneric TValue="@string"
                 Items="@(new[] { "manage" })"
@@ -10,7 +11,7 @@
                 CloseOnSelect="false">
     <TriggerContent>
         <div class="d-flex items-center justify-center" title="Manage Columns">
-            <i class="material-symbols-rounded">view_column</i>
+            <i class="icon">view_column</i>
         </div>
     </TriggerContent>
     
@@ -38,7 +39,7 @@
                             <div class="d-flex items-center gap-2 flex-1">
                                 @if (EnableReordering)
                                 {
-                                    <i class="material-symbols-rounded text-muted cursor-move" title="Drag to reorder">drag_indicator</i>
+                                    <i class="icon text-muted cursor-move" title="Drag to reorder">drag_indicator</i>
                                 }
                                 <div class="flex-1">
                                     <div class="font-medium text-sm">@column.Title</div>
@@ -72,7 +73,7 @@
                                             @onclick="@(() => ToggleColumnPin(column.Key))"
                                             @onclick:stopPropagation="true"
                                             title="Pin/Unpin Column">
-                                        <i class="material-symbols-rounded text-base">push_pin</i>
+                                        <i class="icon text-base">push_pin</i>
                                     </button>
                                 }
                             </div>
@@ -147,7 +148,6 @@
         if (draggedColumn == null || draggedColumn.Key == column.Key) 
             return;
             
-        // Swap columns immediately for live reordering
         var columns = GetSortedColumns();
         var draggedIndex = columns.FindIndex(c => c.Key == draggedColumn.Key);
         var targetIndex = columns.FindIndex(c => c.Key == column.Key);
@@ -155,20 +155,23 @@
         if (draggedIndex < 0 || targetIndex < 0) 
             return;
         
-        // Swap the order values in preferences
-        var draggedKey = draggedColumn.Key as string;
-        var targetKey = column.Key as string;
+        var reorderedColumns = new List<dynamic>(columns);
+        var draggedItem = reorderedColumns[draggedIndex];
+        reorderedColumns.RemoveAt(draggedIndex);
+        reorderedColumns.Insert(targetIndex, draggedItem);
         
-        var draggedPrefs = Preferences.GetValueOrDefault(draggedKey) ?? new ColumnPreferences();
-        var targetPrefs = Preferences.GetValueOrDefault(targetKey) ?? new ColumnPreferences();
-        
-        var draggedOrder = draggedPrefs.Order > 0 ? draggedPrefs.Order : draggedIndex;
-        var targetOrder = targetPrefs.Order > 0 ? targetPrefs.Order : targetIndex;
-        
-        Preferences[draggedKey] = draggedPrefs with { Order = targetOrder };
-        Preferences[targetKey] = targetPrefs with { Order = draggedOrder };
+        for (int i = 0; i < reorderedColumns.Count; i++)
+        {
+            var columnKey = reorderedColumns[i].Key as string;
+            if (!string.IsNullOrEmpty(columnKey))
+            {
+                var prefs = Preferences.GetValueOrDefault(columnKey) ?? new ColumnPreferences();
+                Preferences[columnKey] = prefs with { Order = i };
+            }
+        }
         
         dragOverColumn = column;
+        await PreferencesChanged.InvokeAsync(Preferences);
         await InvokeAsync(StateHasChanged);
     }
     
@@ -267,7 +270,7 @@
         
         if (!string.IsNullOrEmpty(TableId))
         {
-            await JSRuntime.InvokeVoidAsync("localStorage.removeItem", $"table-preferences-{TableId}");
+            await SafeInvokeAsync("localStorage.removeItem", $"table-preferences-{TableId}");
         }
     }
     
@@ -275,7 +278,7 @@
     {
         if (!string.IsNullOrEmpty(TableId))
         {
-            await JSRuntime.InvokeVoidAsync("RTableColumnManager.saveColumnPreferences", TableId, Preferences);
+            await SafeInvokeAsync("RTableColumnManager.saveColumnPreferences", TableId, Preferences);
         }
     }
 }

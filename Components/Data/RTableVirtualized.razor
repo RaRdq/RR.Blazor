@@ -4,25 +4,24 @@
 @using RR.Blazor.Components.Core
 @using RR.Blazor.Components.Form
 @using RR.Blazor.Components.Data
-@using RR.Blazor.Components.Data.Filters
 @using RR.Blazor.Components.Display
 @using RR.Blazor.Components.Feedback
 @using RR.Blazor.Enums
+@using RR.Blazor.Configuration
 @using RR.Blazor.Models
 @using RR.Blazor.Services
-@using RR.Blazor.Configuration
 @using System.Linq.Expressions
 @using System.Collections.Concurrent
 @using System.Reflection
-@inherits ComponentBase
+@using RR.Blazor.Components.Base
+@inherits RComponentBase
 @implements ITableParent
-@implements IAsyncDisposable
 
 <CascadingValue Value="@_tableContext" IsFixed="true">
     <CascadingValue Value="@((ITableParent)this)" IsFixed="true">
         <div class="virtual-table-container @GetContainerClasses()" 
              data-table-id="@TableId"
-             style="@GetContainerStyle()">
+             style="@Style">
             
             @* Header Section *@
             @if (ShowTitle && (!string.IsNullOrEmpty(Title) || HeaderContent != null))
@@ -32,7 +31,7 @@
                         <div class="d-flex items-center gap-3">
                             @if (!string.IsNullOrEmpty(Icon))
                             {
-                                <i class="material-symbols-rounded text-primary">@Icon</i>
+                                <i class="icon text-primary">@Icon</i>
                             }
                             @if (!string.IsNullOrEmpty(Title))
                             {
@@ -111,7 +110,7 @@
             }
 
             @* Virtual Table Section *@
-            <div class="virtual-table-viewport" style="height: @Height;">
+            <div class="virtual-table-viewport" style="--viewport-height: @Height; height: @Height;">
                 @if (Loading && !Items.Any())
                 {
                     <div class="d-flex justify-center items-center pa-8">
@@ -128,7 +127,7 @@
                         }
                         else
                         {
-                            <i class="material-symbols-rounded empty-icon">inbox</i>
+                            <i class="icon empty-icon">inbox</i>
                             <div class="empty-title">No Data Available</div>
                             <p class="empty-description">@EmptyMessage</p>
                         }
@@ -143,7 +142,7 @@
                                 <tr>
                                     @if (Selectable)
                                     {
-                                        <th class="virtual-table-header-cell" style="width: @(TableConfig.GetRowHeight(Density))px;">
+                                        <th class="virtual-table-header-cell" style="--cell-width: @(TableConstants.GetRowHeight(Density))px;">
                                             @if (MultiSelect)
                                             {
                                                 <RCheckbox Checked="@IsAllSelected()"
@@ -155,13 +154,13 @@
                                     @foreach (var column in GetVisibleColumns())
                                     {
                                         <th class="virtual-table-header-cell @(column.Sortable ? "sortable" : "")"
-                                            style="@GetColumnStyle(column)"
+                                            style="--cell-width: @column.Width; width: @column.Width; min-width: @column.MinWidth; max-width: @column.MaxWidth;"
                                             @onclick="@(() => OnSort(column.Key))">
                                             <div class="d-flex items-center justify-between">
                                                 <span>@column.Title</span>
                                                 @if (column.Sortable)
                                                 {
-                                                    <i class="material-symbols-rounded text-sm">
+                                                    <i class="icon text-sm">
                                                         @GetSortIcon(column.Key)
                                                     </i>
                                                 }
@@ -187,7 +186,7 @@
                                             @onclick="@(() => OnRowClick(item))">
                                             @if (Selectable)
                                             {
-                                                <td class="virtual-table-cell" style="width: @(TableConfig.GetRowHeight(Density))px;">
+                                                <td class="virtual-table-cell" style="--cell-width: @(TableConstants.GetRowHeight(Density))px;">
                                                     @if (MultiSelect)
                                                     {
                                                         <RCheckbox Checked="@IsSelected(item)"
@@ -205,7 +204,8 @@
                                             }
                                             @foreach (var column in GetVisibleColumns())
                                             {
-                                                <td class="virtual-table-cell" style="@GetColumnStyle(column)">
+                                                <td class="virtual-table-cell" 
+                                                    style="--cell-width: @column.Width; width: @column.Width; min-width: @column.MinWidth; max-width: @column.MaxWidth;">
                                                     @{
                                                         var cellContent = column.GetCellContent(item);
                                                         if (cellContent != null)
@@ -225,13 +225,14 @@
                                         <tr class="virtual-table-row">
                                             @if (Selectable)
                                             {
-                                                <td class="virtual-table-cell" style="width: @(TableConfig.GetRowHeight(Density))px;">
+                                                <td class="virtual-table-cell" style="--cell-width: @(TableConstants.GetRowHeight(Density))px;">
                                                     <RSkeleton Width="20px" Height="20px" />
                                                 </td>
                                             }
                                             @foreach (var column in GetVisibleColumns())
                                             {
-                                                <td class="virtual-table-cell" style="@GetColumnStyle(column)">
+                                                <td class="virtual-table-cell" 
+                                                    style="--cell-width: @column.Width; width: @column.Width; min-width: @column.MinWidth; max-width: @column.MaxWidth;">
                                                     <RSkeleton Height="16px" />
                                                 </td>
                                             }
@@ -255,9 +256,9 @@
                         @if (_selectedItems.Any())
                         {
                             <RChip Text="@($"{_selectedItems.Count} selected")"
-                                  Style="ChipStyle.Badge"
+                                  StyleVariant="ChipStyle.Badge"
                                   Variant="VariantType.Primary"
-                                  Size="@TableConfig.GetPaginationChipSize(Density)" />
+                                  Size="@TableConstants.GetPaginationChipSize(Density)" />
                         }
                     </div>
                     
@@ -265,7 +266,7 @@
                         @if (ShowPerformanceMetrics)
                         {
                             <div class="d-flex items-center gap-2 text-xs text-secondary">
-                                <i class="material-symbols-rounded text-sm">speed</i>
+                                <i class="icon text-sm">speed</i>
                                 <span>Render: @_lastRenderTime.TotalMilliseconds.ToString("F1")ms</span>
                                 <span>|</span>
                                 <span>FPS: @_currentFps</span>
@@ -275,14 +276,14 @@
                         <RButton Text="Scroll to Top"
                                 Icon="vertical_align_top"
                                 Variant="ButtonVariant.Ghost"
-                                Size="@TableConfig.GetPaginationButtonSize(Density)"
+                                Size="@TableConstants.GetPaginationButtonSize(Density)"
                                 OnClick="@ScrollToTop" />
                     </div>
                 </div>
             }
 
             @* Column definitions from child content *@
-            <div style="display: none;">
+            <div class="d-none">
                 @ChildContent
             </div>
         </div>
@@ -297,7 +298,7 @@
             Size="SizeType.Large">
         <HeaderContent>
             <div class="d-flex items-center gap-2">
-                <i class="material-symbols-rounded text-primary">analytics</i>
+                <i class="icon text-primary">analytics</i>
                 <span>@Title Chart Analysis</span>
             </div>
         </HeaderContent>
@@ -340,7 +341,6 @@
     #region Parameters
 
     [Parameter] public IEnumerable<TItem> Items { get; set; } = Enumerable.Empty<TItem>();
-    [Parameter] public RenderFragment ChildContent { get; set; }
     
     // Header
     [Parameter] public bool ShowTitle { get; set; } = true;
@@ -383,7 +383,6 @@
     [Parameter] public string EmptyMessage { get; set; } = "No data available";
     [Parameter] public RenderFragment EmptyContent { get; set; }
     [Parameter] public bool ShowFooter { get; set; } = true;
-    [Parameter] public DensityType Density { get; set; } = DensityType.Normal;
     
     // Selection
     [Parameter] public bool Selectable { get; set; }
@@ -410,10 +409,6 @@
     [Parameter] public EventCallback<TItem> OnRowClicked { get; set; }
     [Parameter] public bool RowClickable { get; set; }
     
-    // Styling
-    [Parameter] public string Class { get; set; }
-    [Parameter] public string Style { get; set; }
-    [Parameter] public bool Disabled { get; set; }
 
     #endregion
 
@@ -777,11 +772,9 @@
     private int GetRowHeight()
     {
         if (DynamicRowHeight && GetItemHeight != null)
-        {
-            return TableConfig.GetRowHeight(DensityType.Dense); // Use Dense as middle ground
-        }
+            return TableConstants.GetRowHeight(DensityType.Dense); // Use Dense as middle ground
 
-        return TableConfig.GetRowHeight(Density);
+        return TableConstants.GetRowHeight(Density);
     }
 
     private async Task ScrollToTop()

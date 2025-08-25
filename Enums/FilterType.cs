@@ -53,6 +53,8 @@ namespace RR.Blazor.Enums
         NotEquals = 4,
         IsEmpty = 5,
         IsNotEmpty = 6,
+        NotContains = 7,
+        Matches = 8,
         
         // Number operators
         GreaterThan = 10,
@@ -77,6 +79,7 @@ namespace RR.Blazor.Enums
         LastMonth = 31,
         ThisYear = 32,
         LastYear = 33,
+        NotOn = 34,
         
         // Boolean operators
         IsTrue = 40,
@@ -86,7 +89,17 @@ namespace RR.Blazor.Enums
         In = 50,
         NotIn = 51,
         Any = 52,
-        All = 53
+        All = 53,
+        
+        // Advanced date operators
+        Last30Days = 60,
+        
+        // Extensible operators
+        Custom = 99,  // Placeholder for custom/extensible operators
+        
+        // Advanced number operators
+        Top10Percent = 70,
+        Bottom10Percent = 71
     }
 
     /// <summary>

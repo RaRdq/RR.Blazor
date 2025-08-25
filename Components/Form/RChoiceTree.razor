@@ -1,0 +1,567 @@
+@**
+<summary>Choice tree component for rendering hierarchical tree structures with cascade selection</summary>
+<category>Form</category>
+**@
+
+@attribute [Component("RChoiceTree", Category = "Form")]
+@using Microsoft.AspNetCore.Components
+@using RR.Blazor.Components.Form
+@using RR.Blazor.Enums
+@using RR.Blazor.Models
+@using RR.Blazor.Utilities
+@using static RR.Blazor.Enums.ChoiceTreeStyle
+@using static RR.Blazor.Enums.ChoiceSelectionMode
+@using RR.Blazor.Components.Base
+@inherits RComponentBase
+
+<div class="@GetTreeClasses()">
+    @foreach (var item in GetVisibleItems())
+    {
+        @RenderTreeNode(item, 0)
+    }
+    
+    @if (!GetVisibleItems().Any() && !string.IsNullOrEmpty(SearchTerm))
+    {
+        <div class="choice-tree-no-results">
+            <i class="icon">search_off</i>
+            <span>No items found for "@SearchTerm"</span>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public IEnumerable<IChoiceTreeItem> Items { get; set; } = Enumerable.Empty<IChoiceTreeItem>();
+    [Parameter] public ChoiceTreeStyle TreeStyle { get; set; } = ChoiceTreeStyle.Standard;
+    [Parameter] public SizeType Size { get; set; } = SizeType.Medium;
+    [Parameter] public ChoiceSelectionMode SelectionMode { get; set; } = ChoiceSelectionMode.Single;
+    [Parameter] public bool ShowExpandIcon { get; set; } = true;
+    [Parameter] public bool ShowConnectingLines { get; set; } = false;
+    [Parameter] public bool EnableCascadeSelection { get; set; } = true;
+    [Parameter] public bool ShowAlternatingRows { get; set; } = false;
+    [Parameter] public string SearchTerm { get; set; } = "";
+    [Parameter] public HashSet<string> SelectedItemIds { get; set; } = new();
+    [Parameter] public HashSet<string> ExpandedItemIds { get; set; } = new();
+    [Parameter] public RenderFragment<IChoiceTreeItem> ItemTemplate { get; set; }
+    [Parameter] public EventCallback<IChoiceTreeItem> OnItemSelected { get; set; }
+    [Parameter] public EventCallback<IChoiceTreeItem> OnItemExpanded { get; set; }
+    [Parameter] public EventCallback<IChoiceTreeItem> OnItemCollapsed { get; set; }
+
+    private RenderFragment RenderTreeNode(IChoiceTreeItem item, int level) => __builder =>
+    {
+        var nodeId = $"tree-node-{item.Id}";
+        var isExpanded = IsItemExpanded(item);
+        var isSelected = IsItemSelected(item);
+        var hasVisibleChildren = GetVisibleChildren(item).Any();
+        
+        <div class="@GetNodeClasses(item, level)" data-tree-node-id="@item.Id" data-tree-level="@level">
+            
+            @* Node content row *@
+            <div class="@GetNodeRowClasses(item, level)">
+                
+                @* Indentation and connecting lines *@
+                @if (level > 0 && ShowConnectingLines)
+                {
+                    @for (int i = 0; i < level; i++)
+                    {
+                        <div class="choice-tree-indent choice-tree-indent-line"></div>
+                    }
+                }
+                else if (level > 0)
+                {
+                    @for (int i = 0; i < level; i++)
+                    {
+                        <div class="choice-tree-indent"></div>
+                    }
+                }
+                
+                @* Expand/collapse button *@
+                @if (item.HasChildren && ShowExpandIcon)
+                {
+                    <button class="@GetExpandButtonClasses()" 
+                            type="button"
+                            aria-label="@GetExpandAriaLabel(item)"
+                            @onclick="() => OnToggleExpand(item)"
+                            @onclick:stopPropagation="true">
+                        <i class="@GetExpandIconClasses(item)">@GetExpandIcon(item)</i>
+                    </button>
+                }
+                else if (ShowExpandIcon)
+                {
+                    <div class="choice-tree-spacer"></div>
+                }
+                
+                @* Node content *@
+                @if (ItemTemplate != null)
+                {
+                    <div class="@GetItemContentClasses(item)" @onclick="() => OnItemClick(item)">
+                        @ItemTemplate(item)
+                    </div>
+                }
+                else
+                {
+                    <button class="@GetItemClasses(item)" 
+                            type="button"
+                            disabled="@item.Disabled"
+                            title="@GetItemTooltip(item)"
+                            @onclick="() => OnItemClick(item)"
+                            @onclick:stopPropagation="true">
+                        
+                        @* Selection checkbox/indicator *@
+                        @if (SelectionMode == Multiple || SelectionMode == Cascade)
+                        {
+                            <div class="choice-tree-checkbox">
+                                <i class="@GetCheckboxIconClasses(item)">@GetCheckboxIcon(item)</i>
+                            </div>
+                        }
+                        
+                        @* Item icon *@
+                        @if (!string.IsNullOrEmpty(item.Icon))
+                        {
+                            <i class="@GetItemIconClasses()">@item.Icon</i>
+                        }
+                        
+                        @* Avatar *@
+                        @if (!string.IsNullOrEmpty(item.AvatarUrl))
+                        {
+                            <div class="choice-tree-avatar">
+                                <img src="@item.AvatarUrl" alt="@item.Label" />
+                            </div>
+                        }
+                        
+                        @* Item content *@
+                        <div class="choice-tree-item-content">
+                            <span class="choice-tree-item-label">@item.Label</span>
+                            @if (!string.IsNullOrEmpty(item.Description))
+                            {
+                                <span class="choice-tree-item-description">@item.Description</span>
+                            }
+                        </div>
+                        
+                        @* Badge *@
+                        @if (!string.IsNullOrEmpty(item.Badge))
+                        {
+                            <span class="@GetItemBadgeClasses(item)">@item.Badge</span>
+                        }
+                        
+                        @* Selection indicator for single selection *@
+                        @if (isSelected && SelectionMode == ChoiceSelectionMode.Single)
+                        {
+                            <i class="@GetSelectedIconClasses()">check</i>
+                        }
+                        
+                        @* Loading indicator *@
+                        @if (item.Loading)
+                        {
+                            <div class="choice-tree-loading">
+                                <i class="@GetLoadingIconClasses()">hourglass_empty</i>
+                            </div>
+                        }
+                    </button>
+                }
+            </div>
+            
+            @* Child nodes *@
+            @if (hasVisibleChildren && isExpanded)
+            {
+                <div class="@GetChildrenClasses(item)">
+                    @foreach (var child in GetVisibleChildren(item))
+                    {
+                        @RenderTreeNode(child, level + 1)
+                    }
+                </div>
+            }
+        </div>
+    };
+
+    private string GetTreeClasses()
+    {
+        var classes = new List<string>
+        {
+            "choice-tree",
+            $"choice-tree-{TreeStyle.ToString().ToLowerInvariant()}",
+            SizeHelper.GetTextSize(Size, Density),
+            DensityHelper.GetInputDensityClasses(Density)
+        };
+        
+        if (ShowConnectingLines) classes.Add("choice-tree-lines");
+        if (ShowAlternatingRows) classes.Add("choice-tree-striped");
+        if (EnableCascadeSelection) classes.Add("choice-tree-cascade");
+        
+        return string.Join(" ", classes);
+    }
+
+    private string GetNodeClasses(IChoiceTreeItem item, int level)
+    {
+        var classes = new List<string>
+        {
+            "choice-tree-node",
+            $"choice-tree-node-level-{level}"
+        };
+        
+        if (IsItemExpanded(item)) classes.Add("choice-tree-node-expanded");
+        if (IsItemSelected(item)) classes.Add("choice-tree-node-selected");
+        if (item.IsPartiallySelected) classes.Add("choice-tree-node-partial");
+        if (item.HasChildren) classes.Add("choice-tree-node-parent");
+        if (item.IsLeaf) classes.Add("choice-tree-node-leaf");
+        if (item.Disabled) classes.Add("choice-tree-node-disabled");
+        if (!string.IsNullOrEmpty(item.CssClass)) classes.Add(item.CssClass);
+        
+        return string.Join(" ", classes);
+    }
+
+    private string GetNodeRowClasses(IChoiceTreeItem item, int level)
+    {
+        var classes = new List<string> { "choice-tree-node-row" };
+        
+        if (ShowAlternatingRows)
+        {
+            var allVisible = GetAllVisibleItems().ToList();
+            var index = allVisible.IndexOf(item);
+            if (index >= 0 && index % 2 == 1) classes.Add("choice-tree-node-row-alt");
+        }
+        
+        return string.Join(" ", classes);
+    }
+
+    private string GetExpandButtonClasses()
+    {
+        return "choice-tree-expand-btn";
+    }
+
+    private string GetItemContentClasses(IChoiceTreeItem item)
+    {
+        return "choice-tree-item-template";
+    }
+
+    private string GetItemClasses(IChoiceTreeItem item)
+    {
+        var classes = new List<string>
+        {
+            "choice-tree-item"
+        };
+        
+        if (item.Disabled) classes.Add("choice-tree-item-disabled");
+        if (item.Loading) classes.Add("choice-tree-item-loading");
+        if (IsItemSelected(item)) classes.Add("choice-tree-item-selected");
+        
+        return string.Join(" ", classes);
+    }
+
+    private string GetChildrenClasses(IChoiceTreeItem item)
+    {
+        return "choice-tree-children";
+    }
+
+    private string GetExpandIcon(IChoiceTreeItem item)
+    {
+        if (!string.IsNullOrEmpty(item.ExpandIcon) && IsItemExpanded(item)) return item.CollapseIcon ?? "expand_less";
+        if (!string.IsNullOrEmpty(item.ExpandIcon)) return item.ExpandIcon;
+        return IsItemExpanded(item) ? "expand_less" : "expand_more";
+    }
+
+    private string GetExpandIconClasses(IChoiceTreeItem item)
+    {
+        var classes = $"icon choice-tree-expand-icon {SizeHelper.GetIconSize(Size, Density)}";
+        if (IsItemExpanded(item)) classes += " choice-tree-expand-icon-expanded";
+        return classes;
+    }
+
+    private string GetItemIconClasses()
+    {
+        return $"icon choice-tree-item-icon {SizeHelper.GetIconSize(Size, Density)}";
+    }
+
+    private string GetCheckboxIconClasses(IChoiceTreeItem item)
+    {
+        var classes = $"icon choice-tree-checkbox-icon {SizeHelper.GetIconSize(Size, Density)}";
+        if (IsItemSelected(item)) classes += " choice-tree-checkbox-icon-checked";
+        if (item.IsPartiallySelected) classes += " choice-tree-checkbox-icon-partial";
+        return classes;
+    }
+
+    private string GetCheckboxIcon(IChoiceTreeItem item)
+    {
+        if (item.IsPartiallySelected) return "indeterminate_check_box";
+        return IsItemSelected(item) ? "check_box" : "check_box_outline_blank";
+    }
+
+    private string GetSelectedIconClasses()
+    {
+        return $"icon choice-tree-selected-icon {SizeHelper.GetIconSize(Size, Density)}";
+    }
+
+    private string GetLoadingIconClasses()
+    {
+        return $"icon choice-tree-loading-icon animate-spin {SizeHelper.GetIconSize(Size, Density)}";
+    }
+
+    private string GetItemBadgeClasses(IChoiceTreeItem item)
+    {
+        var badgeVariant = item is ChoiceItem choiceItem ? choiceItem.BadgeVariant : VariantType.Secondary;
+        return $"choice-tree-item-badge badge-{badgeVariant.ToString().ToLowerInvariant()}";
+    }
+
+    private string GetExpandAriaLabel(IChoiceTreeItem item)
+    {
+        return IsItemExpanded(item) ? $"Collapse {item.Label}" : $"Expand {item.Label}";
+    }
+
+    private string GetItemTooltip(IChoiceTreeItem item)
+    {
+        return !string.IsNullOrEmpty(item.Tooltip) ? item.Tooltip : item.Label;
+    }
+
+    private bool IsItemExpanded(IChoiceTreeItem item)
+    {
+        return ExpandedItemIds.Contains(item.Id) || item.IsExpanded;
+    }
+
+    private bool IsItemSelected(IChoiceTreeItem item)
+    {
+        return SelectedItemIds.Contains(item.Id) || item.IsSelected;
+    }
+
+    private IEnumerable<IChoiceTreeItem> GetVisibleItems()
+    {
+        var items = Items;
+        
+        if (!string.IsNullOrEmpty(SearchTerm))
+        {
+            return FilterItemsBySearch(items).ToList();
+        }
+        
+        return items;
+    }
+
+    private IEnumerable<IChoiceTreeItem> GetVisibleChildren(IChoiceTreeItem item)
+    {
+        var children = item.Children;
+        
+        if (!string.IsNullOrEmpty(SearchTerm))
+        {
+            return FilterItemsBySearch(children).ToList();
+        }
+        
+        return children;
+    }
+
+    private IEnumerable<IChoiceTreeItem> FilterItemsBySearch(IEnumerable<IChoiceTreeItem> items)
+    {
+        foreach (var item in items)
+        {
+            var matches = item.Label.Contains(SearchTerm, StringComparison.OrdinalIgnoreCase) ||
+                         (!string.IsNullOrEmpty(item.Description) && item.Description.Contains(SearchTerm, StringComparison.OrdinalIgnoreCase));
+            
+            var hasMatchingChildren = item.Children.Any() && FilterItemsBySearch(item.Children).Any();
+            
+            if (matches || hasMatchingChildren)
+            {
+                yield return item;
+            }
+        }
+    }
+
+    private IEnumerable<IChoiceTreeItem> GetAllVisibleItems()
+    {
+        return GetAllItemsRecursive(GetVisibleItems());
+    }
+
+    private IEnumerable<IChoiceTreeItem> GetAllItemsRecursive(IEnumerable<IChoiceTreeItem> items)
+    {
+        foreach (var item in items)
+        {
+            yield return item;
+            if (IsItemExpanded(item) && item.HasChildren)
+            {
+                foreach (var child in GetAllItemsRecursive(GetVisibleChildren(item)))
+                {
+                    yield return child;
+                }
+            }
+        }
+    }
+
+    private async Task OnToggleExpand(IChoiceTreeItem item)
+    {
+        if (!item.HasChildren) return;
+        
+        var wasExpanded = IsItemExpanded(item);
+        
+        if (wasExpanded)
+        {
+            ExpandedItemIds.Remove(item.Id);
+            item.IsExpanded = false;
+            if (OnItemCollapsed.HasDelegate)
+            {
+                await OnItemCollapsed.InvokeAsync(item);
+            }
+        }
+        else
+        {
+            ExpandedItemIds.Add(item.Id);
+            item.IsExpanded = true;
+            if (OnItemExpanded.HasDelegate)
+            {
+                await OnItemExpanded.InvokeAsync(item);
+            }
+        }
+    }
+
+    private async Task OnItemClick(IChoiceTreeItem item)
+    {
+        if (item.Disabled || item.Loading) return;
+        
+        var wasSelected = IsItemSelected(item);
+        
+        if (SelectionMode == ChoiceSelectionMode.Single)
+        {
+            // Clear all selections for single mode
+            SelectedItemIds.Clear();
+            ClearAllSelections(Items);
+            
+            if (!wasSelected)
+            {
+                SelectedItemIds.Add(item.Id);
+                item.IsSelected = true;
+            }
+        }
+        else if (SelectionMode == Multiple)
+        {
+            if (wasSelected)
+            {
+                SelectedItemIds.Remove(item.Id);
+                item.IsSelected = false;
+            }
+            else
+            {
+                SelectedItemIds.Add(item.Id);
+                item.IsSelected = true;
+            }
+        }
+        else if (SelectionMode == Cascade && EnableCascadeSelection)
+        {
+            if (wasSelected)
+            {
+                // Deselect item and all descendants
+                DeselectItemAndDescendants(item);
+            }
+            else
+            {
+                // Select item and all descendants
+                SelectItemAndDescendants(item);
+            }
+            
+            // Update parent selection states
+            UpdateAncestorSelectionStates(item);
+        }
+        
+        if (OnItemSelected.HasDelegate)
+        {
+            await OnItemSelected.InvokeAsync(item);
+        }
+    }
+
+    private void ClearAllSelections(IEnumerable<IChoiceTreeItem> items)
+    {
+        foreach (var item in items)
+        {
+            item.IsSelected = false;
+            item.IsPartiallySelected = false;
+            ClearAllSelections(item.Children);
+        }
+    }
+
+    private void SelectItemAndDescendants(IChoiceTreeItem item)
+    {
+        SelectedItemIds.Add(item.Id);
+        item.IsSelected = true;
+        item.IsPartiallySelected = false;
+        
+        foreach (var child in item.Children)
+        {
+            SelectItemAndDescendants(child);
+        }
+    }
+
+    private void DeselectItemAndDescendants(IChoiceTreeItem item)
+    {
+        SelectedItemIds.Remove(item.Id);
+        item.IsSelected = false;
+        item.IsPartiallySelected = false;
+        
+        foreach (var child in item.Children)
+        {
+            DeselectItemAndDescendants(child);
+        }
+    }
+
+    private void UpdateAncestorSelectionStates(IChoiceTreeItem item)
+    {
+        // Traverse up the entire parent chain and update selection states
+        var currentParent = item.Parent;
+        
+        while (currentParent != null)
+        {
+            if (currentParent is IChoiceTreeItem parentTreeItem)
+            {
+                var selectedChildren = 0;
+                var partiallySelectedChildren = 0;
+                var totalChildren = 0;
+                
+                // Count the selection state of all children
+                foreach (var child in parentTreeItem.Children)
+                {
+                    totalChildren++;
+                    if (IsItemSelected(child))
+                    {
+                        selectedChildren++;
+                    }
+                    else if (child.IsPartiallySelected)
+                    {
+                        partiallySelectedChildren++;
+                    }
+                }
+                
+                // Determine parent's selection state based on children
+                if (selectedChildren == totalChildren && totalChildren > 0)
+                {
+                    // All children are fully selected
+                    if (!IsItemSelected(parentTreeItem))
+                    {
+                        SelectedItemIds.Add(parentTreeItem.Id);
+                        parentTreeItem.IsSelected = true;
+                    }
+                    parentTreeItem.IsPartiallySelected = false;
+                }
+                else if (selectedChildren > 0 || partiallySelectedChildren > 0)
+                {
+                    // Some children are selected or partially selected
+                    if (IsItemSelected(parentTreeItem))
+                    {
+                        SelectedItemIds.Remove(parentTreeItem.Id);
+                        parentTreeItem.IsSelected = false;
+                    }
+                    parentTreeItem.IsPartiallySelected = true;
+                }
+                else
+                {
+                    // No children are selected
+                    if (IsItemSelected(parentTreeItem))
+                    {
+                        SelectedItemIds.Remove(parentTreeItem.Id);
+                        parentTreeItem.IsSelected = false;
+                    }
+                    parentTreeItem.IsPartiallySelected = false;
+                }
+                
+                // Move up to the next ancestor
+                currentParent = parentTreeItem.Parent;
+            }
+            else
+            {
+                // Parent is not a tree item, stop traversal
+                break;
+            }
+        }
+    }
+}

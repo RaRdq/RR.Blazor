@@ -119,28 +119,45 @@ public enum SectionElevation
     High = 3
 }
 
+
 /// <summary>
-/// Form field density for spacing control
+/// Orientation for layout of form elements
 /// </summary>
-public enum FormDensity
+public enum Orientation
 {
     /// <summary>
-    /// Ultra-compact for mobile and dense interfaces
+    /// Vertical layout (default)
     /// </summary>
-    Compact = 0,
+    Vertical = 0,
     
     /// <summary>
-    /// Dense layout for data-heavy interfaces
+    /// Horizontal layout
     /// </summary>
-    Dense = 1,
+    Horizontal = 1
+}
+
+/// <summary>
+/// Spacing size between form elements
+/// </summary>
+public enum SpacingType
+{
+    /// <summary>
+    /// No spacing
+    /// </summary>
+    None = 0,
     
     /// <summary>
-    /// Standard spacing for general use
+    /// Small spacing
     /// </summary>
-    Normal = 2,
+    Small = 1,
     
     /// <summary>
-    /// Spacious layout for accessibility and comfort
+    /// Medium spacing (default)
     /// </summary>
-    Spacious = 3
+    Medium = 2,
+    
+    /// <summary>
+    /// Large spacing
+    /// </summary>
+    Large = 3
 }

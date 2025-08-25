@@ -1,0 +1,356 @@
+@**
+<summary>Choice group component for rendering grouped options with collapsible headers</summary>
+<category>Form</category>
+**@
+
+@attribute [Component("RChoiceGroup", Category = "Form")]
+@using Microsoft.AspNetCore.Components
+@using RR.Blazor.Components.Form
+@using RR.Blazor.Enums
+@using RR.Blazor.Models
+@using RR.Blazor.Utilities
+@using static RR.Blazor.Enums.ChoiceGroupStyle
+@using static RR.Blazor.Enums.ChoiceSelectionMode
+@using RR.Blazor.Components.Base
+@inherits RComponentBase
+
+<div class="@GetGroupClasses()">
+    @if (ShowHeader)
+    {
+        <div class="@GetHeaderClasses()" @onclick="OnHeaderClick" @onclick:stopPropagation="true">
+            @if (Group.Collapsible && ShowExpandIcon)
+            {
+                <button class="choice-group-expand" type="button" aria-label="@GetExpandAriaLabel()">
+                    <i class="@GetExpandIconClasses()">@GetExpandIcon()</i>
+                </button>
+            }
+            
+            @if (!string.IsNullOrEmpty(Group.Icon))
+            {
+                <i class="@GetGroupIconClasses()">@Group.Icon</i>
+            }
+            
+            @if (Group.HeaderTemplate != null)
+            {
+                @Group.HeaderTemplate(Group)
+            }
+            else
+            {
+                <div class="choice-group-header-content">
+                    <span class="choice-group-title">@Group.Label</span>
+                    @if (!string.IsNullOrEmpty(Group.Count))
+                    {
+                        <span class="choice-group-count">@Group.Count</span>
+                    }
+                    @if (!string.IsNullOrEmpty(Group.Badge))
+                    {
+                        <span class="@GetBadgeClasses()">@Group.Badge</span>
+                    }
+                </div>
+            }
+            
+            @if (Group.SelectAll && SelectionMode == Multiple)
+            {
+                <button class="choice-group-select-all" type="button" @onclick="OnSelectAllClick" @onclick:stopPropagation="true">
+                    <i class="@GetSelectAllIconClasses()">@GetSelectAllIcon()</i>
+                </button>
+            }
+        </div>
+    }
+    
+    @if (Group.IsExpanded || !Group.Collapsible)
+    {
+        <div class="@GetContentClasses()">
+            @foreach (var item in GetVisibleItems())
+            {
+                @if (item is IChoiceGroup nestedGroup)
+                {
+                    <RChoiceGroup Group="nestedGroup" 
+                                  GroupStyle="@GroupStyle" 
+                                  Size="@Size" 
+                                  Density="@Density"
+                                  SelectionMode="@SelectionMode"
+                                  ShowHeader="true"
+                                  ShowExpandIcon="@ShowExpandIcon"
+                                  ShowAlternatingRows="@ShowAlternatingRows"
+                                  SearchTerm="@SearchTerm"
+                                  OnItemSelected="OnItemSelected"
+                                  OnGroupToggled="OnGroupToggled" />
+                }
+                else
+                {
+                    <div class="@GetItemWrapperClasses(item)" data-choice-item-id="@item.Id">
+                        @if (ItemTemplate != null)
+                        {
+                            @ItemTemplate(item)
+                        }
+                        else
+                        {
+                            <button class="@GetItemClasses(item)" 
+                                    type="button"
+                                    disabled="@item.Disabled"
+                                    title="@GetItemTooltip(item)"
+                                    @onclick="() => OnItemClick(item)"
+                                    @onclick:stopPropagation="true">
+                                
+                                @if (SelectionMode == ChoiceSelectionMode.Multiple)
+                                {
+                                    <div class="choice-checkbox">
+                                        <i class="@GetCheckboxIconClasses(item)">@GetCheckboxIcon(item)</i>
+                                    </div>
+                                }
+                                
+                                @if (!string.IsNullOrEmpty(item.Icon))
+                                {
+                                    <i class="@GetItemIconClasses()">@item.Icon</i>
+                                }
+                                
+                                @if (!string.IsNullOrEmpty(item.AvatarUrl))
+                                {
+                                    <div class="choice-avatar">
+                                        <img src="@item.AvatarUrl" alt="@item.Label" />
+                                    </div>
+                                }
+                                
+                                <div class="choice-item-content">
+                                    <span class="choice-item-label">@item.Label</span>
+                                    @if (!string.IsNullOrEmpty(item.Description))
+                                    {
+                                        <span class="choice-item-description">@item.Description</span>
+                                    }
+                                </div>
+                                
+                                @if (!string.IsNullOrEmpty(item.Badge))
+                                {
+                                    <span class="@GetItemBadgeClasses(item)">@item.Badge</span>
+                                }
+                                
+                                @if (IsItemSelected(item) && SelectionMode == ChoiceSelectionMode.Single)
+                                {
+                                    <i class="@GetSelectedIconClasses()">check</i>
+                                }
+                            </button>
+                        }
+                    </div>
+                }
+            }
+            
+            @if (!GetVisibleItems().Any() && !string.IsNullOrEmpty(SearchTerm))
+            {
+                <div class="choice-no-results">
+                    <i class="icon">search_off</i>
+                    <span>No items found for "@SearchTerm"</span>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public IChoiceGroup Group { get; set; }
+    [Parameter] public ChoiceGroupStyle GroupStyle { get; set; } = Header;
+    [Parameter] public SizeType Size { get; set; } = SizeType.Medium;
+    [Parameter] public ChoiceSelectionMode SelectionMode { get; set; } = ChoiceSelectionMode.Single;
+    [Parameter] public bool ShowHeader { get; set; } = true;
+    [Parameter] public bool ShowExpandIcon { get; set; } = true;
+    [Parameter] public bool ShowAlternatingRows { get; set; } = true;
+    [Parameter] public string SearchTerm { get; set; } = "";
+    [Parameter] public HashSet<string> SelectedItemIds { get; set; } = new();
+    [Parameter] public RenderFragment<IChoiceItem> ItemTemplate { get; set; }
+    [Parameter] public EventCallback<IChoiceItem> OnItemSelected { get; set; }
+    [Parameter] public EventCallback<IChoiceGroup> OnGroupToggled { get; set; }
+
+    private string GetGroupClasses()
+    {
+        var classes = new List<string>
+        {
+            "choice-group",
+            $"choice-group-{GroupStyle.ToString().ToLowerInvariant()}",
+            SizeHelper.GetTextSize(Size, Density),
+            DensityHelper.GetInputDensityClasses(Density)
+        };
+        
+        if (Group.IsExpanded) classes.Add("choice-group-expanded");
+        if (Group.Collapsible) classes.Add("choice-group-collapsible");
+        if (Group.Disabled) classes.Add("choice-group-disabled");
+        if (!string.IsNullOrEmpty(Group.CssClass)) classes.Add(Group.CssClass);
+        
+        return string.Join(" ", classes);
+    }
+
+    private string GetHeaderClasses()
+    {
+        var classes = new List<string> { "choice-group-header" };
+        
+        if (Group.Collapsible) classes.Add("choice-group-header-clickable");
+        if (GroupStyle == Card) classes.Add("choice-group-header-card");
+        if (GroupStyle == Badge) classes.Add("choice-group-header-badge");
+        
+        return string.Join(" ", classes);
+    }
+
+    private string GetContentClasses()
+    {
+        var classes = new List<string> { "choice-group-content" };
+        
+        if (ShowAlternatingRows) classes.Add("choice-group-content-striped");
+        if (GroupStyle == Card) classes.Add("choice-group-content-card");
+        
+        return string.Join(" ", classes);
+    }
+
+    private string GetItemWrapperClasses(IChoiceItem item)
+    {
+        var classes = new List<string> { "choice-item-wrapper" };
+        
+        if (ShowAlternatingRows)
+        {
+            var index = GetVisibleItems().ToList().IndexOf(item);
+            if (index % 2 == 1) classes.Add("choice-item-wrapper-alt");
+        }
+        
+        return string.Join(" ", classes);
+    }
+
+    private string GetItemClasses(IChoiceItem item)
+    {
+        var classes = new List<string>
+        {
+            "choice-item",
+            "choice-group-item"
+        };
+        
+        if (item.Disabled) classes.Add("choice-item-disabled");
+        if (item.Loading) classes.Add("choice-item-loading");
+        if (IsItemSelected(item)) classes.Add("choice-item-selected");
+        if (!string.IsNullOrEmpty(item.CssClass)) classes.Add(item.CssClass);
+        
+        return string.Join(" ", classes);
+    }
+
+    private string GetExpandIcon() => Group.IsExpanded ? "expand_less" : "expand_more";
+    
+    private string GetExpandIconClasses()
+    {
+        return $"icon choice-expand-icon {SizeHelper.GetIconSize(Size, Density)}";
+    }
+
+    private string GetGroupIconClasses()
+    {
+        return $"icon choice-group-icon {SizeHelper.GetIconSize(Size, Density)}";
+    }
+
+    private string GetItemIconClasses()
+    {
+        return $"icon choice-item-icon {SizeHelper.GetIconSize(Size, Density)}";
+    }
+
+    private string GetBadgeClasses()
+    {
+        return "choice-group-badge badge-secondary"; // Default badge styling
+    }
+
+    private string GetItemBadgeClasses(IChoiceItem item)
+    {
+        var badgeVariant = "secondary"; // Default badge variant
+        return $"choice-item-badge badge-{badgeVariant.ToString().ToLowerInvariant()}";
+    }
+
+    private string GetCheckboxIconClasses(IChoiceItem item)
+    {
+        var classes = $"icon choice-checkbox-icon {SizeHelper.GetIconSize(Size, Density)}";
+        if (IsItemSelected(item)) classes += " choice-checkbox-icon-checked";
+        return classes;
+    }
+
+    private string GetCheckboxIcon(IChoiceItem item) => IsItemSelected(item) ? "check_box" : "check_box_outline_blank";
+
+    private string GetSelectedIconClasses()
+    {
+        return $"icon choice-selected-icon {SizeHelper.GetIconSize(Size, Density)}";
+    }
+
+    private string GetSelectAllIconClasses()
+    {
+        return $"icon choice-select-all-icon {SizeHelper.GetIconSize(Size, Density)}";
+    }
+
+    private string GetSelectAllIcon()
+    {
+        var allSelected = Group.Items.All(i => !(i is IChoiceGroup) && IsItemSelected(i));
+        return allSelected ? "deselect" : "select_all";
+    }
+
+    private string GetExpandAriaLabel()
+    {
+        return Group.IsExpanded ? $"Collapse {Group.Label}" : $"Expand {Group.Label}";
+    }
+
+    private string GetItemTooltip(IChoiceItem item)
+    {
+        return !string.IsNullOrEmpty(item.Tooltip) ? item.Tooltip : item.Label;
+    }
+
+    private bool IsItemSelected(IChoiceItem item)
+    {
+        return SelectedItemIds.Contains(item.Id);
+    }
+
+    private IEnumerable<IChoiceItem> GetVisibleItems()
+    {
+        var items = Group.Items;
+        
+        if (!string.IsNullOrEmpty(SearchTerm))
+        {
+            items = items.Where(item => 
+                item.Label.Contains(SearchTerm, StringComparison.OrdinalIgnoreCase) ||
+                (!string.IsNullOrEmpty(item.Description) && item.Description.Contains(SearchTerm, StringComparison.OrdinalIgnoreCase)));
+        }
+        
+        return items;
+    }
+
+    private async Task OnHeaderClick()
+    {
+        if (!Group.Collapsible) return;
+        
+        Group.IsExpanded = !Group.IsExpanded;
+        if (OnGroupToggled.HasDelegate)
+        {
+            await OnGroupToggled.InvokeAsync(Group);
+        }
+    }
+
+    private async Task OnItemClick(IChoiceItem item)
+    {
+        if (item.Disabled || item.Loading) return;
+        
+        if (OnItemSelected.HasDelegate)
+        {
+            await OnItemSelected.InvokeAsync(item);
+        }
+    }
+
+    private async Task OnSelectAllClick()
+    {
+        var nonGroupItems = Group.Items.Where(i => !(i is IChoiceGroup)).ToList();
+        var allSelected = nonGroupItems.All(i => IsItemSelected(i));
+        
+        foreach (var item in nonGroupItems)
+        {
+            if (allSelected)
+            {
+                SelectedItemIds.Remove(item.Id);
+            }
+            else
+            {
+                SelectedItemIds.Add(item.Id);
+            }
+            
+            if (OnItemSelected.HasDelegate)
+            {
+                await OnItemSelected.InvokeAsync(item);
+            }
+        }
+    }
+}

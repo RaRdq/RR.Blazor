@@ -29,7 +29,7 @@
     </HeaderContent>
     
     <ChildContent>
-        <div class="area-chart-container" @ref="chartContainer" style="height: @Height;">
+        <div class="area-chart-container" @ref="chartContainer" style="--chart-height: @Height; height: @Height;">
             @if (SeriesData != null && SeriesData.Any())
             {
                 <svg class="area-chart-svg w-full h-full" viewBox="0 0 800 400">
@@ -37,8 +37,8 @@
                         @foreach (var (series, index) in SeriesData.Select((s, i) => (s, i)))
                         {
                             <linearGradient id="areaGradient@(index)" x1="0%" y1="0%" x2="0%" y2="100%">
-                                <stop offset="0%" style="stop-color:@GetSeriesColor(series, index);stop-opacity:0.6" />
-                                <stop offset="100%" style="stop-color:@GetSeriesColor(series, index);stop-opacity:0.1" />
+                                <stop offset="0%" stopColor="@GetSeriesColor(series, index)" stopOpacity="0.6" />
+                                <stop offset="100%" stopColor="@GetSeriesColor(series, index)" stopOpacity="0.1" />
                             </linearGradient>
                         }
                     </defs>
@@ -51,7 +51,7 @@
                             <path d="@pathData" 
                                   fill="url(#areaGradient@(seriesIndex))" 
                                   stroke="@GetSeriesColor(series, seriesIndex)" 
-                                  stroke-width="2" 
+                                  strokeWidth="2" 
                                   class="area-path @(selectedSeries == seriesIndex ? "selected" : "")"
                                   @onclick="@(() => HandleAreaClick(series, seriesIndex))" />
                         }
@@ -120,8 +120,6 @@
         
         try
         {
-            var canvasModule = await JSRuntime.InvokeAsync<IJSObjectReference>(
-                "import", "./_content/RR.Blazor/js/chart-canvas.js");
                 
             var flatData = SeriesData.SelectMany(s => s.Data.Select(d => new
             {
@@ -131,12 +129,11 @@
                 color = !string.IsNullOrEmpty(s.Color) ? s.Color : GetSeriesColor(s, 0)
             })).ToArray();
 
-            canvasChart = await canvasModule.InvokeAsync<IJSObjectReference>(
-                "createCanvasChart",
+            await SafeInvokeAsync("RRBlazor.Chart.createAreaChart", 
                 canvasContainer,
-                "area",
                 new
                 {
+                    data = flatData,
                     enableTouch = EnableTouchInteractions,
                     enableZoom = EnableTouchInteractions,
                     enablePan = EnableTouchInteractions,

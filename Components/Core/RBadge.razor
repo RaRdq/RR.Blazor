@@ -1,19 +1,10 @@
-@** 
-<summary>
-Badge component for status indicators, counts, and labels.
-</summary>
-<category>Core</category>
-<complexity>Simple</complexity>
-<ai-prompt>Create badge for status or count display</ai-prompt>
-<ai-common-use>status indicators, counts, labels, notifications</ai-common-use>
-<ai-avoid>Don't use for navigation - use RButton instead</ai-avoid>
-**@
 @namespace RR.Blazor.Components
 @using RR.Blazor.Enums
 @using RR.Blazor.Attributes
 @using RR.Blazor.Components.Base
+@using RR.Blazor.Utilities
 @using Microsoft.AspNetCore.Components.Rendering
-@inherits RForwardingComponentBase
+@inherits RSizedComponentBase<SizeType>
 
 @attribute [Component("RBadge", Category = "Core", Complexity = ComponentComplexity.Simple)]
 @attribute [AIOptimized(Prompt = "Create badge for status or count display", 
@@ -21,7 +12,8 @@ Badge component for status indicators, counts, and labels.
                        AvoidUsage = "Don't use for navigation - use RButton instead")]
 
 <span class="@GetBadgeClasses()" 
-      @onclick="HandleClick" 
+      @onclick="HandleClick"
+      @onclick:stopPropagation="true"
       @attributes="GetForwardedAttributes()">
     
     @if (!string.IsNullOrEmpty(Icon))
@@ -41,49 +33,19 @@ Badge component for status indicators, counts, and labels.
 </span>
 
 @code {
-    /// <summary>Badge text content</summary>
-    [Parameter]
-    [AIParameter(Hint = "Short text: Active, 5, New", IsRequired = false)]
-    public string Text { get; set; }
     
-    /// <summary>Badge variant</summary>
     [Parameter]
     [AIParameter(Hint = "Color scheme variant", 
                  SuggestedValues = new[] { "Primary", "Secondary", "Success", "Warning", "Danger", "Info" }, 
                  IsRequired = false)]
     public VariantType Variant { get; set; } = VariantType.Secondary;
     
-    /// <summary>Badge size</summary>
-    [Parameter]
-    [AIParameter(Hint = "Badge size", 
-                 SuggestedValues = new[] { "Small", "Medium", "Large" })]
-    public SizeType Size { get; set; } = SizeType.Medium;
     
-    /// <summary>Component density level for ultra-dense layouts</summary>
-    /// <ai-hint>Normal is default, Compact for ultra-dense, Dense for data-heavy interfaces</ai-hint>
-    [Parameter]
-    [AIParameter(Hint = "Normal is default, Compact for ultra-dense, Dense for data-heavy", 
-                 SuggestedValues = new[] { "Normal", "Dense", "Compact", "Spacious" })]
-    public DensityType Density { get; set; } = DensityType.Normal;
-    
-    /// <summary>Material icon name to display alongside text</summary>
-    /// <ai-hint>Common icons: check_circle, warning, error, info, star, notifications</ai-hint>
-    [Parameter]
-    [AIParameter(Hint = "Common icons: check_circle, warning, error, info, star, notifications", 
-                 SuggestedValues = new[] { "check_circle", "warning", "error", "info", "star", "notifications" })]
-    public string Icon { get; set; }
-    
-    /// <summary>Whether badge is clickable - adds hover effects and cursor pointer</summary>
-    /// <ai-hint>Set to true for interactive badges that perform actions when clicked</ai-hint>
     [Parameter]
     [AIParameter(Hint = "Set to true for interactive badges that perform actions")]
     public bool Clickable { get; set; }
     
-    [Parameter] public EventCallback OnClick { get; set; }
     
-    [Parameter] public RenderFragment ChildContent { get; set; }
-    
-    [Parameter] public string Class { get; set; } = string.Empty;
 
     private string GetBadgeClasses()
     {
@@ -91,34 +53,16 @@ Badge component for status indicators, counts, and labels.
         
         classes.Add(GetVariantUtilityClasses());
         classes.Add(GetSizeUtilityClasses());
-        if (Clickable || OnClick.HasDelegate) classes.Add("badge-clickable cursor-pointer hover-scale-sm transition-transform");
+        if (Clickable) classes.Add("badge-clickable cursor-pointer hover-scale-sm transition-transform");
         
-        if (!string.IsNullOrEmpty(Class))
-        {
-            classes.Add(Class);
-        }
+        classes.AddRange(GetBaseCssClasses());
         
         return string.Join(" ", classes.Where(c => !string.IsNullOrEmpty(c)));
     }
     
     private string GetSizeUtilityClasses()
     {
-        var sizeClass = Size switch
-        {
-            SizeType.Small => "badge-sm",
-            SizeType.Large => "badge-lg",
-            _ => "" // Medium is default, no additional class needed
-        };
-        
-        var densityClass = Density switch
-        {
-            DensityType.Compact => "badge-compact",
-            DensityType.Dense => "badge-dense", 
-            DensityType.Spacious => "badge-spacious",
-            _ => ""
-        };
-        
-        return $"{sizeClass} {densityClass}".Trim();
+        return SizeHelper.GetBadgeSize(Size, Density);
     }
     
     private string GetVariantUtilityClasses()
@@ -138,80 +82,61 @@ Badge component for status indicators, counts, and labels.
 
     private string GetIconClasses()
     {
-        var iconSizeClass = Size switch
-        {
-            SizeType.Small => "text-sm",
-            SizeType.Large => "text-lg",
-            _ => "text-base"
-        };
-        
-        var densityIconClass = Density switch
-        {
-            DensityType.Compact => GetCompactIconUtilityClass(),
-            DensityType.Dense => GetDenseIconUtilityClass(),
-            DensityType.Spacious => GetSpaciousIconUtilityClass(),
-            _ => iconSizeClass
-        };
-        
-        return $"material-symbols-rounded {densityIconClass}";
-    }
-    
-    private string GetCompactIconUtilityClass()
-    {
-        return Size switch
-        {
-            SizeType.Small => "text-xs",
-            SizeType.Medium => "text-xs",
-            SizeType.Large => "text-sm",
-            _ => "text-xs"
-        };
-    }
-    
-    private string GetDenseIconUtilityClass()
-    {
-        return Size switch
-        {
-            SizeType.Small => "text-xs",
-            SizeType.Medium => "text-sm",
-            SizeType.Large => "text-base",
-            _ => "text-sm"
-        };
-    }
-    
-    private string GetSpaciousIconUtilityClass()
-    {
-        return Size switch
-        {
-            SizeType.Small => "text-base",
-            SizeType.Medium => "text-lg",
-            SizeType.Large => "text-xl",
-            _ => "text-lg"
-        };
+        var iconSizeClass = SizeHelper.GetIconSize(Size, Density);
+        return $"icon {iconSizeClass}";
     }
 
-    private async Task HandleClick()
+    protected override string GetSizeClasses()
     {
-        if (OnClick.HasDelegate) await OnClick.InvokeAsync();
+        return Size switch
+        {
+            SizeType.ExtraSmall => "badge-xs",
+            SizeType.Small => "badge-sm",
+            SizeType.Medium => "badge-md",
+            SizeType.Large => "badge-lg",
+            SizeType.ExtraLarge => "badge-xl",
+            _ => "badge-md"
+        };
+    }
+    
+    protected override SizeType GetDefaultSize() => SizeType.Medium;
+    
+    private void HandleClick(MouseEventArgs args)
+    {
+        // Click is handled by parent via @onclick binding
     }
 
     private Dictionary<string, object> GetForwardedAttributes()
     {
-        var excludeProperties = new HashSet<string> 
+        var excludeProperties = new HashSet<string>(StringComparer.OrdinalIgnoreCase) 
         { 
-            nameof(Text), nameof(Variant), nameof(Size), nameof(Density), 
-            nameof(Icon), nameof(Clickable), nameof(OnClick), nameof(ChildContent), nameof(Class) 
+            nameof(Text), nameof(Variant), nameof(Size), nameof(Density), nameof(Class),
+            nameof(Icon), nameof(Clickable), nameof(Title), nameof(Subtitle), nameof(Disabled),
+            nameof(OnClick), nameof(Loading), nameof(LoadingText), nameof(AriaLabel), nameof(TabIndex),
+            nameof(ChildContent)
         };
 
         var forwarded = new Dictionary<string, object>();
         var componentType = GetType();
         var properties = componentType.GetProperties()
             .Where(p => p.GetCustomAttributes(typeof(ParameterAttribute), true).Any() 
-                       && !excludeProperties.Contains(p.Name));
+                       && !excludeProperties.Contains(p.Name)
+                       && p.CanRead);
 
         foreach (var property in properties)
         {
-            var value = property.GetValue(this);
-            if (value != null || property.PropertyType.IsValueType) forwarded[property.Name] = value;
+            try
+            {
+                var value = property.GetValue(this);
+                if (value != null || property.PropertyType.IsValueType)
+                {
+                    forwarded[property.Name] = value;
+                }
+            }
+            catch
+            {
+                // Skip properties that can't be accessed
+            }
         }
         
         return forwarded;

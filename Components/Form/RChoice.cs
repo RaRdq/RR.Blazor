@@ -113,7 +113,6 @@ public abstract class RChoiceBase : RSizedComponentBase<SizeType>
 /// AI GUIDANCE:
 /// - Use for 2-20 exclusive options (status, roles, modes, filters, view switching)
 /// - ChoiceVariant.Auto intelligently chooses inline vs dropdown based on item count and label length
-/// - Supports RSwitcher migration with SwitcherVariant/SizeType compatibility parameters
 /// - For boolean toggles use RToggle, for large datasets use searchable components
 /// 
 /// SMART DETECTION RULES:
@@ -192,10 +191,6 @@ public class RChoice : RChoiceBase
     public ChoiceVariant Variant { get; set; } = Auto;
     
 
-    // RSwitcher compatibility parameters
-    [Parameter] public SwitcherVariant? SwitcherVariant { get; set; }
-    [Parameter] public SizeType? CompatibleSize { get; set; }
-    [Parameter] public EventCallback<object> OnSelectionChanged { get; set; }
 
     private Type _valueType;
     private bool _valueTypeResolved;
@@ -225,15 +220,13 @@ public class RChoice : RChoiceBase
 
         // Smart detection logic
         var effectiveVariant = GetEffectiveVariant(itemsList);
-        var effectiveStyle = GetEffectiveStyle();
-        var effectiveSize = GetEffectiveSize();
         
         var genericChoiceType = typeof(RChoiceGeneric<>).MakeGenericType(_valueType);
         
         builder.OpenComponent(0, genericChoiceType);
         
         // Forward all base parameters
-        ForwardBaseParameters(builder, _valueType, effectiveStyle, effectiveSize);
+        ForwardBaseParameters(builder, _valueType);
         
         // Set computed variant and style
         builder.AddAttribute(1, "EffectiveVariant", effectiveVariant);
@@ -244,11 +237,6 @@ public class RChoice : RChoiceBase
         builder.AddAttribute(3, "SelectedValue", SelectedValue);
         builder.AddAttribute(4, "Loading", Loading);
         
-        // Handle OnSelectionChanged compatibility
-        if (OnSelectionChanged.HasDelegate)
-        {
-            builder.AddAttribute(7, "SelectedValueChangedObject", OnSelectionChanged);
-        }
         
         builder.CloseComponent();
     }
@@ -358,7 +346,7 @@ public class RChoice : RChoiceBase
         });
     }
     
-    private void ForwardBaseParameters(RenderTreeBuilder builder, Type itemType, ChoiceType effectiveStyle, SizeType effectiveSize)
+    private void ForwardBaseParameters(RenderTreeBuilder builder, Type itemType)
     {
         var sequence = 100;
         
@@ -389,13 +377,13 @@ public class RChoice : RChoiceBase
         builder.AddAttribute(sequence++, "ItemLoadingSelectorTyped", ItemLoadingSelector);
         builder.AddAttribute(sequence++, "ShowLabels", ShowLabels);
         builder.AddAttribute(sequence++, "ShowActiveIndicator", ShowActiveIndicator);
-        builder.AddAttribute(sequence++, "Size", effectiveSize);
-        builder.AddAttribute(sequence++, "Type", effectiveStyle);
+        builder.AddAttribute(sequence++, "Size", Size);
+        builder.AddAttribute(sequence++, "Type", Type);
         builder.AddAttribute(sequence++, "ChildContent", ChildContent);
         
         // Use RAttributeForwarder for all remaining parameters
         builder.ForwardParameters(ref sequence, this, 
-            "Items", "SelectedValue", "Variant", "SwitcherVariant", "CompatibleSize", "OnSelectionChanged",
+            "Items", "SelectedValue", "Variant",
             "ItemLabelSelector", "ItemIconSelector", "ItemTitleSelector", "ItemAriaLabelSelector",
             "ItemDisabledSelector", "ItemLoadingSelector", "ShowLabels", "ShowActiveIndicator",
             "Size", "Type", "ChildContent", "SelectedValueChanged");
@@ -439,34 +427,6 @@ public class RChoice : RChoiceBase
         return typeof(object);
     }
 
-    private ChoiceType GetEffectiveStyle()
-    {
-        // RSwitcher compatibility - SwitcherVariant takes precedence
-        if (SwitcherVariant.HasValue)
-        {
-            return SwitcherVariant.Value switch
-            {
-                Enums.SwitcherVariant.Tabs => Tabs,
-                Enums.SwitcherVariant.Pills => Pills,
-                Enums.SwitcherVariant.Buttons => Buttons,
-                Enums.SwitcherVariant.Compact => ChoiceType.Compact,
-                _ => Standard
-            };
-        }
-        
-        return Type;
-    }
-
-    private SizeType GetEffectiveSize()
-    {
-        // RSwitcher compatibility - CompatibleSize takes precedence
-        if (CompatibleSize.HasValue)
-        {
-            return CompatibleSize.Value;
-        }
-        
-        return Size;
-    }
 }
 
 
