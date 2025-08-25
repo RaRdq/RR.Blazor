@@ -85,7 +85,7 @@ Choose the appropriate file based on your Blazor hosting model:
 </RAppShell>
 ```
 
-**That's it!** RAppShell includes theme provider, portal-based modal system, toast container, intelligent search system, and styles.
+**That's it!** RAppShell includes theme provider, portal-based modal system (with ModalProvider), toast container, intelligent search system, and styles.
 
 ### Alternative: Manual Setup
 
@@ -99,6 +99,7 @@ Choose the appropriate file based on your Blazor hosting model:
 <!-- MainLayout.razor -->
 <RThemeProvider>
     <RToastContainer />
+    <ModalProvider />
     @Body
 </RThemeProvider>
 ```
@@ -269,8 +270,8 @@ public class MySearchProvider : ISearchProvider
 <div class="pa-6 ma-4">Padding 6, margin 4</div>
 
 <!-- Layout -->
-<div class="d-flex justify-center align-center gap-4">
-<div class="d-grid grid-cols-1 grid-cols-md-3">
+<div class="flex justify-center align-center gap-4">
+<div class="grid grid-cols-1 grid-cols-md-3">
 
 <!-- Visual Effects -->
 <div class="elevation-4 glass-light rounded">

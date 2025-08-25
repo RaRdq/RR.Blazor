@@ -7,1590 +7,334 @@
 @using RR.Blazor.Components.Display
 @using RR.Blazor.Components.Feedback
 @using RR.Blazor.Services
+@using RR.Blazor.Templates
+@using RR.Blazor.Components.Form
+@using RR.Blazor.Components.Base
+@using System.Linq.Expressions
 
 <PageTitle>Data & Display Components Showcase</PageTitle>
+<RThemeProvider>
+    <div class="container pa-6">
+        <!-- Header Section -->
+        <RSection Text="Data and Display Components Showcase" Icon="dashboard" Class="mb-6">
+            <p class="text-muted mb-0">Comprehensive demonstration of RR.Blazor data visualization and display components with realistic business data.</p>
+        </RSection>
 
-<RAppShell PageTitle="RR.Blazor Data and Display Components Showcase" Features="AppShellFeatures.All">
-        <div class="container-px-4">
-            <!-- Header Section -->
-            <RSection Text="Data and Display Components Showcase" Icon="dashboard" Class="mb-6">
-                <p class="text-muted mb-0">Comprehensive demonstration of RR.Blazor data visualization and display components with realistic business data.</p>
-            </RSection>
+        <!-- Data Components Section -->
+        <RDivider Text="Core Data Components" Icon="table_chart" Size="SizeType.Large" Class="mb-4" />
 
-            <!-- Data Components Section -->
-            <RDivider Text="Data Components" Icon="table_chart" Size="SizeType.Large" Class="mb-4" />
-
-            <!-- Calendar Component -->
-            <RCard Text="RCalendar" Subtitle="Professional calendar with events and navigation" Variant="CardVariant.Elevated" Class="mb-4">
-                <div class="pa-4">
-                    <RCalendar Size="SizeType.Default" />
-                </div>
-            </RCard>
-
-            <!-- NEW COLUMN MANAGEMENT & HORIZONTAL SCROLL TESTS -->
-            <RDivider Text="COLUMN MANAGEMENT & HORIZONTAL SCROLL" Icon="view_column" Size="SizeType.Large" Class="mb-4" />
-            
-            <!-- Test 1: Column Visibility Management -->
-            <RCard Text="Column Visibility Management" Subtitle="Show/Hide columns dynamically with preferences saved to localStorage" Variant="CardVariant.Elevated" Class="mb-4">
-                <div class="pa-4">
-                    <div class="text-h6 font-semibold mb-3">Test 1: Column Manager with Show/Hide</div>
-                    <div class="mb-2 text-xs text-secondary">Click 'Columns' dropdown to manage visibility</div>
-                    
-                    <RTable Items="@employeeData" 
-                            Title="Column Management Test"
-                            ShowColumnManager="true"
-                            ShowSearch="true"
-                            PageSize=10
-                            Loading="@isLoadingEmployees">
-                        <ColumnsContent>
-                            <RColumn Property="@nameof(EmployeeData.Name)" Sortable="true" />
-                            <RColumn Property="@nameof(EmployeeData.Department)" Sortable="true" />
-                            <RColumn Property="@nameof(EmployeeData.Position)" />
-                            <RColumn Property="@nameof(EmployeeData.Salary)" Format="C0" Sortable="true" />
-                            <RColumn Property="@nameof(EmployeeData.StartDate)" Format="MMM dd, yyyy" Sortable="true" />
-                            <RColumn Property="@nameof(EmployeeData.Status)" />
-                        </ColumnsContent>
-                    </RTable>
-                </div>
-            </RCard>
-            
-            <!-- Test 2: Horizontal Scrolling -->
-            <RCard Text="Horizontal Scrolling" Subtitle="Wide tables with horizontal scroll and minimum width" Variant="CardVariant.Elevated" Class="mb-4">
-                <div class="pa-4">
-                    <div class="text-h6 font-semibold mb-3">Test 2: Horizontal Scroll with Many Columns</div>
-                    <div class="mb-2 text-xs text-secondary">Table has minimum width of 1500px - scroll horizontally to see all columns</div>
-                    
-                    <RTable Items="@wideTableData" 
-                            Title="Wide Table Test"
-                            EnableHorizontalScroll="true"
-                            Style="min-width: 1500px"
-                            ShowSearch="true"
-                            PageSize=5
-                            Loading="@isLoadingEmployees" />
-                </div>
-            </RCard>
-            
-            <!-- Test 3: Column Reordering & Pinning -->
-            <RCard Text="Column Reordering & Pinning" Subtitle="Drag to reorder, pin columns to left/right" Variant="CardVariant.Elevated" Class="mb-4">
-                <div class="pa-4">
-                    <div class="text-h6 font-semibold mb-3">Test 3: Advanced Column Features</div>
-                    <div class="mb-2 text-xs text-secondary">Drag columns to reorder, pin important columns</div>
-                    
-                    <RTable Items="@employeeData" 
-                            Title="Advanced Column Features"
-                            ShowColumnManager="true"
-                            EnableColumnReordering="true"
-                            EnableStickyColumns="true"
-                            EnableHorizontalScroll="true"
-                            Style="min-width: 1200px"
-                            ShowSearch="true"
-                            PageSize=10
-                            Loading="@isLoadingEmployees" />
-                </div>
-            </RCard>
-            
-            <!-- Test 4: Smart PageSize Options -->
-            <RCard Text="Smart PageSize Adaptation" Subtitle="PageSize options adapt based on dataset size" Variant="CardVariant.Elevated" Class="mb-4">
-                <div class="pa-4">
-                    <div class="text-h6 font-semibold mb-3">Test 4: Smart PageSize Options</div>
-                    <div class="mb-2 text-xs text-secondary">PageSize dropdown adapts to dataset size: @employeeData.Count records</div>
-                    
-                    <RTable Items="@employeeData" 
-                            Title="Smart Pagination Test"
-                            ShowSearch="true"
-                            PageSize=25
-                            Loading="@isLoadingEmployees" />
-                    
-                    <RDivider Text="Large Dataset Test" Class="mt-6 mb-4" />
-                    
-                    <div class="text-h6 font-semibold mb-3">Test 4b: Very Large Dataset (100K records)</div>
-                    <div class="mb-2 text-xs text-secondary">PageSize options should include 1000, 2500, etc.</div>
-                    
-                    <RTable Items="@largeTestDataset" 
-                            Title="Large Dataset Pagination"
-                            ShowSearch="true"
-                            Loading="@isLoadingLargeTestData" />
-                    
-                    <RActionGroup Pattern="ActionGroupPattern.None" Class="mt-3" Alignment="ActionGroupAlignment.End">
-                        <RButton Text="Generate 100K Records" Variant="ButtonVariant.Primary" OnClick="@GenerateLargeTestDataset" Disabled="@isLoadingLargeTestData" />
-                        <RButton Text="Clear Large Dataset" Variant="ButtonVariant.Secondary" OnClick="@ClearLargeTestDataset" />
-                    </RActionGroup>
-                </div>
-            </RCard>
-            
-            <!-- Test 5: All Features Combined -->
-            <RCard Text="All Features Combined" Subtitle="Column management + horizontal scroll + smart pagination" Variant="CardVariant.Glass" Class="mb-4">
-                <div class="pa-4">
-                    <div class="text-h6 font-semibold mb-3">Test 5: Ultimate Feature Test</div>
-                    <div class="mb-2 text-xs text-warning">🔥 All features enabled - brutally test everything!</div>
-                    
-                    <RTable Items="@employeeData" 
-                            Title="Full Feature Matrix"
-                            ShowColumnManager="true"
-                            EnableColumnReordering="true"
-                            EnableStickyColumns="true"
-                            EnableHorizontalScroll="true"
-                            Style="min-width: 1400px"
-                            ShowSearch="true"
-                            ShowChartButton="true"
-                            ShowToolbar="true"
-                            MultiSelection="true"
-                            ExportEnabled="true"
-                            PageSize=20
-                            Loading="@isLoadingEmployees" />
-                </div>
-            </RCard>
-            
-            <!-- Data Table Components -->
-            <RDivider Text="Standard Table Tests" Icon="table_chart" Size="SizeType.Default" Class="mb-4 mt-6" />
-            
-            <RCard Text="Smart RTable - Auto-Generated Columns" Subtitle="Zero-config table with automatic column generation" Variant="CardVariant.Elevated" Class="mb-4">
-                <div class="pa-4">
-                    <div class="text-h6 font-semibold mb-3">Standard Test: Auto-Generated Columns</div>
-                    <div class="mb-2 text-xs text-secondary">Debug: @employeeData.Count items loaded</div>
-                    
-                    @* Test 1: Smart RTable with auto-generated columns *@
-                    <RTable Items="@employeeData.Take(5)" 
-                            Title="Auto-Generated Smart Table"
-                            AutoGenerateColumns="true"
-                            PageSize=10
-                            MultiSelection="true"
-                            Loading="@isLoadingEmployees" />
-                    
-                    <RDivider Text="Smart Table with Custom Columns" Class="mt-6 mb-4" />
-                    
-                    <div class="text-h6 font-semibold mb-3">Test 2: Smart RTable with All Features + Custom Columns</div>
-                    <RTable Items="@employeeData.Skip(5).Take(10)"
-                            Loading="@isLoadingEmployees"
-                            ShowPagination="true"
-                            PageSize=10>
-                        <ColumnsContent>
-                            <RColumn Property="@nameof(EmployeeData.Name)" Sortable="true" />
-                            <RColumn Property="@nameof(EmployeeData.Department)" Sortable="true" />
-                            <RColumn Property="@nameof(EmployeeData.Position)" />
-                            <RColumn Property="@nameof(EmployeeData.Salary)" Format="C0" Sortable="true" />
-                            <RColumn Property="@nameof(EmployeeData.StartDate)" Format="MMM dd, yyyy" Sortable="true" />
-                            <RColumn Property="@nameof(EmployeeData.Status)" />
-                        </ColumnsContent>
-                    </RTable>
-                    
-                    <RDivider Text="RTableGeneric Direct Usage" Class="mt-6 mb-4" />
-                    
-                    <div class="text-h6 font-semibold mb-3">Test 3: Full Dataset with Pagination</div>
-                    <RTable Items="@employeeData"
-                            Loading="@isLoadingEmployees"
-                            ShowPagination="true"
-                            PageSize=10
-                            ShowSearch="true"
-                            ShowChartButton="true"
-                            ShowToolbar="true"
-                            Title="Full Employee Dataset"
-                            Subtitle="Testing pagination, search, and chart integration">
-                        <ColumnsContent>
-                            <RColumn Property="@nameof(EmployeeData.Name)" />
-                            <RColumn Property="@nameof(EmployeeData.Department)" />
-                            <RColumn Property="@nameof(EmployeeData.Salary)" Format="C0" />
-                        </ColumnsContent>
-                    </RTable>
-                    
-                    <RActionGroup Pattern="ActionGroupPattern.None" Class="mt-3" Alignment="ActionGroupAlignment.End">
-                        <RButton Text="Toggle Loading" Variant="ButtonVariant.Secondary" OnClick="@ToggleEmployeeLoading" />
-                        <RButton Text="Refresh Data" Variant="ButtonVariant.Primary" OnClick="@RefreshEmployeeData" />
-                    </RActionGroup>
-                </div>
-            </RCard>
-
-            <!-- Filter Bar -->
-            <RCard Text="RFilterBar" Subtitle="Advanced filtering with search and controls" Variant="CardVariant.Elevated" Class="mb-4">
-                <div class="pa-4">
-                    <RFilterBar />
-                    <RDivider Text="Filter Results" Class="mt-4 mb-3" />
-                    <REmptyState Text="Apply filters to see results" Icon="filter_list" />
-                </div>
-            </RCard>
-
-            <!-- List Components -->
-            <RCard Text="RList and RListItem" Subtitle="Structured lists with icons and actions" Variant="CardVariant.Elevated" Class="mb-4">
-                <div class="pa-4">
-                    <div class="d-grid grid-cols-1 grid-cols-1 md:grid-cols-2 gap-4">
-                        <!-- Standard List -->
-                        <div>
-                            <div class="text-h6 font-semibold">Navigation List</div>
-                            <RList Title="Main Menu" Variant="ListVariant.Menu" Size="SizeType.Default">
-                                <RListItem Text="Dashboard" Icon="dashboard" OnClick="@HandleDashboardClick" />
-                                <RListItem Text="Reports" Icon="assessment" OnClick="@HandleReportsClick" />
-                                <RListItem Text="Settings" Icon="settings" OnClick="@HandleSettingsClick" />
-                                <RListItem Text="Help" Icon="help" Disabled="true" />
-                            </RList>
-                        </div>
-
-                        <!-- Action List -->
-                        <div>
-                            <div class="text-h6 font-semibold">Action Items</div>
-                            <RList Title="Recent Activities" Variant="ListVariant.Default" Size="SizeType.Default">
-                                <RListItem Text="Payroll processed" Icon="check_circle" />
-                                <RListItem Text="New employee added" Icon="person_add" />
-                                <RListItem Text="Report generated" Icon="description" />
-                                <RListItem Text="System backup completed" Icon="backup" />
-                            </RList>
-                        </div>
-                    </div>
-                </div>
-            </RCard>
-
-            <!-- Virtual List -->
-            <RCard Text="RVirtualListGeneric" Subtitle="High-performance virtual scrolling for large datasets" Variant="CardVariant.Elevated" Class="mb-4">
-                <div class="pa-4">
-                    @* Virtual list commented out due to compilation issues *@
-                    <div class="text-sm text-muted">Virtual list demonstration temporarily disabled</div>
-                    
-                    <RActionGroup Pattern="ActionGroupPattern.None" Class="mt-3" Alignment="ActionGroupAlignment.End">
-                        <RButton Text="Generate More Items" Variant="ButtonVariant.Secondary" OnClick="@GenerateVirtualItems" />
-                        <RButton Text="Clear List" Variant="ButtonVariant.Outline" OnClick="@ClearVirtualItems" />
-                    </RActionGroup>
-                </div>
-            </RCard>
-
-            <!-- Display Components Section -->
-            <RDivider Text="Display Components" Icon="visibility" Size="SizeType.Large" Class="mb-4 mt-6" />
-
-            <!-- Accordion -->
-            <RCard Text="RAccordion and RAccordionItem" Subtitle="Collapsible content sections" Variant="CardVariant.Elevated" Class="mb-4">
-                <div class="pa-4">
-                    <RAccordion Variant="AccordionVariant.Default">
-                        <RAccordionItem Text="Company Information" Icon="business">
-                            <div class="pa-4">
-                                <RInfoItem Text="Company Name" Value="TechCorp Solutions" Icon="business" Size="SizeType.Medium" Class="mb-3" />
-                                <RInfoItem Text="Founded" Value="2015" Icon="event" Size="SizeType.Medium" Class="mb-3" />
-                                <RInfoItem Text="Employees" Value="1,247" Icon="group" Size="SizeType.Medium" Class="mb-3" />
-                                <RInfoItem Text="Revenue" Value="125.3M USD" Icon="attach_money" Size="SizeType.Medium" />
-                            </div>
-                        </RAccordionItem>
-                        
-                        <RAccordionItem Text="Financial Metrics" Icon="trending_up">
-                            <div class="pa-4 d-grid grid-cols-1 grid-cols-1 md:grid-cols-2 gap-4">
-                                <RMetric Text="Quarterly Revenue" Value="@("32M USD")" Icon="trending_up" />
-                                <RMetric Text="Operating Costs" Value="@("18M USD")" Icon="trending_down" />
-                                <RMetric Text="Net Profit" Value="@("13M USD")" Icon="account_balance" />
-                                <RMetric Text="Growth Rate" Value="@("12.5%")" Icon="show_chart" />
-                            </div>
-                        </RAccordionItem>
-                        
-                        <RAccordionItem Text="System Status" Icon="computer">
-                            <div class="pa-4">
-                                <RProgressBar Value="95" Text="Server Uptime" Variant="ProgressVariant.Success" Class="mb-3" />
-                                <RProgressBar Value="78" Text="Database Performance" Variant="ProgressVariant.Primary" Class="mb-3" />
-                                <RProgressBar Value="45" Text="Storage Usage" Variant="ProgressVariant.Warning" />
-                            </div>
-                        </RAccordionItem>
-                    </RAccordion>
-                </div>
-            </RCard>
-
-            <!-- NEW SMART CHART SYSTEM SHOWCASE -->
-            <RDivider Text="NEW S-TIER CHART SYSTEM" Icon="analytics" Size="SizeType.Large" Class="mb-4 mt-6" />
-            
-            <!-- Smart Chart Auto-Detection Demo -->
-            <RCard Text="RChartSmart - Zero-Config Magic" Subtitle="Smart auto-detection kills MudBlazor" Variant="CardVariant.Elevated" Class="mb-4">
-                <div class="pa-4">
-                    <div class="d-grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <!-- Zero-config smart chart -->
-                        <div>
-                            <div class="text-h6 font-semibold mb-2">Zero-Config Auto-Detection</div>
-                            <RChartSmart Data="@monthlyRevenueData" Title="Smart Revenue Chart" Height="300px" />
-                            <div class="text-xs  text-muted mt-2">Auto-detected: Column chart (categorical + numeric data)</div>
-                        </div>
-                        
-                        <!-- Type override -->
-                        <div>
-                            <div class="text-h6 font-semibold mb-2">Type Override</div>
-                            <RChartSmart Data="@departmentData" Type="ChartType.Pie" Title="Department Distribution" Height="300px" />
-                            <div class="text-xs  text-muted mt-2">Override: Forced Pie chart display</div>
-                        </div>
-                    </div>
-                </div>
-            </RCard>
-
-            <!-- Canvas 2D Performance Demo -->
-            <RCard Text="Canvas 2D Performance Beast" Subtitle="10,000+ data points with touch interactions" Variant="CardVariant.Elevated" Class="mb-4">
-                <div class="pa-4">
-                    <div class="d-grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <!-- High Performance Canvas -->
-                        <div>
-                            <div class="text-h6 font-semibold mb-2">High-Performance Chart (10K points)</div>
-                            <RColumnChart Data="@largeDataset" 
-                                         EnableTouchInteractions="true"
-                                         EnableVirtualization="true"
-                                         VirtualizationThreshold="1000"
-                                         Header="High Performance Chart"
-                                         Height="350px" 
-                                         Loading="@isLoadingLargeData" />
-                            <div class="text-xs  text-muted mt-2">Canvas 2D + Virtualization + Touch (zoom/pan)</div>
-                        </div>
-                        
-                        <!-- SVG Fallback -->
-                        <div>
-                            <div class="text-h6 font-semibold mb-2">Standard Chart (Small Dataset)</div>
-                            <RColumnChart Data="@monthlyRevenueData" 
-                                         Header="Monthly Revenue Chart"
-                                         Height="350px" 
-                                         Loading="@isLoadingCharts" />
-                            <div class="text-xs  text-muted mt-2">Traditional SVG rendering</div>
-                        </div>
-                    </div>
-                    
-                    <RActionGroup Pattern="ActionGroupPattern.None" Class="mt-4" Alignment="ActionGroupAlignment.Center">
-                        <RButton Text="Generate Large Dataset (10K)" Variant="ButtonVariant.Primary" OnClick="@GenerateLargeDataset" Disabled="@isLoadingLargeData" />
-                        <RButton Text="Clear Large Data" Variant="ButtonVariant.Outline" OnClick="@ClearLargeDataset" />
-                    </RActionGroup>
-                </div>
-            </RCard>
-
-            <!-- All Chart Types Showcase -->
-            <RCard Text="Complete Chart Type Arsenal" Subtitle="Column, Pie, Line, Area with Canvas support" Variant="CardVariant.Elevated" Class="mb-4">
-                <div class="pa-4">
-                    <div class="d-grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <!-- Column Chart - Canvas -->
-                        <div>
-                            <div class="text-h6 font-semibold mb-2">RColumnChart</div>
-                            <RColumnChart Data="@monthlyRevenueData" 
-                                         EnableTouchInteractions="true"
-                                         Header="Monthly Revenue"
-                                         Icon="bar_chart"
-                                         Height="300px" 
-                                         Loading="@isLoadingCharts" />
-                        </div>
-
-                        <!-- Pie Chart - Canvas -->
-                        <div>
-                            <div class="text-h6 font-semibold mb-2">RPieChart</div>
-                            <RPieChart Data="@departmentData" 
-                                      EnableTouchInteractions="true"
-                                      Header="Department Distribution"
-                                      Icon="pie_chart"
-                                      Height="300px" 
-                                      Loading="@isLoadingCharts" />
-                        </div>
-
-                        <!-- Line Chart -->
-                        <div>
-                            <div class="text-h6 font-semibold mb-2">RLineChart (Time Series)</div>
-                            <RLineChart Data="@GetTimeSeriesData()" 
-                                       Header="Growth Trend"
-                                       Icon="trending_up"
-                                       Height="300px" 
-                                       Loading="@isLoadingCharts" />
-                        </div>
-
-                        <!-- Area Chart -->
-                        <div>
-                            <div class="text-h6 font-semibold mb-2">RAreaChart (New!)</div>
-                            <RAreaChart SeriesData="@GetAreaSeriesData()" 
-                                       EnableTouchInteractions="true"
-                                       Header="Revenue Areas"
-                                       Icon="area_chart"
-                                       Height="300px" 
-                                       Loading="@isLoadingCharts" />
-                        </div>
-                    </div>
-                </div>
-            </RCard>
-
-            <!-- RTable Integration Demo -->
-            <RCard Text="RTable Integration - Show as Chart" Subtitle="Dynamic filtering sync with chart visualization" Variant="CardVariant.Glass" Class="mb-4">
-                <div class="pa-4">
-                    <div class="text-h6 font-semibold mb-4">Employee Data with Chart Integration</div>
-                    
-                    <RTable Items="@employeeData" 
-                           Title="Employee Management"
-                           ShowChartButton="true"
-                           DefaultChartType="ChartType.Column"
-                           ChartButtonText="Show as Chart"
-                           Density="DensityType.Normal" 
-                           SearchEnabled="true"
-                           FilterEnabled="true" />
-                    
-                    <div class="bg-info-light pa-3 rounded mt-4">
-                        <div class="text-sm font-semibold">Features Demonstrated:</div>
-                        <ul class="text-sm mt-2 space-y-1">
-                            <li>• <strong>Show as Chart</strong> button spawns interactive chart modal</li>
-                            <li>• Chart <strong>auto-syncs</strong> with table filters and search</li>
-                            <li>• <strong>Smart detection</strong> chooses optimal visualization</li>
-                            <li>• <strong>Touch interactions</strong> - zoom, pan, drill-down on mobile</li>
-                        </ul>
-                    </div>
-                </div>
-            </RCard>
-
-            <!-- Theme Integration -->
-            <RCard Text="Theme Integration and Styling" Subtitle="Perfect integration with RR.Blazor theme system" Variant="CardVariant.Elevated" Class="mb-4">
-                <div class="pa-4">
-                    <div class="d-grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                            <div class="text-subtitle-1 font-semibold mb-2">Glass Variant</div>
-                            <RChart Header="Glassmorphism" Variant="ChartVariant.Glass" Size="SizeType.Medium">
-                                <div class="pa-4">
-                                    <RChartSmart Data="@departmentData" Height="200px" />
-                                </div>
-                            </RChart>
-                        </div>
-                        
-                        <div>
-                            <div class="text-subtitle-1 font-semibold mb-2">Elevated Variant</div>
-                            <RChart Header="Material Elevation" Variant="ChartVariant.Elevated" Size="SizeType.Medium">
-                                <div class="pa-4">
-                                    <RChartSmart Data="@monthlyRevenueData" Height="200px" />
-                                </div>
-                            </RChart>
-                        </div>
-                        
-                        <div>
-                            <div class="text-subtitle-1 font-semibold mb-2">Minimal Variant</div>
-                            <RChart Header="Clean Minimal" Variant="ChartVariant.Minimal" Size="SizeType.Medium">
-                                <div class="pa-4">
-                                    <RChartSmart Data="@departmentData" Type="ChartType.Pie" Height="200px" />
-                                </div>
-                            </RChart>
-                        </div>
-                    </div>
-                </div>
-            </RCard>
-
-            <!-- RDataDisplay - Unified Smart Component -->
-            <RCard Text="RDataDisplay" Subtitle="Smart unified component with 5 distinct visual variants" Variant="CardVariant.Elevated" Class="mb-4">
-                <div class="pa-4">
-                    <!-- Variant Showcase Header -->
-                    <RDivider Text="Visual Variants Showcase" Icon="palette" Size="SizeType.Default" Class="mb-4" />
-                    
-                    <!-- 1. Minimal Variant -->
-                    <div class="mb-6">
-                        <div class="text-h6 font-semibold">1. Minimal Variant - Ultra-clean styling</div>
-                        <div class="d-grid grid-cols-1 grid-cols-md-2 gap-4 bg-surface-variant pa-4 rounded-lg">
-                            <RDataDisplay Text="Employee ID" Value="EMP-001234" Icon="badge" 
-                                         Variant="DataDisplayVariant.Minimal" Size="SizeType.Medium" />
-                            <RDataDisplay Text="Department" Value="Engineering" Icon="engineering" 
-                                         Variant="DataDisplayVariant.Minimal" Size="SizeType.Medium" />
-                            <RDataDisplay Text="Location" Value="San Francisco, CA" Icon="location_on" 
-                                         Variant="DataDisplayVariant.Minimal" Size="SizeType.Medium" />
-                            <RDataDisplay Text="Phone" Value="+1 (555) 123-4567" Icon="phone" 
-                                         Variant="DataDisplayVariant.Minimal" Size="SizeType.Medium" />
-                        </div>
-                    </div>
-
-                    <!-- 2. Standard Variant -->
-                    <div class="mb-6">
-                        <div class="text-h6 font-semibold">2. Standard Variant - Professional business styling</div>
-                        <div class="d-grid grid-cols-1 grid-cols-md-2 gap-4">
-                            <RDataDisplay Text="Employee Name" Value="Sarah Johnson" Icon="person" 
-                                         Variant="DataDisplayVariant.Standard" Size="SizeType.Medium" 
-                                         Layout="DataDisplayLayout.Vertical" />
-                            <RDataDisplay Text="Position" Value="Senior Developer" Icon="work" 
-                                         Variant="DataDisplayVariant.Standard" Size="SizeType.Medium" 
-                                         Layout="DataDisplayLayout.Vertical" />
-                            <RDataDisplay Text="Join Date" Value="March 15, 2020" Icon="event" 
-                                         Variant="DataDisplayVariant.Standard" Size="SizeType.Medium" 
-                                         Layout="DataDisplayLayout.Vertical" />
-                            <RDataDisplay Text="Status" Value="Active" Icon="check_circle" 
-                                         Variant="DataDisplayVariant.Standard" Size="SizeType.Medium" 
-                                         Layout="DataDisplayLayout.Vertical" Emphasis="DataDisplayEmphasis.Success" />
-                        </div>
-                    </div>
-
-                    <!-- 3. Card Variant -->
-                    <div class="mb-6">
-                        <div class="text-h6 font-semibold">3. Card Variant - Elevated container with shadows</div>
-                        <div class="d-grid grid-cols-1 grid-cols-md-2 gap-4">
-                            <RDataDisplay Text="Total Sales" Value="$847,293" Icon="point_of_sale" 
-                                         Variant="DataDisplayVariant.Card" Size="SizeType.Large" 
-                                         Emphasis="DataDisplayEmphasis.Success" Layout="DataDisplayLayout.Vertical" />
-                            <RDataDisplay Text="Active Projects" Value="23" Icon="work" 
-                                         Variant="DataDisplayVariant.Card" Size="SizeType.Large" 
-                                         Emphasis="DataDisplayEmphasis.Strong" Layout="DataDisplayLayout.Vertical" />
-                        </div>
-                    </div>
-
-                    <!-- 4. Highlighted Variant -->
-                    <div class="mb-6">
-                        <div class="text-h6 font-semibold">4. Highlighted Variant - Accent border and emphasis</div>
-                        <div class="d-grid grid-cols-1 grid-cols-md-2 gap-6">
-                            <RDataDisplay Text="Revenue This Quarter" Value="$2.4M" Icon="trending_up" 
-                                         Variant="DataDisplayVariant.Highlighted" Size="SizeType.Large" 
-                                         Emphasis="DataDisplayEmphasis.Success" Layout="DataDisplayLayout.Vertical" />
-                            <RDataDisplay Text="Growth Rate" Value="+12.5%" Icon="show_chart" 
-                                         Variant="DataDisplayVariant.Highlighted" Size="SizeType.Large" 
-                                         Emphasis="DataDisplayEmphasis.Success" Layout="DataDisplayLayout.Vertical" />
-                        </div>
-                    </div>
-
-                    <!-- 5. Premium Variant -->
-                    <div class="mb-6">
-                        <div class="text-h6 font-semibold">5. Premium Variant - Glassmorphism with luxury styling</div>
-                        <div class="bg-gradient-to-br from-primary-light to-secondary-light pa-6 rounded-xl">
-                            <div class="d-grid grid-cols-1 grid-cols-md-2 gap-6">
-                                <RDataDisplay Text="Total Revenue" Value="$15.7M" Icon="attach_money" 
-                                             Variant="DataDisplayVariant.Premium" Size="SizeType.Large" 
-                                             Emphasis="DataDisplayEmphasis.Bold" Layout="DataDisplayLayout.Vertical" />
-                                <RDataDisplay Text="Success Rate" Value="94.2%" Icon="check_circle" 
-                                             Variant="DataDisplayVariant.Premium" Size="SizeType.Large" 
-                                             Emphasis="DataDisplayEmphasis.Success" Layout="DataDisplayLayout.Vertical" />
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Smart Auto-Detection Demo -->
-                    <RDivider Text="Smart Auto-Detection" Icon="auto_fix_high" Size="SizeType.Default" Class="mb-4" />
-                    <div class="bg-surface-variant pa-4 rounded-lg mb-4">
-                        <div class="text-h6 font-semibold">Mode="Auto" - Automatically detects Info vs Summary based on content</div>
-                        <div class="d-grid grid-cols-1 grid-cols-md-3 gap-4">
-                            <!-- Business Metric → Summary Mode -->
-                            <RDataDisplay Text="Revenue" Value="$125,000" Icon="attach_money" 
-                                         Mode="DataDisplayMode.Auto" Variant="DataDisplayVariant.Standard" />
-                            <!-- Required Field → Info Mode -->
-                            <RDataDisplay Text="Email Address" Value="sarah@company.com" Icon="email" 
-                                         Mode="DataDisplayMode.Auto" Variant="DataDisplayVariant.Standard" Required="true" />
-                            <!-- Emphasis → Summary Mode -->
-                            <RDataDisplay Text="Performance" Value="Excellent" Icon="star" 
-                                         Mode="DataDisplayMode.Auto" Variant="DataDisplayVariant.Standard" 
-                                         Emphasis="DataDisplayEmphasis.Success" />
-                        </div>
-                    </div>
-
-                    <!-- Layout Variants -->
-                    <RDivider Text="Layout Options" Icon="view_agenda" Size="SizeType.Default" Class="mb-4" />
-                    <div class="d-grid grid-cols-1 gap-4">
-                        <!-- Vertical Layout -->
-                        <div>
-                            <div class="text-subtitle-1 font-semibold">Vertical Layout (Default)</div>
-                            <RDataDisplay Text="Customer Name" Value="TechCorp Solutions" Icon="business" 
-                                         Layout="DataDisplayLayout.Vertical" Variant="DataDisplayVariant.Standard" />
-                        </div>
-                        
-                        <!-- Horizontal Layout -->
-                        <div>
-                            <div class="text-subtitle-1 font-semibold">Horizontal Layout</div>
-                            <RDataDisplay Text="Order Status" Value="Processing" Icon="hourglass_empty" 
-                                         Layout="DataDisplayLayout.Horizontal" Variant="DataDisplayVariant.Standard" />
-                        </div>
-                        
-                        <!-- Inline Layout -->
-                        <div>
-                            <div class="text-subtitle-1 font-semibold">Inline Layout</div>
-                            <RDataDisplay Text="Priority" Value="High" Icon="priority_high" 
-                                         Layout="DataDisplayLayout.Inline" Variant="DataDisplayVariant.Standard" 
-                                         Emphasis="DataDisplayEmphasis.Warning" />
-                        </div>
-                    </div>
-
-                    <!-- Loading & Additional Features -->
-                    <RDivider Text="Enhanced Features" Icon="settings" Size="SizeType.Default" Class="mb-4 mt-4" />
-                    <div class="d-grid grid-cols-1 grid-cols-md-2 gap-4">
-                        <div>
-                            <div class="text-subtitle-1 font-semibold">Loading State</div>
-                            <RDataDisplay Text="Processing Time" Value="Calculating..." Icon="schedule" 
-                                         Loading="true" Variant="DataDisplayVariant.Standard" />
-                        </div>
-                        <div>
-                            <div class="text-subtitle-1 font-semibold">With Separator</div>
-                            <RDataDisplay Text="Account Balance" Value="$12,345.67" Icon="account_balance_wallet" 
-                                         ShowSeparator="true" Variant="DataDisplayVariant.Standard" 
-                                         Emphasis="DataDisplayEmphasis.Success" />
-                        </div>
-                    </div>
-                </div>
-            </RCard>
-
-            <!-- Progress & Loading States -->
-            <div class="d-grid grid-cols-1 grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <RCard Text="RProgressBar" Subtitle="Progress indicators and loading states" Variant="CardVariant.Elevated">
-                    <div class="pa-4">
-                        <RProgressBar Value="@progressValue1" Text="Project Alpha" Variant="ProgressVariant.Primary" Size="SizeType.Medium" Class="mb-3" />
-                        <RProgressBar Value="@progressValue2" Text="Data Migration" Variant="ProgressVariant.Success" Size="SizeType.Medium" Class="mb-3" />
-                        <RProgressBar Value="@progressValue3" Text="System Upgrade" Variant="ProgressVariant.Warning" Size="SizeType.Medium" Class="mb-3" />
-                        <RProgressBar Value="@progressValue4" Text="Backup Process" Variant="ProgressVariant.Error" Size="SizeType.Medium" />
-                        
-                        <RActionGroup Pattern="ActionGroupPattern.None" Class="mt-4" Alignment="ActionGroupAlignment.Center">
-                            <RButton Text="Animate Progress" Variant="ButtonVariant.Primary" OnClick="@AnimateProgress" />
-                        </RActionGroup>
-                    </div>
-                </RCard>
-
-                <RCard Text="RSkeleton" Subtitle="Smart loading skeleton placeholders" Variant="CardVariant.Elevated">
-                    <div class="pa-4">
-                        <div class="text-h6 font-semibold">Smart Auto-Detection Skeleton</div>
-                        <RSkeleton Loading="@showSkeleton">
-                            <div>
-                                <div class="text-h6 font-semibold">Content Loaded Successfully</div>
-                                <p class="text-muted mb-3">This content has finished loading and is now displayed instead of the skeleton placeholder. The skeleton automatically mimicked this content structure.</p>
-                                <RChip Text="Loaded" Style="ChipStyle.Status" Variant="VariantType.Success" />
-                            </div>
-                        </RSkeleton>
-                        
-                        <RDivider Text="Manual Skeleton Types" Class="mt-4 mb-3" />
-                        
-                        <div class="d-grid grid-cols-1 grid-cols-md-2 gap-4 mb-4">
-                            <div>
-                                <div class="text-subtitle-1 font-semibold">Card Skeleton</div>
-                                <RSkeleton Type="SkeletonType.Card" SmartMode="false" />
-                            </div>
-                            <div>
-                                <div class="text-subtitle-1 font-semibold">Avatar Skeleton</div>
-                                <RSkeleton Type="SkeletonType.Avatar" SmartMode="false" />
-                            </div>
-                        </div>
-                        
-                        <div class="mb-4">
-                            <div class="text-subtitle-1 font-semibold">Text Skeletons (Count: 4)</div>
-                            <RSkeleton Type="SkeletonType.Text" Count="4" SmartMode="false" />
-                        </div>
-                        
-                        <RActionGroup Pattern="ActionGroupPattern.None" Class="mt-4" Alignment="ActionGroupAlignment.Center">
-                            <RButton Text="Toggle Smart Skeleton" Variant="ButtonVariant.Primary" OnClick="@ToggleSkeleton" />
-                        </RActionGroup>
-                    </div>
-                </RCard>
+        <!-- Ultimate Feature Demo Table -->
+        <RCard Text="Ultimate Feature Demo" Subtitle="All table features in one comprehensive example with 12+ columns for horizontal scrolling" Variant="CardVariant.Elevated" Class="mb-4">
+            <div class="pa-4">
+                <RTable Items="@extendedEmployeeData" 
+                        Title="Complete Table Capabilities"
+                        EnablePaging="true"
+                        PageSize="10"
+                        EnableFiltering="true"
+                        EnableSorting="true"
+                        EnableSelection="true"
+                        SelectionMode="TableSelectionMode.Multiple"
+                        EnableColumnManager="true"
+                        EnableColumnReordering="true"
+                        EnableStickyColumns="true"
+                        EnableExport="true"
+                        ExportFormats="@(new[] { "csv", "excel", "pdf" })"
+                        Density="DensityType.Normal"
+                        ShowToolbar="true"
+                        ShowSearch="true"
+                        ShowFilters="true"
+                        Loading="@isLoadingEmployees"
+                        Width="100%"
+                        MaxHeight="600px"
+                        EnableHorizontalScroll="true" />
             </div>
+        </RCard>
 
-            <!-- Empty State & Timeline -->
-            <div class="d-grid grid-cols-1 grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <RCard Text="REmptyState" Subtitle="Empty state messaging" Variant="CardVariant.Elevated">
-                    <div class="pa-4">
-                        <REmptyState Text="No data available" Icon="inbox">
-                            <p class="text-muted mt-2 mb-4">There are no items to display at this time. Try adjusting your filters or adding new content.</p>
-                            <RActionGroup Pattern="ActionGroupPattern.None" Alignment="ActionGroupAlignment.Center">
-                                <RButton Text="Add New Item" Variant="ButtonVariant.Primary" Icon="add" />
-                                <RButton Text="Reset Filters" Variant="ButtonVariant.Outline" Icon="filter_list_off" />
-                            </RActionGroup>
-                        </REmptyState>
-                    </div>
-                </RCard>
+        <!-- RGrid Smart Type Detection -->
+        <RCard Text="RGrid Smart Type Detection" Subtitle="Automatic type inference from different data sources - zero configuration required" Variant="CardVariant.Glass" Class="mb-4">
+            <div class="pa-4">
+                <!-- Test 1: List<T> Auto-Detection -->
+                <div class="mb-6">
+                    <div class="text-h6 font-semibold mb-3">List&lt;T&gt; Auto-Detection</div>
+                    <div class="text-xs text-success mb-2">✨ Type auto-detected from List&lt;ExtendedEmployeeData&gt;</div>
+                    <RGrid DataSource="@extendedEmployeeData.Take(5)" 
+                           Title="Auto-Detected from List"
+                           EnablePaging="true"
+                           PageSize="5"
+                           EnableFiltering="true"
+                           EnableSorting="true" />
+                </div>
 
-                <RCard Text="RTimeline" Subtitle="Activity timeline visualization" Variant="CardVariant.Elevated">
-                    <div class="pa-4">
-                        <RTimeline Items="@timelineItems" Variant="TimelineVariant.Default" Loading="@isLoadingTimeline" />
-                        
-                        <RActionGroup Pattern="ActionGroupPattern.None" Class="mt-4" Alignment="ActionGroupAlignment.End">
-                            <RButton Text="Add Event" Variant="ButtonVariant.Outline" Size="SizeType.Small" OnClick="@AddTimelineEvent" />
-                            <RButton Text="Clear Timeline" Variant="ButtonVariant.Secondary" Size="SizeType.Small" OnClick="@ClearTimeline" />
-                        </RActionGroup>
-                    </div>
-                </RCard>
+                <!-- Test 2: Dictionary Value Type Detection -->
+                <div class="mb-6">
+                    <div class="text-h6 font-semibold mb-3">Dictionary&lt;K, V&gt; Value Detection</div>
+                    <div class="text-xs text-success mb-2">✨ Auto-detects value type from Dictionary</div>
+                    <RGrid DataSource="@GetEmployeeDictionary()" 
+                           Title="Dictionary Values Grid"
+                           PageSize="3" />
+                </div>
+
+                <!-- Test 3: Anonymous Type Detection -->
+                <div class="mb-6">
+                    <div class="text-h6 font-semibold mb-3">Anonymous Type Smart Detection</div>
+                    <div class="text-xs text-success mb-2">✨ Works with LINQ projections and anonymous types</div>
+                    <RGrid DataSource="@GetAnonymousProjection()" 
+                           Title="Anonymous Types Grid"
+                           EnableSorting="true"
+                           PageSize="5" />
+                </div>
             </div>
+        </RCard>
 
-            <!-- VIRTUALIZATION PERFORMANCE TEST SECTION -->
-            <RDivider Text="VIRTUALIZATION PERFORMANCE TEST" Icon="speed" Size="SizeType.Large" Class="mb-4 mt-6" />
-            
-            <RCard Text="Enterprise Virtualization Benchmark" Subtitle="Test with massive datasets - 10K, 100K, 1M records" Variant="CardVariant.Glass" Class="mb-4">
-                <div class="pa-4">
-                    <!-- Test Controls -->
-                    <div class="d-grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-                        <div>
-                            <div class="text-sm font-semibold mb-2">Dataset Size</div>
-                            <RActionGroup Pattern="ActionGroupPattern.None" Direction="ActionGroupDirection.Vertical" FullWidth="true">
-                                <RButton Text="Generate 1K" Variant="ButtonVariant.Outline" Size="SizeType.Small" OnClick="@(() => GenerateVirtualizationTestData(1000))" />
-                                <RButton Text="Generate 10K" Variant="ButtonVariant.Primary" Size="SizeType.Small" OnClick="@(() => GenerateVirtualizationTestData(10000))" />
-                                <RButton Text="Generate 100K" Variant="ButtonVariant.Warning" Size="SizeType.Small" OnClick="@(() => GenerateVirtualizationTestData(100000))" />
-                                <RButton Text="Generate 1M" Variant="ButtonVariant.Error" Size="SizeType.Small" OnClick="@(() => GenerateVirtualizationTestData(1000000))" Disabled="@isGeneratingLargeData" />
-                            </RActionGroup>
+        <!-- RFilter Integration Demo -->
+        <RCard Text="RFilter Integration Demo" Subtitle="Advanced filtering with standalone and integrated configurations" Variant="CardVariant.Elevated" Class="mb-4">
+            <div class="pa-4">
+                <!-- Standalone RFilter Panel -->
+                <div class="mb-6">
+                    <div class="text-h6 font-semibold mb-4">Standalone RFilter Panel</div>
+                    <div class="d-flex gap-6">
+                        <div class="flex-none" style="min-width: 300px; max-width: 400px;">
+                            <RFilter @ref="standaloneFilter" 
+                                         DataSource="@extendedEmployeeData"
+                                         OnFilterChanged="@OnFilterChanged"
+                                         Config="@(new UniversalFilterConfig { ShowAdvancedPanel = true, ShowSearch = true })"
+                                         SearchFields="@(new List<string> { nameof(ExtendedEmployeeData.Name), nameof(ExtendedEmployeeData.Email) })" />
                         </div>
-                        
-                        <div>
-                            <div class="text-sm font-semibold mb-2">Performance Metrics</div>
-                            <div class="space-y-2">
-                                <RInfoItem Text="Records Generated" Value="@virtualTestData.Count.ToString("N0")" Icon="database" Size="SizeType.Small" />
-                                <RInfoItem Text="Generation Time" Value="@($"{dataGenerationTime}ms")" Icon="timer" Size="SizeType.Small" />
-                                <RInfoItem Text="Render Time" Value="@($"{lastVirtualRenderTime}ms")" Icon="schedule" Size="SizeType.Small" />
-                                <RInfoItem Text="Memory Used" Value="@virtualMemoryUsage" Icon="memory" Size="SizeType.Small" />
-                            </div>
-                        </div>
-                        
-                        <div>
-                            <div class="text-sm font-semibold mb-2">Scroll Performance</div>
-                            <div class="space-y-2">
-                                <RInfoItem Text="FPS During Scroll" Value="@scrollFps" Icon="speed" Size="SizeType.Small" />
-                                <RInfoItem Text="Visible Rows" Value="@visibleRowCount" Icon="visibility" Size="SizeType.Small" />
-                                <RInfoItem Text="DOM Nodes" Value="@domNodeCount" Icon="account_tree" Size="SizeType.Small" />
-                                <RInfoItem Text="Scroll Position" Value="@scrollPosition" Icon="height" Size="SizeType.Small" />
-                            </div>
-                        </div>
-                        
-                        <div>
-                            <div class="text-sm font-semibold mb-2">Test Actions</div>
-                            <RActionGroup Pattern="ActionGroupPattern.None" Direction="ActionGroupDirection.Vertical" FullWidth="true">
-                                <RButton Text="Start Scroll Test" Icon="swap_vert" Variant="ButtonVariant.Success" Size="SizeType.Small" OnClick="@StartScrollPerformanceTest" />
-                                <RButton Text="Measure Memory" Icon="memory" Variant="ButtonVariant.Info" Size="SizeType.Small" OnClick="@MeasureMemoryUsage" />
-                                <RButton Text="Clear Data" Icon="clear" Variant="ButtonVariant.Secondary" Size="SizeType.Small" OnClick="@ClearVirtualTestData" />
-                                <RButton Text="Export Metrics" Icon="download" Variant="ButtonVariant.Outline" Size="SizeType.Small" OnClick="@ExportPerformanceMetrics" />
-                            </RActionGroup>
-                        </div>
-                    </div>
-                    
-                    <!-- Virtualized Table Test -->
-                    <div class="border rounded-lg overflow-hidden" style="height: 600px;" id="virtual-table-container">
-                        @if (useVirtualizedTable && virtualTestData.Any())
-                        {
-                            <div class="text-sm text-warning pa-2 bg-warning-light">
-                                VIRTUALIZED TABLE - Rendering @virtualTestData.Count.ToString("N0") records
-                            </div>
-                            
-                            <!-- Using the new RTableVirtualized component with smart syntax -->
-                            <RTableVirtualized TItem="PerformanceTestData"
-                                             Items="@virtualTestData"
-                                             Title="Virtualized Performance Test"
-                                             Height="550px"
-                                             ShowPerformanceMetrics="true"
-                                             OverscanRows="15"
-                                             Density="DensityType.Compact" />
-                        }
-                        else if (!useVirtualizedTable && virtualTestData.Any())
-                        {
-                            <div class="text-sm text-error pa-2 bg-error-light">
-                                NON-VIRTUALIZED TABLE - Rendering @virtualTestData.Count.ToString("N0") records (for comparison)
-                            </div>
-                            
-                            <!-- Regular table for performance comparison -->
-                            <RR.Blazor.Components.Data.RTable TItem="PerformanceTestData"
-                                   Items="@virtualTestData"
-                                   Title="Non-Virtualized Test"
-                                   Density="DensityType.Compact"
-                                   ShowPagination="false" />
-                        }
-                        else
-                        {
-                            <div class="d-flex flex-col items-center justify-center h-full">
-                                <i class="material-symbols-rounded text-6xl  text-muted mb-4">speed</i>
-                                <div class="text-lg font-semibold">Ready for Performance Testing</div>
-                                <p class="text-secondary mt-2">Generate test data to begin virtualization benchmarks</p>
-                            </div>
-                        }
-                    </div>
-                    
-                    <!-- Comparison Toggle -->
-                    <div class="mt-4 d-flex justify-between items-center">
-                        <RToggle Text="Use Virtualized Table" Value="@useVirtualizedTable" ValueChanged="@((bool val) => useVirtualizedTable = val)" />
-                        
-                        <div class="text-sm text-secondary">
-                            <strong>Note:</strong> Non-virtualized will freeze with >10K records
-                        </div>
-                    </div>
-                    
-                    <!-- Real-time Performance Graph (placeholder) -->
-                    <div class="mt-4 pa-4 bg-surface-elevated rounded">
-                        <div class="text-sm font-semibold mb-2">Performance Timeline</div>
-                        <div class="h-32 bg-surface rounded d-flex items-center justify-center text-secondary">
-                            <span>Performance graph will be rendered here during scroll test</span>
+                        <div class="flex-1">
+                            <RTable Items="@filteredEmployeeData" 
+                                    Title="Filtered Results"
+                                    EnablePaging="true"
+                                    PageSize="10"
+                                    EnableSorting="true"
+                                    ShowToolbar="false" />
                         </div>
                     </div>
                 </div>
-            </RCard>
 
-            <!-- Performance Demonstration -->
-            <RCard Text="Performance Showcase" Subtitle="Large dataset handling and optimization patterns" Variant="CardVariant.Glass" Class="mb-4">
-                <div class="pa-4">
-                    <div class="d-grid grid-cols-1 grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                        <RMetric Text="Total Records" Value="@totalRecords.ToString("N0")" Icon="database" Loading="@isPerformanceTest" />
-                        <RMetric Text="Render Time" Value="@(renderTime.ToString("F2") + "ms")" Icon="speed" Loading="@isPerformanceTest" />
-                        <RMetric Text="Memory Usage" Value="@memoryUsage" Icon="memory" Loading="@isPerformanceTest" />
-                    </div>
-                    
-                    <RActionGroup Pattern="ActionGroupPattern.None" Alignment="ActionGroupAlignment.Center">
-                        <RButton Text="Load 1K Records" Variant="ButtonVariant.Primary" OnClick="@(() => LoadPerformanceData(1000))" Disabled="@isPerformanceTest" />
-                        <RButton Text="Load 10K Records" Variant="ButtonVariant.Primary" OnClick="@(() => LoadPerformanceData(10000))" Disabled="@isPerformanceTest" />
-                        <RButton Text="Load 100K Records" Variant="ButtonVariant.Primary" OnClick="@(() => LoadPerformanceData(100000))" Disabled="@isPerformanceTest" />
-                        <RButton Text="Clear Data" Variant="ButtonVariant.Secondary" OnClick="@ClearPerformanceData" Disabled="@isPerformanceTest" />
-                    </RActionGroup>
+                <!-- Integrated RFilter in Table Toolbar -->
+                <RDivider Text="Integrated Filter Toolbar" Class="my-4" />
+                <div class="mb-6">
+                    <div class="text-h6 font-semibold mb-4">RFilter Integrated in Table Toolbar</div>
+                    <RTable Items="@extendedEmployeeData" 
+                            Title="Table with Integrated Filters"
+                            EnablePaging="true"
+                            PageSize="10"
+                            EnableFiltering="true"
+                            ShowFilters="true" />
                 </div>
-            </RCard>
+            </div>
+        </RCard>
 
-            <!-- Interactive Demo Controls -->
-            <RCard Text="Interactive Demo Controls" Subtitle="Component state management and interaction patterns" Variant="CardVariant.Outlined" Class="mb-4">
-                <div class="pa-4">
-                    <div class="d-grid grid-cols-1 grid-cols-1 md:grid-cols-2 grid-cols-lg-4 gap-4">
-                        <RActionGroup Pattern="ActionGroupPattern.None" Direction="ActionGroupDirection.Vertical" FullWidth="true">
-                            <span class="text-sm font-medium mb-2">Loading States</span>
-                            <RButton Text="Toggle Charts" Variant="ButtonVariant.Outline" Size="SizeType.Small" OnClick="@ToggleChartsLoading" />
-                            <RButton Text="Toggle Timeline" Variant="ButtonVariant.Outline" Size="SizeType.Small" OnClick="@ToggleTimelineLoading" />
-                            <RButton Text="Toggle Virtual List" Variant="ButtonVariant.Outline" Size="SizeType.Small" OnClick="@ToggleVirtualLoading" />
-                        </RActionGroup>
-                        
-                        <RActionGroup Pattern="ActionGroupPattern.None" Direction="ActionGroupDirection.Vertical" FullWidth="true">
-                            <span class="text-sm font-medium mb-2">Data Operations</span>
-                            <RButton Text="Refresh All Data" Variant="ButtonVariant.Primary" Size="SizeType.Small" OnClick="@RefreshAllData" />
-                            <RButton Text="Generate Sample Data" Variant="ButtonVariant.Secondary" Size="SizeType.Small" OnClick="@GenerateSampleData" />
-                            <RButton Text="Clear All Data" Variant="ButtonVariant.Outline" Size="SizeType.Small" OnClick="@ClearAllData" />
-                        </RActionGroup>
-                        
-                        <RActionGroup Pattern="ActionGroupPattern.None" Direction="ActionGroupDirection.Vertical" FullWidth="true">
-                            <span class="text-sm font-medium mb-2">Animation Controls</span>
-                            <RButton Text="Animate Progress Bars" Variant="ButtonVariant.Success" Size="SizeType.Small" OnClick="@AnimateProgress" />
-                            <RButton Text="Update Charts" Variant="ButtonVariant.Success" Size="SizeType.Small" OnClick="@UpdateChartData" />
-                            <RButton Text="Reset Animations" Variant="ButtonVariant.Outline" Size="SizeType.Small" OnClick="@ResetAnimations" />
-                        </RActionGroup>
-                        
-                        <RActionGroup Pattern="ActionGroupPattern.None" Direction="ActionGroupDirection.Vertical" FullWidth="true">
-                            <span class="text-sm font-medium mb-2">Theme & Style</span>
-                            <RThemeSwitcher />
-                            <RButton Text="Toast Message" Variant="ButtonVariant.Info" Size="SizeType.Small" OnClick="@HandleToastClick" />
-                        </RActionGroup>
-                    </div>
-                </div>
-            </RCard>
+        <!-- Calendar Component -->
+        <RCard Text="RCalendar" Subtitle="Professional calendar with events and navigation" Variant="CardVariant.Elevated" Class="mb-4">
+            <div class="pa-4">
+                <RCalendar Size="SizeType.Default" />
+            </div>
+        </RCard>
 
-            <!-- Component Summary -->
-            <RCard Text="Components Showcase Summary" Subtitle="All DATA and DISPLAY components demonstrated" Variant="CardVariant.Glass" Class="mt-6">
-                <div class="pa-4">
-                    <div class="d-grid grid-cols-1 grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <div class="text-h6 font-semibold">Data Components (7)</div>
-                            <RList Size="SizeType.Compact" Variant="ListVariant.Default">
-                                <RListItem Text="RCalendar - Professional calendar component" Icon="calendar_today" />
-                                <RListItem Text="RTableGeneric - Auto-generated data tables" Icon="table_view" />
-                                <RListItem Text="RDataTableColumnGeneric - Custom table columns" Icon="view_column" />
-                                <RListItem Text="RFilterBar - Advanced filtering controls" Icon="filter_list" />
-                                <RListItem Text="RList - Structured list container" Icon="list" />
-                                <RListItem Text="RListItem - Individual list items" Icon="list_alt" />
-                                <RListItem Text="RVirtualListGeneric - High-performance virtual scrolling" Icon="view_list" />
-                            </RList>
-                        </div>
-                        <div>
-                            <div class="text-h6 font-semibold">Display Components (13)</div>
-                            <RList Size="SizeType.Compact" Variant="ListVariant.Default">
-                                <RListItem Text="RAccordion - Accordion container" Icon="expand_more" />
-                                <RListItem Text="RAccordionItem - Individual accordion sections" Icon="expand_less" />
-                                <RListItem Text="RChart - Generic chart container" Icon="insert_chart" />
-                                <RListItem Text="RColumnChart - Column chart visualization" Icon="bar_chart" />
-                                <RListItem Text="REmptyState - Empty state messaging" Icon="inbox" />
-                                <RListItem Text="RInfoItem - Key-value information display" Icon="info" />
-                                <RListItem Text="RMetric - Metric value display" Icon="speed" />
-                                <RListItem Text="RPieChart - Pie chart visualization" Icon="pie_chart" />
-                                <RListItem Text="RProgressBar - Progress indicators" Icon="linear_scale" />
-                                <RListItem Text="RSkeleton - Loading placeholders" Icon="skeleton" />
-                                <RListItem Text="RStatsCard - Statistics cards" Icon="analytics" />
-                                <RListItem Text="RSummaryItem - Summary information" Icon="summarize" />
-                                <RListItem Text="RTimeline - Activity timeline" Icon="timeline" />
-                            </RList>
-                        </div>
-                    </div>
-                    
-                    <RDivider Class="mt-4 mb-4" />
-                    
-                    <div class="text-center">
-                        <RChip Text="20 Components" Style="ChipStyle.Badge" Variant="VariantType.Primary" Size="SizeType.Large" Class="mr-2" />
-                        <RChip Text="Professional UI" Style="ChipStyle.Badge" Variant="VariantType.Success" Size="SizeType.Large" Class="mr-2" />
-                        <RChip Text="Utility-First Styling" Style="ChipStyle.Badge" Variant="VariantType.Info" Size="SizeType.Large" />
-                    </div>
+        <!-- Chip Component Status Examples -->
+        <RCard Text="RChip Status Indicators" Subtitle="Properly styled status chips with solid backgrounds" Variant="CardVariant.Elevated" Class="mb-4">
+            <div class="pa-4">
+                <div class="text-h6 font-semibold mb-4">Employee Status Chips</div>
+                <div class="d-flex flex-wrap gap-3 mb-4">
+                    <RChip Text="Active" Style="ChipStyle.Status" Class="chip-active" Icon="check_circle" />
+                    <RChip Text="Inactive" Style="ChipStyle.Status" Class="chip-inactive" Icon="cancel" />
+                    <RChip Text="On Leave" Style="ChipStyle.Status" Class="chip-on-leave" Icon="event_busy" />
+                    <RChip Text="Pending" Style="ChipStyle.Status" Class="chip-pending" Icon="schedule" />
+                    <RChip Text="Processing" Style="ChipStyle.Status" Class="chip-processing" Icon="sync" />
                 </div>
-            </RCard>
+                
+                <div class="text-h6 font-semibold mb-4">Semantic Variant Chips</div>
+                <div class="d-flex flex-wrap gap-3 mb-4">
+                    <RChip Text="Primary" Style="ChipStyle.Badge" Variant="VariantType.Primary" />
+                    <RChip Text="Secondary" Style="ChipStyle.Badge" Variant="VariantType.Secondary" />
+                    <RChip Text="Success" Style="ChipStyle.Badge" Variant="VariantType.Success" />
+                    <RChip Text="Warning" Style="ChipStyle.Badge" Variant="VariantType.Warning" />
+                    <RChip Text="Error" Style="ChipStyle.Badge" Variant="VariantType.Error" />
+                    <RChip Text="Info" Style="ChipStyle.Badge" Variant="VariantType.Info" />
+                </div>
+
+                <div class="text-h6 font-semibold mb-4">Size Variations</div>
+                <div class="d-flex items-center flex-wrap gap-3">
+                    <RChip Text="Small Chip" Style="ChipStyle.Status" Class="chip-success" Size="SizeType.Small" />
+                    <RChip Text="Default Chip" Style="ChipStyle.Status" Class="chip-success" Size="SizeType.Default" />
+                    <RChip Text="Large Chip" Style="ChipStyle.Status" Class="chip-success" Size="SizeType.Large" />
+                </div>
+            </div>
+        </RCard>
+
+        <!-- Data Display Component -->
+        <RCard Text="RDataDisplay Component" Subtitle="Versatile data visualization with multiple layout and style options" Variant="CardVariant.Elevated" Class="mb-4">
+            <div class="pa-4">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <RDataDisplay Text="Total Employees" Value="@extendedEmployeeData.Count.ToString()" Icon="group" 
+                                 Variant="DataDisplayVariant.Card" Size="SizeType.Large" 
+                                 Emphasis="DataDisplayEmphasis.Strong" Layout="DataDisplayLayout.Vertical" />
+                    <RDataDisplay Text="Average Salary" Value="@($"${extendedEmployeeData.Average(e => e.Salary):N0}")" Icon="payments" 
+                                 Variant="DataDisplayVariant.Card" Size="SizeType.Large" 
+                                 Emphasis="DataDisplayEmphasis.Success" Layout="DataDisplayLayout.Vertical" />
+                    <RDataDisplay Text="Active Status" Value="@($"{extendedEmployeeData.Count(e => e.Status == "Active")} Active")" Icon="check_circle" 
+                                 Variant="DataDisplayVariant.Card" Size="SizeType.Large" 
+                                 Emphasis="DataDisplayEmphasis.Strong" Layout="DataDisplayLayout.Vertical" />
+                </div>
+            </div>
+        </RCard>
+
+        <!-- Footer Summary -->
+        <RDivider Text="Component Summary" Icon="summarize" Size="SizeType.Large" Class="my-6" />
+        <div class="text-center pb-6">
+            <RChip Text="3 Comprehensive Examples" Style="ChipStyle.Badge" Variant="VariantType.Primary" Size="SizeType.Large" Class="mr-2" />
+            <RChip Text="Full Feature Coverage" Style="ChipStyle.Badge" Variant="VariantType.Success" Size="SizeType.Large" Class="mr-2" />
+            <RChip Text="Production Ready" Style="ChipStyle.Badge" Variant="VariantType.Info" Size="SizeType.Large" />
         </div>
-</RAppShell>
+    </div>
+</RThemeProvider>
 
 @code {
-    public class EmployeeData
+    // Extended Employee Data Model with more fields for horizontal scrolling demo
+    public class ExtendedEmployeeData
     {
-        public string Name { get; set; } = "";
-        public string Department { get; set; } = "";
-        public string Position { get; set; } = "";
-        public decimal Salary { get; set; }
-        public DateTime StartDate { get; set; }
-        public string Status { get; set; } = "";
-    }
-    
-    public class PerformanceTestData
-    {
-        public int Id { get; set; }
+        public string EmployeeId { get; set; } = "";
         public string Name { get; set; } = "";
         public string Email { get; set; } = "";
+        public string Phone { get; set; } = "";
         public string Department { get; set; } = "";
+        public string Position { get; set; } = "";
+        public string Manager { get; set; } = "";
+        public string Team { get; set; } = "";
+        public string Location { get; set; } = "";
+        public string TimeZone { get; set; } = "";
         public decimal Salary { get; set; }
-        public DateTime HireDate { get; set; }
-        public double Performance { get; set; }
+        public DateTime StartDate { get; set; }
+        public DateTime? LastReview { get; set; }
+        public DateTime? NextReview { get; set; }
+        public double PerformanceScore { get; set; }
         public string Status { get; set; } = "";
-    }
-
-    // Nested class definition
-    public class VirtualListItem
-    {
-        public string Name { get; set; } = "";
-        public string Description { get; set; } = "";
-        public string Status { get; set; } = "";
-        public string Initials { get; set; } = "";
     }
 
     private bool isLoadingEmployees = false;
-    private bool isLoadingCharts = false;
-    private bool isLoadingTimeline = false;
-    private bool isLoadingVirtual = false;
-    private bool showSkeleton = true;
-    private bool isPerformanceTest = false;
-    private bool isLoadingLargeData = false;
+    private List<ExtendedEmployeeData> extendedEmployeeData = new();
+    private List<ExtendedEmployeeData> filteredEmployeeData = new();
+    private RFilter standaloneFilter;
 
-    private double progressValue1 = 75;
-    private double progressValue2 = 92;
-    private double progressValue3 = 43;
-    private double progressValue4 = 67;
-
-    private int totalRecords = 0;
-    private double renderTime = 0;
-    private string memoryUsage = "0 MB";
-
-    private List<EmployeeData> employeeData = new();
-    private List<EmployeeData> wideTableData = new();
-    private List<EmployeeData> largeTestDataset = new();
-    private bool isLoadingLargeTestData = false;
-    private List<VirtualListItem> virtualListItems = new();
-    private List<RR.Blazor.Models.ChartDataPoint> monthlyRevenueData = new();
-    private List<RR.Blazor.Models.ChartDataPoint> departmentData = new();
-    private List<RR.Blazor.Models.ChartDataPoint> largeDataset = new();
-    private List<RR.Blazor.Models.TimelineItem> timelineItems = new();
-    
-    // Virtualization performance testing
-    private List<PerformanceTestData> virtualTestData = new();
-    private RTableVirtualized<PerformanceTestData>? virtualizedTableRef;
-    private bool useVirtualizedTable = true;
-    private bool isGeneratingLargeData = false;
-    private long dataGenerationTime = 0;
-    private long lastVirtualRenderTime = 0;
-    private string virtualMemoryUsage = "0 MB";
-    private string scrollFps = "60";
-    private string visibleRowCount = "0";
-    private string domNodeCount = "0";
-    private string scrollPosition = "0%";
-
-    // Component lifecycle
     protected override async Task OnInitializedAsync()
     {
-        await GenerateInitialData();
+        await GenerateExtendedEmployeeData();
+        filteredEmployeeData = extendedEmployeeData.ToList();
+        StateHasChanged();
     }
 
-    private async Task GenerateInitialData()
-    {
-        // Generate Employee Data with more diverse and realistic data
-        employeeData = new()
-        {
-            new() { Name = "Sarah Johnson", Department = "Engineering", Position = "Senior Developer", Salary = 95000, StartDate = new DateTime(2020, 3, 15), Status = "Active" },
-            new() { Name = "Michael Chen", Department = "Marketing", Position = "Marketing Manager", Salary = 78000, StartDate = new DateTime(2019, 7, 22), Status = "Active" },
-            new() { Name = "Emily Rodriguez", Department = "HR", Position = "HR Specialist", Salary = 62000, StartDate = new DateTime(2021, 1, 10), Status = "Active" },
-            new() { Name = "David Kim", Department = "Finance", Position = "Financial Analyst", Salary = 71000, StartDate = new DateTime(2020, 9, 8), Status = "On Leave" },
-            new() { Name = "Lisa Thompson", Department = "Engineering", Position = "DevOps Engineer", Salary = 89000, StartDate = new DateTime(2019, 11, 3), Status = "Active" },
-            new() { Name = "James Wilson", Department = "Sales", Position = "Account Executive", Salary = 83000, StartDate = new DateTime(2022, 2, 14), Status = "Active" },
-            new() { Name = "Anna Martinez", Department = "Design", Position = "UX Designer", Salary = 72000, StartDate = new DateTime(2021, 6, 1), Status = "Active" },
-            new() { Name = "Robert Taylor", Department = "Engineering", Position = "Software Architect", Salary = 115000, StartDate = new DateTime(2018, 4, 12), Status = "Active" },
-            new() { Name = "Jennifer White", Department = "Operations", Position = "Operations Manager", Salary = 85000, StartDate = new DateTime(2020, 10, 5), Status = "Inactive" },
-            new() { Name = "Carlos Mendoza", Department = "Sales", Position = "Sales Director", Salary = 98000, StartDate = new DateTime(2019, 8, 20), Status = "Active" },
-            
-            // Additional employees for better pagination testing
-            new() { Name = "Amanda Foster", Department = "Engineering", Position = "Frontend Developer", Salary = 82000, StartDate = new DateTime(2021, 4, 10), Status = "Active" },
-            new() { Name = "Brian Hughes", Department = "Marketing", Position = "Content Strategist", Salary = 65000, StartDate = new DateTime(2022, 1, 5), Status = "Active" },
-            new() { Name = "Christina Lee", Department = "Finance", Position = "Senior Accountant", Salary = 74000, StartDate = new DateTime(2020, 6, 15), Status = "Active" },
-            new() { Name = "Daniel Park", Department = "Engineering", Position = "Backend Developer", Salary = 88000, StartDate = new DateTime(2019, 12, 1), Status = "Active" },
-            new() { Name = "Elena Vasquez", Department = "HR", Position = "Recruiter", Salary = 58000, StartDate = new DateTime(2021, 8, 20), Status = "Active" },
-            new() { Name = "Frank Morrison", Department = "Sales", Position = "Sales Representative", Salary = 67000, StartDate = new DateTime(2022, 3, 10), Status = "Active" },
-            new() { Name = "Grace Chen", Department = "Design", Position = "Product Designer", Salary = 76000, StartDate = new DateTime(2020, 11, 8), Status = "Active" },
-            new() { Name = "Henry Jackson", Department = "Engineering", Position = "Tech Lead", Salary = 105000, StartDate = new DateTime(2019, 5, 15), Status = "Active" },
-            new() { Name = "Isabella Brown", Department = "Operations", Position = "Project Manager", Salary = 79000, StartDate = new DateTime(2021, 2, 28), Status = "Active" },
-            new() { Name = "Jacob Miller", Department = "Finance", Position = "Budget Analyst", Salary = 68000, StartDate = new DateTime(2020, 7, 12), Status = "On Leave" },
-            
-            new() { Name = "Katherine Davis", Department = "Marketing", Position = "SEO Specialist", Salary = 61000, StartDate = new DateTime(2021, 9, 5), Status = "Active" },
-            new() { Name = "Liam Wilson", Department = "Engineering", Position = "QA Engineer", Salary = 73000, StartDate = new DateTime(2020, 4, 18), Status = "Active" },
-            new() { Name = "Maria Garcia", Department = "HR", Position = "HR Manager", Salary = 92000, StartDate = new DateTime(2019, 10, 22), Status = "Active" },
-            new() { Name = "Nathan Moore", Department = "Sales", Position = "Business Development", Salary = 77000, StartDate = new DateTime(2021, 11, 15), Status = "Active" },
-            new() { Name = "Olivia Taylor", Department = "Design", Position = "UI Designer", Salary = 70000, StartDate = new DateTime(2022, 5, 1), Status = "Active" },
-            new() { Name = "Peter Anderson", Department = "Engineering", Position = "Full Stack Developer", Salary = 91000, StartDate = new DateTime(2019, 3, 25), Status = "Active" },
-            new() { Name = "Quinn Roberts", Department = "Operations", Position = "Operations Analyst", Salary = 64000, StartDate = new DateTime(2021, 7, 10), Status = "Active" },
-            new() { Name = "Rachel Green", Department = "Marketing", Position = "Marketing Coordinator", Salary = 55000, StartDate = new DateTime(2022, 6, 20), Status = "Active" },
-            new() { Name = "Samuel Wright", Department = "Finance", Position = "Financial Controller", Salary = 98000, StartDate = new DateTime(2018, 12, 5), Status = "Active" },
-            new() { Name = "Tiffany Adams", Department = "HR", Position = "Training Specialist", Salary = 60000, StartDate = new DateTime(2020, 8, 30), Status = "Inactive" },
-            
-            new() { Name = "Ulysses Johnson", Department = "Engineering", Position = "Data Engineer", Salary = 96000, StartDate = new DateTime(2019, 6, 10), Status = "Active" },
-            new() { Name = "Victoria Lee", Department = "Sales", Position = "Regional Manager", Salary = 102000, StartDate = new DateTime(2018, 9, 15), Status = "Active" },
-            new() { Name = "William Chen", Department = "Design", Position = "Design Director", Salary = 110000, StartDate = new DateTime(2017, 11, 1), Status = "Active" },
-            new() { Name = "Xavier Martinez", Department = "Engineering", Position = "Security Engineer", Salary = 99000, StartDate = new DateTime(2020, 2, 20), Status = "Active" },
-            new() { Name = "Yolanda Smith", Department = "Operations", Position = "Supply Chain Manager", Salary = 87000, StartDate = new DateTime(2019, 4, 8), Status = "Active" },
-            new() { Name = "Zachary Brown", Department = "Marketing", Position = "Brand Manager", Salary = 81000, StartDate = new DateTime(2021, 10, 12), Status = "Active" },
-            new() { Name = "Alice Johnson", Department = "Finance", Position = "Tax Specialist", Salary = 75000, StartDate = new DateTime(2020, 5, 25), Status = "Active" },
-            new() { Name = "Bob Williams", Department = "Engineering", Position = "Mobile Developer", Salary = 86000, StartDate = new DateTime(2019, 7, 30), Status = "Active" },
-            new() { Name = "Carol Davis", Department = "HR", Position = "Benefits Coordinator", Salary = 57000, StartDate = new DateTime(2022, 8, 15), Status = "Active" },
-            new() { Name = "Derek Thompson", Department = "Sales", Position = "Inside Sales Rep", Salary = 52000, StartDate = new DateTime(2021, 12, 1), Status = "Active" },
-            
-            new() { Name = "Eva Rodriguez", Department = "Design", Position = "Motion Designer", Salary = 69000, StartDate = new DateTime(2020, 9, 10), Status = "Active" },
-            new() { Name = "Felix Wang", Department = "Engineering", Position = "Site Reliability Engineer", Salary = 104000, StartDate = new DateTime(2018, 8, 5), Status = "Active" },
-            new() { Name = "Gina Patel", Department = "Operations", Position = "Quality Assurance Manager", Salary = 84000, StartDate = new DateTime(2019, 2, 18), Status = "Active" },
-            new() { Name = "Howard Kim", Department = "Marketing", Position = "Digital Marketing Manager", Salary = 76000, StartDate = new DateTime(2021, 3, 22), Status = "Active" },
-            new() { Name = "Iris Chen", Department = "Finance", Position = "Investment Analyst", Salary = 88000, StartDate = new DateTime(2020, 1, 10), Status = "On Leave" },
-            new() { Name = "Jack Miller", Department = "Engineering", Position = "Cloud Architect", Salary = 118000, StartDate = new DateTime(2017, 10, 15), Status = "Active" },
-            new() { Name = "Karen Wilson", Department = "HR", Position = "Compensation Analyst", Salary = 66000, StartDate = new DateTime(2021, 5, 30), Status = "Active" },
-            new() { Name = "Leo Garcia", Department = "Sales", Position = "Sales Engineer", Salary = 93000, StartDate = new DateTime(2019, 9, 12), Status = "Active" },
-            new() { Name = "Monica Taylor", Department = "Design", Position = "Research Designer", Salary = 78000, StartDate = new DateTime(2020, 12, 5), Status = "Active" },
-            new() { Name = "Nick Anderson", Department = "Operations", Position = "Logistics Coordinator", Salary = 59000, StartDate = new DateTime(2022, 4, 18), Status = "Active" },
-            
-            new() { Name = "Olivia Martinez", Department = "Engineering", Position = "Platform Engineer", Salary = 101000, StartDate = new DateTime(2018, 6, 20), Status = "Active" },
-            new() { Name = "Paul Johnson", Department = "Marketing", Position = "Product Marketing Manager", Salary = 85000, StartDate = new DateTime(2019, 11, 25), Status = "Active" },
-            new() { Name = "Quinn Davis", Department = "Finance", Position = "Risk Analyst", Salary = 72000, StartDate = new DateTime(2021, 1, 15), Status = "Active" },
-            new() { Name = "Rita Singh", Department = "HR", Position = "Employee Relations Manager", Salary = 80000, StartDate = new DateTime(2020, 3, 8), Status = "Active" },
-            new() { Name = "Steve Brown", Department = "Engineering", Position = "Infrastructure Engineer", Salary = 94000, StartDate = new DateTime(2019, 5, 20), Status = "Inactive" },
-            new() { Name = "Tina Lee", Department = "Sales", Position = "Customer Success Manager", Salary = 71000, StartDate = new DateTime(2021, 7, 25), Status = "Active" },
-            new() { Name = "Uma Patel", Department = "Design", Position = "Interaction Designer", Salary = 74000, StartDate = new DateTime(2020, 10, 10), Status = "Active" },
-            new() { Name = "Victor Chen", Department = "Operations", Position = "Business Analyst", Salary = 68000, StartDate = new DateTime(2022, 2, 28), Status = "Active" },
-            new() { Name = "Wendy Kim", Department = "Marketing", Position = "Social Media Manager", Salary = 63000, StartDate = new DateTime(2021, 9, 15), Status = "Active" },
-            new() { Name = "Xander Wilson", Department = "Engineering", Position = "ML Engineer", Salary = 112000, StartDate = new DateTime(2018, 11, 5), Status = "Active" }
-        };
-        
-        // Generate wide table data with many columns for horizontal scroll testing
-        wideTableData = employeeData.Take(20).ToList();
-
-        // Generate Virtual List Items
-        await GenerateVirtualItems();
-
-        // Generate Chart Data - Monthly Revenue for 2024
-        monthlyRevenueData = new()
-        {
-            new() { Label = "Jan", Value = 450000 },
-            new() { Label = "Feb", Value = 520000 },
-            new() { Label = "Mar", Value = 480000 },
-            new() { Label = "Apr", Value = 610000 },
-            new() { Label = "May", Value = 580000 },
-            new() { Label = "Jun", Value = 670000 },
-            new() { Label = "Jul", Value = 720000 },
-            new() { Label = "Aug", Value = 685000 },
-            new() { Label = "Sep", Value = 750000 },
-            new() { Label = "Oct", Value = 820000 },
-            new() { Label = "Nov", Value = 890000 },
-            new() { Label = "Dec", Value = 950000 }
-        };
-
-        // Department distribution matching our employee data
-        departmentData = new()
-        {
-            new() { Label = "Engineering", Value = 30 }, // 3 employees
-            new() { Label = "Sales", Value = 20 }, // 2 employees  
-            new() { Label = "Marketing", Value = 10 }, // 1 employee
-            new() { Label = "HR", Value = 10 }, // 1 employee
-            new() { Label = "Finance", Value = 10 }, // 1 employee
-            new() { Label = "Design", Value = 10 }, // 1 employee
-            new() { Label = "Operations", Value = 10 } // 1 employee
-        };
-
-        // Generate Timeline Data
-        timelineItems = new()
-        {
-            new() { Title = "System Deployment", Description = "Production system successfully deployed", Timestamp = DateTime.Now.AddHours(-2), Status = "success", Icon = "rocket_launch" },
-            new() { Title = "Code Review", Description = "Feature branch code review completed", Timestamp = DateTime.Now.AddHours(-4), Status = "success", Icon = "code" },
-            new() { Title = "Database Migration", Description = "Schema migration in progress", Timestamp = DateTime.Now.AddHours(-6), Status = "pending", Icon = "storage" },
-            new() { Title = "Testing Phase", Description = "QA testing scheduled for tomorrow", Timestamp = DateTime.Now.AddDays(1), Status = "default", Icon = "bug_report" }
-        };
-    }
-
-    private async Task GenerateVirtualItems()
+    private async Task GenerateExtendedEmployeeData()
     {
         var random = new Random();
-        var names = new[] { "Alice", "Bob", "Charlie", "Diana", "Eve", "Frank", "Grace", "Henry", "Ivy", "Jack" };
-        var statuses = new[] { "Active", "Away", "Busy", "Offline" };
-        
-        var newItems = new List<VirtualListItem>();
-        for (int i = 0; i < 1000; i++)
+        var departments = new[] { "Engineering", "Marketing", "Sales", "HR", "Finance", "Operations", "Design", "Product" };
+        var statuses = new[] { "Active", "Inactive", "On Leave" };
+        var managers = new[] { "John Smith", "Jane Doe", "Robert Brown", "Lisa White", "Michael Green" };
+        var teams = new[] { "Alpha", "Beta", "Gamma", "Delta", "Omega" };
+        var locations = new[] { "New York", "San Francisco", "London", "Tokyo", "Singapore", "Berlin", "Sydney" };
+        var timeZones = new[] { "EST", "PST", "GMT", "JST", "SGT", "CET", "AEST" };
+
+        extendedEmployeeData = new List<ExtendedEmployeeData>();
+
+        for (int i = 1; i <= 50; i++)
         {
-            var name = $"{names[random.Next(names.Length)]} {random.Next(100, 999)}";
-            newItems.Add(new VirtualListItem
+            var startDate = DateTime.Now.AddDays(-random.Next(30, 1500));
+            var lastReview = startDate.AddMonths(random.Next(6, 18));
+            var nextReview = lastReview.AddMonths(6);
+
+            extendedEmployeeData.Add(new ExtendedEmployeeData
             {
-                Name = name,
-                Description = $"Description for {name}",
-                Status = statuses[random.Next(statuses.Length)],
-                Initials = $"{name[0]}{name.Split(' ')[1][0]}"
-            });
-        }
-        
-        virtualListItems = newItems;
-    }
-
-    private VariantType GetChipVariant(string status) => status switch
-    {
-        "Active" => VariantType.Success,
-        "Away" => VariantType.Warning,
-        "Busy" => VariantType.Error,
-        "Offline" => VariantType.Secondary,
-        "On Leave" => VariantType.Warning,
-        "Inactive" => VariantType.Secondary,
-        _ => VariantType.Primary
-    };
-
-    // Event Handlers
-    private async Task ToggleEmployeeLoading()
-    {
-        isLoadingEmployees = !isLoadingEmployees;
-        StateHasChanged();
-        
-        if (isLoadingEmployees)
-        {
-            // Simulate loading delay
-            await Task.Delay(3000);
-            isLoadingEmployees = false;
-            StateHasChanged();
-        }
-    }
-
-    private async Task RefreshEmployeeData()
-    {
-        isLoadingEmployees = true;
-        StateHasChanged();
-        
-        await Task.Delay(1500);
-        await GenerateInitialData();
-        
-        isLoadingEmployees = false;
-        StateHasChanged();
-    }
-
-    private async Task ClearVirtualItems()
-    {
-        virtualListItems.Clear();
-    }
-
-    private async Task ToggleSkeleton()
-    {
-        showSkeleton = !showSkeleton;
-    }
-
-    private async Task AnimateProgress()
-    {
-        var random = new Random();
-        var startTime = DateTime.Now;
-        
-        while ((DateTime.Now - startTime).TotalSeconds < 4)
-        {
-            progressValue1 = random.Next(20, 100);
-            progressValue2 = random.Next(20, 100);
-            progressValue3 = random.Next(20, 100);
-            progressValue4 = random.Next(20, 100);
-            
-            StateHasChanged();
-            await Task.Delay(300);
-        }
-    }
-
-    private async Task AddTimelineEvent()
-    {
-        var newEvent = new RR.Blazor.Models.TimelineItem
-        {
-            Title = $"New Event {timelineItems.Count + 1}",
-            Description = "Dynamically added timeline event",
-            Timestamp = DateTime.Now,
-            Status = "success",
-            Icon = "add_circle"
-        };
-        
-        timelineItems.Insert(0, newEvent);
-        StateHasChanged();
-    }
-
-    private async Task ClearTimeline()
-    {
-        timelineItems.Clear();
-        StateHasChanged();
-    }
-
-    private async Task LoadPerformanceData(int recordCount)
-    {
-        isPerformanceTest = true;
-        totalRecords = recordCount;
-        var startTime = DateTime.Now;
-        
-        StateHasChanged();
-        
-        // Simulate data loading
-        await Task.Delay(recordCount / 1000 + 100);
-        
-        renderTime = (DateTime.Now - startTime).TotalMilliseconds;
-        memoryUsage = $"{recordCount * 0.1:F1} MB";
-        
-        isPerformanceTest = false;
-        StateHasChanged();
-    }
-
-    private async Task ClearPerformanceData()
-    {
-        totalRecords = 0;
-        renderTime = 0;
-        memoryUsage = "0 MB";
-        StateHasChanged();
-    }
-
-    private async Task ToggleChartsLoading()
-    {
-        isLoadingCharts = !isLoadingCharts;
-        StateHasChanged();
-        
-        if (isLoadingCharts)
-        {
-            await Task.Delay(2000);
-            isLoadingCharts = false;
-            StateHasChanged();
-        }
-    }
-
-    private async Task ToggleTimelineLoading()
-    {
-        isLoadingTimeline = !isLoadingTimeline;
-        StateHasChanged();
-        
-        if (isLoadingTimeline)
-        {
-            await Task.Delay(1500);
-            isLoadingTimeline = false;
-            StateHasChanged();
-        }
-    }
-
-    private async Task ToggleVirtualLoading()
-    {
-        isLoadingVirtual = !isLoadingVirtual;
-        StateHasChanged();
-        
-        if (isLoadingVirtual)
-        {
-            await Task.Delay(1000);
-            isLoadingVirtual = false;
-            StateHasChanged();
-        }
-    }
-
-    private async Task RefreshAllData()
-    {
-        await GenerateInitialData();
-        ShowToast("All data refreshed successfully!");
-    }
-
-    private async Task GenerateSampleData()
-    {
-        await GenerateVirtualItems();
-        ShowToast("Sample data generated!");
-    }
-
-    private async Task ClearAllData()
-    {
-        employeeData.Clear();
-        virtualListItems.Clear();
-        timelineItems.Clear();
-        monthlyRevenueData.Clear();
-        departmentData.Clear();
-        
-        ShowToast("All data cleared!");
-    }
-
-    private async Task UpdateChartData()
-    {
-        var random = new Random();
-        
-        foreach (var item in monthlyRevenueData)
-        {
-            item.Value = random.Next(30000, 80000);
-        }
-        
-        foreach (var item in departmentData)
-        {
-            item.Value = random.Next(5, 50);
-        }
-        
-        ShowToast("Chart data updated!");
-    }
-
-    private async Task ResetAnimations()
-    {
-        progressValue1 = 75;
-        progressValue2 = 92;
-        progressValue3 = 43;
-        progressValue4 = 67;
-        
-        ShowToast("Animations reset!");
-    }
-
-    private async Task ShowToast(string message)
-    {
-        // In real implementation would use IToastService
-        Console.WriteLine($"Toast: {message}");
-        await Task.CompletedTask;
-    }
-
-    // Click event handlers
-    private async Task HandleDashboardClick(MouseEventArgs e) => await ShowToast("Dashboard clicked");
-    private async Task HandleReportsClick(MouseEventArgs e) => await ShowToast("Reports clicked"); 
-    private async Task HandleSettingsClick(MouseEventArgs e) => await ShowToast("Settings clicked");
-    private async Task HandleUsersStatsClick() => await ShowToast("Users stats clicked");
-    private async Task HandleRevenueStatsClick() => await ShowToast("Revenue stats clicked");
-    private async Task HandleConversionStatsClick() => await ShowToast("Conversion stats clicked");
-    private async Task HandleToastClick() => await ShowToast("Demo toast message!");
-
-    // New Chart Demo Methods
-    private async Task GenerateLargeDataset()
-    {
-        isLoadingLargeData = true;
-        StateHasChanged();
-        
-        var random = new Random();
-        largeDataset.Clear();
-        
-        // Generate 10,000 data points for performance testing
-        for (int i = 0; i < 10000; i++)
-        {
-            largeDataset.Add(new RR.Blazor.Models.ChartDataPoint
-            {
-                Label = $"Item {i + 1}",
-                Value = random.Next(10, 1000)
-            });
-        }
-        
-        await Task.Delay(1000); // Simulate processing time
-        isLoadingLargeData = false;
-        StateHasChanged();
-        
-        ShowToast($"Generated {largeDataset.Count:N0} data points for performance testing!");
-    }
-
-    private async Task ClearLargeDataset()
-    {
-        largeDataset.Clear();
-        StateHasChanged();
-        ShowToast("Large dataset cleared!");
-    }
-
-    private List<RR.Blazor.Models.ChartDataPoint> GetTimeSeriesData()
-    {
-        return new List<RR.Blazor.Models.ChartDataPoint>
-        {
-            new() { Label = "Jan 2024", Value = 45000 },
-            new() { Label = "Feb 2024", Value = 52000 },
-            new() { Label = "Mar 2024", Value = 48000 },
-            new() { Label = "Apr 2024", Value = 61000 },
-            new() { Label = "May 2024", Value = 58000 },
-            new() { Label = "Jun 2024", Value = 67000 },
-            new() { Label = "Jul 2024", Value = 72000 },
-            new() { Label = "Aug 2024", Value = 68500 },
-            new() { Label = "Sep 2024", Value = 75000 },
-            new() { Label = "Oct 2024", Value = 82000 },
-            new() { Label = "Nov 2024", Value = 89000 },
-            new() { Label = "Dec 2024", Value = 95000 }
-        };
-    }
-
-    private List<RR.Blazor.Models.ChartSeries> GetAreaSeriesData()
-    {
-        return new List<RR.Blazor.Models.ChartSeries>
-        {
-            new RR.Blazor.Models.ChartSeries
-            {
-                Name = "Sales Revenue",
-                Data = new List<RR.Blazor.Models.ChartDataPoint>
-                {
-                    new() { Label = "Q1", Value = 125000 },
-                    new() { Label = "Q2", Value = 150000 },
-                    new() { Label = "Q3", Value = 175000 },
-                    new() { Label = "Q4", Value = 200000 }
-                },
-                Color = "var(--color-primary)"
-            },
-            new RR.Blazor.Models.ChartSeries
-            {
-                Name = "Marketing Spend",
-                Data = new List<RR.Blazor.Models.ChartDataPoint>
-                {
-                    new() { Label = "Q1", Value = 25000 },
-                    new() { Label = "Q2", Value = 35000 },
-                    new() { Label = "Q3", Value = 45000 },
-                    new() { Label = "Q4", Value = 55000 }
-                },
-                Color = "var(--color-success)"
-            }
-        };
-    }
-    
-    // Virtualization Performance Testing Methods
-    private async Task GenerateVirtualizationTestData(int count)
-    {
-        isGeneratingLargeData = true;
-        StateHasChanged();
-        
-        var startTime = DateTime.Now;
-        var random = new Random();
-        var departments = new[] { "Engineering", "Sales", "Marketing", "HR", "Finance", "Operations" };
-        var statuses = new[] { "Active", "On Leave", "Remote", "Contract", "Part-time" };
-        var firstNames = new[] { "John", "Jane", "Bob", "Alice", "Charlie", "Diana", "Eve", "Frank" };
-        var lastNames = new[] { "Smith", "Johnson", "Brown", "Davis", "Wilson", "Moore", "Taylor", "Anderson" };
-        
-        virtualTestData.Clear();
-        
-        // Generate in batches for better performance
-        var batchSize = 10000;
-        for (int batch = 0; batch < count; batch += batchSize)
-        {
-            var currentBatchSize = Math.Min(batchSize, count - batch);
-            var batchData = new List<PerformanceTestData>(currentBatchSize);
-            
-            for (int i = 0; i < currentBatchSize; i++)
-            {
-                var id = batch + i + 1;
-                batchData.Add(new PerformanceTestData
-                {
-                    Id = id,
-                    Name = $"{firstNames[random.Next(firstNames.Length)]} {lastNames[random.Next(lastNames.Length)]} {id}",
-                    Email = $"employee{id}@company.com",
-                    Department = departments[random.Next(departments.Length)],
-                    Salary = 50000 + random.Next(100000),
-                    HireDate = DateTime.Now.AddDays(-random.Next(3650)),
-                    Performance = Math.Round(random.NextDouble() * 100, 2),
-                    Status = statuses[random.Next(statuses.Length)]
-                });
-            }
-            
-            virtualTestData.AddRange(batchData);
-            
-            // Allow UI to update for large datasets
-            if (count > 100000)
-            {
-                await Task.Yield();
-            }
-        }
-        
-        dataGenerationTime = (long)(DateTime.Now - startTime).TotalMilliseconds;
-        isGeneratingLargeData = false;
-        
-        // Trigger render time measurement
-        var renderStart = DateTime.Now;
-        StateHasChanged();
-        await Task.Delay(100); // Allow render to complete
-        lastVirtualRenderTime = (long)(DateTime.Now - renderStart).TotalMilliseconds;
-        
-        ShowToast($"Generated {count:N0} records in {dataGenerationTime}ms, rendered in {lastVirtualRenderTime}ms");
-    }
-    
-    private async Task StartScrollPerformanceTest()
-    {
-        if (!virtualTestData.Any())
-        {
-            ShowToast("Generate test data first!");
-            return;
-        }
-        
-        ShowToast("Starting scroll performance test...");
-        
-        // Simulate scrolling and measure FPS
-        var frameCount = 0;
-        var startTime = DateTime.Now;
-        
-        // Scroll animation for 3 seconds
-        for (int i = 0; i < 30; i++)
-        {
-            frameCount++;
-            await Task.Delay(100);
-            
-            // Update metrics
-            scrollPosition = $"{(i * 3.3):F0}%";
-            var elapsed = (DateTime.Now - startTime).TotalSeconds;
-            scrollFps = elapsed > 0 ? $"{(frameCount / elapsed):F0}" : "60";
-            
-            StateHasChanged();
-        }
-        
-        var avgFps = frameCount / (DateTime.Now - startTime).TotalSeconds;
-        ShowToast($"Scroll test complete. Average FPS: {avgFps:F1}");
-    }
-    
-    private async Task MeasureMemoryUsage()
-    {
-        // This would need JavaScript interop to get actual memory usage
-        // For now, estimate based on data size
-        var estimatedBytes = virtualTestData.Count * 500; // ~500 bytes per record
-        var mb = estimatedBytes / (1024.0 * 1024.0);
-        virtualMemoryUsage = $"{mb:F1} MB";
-        
-        // Count DOM nodes (estimate)
-        var visibleRows = 20; // Typical viewport
-        domNodeCount = (visibleRows * 8).ToString(); // 8 cells per row
-        visibleRowCount = visibleRows.ToString();
-        
-        ShowToast($"Memory usage: {virtualMemoryUsage}");
-        await Task.CompletedTask;
-    }
-    
-    private async Task ClearVirtualTestData()
-    {
-        virtualTestData.Clear();
-        dataGenerationTime = 0;
-        lastVirtualRenderTime = 0;
-        virtualMemoryUsage = "0 MB";
-        scrollFps = "60";
-        visibleRowCount = "0";
-        domNodeCount = "0";
-        scrollPosition = "0%";
-        StateHasChanged();
-        ShowToast("Test data cleared");
-        await Task.CompletedTask;
-    }
-    
-    private async Task ExportPerformanceMetrics()
-    {
-        var metrics = "Performance Test Results\n" +
-                     "========================\n" +
-                     $"Dataset Size: {virtualTestData.Count:N0} records\n" +
-                     $"Generation Time: {dataGenerationTime}ms\n" +
-                     $"Render Time: {lastVirtualRenderTime}ms\n" +
-                     $"Memory Usage: {virtualMemoryUsage}\n" +
-                     $"Scroll FPS: {scrollFps}\n" +
-                     $"Visible Rows: {visibleRowCount}\n" +
-                     $"DOM Nodes: {domNodeCount}\n" +
-                     $"Table Type: {(useVirtualizedTable ? "Virtualized" : "Non-Virtualized")}\n" +
-                     $"Timestamp: {DateTime.Now:yyyy-MM-dd HH:mm:ss}";
-        
-        // In real app, would download as file
-        ShowToast("Metrics exported to console");
-        Console.WriteLine(metrics);
-        await Task.CompletedTask;
-    }
-    
-    // New methods for testing column management features
-    private async Task GenerateLargeTestDataset()
-    {
-        isLoadingLargeTestData = true;
-        StateHasChanged();
-        
-        await Task.Delay(500); // Simulate loading
-        
-        var random = new Random();
-        var departments = new[] { "Engineering", "Sales", "Marketing", "HR", "Finance", "Operations", "Design", "Legal" };
-        var positions = new[] { "Manager", "Senior", "Junior", "Lead", "Director", "VP", "Analyst", "Specialist" };
-        var statuses = new[] { "Active", "On Leave", "Remote", "Inactive" };
-        var firstNames = new[] { "John", "Jane", "Bob", "Alice", "Charlie", "Diana", "Eve", "Frank", "Grace", "Henry" };
-        var lastNames = new[] { "Smith", "Johnson", "Brown", "Davis", "Wilson", "Moore", "Taylor", "Anderson", "Thomas", "Jackson" };
-        
-        largeTestDataset = new List<EmployeeData>();
-        
-        // Generate 100K records for testing smart pagination
-        for (int i = 0; i < 100000; i++)
-        {
-            largeTestDataset.Add(new EmployeeData
-            {
-                Name = $"{firstNames[random.Next(firstNames.Length)]} {lastNames[random.Next(lastNames.Length)]}",
+                EmployeeId = $"EMP{i:D4}",
+                Name = $"{GetRandomFirstName()} {GetRandomLastName()}",
+                Email = $"employee{i}@company.com",
+                Phone = $"+1 555-{random.Next(100, 999)}-{random.Next(1000, 9999)}",
                 Department = departments[random.Next(departments.Length)],
-                Position = $"{positions[random.Next(positions.Length)]} {i}",
-                Salary = 40000 + random.Next(120000),
-                StartDate = DateTime.Now.AddDays(-random.Next(3650)),
+                Position = GetRandomPosition(),
+                Manager = managers[random.Next(managers.Length)],
+                Team = teams[random.Next(teams.Length)],
+                Location = locations[random.Next(locations.Length)],
+                TimeZone = timeZones[Array.IndexOf(locations, locations[random.Next(locations.Length)])],
+                Salary = random.Next(50000, 150000),
+                StartDate = startDate,
+                LastReview = lastReview,
+                NextReview = nextReview,
+                PerformanceScore = random.Next(40, 100),
                 Status = statuses[random.Next(statuses.Length)]
             });
-            
-            // Allow UI to update periodically
-            if (i % 10000 == 0)
+        }
+
+        await Task.CompletedTask;
+    }
+
+    private string GetRandomFirstName()
+    {
+        var names = new[] { "Sarah", "Michael", "Emily", "David", "Lisa", "James", "Anna", "Robert", "Jennifer", "Carlos",
+                           "Maria", "John", "Patricia", "William", "Linda", "Richard", "Barbara", "Joseph", "Susan", "Thomas" };
+        return names[new Random().Next(names.Length)];
+    }
+
+    private string GetRandomLastName()
+    {
+        var names = new[] { "Johnson", "Chen", "Rodriguez", "Kim", "Thompson", "Wilson", "Martinez", "Taylor", "White", "Mendoza",
+                           "Anderson", "Brown", "Davis", "Miller", "Jones", "Garcia", "Smith", "Williams", "Lee", "Harris" };
+        return names[new Random().Next(names.Length)];
+    }
+
+    private string GetRandomPosition()
+    {
+        var positions = new[] { "Senior Developer", "Marketing Manager", "Sales Representative", "HR Specialist", "Financial Analyst",
+                               "DevOps Engineer", "UX Designer", "Product Manager", "Data Scientist", "Business Analyst",
+                               "Software Architect", "Account Executive", "Operations Manager", "Technical Lead", "QA Engineer" };
+        return positions[new Random().Next(positions.Length)];
+    }
+
+    private Dictionary<string, ExtendedEmployeeData> GetEmployeeDictionary()
+    {
+        return extendedEmployeeData.Take(5).ToDictionary(e => e.EmployeeId, e => e);
+    }
+
+    private object GetAnonymousProjection()
+    {
+        return extendedEmployeeData.Take(5).Select(e => new
+        {
+            e.Name,
+            e.Department,
+            e.Position,
+            AnnualSalary = e.Salary,
+            YearsOfService = (DateTime.Now - e.StartDate).Days / 365.0,
+            e.Status
+        }).ToList();
+    }
+
+    private List<string> GetDepartmentOptions()
+    {
+        return extendedEmployeeData.Select(e => e.Department).Distinct().OrderBy(d => d).ToList();
+    }
+
+    private List<string> GetStatusOptions()
+    {
+        return new List<string> { "Active", "Inactive", "On Leave" };
+    }
+
+    private void OnFilterChanged(FilterStateChangedEventArgs args)
+    {
+        // Apply filter predicate to data
+        if (args.HasActiveFilters && standaloneFilter != null)
+        {
+            var predicate = standaloneFilter.GetPredicate<ExtendedEmployeeData>();
+            if (predicate != null)
             {
-                await Task.Yield();
+                filteredEmployeeData = extendedEmployeeData.Where(predicate.Compile()).ToList();
+            }
+            else
+            {
+                filteredEmployeeData = extendedEmployeeData.ToList();
             }
         }
-        
-        isLoadingLargeTestData = false;
+        else
+        {
+            filteredEmployeeData = extendedEmployeeData.ToList();
+        }
         StateHasChanged();
-        ShowToast($"Generated {largeTestDataset.Count:N0} test records!");
-    }
-    
-    private async Task ClearLargeTestDataset()
-    {
-        largeTestDataset.Clear();
-        StateHasChanged();
-        ShowToast("Large test dataset cleared");
-        await Task.CompletedTask;
     }
 }

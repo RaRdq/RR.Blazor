@@ -1,0 +1,346 @@
+@page "/test/filter-demo"
+@using RR.Blazor.Components.Data
+@using RR.Blazor.Components.Core
+@using RR.Blazor.Components.Base
+@using RR.Blazor.Components.Display
+@using RR.Blazor.Components.Form
+@using RR.Blazor.Models
+@using RR.Blazor.Enums
+
+<div class="pa-4">
+    <h1 class="text-h4 mb-6">RFilterGeneric Demo - Smart Universal Filter</h1>
+    
+    <RCard Text="Standalone Filter Demo" 
+           Subtitle="Filter applies predicates, components manage their data"
+           Icon="filter_alt"
+           Class="mb-6">
+        <div class="pa-4">
+            @* Standalone RFilterGeneric - emits events for developers to handle *@
+            <RFilterGeneric TItem="Employee"
+                           @ref="standaloneFilter" 
+                           EnablePersistence="@enablePersistence"
+                           PersistenceKey="demo-filter"
+                           OnFilterChanged="@HandleFilterChanged"
+                           SearchFields="@searchFields"
+                           ColumnDefinitions="@columnDefinitions"
+                           QuickFilters="@quickFilters"
+                           EnableRealTime="@enableRealTime"
+                           Config="@filterConfig" />
+            
+            <div class="mt-4 pa-3 bg-surface-elevated rounded">
+                <div class="d-flex justify-between align-center mb-2">
+                    <span class="text-subtitle-2">Filter Status:</span>
+                    <RChip Text="@($"{filteredCount}/{employees.Count} items")" 
+                           Variant="@(hasActiveFilters ? VariantType.Primary : VariantType.Secondary)" />
+                </div>
+                
+                <div class="text-caption text-muted">
+                    @if (hasActiveFilters)
+                    {
+                        <span>Active filters applied. Predicate generated for developers to use.</span>
+                    }
+                    else
+                    {
+                        <span>No filters active. All items shown.</span>
+                    }
+                </div>
+            </div>
+        </div>
+    </RCard>
+    
+    <RCard Text="Filter Settings" Class="mb-6">
+        <div class="pa-4">
+            <div class="grid grid-cols-1 grid-cols-md-3 gap-4">
+                <RToggle @bind-Value="enablePersistence" Text="Enable Persistence" />
+                <RToggle @bind-Value="showQuickFilters" Text="Show Quick Filters" />
+                <RToggle @bind-Value="showAdvancedPanel" Text="Show Advanced Panel" />
+                <RToggle @bind-Value="enableRealTime" Text="Real-time Filtering" />
+                <RToggle @bind-Value="showFilterChips" Text="Show Filter Chips" />
+                <RToggle @bind-Value="showFilterCount" Text="Show Filter Count" />
+            </div>
+        </div>
+    </RCard>
+    
+    @* Display filtered data with RTable - Integrated Column Filters *@
+    <RCard Text="RTable with Integrated Column Filters" 
+           Subtitle="Click the tiny filter icons next to column headers"
+           Icon="table_chart"
+           Class="mb-6">
+        <div class="pa-4">
+            <RTable Items="@employees" 
+                    EnableColumnFilters="true"
+                    ShowSearch="true"
+                    ShowToolbar="true"
+                    ShowExportButton="true"
+                    EnableSorting="true"
+                    EnablePaging="true"
+                    PageSize="10"
+                    Striped="true"
+                    Hover="true" />
+        </div>
+    </RCard>
+    
+    @* Display filtered data with RGrid *@
+    <RCard Text="Filtered Results - RGrid with External Filter" 
+           Subtitle="RGrid displays data filtered by RFilterGeneric predicate"
+           Icon="grid_view">
+        <div class="pa-4">
+            @if (filteredEmployees.Any())
+            {
+                @* Use RGrid to display the filtered employee data *@
+                <RGrid DataSource="@filteredEmployees" 
+                       EnableFiltering="false"
+                       ShowHeader="true"
+                       EnablePaging="true"
+                       PageSize="25"
+                       EnableSorting="true"
+                       EnableColumnReordering="true"
+                       Striped="true"
+                       Hover="true" />
+            }
+            else
+            {
+                <REmptyState Icon="search_off" 
+                            Title="No Results" 
+                            Description="No employees match the current filter criteria." />
+            }
+        </div>
+    </RCard>
+    
+    <RCard Text="Integration Examples" Class="mt-6">
+        <div class="pa-4">
+            <div class="mb-4">
+                <h3 class="text-subtitle-1 mb-2">1. With RTable (Column Filters)</h3>
+                <pre class="pa-3 bg-surface-elevated rounded text-caption">
+@("<RTable Items=\"@employees\" EnableFiltering=\"true\" FilterDensity=\"DensityType.Dense\">\n" +
+  "    <TableFilter>\n" +
+  "        <RFilter @ref=\"tableFilter\" />\n" +
+  "    </TableFilter>\n" +
+  "</RTable>")
+                </pre>
+            </div>
+            
+            <div class="mb-4">
+                <h3 class="text-subtitle-1 mb-2">2. With RGrid (Row Filters)</h3>
+                <pre class="pa-3 bg-surface-elevated rounded text-caption">
+@("<RGrid Items=\"@employees\" BindFilter=\"@gridFilter\">\n" +
+  "    <GridFilters>\n" +
+  "        <RFilter @ref=\"gridFilter\" Mode=\"FilterMode.Row\" />\n" +
+  "    </GridFilters>\n" +
+  "</RGrid>")
+                </pre>
+            </div>
+            
+            <div>
+                <h3 class="text-subtitle-1 mb-2">3. Master-Detail Pattern</h3>
+                <pre class="pa-3 bg-surface-elevated rounded text-caption">
+@("<RFilter @ref=\"masterFilter\">\n" +
+  "    <RTable Items=\"@orders\" />     @* Auto-inherits filter *@\n" +
+  "    <RGrid Items=\"@orders\" />      @* Same filter applied *@\n" +
+  "    <RChart Data=\"@orders\" />      @* Chart rebuilds with filter *@\n" +
+  "</RFilter>")
+                </pre>
+            </div>
+        </div>
+    </RCard>
+</div>
+
+@code {
+    private RFilterGeneric<Employee>? standaloneFilter;
+    private List<Employee> employees = new();
+    private List<Employee> filteredEmployees = new();
+    private bool hasActiveFilters = false;
+    private int filteredCount = 0;
+    private bool enablePersistence = false;
+    
+    private Dictionary<string, FilterColumnDefinition> columnDefinitions = new();
+    private List<QuickFilterState> quickFilters = new();
+    private List<string> searchFields = new() { "Name", "Department", "Position" };
+    
+    // Settings
+    private bool showQuickFilters = true;
+    private bool showAdvancedPanel = true;
+    private bool enableRealTime = true;
+    private bool showFilterChips = true;
+    private bool showFilterCount = true;
+    
+    private UniversalFilterConfig filterConfig => new()
+    {
+        ShowSearch = true,
+        ShowQuickFilters = showQuickFilters,
+        ShowAdvancedPanel = showAdvancedPanel,
+        ShowFilterChips = showFilterChips,
+        ShowFilterCount = showFilterCount,
+        ShowClearButton = true,
+        EnableRealTime = enableRealTime
+    };
+    
+    protected override void OnInitialized()
+    {
+        // Setup column definitions for filtering
+        columnDefinitions = new Dictionary<string, FilterColumnDefinition>
+        {
+            ["Name"] = new FilterColumnDefinition(
+                Key: "Name", 
+                DisplayName: "Employee Name", 
+                Type: FilterType.Text, 
+                IsFilterable: true,
+                IsSearchable: true,
+                IsSortable: true,
+                SupportedOperators: new List<FilterOperator> { FilterOperator.Contains, FilterOperator.Equals, FilterOperator.NotEquals }
+            ),
+            ["Department"] = new FilterColumnDefinition(
+                Key: "Department", 
+                DisplayName: "Department", 
+                Type: FilterType.Select, 
+                IsFilterable: true,
+                IsSearchable: false,
+                IsSortable: true,
+                SupportedOperators: new List<FilterOperator> { FilterOperator.Equals, FilterOperator.NotEquals },
+                UniqueValues: new List<object> 
+                {
+                    "Engineering", "Sales", "Marketing", "HR", "Finance", "Operations"
+                }
+            ),
+            ["Position"] = new FilterColumnDefinition(
+                Key: "Position", 
+                DisplayName: "Position", 
+                Type: FilterType.Select, 
+                IsFilterable: true,
+                IsSearchable: false,
+                IsSortable: true,
+                SupportedOperators: new List<FilterOperator> { FilterOperator.Equals, FilterOperator.NotEquals },
+                UniqueValues: new List<object>
+                {
+                    "Manager", "Senior", "Junior", "Lead", "Director", "Analyst"
+                }
+            ),
+            ["Salary"] = new FilterColumnDefinition(
+                Key: "Salary", 
+                DisplayName: "Salary", 
+                Type: FilterType.Number, 
+                IsFilterable: true,
+                IsSearchable: false,
+                IsSortable: true,
+                SupportedOperators: new List<FilterOperator> { FilterOperator.Equals, FilterOperator.GreaterThan, FilterOperator.LessThan, FilterOperator.Between },
+                MinValue: 40000m,
+                MaxValue: 150000m
+            ),
+            ["HireDate"] = new FilterColumnDefinition(
+                Key: "HireDate", 
+                DisplayName: "Hire Date", 
+                Type: FilterType.Date, 
+                IsFilterable: true,
+                IsSearchable: false,
+                IsSortable: true,
+                SupportedOperators: new List<FilterOperator> { FilterOperator.Between, FilterOperator.GreaterThan, FilterOperator.LessThan }
+            ),
+            ["IsActive"] = new FilterColumnDefinition(
+                Key: "IsActive", 
+                DisplayName: "Status", 
+                Type: FilterType.Boolean, 
+                IsFilterable: true,
+                IsSearchable: false,
+                IsSortable: false,
+                SupportedOperators: new List<FilterOperator> { FilterOperator.Equals, FilterOperator.NotEquals }
+            )
+        };
+        
+        // Setup quick filters
+        quickFilters = new List<QuickFilterState>
+        {
+            new() 
+            { 
+                Key = "active",
+                Label = "Active Only", 
+                Icon = "check_circle",
+                IsActive = false,
+                FilterExpression = item => (item as Employee) != null && ((Employee)item).IsActive,
+                Description = "Show only active employees"
+            },
+            new() 
+            { 
+                Key = "high-earners",
+                Label = "High Earners", 
+                Icon = "attach_money",
+                IsActive = false,
+                FilterExpression = item => (item as Employee) != null && ((Employee)item).Salary > 100000,
+                Description = "Show employees earning over $100,000"
+            },
+            new()
+            {
+                Key = "recent",
+                Label = "Recent Hires",
+                Icon = "schedule",
+                IsActive = false,
+                FilterExpression = item => (item as Employee) != null && ((Employee)item).HireDate > DateTime.Now.AddYears(-1),
+                Description = "Show employees hired in the last year"
+            }
+        };
+        
+        // Generate test data
+        var departments = new[] { "Engineering", "Sales", "Marketing", "HR", "Finance", "Operations" };
+        var positions = new[] { "Manager", "Senior", "Junior", "Lead", "Director", "Analyst" };
+        var firstNames = new[] { "John", "Jane", "Bob", "Alice", "Charlie", "Diana", "Eve", "Frank", "Grace", "Henry" };
+        var lastNames = new[] { "Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", "Miller", "Davis", "Rodriguez", "Martinez" };
+        var random = new Random();
+        
+        for (int i = 1; i <= 100; i++)
+        {
+            employees.Add(new Employee
+            {
+                Id = i,
+                Name = $"{firstNames[random.Next(firstNames.Length)]} {lastNames[random.Next(lastNames.Length)]}",
+                Department = departments[random.Next(departments.Length)],
+                Position = positions[random.Next(positions.Length)],
+                Salary = random.Next(40000, 150000),
+                HireDate = DateTime.Now.AddDays(-random.Next(1, 3650)),
+                IsActive = random.Next(10) > 2 // 80% active
+            });
+        }
+        
+        filteredEmployees = employees;
+        filteredCount = employees.Count;
+    }
+    
+    private async Task HandleFilterChanged(object args)
+    {
+        hasActiveFilters = true;
+        
+        // Developer applies the filter predicate to their data
+        if (standaloneFilter != null)
+        {
+            var predicate = standaloneFilter.GetPredicate();
+            if (predicate != null)
+            {
+                // Apply predicate to data
+                filteredEmployees = employees.Where(predicate.Compile()).ToList();
+            }
+            else
+            {
+                filteredEmployees = employees;
+                hasActiveFilters = false;
+            }
+        }
+        
+        filteredCount = filteredEmployees.Count;
+        await InvokeAsync(StateHasChanged);
+    }
+    
+    private async Task HandlePredicateChanged(object predicate)
+    {
+        // Alternative event for direct predicate handling
+        Console.WriteLine($"Predicate changed: {predicate}");
+    }
+    
+    public class Employee
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = "";
+        public string Department { get; set; } = "";
+        public string Position { get; set; } = "";
+        public decimal Salary { get; set; }
+        public DateTime HireDate { get; set; }
+        public bool IsActive { get; set; }
+    }
+}

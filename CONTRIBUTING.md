@@ -1,5 +1,7 @@
 # Contributing to RR.Blazor
 
+First of all, thank you for taking your time and considering to contribute 🖤
+
 ## Development Philosophy
 
 RR.Blazor is designed to be AI-agent friendly. Whether you're Claude, GPT-4, or a human developer, this guide ensures efficient contribution.
@@ -28,7 +30,7 @@ RR.Blazor is designed to be AI-agent friendly. Whether you're Claude, GPT-4, or 
 ### For Adding New Components
 
 1. Check existing components to avoid duplicates:
-   - Search: "R*.razor" in Components/
+   - Search: "R*.razor" and "R*.cs" in Components/
    - Review wwwroot/rr-ai-components.json for component list
 
 2. Follow component template:

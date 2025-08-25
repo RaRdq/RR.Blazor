@@ -137,8 +137,8 @@
 <div class="d-flex justify-between align-center">
 
 <!-- Grid -->
-<div class="d-grid grid-cols-1 grid-cols-md-2 gap-4">
-<div class="d-grid grid-cols-12">
+<div class="grid grid-cols-1 grid-cols-md-2 gap-4">
+<div class="grid grid-cols-12">
 
 <!-- Common patterns -->
 <div class="flex-grow-1">Flexible item</div>
@@ -184,7 +184,7 @@
             <span class="text-h3 font-bold">$1,247,580</span>
             <RBadge Text="+12.3%" Variant="BadgeVariant.Success" />
         </div>
-        <div class="d-grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-2 gap-4">
             <RStatsCard Text="Monthly" Value="$892K" Icon="trending_up" />
             <RStatsCard Text="Quarterly" Value="$2.1M" Icon="bar_chart" />
         </div>

@@ -1,427 +1,79 @@
-@* RFilterBar - Universal filter and search component for business applications *@
-@using RR.Blazor.Enums
-@using RR.Blazor.Models
-@using RR.Blazor.Components.Form
+@namespace RR.Blazor.Components.Data
 @using RR.Blazor.Components.Base
-@inherits RForwardingComponentBase
+@using RR.Blazor.Components.Core
+@using RR.Blazor.Components.Form
+@using RR.Blazor.Enums
+@inherits RComponentBase
 
-<RCard Variant="CardVariant.Flat" Class="pa-4" @attributes="GetSafeAttributes()">
-    <div class="flex flex-wrap gap-4 items-center">
-        @* Search Field *@
-        @if (ShowSearch)
-        {
-            <div class="flex-1 min-w-64">
-                <RInput Type="FieldType.Search"
-                           Value="@SearchValue"
-                           ValueChanged="@(value => OnSearchValueChanged(value?.ToString()))"
-                           Placeholder="@SearchPlaceholder"
-                           StartIcon="search"
-                           Size="SizeType.Small" />
-            </div>
-        }
+<div class="@GetClasses()">
+    @if (ShowSearchBox)
+    {
+        <div class="filter-bar-search">
+            <RTextInput @bind-Value="@SearchValue" 
+                       Placeholder="@SearchPlaceholder"
+                       Icon="search"
+                       OnInput="@HandleSearchInput" />
+        </div>
+    }
     
-        @* Dynamic Filters *@
-        @if (Filters != null && Filters.Any())
-        {
-            @foreach (var filter in Filters)
-            {
-                @if (GetFilterFieldType(filter) == FieldType.Select)
-                {
-                    <RChoice SelectedValue="@filter.Value"
-                             SelectedValueChanged="@((value) => HandleFilterChanged(filter.Key, value?.ToString()))"
-                             AriaLabel="@filter.Label"
-                             Size="SizeType.Small"
-                             Class="min-w-32">
-                        @if (filter.Options != null)
-                        {
-                            @foreach (var option in filter.Options)
-                            {
-                                <RChoiceItem Value="@option.Value" Text="@option.Label" />
-                            }
-                        }
-                    </RChoice>
-                }
-                else
-                {
-                    <RInput Type="@GetFilterFieldType(filter)"
-                               Label="@filter.Label"
-                               Value="@filter.Value"
-                               ValueChanged="@(value => HandleFilterChanged(filter.Key, value?.ToString()))"
-                               Size="SizeType.Small"
-                               Class="min-w-32" />
-                }
-            }
-        }
-
-        @* Date Range Filter *@
-        @if (ShowDateRange)
-        {
-            <div class="flex gap-2 items-center">
-                <RInput Type="FieldType.Date"
-                           Label="From"
-                           Value="@DateFrom?.ToString("yyyy-MM-dd")"
-                           ValueChanged="@(value => HandleDateFromChanged(value?.ToString()))"
-                           Size="SizeType.Small"
-                           Class="w-40" />
-                <span class="text-secondary">to</span>
-                <RInput Type="FieldType.Date"
-                           Label="To"
-                           Value="@DateTo?.ToString("yyyy-MM-dd")"
-                           ValueChanged="@(value => HandleDateToChanged(value?.ToString()))"
-                           Size="SizeType.Small"
-                           Class="w-40" />
-            </div>
-        }
-
-        @* Quick Filter Buttons *@
-        @if (QuickFilters != null && QuickFilters.Any())
-        {
-            <div class="flex gap-2">
-                @foreach (var quickFilter in QuickFilters)
-                {
-                    <RButton Text="@quickFilter.Label"
-                             Icon="@quickFilter.Icon"
-                             IconPosition="IconPosition.Start"
-                             Variant="@(ActiveQuickFilters.Contains(quickFilter.Key) ? ButtonVariant.Primary : ButtonVariant.Ghost)"
-                             Size="SizeType.Medium"
-                             OnClick="@(async () => await ToggleQuickFilter(quickFilter.Key))" />
-                }
-            </div>
-        }
-
-        @* Status Filter *@
-        @if (ShowStatus && StatusOptions?.Any() == true)
-        {
-            <RChoice SelectedValue="@StatusFilter"
-                     SelectedValueChanged="@((value) => OnStatusFilterChanged(value?.ToString()))"
-                     AriaLabel="Status"
-                     Size="SizeType.Small"
-                     Class="min-w-32">
-                @if (StatusOptions != null)
-                {
-                    @foreach (var option in StatusOptions)
-                    {
-                        <RChoiceItem Value="@option.Key" Text="@option.Value" />
-                    }
-                }
-            </RChoice>
-        }
-
-        @* Custom Filter Content *@
-        @if (CustomFilters != null)
-        {
+    @if (ChildContent != null)
+    {
+        <div class="filter-bar-content">
+            @ChildContent
+        </div>
+    }
+    
+    @if (CustomFilters != null)
+    {
+        <div class="filter-bar-custom">
             @CustomFilters
-        }
-
-        @* Clear Filters Button *@
-        @if (ShowClearButton && HasActiveFilters())
-        {
-            <RButton Text="Clear All"
-                     Icon="clear"
-                     IconPosition="IconPosition.Start"
-                     Variant="ButtonVariant.Ghost"
-                     Size="SizeType.Medium"
-                     OnClick="@ClearAllFilters" />
-        }
-
-        @* Filter Count Badge *@
-        @if (ShowFilterCount && HasActiveFilters())
-        {
-            <div class="flex items-center gap-2">
-                <RChip Text="@($"{GetActiveFilterCount()} active")"
-                       Style="ChipStyle.Badge"
-                       Variant="VariantType.Info"
-                       Size="SizeType.Small" />
-            </div>
-        }
-    </div>
-</RCard>
+        </div>
+    }
+    
+    @if (ShowClearButton && HasActiveFilters)
+    {
+        <RButton Text="Clear Filters" 
+                Icon="close"
+                Variant="ButtonVariant.Secondary"
+                Size="SizeType.Small"
+                OnClick="@HandleClearFilters" />
+    }
+</div>
 
 @code {
-    /// <summary>Whether to show search input</summary>
-    [Parameter]
-    [AIParameter(Hint = "Display search text input field")]
-    public bool ShowSearch { get; set; } = true;
+    [Parameter] public bool ShowSearchBox { get; set; } = true;
+    [Parameter] public string SearchPlaceholder { get; set; } = "Search...";
+    [Parameter] public string SearchValue { get; set; }
+    [Parameter] public EventCallback<string> SearchValueChanged { get; set; }
+    [Parameter] public EventCallback<string> OnSearch { get; set; }
+    [Parameter] public bool ShowClearButton { get; set; } = true;
+    [Parameter] public bool HasActiveFilters { get; set; }
+    [Parameter] public EventCallback OnClearFilters { get; set; }
+    [Parameter] public RenderFragment CustomFilters { get; set; }
     
-    /// <summary>Search input value</summary>
-    [Parameter]
-    [AIParameter(Hint = "Current search text value", Example = "john doe")]
-    public string SearchValue { get; set; } = "";
-    
-    /// <summary>Search value changed callback</summary>
-    [Parameter]
-    [AIParameter(Hint = "Event fired when search value changes")]
-    public EventCallback<string> SearchValueChanged { get; set; }
-    
-    /// <summary>Search input placeholder text</summary>
-    [Parameter]
-    [AIParameter(Hint = "Placeholder text shown in search input", Example = "Search products...")]
-    public string SearchPlaceholder { get; set; } = "Search...";
-    
-    /// <summary>Dynamic filter definitions</summary>
-    [Parameter]
-    [AIParameter(Hint = "List of filter field definitions with labels, types, and options")]
-    public List<FilterDefinition> Filters { get; set; } = new();
-    
-    /// <summary>Filter changed callback</summary>
-    [Parameter]
-    [AIParameter(Hint = "Event fired when any filter value changes")]
-    public EventCallback<FilterChangedEventArgs> FilterChanged { get; set; }
-    
-    /// <summary>Whether to show date range filter</summary>
-    [Parameter]
-    [AIParameter(Hint = "Display date range picker with From/To fields")]
-    public bool ShowDateRange { get; set; }
-    
-    /// <summary>Date from value</summary>
-    [Parameter]
-    [AIParameter(Hint = "Start date for date range filter", Example = "2024-01-01")]
-    public DateTime? DateFrom { get; set; }
-    
-    /// <summary>Date to value</summary>
-    [Parameter]
-    [AIParameter(Hint = "End date for date range filter", Example = "2024-12-31")]
-    public DateTime? DateTo { get; set; }
-    
-    /// <summary>Date range changed callback</summary>
-    [Parameter]
-    [AIParameter(Hint = "Event fired when date range values change")]
-    public EventCallback<DateRangeChangedEventArgs> DateRangeChanged { get; set; }
-    
-    /// <summary>Quick filter button definitions</summary>
-    [Parameter]
-    [AIParameter(Hint = "List of toggleable filter buttons for common filters")]
-    public List<QuickFilterDefinition> QuickFilters { get; set; } = new();
-    
-    /// <summary>Active quick filter keys</summary>
-    [Parameter]
-    [AIParameter(Hint = "Set of currently active quick filter keys")]
-    public HashSet<string> ActiveQuickFilters { get; set; } = new();
-    
-    /// <summary>Quick filter toggled callback</summary>
-    [Parameter]
-    [AIParameter(Hint = "Event fired when quick filter is toggled on/off")]
-    public EventCallback<QuickFilterToggledEventArgs> QuickFilterToggled { get; set; }
-    
-    /// <summary>Whether to show status filter</summary>
-    [Parameter]
-    [AIParameter(Hint = "Display status dropdown filter")]
-    public bool ShowStatus { get; set; }
-    
-    /// <summary>Status filter value</summary>
-    [Parameter]
-    [AIParameter(Hint = "Currently selected status value", Example = "active")]
-    public string StatusFilter { get; set; } = "";
-    
-    /// <summary>Status filter options</summary>
-    [Parameter]
-    [AIParameter(Hint = "Dictionary of status values and display labels")]
-    public Dictionary<string, string> StatusOptions { get; set; } = new();
-    
-    /// <summary>Status filter changed callback</summary>
-    [Parameter]
-    [AIParameter(Hint = "Event fired when status filter value changes")]
-    public EventCallback<string> StatusFilterChanged { get; set; }
-    
-    /// <summary>Custom filter content</summary>
-    [Parameter]
-    [AIParameter(Hint = "Custom filter components rendered in the filter bar")]
-    public RenderFragment CustomFilters { get; set; }
-    
-    /// <summary>Whether to show clear all button</summary>
-    [Parameter]
-    [AIParameter(Hint = "Display button to clear all active filters")]
-    public bool ShowClearButton { get; set; } = true;
-    
-    /// <summary>Whether to show active filter count</summary>
-    [Parameter]
-    [AIParameter(Hint = "Display badge showing number of active filters")]
-    public bool ShowFilterCount { get; set; } = true;
-    
-    /// <summary>All filters cleared callback</summary>
-    [Parameter]
-    [AIParameter(Hint = "Event fired when all filters are cleared")]
-    public EventCallback FiltersCleared { get; set; }
-
-    private async Task OnSearchValueChanged(string value)
+    private async Task HandleSearchInput(ChangeEventArgs e)
     {
-        SearchValue = value;
-        await SearchValueChanged.InvokeAsync(value);
+        SearchValue = e.Value?.ToString() ?? "";
+        await SearchValueChanged.InvokeAsync(SearchValue);
+        await OnSearch.InvokeAsync(SearchValue);
     }
-
-    private async Task HandleFilterChanged(string key, string value)
-    {
-        var args = new FilterChangedEventArgs { Key = key, Value = value };
-        await FilterChanged.InvokeAsync(args);
-    }
-
-    private async Task HandleDateFromChanged(string value)
-    {
-        if (DateTime.TryParse(value, out var date))
-        {
-            DateFrom = date;
-            await DateRangeChanged.InvokeAsync(new DateRangeChangedEventArgs
-            {
-                DateFrom = DateFrom,
-                DateTo = DateTo
-            });
-        }
-    }
-
-    private async Task HandleDateToChanged(string value)
-    {
-        if (DateTime.TryParse(value, out var date))
-        {
-            DateTo = date;
-            await DateRangeChanged.InvokeAsync(new DateRangeChangedEventArgs
-            {
-                DateFrom = DateFrom,
-                DateTo = DateTo
-            });
-        }
-    }
-
-    private async Task ToggleQuickFilter(string key)
-    {
-        if (ActiveQuickFilters.Contains(key))
-        {
-            ActiveQuickFilters.Remove(key);
-        }
-        else
-        {
-            ActiveQuickFilters.Add(key);
-        }
-        
-        await QuickFilterToggled.InvokeAsync(new QuickFilterToggledEventArgs
-        {
-            Key = key,
-            IsActive = ActiveQuickFilters.Contains(key),
-            ActiveFilters = ActiveQuickFilters.ToList()
-        });
-    }
-
-    private async Task OnStatusFilterChanged(string value)
-    {
-        StatusFilter = value;
-        await StatusFilterChanged.InvokeAsync(value);
-    }
-
-    private async Task ClearAllFilters()
+    
+    private async Task HandleClearFilters()
     {
         SearchValue = "";
-        DateFrom = null;
-        DateTo = null;
-        StatusFilter = "";
-        ActiveQuickFilters.Clear();
+        await SearchValueChanged.InvokeAsync(SearchValue);
+        await OnClearFilters.InvokeAsync();
+    }
+    
+    private string GetClasses()
+    {
+        var classes = new List<string> { "filter-bar", "d-flex", "gap-3", "align-items-center", "mb-4" };
         
-
-        if (Filters?.Any() == true)
+        if (!string.IsNullOrEmpty(Class))
         {
-            foreach (var filter in Filters)
-            {
-                filter.Value = "";
-            }
+            classes.Add(Class);
         }
         
-        await FiltersCleared.InvokeAsync();
-    }
-
-    private bool HasActiveFilters()
-    {
-        return !string.IsNullOrEmpty(SearchValue) ||
-               DateFrom.HasValue ||
-               DateTo.HasValue ||
-               !string.IsNullOrEmpty(StatusFilter) ||
-               ActiveQuickFilters.Any() ||
-               (Filters?.Any(f => !string.IsNullOrEmpty(f.Value)) == true);
-    }
-
-    private int GetActiveFilterCount()
-    {
-        var count = 0;
-        if (!string.IsNullOrEmpty(SearchValue)) count++;
-        if (DateFrom.HasValue || DateTo.HasValue) count++;
-        if (!string.IsNullOrEmpty(StatusFilter)) count++;
-        count += ActiveQuickFilters.Count;
-        count += Filters?.Count(f => !string.IsNullOrEmpty(f.Value)) ?? 0;
-        return count;
-    }
-
-    private FieldType GetFilterFieldType(FilterDefinition filter)
-    {
-        return filter.Type switch
-        {
-            "select" => FieldType.Select,
-            "number" => FieldType.Number,
-            "date" => FieldType.Date,
-            "text" => FieldType.Text,
-            _ => FieldType.Select
-        };
-    }
-
-    private string GetFilterInputType(FilterDefinition filter)
-    {
-        return filter.Type switch
-        {
-            "number" => "number",
-            "date" => "date",
-            "text" => "text",
-            _ => "text"
-        };
+        return string.Join(" ", classes);
     }
 }
-
-@*
-Usage Examples:
-
-<!-- Basic search and filter bar -->
-<RFilterBar SearchValue="@searchTerm"
-           SearchValueChanged="@(value => searchTerm = value)"
-           Filters="@filterDefinitions"
-           FilterChanged="HandleFilterChanged" />
-
-<!-- Full business application filter bar -->
-<RFilterBar SearchValue="@searchTerm"
-           SearchValueChanged="@(value => searchTerm = value)"
-           ShowDateRange="true"
-           DateFrom="@startDate"
-           DateTo="@endDate"
-           DateRangeChanged="HandleDateRangeChanged"
-           ShowStatus="true"
-           StatusFilter="@statusFilter"
-           StatusOptions="@statusOptions"
-           StatusFilterChanged="@(value => statusFilter = value)"
-           QuickFilters="@quickFilterOptions"
-           ActiveQuickFilters="@activeQuickFilters"
-           QuickFilterToggled="HandleQuickFilterToggled"
-           ShowFilterCount="true"
-           ShowClearButton="true"
-           FiltersCleared="HandleFiltersCleared">
-    <CustomFilters>
-        <select class="rr-select rr-select-input"
-                @bind="departmentFilter">
-            <option value="">Department</option>
-            @if (departmentOptions != null)
-            {
-                @foreach (var option in departmentOptions)
-                {
-                    <option value="@option.Value">@option.Text</option>
-                }
-            }
-        </select>
-    </CustomFilters>
-</RFilterBar>
-
-<!-- E-commerce product filter -->
-<RFilterBar SearchPlaceholder="Search products..."
-           QuickFilters="@productQuickFilters"
-           Filters="@productFilters"
-           ShowStatus="false" />
-
-<!-- User management filter -->
-<RFilterBar SearchPlaceholder="Search users..."
-           ShowDateRange="true"
-           QuickFilters="@userQuickFilters"
-           StatusOptions="@userStatusOptions"
-           ShowStatus="true" />
-*@

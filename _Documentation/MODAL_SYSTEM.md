@@ -10,14 +10,15 @@ RR.Blazor's modal system provides enterprise-grade modal dialogs that render dir
 
 The modal system uses a portal-based architecture:
 
-1. **JavaScript Portal System** (`portal.js`) - Creates DOM portals at document.body level
-2. **Modal Manager** (`modal.js`) - Handles modal lifecycle, animations, and events
-3. **ModalService** (`ModalService.cs`) - Blazor service interface
-4. **Modal Components** (`RModal`, `RConfirmationModal`) - Blazor modal components
+1. **ModalProvider Component** (`RModalProvider.razor`) - Manages portal system and renders modals
+2. **JavaScript Portal System** (`portal.js`) - Creates DOM portals at document.body level
+3. **Modal Manager** (`modal.js`) - Handles modal lifecycle, animations, and events
+4. **ModalService** (`ModalService.cs`) - Blazor service interface
+5. **Modal Components** (`RModal`, `RConfirmationModal`) - Blazor modal components
 
 ### Key Benefits
 
-- **No RModalHost required** - Modals render directly to portals
+- **Simple ModalProvider setup** - Single component manages all modals
 - **Better z-index management** - Portal system handles stacking automatically
 - **Improved performance** - Direct DOM manipulation without Blazor reconciliation
 - **Clean separation of concerns** - JavaScript handles DOM, Blazor handles data
@@ -33,7 +34,7 @@ builder.Services.AddRRBlazor();
 
 ```razor
 <!-- App.razor or MainLayout.razor -->
-<!-- No special modal host component required -->
+<ModalProvider />
 @Body
 ```
 
@@ -240,11 +241,11 @@ If migrating from older versions that used RModalHost:
 
 ```razor
 <!-- MainLayout.razor -->
+<ModalProvider />
 @Body
-<!-- No modal host required -->
 ```
 
-The portal system creates the necessary DOM structure automatically when the first modal is shown.
+The ModalProvider component manages the portal system and creates the necessary DOM structure automatically when the first modal is shown.
 
 ## Performance
 

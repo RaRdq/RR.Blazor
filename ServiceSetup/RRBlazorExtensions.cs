@@ -85,8 +85,8 @@ namespace RR.Blazor.ServiceSetup
             serviceCollection.AddSingleton<IAppSearchService, AppSearchService>();
             serviceCollection.AddScoped<IAppConfigurationService, AppConfigurationService>();
             serviceCollection.AddSingleton<IPivotService, PivotService>();
-            serviceCollection.AddScoped<GridService>();
             serviceCollection.AddScoped<IFilterPersistenceService, FilterPersistenceService>();
+            serviceCollection.AddScoped<GridService>();
             
             // Register export services with default providers (enabled by default - use DisableExport to remove)
             RegisterExportServices(serviceCollection);
@@ -296,11 +296,6 @@ namespace RR.Blazor.ServiceSetup
                     configure(config);
                     
                     // Apply configuration to registered services
-                    if (config.DisableExcel)
-                    {
-                        var excelProvider = serviceCollection.FirstOrDefault(d => d.ImplementationType == typeof(ExcelExportProvider));
-                        if (excelProvider != null) serviceCollection.Remove(excelProvider);
-                    }
                     
                     if (config.AdditionalProviders?.Any() == true)
                     {
@@ -365,26 +360,9 @@ namespace RR.Blazor.ServiceSetup
             serviceCollection.AddSingleton<IExportProvider, JsonExportProvider>();
             serviceCollection.AddSingleton<IExportProvider, XmlExportProvider>();
             
-            // Excel provider is included by default but can be disabled
-            if (HasExcelDependency())
-            {
-                serviceCollection.AddSingleton<IExportProvider, ExcelExportProvider>();
-            }
+            // Excel provider removed - not part of UI component library
         }
         
-        private static bool HasExcelDependency()
-        {
-            // Check if ClosedXML is available at runtime
-            try
-            {
-                var closedXmlAssembly = System.Reflection.Assembly.Load("ClosedXML");
-                return closedXmlAssembly != null;
-            }
-            catch
-            {
-                return false;
-            }
-        }
     }
     
     /// <summary>

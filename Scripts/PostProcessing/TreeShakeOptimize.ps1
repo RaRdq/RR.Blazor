@@ -182,7 +182,7 @@ $safelist = @(
     # Animation classes
     'animate-*', 'transition-*', 'duration-*', 'ease-*',
     # Critical layout utilities
-    'd-flex', 'd-grid', 'd-block', 'd-none', 'container'
+    'flex', 'grid', 'block', 'container'
 )
 
 # Add component-specific safelists from registry
