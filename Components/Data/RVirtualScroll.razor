@@ -1,0 +1,264 @@
+@* RVirtualScroll - High-performance virtual scrolling component for RR.Blazor *@
+@typeparam TItem
+@using Microsoft.AspNetCore.Components
+@using Microsoft.JSInterop
+@using System.Threading
+@using RR.Blazor.Components.Base
+@inherits RComponentBase
+@implements IAsyncDisposable
+@inject IJSRuntime JSRuntime
+
+<div class="rvirtual-scroll @Class @GetContainerClasses()" 
+     style="--container-height: @(ContainerHeight)px; height: @(ContainerHeight)px;"
+     @ref="_scrollContainer"
+     @onscroll="@OnScroll"
+     @attributes="GetSafeAttributes()">
+    
+    @* Spacer to maintain proper scrollbar size *@
+    <div class="rvirtual-scroll-spacer" 
+         style="height: @((_itemsList?.Count ?? 0) * ItemHeight)px;">
+    </div>
+    
+    @* Rendered items container *@
+    <div class="rvirtual-scroll-viewport" 
+         style="transform: translateY(@(_startIndex * ItemHeight)px);">
+        @foreach (var item in _visibleItems)
+        {
+            <div class="rvirtual-scroll-item" 
+                 style="height: @(ItemHeight)px;"
+                 data-index="@item.Index">
+                @ItemTemplate(item.Item)
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    #region Parameters
+    
+    [Parameter] public IEnumerable<TItem> Items { get; set; }
+    [Parameter] public RenderFragment<TItem> ItemTemplate { get; set; }
+    [Parameter] public int ItemHeight { get; set; } = 32;
+    [Parameter] public int ContainerHeight { get; set; } = 300;
+    [Parameter] public int OverscanCount { get; set; } = 5;
+    [Parameter] public bool EnableMomentum { get; set; } = true;
+    [Parameter] public int ScrollThrottleMs { get; set; } = 16;
+    [Parameter] public EventCallback<int> OnVisibleRangeChanged { get; set; }
+    
+    #endregion
+    
+    #region Private Fields
+    
+    private ElementReference _scrollContainer;
+    private IJSObjectReference _jsModule;
+    private List<TItem> _itemsList;
+    private List<(int Index, TItem Item)> _visibleItems = new();
+    private int _scrollTop = 0;
+    private int _startIndex = 0;
+    private int _endIndex = 0;
+    private Timer _scrollThrottle;
+    private bool _isScrolling = false;
+    private CancellationTokenSource _scrollCts = new();
+    
+    #endregion
+    
+    #region Lifecycle
+    
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        UpdateItemsList();
+        CalculateVisibleRange();
+    }
+    
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+        
+        if (Items != null)
+        {
+            UpdateItemsList();
+            CalculateVisibleRange();
+        }
+    }
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Initialize JavaScript module for smooth scrolling
+            _jsModule = await JSRuntime.InvokeAsync<IJSObjectReference>(
+                "import", "./_content/RR.Blazor/js/virtual-scroll.js");
+            
+            if (EnableMomentum)
+            {
+                await _jsModule.InvokeVoidAsync("enableMomentumScrolling", _scrollContainer);
+            }
+        }
+        
+        await base.OnAfterRenderAsync(firstRender);
+    }
+    
+    #endregion
+    
+    #region Virtual Scrolling Logic
+    
+    private void UpdateItemsList()
+    {
+        _itemsList = Items?.ToList() ?? new List<TItem>();
+    }
+    
+    private void CalculateVisibleRange()
+    {
+        if (_itemsList == null || !_itemsList.Any())
+        {
+            _visibleItems.Clear();
+            return;
+        }
+        
+        var totalHeight = _itemsList.Count * ItemHeight;
+        var viewportHeight = ContainerHeight;
+        
+        // Calculate visible range with overscan
+        _startIndex = Math.Max(0, (_scrollTop / ItemHeight) - OverscanCount);
+        var visibleCount = (viewportHeight / ItemHeight) + (OverscanCount * 2);
+        _endIndex = Math.Min(_itemsList.Count - 1, _startIndex + visibleCount);
+        
+        // Update visible items
+        _visibleItems.Clear();
+        for (int i = _startIndex; i <= _endIndex; i++)
+        {
+            if (i < _itemsList.Count)
+            {
+                _visibleItems.Add((i, _itemsList[i]));
+            }
+        }
+        
+        // Notify about visible range change
+        if (OnVisibleRangeChanged.HasDelegate)
+        {
+            InvokeAsync(() => OnVisibleRangeChanged.InvokeAsync(_startIndex));
+        }
+    }
+    
+    private async Task OnScroll()
+    {
+        if (_isScrolling)
+            return;
+        
+        _isScrolling = true;
+        
+        // Cancel previous throttle
+        _scrollCts?.Cancel();
+        _scrollCts = new CancellationTokenSource();
+        var token = _scrollCts.Token;
+        
+        try
+        {
+            // Get scroll position from JavaScript
+            if (_jsModule != null)
+            {
+                _scrollTop = await _jsModule.InvokeAsync<int>(
+                    "getScrollTop", token, _scrollContainer);
+            }
+            
+            // Throttle the calculation
+            _scrollThrottle?.Dispose();
+            _scrollThrottle = new Timer(async _ =>
+            {
+                if (!token.IsCancellationRequested)
+                {
+                    await InvokeAsync(() =>
+                    {
+                        CalculateVisibleRange();
+                        StateHasChanged();
+                    });
+                }
+            }, null, ScrollThrottleMs, Timeout.Infinite);
+        }
+        catch (TaskCanceledException)
+        {
+            // Ignore cancelled tasks
+        }
+        finally
+        {
+            _isScrolling = false;
+        }
+    }
+    
+    #endregion
+    
+    #region Public Methods
+    
+    public async Task ScrollToIndex(int index)
+    {
+        if (_jsModule != null)
+        {
+            var scrollTop = index * ItemHeight;
+            await _jsModule.InvokeVoidAsync("scrollToPosition", 
+                _scrollContainer, scrollTop, EnableMomentum);
+            
+            _scrollTop = scrollTop;
+            CalculateVisibleRange();
+            StateHasChanged();
+        }
+    }
+    
+    public async Task ScrollToItem(TItem item)
+    {
+        var index = _itemsList?.IndexOf(item) ?? -1;
+        if (index >= 0)
+        {
+            await ScrollToIndex(index);
+        }
+    }
+    
+    public void RefreshItems()
+    {
+        UpdateItemsList();
+        CalculateVisibleRange();
+        StateHasChanged();
+    }
+    
+    #endregion
+    
+    #region Styling Helpers
+    
+    private string GetContainerClasses()
+    {
+        var classes = new List<string>
+        {
+            "overflow-y-auto",
+            "position-relative"
+        };
+        
+        return string.Join(" ", classes);
+    }
+    
+    
+    #endregion
+    
+    #region Cleanup
+    
+    public async ValueTask DisposeAsync()
+    {
+        _scrollThrottle?.Dispose();
+        _scrollCts?.Cancel();
+        _scrollCts?.Dispose();
+        
+        if (_jsModule != null)
+        {
+            try
+            {
+                await _jsModule.InvokeVoidAsync("cleanup", _scrollContainer);
+                await _jsModule.DisposeAsync();
+            }
+            catch
+            {
+                // Ignore disposal errors
+            }
+        }
+    }
+    
+    #endregion
+}

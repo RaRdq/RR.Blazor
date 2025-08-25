@@ -1,0 +1,123 @@
+@using RR.Blazor.Models
+@typeparam TItem where TItem : class
+
+<div class="pivot-field-chip @GetChipClass()" 
+     draggable="true"
+     @ondragstart="@HandleDragStart"
+     data-field="@Field.Key">
+    
+    <div class="pivot-field-chip-content">
+        <span class="icon pivot-field-icon">@GetFieldIcon()</span>
+        
+        <span class="pivot-field-name">@Field.DisplayName</span>
+        
+        @if (Field.FieldType == PivotFieldType.Measure)
+        {
+            <span class="pivot-field-aggregation">(@GetAggregationText())</span>
+        }
+        
+        @if (Field.DefaultSortDirection != PivotSortDirection.None)
+        {
+            <span class="icon pivot-sort-icon">
+                @(Field.DefaultSortDirection == PivotSortDirection.Ascending ? "arrow_upward" : "arrow_downward")
+            </span>
+        }
+        
+        @if (Field.FilterValues.Any() || Field.ExcludedValues.Any() || !string.IsNullOrEmpty(Field.SearchFilter))
+        {
+            <span class="icon pivot-filter-icon">filter_alt</span>
+        }
+    </div>
+    
+    <div class="pivot-field-chip-actions">
+        @if (AllowConfigure)
+        {
+            <button class="pivot-field-action-btn pivot-configure-btn"
+                    @onclick="@OnConfigureClick"
+                    @onclick:stopPropagation="true"
+                    title="Configure field">
+                <span class="icon">settings</span>
+            </button>
+        }
+        
+        @if (AllowRemove)
+        {
+            <button class="pivot-field-action-btn pivot-remove-btn"
+                    @onclick="@OnRemoveClick"
+                    @onclick:stopPropagation="true"
+                    title="Remove field">
+                <span class="icon">close</span>
+            </button>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public PivotField<TItem> Field { get; set; }
+    [Parameter] public bool AllowRemove { get; set; } = true;
+    [Parameter] public bool AllowConfigure { get; set; } = true;
+    [Parameter] public bool IsDragging { get; set; } = false;
+    [Parameter] public EventCallback OnRemove { get; set; }
+    [Parameter] public EventCallback OnConfigure { get; set; }
+    [Parameter] public EventCallback<DragEventArgs> OnDragStart { get; set; }
+
+    private async Task OnRemoveClick()
+    {
+        await OnRemove.InvokeAsync();
+    }
+
+    private async Task OnConfigureClick()
+    {
+        await OnConfigure.InvokeAsync();
+    }
+
+    private async Task HandleDragStart(DragEventArgs e)
+    {
+        await OnDragStart.InvokeAsync(e);
+    }
+
+    private string GetChipClass()
+    {
+        var classes = new List<string> { "pivot-field-chip" };
+        
+        classes.Add($"pivot-field-type-{Field.FieldType.ToString().ToLower()}");
+        
+        if (IsDragging) classes.Add("pivot-field-dragging");
+        if (Field.IsCalculated) classes.Add("pivot-field-calculated");
+        if (Field.FilterValues.Any() || Field.ExcludedValues.Any() || !string.IsNullOrEmpty(Field.SearchFilter))
+            classes.Add("pivot-field-filtered");
+        
+        return string.Join(" ", classes);
+    }
+
+    private string GetFieldIcon() => Field.FieldType switch
+    {
+        PivotFieldType.Dimension => Field.DataType switch
+        {
+            PivotDataType.Date => "event",
+            PivotDataType.DateTime => "schedule",
+            PivotDataType.Boolean => "check_box",
+            _ => "category"
+        },
+        PivotFieldType.Measure => Field.DataType switch
+        {
+            PivotDataType.Currency => "attach_money",
+            PivotDataType.Percentage => "percent",
+            _ => "functions"
+        },
+        PivotFieldType.Calculated => "calculate",
+        PivotFieldType.Filter => "filter_alt",
+        _ => "drag_indicator"
+    };
+
+    private string GetAggregationText() => Field.DefaultAggregation switch
+    {
+        AggregationType.Sum => "Sum",
+        AggregationType.Average => "Avg",
+        AggregationType.Count => "Count",
+        AggregationType.Min => "Min",
+        AggregationType.Max => "Max",
+        AggregationType.Custom => "Custom",
+        _ => "Sum"
+    };
+}

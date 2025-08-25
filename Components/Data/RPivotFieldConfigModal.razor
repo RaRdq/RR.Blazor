@@ -1,0 +1,413 @@
+@using RR.Blazor.Models
+@using RR.Blazor.Enums
+@typeparam TItem where TItem : class
+
+<RModal @bind-IsVisible="@IsVisible" 
+        Size="SizeType.Large"
+        Title="Configure Field"
+        OnClose="@OnCancel">
+    
+    <HeaderContent>
+        <div class="pivot-config-modal-header">
+            <span class="icon">@GetFieldIcon()</span>
+            <div>
+                <h4>Configure Field: @Field?.DisplayName</h4>
+                <small class="text-muted">@Field?.Key (@Field?.DataType)</small>
+            </div>
+        </div>
+    </HeaderContent>
+    
+    <ChildContent>
+        @if (Field != null)
+        {
+            <div class="pivot-config-content">
+                
+                @* Basic Configuration *@
+                <RFormSection Title="Basic Settings" Icon="settings">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <RTextInput @bind-Value="@Field.DisplayName"
+                                       Label="Display Name"
+                                       Required="true" />
+                        </div>
+                        <div class="col-md-6">
+                            <RSelectField @bind-Value="@FieldTypeString"
+                                         Label="Field Type">
+                                <option value="0">Dimension</option>
+                                <option value="1">Measure</option>
+                                <option value="2">Calculated</option>
+                                <option value="3">Filter</option>
+                            </RSelectField>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <RSelectField @bind-Value="@DataTypeString"
+                                         Label="Data Type">
+                                <option value="0">Text</option>
+                                <option value="1">Number</option>
+                                <option value="2">Currency</option>
+                                <option value="3">Percentage</option>
+                                <option value="4">Date</option>
+                                <option value="5">Date/Time</option>
+                                <option value="6">Time</option>
+                                <option value="7">Boolean</option>
+                                <option value="8">Custom</option>
+                            </RSelectField>
+                        </div>
+                        <div class="col-md-6">
+                            <RTextInput @bind-Value="@Field.Format"
+                                       Label="Format String"
+                                       Placeholder="e.g., C2, N0, yyyy-MM-dd" />
+                        </div>
+                    </div>
+                </RFormSection>
+
+                @* Aggregation Settings (for Measures) *@
+                @if (Field.FieldType == PivotFieldType.Measure)
+                {
+                    <RFormSection Title="Aggregation Settings" Icon="functions">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <RSelectField @bind-Value="@DefaultAggregationString"
+                                             Label="Default Aggregation">
+                                    <option value="1">Sum</option>
+                                    <option value="2">Average</option>
+                                    <option value="3">Count</option>
+                                    <option value="4">Minimum</option>
+                                    <option value="5">Maximum</option>
+                                    <option value="6">Custom</option>
+                                </RSelectField>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Supported Aggregations</label>
+                                <div class="pivot-aggregation-checkboxes">
+                                    @foreach (var agg in Enum.GetValues<AggregationType>().Where(a => a != AggregationType.None))
+                                    {
+                                        <RCheckbox Value="@GetAggregationEnabled(agg)"
+                                                  Text="@agg.ToString()"
+                                                  Size="SizeType.Small"
+                                                  ValueChanged="@((bool enabled) => ToggleAggregation(agg, enabled))" />
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </RFormSection>
+                }
+
+                @* Sorting and Grouping *@
+                <RFormSection Title="Sorting & Grouping" Icon="sort">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <RCheckbox @bind-Value="@Field.AllowSorting"
+                                      Text="Allow Sorting" />
+                        </div>
+                        <div class="col-md-4">
+                            <RCheckbox @bind-Value="@Field.AllowGrouping"
+                                      Text="Allow Grouping" />
+                        </div>
+                        <div class="col-md-4">
+                            <RCheckbox @bind-Value="@Field.SortByValue"
+                                      Text="Sort by Value" />
+                        </div>
+                    </div>
+                    
+                    @if (Field.AllowSorting)
+                    {
+                        <div class="row">
+                            <div class="col-md-6">
+                                <RSelectField @bind-Value="@DefaultSortDirectionString"
+                                             Label="Default Sort Direction">
+                                    <option value="2">None</option>
+                                    <option value="0">Ascending</option>
+                                    <option value="1">Descending</option>
+                                </RSelectField>
+                            </div>
+                        </div>
+                    }
+                </RFormSection>
+
+                @* Subtotals *@
+                <RFormSection Title="Subtotals" Icon="calculate">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <RCheckbox @bind-Value="@Field.ShowSubtotals"
+                                      Text="Show Subtotals" />
+                        </div>
+                        @if (Field.ShowSubtotals)
+                        {
+                            <div class="col-md-4">
+                                <RSelectField @bind-Value="@SubtotalPositionString"
+                                             Label="Subtotal Position">
+                                    <option value="0">Top</option>
+                                    <option value="1">Bottom</option>
+                                    <option value="2">Both</option>
+                                </RSelectField>
+                            </div>
+                            <div class="col-md-4">
+                                <RTextInput @bind-Value="@Field.SubtotalLabel"
+                                           Label="Subtotal Label"
+                                           Placeholder="Subtotal" />
+                            </div>
+                        }
+                    </div>
+                </RFormSection>
+
+                @* Filtering *@
+                <RFormSection Title="Filtering" Icon="filter_alt">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <RCheckbox @bind-Value="@Field.AllowFiltering"
+                                      Text="Allow Filtering" />
+                        </div>
+                    </div>
+                    
+                    @if (Field.AllowFiltering && DistinctValues.Any())
+                    {
+                        <div class="row mt-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Include Values</label>
+                                <div class="pivot-filter-values overflow-y-auto" style="max-height: 200px;">
+                                    @foreach (var value in DistinctValues.Take(50)) // Limit for performance
+                                    {
+                                        <RCheckbox Value="@GetFilterValueSelected(value)"
+                                                  Text="@value?.ToString()"
+                                                  Size="SizeType.Small"
+                                                  ValueChanged="@((bool selected) => ToggleFilterValue(value, selected))" />
+                                    }
+                                </div>
+                                @if (DistinctValues.Count > 50)
+                                {
+                                    <small class="text-muted">Showing first 50 values of @DistinctValues.Count total</small>
+                                }
+                            </div>
+                            <div class="col-md-6">
+                                <RTextInput @bind-Value="@Field.SearchFilter"
+                                           Label="Text Filter"
+                                           Placeholder="Filter by text..." />
+                            </div>
+                        </div>
+                    }
+                </RFormSection>
+
+                @* Drill-down Options *@
+                <RFormSection Title="Drill-down Options" Icon="open_in_new">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <RCheckbox @bind-Value="@Field.AllowDrillDown"
+                                      Text="Allow Drill Down" />
+                        </div>
+                        <div class="col-md-6">
+                            <RCheckbox @bind-Value="@Field.AllowDrillThrough"
+                                      Text="Allow Drill Through" />
+                        </div>
+                    </div>
+                </RFormSection>
+
+                @* Conditional Formatting *@
+                <RFormSection Title="Conditional Formatting" Icon="palette">
+                    <div class="pivot-conditional-formats">
+                        @foreach (var format in Field.ConditionalFormats)
+                        {
+                            <div class="pivot-format-rule">
+                                <div class="row align-items-center">
+                                    <div class="col-md-3">
+                                        <RSelectField Value="@GetFormatTypeString(format)"
+                                                     ValueChanged="@((string value) => SetFormatTypeString(format, value))"
+                                                     Label="Format Type"
+                                                     Size="SizeType.Small">
+                                            <option value="0">Background Color</option>
+                                            <option value="1">Text Color</option>
+                                            <option value="2">Icon</option>
+                                            <option value="3">Data Bar</option>
+                                            <option value="4">Color Scale</option>
+                                        </RSelectField>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <RTextInput @bind-Value="@format.BackgroundColor"
+                                                   Label="Color"
+                                                   Size="SizeType.Small"
+                                                   Placeholder="#FF0000" />
+                                    </div>
+                                    <div class="col-md-4">
+                                        <RTextInput @bind-Value="@format.Name"
+                                                   Label="Rule Name"
+                                                   Size="SizeType.Small"
+                                                   Placeholder="High values" />
+                                    </div>
+                                    <div class="col-md-2">
+                                        <button class="btn btn-sm btn-outline-danger"
+                                                @onclick="@(() => RemoveConditionalFormat(format))">
+                                            <span class="icon">delete</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                        
+                        <RButton Variant="ButtonVariant.Ghost" 
+                                Icon="add" 
+                                Size="SizeType.Small"
+                                OnClick="@AddConditionalFormat">
+                            Add Format Rule
+                        </RButton>
+                    </div>
+                </RFormSection>
+            </div>
+        }
+    </ChildContent>
+    
+    <FooterContent>
+        <div class="pivot-config-modal-footer">
+            <RButton Variant="ButtonVariant.Secondary" 
+                    OnClick="@HandleCancel">
+                Cancel
+            </RButton>
+            <RButton Variant="ButtonVariant.Primary" 
+                    OnClick="@HandleSave">
+                Save Changes
+            </RButton>
+        </div>
+    </FooterContent>
+</RModal>
+
+@code {
+    [Parameter] public PivotField<TItem> Field { get; set; }
+    [Parameter] public EventCallback<PivotField<TItem>> OnSave { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    private bool IsVisible = true;
+    private List<object> DistinctValues = new();
+
+    // String conversion properties for enum binding
+    private string FieldTypeString
+    {
+        get => Field?.FieldType != null ? ((int)Field.FieldType).ToString() : "0";
+        set { if (Field != null && int.TryParse(value, out var result)) Field.FieldType = (PivotFieldType)result; }
+    }
+
+    private string DataTypeString
+    {
+        get => Field?.DataType != null ? ((int)Field.DataType).ToString() : "0";
+        set { if (Field != null && int.TryParse(value, out var result)) Field.DataType = (PivotDataType)result; }
+    }
+
+    private string DefaultAggregationString
+    {
+        get => Field?.DefaultAggregation != null ? ((int)Field.DefaultAggregation).ToString() : "1";
+        set { if (Field != null && int.TryParse(value, out var result)) Field.DefaultAggregation = (AggregationType)result; }
+    }
+
+    private string DefaultSortDirectionString
+    {
+        get => Field?.DefaultSortDirection != null ? ((int)Field.DefaultSortDirection).ToString() : "2";
+        set { if (Field != null && int.TryParse(value, out var result)) Field.DefaultSortDirection = (PivotSortDirection)result; }
+    }
+
+    private string SubtotalPositionString
+    {
+        get => Field?.SubtotalPosition != null ? ((int)Field.SubtotalPosition).ToString() : "0";
+        set { if (Field != null && int.TryParse(value, out var result)) Field.SubtotalPosition = (SubtotalPosition)result; }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Field != null)
+        {
+            // In a real implementation, you'd load distinct values from the data source
+            DistinctValues = new List<object> { "Sample Value 1", "Sample Value 2", "Sample Value 3" };
+        }
+    }
+
+    private string GetFieldIcon() => Field?.FieldType switch
+    {
+        PivotFieldType.Dimension => "category",
+        PivotFieldType.Measure => "functions", 
+        PivotFieldType.Calculated => "calculate",
+        PivotFieldType.Filter => "filter_alt",
+        _ => "drag_indicator"
+    };
+
+    private string GetFormatTypeString(ConditionalFormatRule format)
+    {
+        return format?.FormatType != null ? ((int)format.FormatType).ToString() : "0";
+    }
+
+    private void SetFormatTypeString(ConditionalFormatRule format, string value)
+    {
+        if (format != null && int.TryParse(value, out var result))
+            format.FormatType = (FormatType)result;
+    }
+
+    private bool GetAggregationEnabled(AggregationType aggregation)
+    {
+        return Field?.SupportedAggregations?.Contains(aggregation) ?? false;
+    }
+
+    private void ToggleAggregation(AggregationType aggregation, bool enabled)
+    {
+        if (Field?.SupportedAggregations == null) return;
+
+        if (enabled && !Field.SupportedAggregations.Contains(aggregation))
+        {
+            Field.SupportedAggregations.Add(aggregation);
+        }
+        else if (!enabled && Field.SupportedAggregations.Contains(aggregation))
+        {
+            Field.SupportedAggregations.Remove(aggregation);
+        }
+    }
+
+    private bool GetFilterValueSelected(object value)
+    {
+        return Field?.FilterValues?.Contains(value) ?? false;
+    }
+
+    private void ToggleFilterValue(object value, bool selected)
+    {
+        if (Field?.FilterValues == null) return;
+
+        if (selected && !Field.FilterValues.Contains(value))
+        {
+            Field.FilterValues.Add(value);
+        }
+        else if (!selected && Field.FilterValues.Contains(value))
+        {
+            Field.FilterValues.Remove(value);
+        }
+    }
+
+    private void AddConditionalFormat()
+    {
+        var formats = Field.ConditionalFormats.ToList();
+        formats.Add(new ConditionalFormatRule
+        {
+            Name = $"Rule {formats.Count + 1}",
+            FormatType = FormatType.BackgroundColor,
+            BackgroundColor = "#FFE6E6"
+        });
+        Field.ConditionalFormats = formats.ToArray();
+        StateHasChanged();
+    }
+
+    private void RemoveConditionalFormat(ConditionalFormatRule format)
+    {
+        var formats = Field.ConditionalFormats.ToList();
+        formats.Remove(format);
+        Field.ConditionalFormats = formats.ToArray();
+        StateHasChanged();
+    }
+
+    private async Task HandleSave()
+    {
+        IsVisible = false;
+        await OnSave.InvokeAsync(Field);
+    }
+
+    private async Task HandleCancel()
+    {
+        IsVisible = false;
+        await OnCancel.InvokeAsync();
+    }
+}

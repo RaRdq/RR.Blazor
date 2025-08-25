@@ -1,0 +1,410 @@
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.Extensions.Logging
+@using RR.Blazor.Models
+@using RR.Blazor.Services
+@using RR.Blazor.Enums
+@using RR.Blazor.Components.Base
+@typeparam TItem where TItem : class
+@inherits RComponentBase
+
+@inject IPivotService PivotService
+@inject IJSRuntime JSRuntime
+@inject ILogger<RPivotGrid<TItem>> Logger
+
+@{
+    // Early return guard clauses - flat structure
+    var hasData = Data?.Any() == true;
+    var hasConfig = Configuration != null;
+    var showFieldPanel = ShowFieldPanel && Configuration?.EnableDragDrop == true;
+    var isProcessing = IsLoading;
+    var hasError = !string.IsNullOrEmpty(ErrorMessage);
+    var hasResult = PivotResult != null && !isProcessing && !hasError;
+}
+
+<div class="pivot-grid @GetDensityClass() @GetOptimizationClass() @CssClass" 
+     id="@PivotId" 
+     data-pivot-id="@PivotId"
+     data-performance-mode="@(Configuration?.PerformanceMode ?? true)"
+     data-virtualized="@(Configuration?.EnableVirtualization ?? true)">
+
+    @* Header Section - Early return pattern *@
+    @if (Configuration?.ShowHeader == true)
+    {
+        <div class="pivot-header">
+            <div class="pivot-header-content">
+                @if (!string.IsNullOrEmpty(Configuration.Icon))
+                {
+                    <span class="icon pivot-header-icon">@Configuration.Icon</span>
+                }
+                <div class="pivot-header-text">
+                    @if (!string.IsNullOrEmpty(Configuration.Title))
+                    {
+                        <h3 class="pivot-header-title">@Configuration.Title</h3>
+                    }
+                    @if (!string.IsNullOrEmpty(Configuration.Subtitle))
+                    {
+                        <p class="pivot-header-subtitle">@Configuration.Subtitle</p>
+                    }
+                </div>
+            </div>
+            
+            <div class="pivot-header-actions">
+                @if (Configuration.EnableExport)
+                {
+                    <RButton Variant="ButtonVariant.Ghost" 
+                            Icon="download" 
+                            Size="SizeType.Small"
+                            OnClick="@OnExportClick">
+                        Export
+                    </RButton>
+                }
+                @HeaderActions
+            </div>
+        </div>
+    }
+
+    @* Field Configuration Panel - Early return pattern *@
+    @if (showFieldPanel)
+    {
+        <RPivotFieldPanel Configuration="@Configuration" 
+                         OnFieldChanged="@OnFieldChanged" 
+                         OnFieldConfigRequested="@ConfigureField" />
+    }
+
+    @* Content rendering with early returns - no deep nesting *@
+    @if (isProcessing)
+    {
+        <RPivotLoadingState LoadingProgress="@LoadingProgress" 
+                           LoadingMessage="@LoadingMessage" />
+    }
+
+    @if (hasError)
+    {
+        <RAlert Type="AlertType.Error" 
+               Icon="error"
+               Title="Pivot Processing Error">
+            @ErrorMessage
+        </RAlert>
+    }
+
+    @if (!hasResult)
+    {
+        <RPivotEmptyState Icon="pivot_table_chart" 
+                         Text="No Data Available">
+            Configure fields and provide data to generate the pivot table.
+            @EmptyStateContent
+        </RPivotEmptyState>
+    }
+
+    @* Main Content - Only rendered when we have valid results *@
+    <RPivotTableContainer PivotResult="@PivotResult" 
+                         Configuration="@Configuration" 
+                         OnCellClick="@OnCellClick"
+                         OnCellDoubleClick="@OnCellDoubleClick"
+                         OnDrillThrough="@HandleDrillThrough"
+                         OnHeaderClick="@OnHeaderClick"
+                         OnRowToggle="@ToggleRowExpansion" />
+
+    @* Performance Info - Only show when enabled *@
+    @if (ShowPerformanceInfo && PivotResult != null)
+    {
+        <RPivotPerformanceInfo PivotResult="@PivotResult" />
+    }
+</div>
+
+@* Modals - Flat structure *@
+@if (ShowFieldConfigModal && ConfiguringField != null)
+{
+    <RPivotFieldConfigModal Field="@ConfiguringField"
+                           OnSave="@(EventCallback.Factory.Create<PivotField<TItem>>(this, OnFieldConfigSave))"
+                           OnCancel="@OnFieldConfigCancel" />
+}
+
+@if (ShowExportModal)
+{
+    <RPivotExportModal Configuration="@ExportConfiguration"
+                      OnExport="@OnExportConfirm"
+                      OnCancel="@OnExportCancel" />
+}
+
+@code {
+    [Parameter] public IEnumerable<TItem> Data { get; set; } = Enumerable.Empty<TItem>();
+    [Parameter] public PivotConfiguration<TItem> Configuration { get; set; } = new();
+    [Parameter] public string CssClass { get; set; } = string.Empty;
+    [Parameter] public bool ShowFieldPanel { get; set; } = true;
+    [Parameter] public bool ShowPerformanceInfo { get; set; } = false;
+    [Parameter] public RenderFragment HeaderActions { get; set; }
+    [Parameter] public RenderFragment EmptyStateContent { get; set; }
+    
+    // Events - flattened
+    [Parameter] public EventCallback<PivotFieldEventArgs<TItem>> OnFieldChanged { get; set; }
+    [Parameter] public EventCallback<PivotDrillEventArgs<TItem>> OnDrillDown { get; set; }
+    [Parameter] public EventCallback<PivotDrillEventArgs<TItem>> OnDrillThrough { get; set; }
+    [Parameter] public EventCallback<PivotDataCell<TItem>> OnCellClick { get; set; }
+    [Parameter] public EventCallback<PivotDataCell<TItem>> OnCellDoubleClick { get; set; }
+    [Parameter] public EventCallback<PivotResult<TItem>> OnDataProcessed { get; set; }
+    [Parameter] public EventCallback<byte[]> OnExportCompleted { get; set; }
+
+    // Private fields - minimal state
+    private string PivotId => Configuration?.PivotId ?? Guid.NewGuid().ToString();
+    private PivotResult<TItem> PivotResult;
+    private bool IsLoading = false;
+    private string LoadingMessage = "Processing data...";
+    private double LoadingProgress = 0;
+    private string ErrorMessage = string.Empty;
+    private bool ShowFieldConfigModal = false;
+    private bool ShowExportModal = false;
+    private PivotField<TItem> ConfiguringField;
+    private PivotExportConfiguration ExportConfiguration = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Enable performance optimizations by default
+        Configuration ??= new PivotConfiguration<TItem>();
+        EnableDefaultOptimizations();
+        
+        await RegisterWithJavaScript();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!Data?.Any() == true || Configuration == null) return;
+        
+        await RefreshPivotAsync();
+    }
+
+    private void EnableDefaultOptimizations()
+    {
+        if (Configuration.PerformanceMode == null) Configuration.PerformanceMode = true;
+        if (Configuration.EnableVirtualization == null) Configuration.EnableVirtualization = true;
+        if (Configuration.OptimisticUpdates == null) Configuration.OptimisticUpdates = true;
+        if (Configuration.BatchUpdates == null) Configuration.BatchUpdates = true;
+        
+        if (Configuration.MaxCells <= 0)
+        {
+            Configuration.MaxCells = 100000; // Reasonable default
+        }
+    }
+
+    private async Task RegisterWithJavaScript()
+    {
+        try
+        {
+            await SafeInvokeAsync("RRBlazor.Pivot.register", PivotId, new
+            {
+                enableDragDrop = Configuration.EnableDragDrop,
+                enableSorting = Configuration.EnableSorting,
+                enableDrilldown = Configuration.EnableDrillDown,
+                performanceMode = Configuration.PerformanceMode == true,
+                virtualization = Configuration.EnableVirtualization == true
+            });
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to register pivot with JavaScript");
+        }
+    }
+
+    private async Task RefreshPivotAsync()
+    {
+        if (IsLoading) return; // Prevent concurrent refreshes
+        
+        try
+        {
+            IsLoading = true;
+            LoadingMessage = "Processing pivot data...";
+            LoadingProgress = 0;
+            ErrorMessage = string.Empty;
+            StateHasChanged();
+
+            await UpdateProgress(25, "Analyzing data structure...");
+            
+            PivotResult = await PivotService.ProcessDataAsync(Data, Configuration);
+            
+            await UpdateProgress(100, "Complete");
+            
+            await OnDataProcessed.InvokeAsync(PivotResult);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error processing pivot data for pivot {PivotId}", PivotId);
+            ErrorMessage = $"Failed to process data: {ex.Message}";
+        }
+        finally
+        {
+            IsLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task UpdateProgress(double progress, string message)
+    {
+        LoadingProgress = progress;
+        LoadingMessage = message;
+        StateHasChanged();
+        await Task.Yield(); // Allow UI to update
+    }
+
+    #region Event Handlers - Flat structure with early returns
+
+    private async Task OnHeaderClick(PivotHeader<TItem> header)
+    {
+        if (!Configuration.EnableSorting || header.Field == null) return;
+
+        // Let JavaScript handle optimistic updates, then process server-side
+        var currentSort = header.Field.DefaultSortDirection;
+        header.Field.DefaultSortDirection = GetNextSortDirection(currentSort);
+        
+        await RefreshPivotAsync();
+    }
+
+    private PivotSortDirection GetNextSortDirection(PivotSortDirection current) => current switch
+    {
+        PivotSortDirection.Ascending => PivotSortDirection.Descending,
+        PivotSortDirection.Descending => PivotSortDirection.None,
+        _ => PivotSortDirection.Ascending
+    };
+
+    private async Task HandleDrillThrough(PivotDataCell<TItem> cell)
+    {
+        if (cell?.Field == null) return;
+
+        var eventArgs = new PivotDrillEventArgs<TItem>
+        {
+            CellContext = new PivotCellContext<TItem>
+            {
+                Value = cell.Value,
+                FormattedValue = cell.FormattedValue,
+                Field = cell.Field
+            },
+            Action = PivotDrillAction.DrillThrough
+        };
+        
+        await OnDrillThrough.InvokeAsync(eventArgs);
+    }
+
+    private async Task ToggleRowExpansion(PivotHeader<TItem> rowHeader)
+    {
+        if (!Configuration.EnableDrillDown) return;
+
+        rowHeader.IsExpanded = !rowHeader.IsExpanded;
+        
+        var eventArgs = new PivotDrillEventArgs<TItem>
+        {
+            Action = rowHeader.IsExpanded ? PivotDrillAction.DrillDown : PivotDrillAction.DrillUp
+        };
+        
+        await OnDrillDown.InvokeAsync(eventArgs);
+        StateHasChanged();
+    }
+
+    #endregion
+
+    #region Field Management - Simplified
+
+    private void ConfigureField(PivotField<TItem> field)
+    {
+        ConfiguringField = field;
+        ShowFieldConfigModal = true;
+        StateHasChanged();
+    }
+
+    private async Task OnFieldConfigSave(PivotField<TItem> field)
+    {
+        ShowFieldConfigModal = false;
+        ConfiguringField = null;
+        await RefreshPivotAsync();
+    }
+
+    private void OnFieldConfigCancel()
+    {
+        ShowFieldConfigModal = false;
+        ConfiguringField = null;
+        StateHasChanged();
+    }
+
+    #endregion
+
+    #region Export - Simplified
+
+    private void OnExportClick()
+    {
+        ExportConfiguration = CreateDefaultExportConfig();
+        ShowExportModal = true;
+        StateHasChanged();
+    }
+
+    private PivotExportConfiguration CreateDefaultExportConfig() => new()
+    {
+        Format = ExportFormat.Excel,
+        FileName = $"PivotTable_{DateTime.Now:yyyyMMdd_HHmmss}",
+        IncludeHeaders = true,
+        IncludeSubtotals = Configuration.EnableSubtotals,
+        IncludeGrandTotals = Configuration.EnableGrandTotals
+    };
+
+    private async Task OnExportConfirm(PivotExportConfiguration config)
+    {
+        ShowExportModal = false;
+        
+        if (PivotResult == null) return;
+
+        try
+        {
+            var exportData = await PivotService.ExportAsync(PivotResult, config);
+            await OnExportCompleted.InvokeAsync(exportData);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error exporting pivot data for pivot {PivotId}", PivotId);
+            ErrorMessage = $"Export failed: {ex.Message}";
+        }
+        
+        StateHasChanged();
+    }
+
+    private void OnExportCancel()
+    {
+        ShowExportModal = false;
+        StateHasChanged();
+    }
+
+    #endregion
+
+    #region Helper Methods - Optimized
+
+    private string GetDensityClass() => Configuration?.Density switch
+    {
+        DensityType.Compact => "pivot-grid-compact",
+        DensityType.Dense => "pivot-grid-dense", 
+        DensityType.Spacious => "pivot-grid-spacious",
+        _ => ""
+    };
+
+    private string GetOptimizationClass()
+    {
+        var classes = new List<string>();
+        
+        if (Configuration?.EnableVirtualization == true)
+            classes.Add("pivot-grid-virtualized");
+            
+        if (Configuration?.PerformanceMode == true)
+            classes.Add("pivot-grid-performance");
+            
+        return string.Join(" ", classes);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await SafeInvokeAsync("RRBlazor.Pivot.unregister", PivotId);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to unregister pivot {PivotId} from JavaScript", PivotId);
+        }
+    }
+
+    #endregion
+}
