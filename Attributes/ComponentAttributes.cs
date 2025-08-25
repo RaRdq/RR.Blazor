@@ -46,7 +46,7 @@ public AIParameterAttribute(string hint, string example)
     public string[] SuggestedValues { get; set; } = Array.Empty<string>();
     public bool IsRequired { get; set; } = false;
 
-    public string Example { get; set; } // Temp fix Unused
+    public string Example { get; set; }
 }
 
 /// <summary>

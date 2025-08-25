@@ -114,7 +114,6 @@ public abstract class RModalBase : RComponentBase
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error notifying service of modal open: {ex.Message}");
             }
         }
     }
@@ -129,7 +128,6 @@ public abstract class RModalBase : RComponentBase
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error notifying service of modal close: {ex.Message}");
             }
         }
     }

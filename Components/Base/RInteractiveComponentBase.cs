@@ -82,9 +82,6 @@ namespace RR.Blazor.Components.Base
         protected override IEnumerable<string> GetBaseCssClasses()
         {
             var classes = base.GetBaseCssClasses().ToList();
-            
-            if (Loading)
-                classes.Add("loading");
                 
             if (!Disabled && !Loading)
                 classes.Add("interactive");

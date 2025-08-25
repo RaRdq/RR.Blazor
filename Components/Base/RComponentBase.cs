@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
 using RR.Blazor.Attributes;
 using RR.Blazor.Enums;
+using RR.Blazor.Services;
 
 namespace RR.Blazor.Components.Base
 {
@@ -70,9 +71,12 @@ namespace RR.Blazor.Components.Base
 
         [Inject] protected ILogger<RComponentBase>? Logger { get; set; }
         [Inject] protected IJSRuntime? JSRuntime { get; set; }
+        [Inject] protected IJavaScriptInteropService? JSInterop { get; set; }
         
         private readonly List<CancellationTokenSource> _cancellationTokenSources = new();
         private bool _disposed;
+        private bool _jsInitialized;
+        private bool? _isWebAssembly;
 
         /// <summary>
         /// Get a cancellation token that is cancelled when the component is disposed
@@ -85,6 +89,102 @@ namespace RR.Blazor.Components.Base
                 _cancellationTokenSources.Add(cts);
                 return cts.Token;
             }
+        }
+
+        #endregion
+
+        #region Universal JavaScript Interop Support
+        
+        /// <summary>
+        /// Override this to implement component-specific JavaScript initialization
+        /// Called when JavaScript interop is safe and available
+        /// </summary>
+        protected virtual Task InitializeJavaScriptAsync()
+        {
+            return Task.CompletedTask;
+        }
+        
+        /// <summary>
+        /// Detects if running in WebAssembly mode
+        /// </summary>
+        protected bool IsWebAssembly
+        {
+            get
+            {
+                if (!_isWebAssembly.HasValue)
+                {
+                    _isWebAssembly = JSRuntime is IJSInProcessRuntime || OperatingSystem.IsBrowser();
+                }
+                return _isWebAssembly.Value;
+            }
+        }
+        
+        protected async Task<T> SafeInvokeAsync<T>(string identifier, params object[] args)
+        {
+            if (_disposed) throw new ObjectDisposedException(GetType().Name);
+            
+            // Only apply DOM synchronization for Blazor Server
+            if (!IsWebAssembly)
+            {
+                // For Blazor Server: ensure DOM is ready before JS calls
+                T result = default(T);
+                await InvokeAsync(async () =>
+                {
+                    await Task.Yield();
+                    result = await JSInterop.TryInvokeAsync<T>(identifier, args);
+                });
+                return result;
+            }
+            
+            // WebAssembly: Direct call
+            return await JSInterop.TryInvokeAsync<T>(identifier, args);
+        }
+
+        /// <summary>
+        /// Safely invokes JavaScript function without expecting return value - optimized for void calls
+        /// </summary>
+        protected async Task SafeInvokeAsync(string identifier, params object[] args)
+        {
+            if (_disposed) throw new ObjectDisposedException(GetType().Name);
+            
+            // Only apply DOM synchronization for Blazor Server
+            if (!IsWebAssembly)
+            {
+                // For Blazor Server: ensure DOM is ready before JS calls
+                await InvokeAsync(async () =>
+                {
+                    await Task.Yield();
+                    await JSInterop.TryInvokeVoidAsync(identifier, args);
+                });
+            }
+            else
+            {
+                // WebAssembly: Direct call
+                await JSInterop.TryInvokeVoidAsync(identifier, args);
+            }
+        }
+
+        /// <summary>
+        /// Safely initializes JavaScript for the component - called automatically
+        /// Only called when interactive rendering is available
+        /// </summary>
+        protected override async Task OnAfterRenderAsync(bool firstRender)
+        {
+            if (firstRender && !_jsInitialized && !_disposed)
+            {
+                // For Blazor Server, ensure DOM is fully ready
+                if (!IsWebAssembly)
+                {
+                    await Task.Yield();
+                }
+                
+                await InitializeJavaScriptAsync();
+                _jsInitialized = true;
+                Logger?.LogDebug("Component {ComponentType} JavaScript initialized (Mode: {Mode})", 
+                    GetType().Name, IsWebAssembly ? "WebAssembly" : "Server");
+            }
+            
+            await base.OnAfterRenderAsync(firstRender);
         }
 
         #endregion
@@ -156,7 +256,7 @@ namespace RR.Blazor.Components.Base
             {
                 DensityType.Compact => "density-compact",
                 DensityType.Dense => "density-dense",
-                DensityType.Normal => "density-normal",
+                DensityType.Normal => "density-normal", 
                 DensityType.Spacious => "density-spacious",
                 _ => "density-normal"
             };
@@ -167,6 +267,9 @@ namespace RR.Blazor.Components.Base
         /// </summary>
         protected virtual Dictionary<string, object> GetMergedAttributes()
         {
+            if (AdditionalAttributes == null && string.IsNullOrEmpty(Style))
+                return new Dictionary<string, object>();
+            
             var attributes = AdditionalAttributes ?? new Dictionary<string, object>();
             
             if (!string.IsNullOrEmpty(Style))

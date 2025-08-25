@@ -78,7 +78,7 @@ namespace RR.Blazor.Components.Base
         {
             var classes = new List<string>
             {
-                "material-symbols-rounded",
+                "icon",
                 GetIconSizeClasses(),
                 GetDensityIconClasses()
             };

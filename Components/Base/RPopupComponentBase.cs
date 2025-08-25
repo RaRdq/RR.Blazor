@@ -54,7 +54,7 @@ public abstract class RPopupComponentBase : RComponentBase, IAsyncDisposable
         {
             try
             {
-                await JSRuntime.InvokeVoidAsync("RRBlazor.Portal.destroy", portalId);
+                await SafeInvokeAsync("RRBlazor.Portal.destroy", portalId);
             }
             catch
             {
@@ -104,7 +104,7 @@ public abstract class RPopupComponentBase : RComponentBase, IAsyncDisposable
         {
             if (!string.IsNullOrEmpty(portalId))
             {
-                await JSRuntime.InvokeVoidAsync("RRBlazor.Portal.destroy", portalId);
+                await SafeInvokeAsync("RRBlazor.Portal.destroy", portalId);
             }
         }
         catch

@@ -2,6 +2,9 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
 using System.Linq.Expressions;
 using System.Collections.Concurrent;
+using Microsoft.Extensions.Logging;
+using Microsoft.JSInterop;
+using RR.Blazor.Services;
 
 namespace RR.Blazor.Components.Base;
 
@@ -269,10 +272,8 @@ public static class RAttributeForwarder
     }
 }
 
-public abstract class RForwardingComponentBase : ComponentBase
+public abstract class RForwardingComponentBase : RComponentBase
 {
-    [Parameter(CaptureUnmatchedValues = true)] 
-    public Dictionary<string, object> AdditionalAttributes { get; set; }
     
     protected virtual Dictionary<string, object> GetSafeAttributes()
     {

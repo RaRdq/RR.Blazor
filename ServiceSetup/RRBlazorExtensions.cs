@@ -1,11 +1,15 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 #if RRCORE_ENABLED
 using RR.Core.ServiceSetup;
 #endif
 using RR.Blazor.Services;
+using RR.Blazor.Services.Export;
+using RR.Blazor.Services.Export.Providers;
 using RR.Blazor.Models;
+using RR.Blazor.Interfaces;
 using Blazored.LocalStorage;
 using System.Linq;
 
@@ -72,13 +76,20 @@ namespace RR.Blazor.ServiceSetup
                 serviceCollection.AddBlazoredLocalStorage();
             }
 
-            // Register core RR.Blazor services
+            // Register core RR.Blazor services - Universal services work with both Server and WebAssembly
+            serviceCollection.AddScoped<IJavaScriptInteropService, JavaScriptInteropService>();
             serviceCollection.AddScoped<IThemeService, BlazorThemeService>();
-            serviceCollection.AddScoped<IToastService, ToastService>();
-            serviceCollection.AddScoped<IAppSearchService, AppSearchService>();
-            serviceCollection.AddScoped<IAppConfigurationService, AppConfigurationService>();
             serviceCollection.AddScoped<IModalService, ModalService>();
-            // ModalStackService removed - DOM management fully delegated to JavaScript
+            serviceCollection.AddScoped<IModalServiceCore>(provider => provider.GetRequiredService<IModalService>() as IModalServiceCore);
+            serviceCollection.AddSingleton<IToastService, ToastService>();
+            serviceCollection.AddSingleton<IAppSearchService, AppSearchService>();
+            serviceCollection.AddScoped<IAppConfigurationService, AppConfigurationService>();
+            serviceCollection.AddSingleton<IPivotService, PivotService>();
+            serviceCollection.AddScoped<GridService>();
+            serviceCollection.AddScoped<IFilterPersistenceService, FilterPersistenceService>();
+            
+            // Register export services with default providers (enabled by default - use DisableExport to remove)
+            RegisterExportServices(serviceCollection);
             
             // Register default toast configuration
             serviceCollection.AddSingleton(new ToastServiceOptions
@@ -250,6 +261,57 @@ namespace RR.Blazor.ServiceSetup
                 };
                 return this;
             }
+            
+            /// <summary>
+            /// Disable export features (inverted configuration - enabled by default)
+            /// </summary>
+            /// <returns>Configuration instance for chaining</returns>
+            public RRBlazorConfiguration DisableExport()
+            {
+                OnBuild += () =>
+                {
+                    // Remove export services if user explicitly disables
+                    var exportDescriptors = serviceCollection
+                        .Where(d => d.ServiceType.Namespace?.Contains("Export") == true)
+                        .ToList();
+                    
+                    foreach (var descriptor in exportDescriptors)
+                    {
+                        serviceCollection.Remove(descriptor);
+                    }
+                };
+                return this;
+            }
+            
+            /// <summary>
+            /// Configure export options (export is enabled by default)
+            /// </summary>
+            /// <param name="configure">Export configuration action</param>
+            /// <returns>Configuration instance for chaining</returns>
+            public RRBlazorConfiguration WithExportOptions(Action<ExportConfiguration> configure)
+            {
+                OnBuild += () =>
+                {
+                    var config = new ExportConfiguration();
+                    configure(config);
+                    
+                    // Apply configuration to registered services
+                    if (config.DisableExcel)
+                    {
+                        var excelProvider = serviceCollection.FirstOrDefault(d => d.ImplementationType == typeof(ExcelExportProvider));
+                        if (excelProvider != null) serviceCollection.Remove(excelProvider);
+                    }
+                    
+                    if (config.AdditionalProviders?.Any() == true)
+                    {
+                        foreach (var providerType in config.AdditionalProviders)
+                        {
+                            serviceCollection.AddSingleton(typeof(IExportProvider), providerType);
+                        }
+                    }
+                };
+                return this;
+            }
 
             internal void Build()
             {
@@ -277,8 +339,69 @@ namespace RR.Blazor.ServiceSetup
             public int DefaultDuration { get; set; } = 200;
             public string DefaultEasing { get; set; } = "cubic-bezier(0, 0, 0.2, 1)";
         }
+        
+        private static void RegisterExportServices(IServiceCollection serviceCollection)
+        {
+            // Register core export services
+            serviceCollection.AddSingleton<ICoreExportService>(provider =>
+            {
+                var logger = provider.GetRequiredService<ILogger<CoreExportService>>();
+                var exportService = new CoreExportService(logger);
+                
+                // Auto-register all IExportProvider implementations
+                var providers = provider.GetServices<IExportProvider>();
+                foreach (var exportProvider in providers)
+                {
+                    exportService.RegisterExportProvider(exportProvider);
+                }
+                
+                return exportService;
+            });
+            
+            serviceCollection.AddScoped<IExportService, ExportService>();
+            
+            // Register default providers (CSV, JSON, XML are always included)
+            serviceCollection.AddSingleton<IExportProvider, CsvExportProvider>();
+            serviceCollection.AddSingleton<IExportProvider, JsonExportProvider>();
+            serviceCollection.AddSingleton<IExportProvider, XmlExportProvider>();
+            
+            // Excel provider is included by default but can be disabled
+            if (HasExcelDependency())
+            {
+                serviceCollection.AddSingleton<IExportProvider, ExcelExportProvider>();
+            }
+        }
+        
+        private static bool HasExcelDependency()
+        {
+            // Check if ClosedXML is available at runtime
+            try
+            {
+                var closedXmlAssembly = System.Reflection.Assembly.Load("ClosedXML");
+                return closedXmlAssembly != null;
+            }
+            catch
+            {
+                return false;
+            }
+        }
     }
-
+    
+    /// <summary>
+    /// Export configuration for RR.Blazor
+    /// </summary>
+    public class ExportConfiguration
+    {
+        /// <summary>Disable Excel export (enabled by default if ClosedXML available)</summary>
+        public bool DisableExcel { get; set; }
+        
+        /// <summary>Additional custom export providers to register</summary>
+        public List<Type> AdditionalProviders { get; set; } = new();
+        
+        /// <summary>Default export options</summary>
+        public ExportOptions DefaultOptions { get; set; } = new();
+    }
+    
     /// <summary>
     /// Tree-shaking configuration options for RR.Blazor
     /// </summary>

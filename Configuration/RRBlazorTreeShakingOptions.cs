@@ -35,7 +35,7 @@ public class RRBlazorTreeShakingOptions
     /// </summary>
     public List<string> SafelistPatterns { get; set; } = new()
     {
-        "rr-*", "blazor-*", "r-*",
+        "rr-*", "blazor-*", "table-*", "file-*", "upload-*", "button-*",
         "hover\\:", "focus\\:", "active\\:", "disabled\\:",
         "sm\\:", "md\\:", "lg\\:", "xl\\:",
         "animate-*", "transition-*", "duration-*", "ease-*"
