@@ -1,201 +1,220 @@
 using RR.Blazor.Enums;
+using System.Collections.Generic;
 
 namespace RR.Blazor.Utilities
 {
     /// <summary>
-    /// Utility class for density-based calculations and CSS class generation
+    /// Density helper for consistent density application across all R components
     /// </summary>
     public static class DensityHelper
     {
-        #region Padding Utilities
-        
-        /// <summary>
-        /// Gets padding classes based on density and base size
-        /// </summary>
-        public static string GetPadding(DensityType density, string baseSize = "3")
+        private static readonly Dictionary<DensityType, double> DensityScales = new()
         {
-            return density switch
+            { DensityType.Compact, 0.5 },
+            { DensityType.Dense, 0.75 },
+            { DensityType.Normal, 1.0 },
+            { DensityType.Spacious, 1.5 }
+        };
+
+        private static readonly Dictionary<DensityType, Dictionary<string, string>> TextSizeMap = new Dictionary<DensityType, Dictionary<string, string>>
+        {
+            { DensityType.Compact, new Dictionary<string, string> { ["sm"] = "xs", ["base"] = "sm", ["lg"] = "base", ["xl"] = "lg" } },
+            { DensityType.Dense, new Dictionary<string, string> { ["sm"] = "sm", ["base"] = "base", ["lg"] = "lg", ["xl"] = "xl" } },
+            { DensityType.Normal, new Dictionary<string, string> { ["sm"] = "sm", ["base"] = "base", ["lg"] = "lg", ["xl"] = "xl" } },
+            { DensityType.Spacious, new Dictionary<string, string> { ["sm"] = "base", ["base"] = "lg", ["lg"] = "xl", ["xl"] = "2xl" } }
+        };
+
+        /// <summary>
+        /// Gets the density class for any component
+        /// </summary>
+        public static string GetDensityClass(string componentName, DensityType density)
+        {
+            if (density == DensityType.Normal && !ShouldAlwaysApplyDensity(componentName))
+                return string.Empty;
+
+            return $"{componentName}-density-{density.ToString().ToLower()}";
+        }
+
+        /// <summary>
+        /// Determines if a component should always apply density classes
+        /// </summary>
+        private static bool ShouldAlwaysApplyDensity(string componentName)
+        {
+            // Components that should always have explicit density classes
+            var alwaysApply = new[] { "card", "table", "list", "form", "modal" };
+            return Array.Exists(alwaysApply, c => c == componentName.ToLower());
+        }
+
+        /// <summary>
+        /// Gets spacing value based on density
+        /// </summary>
+        public static int GetSpacing(DensityType density, int baseValue)
+        {
+            var scale = DensityScales[density];
+            var calculated = baseValue * scale;
+            
+            if (calculated < 1) return 1;
+            if (calculated < 2) return (int)Math.Round(calculated * 2) / 2; // Round to 0.5
+            return (int)Math.Round(calculated);
+        }
+
+        /// <summary>
+        /// Gets padding CSS variable based on density
+        /// </summary>
+        public static string GetPaddingVar(DensityType density, ComponentSize size = ComponentSize.Medium)
+        {
+            var baseValue = size switch
             {
-                DensityType.Compact => $"p-{AdjustSize(baseSize, -1)}",
-                DensityType.Dense => $"p-{AdjustSize(baseSize, -0.5)}",
-                DensityType.Normal => $"p-{baseSize}",
-                DensityType.Spacious => $"p-{AdjustSize(baseSize, 1)}",
-                _ => $"p-{baseSize}"
+                ComponentSize.Small => 2,
+                ComponentSize.Medium => 3,
+                ComponentSize.Large => 4,
+                ComponentSize.ExtraLarge => 6,
+                _ => 3
+            };
+
+            var spacing = GetSpacing(density, baseValue);
+            return GetSpaceVar(spacing);
+        }
+
+        /// <summary>
+        /// Gets gap CSS variable based on density
+        /// </summary>
+        public static string GetGapVar(DensityType density, ComponentSize size = ComponentSize.Medium)
+        {
+            var baseValue = size switch
+            {
+                ComponentSize.Small => 1,
+                ComponentSize.Medium => 2,
+                ComponentSize.Large => 3,
+                _ => 2
+            };
+
+            var spacing = GetSpacing(density, baseValue);
+            return GetSpaceVar(spacing);
+        }
+
+        /// <summary>
+        /// Gets text size based on density
+        /// </summary>
+        public static string GetTextSize(DensityType density, string baseSize = "base")
+        {
+            if (TextSizeMap.TryGetValue(density, out var sizeMap) && 
+                sizeMap.TryGetValue(baseSize, out var size))
+            {
+                return $"text-{size}";
+            }
+            return $"text-{baseSize}";
+        }
+
+        /// <summary>
+        /// Gets icon size based on density
+        /// </summary>
+        public static string GetIconSize(DensityType density, string baseSize = "lg")
+        {
+            return GetTextSize(density, baseSize);
+        }
+
+        /// <summary>
+        /// Gets height based on density
+        /// </summary>
+        public static string GetHeightVar(DensityType density, int baseHeight = 10)
+        {
+            var height = GetSpacing(density, baseHeight);
+            return GetSpaceVar(height);
+        }
+
+        /// <summary>
+        /// Converts spacing value to CSS variable
+        /// </summary>
+        private static string GetSpaceVar(double value)
+        {
+            return value switch
+            {
+                0.5 => "var(--space-0-5)",
+                1.5 => "var(--space-1-5)",
+                2.5 => "var(--space-2-5)",
+                _ => $"var(--space-{(int)Math.Round(value)})"
             };
         }
-        
+
         /// <summary>
-        /// Gets horizontal padding classes based on density
-        /// </summary>
-        public static string GetHorizontalPadding(DensityType density, string baseSize = "4")
-        {
-            return density switch
-            {
-                DensityType.Compact => $"px-{AdjustSize(baseSize, -1)}",
-                DensityType.Dense => $"px-{AdjustSize(baseSize, -0.5)}",
-                DensityType.Normal => $"px-{baseSize}",
-                DensityType.Spacious => $"px-{AdjustSize(baseSize, 1)}",
-                _ => $"px-{baseSize}"
-            };
-        }
-        
-        /// <summary>
-        /// Gets vertical padding classes based on density
-        /// </summary>
-        public static string GetVerticalPadding(DensityType density, string baseSize = "3")
-        {
-            return density switch
-            {
-                DensityType.Compact => $"py-{AdjustSize(baseSize, -1)}",
-                DensityType.Dense => $"py-{AdjustSize(baseSize, -0.5)}",
-                DensityType.Normal => $"py-{baseSize}",
-                DensityType.Spacious => $"py-{AdjustSize(baseSize, 1)}",
-                _ => $"py-{baseSize}"
-            };
-        }
-        
-        #endregion
-        
-        #region Gap Utilities
-        
-        /// <summary>
-        /// Gets gap classes based on density
+        /// Gets gap CSS class for component spacing
         /// </summary>
         public static string GetGap(DensityType density)
         {
-            return density switch
-            {
-                DensityType.Compact => "gap-1",
-                DensityType.Dense => "gap-2",
-                DensityType.Normal => "gap-3",
-                DensityType.Spacious => "gap-4",
-                _ => "gap-3"
-            };
+            var gapValue = GetSpacing(density, 2);
+            return GetSpaceVar(gapValue);
         }
-        
+
         /// <summary>
-        /// Gets horizontal gap classes based on density
+        /// Gets margin CSS variable based on density
         /// </summary>
-        public static string GetHorizontalGap(DensityType density)
+        public static string GetMargin(DensityType density, string baseValue = "1")
         {
-            return density switch
-            {
-                DensityType.Compact => "gap-x-1",
-                DensityType.Dense => "gap-x-2",
-                DensityType.Normal => "gap-x-3",
-                DensityType.Spacious => "gap-x-4",
-                _ => "gap-x-3"
-            };
+            var baseInt = int.TryParse(baseValue, out var parsed) ? parsed : 1;
+            var marginValue = GetSpacing(density, baseInt);
+            return GetSpaceVar(marginValue);
         }
-        
+
         /// <summary>
-        /// Gets vertical gap classes based on density
-        /// </summary>
-        public static string GetVerticalGap(DensityType density)
-        {
-            return density switch
-            {
-                DensityType.Compact => "gap-y-1",
-                DensityType.Dense => "gap-y-2",
-                DensityType.Normal => "gap-y-3",
-                DensityType.Spacious => "gap-y-4",
-                _ => "gap-y-3"
-            };
-        }
-        
-        #endregion
-        
-        #region Spacing Utilities
-        
-        /// <summary>
-        /// Gets margin classes based on density
-        /// </summary>
-        public static string GetMargin(DensityType density, string baseSize = "2")
-        {
-            return density switch
-            {
-                DensityType.Compact => $"m-{AdjustSize(baseSize, -1)}",
-                DensityType.Dense => $"m-{AdjustSize(baseSize, -0.5)}",
-                DensityType.Normal => $"m-{baseSize}",
-                DensityType.Spacious => $"m-{AdjustSize(baseSize, 1)}",
-                _ => $"m-{baseSize}"
-            };
-        }
-        
-        #endregion
-        
-        #region Size Adjustments
-        
-        /// <summary>
-        /// Adjusts a size value based on density offset
-        /// </summary>
-        public static string AdjustSize(string baseSize, double offset)
-        {
-            if (int.TryParse(baseSize, out var size))
-            {
-                var adjustedSize = Math.Max(0, size + (int)offset);
-                return adjustedSize.ToString();
-            }
-            
-            // Handle fractional sizes like "1.5", "2.5", etc.
-            if (double.TryParse(baseSize, out var fractionalSize))
-            {
-                var adjustedSize = Math.Max(0, fractionalSize + offset);
-                return adjustedSize % 1 == 0 ? ((int)adjustedSize).ToString() : adjustedSize.ToString();
-            }
-            
-            return baseSize;
-        }
-        
-        #endregion
-        
-        #region Component-Specific Utilities
-        
-        /// <summary>
-        /// Gets button-specific density classes
-        /// </summary>
-        public static string GetButtonDensityClasses(DensityType density)
-        {
-            return density switch
-            {
-                DensityType.Compact => "px-2 py-1",
-                DensityType.Dense => "px-3 py-1.5",
-                DensityType.Normal => "px-4 py-2",
-                DensityType.Spacious => "px-6 py-3",
-                _ => "px-4 py-2"
-            };
-        }
-        
-        /// <summary>
-        /// Gets input-specific density classes
+        /// Gets density classes specific to input components
         /// </summary>
         public static string GetInputDensityClasses(DensityType density)
         {
-            return density switch
-            {
-                DensityType.Compact => "px-2 py-1 text-sm",
-                DensityType.Dense => "px-2 py-1.5 text-sm",
-                DensityType.Normal => "px-2 py-2 text-base",
-                DensityType.Spacious => "px-4 py-3 text-base",
-                _ => "px-2 py-2 text-base"
-            };
+            var classes = new List<string>();
+            var densityClass = density.ToString().ToLower();
+            
+            classes.Add($"input-density-{densityClass}");
+            classes.Add($"density-{densityClass}");
+            
+            return string.Join(" ", classes);
         }
-        
+
         /// <summary>
-        /// Gets card-specific density classes
+        /// Gets horizontal padding CSS variable
         /// </summary>
-        public static string GetCardDensityClasses(DensityType density)
+        public static string GetHorizontalPadding(DensityType density, string baseValue = "3")
         {
-            return density switch
-            {
-                DensityType.Compact => "p-3",
-                DensityType.Dense => "p-4",
-                DensityType.Normal => "p-6",
-                DensityType.Spacious => "p-8",
-                _ => "p-6"
-            };
+            var baseInt = int.TryParse(baseValue, out var parsed) ? parsed : 3;
+            var paddingValue = GetSpacing(density, baseInt);
+            return GetSpaceVar(paddingValue);
         }
-        
-        #endregion
+
+        /// <summary>
+        /// Gets vertical padding CSS variable
+        /// </summary>
+        public static string GetVerticalPadding(DensityType density, string baseValue = "2")
+        {
+            var baseInt = int.TryParse(baseValue, out var parsed) ? parsed : 2;
+            var paddingValue = GetSpacing(density, baseInt);
+            return GetSpaceVar(paddingValue);
+        }
+
+        /// <summary>
+        /// Builds complete density classes for a component
+        /// </summary>
+        public static string BuildDensityClasses(string componentName, DensityType density, params string[] additionalClasses)
+        {
+            var classes = new List<string>();
+            
+            var densityClass = GetDensityClass(componentName, density);
+            if (!string.IsNullOrEmpty(densityClass))
+                classes.Add(densityClass);
+
+            classes.AddRange(additionalClasses.Where(c => !string.IsNullOrEmpty(c)));
+            
+            return string.Join(" ", classes);
+        }
+    }
+
+    /// <summary>
+    /// Component size for density calculations
+    /// </summary>
+    public enum ComponentSize
+    {
+        Small,
+        Medium,
+        Large,
+        ExtraLarge
     }
 }

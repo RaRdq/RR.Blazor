@@ -1,0 +1,363 @@
+// Universal Density System for RR.Blazor Components
+// ==========================================================================
+// This file provides a comprehensive, reusable density system that ensures
+// consistent spacing across all R components while maintaining flexibility
+
+// Density Scale Maps
+// ==========================================================================
+// Define multipliers for each density level relative to normal (1.0)
+$density-scales: (
+  'compact': 0.5,    // 50% of normal
+  'dense': 0.75,     // 75% of normal  
+  'normal': 1.0,     // 100% baseline
+  'comfortable': 1.25, // 125% of normal
+  'spacious': 1.5    // 150% of normal
+);
+
+// Component-specific base values (in CSS var units)
+$density-bases: (
+  // Padding bases
+  'padding-sm': 2,      // Small components (badges, chips)
+  'padding-md': 3,      // Medium components (buttons, inputs)
+  'padding-lg': 4,      // Large components (cards, panels)
+  'padding-xl': 6,      // Extra large (modals, dialogs)
+  
+  // Gap bases
+  'gap-sm': 1,          // Tight gaps
+  'gap-md': 2,          // Medium gaps
+  'gap-lg': 3,          // Large gaps
+  
+  // Margin bases
+  'margin-sm': 1,       // Small margins
+  'margin-md': 2,       // Medium margins
+  'margin-lg': 3,       // Large margins
+  
+  // Text size bases
+  'text-sm': 'sm',      // Small text
+  'text-md': 'base',    // Medium text
+  'text-lg': 'lg',      // Large text
+  
+  // Icon size bases
+  'icon-sm': 'base',    // Small icons
+  'icon-md': 'lg',      // Medium icons
+  'icon-lg': 'xl',      // Large icons
+);
+
+// Core Density Calculation Function
+// ==========================================================================
+@function density-calc($base-value, $density: 'normal') {
+  $scale: map-get($density-scales, $density);
+  @if not $scale {
+    @warn "Unknown density: #{$density}";
+    @return $base-value;
+  }
+  
+  @if type-of($base-value) == 'number' {
+    $calculated: $base-value * $scale;
+    
+    // Round to nearest 0.5 for cleaner values
+    @if $calculated < 1 {
+      @return 0.5;
+    } @else if $calculated < 2 {
+      @return round($calculated * 2) / 2; // Round to 0.5
+    } @else {
+      @return round($calculated);
+    }
+  }
+  
+  @return $base-value;
+}
+
+// Get CSS variable for space value
+@function space-var($value) {
+  @if $value == 0.5 {
+    @return var(--space-0-5);
+  } @else if $value == 1.5 {
+    @return var(--space-1-5);
+  } @else if $value == 2.5 {
+    @return var(--space-2-5);
+  } @else {
+    @return var(--space-#{round($value)});
+  }
+}
+
+// Get text size for density
+@function text-size-for-density($base: 'base', $density: 'normal') {
+  @if $density == 'compact' {
+    @if $base == 'xl' or $base == '2xl' { @return 'base'; }
+    @if $base == 'lg' { @return 'sm'; }
+    @if $base == 'base' { @return 'xs'; }
+    @return 'xs';
+  } @else if $density == 'dense' {
+    @if $base == '2xl' { @return 'lg'; }
+    @if $base == 'xl' { @return 'base'; }
+    @if $base == 'lg' { @return 'base'; }
+    @if $base == 'base' { @return 'sm'; }
+    @return 'sm';
+  } @else if $density == 'spacious' {
+    @if $base == 'sm' { @return 'base'; }
+    @if $base == 'base' { @return 'lg'; }
+    @if $base == 'lg' { @return 'xl'; }
+    @if $base == 'xl' { @return '2xl'; }
+    @return 'xl';
+  } @else if $density == 'comfortable' {
+    @if $base == 'sm' { @return 'base'; }
+    @if $base == 'base' { @return 'lg'; }
+    @return 'lg';
+  }
+  @return $base;
+}
+
+// Primary Density Mixins
+// ==========================================================================
+
+// Apply density to a component's spacing
+@mixin apply-density($density: 'normal', $component-size: 'md') {
+  // Get base values
+  $padding-base: map-get($density-bases, 'padding-#{$component-size}');
+  $gap-base: map-get($density-bases, 'gap-#{$component-size}');
+  $margin-base: map-get($density-bases, 'margin-#{$component-size}');
+  
+  // Calculate density-adjusted values
+  $padding: density-calc($padding-base, $density);
+  $gap: density-calc($gap-base, $density);
+  $margin: density-calc($margin-base, $density);
+  
+  // Apply spacing
+  padding: space-var($padding);
+  gap: space-var($gap);
+  
+  // Text and icon sizing
+  @if $component-size == 'sm' {
+    font-size: var(--text-#{text-size-for-density('sm', $density)});
+  } @else if $component-size == 'lg' {
+    font-size: var(--text-#{text-size-for-density('lg', $density)});
+  } @else {
+    font-size: var(--text-#{text-size-for-density('base', $density)});
+  }
+}
+
+// Component-Specific Density Mixins
+// ==========================================================================
+
+// Card density
+@mixin card-density($density: 'normal') {
+  @include apply-density($density, 'lg');
+  
+  .card-header {
+    $gap: density-calc(2, $density);
+    gap: space-var($gap);
+    margin-bottom: space-var(density-calc(2, $density));
+    padding: 0; // Let parent padding handle it
+  }
+  
+  .card-body {
+    padding: 0; // Let parent padding handle it
+  }
+  
+  .card-actions {
+    $padding-top: density-calc(3, $density);
+    padding-top: space-var($padding-top);
+    gap: space-var(density-calc(2, $density));
+  }
+  
+  .card-title {
+    font-size: var(--text-#{text-size-for-density('lg', $density)});
+    margin-bottom: space-var(density-calc(2, $density));
+  }
+  
+  .icon {
+    font-size: var(--text-#{text-size-for-density('lg', $density)});
+  }
+}
+
+// Button density
+@mixin button-density($density: 'normal') {
+  @include apply-density($density, 'md');
+  
+  $height-base: 10; // base height in space units
+  $height: density-calc($height-base, $density);
+  min-height: space-var($height);
+  
+  // Adjust horizontal padding to be more generous
+  $h-padding: density-calc(4, $density);
+  padding-left: space-var($h-padding);
+  padding-right: space-var($h-padding);
+}
+
+// Form field density
+@mixin form-field-density($density: 'normal') {
+  @include apply-density($density, 'md');
+  
+  $height-base: 10;
+  $height: density-calc($height-base, $density);
+  min-height: space-var($height);
+  
+  // Label spacing
+  .form-label {
+    margin-bottom: space-var(density-calc(1, $density));
+    font-size: var(--text-#{text-size-for-density('sm', $density)});
+  }
+  
+  // Helper text
+  .form-helper {
+    margin-top: space-var(density-calc(0.5, $density));
+    font-size: var(--text-#{text-size-for-density('xs', $density)});
+  }
+}
+
+// Table density
+@mixin table-density($density: 'normal') {
+  thead th,
+  tbody td {
+    $padding-y: density-calc(2, $density);
+    $padding-x: density-calc(3, $density);
+    padding: space-var($padding-y) space-var($padding-x);
+    font-size: var(--text-#{text-size-for-density('base', $density)});
+  }
+  
+  tbody tr {
+    $height: density-calc(12, $density);
+    min-height: space-var($height);
+  }
+}
+
+// List density
+@mixin list-density($density: 'normal') {
+  .list-item {
+    $padding: density-calc(2, $density);
+    padding: space-var($padding);
+    min-height: space-var(density-calc(10, $density));
+    
+    .list-item-icon {
+      font-size: var(--text-#{text-size-for-density('lg', $density)});
+      margin-right: space-var(density-calc(2, $density));
+    }
+    
+    .list-item-text {
+      font-size: var(--text-#{text-size-for-density('base', $density)});
+    }
+  }
+  
+  gap: space-var(density-calc(1, $density));
+}
+
+// Modal density
+@mixin modal-density($density: 'normal') {
+  .modal-header {
+    @include apply-density($density, 'lg');
+    border-bottom-width: 1px;
+  }
+  
+  .modal-body {
+    @include apply-density($density, 'xl');
+  }
+  
+  .modal-footer {
+    @include apply-density($density, 'lg');
+    gap: space-var(density-calc(2, $density));
+    border-top-width: 1px;
+  }
+  
+  .modal-title {
+    font-size: var(--text-#{text-size-for-density('xl', $density)});
+  }
+}
+
+// Chip density
+@mixin chip-density($density: 'normal') {
+  $padding-y: density-calc(2, $density);
+  $padding-x: density-calc(3, $density);
+  $min-height: density-calc(6, $density);
+  $gap: density-calc(1, $density);
+  
+  padding: space-var($padding-y) space-var($padding-x);
+  min-height: space-var($min-height);
+  gap: space-var($gap);
+  font-size: var(--text-#{text-size-for-density('sm', $density)});
+  
+  .chip-icon {
+    font-size: var(--text-#{text-size-for-density('base', $density)});
+  }
+  
+  .chip-close {
+    $size: density-calc(4, $density);
+    width: space-var($size);
+    height: space-var($size);
+    
+    i {
+      font-size: var(--text-#{text-size-for-density('xs', $density)});
+    }
+  }
+}
+
+// Form density (legacy compatibility)
+@mixin form-density($density: 'normal') {
+  @include apply-density($density, 'md');
+  
+  .form-section { 
+    $margin-y: density-calc(3, $density);
+    $margin-x: density-calc(0, $density);
+    margin: space-var($margin-y) space-var($margin-x);
+  }
+  
+  .form-group { 
+    $gap: density-calc(2, $density);
+    gap: space-var($gap);
+  }
+}
+
+// Generate Density Classes for Components
+// ==========================================================================
+@mixin generate-density-classes($component-name, $mixin-name) {
+  @each $density-name, $scale in $density-scales {
+    .#{$component-name}-density-#{$density-name} {
+      @if $mixin-name == 'card' {
+        @include card-density($density-name);
+      } @else if $mixin-name == 'button' {
+        @include button-density($density-name);
+      } @else if $mixin-name == 'form-field' {
+        @include form-field-density($density-name);
+      } @else if $mixin-name == 'table' {
+        @include table-density($density-name);
+      } @else if $mixin-name == 'list' {
+        @include list-density($density-name);
+      } @else if $mixin-name == 'modal' {
+        @include modal-density($density-name);
+      } @else if $mixin-name == 'chip' {
+        @include chip-density($density-name);
+      } @else {
+        @include apply-density($density-name, 'md');
+      }
+    }
+  }
+}
+
+// Utility Classes
+// ==========================================================================
+@mixin density-utilities() {
+  @each $density-name, $scale in $density-scales {
+    .density-#{$density-name} {
+      @include apply-density($density-name, 'md');
+    }
+  }
+}
+
+// Export for use in components
+@mixin component-density($component-type: 'default', $density: 'normal') {
+  @if $component-type == 'card' {
+    @include card-density($density);
+  } @else if $component-type == 'button' {
+    @include button-density($density);
+  } @else if $component-type == 'form' {
+    @include form-field-density($density);
+  } @else if $component-type == 'table' {
+    @include table-density($density);
+  } @else if $component-type == 'list' {
+    @include list-density($density);
+  } @else if $component-type == 'modal' {
+    @include modal-density($density);
+  } @else {
+    @include apply-density($density, 'md');
+  }
+}
