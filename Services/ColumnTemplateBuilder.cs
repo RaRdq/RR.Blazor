@@ -71,7 +71,7 @@ public static class ColumnTemplateBuilder
                 builder.AddAttribute(seq++, "onclick", EventCallback.Factory.Create<MouseEventArgs>(null, () => onClick(item)));
                 
                 builder.OpenElement(seq++, "i");
-                builder.AddAttribute(seq++, "class", "material-symbols-rounded text-base");
+                builder.AddAttribute(seq++, "class", "icon text-base");
                 builder.AddContent(seq++, icon);
                 builder.CloseElement();
                 

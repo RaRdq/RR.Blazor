@@ -96,17 +96,19 @@ class ModuleManager {
             'tabs': { path: './tabs.js' },
             'datepicker': { path: './datepicker.js' },
             'utils': { path: './utils.js' },
-            'theme': { path: './theme.js' },
+            'theme': { path: './theme.js', preload: true },
             'chart': { path: './chart.js' },
             'table': { path: './table.js' },
+            'grid': { path: './grid.js' },
             'fileUpload': { path: './file-upload.js' },
             'clipboard': { path: './clipboard.js' },
             'loader': { path: './loader.js' },
             'toasts': { path: './toasts.js' },
-            'appShell': { path: './app-shell.js' },
+            'appShell': { path: './app-shell.js', preload: true },
             'columnManagement': { path: './column-management.js' },
-            'tableScroll': { path: './table-scroll.js' },
-            'intersectionObserver': { path: './intersection-observer.js' }
+            'intersectionObserver': { path: './intersection-observer.js' },
+            'filter': { path: './filter.js', preload: true },
+            'pageDebug': { path: './_dev_tools/page-debug.js', preload: true }
         };
     }
 
@@ -239,6 +241,29 @@ class ModuleManager {
             }
         });
         
+        // Initialize modules that need it
+        const modulesToInitialize = ['filter', 'choice', 'modal', 'portal'];
+        for (const moduleName of modulesToInitialize) {
+            if (this.modules.has(moduleName)) {
+                const module = this.modules.get(moduleName);
+                if (module && module.initialize && typeof module.initialize === 'function') {
+                    try {
+                        await module.initialize();
+                        debugLogger.log(`Initialized ${moduleName} module`);
+                    } catch (error) {
+                        debugLogger.error(`Failed to initialize ${moduleName}:`, error);
+                    }
+                } else if (module && module.default && module.default.initialize && typeof module.default.initialize === 'function') {
+                    try {
+                        await module.default.initialize();
+                        debugLogger.log(`Initialized ${moduleName} module (default export)`);
+                    } catch (error) {
+                        debugLogger.error(`Failed to initialize ${moduleName}:`, error);
+                    }
+                }
+            }
+        }
+        
         debugLogger.log('Critical modules preloaded');
     }
 
@@ -293,8 +318,11 @@ function createUniversalProxy(moduleName) {
                 return undefined;
             }
             
-            if (prop === 'toString' || prop === 'valueOf' || prop === Symbol.toStringTag) {
-                return () => `[RRBlazor.${moduleName}]`;
+            if (prop === 'toString' || prop === 'valueOf' || prop === Symbol.toStringTag || prop === Symbol.toPrimitive) {
+                if (prop === 'toString') return `[RRBlazor.${moduleName}]`;
+                if (prop === 'valueOf') return `[RRBlazor.${moduleName}]`;
+                if (prop === Symbol.toStringTag) return `RRBlazor.${moduleName}`;
+                if (prop === Symbol.toPrimitive) return () => `[RRBlazor.${moduleName}]`;
             }
             
             if (prop === 'prototype') {
@@ -390,6 +418,7 @@ const RRBlazor = {
     
     Modal: createUniversalProxy('modal'),
     Choice: createUniversalProxy('choice'),
+    Filter: createUniversalProxy('filter'),
     Forms: createUniversalProxy('forms'),
     Tabs: createUniversalProxy('tabs'),
     DatePicker: createUniversalProxy('datepicker'),
@@ -397,6 +426,7 @@ const RRBlazor = {
     Theme: createUniversalProxy('theme'),
     Chart: createUniversalProxy('chart'),
     Table: createUniversalProxy('table'),
+    Grid: createUniversalProxy('grid'),
     Clipboard: createUniversalProxy('clipboard'),
     Loader: createUniversalProxy('loader'),
     Toasts: createUniversalProxy('toasts'),
@@ -406,11 +436,15 @@ const RRBlazor = {
     FileUpload: createUniversalProxy('fileUpload'),
     AppShell: createUniversalProxy('appShell'),
     ColumnManagement: createUniversalProxy('columnManagement'),
-    TableScroll: createUniversalProxy('tableScroll'),
     IntersectionObserver: createUniversalProxy('intersectionObserver'),
     
     getModule: function(moduleName) {
         return createUniversalProxy(moduleName);
+    },
+    
+    async getModuleReference(moduleName) {
+        const module = await moduleManager.loadModule(moduleName);
+        return module.default || module;
     },
     
     modules: new Proxy({}, {
@@ -421,17 +455,34 @@ const RRBlazor = {
     
     async initialize() {
         debugLogger.log('RR.Blazor initializing...');
-        await moduleManager.preloadCriticalModules();
         
-        const portalModule = moduleManager.modules.get('portal');
-        if (portalModule) {
-            debugLogger.log('Portal module event listeners registered');
-        } else {
-            debugLogger.error('Failed to load portal module - dropdowns and modals will not work!');
+        // Check if we're in a browser context and DOM is ready
+        if (typeof window === 'undefined' || typeof document === 'undefined') {
+            debugLogger.warn('Not in browser context - initialization deferred');
+            return false;
         }
         
-        debugLogger.log('RR.Blazor initialized with universal proxy system');
-        return true;
+        if (document.readyState === 'loading') {
+            debugLogger.log('DOM still loading - initialization deferred');
+            return false;
+        }
+        
+        try {
+            await moduleManager.preloadCriticalModules();
+            
+            const portalModule = moduleManager.modules.get('portal');
+            if (portalModule) {
+                debugLogger.log('Portal module event listeners registered');
+            } else {
+                debugLogger.warn('Portal module not loaded - some features may be limited');
+            }
+            
+            debugLogger.log('RR.Blazor initialized with universal proxy system');
+            return true;
+        } catch (error) {
+            debugLogger.error('Failed to initialize RR.Blazor:', error);
+            return false;
+        }
     },
     
     async dispose() {
@@ -443,42 +494,112 @@ const RRBlazor = {
 };
 
 window.RRBlazor = RRBlazor;
+
+window.RRBlazor.isSafeForInterop = function() {
+    if (typeof window === 'undefined' || typeof document === 'undefined') {
+        return false;
+    }
+    
+    if (document.readyState === 'loading') {
+        return false;
+    }
+    
+    if (window.Blazor && window.Blazor._internal) {
+        if (window.Blazor._internal.navigationManager) {
+            return true;
+        }
+        return false;
+    }
+    
+    if (window.Blazor && !window.Blazor._internal) {
+        return true;
+    }
+    
+    return true;
+};
+
+window.RRBlazor.safeInvoke = function(method, ...args) {
+    if (!window.RRBlazor.isSafeForInterop()) {
+        return Promise.resolve(false);
+    }
+    
+    try {
+        const parts = method.split('.');
+        let target = window;
+        
+        for (let i = 0; i < parts.length - 1; i++) {
+            target = target[parts[i]];
+            if (!target) return Promise.resolve(false);
+        }
+        
+        const func = target[parts[parts.length - 1]];
+        if (typeof func !== 'function') return Promise.resolve(false);
+        
+        const result = func.apply(target, args);
+        return result instanceof Promise ? result : Promise.resolve(result);
+    } catch {
+        return Promise.resolve(false);
+    }
+};
 window.RRFileUpload = createUniversalProxy('fileUpload');
 window.RRDebugLogger = DebugLogger;
 window.debugLogger = debugLogger;
 
-// Debug utilities for development
-window.RRDebug = {
-    logger: debugLogger,
-    
-    async report() {
-        if (debugLogger.isDebugMode) {
-            const debugModule = await import('./_dev_tools/page-debug.js');
-            return debugModule.generateReport();
-        }
-    },
-    
-    listModules() {
-        const loaded = Array.from(moduleManager.modules.keys());
-        const available = Object.keys(moduleManager.moduleConfigs);
-        const preload = Object.entries(moduleManager.moduleConfigs)
-            .filter(([name, config]) => config.preload)
-            .map(([name]) => name);
-        
-        console.table({
-            'Loaded': loaded.join(', '),
-            'Available': available.join(', '),
-            'Preloaded': preload.join(', ')
-        });
-        
-        return { loaded, available, preload };
+// Universal initialization that works with both Server and WebAssembly
+function initializeWhenReady() {
+    if (typeof window === 'undefined' || typeof document === 'undefined') {
+        // Not in browser context - likely server-side rendering
+        return;
     }
-};
+    
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            debugLogger.log('DOM loaded - attempting initialization');
+            RRBlazor.initialize();
+        });
+    } else {
+        // DOM already loaded
+        debugLogger.log('DOM already loaded - attempting immediate initialization');
+        RRBlazor.initialize();
+    }
+    
+    // For Blazor Server - retry initialization when Blazor is fully connected
+    // Check if Blazor has already started to avoid double initialization
+    if (window.Blazor && window.Blazor.start && !window.Blazor._internal) {
+        window.Blazor.start().then(() => {
+            debugLogger.log('Blazor Server connected - retrying initialization');
+            RRBlazor.initialize();
+        }).catch((error) => {
+            // Blazor has already started, which is fine
+            if (error.message && error.message.includes('already started')) {
+                debugLogger.log('Blazor already started - skipping duplicate initialization');
+            } else {
+                debugLogger.error('Blazor start error:', error);
+            }
+        });
+    }
+    
+    // Listen for Blazor circuit reconnection
+    if (window.Blazor && window.Blazor.reconnect) {
+        document.addEventListener('DOMContentLoaded', () => {
+            window.Blazor.defaultReconnectionHandler = {
+                onConnectionDown: () => debugLogger.warn('Blazor Server connection lost'),
+                onConnectionUp: () => {
+                    debugLogger.log('Blazor Server reconnected - retrying initialization');
+                    RRBlazor.initialize();
+                }
+            };
+        });
+    }
+}
 
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => RRBlazor.initialize());
-} else {
-    RRBlazor.initialize();
+initializeWhenReady();
+
+// Load debug tools in development only
+if (debugLogger.isDebugMode) {
+    moduleManager.loadModule('pageDebug').catch(error => {
+        debugLogger.error('Failed to load debug tools:', error);
+    });
 }
 
 window.addEventListener('beforeunload', () => {
@@ -509,6 +630,22 @@ window.RRBlazor.elementExistsInParent = function(choiceId, selector) {
         debugLogger.error(`elementExistsInParent error for ${choiceId}:`, e);
         return false;
     }
+};
+
+// File download utility - delegates to utils module
+window.downloadFile = function(base64Data, filename, mimeType) {
+    if (window.RRBlazor && window.RRBlazor.Utils) {
+        // Convert base64 to content and use downloadContent
+        try {
+            const byteCharacters = atob(base64Data);
+            return window.RRBlazor.Utils.downloadContent(byteCharacters, filename, mimeType || 'application/octet-stream');
+        } catch (error) {
+            console.error('[RR.Blazor] Failed to process base64 data:', error);
+            return false;
+        }
+    }
+    console.warn('[RR.Blazor] Utils module not loaded - download failed');
+    return false;
 };
 
 debugLogger.log('RR.Blazor loaded!');

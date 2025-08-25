@@ -299,13 +299,9 @@ class ModalManager {
     }
     
     _applyModalStyles(element, options) {
-        const animation = options.animation || 'scale';
-        const speed = options.animationSpeed || 'normal';
-        
-        element.classList.add('modal-animating', `modal-${animation}`, `modal-speed-${speed}`);
-        
         element.style.position = 'relative';
         element.style.margin = 'auto';
+        element.style.transition = 'all var(--duration-normal) var(--ease-out)';
         
         requestAnimationFrame(() => {
             element.classList.add('modal-in');
@@ -393,12 +389,75 @@ window.RRBlazor.Modal = {
     forceUnlock: () => modalManager.forceUnlock(),
     getActiveCount: () => modalManager.getActiveCount(),
     
-    register: (modalId) => {
-        throw new Error(`ModalStackService.register is obsolete - use JavaScript modal management`);
+    // Find existing Blazor-rendered modal component and create modal portal
+    createAndShow: (modalId, modalTypeName, parameters, options) => {
+        // Wait for Blazor to render the component, then find it
+        const findAndCreateModal = () => {
+            const modalElement = document.getElementById(modalId) || 
+                                document.querySelector(`[data-modal-id="${modalId}"]`);
+            
+            if (modalElement) {
+                modalManager.createModal(modalElement, options);
+            } else {
+                // Keep checking for the component for a short time
+                setTimeout(findAndCreateModal, 10);
+            }
+        };
+        
+        // Start looking for the modal
+        findAndCreateModal();
     },
-    unregister: (modalId) => {
-        throw new Error(`ModalStackService.unregister is obsolete - use JavaScript modal management`);
-    }
+
+    _getVariantClass: (variant) => {
+        switch (variant) {
+            case 'Destructive': 
+            case 'Danger': return 'modal-destructive';
+            case 'Warning': return 'modal-warning';
+            default: return 'modal-default';
+        }
+    },
+
+    // Helper functions to create modal elements without eval (kept for compatibility)
+    createElement: (modalId, className) => {
+        const wrapper = document.createElement('div');
+        wrapper.id = `modal-wrapper-${modalId}`;
+        wrapper.className = className || 'modal-wrapper';
+        wrapper.setAttribute('data-modal-id', modalId);
+        return wrapper;
+    },
+    
+    createConfirmationElement: (modalId, title, message, confirmText, cancelText, variantClass) => {
+        const modal = document.createElement('div');
+        modal.className = `rmodal rmodal-confirmation ${variantClass}`;
+        modal.setAttribute('data-modal-id', modalId);
+        
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title">${title}</h2>
+                </div>
+                <div class="modal-body">
+                    <p class="modal-message">${message}</p>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary modal-cancel" data-action="cancel">${cancelText}</button>
+                    <button class="btn btn-primary modal-confirm" data-action="confirm">${confirmText}</button>
+                </div>
+            </div>
+        `;
+        
+        // Add event listeners
+        modal.querySelector('[data-action="cancel"]').addEventListener('click', () => {
+            DotNet.invokeMethodAsync('RR.Blazor', 'HandleModalAction', modalId, 'cancel');
+        });
+        
+        modal.querySelector('[data-action="confirm"]').addEventListener('click', () => {
+            DotNet.invokeMethodAsync('RR.Blazor', 'HandleModalAction', modalId, 'confirm');
+        });
+        
+        return modal;
+    },
+    
 };
 
 export default modalManager;

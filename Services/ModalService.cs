@@ -12,7 +12,6 @@ public sealed class ModalService : IModalService, IModalServiceCore, IDisposable
     private readonly IJSRuntime _jsRuntime;
     private readonly ConcurrentDictionary<string, ModalInstance> _activeModals = new();
     private readonly ConcurrentDictionary<string, TaskCompletionSource<ModalResult<object>>> _modalCompletions = new();
-    private readonly ConcurrentDictionary<string, DotNetObjectReference<ModalService>> _modalProxies = new();
     private readonly Dictionary<string, TaskCompletionSource<bool>> _confirmationSources = [];
     private bool _isDisposed;
 
@@ -51,7 +50,7 @@ public sealed class ModalService : IModalService, IModalServiceCore, IDisposable
         options.ComponentType = modalType;
         options.Parameters = parameters ?? new Dictionary<string, object>();
 
-        var modalId = Guid.NewGuid().ToString();
+        var modalId = $"modal-{Guid.NewGuid():N}";
         var taskSource = new TaskCompletionSource<ModalResult<object>>();
         _modalCompletions[modalId] = taskSource;
 
@@ -68,10 +67,6 @@ public sealed class ModalService : IModalService, IModalServiceCore, IDisposable
 
         try
         {
-            // Create DOM element for modal
-            var modalElement = await CreateModalElement(modalId, modalType, options);
-            
-            // Create modal through JavaScript portal system
             var jsOptions = new
             {
                 id = modalId,
@@ -84,10 +79,7 @@ public sealed class ModalService : IModalService, IModalServiceCore, IDisposable
                 trapFocus = true
             };
 
-            // Pass the element directly, not as a parameter to InvokeVoidAsync
-            await _jsRuntime.InvokeVoidAsync("eval", $@"
-                window.RRBlazor.Modal.create(window.__modalElements['{modalId}'], {System.Text.Json.JsonSerializer.Serialize(jsOptions)});
-            ");
+            await _jsRuntime.InvokeVoidAsync("RRBlazor.Modal.createAndShow", modalId, modalType.Name, options.Parameters, jsOptions);
 
             OnModalOpened?.Invoke(instance);
 
@@ -126,99 +118,6 @@ public sealed class ModalService : IModalService, IModalServiceCore, IDisposable
         }
     }
 
-    private async Task<object> CreateModalElement(string modalId, Type modalType, ModalOptions options)
-    {
-        // Create a wrapper element that will be passed to modal.js
-        var wrapperElementId = $"modal-wrapper-{modalId}";
-        
-        // For built-in modal types, create the HTML directly
-        if (modalType == typeof(RConfirmationModal))
-        {
-            return await CreateConfirmationModalElement(modalId, options);
-        }
-        
-        // For custom components, create a placeholder
-        // The actual Blazor component rendering would need to be handled separately
-        await _jsRuntime.InvokeVoidAsync("eval", $@"
-            (function() {{
-                const wrapper = document.createElement('div');
-                wrapper.id = '{wrapperElementId}';
-                wrapper.className = 'modal-wrapper';
-                wrapper.setAttribute('data-modal-id', '{modalId}');
-                window.__modalElements = window.__modalElements || {{}};
-                window.__modalElements['{modalId}'] = wrapper;
-            }})();
-        ");
-        
-        return await _jsRuntime.InvokeAsync<object>("eval", $"window.__modalElements['{modalId}']");
-    }
-
-    private async Task<object> CreateConfirmationModalElement(string modalId, ModalOptions options)
-    {
-        var title = options.Parameters.GetValueOrDefault("Title", "Confirm")?.ToString() ?? "Confirm";
-        var message = options.Parameters.GetValueOrDefault("Message", "")?.ToString() ?? "";
-        var confirmText = options.Parameters.GetValueOrDefault("ConfirmText", "Confirm")?.ToString() ?? "Confirm";
-        var cancelText = options.Parameters.GetValueOrDefault("CancelText", "Cancel")?.ToString() ?? "Cancel";
-        var variant = options.Parameters.GetValueOrDefault("Variant", ConfirmationVariant.Info);
-
-        var variantClass = GetModalVariantClass(variant);
-
-        await _jsRuntime.InvokeVoidAsync("eval", $@"
-            (function() {{
-                const modal = document.createElement('div');
-                modal.className = 'rmodal rmodal-confirmation {variantClass}';
-                modal.setAttribute('data-modal-id', '{modalId}');
-                
-                modal.innerHTML = `
-                    <div class=""modal-content"">
-                        <div class=""modal-header"">
-                            <h2 class=""modal-title"">{System.Web.HttpUtility.JavaScriptStringEncode(title)}</h2>
-                        </div>
-                        <div class=""modal-body"">
-                            <p class=""modal-message"">{System.Web.HttpUtility.JavaScriptStringEncode(message)}</p>
-                        </div>
-                        <div class=""modal-footer"">
-                            <button class=""btn btn-secondary modal-cancel"" data-action=""cancel"">{System.Web.HttpUtility.JavaScriptStringEncode(cancelText)}</button>
-                            <button class=""btn btn-primary modal-confirm"" data-action=""confirm"">{System.Web.HttpUtility.JavaScriptStringEncode(confirmText)}</button>
-                        </div>
-                    </div>
-                `;
-                
-                // Add event listeners
-                modal.querySelector('[data-action=""cancel""]').addEventListener('click', () => {{
-                    DotNet.invokeMethodAsync('RR.Blazor', 'HandleModalAction', '{modalId}', 'cancel');
-                }});
-                
-                modal.querySelector('[data-action=""confirm""]').addEventListener('click', () => {{
-                    DotNet.invokeMethodAsync('RR.Blazor', 'HandleModalAction', '{modalId}', 'confirm');
-                }});
-                
-                window.__modalElements = window.__modalElements || {{}};
-                window.__modalElements['{modalId}'] = modal;
-            }})();
-        ");
-        
-        return await _jsRuntime.InvokeAsync<object>("eval", $"window.__modalElements['{modalId}']");
-    }
-
-    [JSInvokable]
-    public static async Task HandleModalAction(string modalId, string action)
-    {
-        // Find the modal instance and close it with the appropriate result
-        if (_modalInstances.TryGetValue(modalId, out var modalService))
-        {
-            var result = action switch
-            {
-                "confirm" => Enums.ModalResult.Ok,
-                "cancel" => Enums.ModalResult.Cancel,
-                _ => Enums.ModalResult.None
-            };
-            
-            await modalService.CloseAsync(modalId, result);
-        }
-    }
-    
-    private static readonly ConcurrentDictionary<string, ModalService> _modalInstances = new();
 
     private string GetBackdropClass(ModalVariant variant) => variant switch
     {
@@ -227,13 +126,8 @@ public sealed class ModalService : IModalService, IModalServiceCore, IDisposable
         _ => "modal-backdrop-dark"
     };
 
-    private string GetModalVariantClass(object variant) => variant switch
-    {
-        ConfirmationVariant.Destructive => "modal-destructive",
-        ConfirmationVariant.Danger => "modal-destructive",
-        ConfirmationVariant.Warning => "modal-warning",
-        _ => "modal-default"
-    };
+
+    private static readonly ConcurrentDictionary<string, ModalService> _modalInstances = new();
 
     private void RegisterEventHandlers<TResult>(string modalId, ModalEvents<TResult> events, TaskCompletionSource<ModalResult<object>> taskSource)
     {
@@ -327,7 +221,7 @@ public sealed class ModalService : IModalService, IModalServiceCore, IDisposable
             return;
 
         modal.Visible = false;
-        _modalInstances.TryRemove(modalId, out _); // Clean up static reference
+        modal.LastResult = result;
 
         // Complete the task
         if (_modalCompletions.TryRemove(modalId, out var completion))
@@ -338,13 +232,6 @@ public sealed class ModalService : IModalService, IModalServiceCore, IDisposable
                 Data = result == Enums.ModalResult.Ok
             });
         }
-
-        // Destroy the modal in JavaScript
-        try
-        {
-            await _jsRuntime.InvokeVoidAsync("window.RRBlazor.Modal.destroy", modalId);
-        }
-        catch { }
 
         OnModalClosed?.Invoke(modal);
 
@@ -374,91 +261,6 @@ public sealed class ModalService : IModalService, IModalServiceCore, IDisposable
     public IModalBuilder<T> Create<T>()
     {
         return new ModalBuilder<T>(this);
-    }
-
-    // Confirmation modal specific methods
-    public async Task<bool> ConfirmAsync(string message, string title = "Confirm", bool isDestructive = false)
-    {
-        return await ModalServiceExtensions.ShowConfirmationAsync(
-            this,
-            message,
-            title,
-            isDestructive ? "Delete" : "Confirm",
-            "Cancel",
-            isDestructive ? ModalVariant.Destructive : ModalVariant.Warning);
-    }
-
-    public async Task<bool> ConfirmAsync(ConfirmationOptions options)
-    {
-        return await ModalServiceExtensions.ShowConfirmationAsync(this, options);
-    }
-
-    public async Task<Models.ModalResult> ConfirmWithResultAsync(
-        string message,
-        string title = "Confirm",
-        ModalVariant variant = ModalVariant.Default)
-    {
-        var result = await ModalServiceExtensions.ShowConfirmationAsync(this, message, title, "Confirm", "Cancel", variant);
-        return result ? Models.ModalResult.Ok() : Models.ModalResult.Cancel();
-    }
-
-    public async Task<ModalResult<T>> ShowFormAsync<T>(
-        string title,
-        T initialData = default,
-        SizeType size = SizeType.Medium)
-    {
-        return await ModalServiceExtensions.ShowFormAsync(this, title, initialData, size);
-    }
-
-    public async Task<ModalResult<T>> ShowFormAsync<T>(FormModalOptions<T> options)
-    {
-        return await ModalServiceExtensions.ShowFormAsync(this, options);
-    }
-
-    public async Task ShowInfoAsync(string message, string title = "Information")
-    {
-        await ModalServiceExtensions.ShowInfoAsync(this, message, title);
-    }
-
-    public async Task ShowWarningAsync(string message, string title = "Warning")
-    {
-        await ModalServiceExtensions.ShowWarningAsync(this, message, title);
-    }
-
-    public async Task ShowErrorAsync(string message, string title = "Error")
-    {
-        await ModalServiceExtensions.ShowErrorAsync(this, message, title);
-    }
-
-    public async Task ShowSuccessAsync(string message, string title = "Success")
-    {
-        await ModalServiceExtensions.ShowSuccessAsync(this, message, title);
-    }
-
-    public async Task ShowDetailAsync<T>(T data, string title = "", SizeType size = SizeType.Large)
-    {
-        await ModalServiceExtensions.ShowDetailAsync(this, data, title, size);
-    }
-
-    public async Task ShowPreviewAsync(string content, string title = "Preview", string contentType = "text/plain")
-    {
-        await ModalServiceExtensions.ShowPreviewAsync(this, content, title, contentType);
-    }
-
-    public async Task<T> ShowSelectAsync<T>(
-        IEnumerable<T> items,
-        string title = "Select Item",
-        Func<T, string> displaySelector = null)
-    {
-        return await ModalServiceExtensions.ShowSelectAsync(this, items, title, displaySelector);
-    }
-
-    public async Task<IEnumerable<T>> ShowMultiSelectAsync<T>(
-        IEnumerable<T> items,
-        string title = "Select Items",
-        Func<T, string> displaySelector = null)
-    {
-        return await ModalServiceExtensions.ShowMultiSelectAsync(this, items, title, displaySelector);
     }
 
     public void ConfirmModal(string modalId)
@@ -492,18 +294,76 @@ public sealed class ModalService : IModalService, IModalServiceCore, IDisposable
             .ToDictionary(item => item.Name, item => item.Value);
     }
 
+
+    // IModalService methods - simple implementations that delegate to extensions
+    Task<bool> IModalService.ConfirmAsync(string message, string title, bool isDestructive) =>
+        this.ShowConfirmationAsync(message, title, "Confirm", "Cancel", isDestructive ? ModalVariant.Destructive : ModalVariant.Default);
+
+    Task<bool> IModalService.ConfirmAsync(ConfirmationOptions options) =>
+        this.ShowConfirmationAsync(options);
+
+    async Task<Models.ModalResult> IModalService.ConfirmWithResultAsync(string message, string title, ModalVariant variant)
+    {
+        var result = await this.ShowConfirmationAsync(message, title, "Confirm", "Cancel", variant);
+        return new Models.ModalResult { ResultType = result ? Enums.ModalResult.Ok : Enums.ModalResult.Cancel, Data = result };
+    }
+
+    async Task<ModalResult<T>> IModalService.ShowFormAsync<T>(string title, T initialData, SizeType size)
+    {
+        var parameters = new Dictionary<string, object> { { "Data", initialData } };
+        return await ShowAsync<T>(null, parameters, new ModalOptions { Title = title, Size = size });
+    }
+
+    async Task<ModalResult<T>> IModalService.ShowFormAsync<T>(FormModalOptions<T> options)
+    {
+        var parameters = new Dictionary<string, object> { { "Data", options.InitialData } };
+        return await ShowAsync<T>(null, parameters, new ModalOptions { Title = options.Title, Size = options.Size });
+    }
+
+    Task IModalService.ShowInfoAsync(string message, string title) =>
+        this.ShowInfoAsync(message, title);
+
+    Task IModalService.ShowWarningAsync(string message, string title) =>
+        this.ShowWarningAsync(message, title);
+
+    Task IModalService.ShowErrorAsync(string message, string title) =>
+        this.ShowErrorAsync(message, title);
+
+    Task IModalService.ShowSuccessAsync(string message, string title) =>
+        this.ShowSuccessAsync(message, title);
+
+    async Task IModalService.ShowDetailAsync<T>(T data, string title, SizeType size)
+    {
+        var parameters = new Dictionary<string, object> { { "Data", data } };
+        await ShowAsync(null, parameters, new ModalOptions { Title = title, Size = size });
+    }
+
+    async Task IModalService.ShowPreviewAsync(string content, string title, string contentType)
+    {
+        var parameters = new Dictionary<string, object> { { "Content", content }, { "ContentType", contentType } };
+        await ShowAsync(null, parameters, new ModalOptions { Title = title, Size = SizeType.Large });
+    }
+
+    async Task<T> IModalService.ShowSelectAsync<T>(IEnumerable<T> items, string title, Func<T, string> displaySelector)
+    {
+        var parameters = new Dictionary<string, object> { { "Items", items }, { "DisplaySelector", displaySelector } };
+        var result = await ShowAsync<T>(null, parameters, new ModalOptions { Title = title });
+        return result.Data;
+    }
+
+    async Task<IEnumerable<T>> IModalService.ShowMultiSelectAsync<T>(IEnumerable<T> items, string title, Func<T, string> displaySelector)
+    {
+        var parameters = new Dictionary<string, object> { { "Items", items }, { "DisplaySelector", displaySelector }, { "MultiSelect", true } };
+        var result = await ShowAsync<IEnumerable<T>>(null, parameters, new ModalOptions { Title = title });
+        return result.Data;
+    }
+
     public void Dispose()
     {
         if (_isDisposed) return;
-
-        foreach (var proxy in _modalProxies.Values)
-        {
-            proxy?.Dispose();
-        }
         
         _activeModals.Clear();
         _modalCompletions.Clear();
-        _modalProxies.Clear();
         _confirmationSources.Clear();
         
         _isDisposed = true;

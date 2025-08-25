@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Components.Rendering;
 using RR.Blazor.Models;
+using RR.Blazor.Templates.Actions;
 using System.Linq.Expressions;
 
 namespace RR.Blazor.Services;
@@ -291,10 +292,10 @@ public class ColumnTemplateRenderer<TItem>(ColumnDefinition<TItem> column)
         
         builder.OpenElement(sequence, "span");
         builder.AddAttribute(sequence + 1, "class", 
-            isTrue ? "badge badge-success" : "badge badge-secondary");
+            isTrue ? "badge-success" : "badge-secondary");
         
         builder.OpenElement(sequence + 2, "i");
-        builder.AddAttribute(sequence + 3, "class", "material-symbols-rounded text-sm mr-1");
+        builder.AddAttribute(sequence + 3, "class", "icon text-sm mr-1");
         builder.AddContent(sequence + 4, isTrue ? "check" : "close");
         builder.CloseElement();
         
@@ -309,12 +310,12 @@ public class ColumnTemplateRenderer<TItem>(ColumnDefinition<TItem> column)
         var (variant, icon) = GetStatusInfo(text);
         
         builder.OpenElement(sequence, "span");
-        builder.AddAttribute(sequence + 1, "class", $"badge badge-{variant}");
+        builder.AddAttribute(sequence + 1, "class", $"badge-{variant}");
         
         if (!string.IsNullOrEmpty(icon))
         {
             builder.OpenElement(sequence + 2, "i");
-            builder.AddAttribute(sequence + 3, "class", "material-symbols-rounded text-sm mr-1");
+            builder.AddAttribute(sequence + 3, "class", "icon text-sm mr-1");
             builder.AddContent(sequence + 4, icon);
             builder.CloseElement();
         }
@@ -375,7 +376,7 @@ public class ColumnTemplateRenderer<TItem>(ColumnDefinition<TItem> column)
         {
             builder.OpenElement(sequence + i * 10, "i");
             builder.AddAttribute(sequence + i * 10 + 1, "class", 
-                $"material-symbols-rounded text-sm {(i <= rating ? "text-warning" : "text-muted")}");
+                $"icon text-sm {(i <= rating ? "text-warning" : "text-muted")}");
             builder.AddContent(sequence + i * 10 + 2, i <= rating ? "star" : "star_outline");
             builder.CloseElement();
         }
@@ -438,7 +439,7 @@ public class ColumnTemplateRenderer<TItem>(ColumnDefinition<TItem> column)
         builder.AddContent(sequence + 5, GetDisplayUrl(url));
         
         builder.OpenElement(sequence + 6, "i");
-        builder.AddAttribute(sequence + 7, "class", "material-symbols-rounded text-sm");
+        builder.AddAttribute(sequence + 7, "class", "icon text-sm");
         builder.AddContent(sequence + 8, "open_in_new");
         builder.CloseElement();
         
@@ -455,7 +456,7 @@ public class ColumnTemplateRenderer<TItem>(ColumnDefinition<TItem> column)
             builder.OpenElement(sequence, "div");
             builder.AddAttribute(sequence + 1, "class", "w-12 h-12 bg-surface-secondary rounded d-flex items-center justify-center");
             builder.OpenElement(sequence + 2, "i");
-            builder.AddAttribute(sequence + 3, "class", "material-symbols-rounded text-muted");
+            builder.AddAttribute(sequence + 3, "class", "icon text-muted");
             builder.AddContent(sequence + 4, "image");
             builder.CloseElement();
             builder.CloseElement();
@@ -509,7 +510,7 @@ public class ColumnTemplateRenderer<TItem>(ColumnDefinition<TItem> column)
         foreach (var tag in tags.Take(3))
         {
             builder.OpenElement(index++, "span");
-            builder.AddAttribute(index++, "class", "badge badge-secondary badge-sm");
+            builder.AddAttribute(index++, "class", "badge-secondary badge-sm");
             builder.AddContent(index++, tag);
             builder.CloseElement();
         }
@@ -527,31 +528,64 @@ public class ColumnTemplateRenderer<TItem>(ColumnDefinition<TItem> column)
     
     private void RenderActions(RenderTreeBuilder builder, TItem item, int sequence)
     {
-        // This is a placeholder - actions should be defined via CustomTemplate
-        builder.OpenElement(sequence, "div");
-        builder.AddAttribute(sequence + 1, "class", "d-flex items-center gap-1");
+        // Check if column has ActionsTemplate configured
+        if (column.ActionsTemplate != null)
+        {
+            // Use the configured ActionsTemplate
+            var fragment = column.ActionsTemplate.Render(item);
+            fragment(builder);
+            return;
+        }
         
-        builder.OpenElement(sequence + 2, "button");
-        builder.AddAttribute(sequence + 3, "type", "button");
-        builder.AddAttribute(sequence + 4, "class", "btn btn-ghost btn-sm");
-        builder.AddAttribute(sequence + 5, "title", "View");
-        builder.OpenElement(sequence + 6, "i");
-        builder.AddAttribute(sequence + 7, "class", "material-symbols-rounded text-base");
-        builder.AddContent(sequence + 8, "visibility");
-        builder.CloseElement();
-        builder.CloseElement();
+        // Default implementation with standard actions
+        var defaultTemplate = CreateDefaultActionsTemplate();
+        var fragment2 = defaultTemplate.Render(item);
+        fragment2(builder);
+    }
+    
+    private ActionsTemplate<TItem> CreateDefaultActionsTemplate()
+    {
+        var template = new ActionsTemplate<TItem>
+        {
+            DisplayStyle = ActionsDisplayStyle.Inline,
+            Size = RR.Blazor.Enums.SizeType.Small,
+            Density = RR.Blazor.Enums.DensityType.Compact,
+            ShowTooltips = true,
+            Actions = new List<ActionButton<TItem>>
+            {
+                new ActionButton<TItem>
+                {
+                    Id = "view",
+                    Text = "View",
+                    Icon = "visibility",
+                    Style = ButtonStyle.Ghost,
+                    Variant = RR.Blazor.Enums.VariantType.Secondary,
+                    IconOnly = true
+                },
+                new ActionButton<TItem>
+                {
+                    Id = "edit",
+                    Text = "Edit",
+                    Icon = "edit",
+                    Style = ButtonStyle.Ghost,
+                    Variant = RR.Blazor.Enums.VariantType.Secondary,
+                    IconOnly = true
+                },
+                new ActionButton<TItem>
+                {
+                    Id = "delete",
+                    Text = "Delete",
+                    Icon = "delete",
+                    Style = ButtonStyle.Ghost,
+                    Variant = RR.Blazor.Enums.VariantType.Danger,
+                    IconOnly = true,
+                    RequiresConfirmation = true,
+                    ConfirmationMessage = "Are you sure you want to delete this item?"
+                }
+            }
+        };
         
-        builder.OpenElement(sequence + 10, "button");
-        builder.AddAttribute(sequence + 11, "type", "button");
-        builder.AddAttribute(sequence + 12, "class", "btn btn-ghost btn-sm");
-        builder.AddAttribute(sequence + 13, "title", "Edit");
-        builder.OpenElement(sequence + 14, "i");
-        builder.AddAttribute(sequence + 15, "class", "material-symbols-rounded text-base");
-        builder.AddContent(sequence + 16, "edit");
-        builder.CloseElement();
-        builder.CloseElement();
-        
-        builder.CloseElement();
+        return template;
     }
     
     #endregion

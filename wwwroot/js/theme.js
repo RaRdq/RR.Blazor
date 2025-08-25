@@ -218,10 +218,6 @@ export function getThemeInfo() {
     document.documentElement.setAttribute('data-theme', themeMode);
 })();
 
-function apply(themeData) {
-    return applyTheme(themeData);
-}
-
 function initialize() {
     return true;
 }
@@ -230,16 +226,17 @@ function cleanup() {
     disposeSystemThemeListener();
 }
 
-export { apply, initialize, cleanup };
-
-window.RRTheme = {
+export default {
+    apply: applyTheme,
     applyTheme,
     setTheme,
     registerSystemThemeListener,
     disposeSystemThemeListener,
     isCurrentlyDark,
     getCurrentTheme,
-    apply,
+    getEffectiveTheme,
+    validateTheme,
+    getThemeInfo,
     initialize,
     cleanup
 };

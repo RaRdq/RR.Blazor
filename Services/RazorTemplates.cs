@@ -80,7 +80,7 @@ public static class RazorTemplates
             builder.AddAttribute(4, "onclick", EventCallback.Factory.Create(null, () => onClick(item)));
             
             builder.OpenElement(5, "i");
-            builder.AddAttribute(6, "class", "material-symbols-rounded");
+            builder.AddAttribute(6, "class", "icon");
             builder.AddContent(7, icon);
             builder.CloseElement();
             
@@ -108,7 +108,7 @@ public static class RazorTemplates
                 builder.AddAttribute(seq++, "onclick", EventCallback.Factory.Create(null, () => onClick(item)));
                 
                 builder.OpenElement(seq++, "i");
-                builder.AddAttribute(seq++, "class", "material-symbols-rounded");
+                builder.AddAttribute(seq++, "class", "icon");
                 builder.AddContent(seq++, icon);
                 builder.CloseElement();
                 
@@ -183,7 +183,7 @@ public static class RazorTemplates
             builder.AddAttribute(1, "class", "d-flex items-center gap-1");
             
             builder.OpenElement(2, "i");
-            builder.AddAttribute(3, "class", $"material-symbols-rounded {cssClass}");
+            builder.AddAttribute(3, "class", $"icon {cssClass}");
             builder.AddContent(4, icon);
             builder.CloseElement();
             

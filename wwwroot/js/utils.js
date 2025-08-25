@@ -114,7 +114,6 @@ export function addEventListener(elementId, eventName, dotNetRef, methodName, op
             const invoke = () => {
                 dotNetRef.invokeMethodAsync(methodName, e.detail).catch(err => {
                     if (!err.message.includes('disposed')) {
-                        console.error('JSInterop error:', err);
                     }
                 });
             };

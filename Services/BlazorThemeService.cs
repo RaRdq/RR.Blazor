@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using RR.Blazor.Models;
+using RR.Blazor.Services;
 
 namespace RR.Blazor.Services;
 
@@ -43,6 +44,7 @@ public class BlazorThemeService : IThemeService, IAsyncDisposable
 {
     private readonly ILocalStorageService localStorage;
     private readonly IJSRuntime jsRuntime;
+    private readonly IJavaScriptInteropService jsInterop;
     private readonly ILogger<BlazorThemeService> logger;
     
     private ThemeConfiguration currentTheme = ThemeConfiguration.Default;
@@ -65,10 +67,12 @@ public class BlazorThemeService : IThemeService, IAsyncDisposable
     public BlazorThemeService(
         ILocalStorageService localStorage,
         IJSRuntime jsRuntime,
+        IJavaScriptInteropService jsInterop,
         ILogger<BlazorThemeService> logger)
     {
         this.localStorage = localStorage;
         this.jsRuntime = jsRuntime;
+        this.jsInterop = jsInterop;
         this.logger = logger;
         
         systemThemeTimer = new System.Timers.Timer(5000); // Check every 5 seconds
@@ -108,8 +112,7 @@ public class BlazorThemeService : IThemeService, IAsyncDisposable
             }
             
             // Start system theme monitoring
-            // DISABLED TEMPORARILY - may be causing infinite loops
-            // systemThemeTimer.Start();
+            systemThemeTimer.Start();
         }
         catch (Exception ex)
         {
@@ -148,7 +151,11 @@ public class BlazorThemeService : IThemeService, IAsyncDisposable
                 highContrast = theme.HighContrastMode || isHighContrast
             };
             
-            await jsRuntime.InvokeVoidAsync("window.RRBlazor.Theme.apply", themeData);
+            var success = await jsInterop.TryInvokeVoidAsync("window.RRBlazor.Theme.apply", themeData);
+            if (!success)
+            {
+                logger.LogDebug("Theme application deferred - not interactive yet");
+            }
         }
         catch (Exception ex)
         {
@@ -192,7 +199,7 @@ public class BlazorThemeService : IThemeService, IAsyncDisposable
             else
                 customThemes.Add(theme);
             
-            await localStorage.SetItemAsync(CUSTOM_THEMES_KEY, customThemes);
+            await SafeLocalStorageSetAsync(CUSTOM_THEMES_KEY, customThemes);
         }
         catch (Exception ex)
         {
@@ -202,15 +209,8 @@ public class BlazorThemeService : IThemeService, IAsyncDisposable
     
     public async Task<IEnumerable<ThemeConfiguration>> GetCustomThemesAsync()
     {
-        try
-        {
-            var themes = await localStorage.GetItemAsync<List<ThemeConfiguration>>(CUSTOM_THEMES_KEY);
-            return themes ?? new List<ThemeConfiguration>();
-        }
-        catch
-        {
-            return new List<ThemeConfiguration>();
-        }
+        var themes = await SafeLocalStorageGetAsync<List<ThemeConfiguration>>(CUSTOM_THEMES_KEY);
+        return themes ?? new List<ThemeConfiguration>();
     }
     
     public async Task DeleteCustomThemeAsync(string themeName)
@@ -219,7 +219,7 @@ public class BlazorThemeService : IThemeService, IAsyncDisposable
         {
             var customThemes = (await GetCustomThemesAsync()).ToList();
             customThemes.RemoveAll(t => t.Name == themeName);
-            await localStorage.SetItemAsync(CUSTOM_THEMES_KEY, customThemes);
+            await SafeLocalStorageSetAsync(CUSTOM_THEMES_KEY, customThemes);
         }
         catch (Exception ex)
         {
@@ -242,7 +242,7 @@ public class BlazorThemeService : IThemeService, IAsyncDisposable
     {
         try
         {
-            await localStorage.RemoveItemAsync(THEME_KEY);
+            await SafeLocalStorageRemoveAsync(THEME_KEY);
             currentTheme = ThemeConfiguration.Default;
             await ApplyThemeAsync(currentTheme);
             ThemeChanged?.Invoke(currentTheme);
@@ -255,63 +255,79 @@ public class BlazorThemeService : IThemeService, IAsyncDisposable
     
     private async Task LoadThemeFromStorageAsync()
     {
-        try
+        var savedTheme = await SafeLocalStorageGetAsync<ThemeConfiguration>(THEME_KEY);
+        currentTheme = savedTheme ?? ThemeConfiguration.Default;
+        
+        if (savedTheme != null)
         {
-            var savedTheme = await localStorage.GetItemAsync<ThemeConfiguration>(THEME_KEY);
-            if (savedTheme != null)
-            {
-                currentTheme = savedTheme;
-                logger.LogDebug("Theme loaded from storage: {ThemeMode}", savedTheme.Mode);
-            }
-            else
-            {
-                logger.LogDebug("No saved theme found, using default");
-                currentTheme = ThemeConfiguration.Default;
-            }
+            logger.LogDebug("Theme loaded from storage: {ThemeMode}", savedTheme.Mode);
         }
-        catch (Exception ex)
+        else
         {
-            logger.LogWarning(ex, "Failed to load theme from storage, clearing and using default");
-            try
-            {
-                await localStorage.RemoveItemAsync(THEME_KEY);
-            }
-            catch
-            {
-                // Ignore cleanup errors
-            }
-            currentTheme = ThemeConfiguration.Default;
+            logger.LogDebug("No saved theme found, using default");
         }
     }
     
     private async Task SaveThemeToStorageAsync()
     {
-        try
-        {
-            await localStorage.SetItemAsync(THEME_KEY, currentTheme);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to save theme to storage");
-        }
+        await SafeLocalStorageSetAsync(THEME_KEY, currentTheme);
     }
     
     private async Task DetectSystemPreferencesAsync()
     {
+        var themeInfo = await jsInterop.TryInvokeAsync<dynamic>("window.RRBlazor.Theme.getThemeInfo");
+        
+        isSystemDark = Convert.ToBoolean(themeInfo?.systemDark ?? false);
+        isHighContrast = Convert.ToBoolean(themeInfo?.highContrast ?? false);
+        
+        logger.LogDebug("System preferences detected - Dark: {Dark}, High Contrast: {HighContrast}", 
+            isSystemDark, isHighContrast);
+    }
+
+    private async Task<T> SafeLocalStorageGetAsync<T>(string key)
+    {
+        if (!await jsInterop.IsInteractiveAsync())
+            return default(T);
+        
         try
         {
-            var themeInfo = await jsRuntime.InvokeAsync<dynamic>("RRTheme.getThemeInfo");
-            if (themeInfo != null)
-            {
-                isSystemDark = Convert.ToBoolean(themeInfo.systemDark ?? false);
-                isHighContrast = Convert.ToBoolean(themeInfo.highContrast ?? false);
-            }
+            return await localStorage.GetItemAsync<T>(key);
         }
-        catch (Exception ex)
+        catch (JSException)
         {
-            logger.LogDebug(ex, "Failed to detect system preferences");
-            isSystemDark = false;
-            isHighContrast = false;
+            return default(T);
+        }
+    }
+
+    private async Task<bool> SafeLocalStorageSetAsync<T>(string key, T value)
+    {
+        if (!await jsInterop.IsInteractiveAsync())
+            return false;
+        
+        try
+        {
+            await localStorage.SetItemAsync(key, value);
+            return true;
+        }
+        catch (JSException)
+        {
+            return false;
+        }
+    }
+
+    private async Task<bool> SafeLocalStorageRemoveAsync(string key)
+    {
+        if (!await jsInterop.IsInteractiveAsync())
+            return false;
+        
+        try
+        {
+            await localStorage.RemoveItemAsync(key);
+            return true;
+        }
+        catch (JSException)
+        {
+            return false;
         }
     }
     
@@ -322,7 +338,7 @@ public class BlazorThemeService : IThemeService, IAsyncDisposable
             // Skip if not initialized or disposed
             if (!isInitialized || isDisposed || jsRuntime == null) return;
             
-            var themeInfo = await jsRuntime.InvokeAsync<dynamic>("RRTheme.getThemeInfo");
+            var themeInfo = await jsInterop.TryInvokeAsync<dynamic>("window.RRBlazor.Theme.getThemeInfo");
             if (themeInfo == null) return;
             
             var newSystemDark = Convert.ToBoolean(themeInfo.systemDark ?? false);
