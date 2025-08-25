@@ -1,0 +1,1521 @@
+@using Microsoft.JSInterop
+@using Microsoft.AspNetCore.Components.Rendering
+@using RR.Blazor.Enums
+@using RR.Blazor.Models
+@using RR.Blazor.Interfaces
+@using RR.Blazor.Services
+@using System.Linq.Expressions
+@using System.Timers
+@using RR.Blazor.Components.Form
+@using RR.Blazor.Components.Core
+@using RR.Blazor.Components.Feedback
+@using RR.Blazor.Components.Base
+@using RR.Blazor.Components
+@typeparam TItem where TItem : class
+@inherits RFilterBase
+@inject IJSRuntime JSRuntime
+@implements IAsyncDisposable
+
+
+<div class="@GetContainerClasses()" data-filter-id="@ComponentId">
+    
+    @if (Mode == FilterMode.ColumnMenu && IsColumnFilter)
+    {
+        <div @ref="componentElement" class="filter-dropdown relative" data-filter-id="@ComponentId">
+            <RButton Icon="@(HasActiveFilters ? "filter_alt" : "filter_list")"
+                    Variant="@(HasActiveFilters ? ButtonVariant.Primary : ButtonVariant.Ghost)"
+                    Size="SizeType.Small"
+                    OnClick="ToggleColumnDropdown"
+                    Class="@($"filter-trigger {(isColumnDropdownOpen ? "active" : "")}")"
+                    Tooltip="@($"Filter {ColumnTitle}")">
+                @if (ActiveFilterCount > 0)
+                {
+                    <RBadge Text="@ActiveFilterCount.ToString()" Size="SizeType.ExtraSmall" Variant="VariantType.Primary" />
+                }
+            </RButton>
+            
+            <div class="filter-viewport filter-viewport-closed" @ref="filterViewportElement" data-viewport-id="@ComponentId" style="position: absolute; top: -9999px; left: -9999px; visibility: hidden;">
+                <div class="filter-content">
+                    @if (ColumnType == FilterType.Text)
+                    {
+                        <div class="filter-search">
+                            <RTextInput Value="@currentCriteria.SearchTerm" 
+                                       ValueChanged="@(async (value) => { currentCriteria.SearchTerm = value; await OnSearchInput(); })"
+                                       Type="FieldType.Search"
+                                       Placeholder="@($"Search {ColumnTitle}...")" 
+                                       Size="SizeType.Small"
+                                       Class="filter-search-input" />
+                        </div>
+                    }
+                    else if (ColumnType == FilterType.Select && ColumnValues?.Any() == true)
+                    {
+                        <div class="filter-column-values">
+                            <div class="filter-column-values-header">
+                                <RButton Text="Select All" 
+                                        Variant="ButtonVariant.Ghost" 
+                                        Size="SizeType.ExtraSmall"
+                                        OnClick="SelectAllColumnValues" />
+                                <RButton Text="Clear" 
+                                        Variant="ButtonVariant.Ghost" 
+                                        Size="SizeType.ExtraSmall"
+                                        OnClick="ClearColumnValues" />
+                            </div>
+                            <div class="filter-column-values-list">
+                                @foreach (var value in ColumnValues.Take(10))
+                                {
+                                    <div class="filter-column-value-item">
+                                        <RCheckbox Value="@IsColumnValueSelected(value)" 
+                                                  ValueChanged="@(async (bool isChecked) => await OnColumnValueToggle(value, isChecked))"
+                                                  Label="@value"
+                                                  Size="SizeType.Small" />
+                                    </div>
+                                }
+                                @if (ColumnValues.Count() > 10)
+                                {
+                                    <div class="filter-column-more">... and @(ColumnValues.Count() - 10) more</div>
+                                }
+                            </div>
+                        </div>
+                    }
+                    else if (ColumnType == FilterType.Date)
+                    {
+                        <div class="filter-date-range">
+                            <RDatePicker Value="@currentCriteria.DateFrom"
+                                        ValueChanged="@(async (value) => { currentCriteria.DateFrom = value; await OnDateRangeChanged(); })"
+                                        Placeholder="From"
+                                        Size="SizeType.Small" />
+                            <RDatePicker Value="@currentCriteria.DateTo"
+                                        ValueChanged="@(async (value) => { currentCriteria.DateTo = value; await OnDateRangeChanged(); })"
+                                        Placeholder="To"
+                                        Size="SizeType.Small" />
+                        </div>
+                    }
+                    else if (ColumnType == FilterType.Number)
+                    {
+                        <div class="filter-number-range">
+                            <RSelectField Value="@columnOperator.ToString()"
+                                         ValueChanged="@(async (value) => await OnColumnOperatorChangedString(value))"
+                                         Size="SizeType.Small"
+                                         Class="filter-operator-select">
+                                @foreach (var op in GetAvailableOperators())
+                                {
+                                    <option value="@op.Value.ToString()">@op.Key</option>
+                                }
+                            </RSelectField>
+                            <RTextInput Value="@columnValue?.ToString()" 
+                                       ValueChanged="@(async (value) => { columnValue = value; await OnColumnValueChanged(); })"
+                                       Type="FieldType.Number"
+                                       Placeholder="Value" 
+                                       Size="SizeType.Small" />
+                        </div>
+                    }
+                    
+                    @if (HasActiveFilters)
+                    {
+                        <div class="filter-column-actions">
+                            <RButton Text="Clear" 
+                                    Icon="clear"
+                                    Variant="ButtonVariant.Ghost" 
+                                    Size="SizeType.ExtraSmall"
+                                    OnClick="ClearColumnFilter" />
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+    else if ((Config.ShowSearch || typeof(TItem) == typeof(string)) && Config.ShowDateRange)
+    {
+        <div class="filter-toolbar mb-3 flex gap-2 items-center">
+            <div class="filter-search flex-1">
+                <RTextInput Value="@currentCriteria.SearchTerm" 
+                           ValueChanged="@(async (value) => { currentCriteria.SearchTerm = value; await OnSearchInput(); })"
+                           Type="FieldType.Search"
+                           Placeholder="@Config.SearchPlaceholder" 
+                           Size="@GetChipSize()"
+                           Class="filter-search-input" />
+            </div>
+            <div class="filter-date-range flex gap-2 items-center">
+                <RDatePicker Value="@currentCriteria.DateFrom"
+                            ValueChanged="@(async (value) => { currentCriteria.DateFrom = value; await OnDateRangeChanged(); })"
+                            Placeholder="From date"
+                            Size="@GetChipSize()"
+                            Dense="@(Config.Density == DensityType.Dense)"
+                            Class="filter-date-from" />
+                <span class="text-muted">to</span>
+                <RDatePicker Value="@currentCriteria.DateTo"
+                            ValueChanged="@(async (value) => { currentCriteria.DateTo = value; await OnDateRangeChanged(); })"
+                            Placeholder="To date"
+                            Size="@GetChipSize()"
+                            Dense="@(Config.Density == DensityType.Dense)"
+                            Class="filter-date-to" />
+                <RButton Icon="clear"
+                        Variant="ButtonVariant.Ghost" 
+                        Size="@GetButtonSize()"
+                        OnClick="ClearDateRange"
+                        Class="filter-date-clear" />
+            </div>
+        </div>
+    }
+    else
+    {
+        @if (Config.ShowSearch || typeof(TItem) == typeof(string))
+        {
+            <div class="filter-search mb-3">
+                <RTextInput Value="@currentCriteria.SearchTerm" 
+                           ValueChanged="@(async (value) => { currentCriteria.SearchTerm = value; await OnSearchInput(); })"
+                           Type="FieldType.Search"
+                           Placeholder="@Config.SearchPlaceholder" 
+                           Size="@GetChipSize()"
+                           Class="filter-search-input" />
+            </div>
+        }
+        
+        @if (Config.ShowDateRange)
+        {
+            <div class="filter-date-range mb-3">
+                <div class="flex gap-2 items-center">
+                    <RDatePicker Value="@currentCriteria.DateFrom"
+                                ValueChanged="@(async (value) => { currentCriteria.DateFrom = value; await OnDateRangeChanged(); })"
+                                Placeholder="From date"
+                                Size="@GetChipSize()"
+                                Dense="@(Config.Density == DensityType.Dense)"
+                                Class="flex-1" />
+                    <span class="text-muted">to</span>
+                    <RDatePicker Value="@currentCriteria.DateTo"
+                                ValueChanged="@(async (value) => { currentCriteria.DateTo = value; await OnDateRangeChanged(); })"
+                                Placeholder="To date"
+                                Size="@GetChipSize()"
+                                Dense="@(Config.Density == DensityType.Dense)"
+                                Class="flex-1" />
+                    <RButton Icon="clear"
+                            Variant="ButtonVariant.Ghost" 
+                            Size="@GetButtonSize()"
+                            OnClick="ClearDateRange"
+                            Class="filter-date-clear" />
+                </div>
+            </div>
+        }
+    }
+    
+    @if ((Config.ShowQuickFilters && QuickFilters.Any()) || Config.ShowAdvancedPanel)
+    {
+        <div class="filter-actions-row mb-3 d-flex align-center gap-2">
+            @if (Config.ShowQuickFilters && QuickFilters.Any())
+            {
+                <div class="filter-quick-filters flex flex-wrap gap-2">
+                    @foreach (var filter in QuickFilters)
+                    {
+                        <RButton Variant="@(filter.IsActive ? ButtonVariant.Primary : ButtonVariant.Secondary)"
+                                Size="@GetButtonSize()"
+                                Icon="@filter.Icon"
+                                Text="@filter.Label"
+                                OnClick="@(() => ToggleQuickFilter(filter))" />
+                    }
+                </div>
+            }
+            
+            @if (Config.ShowAdvancedPanel && !showAdvancedPanel)
+            {
+                <RButton Icon="tune"
+                        Text="Advanced"
+                        Variant="ButtonVariant.Secondary"
+                        Size="@GetButtonSize()"
+                        OnClick="@(() => ToggleAdvancedPanel())"
+                        Class="ml-auto" />
+            }
+        </div>
+    }
+    
+    @if (Config.ShowAdvancedPanel && showAdvancedPanel)
+    {
+        <div class="filter-advanced-panel">
+            <div class="filter-advanced-header">
+                <div class="filter-advanced-header-title">
+                    <span class="icon">tune</span>
+                    Advanced Filters
+                </div>
+                <RButton Icon="close" 
+                        Variant="ButtonVariant.Ghost" 
+                        Size="@GetButtonSize()"
+                        OnClick="@(() => showAdvancedPanel = false)" />
+            </div>
+            
+            <div class="filter-advanced-content">
+                @for (int i = 0; i < currentCriteria.Filters.Count; i++)
+                {
+                    var filter = currentCriteria.Filters[i];
+                    var index = i;
+                    
+                    if (!textValues.ContainsKey(index))
+                    {
+                        textValues[index] = filter.Value?.ToString() ?? string.Empty;
+                        numberValues[index] = filter.Value?.ToString() ?? string.Empty;
+                        dateValues[index] = GetDateValue(filter.Value);
+                        boolValues[index] = filter.Value?.ToString() ?? string.Empty;
+                        selectValues[index] = filter.Value?.ToString() ?? string.Empty;
+                        operatorValues[index] = filter.Operator.ToString();
+                    }
+                    
+                    <div class="filter-condition">
+                        <RSelectField @bind-Value="filter.ColumnKey"
+                                     @bind-Value:after="@(async () => await OnFilterConditionChanged(index))"
+                                     Label="Column"
+                                     Size="@GetChipSize()"
+                                     Class="filter-condition-field">
+                            <option value="">Select column</option>
+                            @foreach (var item in GetColumnSelectItems())
+                            {
+                                <option value="@item.Value">@item.Text</option>
+                            }
+                        </RSelectField>
+                        
+                        <RSelectField @bind-Value="operatorValues[index]"
+                                     @bind-Value:after="@(async () => { if(Enum.TryParse<FilterOperator>(operatorValues[index], out var op)) { filter.Operator = op; await OnFilterConditionChanged(index); } })"
+                                     Label="Operator"
+                                     Size="@GetChipSize()"
+                                     Class="flex-1">
+                            <option value="">Select operator</option>
+                            @foreach (var item in GetOperatorSelectItems(filter.Type))
+                            {
+                                <option value="@item.Value">@item.Text</option>
+                            }
+                        </RSelectField>
+                        
+                        @if (!RequiresNoValue(filter.Operator))
+                        {
+                            <div class="flex-1">
+                                @switch (filter.Type)
+                                {
+                                    case FilterType.Text:
+                                        <div class="filter-condition-value">
+                                            <label class="filter-condition-label">Value</label>
+                                            <RTextInput Value="@textValues[index]"
+                                                       ValueChanged="@(async (value) => { textValues[index] = value; filter.Value = value; await OnFilterConditionChanged(index); })"
+                                                       Placeholder="Enter text"
+                                                       Size="@GetChipSize()" />
+                                        </div>
+                                        break;
+                                        
+                                    case FilterType.Number:
+                                        <div class="filter-condition-value">
+                                            <label class="filter-condition-label">Value</label>
+                                            <RTextInput Type="FieldType.Number"
+                                                       Value="@numberValues[index]"
+                                                       ValueChanged="@(async (value) => { numberValues[index] = value; filter.Value = value; await OnFilterConditionChanged(index); })"
+                                                       Placeholder="Enter number"
+                                                       Size="@GetChipSize()" />
+                                        </div>
+                                        break;
+                                        
+                                    case FilterType.Date:
+                                        <div class="filter-condition-value">
+                                            <label class="filter-condition-label">Value</label>
+                                            <RTextInput Type="FieldType.Date"
+                                                       Value="@dateValues[index]"
+                                                       ValueChanged="@(async (value) => { dateValues[index] = value; if(DateTime.TryParse(value, out var date)) { filter.Value = date; } await OnFilterConditionChanged(index); })"
+                                                       Size="@GetChipSize()" />
+                                        </div>
+                                        break;
+                                        
+                                    case FilterType.Boolean:
+                                        <RSelectField @bind-Value="boolValues[index]"
+                                                     @bind-Value:after="@(async () => { filter.Value = boolValues[index]; await OnFilterConditionChanged(index); })"
+                                                     Label="Value"
+                                                     Size="@GetChipSize()">
+                                            <option value="">Select value</option>
+                                            @foreach (var item in GetBooleanSelectItems())
+                                            {
+                                                <option value="@item.Value">@item.Text</option>
+                                            }
+                                        </RSelectField>
+                                        break;
+                                        
+                                    case FilterType.Select:
+                                        <RSelectField @bind-Value="selectValues[index]"
+                                                     @bind-Value:after="@(async () => { filter.Value = selectValues[index]; await OnFilterConditionChanged(index); })"
+                                                     Label="Value"
+                                                     Size="@GetChipSize()">
+                                            <option value="">Select value</option>
+                                            @foreach (var item in GetColumnUniqueValues(filter.ColumnKey))
+                                            {
+                                                <option value="@item.Value">@item.Text</option>
+                                            }
+                                        </RSelectField>
+                                        break;
+                                        
+                                    default:
+                                        <RTextInput Value="@textValues[index]"
+                                                   ValueChanged="@(async (value) => { textValues[index] = value; filter.Value = value; await OnFilterConditionChanged(index); })"
+                                                   Size="@GetChipSize()" />
+                                        break;
+                                }
+                            </div>
+                        }
+                        
+                        <RButton Icon="remove"
+                                Variant="ButtonVariant.Ghost"
+                                Size="@GetButtonSize()"
+                                OnClick="@(() => RemoveFilterCondition(index))"
+                                Class="filter-condition-remove" />
+                    </div>
+                }
+                
+                <RButton Icon="add"
+                        Text="Add Filter"
+                        Variant="ButtonVariant.Secondary"
+                        Size="@GetButtonSize()"
+                        OnClick="AddFilterCondition"
+                        Class="filter-add-condition" />
+            </div>
+        </div>
+    }
+    
+    @if (Config.ShowFilterChips && HasActiveFilters)
+    {
+        <div class="filter-chips">
+            @if (!string.IsNullOrWhiteSpace(currentCriteria.SearchTerm))
+            {
+                <RChip Text="@($"Search: {currentCriteria.SearchTerm}")" 
+                       Size="@GetChipSize()" 
+                       Variant="VariantType.Primary" 
+                       Closeable="true" 
+                       OnClose="@(async () => await ClearSearch())" />
+            }
+            
+            @foreach (var filter in QuickFilters.Where(f => f.IsActive))
+            {
+                <RChip Text="@filter.Label" 
+                       Size="@GetChipSize()" 
+                       Variant="VariantType.Secondary" 
+                       Closeable="true" 
+                       OnClose="@(async () => await ToggleQuickFilter(filter))" />
+            }
+            
+            @foreach (var filter in currentCriteria.Filters.Where(f => f.IsActive))
+            {
+                <RChip Text="@GetFilterDisplayText(filter)" 
+                       Size="@GetChipSize()" 
+                       Variant="VariantType.Info" 
+                       Closeable="true" 
+                       OnClose="@(async () => await RemoveFilter(filter))" />
+            }
+        </div>
+    }
+    
+    <div class="filter-actions">
+        <div class="flex items-center gap-2">
+            @if (Config.ShowFilterCount && ActiveFilterCount > 0)
+            {
+                <RChip Text="@($"{ActiveFilterCount} Active")" 
+                       Size="@GetChipSize()" 
+                       Variant="VariantType.Primary" />
+            }
+        </div>
+        
+        <div class="flex items-center gap-2">
+            @if (Config.ShowClearButton && HasActiveFilters)
+            {
+                <RButton Icon="clear"
+                        Text="Clear All"
+                        Variant="ButtonVariant.Ghost"
+                        Size="@GetButtonSize()"
+                        OnClick="ClearAllFilters" />
+            }
+        </div>
+    </div>
+    
+</div>
+
+@code {
+    
+    [Parameter] public object? DataSource { get; set; }
+    [Parameter] public UniversalFilterConfig Config { get; set; } = new UniversalFilterConfig { ShowSearch = true, ShowFilterChips = true };
+    [Parameter] public List<QuickFilterState> QuickFilters { get; set; } = new();
+    [Parameter] public List<string> SearchFields { get; set; } = new();
+    [Parameter] public Dictionary<string, FilterColumnDefinition> ColumnDefinitions { get; set; } = new();
+    [Parameter] public object? InitialCriteria { get; set; }
+    [Parameter] public bool EnableRealTime { get; set; } = true;
+    [Parameter] public int DebounceMs { get; set; } = 300;
+    [Parameter] public FilterMode Mode { get; set; } = FilterMode.Smart;
+    
+    [Parameter] public EventCallback<object> OnPredicateChanged { get; set; }
+    [Parameter] public EventCallback<object> OnCriteriaChanged { get; set; }
+    [Parameter] public EventCallback<FilterStateChangedEventArgs> OnFilterChanged { get; set; }
+    
+    // Column filter specific parameters
+    [Parameter] public bool IsColumnFilter { get; set; }
+    [Parameter] public string ColumnKey { get; set; } = "";
+    [Parameter] public string ColumnTitle { get; set; } = "";
+    [Parameter] public FilterType ColumnType { get; set; } = FilterType.Text;
+    [Parameter] public IEnumerable<string>? ColumnValues { get; set; }
+    [Parameter] public bool ShowFilterBadges { get; set; } = true;
+    
+    
+    private UniversalFilterCriteria<TItem> currentCriteria = new();
+    private Expression<Func<TItem, bool>>? currentPredicate;
+    private Func<TItem, bool>? compiledPredicate;
+    private Timer? debounceTimer;
+    private DotNetObjectReference<RFilterGeneric<TItem>>? dotNetRef;
+    private ElementReference componentElement;
+    private ElementReference filterViewportElement;
+    private bool showAdvancedPanel = false;
+    
+    private Dictionary<int, string> operatorValues = new();
+    private Dictionary<int, string> boolValues = new();
+    private Dictionary<int, string> selectValues = new();
+    private Dictionary<int, string> textValues = new();
+    private Dictionary<int, string> numberValues = new();
+    private Dictionary<int, string> dateValues = new();
+    
+    // Column filter state
+    private bool isColumnDropdownOpen = false;
+    private HashSet<string> selectedColumnValues = new();
+    private FilterOperator columnOperator = FilterOperator.Contains;
+    private object? columnValue;
+    
+    
+    /// <summary>
+    /// Get the current filter predicate expression
+    /// Components use this to filter IQueryable data sources
+    /// </summary>
+    public Expression<Func<TItem, bool>> GetPredicate()
+    {
+        if (currentPredicate == null)
+        {
+            BuildPredicate();
+        }
+        return currentPredicate ?? (x => true);
+    }
+    
+    /// <summary>
+    /// Get the compiled predicate for IEnumerable filtering
+    /// Components use this to filter in-memory collections
+    /// </summary>
+    public Func<TItem, bool> GetCompiledPredicate()
+    {
+        if (compiledPredicate == null)
+        {
+            compiledPredicate = GetPredicate().Compile();
+        }
+        return compiledPredicate;
+    }
+    
+    /// <summary>
+    /// Get current filter criteria
+    /// </summary>
+    public UniversalFilterCriteria<TItem> GetCurrentCriteria()
+    {
+        return currentCriteria;
+    }
+    
+    /// <summary>
+    /// Set filter criteria and rebuild predicate
+    /// </summary>
+    public async Task SetCriteriaAsync(object criteria)
+    {
+        if (criteria is UniversalFilterCriteria<TItem> typedCriteria)
+        {
+            currentCriteria = typedCriteria;
+            BuildPredicate();
+            await NotifyPredicateChanged();
+        }
+    }
+    
+    /// <summary>
+    /// Check if filter has any active conditions
+    /// </summary>
+    public bool HasActiveFilters => 
+        !string.IsNullOrWhiteSpace(currentCriteria.SearchTerm) ||
+        QuickFilters.Any(f => f.IsActive) ||
+        currentCriteria.Filters.Any(f => f.IsActive) ||
+        currentCriteria.DateFrom != null ||
+        currentCriteria.DateTo != null ||
+        selectedColumnValues.Any() ||
+        (IsColumnFilter && columnValue != null);
+    
+    /// <summary>
+    /// Get count of active filter conditions
+    /// </summary>
+    public int ActiveFilterCount => 
+        (string.IsNullOrWhiteSpace(currentCriteria.SearchTerm) ? 0 : 1) +
+        QuickFilters.Count(f => f.IsActive) +
+        currentCriteria.Filters.Count(f => f.IsActive) +
+        (currentCriteria.DateFrom != null ? 1 : 0) +
+        (currentCriteria.DateTo != null ? 1 : 0) +
+        (selectedColumnValues.Any() ? 1 : 0) +
+        (IsColumnFilter && columnValue != null ? 1 : 0);
+    
+    
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        
+        
+        dotNetRef = DotNetObjectReference.Create(this);
+        
+        if (EnableRealTime)
+        {
+            debounceTimer = new Timer(DebounceMs);
+            debounceTimer.Elapsed += async (sender, e) => await ApplyFiltersDebounced();
+            debounceTimer.AutoReset = false;
+        }
+        
+        if (!SearchFields.Any())
+        {
+            if (typeof(TItem) == typeof(string))
+            {
+                SearchFields = new List<string> { "$self" };
+            }
+            else
+            {
+                SearchFields = typeof(TItem).GetProperties()
+                    .Where(p => p.PropertyType == typeof(string))
+                    .Select(p => p.Name)
+                    .ToList();
+            }
+        }
+        
+        if ((ColumnDefinitions == null || !ColumnDefinitions.Any()) && typeof(TItem) != typeof(string))
+        {
+            ColumnDefinitions = GenerateColumnDefinitions();
+        }
+        
+        InitializeBindingValues();
+        
+        if (InitialCriteria == null) return;
+        _ = Task.Run(async () => await SetCriteriaAsync(InitialCriteria));
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+        
+        if (firstRender && IsColumnFilter && JSRuntime != null && dotNetRef != null)
+        {
+            await JSRuntime.InvokeVoidAsync("window.RRBlazor.ClickOutside?.initialize", 
+                ComponentId, dotNetRef, nameof(CloseColumnDropdown));
+        }
+    }
+    
+    private void InitializeBindingValues()
+    {
+        for (int i = 0; i < currentCriteria.Filters.Count; i++)
+        {
+            var filter = currentCriteria.Filters[i];
+            operatorValues[i] = filter.Operator.ToString();
+            textValues[i] = filter.Value?.ToString() ?? string.Empty;
+            numberValues[i] = filter.Value?.ToString() ?? string.Empty;
+            dateValues[i] = GetDateValue(filter.Value);
+            boolValues[i] = filter.Value?.ToString() ?? string.Empty;
+            selectValues[i] = filter.Value?.ToString() ?? string.Empty;
+        }
+    }
+    
+    
+    /// <summary>
+    /// Build the filter predicate from current criteria
+    /// This only generates the predicate, never touches data
+    /// </summary>
+    private void BuildPredicate()
+    {
+        
+        var predicates = new List<Expression<Func<TItem, bool>>>();
+        
+        if (!string.IsNullOrWhiteSpace(currentCriteria.SearchTerm))
+        {
+            var searchPredicate = BuildSearchPredicate(currentCriteria.SearchTerm);
+            if (searchPredicate != null)
+            {
+                predicates.Add(searchPredicate);
+            }
+        }
+        
+        foreach (var quickFilter in QuickFilters.Where(f => f.IsActive))
+        {
+            var quickPredicate = BuildQuickFilterPredicate(quickFilter);
+            if (quickPredicate != null)
+                predicates.Add(quickPredicate);
+        }
+        
+        if (currentCriteria.DateFrom != null || currentCriteria.DateTo != null)
+        {
+            var datePredicate = BuildDateRangePredicate();
+            if (datePredicate != null)
+                predicates.Add(datePredicate);
+        }
+        
+        foreach (var condition in currentCriteria.Filters.Where(f => f.IsActive && !string.IsNullOrEmpty(f.ColumnKey)))
+        {
+            var conditionPredicate = BuildConditionPredicate(condition);
+            if (conditionPredicate != null)
+                predicates.Add(conditionPredicate);
+        }
+        
+        currentPredicate = CombinePredicates(predicates);
+        compiledPredicate = null;
+        
+    }
+    
+    private Expression<Func<TItem, bool>>? BuildSearchPredicate(string searchTerm)
+    {
+        if (string.IsNullOrWhiteSpace(searchTerm)) return null;
+        
+        var param = Expression.Parameter(typeof(TItem), "x");
+        var lowerSearchTerm = searchTerm.ToLowerInvariant();
+        
+        if (typeof(TItem) == typeof(string))
+        {
+            var toLower = Expression.Call(param, typeof(string).GetMethod("ToLowerInvariant")!);
+            var contains = Expression.Call(toLower, typeof(string).GetMethod("Contains", new[] { typeof(string) })!,
+                Expression.Constant(lowerSearchTerm));
+            return Expression.Lambda<Func<TItem, bool>>(contains, param);
+        }
+        
+        if (typeof(TItem).IsPrimitive || typeof(TItem).IsValueType)
+        {
+            var toString = Expression.Call(param, typeof(object).GetMethod("ToString")!);
+            var toLower = Expression.Call(toString, typeof(string).GetMethod("ToLowerInvariant")!);
+            var contains = Expression.Call(toLower, typeof(string).GetMethod("Contains", new[] { typeof(string) })!,
+                Expression.Constant(lowerSearchTerm));
+            return Expression.Lambda<Func<TItem, bool>>(contains, param);
+        }
+        
+        Expression? body = null;
+        foreach (var fieldName in SearchFields)
+        {
+            try
+            {
+                if (fieldName == "$self")
+                {
+                    var selfToString = Expression.Call(param, typeof(object).GetMethod("ToString")!);
+                    var selfToLower = Expression.Call(selfToString, typeof(string).GetMethod("ToLowerInvariant")!);
+                    var selfContains = Expression.Call(selfToLower, typeof(string).GetMethod("Contains", new[] { typeof(string) })!,
+                        Expression.Constant(lowerSearchTerm));
+                    
+                    body = body == null ? selfContains : Expression.OrElse(body, selfContains);
+                    continue;
+                }
+                
+                var property = Expression.Property(param, fieldName);
+                Expression stringValue = property.Type == typeof(string) 
+                    ? property 
+                    : Expression.Call(property, typeof(object).GetMethod("ToString")!);
+                
+                var toLower = Expression.Call(stringValue, typeof(string).GetMethod("ToLowerInvariant")!);
+                var contains = Expression.Call(toLower, typeof(string).GetMethod("Contains", new[] { typeof(string) })!,
+                    Expression.Constant(lowerSearchTerm));
+                
+                body = body == null ? contains : Expression.OrElse(body, contains);
+            }
+            catch
+            {
+                continue;
+            }
+        }
+        
+        return body != null ? Expression.Lambda<Func<TItem, bool>>(body, param) : null;
+    }
+    
+    private Expression<Func<TItem, bool>>? BuildQuickFilterPredicate(QuickFilterState quickFilter)
+    {
+        if (quickFilter?.FilterExpression == null)
+            return null;
+            
+        var param = Expression.Parameter(typeof(TItem), "item");
+        var objParam = Expression.Convert(param, typeof(object));
+        var body = quickFilter.FilterExpression.Body;
+        
+        var replacer = new ParameterReplacer(quickFilter.FilterExpression.Parameters[0], objParam);
+        var newBody = replacer.Visit(body);
+        
+        return Expression.Lambda<Func<TItem, bool>>(newBody, param);
+    }
+    
+    private Expression<Func<TItem, bool>>? BuildDateRangePredicate()
+    {
+        if (!currentCriteria.DateFrom.HasValue && !currentCriteria.DateTo.HasValue)
+            return null;
+            
+        var param = Expression.Parameter(typeof(TItem), "item");
+        Expression? predicate = null;
+        
+        foreach (var kvp in ColumnDefinitions.Where(c => c.Value.Type == FilterType.Date))
+        {
+            var property = typeof(TItem).GetProperty(kvp.Key);
+            if (property?.PropertyType == typeof(DateTime) || property?.PropertyType == typeof(DateTime?))
+            {
+                var propertyAccess = Expression.Property(param, property);
+                var dateValue = property.PropertyType == typeof(DateTime?) 
+                    ? (Expression)Expression.Property(propertyAccess, "Value")
+                    : propertyAccess;
+                
+                if (currentCriteria.DateFrom.HasValue)
+                {
+                    var fromCheck = Expression.GreaterThanOrEqual(dateValue, Expression.Constant(currentCriteria.DateFrom.Value));
+                    predicate = predicate == null ? fromCheck : Expression.AndAlso(predicate, fromCheck);
+                }
+                
+                if (currentCriteria.DateTo.HasValue)
+                {
+                    var toCheck = Expression.LessThanOrEqual(dateValue, Expression.Constant(currentCriteria.DateTo.Value));
+                    predicate = predicate == null ? toCheck : Expression.AndAlso(predicate, toCheck);
+                }
+                
+                break;
+            }
+        }
+        
+        return predicate != null ? Expression.Lambda<Func<TItem, bool>>(predicate, param) : null;
+    }
+    
+    private class ParameterReplacer : ExpressionVisitor
+    {
+        private readonly Expression _oldParam;
+        private readonly Expression _newParam;
+        
+        public ParameterReplacer(Expression oldParam, Expression newParam)
+        {
+            _oldParam = oldParam;
+            _newParam = newParam;
+        }
+        
+        protected override Expression VisitParameter(ParameterExpression node)
+        {
+            return node == _oldParam ? _newParam : base.VisitParameter(node);
+        }
+    }
+    
+    private Expression<Func<TItem, bool>>? BuildConditionPredicate(FilterCondition condition)
+    {
+        if (!ColumnDefinitions.TryGetValue(condition.ColumnKey, out var columnDef))
+            return null;
+        
+        var param = Expression.Parameter(typeof(TItem), "x");
+        var property = Expression.Property(param, condition.ColumnKey);
+        
+        Expression? body = condition.Type switch
+        {
+            FilterType.Text => BuildTextPredicate(property, condition),
+            FilterType.Number => BuildNumberPredicate(property, condition),
+            FilterType.Date => BuildDatePredicate(property, condition),
+            FilterType.Boolean => BuildBooleanPredicate(property, condition),
+            FilterType.Select => BuildSelectPredicate(property, condition),
+            _ => null
+        };
+        
+        return body != null ? Expression.Lambda<Func<TItem, bool>>(body, param) : null;
+    }
+    
+    private Expression? BuildTextPredicate(MemberExpression property, FilterCondition condition)
+    {
+        var value = condition.Value?.ToString() ?? string.Empty;
+        var valueExpr = Expression.Constant(value, typeof(string));
+        
+        return condition.Operator switch
+        {
+            FilterOperator.Contains => Expression.Call(property, nameof(string.Contains), null, valueExpr),
+            FilterOperator.Equals => Expression.Equal(property, valueExpr),
+            FilterOperator.NotEquals => Expression.NotEqual(property, valueExpr),
+            FilterOperator.StartsWith => Expression.Call(property, nameof(string.StartsWith), null, valueExpr),
+            FilterOperator.EndsWith => Expression.Call(property, nameof(string.EndsWith), null, valueExpr),
+            FilterOperator.IsEmpty => Expression.Call(typeof(string), nameof(string.IsNullOrEmpty), null, property),
+            FilterOperator.IsNotEmpty => Expression.Not(Expression.Call(typeof(string), nameof(string.IsNullOrEmpty), null, property)),
+            _ => null
+        };
+    }
+    
+    private Expression? BuildNumberPredicate(MemberExpression property, FilterCondition condition)
+    {
+        if (!decimal.TryParse(condition.Value?.ToString(), out var value))
+            return null;
+        
+        var valueExpr = Expression.Constant(Convert.ChangeType(value, property.Type), property.Type);
+        
+        return condition.Operator switch
+        {
+            FilterOperator.Equals => Expression.Equal(property, valueExpr),
+            FilterOperator.NotEquals => Expression.NotEqual(property, valueExpr),
+            FilterOperator.GreaterThan => Expression.GreaterThan(property, valueExpr),
+            FilterOperator.LessThan => Expression.LessThan(property, valueExpr),
+            FilterOperator.GreaterThanOrEqual => Expression.GreaterThanOrEqual(property, valueExpr),
+            FilterOperator.LessThanOrEqual => Expression.LessThanOrEqual(property, valueExpr),
+            _ => null
+        };
+    }
+    
+    private Expression? BuildDatePredicate(MemberExpression property, FilterCondition condition)
+    {
+        if (!DateTime.TryParse(condition.Value?.ToString(), out var value))
+            return null;
+        
+        var valueExpr = Expression.Constant(value, typeof(DateTime));
+        
+        return condition.Operator switch
+        {
+            FilterOperator.On => Expression.Equal(Expression.Property(property, "Date"),
+                Expression.Property(valueExpr, "Date")),
+            FilterOperator.Before => Expression.LessThan(property, valueExpr),
+            FilterOperator.After => Expression.GreaterThan(property, valueExpr),
+            FilterOperator.OnOrBefore => Expression.LessThanOrEqual(property, valueExpr),
+            FilterOperator.OnOrAfter => Expression.GreaterThanOrEqual(property, valueExpr),
+            _ => null
+        };
+    }
+    
+    private Expression? BuildBooleanPredicate(MemberExpression property, FilterCondition condition)
+    {
+        return condition.Operator switch
+        {
+            FilterOperator.IsTrue => Expression.Equal(property, Expression.Constant(true)),
+            FilterOperator.IsFalse => Expression.Equal(property, Expression.Constant(false)),
+            _ => null
+        };
+    }
+    
+    private Expression? BuildSelectPredicate(MemberExpression property, FilterCondition condition)
+    {
+        var value = condition.Value;
+        if (value == null) return null;
+        
+        var valueExpr = Expression.Constant(value, property.Type);
+        
+        return condition.Operator switch
+        {
+            FilterOperator.Equals => Expression.Equal(property, valueExpr),
+            FilterOperator.NotEquals => Expression.NotEqual(property, valueExpr),
+            _ => null
+        };
+    }
+    
+    private Expression<Func<TItem, bool>> CombinePredicates(List<Expression<Func<TItem, bool>>> predicates)
+    {
+        if (!predicates.Any())
+            return x => true;
+        
+        if (predicates.Count == 1)
+            return predicates[0];
+        
+        var param = Expression.Parameter(typeof(TItem), "x");
+        Expression? body = null;
+        
+        foreach (var predicate in predicates)
+        {
+            var invokedPredicate = Expression.Invoke(predicate, param);
+            body = body == null ? invokedPredicate : Expression.AndAlso(body, invokedPredicate);
+        }
+        
+        return Expression.Lambda<Func<TItem, bool>>(body!, param);
+    }
+    
+    
+    private async Task OnSearchInput()
+    {
+        
+        if (EnableRealTime && debounceTimer != null)
+        {
+            debounceTimer.Stop();
+            debounceTimer.Start();
+        }
+        else
+        {
+            BuildPredicate();
+            await NotifyPredicateChanged();
+        }
+    }
+    
+    private async Task OnDateRangeChanged()
+    {
+        BuildPredicate();
+        await NotifyPredicateChanged();
+    }
+    
+    private async Task ToggleQuickFilter(QuickFilterState filter)
+    {
+        filter.IsActive = !filter.IsActive;
+        BuildPredicate();
+        await NotifyPredicateChanged();
+    }
+    
+    private async Task OnFilterConditionChanged(int index)
+    {
+        if (index < 0 || index >= currentCriteria.Filters.Count) return;
+        
+        if (!textValues.ContainsKey(index))
+        {
+            var filter = currentCriteria.Filters[index];
+            textValues[index] = filter.Value?.ToString() ?? string.Empty;
+            numberValues[index] = filter.Value?.ToString() ?? string.Empty;
+            dateValues[index] = GetDateValue(filter.Value);
+            boolValues[index] = filter.Value?.ToString() ?? string.Empty;
+            selectValues[index] = filter.Value?.ToString() ?? string.Empty;
+        }
+        
+        var currentFilter = currentCriteria.Filters[index];
+        currentFilter.IsActive = !string.IsNullOrEmpty(currentFilter.ColumnKey) &&
+                                 !string.IsNullOrEmpty(currentFilter.Value?.ToString());
+        
+        if (EnableRealTime && debounceTimer != null)
+        {
+            debounceTimer.Stop();
+            debounceTimer.Start();
+            return;
+        }
+        
+        BuildPredicate();
+        await NotifyPredicateChanged();
+    }
+    
+    private async Task AddFilterCondition()
+    {
+        currentCriteria.Filters.Add(new FilterCondition
+        {
+            ColumnKey = "",
+            Type = FilterType.Text,
+            Operator = FilterOperator.Contains,
+            Value = null,
+            IsActive = false
+        });
+        StateHasChanged();
+    }
+    
+    private async Task RemoveFilterCondition(int index)
+    {
+        if (index >= 0 && index < currentCriteria.Filters.Count)
+        {
+            currentCriteria.Filters.RemoveAt(index);
+            BuildPredicate();
+            await NotifyPredicateChanged();
+        }
+    }
+    
+    private async Task RemoveFilter(FilterCondition filter)
+    {
+        currentCriteria.Filters.Remove(filter);
+        BuildPredicate();
+        await NotifyPredicateChanged();
+    }
+    
+    private async Task ClearSearch()
+    {
+        currentCriteria.SearchTerm = string.Empty;
+        BuildPredicate();
+        await NotifyPredicateChanged();
+    }
+    
+    private async Task ClearDateRange()
+    {
+        currentCriteria.DateFrom = null;
+        currentCriteria.DateTo = null;
+        BuildPredicate();
+        await NotifyPredicateChanged();
+    }
+    
+    private async Task ClearAllFilters()
+    {
+        await ClearAsync();
+    }
+    
+    private async Task ToggleAdvancedPanel()
+    {
+        showAdvancedPanel = !showAdvancedPanel;
+        StateHasChanged();
+    }
+    
+    private async Task ApplyFiltersDebounced()
+    {
+        
+        await InvokeAsync(async () =>
+        {
+            BuildPredicate();
+            await NotifyPredicateChanged();
+        });
+    }
+    
+    /// <summary>
+    /// Notify that the predicate has changed
+    /// Components will reapply filtering using the new predicate
+    /// </summary>
+    private async Task NotifyPredicateChanged()
+    {
+        
+        if (OnPredicateChanged.HasDelegate)
+        {
+            await OnPredicateChanged.InvokeAsync(currentPredicate);
+        }
+        
+        if (OnCriteriaChanged.HasDelegate)
+        {
+            await OnCriteriaChanged.InvokeAsync(currentCriteria);
+        }
+        
+        if (OnFilterChanged.HasDelegate)
+        {
+            await OnFilterChanged.InvokeAsync(new FilterStateChangedEventArgs
+            {
+                FilterId = ComponentId,
+                ChangeType = FilterChangeType.ConditionsChanged,
+                HasActiveFilters = HasActiveFilters,
+                ActiveFilterCount = ActiveFilterCount
+            });
+        }
+        
+        await NotifyLinkedComponents(null);
+        
+        await InvokeAsync(StateHasChanged);
+    }
+    
+    
+    private string GetContainerClasses()
+    {
+        var classes = new List<string> { "filter" };
+        
+        if (Mode == FilterMode.ColumnMenu && IsColumnFilter)
+        {
+            classes.Add("filter-column-menu-mode");
+        }
+        
+        if (Config.Density != DensityType.Normal)
+        {
+            classes.Add($"density-{Config.Density.ToString().ToLowerInvariant()}");
+        }
+        
+        if (!string.IsNullOrEmpty(Class))
+        {
+            classes.Add(Class);
+        }
+        
+        return string.Join(" ", classes);
+    }
+    
+    private List<SelectItem> GetColumnSelectItems()
+    {
+        
+        if (ColumnDefinitions != null && ColumnDefinitions.Any())
+        {
+        }
+        
+        if (typeof(TItem) == typeof(string) || typeof(TItem).IsPrimitive)
+        {
+            return new List<SelectItem>();
+        }
+        
+        if (ColumnDefinitions == null || !ColumnDefinitions.Any())
+        {
+            ColumnDefinitions = GenerateColumnDefinitions();
+        }
+        
+        var items = ColumnDefinitions.Values
+            .Where(c => c.IsFilterable)
+            .Select(c => new SelectItem { Value = c.Key, Text = c.DisplayName })
+            .ToList();
+        
+        
+        return items;
+    }
+    
+    private List<SelectItem> GetOperatorSelectItems(FilterType filterType)
+    {
+        var operators = GetOperatorsForFilterType(filterType);
+        return operators.Select(op => new SelectItem
+        {
+            Value = op.ToString(),
+            Text = GetOperatorDisplayText(op)
+        }).ToList();
+    }
+    
+    private List<SelectItem> GetBooleanSelectItems()
+    {
+        return new List<SelectItem>
+        {
+            new() { Value = "true", Text = "Yes" },
+            new() { Value = "false", Text = "No" }
+        };
+    }
+    
+    private List<SelectItem> GetColumnUniqueValues(string columnKey)
+    {
+        if (!ColumnDefinitions.TryGetValue(columnKey, out var columnDef) || columnDef.UniqueValues == null)
+            return new List<SelectItem>();
+        
+        return columnDef.UniqueValues
+            .Select(value => new SelectItem { Value = value?.ToString() ?? "", Text = value?.ToString() ?? "" })
+            .ToList();
+    }
+    
+    private List<FilterOperator> GetOperatorsForFilterType(FilterType filterType)
+    {
+        return filterType switch
+        {
+            FilterType.Text => new List<FilterOperator>
+            {
+                FilterOperator.Contains, FilterOperator.NotContains,
+                FilterOperator.StartsWith, FilterOperator.EndsWith,
+                FilterOperator.Equals, FilterOperator.NotEquals,
+                FilterOperator.IsEmpty, FilterOperator.IsNotEmpty
+            },
+            FilterType.Number => new List<FilterOperator>
+            {
+                FilterOperator.Equals, FilterOperator.NotEquals,
+                FilterOperator.GreaterThan, FilterOperator.LessThan,
+                FilterOperator.GreaterThanOrEqual, FilterOperator.LessThanOrEqual
+            },
+            FilterType.Date => new List<FilterOperator>
+            {
+                FilterOperator.On, FilterOperator.Before, FilterOperator.After,
+                FilterOperator.OnOrBefore, FilterOperator.OnOrAfter
+            },
+            FilterType.Boolean => new List<FilterOperator>
+            {
+                FilterOperator.IsTrue, FilterOperator.IsFalse
+            },
+            FilterType.Select => new List<FilterOperator>
+            {
+                FilterOperator.Equals, FilterOperator.NotEquals
+            },
+            _ => new List<FilterOperator> { FilterOperator.Equals, FilterOperator.NotEquals }
+        };
+    }
+    
+    private string GetOperatorDisplayText(FilterOperator op)
+    {
+        return op switch
+        {
+            FilterOperator.Contains => "Contains",
+            FilterOperator.NotContains => "Does not contain",
+            FilterOperator.Equals => "Equals",
+            FilterOperator.NotEquals => "Does not equal",
+            FilterOperator.StartsWith => "Starts with",
+            FilterOperator.EndsWith => "Ends with",
+            FilterOperator.GreaterThan => "Greater than",
+            FilterOperator.LessThan => "Less than",
+            FilterOperator.GreaterThanOrEqual => "Greater than or equal",
+            FilterOperator.LessThanOrEqual => "Less than or equal",
+            FilterOperator.IsEmpty => "Is empty",
+            FilterOperator.IsNotEmpty => "Is not empty",
+            FilterOperator.IsTrue => "Is true",
+            FilterOperator.IsFalse => "Is false",
+            FilterOperator.On => "On",
+            FilterOperator.Before => "Before",
+            FilterOperator.After => "After",
+            FilterOperator.OnOrBefore => "On or before",
+            FilterOperator.OnOrAfter => "On or after",
+            _ => op.ToString()
+        };
+    }
+    
+    private string GetFilterDisplayText(FilterCondition filter)
+    {
+        var columnName = ColumnDefinitions.TryGetValue(filter.ColumnKey, out var def) ? def.DisplayName : filter.ColumnKey;
+        var operatorText = GetOperatorDisplayText(filter.Operator);
+        var value = filter.Value?.ToString() ?? "";
+        
+        if (RequiresNoValue(filter.Operator))
+            return $"{columnName} {operatorText}";
+        
+        return $"{columnName} {operatorText} {value}";
+    }
+    
+    private bool RequiresNoValue(FilterOperator op)
+    {
+        return op is FilterOperator.IsEmpty or FilterOperator.IsNotEmpty or FilterOperator.IsTrue or FilterOperator.IsFalse;
+    }
+    
+    private string GetDateValue(object? value)
+    {
+        return value is DateTime date ? date.ToString("yyyy-MM-dd") : string.Empty;
+    }
+    
+    
+    public override Type GetItemType() => typeof(TItem);
+    
+    [Obsolete("Use GetPredicate() instead. Components should apply predicates to their own data.")]
+    public override Task<object> ApplyFilterAsync(object dataSource)
+    {
+        return Task.FromResult(dataSource);
+    }
+    
+    public override async Task ClearAsync()
+    {
+        currentCriteria = new UniversalFilterCriteria<TItem>();
+        foreach (var quickFilter in QuickFilters)
+        {
+            quickFilter.IsActive = false;
+        }
+        
+        BuildPredicate();
+        await NotifyPredicateChanged();
+    }
+    
+    public override async Task RefreshAsync()
+    {
+        BuildPredicate();
+        await NotifyPredicateChanged();
+    }
+    
+    protected override FilterType FilterType => FilterType.Auto;
+    
+    protected override List<FilterOperator> AvailableOperators => GetOperatorsForFilterType(FilterType.Text);
+    
+    protected override void RenderFilterInput(RenderTreeBuilder builder)
+    {
+    }
+    
+    protected override SizeType GetDefaultSize() => SizeType.Medium;
+    
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+    }
+    
+    
+    private Dictionary<string, FilterColumnDefinition> GenerateColumnDefinitions()
+    {
+        var definitions = new Dictionary<string, FilterColumnDefinition>();
+        
+        var properties = typeof(TItem).GetProperties()
+            .Where(p => p.CanRead && !p.GetIndexParameters().Any());
+        
+        foreach (var prop in properties)
+        {
+            var filterType = GetFilterTypeForProperty(prop.PropertyType);
+            if (filterType == FilterType.Auto) continue;
+            
+            definitions[prop.Name] = new FilterColumnDefinition(
+                Key: prop.Name,
+                DisplayName: prop.Name,
+                Type: filterType,
+                IsFilterable: true,
+                IsSearchable: prop.PropertyType == typeof(string),
+                IsSortable: true,
+                SupportedOperators: GetOperatorsForFilterType(filterType)
+            );
+        }
+        
+        return definitions;
+    }
+    
+    private FilterType GetFilterTypeForProperty(Type propertyType)
+    {
+        if (propertyType == typeof(string))
+            return FilterType.Text;
+        if (propertyType == typeof(int) || propertyType == typeof(decimal) || 
+            propertyType == typeof(double) || propertyType == typeof(float) ||
+            propertyType == typeof(long) || propertyType == typeof(short))
+            return FilterType.Number;
+        if (propertyType == typeof(DateTime) || propertyType == typeof(DateTime?))
+            return FilterType.Date;
+        if (propertyType == typeof(bool) || propertyType == typeof(bool?))
+            return FilterType.Boolean;
+        
+        return FilterType.Auto;
+    }
+    
+    
+    private SizeType GetComponentSize()
+    {
+        return Config.Density switch
+        {
+            DensityType.Compact => SizeType.ExtraSmall,
+            DensityType.Dense => SizeType.Small,
+            DensityType.Normal => SizeType.Medium,
+            DensityType.Spacious => SizeType.Large,
+            _ => SizeType.Medium
+        };
+    }
+    
+    private SizeType GetButtonSize()
+    {
+        return Config.Density switch
+        {
+            DensityType.Compact => SizeType.Small,
+            DensityType.Dense => SizeType.Small,
+            DensityType.Normal => SizeType.Medium,
+            DensityType.Spacious => SizeType.Medium,
+            _ => SizeType.Medium
+        };
+    }
+    
+    private SizeType GetChipSize()
+    {
+        return Config.Density switch
+        {
+            DensityType.Compact => SizeType.Small,
+            DensityType.Dense => SizeType.Small,
+            DensityType.Normal => SizeType.Small,
+            DensityType.Spacious => SizeType.Medium,
+            _ => SizeType.Small
+        };
+    }
+    
+    #region Column Filter Methods
+    
+    private async Task ToggleColumnDropdown()
+    {
+        isColumnDropdownOpen = !isColumnDropdownOpen;
+        
+        if (isColumnDropdownOpen && JSRuntime != null)
+        {
+            await JSRuntime.InvokeVoidAsync("window.RRBlazor.Filter.open", ComponentId);
+        }
+        else if (!isColumnDropdownOpen && JSRuntime != null)
+        {
+            await JSRuntime.InvokeVoidAsync("window.RRBlazor.Filter.close", ComponentId);
+        }
+        
+        StateHasChanged();
+    }
+    
+    [JSInvokable]
+    public async Task CloseColumnDropdown()
+    {
+        if (isColumnDropdownOpen)
+        {
+            isColumnDropdownOpen = false;
+            if (JSRuntime != null)
+            {
+                await JSRuntime.InvokeVoidAsync("window.RRBlazor.Filter?.close", ComponentId);
+            }
+            StateHasChanged();
+        }
+    }
+    
+    private bool IsColumnValueSelected(string value)
+    {
+        return selectedColumnValues.Contains(value);
+    }
+    
+    private async Task OnColumnValueToggle(string value, bool isSelected)
+    {
+        if (isSelected)
+        {
+            selectedColumnValues.Add(value);
+        }
+        else
+        {
+            selectedColumnValues.Remove(value);
+        }
+        
+        await ApplyColumnFilter();
+    }
+    
+    private async Task SelectAllColumnValues()
+    {
+        if (ColumnValues != null)
+        {
+            selectedColumnValues.Clear();
+            foreach (var value in ColumnValues)
+            {
+                selectedColumnValues.Add(value);
+            }
+        }
+        
+        await ApplyColumnFilter();
+    }
+    
+    private async Task ClearColumnValues()
+    {
+        selectedColumnValues.Clear();
+        await ApplyColumnFilter();
+    }
+    
+    private async Task OnColumnOperatorChanged(FilterOperator newOperator)
+    {
+        columnOperator = newOperator;
+        await ApplyColumnFilter();
+    }
+    
+    private async Task OnColumnOperatorChangedString(string operatorString)
+    {
+        if (Enum.TryParse<FilterOperator>(operatorString, out var newOperator))
+        {
+            await OnColumnOperatorChanged(newOperator);
+        }
+    }
+    
+    private async Task OnColumnValueChanged()
+    {
+        await ApplyColumnFilter();
+    }
+    
+    private async Task ClearColumnFilter()
+    {
+        currentCriteria.SearchTerm = "";
+        currentCriteria.DateFrom = null;
+        currentCriteria.DateTo = null;
+        selectedColumnValues.Clear();
+        columnValue = null;
+        columnOperator = FilterOperator.Contains;
+        
+        await ApplyColumnFilter();
+    }
+    
+    private async Task ApplyColumnFilter()
+    {
+        BuildPredicate();
+        
+        if (OnPredicateChanged.HasDelegate && currentPredicate != null)
+        {
+            await OnPredicateChanged.InvokeAsync(currentPredicate);
+        }
+        
+        StateHasChanged();
+    }
+    
+    private List<KeyValuePair<string, FilterOperator>> GetAvailableOperators()
+    {
+        return ColumnType switch
+        {
+            FilterType.Text => new()
+            {
+                new("Contains", FilterOperator.Contains),
+                new("Equals", FilterOperator.Equals),
+                new("Starts with", FilterOperator.StartsWith),
+                new("Ends with", FilterOperator.EndsWith),
+                new("Is empty", FilterOperator.IsEmpty),
+                new("Is not empty", FilterOperator.IsNotEmpty)
+            },
+            FilterType.Number => new()
+            {
+                new("Equals", FilterOperator.Equals),
+                new("Greater than", FilterOperator.GreaterThan),
+                new("Greater or equal", FilterOperator.GreaterThanOrEqual),
+                new("Less than", FilterOperator.LessThan),
+                new("Less or equal", FilterOperator.LessThanOrEqual),
+                new("Between", FilterOperator.Between)
+            },
+            FilterType.Date => new()
+            {
+                new("On", FilterOperator.Equals),
+                new("After", FilterOperator.GreaterThan),
+                new("Before", FilterOperator.LessThan),
+                new("Between", FilterOperator.Between)
+            },
+            _ => new() { new("Contains", FilterOperator.Contains) }
+        };
+    }
+    
+    #endregion
+    
+    public async ValueTask DisposeAsync()
+    {
+        debounceTimer?.Dispose();
+        
+        if (IsColumnFilter && JSRuntime != null)
+        {
+            try
+            {
+                await JSRuntime.InvokeVoidAsync("window.RRBlazor.ClickOutside?.dispose", ComponentId);
+                await JSRuntime.InvokeVoidAsync("window.RRBlazor.Filter?.dispose", ComponentId);
+            }
+            catch
+            {
+                // Ignore errors during disposal
+            }
+        }
+        
+        dotNetRef?.Dispose();
+        
+        await Task.CompletedTask;
+    }
+}

@@ -1,0 +1,119 @@
+@namespace RR.Blazor.Components.Data
+@using RR.Blazor.Enums
+@using RR.Blazor.Models
+
+<div class="filter-field">
+    <label class="filter-field-label">@Label</label>
+    <div class="filter-field-control">
+        @switch (Type)
+        {
+            case FilterFieldType.Text:
+                <input type="text" 
+                       class="filter-field-input" 
+                       placeholder="@($"Filter {Label}...")"
+                       value="@TextValue"
+                       @oninput="@((e) => { TextValue = e.Value?.ToString(); OnFieldChanged(); })" />
+                break;
+                
+            case FilterFieldType.Number:
+                <input type="number" 
+                       class="filter-field-input" 
+                       placeholder="@($"Filter {Label}...")"
+                       value="@NumberValue"
+                       @oninput="@((e) => { NumberValue = string.IsNullOrEmpty(e.Value?.ToString()) ? null : double.Parse(e.Value.ToString()); OnFieldChanged(); })" />
+                break;
+                
+            case FilterFieldType.Date:
+                <input type="date" 
+                       class="filter-field-input"
+                       value="@DateValue?.ToString("yyyy-MM-dd")"
+                       @onchange="@((e) => { DateValue = string.IsNullOrEmpty(e.Value?.ToString()) ? null : DateTime.Parse(e.Value.ToString()); OnFieldChanged(); })" />
+                break;
+                
+            case FilterFieldType.Select:
+                <select class="filter-field-select" 
+                        value="@SelectValue"
+                        @onchange="@((e) => { SelectValue = e.Value?.ToString(); OnFieldChanged(); })">
+                    <option value="">All</option>
+                    @if (Options != null)
+                    {
+                        @foreach (var option in Options)
+                        {
+                            <option value="@option">@option</option>
+                        }
+                    }
+                </select>
+                break;
+                
+            case FilterFieldType.Boolean:
+                <select class="filter-field-select"
+                        value="@BoolValue"
+                        @onchange="@((e) => { BoolValue = e.Value?.ToString(); OnFieldChanged(); })">
+                    <option value="">All</option>
+                    <option value="true">Yes</option>
+                    <option value="false">No</option>
+                </select>
+                break;
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Property { get; set; } = string.Empty;
+    [Parameter] public string Label { get; set; } = string.Empty;
+    [Parameter] public FilterFieldType Type { get; set; } = FilterFieldType.Text;
+    [Parameter] public List<string>? Options { get; set; }
+    [Parameter] public EventCallback<FilterFieldChangedEventArgs> OnChanged { get; set; }
+    
+    private string? TextValue { get; set; }
+    private double? NumberValue { get; set; }
+    private DateTime? DateValue { get; set; }
+    private string? SelectValue { get; set; }
+    private string? BoolValue { get; set; }
+    
+    private async Task OnFieldChanged()
+    {
+        object? value = Type switch
+        {
+            FilterFieldType.Text => TextValue,
+            FilterFieldType.Number => NumberValue,
+            FilterFieldType.Date => DateValue,
+            FilterFieldType.Select => SelectValue,
+            FilterFieldType.Boolean => !string.IsNullOrEmpty(BoolValue) ? (bool?)bool.Parse(BoolValue) : null,
+            _ => null
+        };
+        
+        if (OnChanged.HasDelegate)
+        {
+            await OnChanged.InvokeAsync(new FilterFieldChangedEventArgs
+            {
+                Property = Property,
+                Value = value,
+                Type = Type
+            });
+        }
+    }
+    
+    public void Clear()
+    {
+        TextValue = null;
+        NumberValue = null;
+        DateValue = null;
+        SelectValue = null;
+        BoolValue = null;
+        StateHasChanged();
+    }
+    
+    public object? GetValue()
+    {
+        return Type switch
+        {
+            FilterFieldType.Text => TextValue,
+            FilterFieldType.Number => NumberValue,
+            FilterFieldType.Date => DateValue,
+            FilterFieldType.Select => SelectValue,
+            FilterFieldType.Boolean => !string.IsNullOrEmpty(BoolValue) ? (bool?)bool.Parse(BoolValue) : null,
+            _ => null
+        };
+    }
+}
