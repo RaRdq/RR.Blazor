@@ -1,0 +1,212 @@
+@using RR.Blazor.Models
+@using RR.Blazor.Enums
+@using ExportFormat = RR.Blazor.Services.Export.ExportFormat
+@typeparam TConfiguration where TConfiguration : class, new()
+
+<RModal @bind-IsVisible="@IsVisible" 
+        Size="@ModalSize"
+        Title="@Title"
+        OnClose="@OnCancel">
+    
+    <HeaderContent>
+        <div class="export-modal-header">
+            <span class="icon">@Icon</span>
+            <div>
+                <h4>@Title</h4>
+                <small class="text-muted">@Subtitle</small>
+            </div>
+        </div>
+    </HeaderContent>
+    
+    <ChildContent>
+        <div class="export-modal-content">
+            
+            @* Basic Export Settings *@
+            <RFormSection Title="Export Format" Icon="file_present">
+                <div class="row">
+                    <div class="col-md-6">
+                        <RSelectField @bind-Value="@FormatString"
+                                     Label="File Format"
+                                     Required="true">
+                            @foreach (var format in AvailableFormats)
+                            {
+                                <option value="@((int)format)">@GetFormatDisplayName(format)</option>
+                            }
+                        </RSelectField>
+                    </div>
+                    <div class="col-md-6">
+                        <RTextInput @bind-Value="@FileName"
+                                   Label="File Name"
+                                   Required="true"
+                                   Placeholder="@DefaultFileName" />
+                    </div>
+                </div>
+            </RFormSection>
+
+            @* Custom Configuration Sections *@
+            @if (ConfigurationSections != null)
+            {
+                @ConfigurationSections(Configuration)
+            }
+
+            @* Data Limits *@
+            @if (ShowDataLimits)
+            {
+                <RFormSection Title="Data Limits" Icon="data_usage">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <RTextInput @bind-Value="@MaxRowsString"
+                                       Label="Maximum Rows"
+                                       Type="FieldType.Number"
+                                       Placeholder="@DefaultMaxRows.ToString()" />
+                        </div>
+                        <div class="col-md-6">
+                            <RTextInput @bind-Value="@MaxColumnsString"
+                                       Label="Maximum Columns"
+                                       Type="FieldType.Number"
+                                       Placeholder="@DefaultMaxColumns.ToString()" />
+                        </div>
+                    </div>
+                </RFormSection>
+            }
+
+            @* Additional Options *@
+            @if (AdditionalOptions != null)
+            {
+                @AdditionalOptions(Configuration)
+            }
+
+        </div>
+    </ChildContent>
+    
+    <FooterContent>
+        <div class="d-flex justify-content-between w-100">
+            <div>
+                @if (ShowPreview)
+                {
+                    <RButton Type="ButtonType.Secondary" 
+                             OnClick="@HandlePreview"
+                             Icon="preview">
+                        Preview
+                    </RButton>
+                }
+            </div>
+            <div class="d-flex gap-2">
+                <RButton Type="ButtonType.Secondary" OnClick="@OnCancel">
+                    Cancel
+                </RButton>
+                <RButton Type="ButtonType.Primary" 
+                         OnClick="@HandleConfirm"
+                         Loading="@IsProcessing"
+                         Icon="download">
+                    Export
+                </RButton>
+            </div>
+        </div>
+    </FooterContent>
+    
+</RModal>
+
+@code {
+    // Generic Parameters
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public EventCallback<bool> IsVisibleChanged { get; set; }
+    [Parameter] public string Title { get; set; } = "Export Data";
+    [Parameter] public string Subtitle { get; set; } = "Configure export settings";
+    [Parameter] public string Icon { get; set; } = "download";
+    [Parameter] public SizeType ModalSize { get; set; } = SizeType.Medium;
+    [Parameter] public TConfiguration Configuration { get; set; } = new();
+    [Parameter] public List<ExportFormat> AvailableFormats { get; set; } = new() { ExportFormat.CSV, ExportFormat.Excel, ExportFormat.JSON };
+    [Parameter] public ExportFormat DefaultFormat { get; set; } = ExportFormat.CSV;
+    [Parameter] public string DefaultFileName { get; set; } = "export_data";
+    [Parameter] public bool ShowDataLimits { get; set; } = true;
+    [Parameter] public bool ShowPreview { get; set; } = false;
+    [Parameter] public bool IsProcessing { get; set; }
+    [Parameter] public int DefaultMaxRows { get; set; } = 100000;
+    [Parameter] public int DefaultMaxColumns { get; set; } = 100;
+    
+    // Events
+    [Parameter] public EventCallback<ExportConfiguration<TConfiguration>> OnConfirm { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+    [Parameter] public EventCallback<ExportConfiguration<TConfiguration>> OnPreview { get; set; }
+    
+    // Template Parameters for custom sections
+    [Parameter] public RenderFragment<TConfiguration> ConfigurationSections { get; set; }
+    [Parameter] public RenderFragment<TConfiguration> AdditionalOptions { get; set; }
+    
+    private string FormatString
+    {
+        get => ((int)SelectedFormat).ToString();
+        set => SelectedFormat = Enum.TryParse<ExportFormat>(value, out var format) ? format : DefaultFormat;
+    }
+    
+    private string MaxRowsString
+    {
+        get => MaxRows.ToString();
+        set => MaxRows = int.TryParse(value, out var rows) && rows > 0 ? rows : DefaultMaxRows;
+    }
+    
+    private string MaxColumnsString
+    {
+        get => MaxColumns.ToString();
+        set => MaxColumns = int.TryParse(value, out var cols) && cols > 0 ? cols : DefaultMaxColumns;
+    }
+    
+    private ExportFormat SelectedFormat { get; set; }
+    private int MaxRows { get; set; }
+    private int MaxColumns { get; set; }
+    private string FileName { get; set; }
+    
+    protected override void OnInitialized()
+    {
+        SelectedFormat = DefaultFormat;
+        MaxRows = DefaultMaxRows;
+        MaxColumns = DefaultMaxColumns;
+        FileName = DefaultFileName;
+    }
+    
+    private async Task HandleConfirm()
+    {
+        var exportConfig = new ExportConfiguration<TConfiguration>
+        {
+            Format = SelectedFormat,
+            FileName = this.FileName,
+            MaxRows = MaxRows,
+            MaxColumns = MaxColumns,
+            CustomConfiguration = Configuration
+        };
+        
+        await OnConfirm.InvokeAsync(exportConfig);
+    }
+    
+    private async Task HandlePreview()
+    {
+        if (OnPreview.HasDelegate)
+        {
+            var exportConfig = new ExportConfiguration<TConfiguration>
+            {
+                Format = SelectedFormat,
+                FileName = this.FileName,
+                MaxRows = Math.Min(MaxRows, 100), // Limit preview rows
+                MaxColumns = MaxColumns,
+                CustomConfiguration = Configuration
+            };
+            
+            await OnPreview.InvokeAsync(exportConfig);
+        }
+    }
+    
+    private string GetFormatDisplayName(ExportFormat format)
+    {
+        return format switch
+        {
+            ExportFormat.CSV => "CSV (.csv)",
+            ExportFormat.TSV => "TSV (.tsv)",
+            ExportFormat.Excel => "Excel (.xlsx)",
+            ExportFormat.JSON => "JSON (.json)",
+            ExportFormat.XML => "XML (.xml)",
+            ExportFormat.PDF => "PDF (.pdf)",
+            _ => format.ToString()
+        };
+    }
+}

@@ -1,0 +1,474 @@
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.JSInterop
+@using RR.Blazor.Services.Export
+@using RR.Blazor.Enums
+@using RR.Blazor.Components.Core
+@using RR.Blazor.Components.Form
+@using RR.Blazor.Components.Feedback
+@using RR.Blazor.Components.Base
+@using ExportFormat = RR.Blazor.Services.Export.ExportFormat
+@typeparam TItem where TItem : class
+@inherits RExportButtonBase
+
+@inject IExportService ExportService
+@inject IJSRuntime JSRuntime
+@inject ILogger<RExportButtonGeneric<TItem>> Logger
+
+<div class="action-button-container @GetContainerClass()">
+    @if (!ShowDropdown)
+    {
+        <RButton OnClick="@HandlePrimaryAction" 
+                 Type="@ButtonType" 
+                 Variant="@ButtonVariant"
+                 Size="@ButtonSize"
+                 Loading="@IsProcessing"
+                 Disabled="@IsDisabled"
+                 Icon="@(Icon ?? DefaultIcon)"
+                 IconRight="@IconRight"
+                 CssClass="@ButtonClass">
+            @if (!string.IsNullOrEmpty(Text))
+            {
+                @Text
+            }
+            else
+            {
+                <span>@DefaultText</span>
+            }
+        </RButton>
+    }
+    else
+    {
+        <RChoice @bind-Value="selectedOption" 
+                 Items="@AvailableOptions"
+                 GetItemText="@GetOptionText"
+                 GetItemIcon="@GetOptionIcon"
+                 SelectedValueChanged="@(async (option) => await HandleOptionSelect((ExportFormat)option))"
+                 ButtonType="@ButtonType"
+                 ButtonVariant="@ButtonVariant"
+                 ButtonSize="@ButtonSize"
+                 Loading="@IsProcessing"
+                 Disabled="@IsDisabled"
+                 ButtonIcon="@(Icon ?? DefaultIcon)"
+                 ButtonText="@(Text ?? DefaultText)"
+                 DropdownPosition="@DropdownPosition"
+                 CssClass="@ButtonClass" />
+    }
+    
+    @if (ShowProgress && IsProcessing)
+    {
+        <div class="action-progress">
+            <RProgressBar Value="@Progress.PercentComplete" 
+                          ShowPercentage="true" 
+                          Size="SizeType.Small" />
+            <span class="action-progress-text">@Progress.CurrentOperation</span>
+        </div>
+    }
+</div>
+
+@* Advanced Options Modal *@
+@if (showOptionsModal)
+{
+    <RModal @ref="optionsModal" Title="Export Options" Size="SizeType.Medium">
+        <Body>
+            <div class="export-options">
+                <RFormGroup Label="Format">
+                    <RChoice SelectedValue="@selectedFormat" 
+                             SelectedValueChanged="@((object value) => selectedFormat = (ExportFormat)value)"
+                             Items="@availableFormats" 
+                             ItemLabelSelector="@((object f) => GetFormatDisplayName((ExportFormat)f))" />
+                </RFormGroup>
+                
+                <RFormGroup Label="File Name">
+                    <RInput Value="@customFileName" ValueChanged="@((object value) => customFileName = (string)value)" Placeholder="export_data" />
+                </RFormGroup>
+                
+                @if (selectedFormat == ExportFormat.CSV || selectedFormat == ExportFormat.TSV)
+                {
+                    <RFormGroup Label="Delimiter">
+                        <RInput Value="@exportOptions.Delimiter" ValueChanged="@((object value) => exportOptions.Delimiter = (string)value)" />
+                    </RFormGroup>
+                    
+                    <RFormGroup>
+                        <RCheckbox @bind-Value="exportOptions.UseQuotes" Label="Use Quotes" />
+                    </RFormGroup>
+                }
+                
+                @if (selectedFormat == ExportFormat.Excel)
+                {
+                    <RFormGroup Label="Sheet Name">
+                        <RInput Value="@exportOptions.SheetName" ValueChanged="@((object value) => exportOptions.SheetName = (string)value)" />
+                    </RFormGroup>
+                    
+                    <RFormGroup>
+                        <RCheckbox @bind-Value="exportOptions.AutoFitColumns" Label="Auto-fit Columns" />
+                        <RCheckbox @bind-Value="exportOptions.FreezePanes" Label="Freeze Header Row" />
+                    </RFormGroup>
+                }
+                
+                <RFormGroup>
+                    <RCheckbox @bind-Value="exportOptions.IncludeHeaders" Label="Include Headers" />
+                    <RCheckbox @bind-Value="exportOptions.IncludeMetadata" Label="Include Metadata" />
+                </RFormGroup>
+                
+                <RFormGroup Label="Date Format">
+                    <RInput Value="@exportOptions.DateFormat" ValueChanged="@((object value) => exportOptions.DateFormat = (string)value)" />
+                </RFormGroup>
+                
+                <RFormGroup Label="Max Rows (0 = unlimited)">
+                    <RInput Value="@((object)maxRowsInput)" ValueChanged="@((object value) => maxRowsInput = Convert.ToInt32(value))" />
+                </RFormGroup>
+                
+                @if (ColumnsToExport?.Any() == true)
+                {
+                    <RFormGroup Label="Columns to Export">
+                        <div class="export-columns">
+                            @foreach (var column in ColumnsToExport)
+                            {
+                                <RCheckbox @bind-Value="columnSelection[column]" Label="@column" />
+                            }
+                        </div>
+                    </RFormGroup>
+                }
+            </div>
+        </Body>
+        <Footer>
+            <RButton Variant="ButtonVariant.Secondary" OnClick="@CloseOptionsModal">Cancel</RButton>
+            <RButton Variant="ButtonVariant.Primary" OnClick="@ApplyOptionsAndExport">Export</RButton>
+        </Footer>
+    </RModal>
+}
+
+@code {
+    // UI parameters are inherited from RExportButtonBase
+    [Parameter] public string DropdownPosition { get; set; } = "bottom-end";
+    
+    // Generic Action Functionality
+    [Parameter] public EventCallback OnAction { get; set; }
+    [Parameter] public EventCallback<ExportFormat> OnOptionSelected { get; set; }
+    [Parameter] public List<ExportFormat> AvailableOptions { get; set; }
+    [Parameter] public ExportFormat DefaultOption { get; set; }
+    [Parameter] public Func<ExportFormat, string> GetOptionText { get; set; }
+    [Parameter] public Func<ExportFormat, string> GetOptionIcon { get; set; }
+    [Parameter] public ExportProgress Progress { get; set; } = new();
+    [Parameter] public EventCallback<ExportProgress> OnProgress { get; set; }
+    
+    // Export-specific parameters (most inherited from RExportButtonBase)
+    [Parameter] public IEnumerable<TItem> DataSource { get; set; }
+    [Parameter] public Func<TItem, bool> FilterPredicate { get; set; }
+    [Parameter] public Func<IEnumerable<TItem>, IEnumerable<TItem>> DataTransformer { get; set; }
+    
+    private RModal optionsModal;
+    private bool showOptionsModal;
+    private List<ExportFormat> availableFormats = new();
+    private ExportFormat selectedFormat;
+    private ExportFormat selectedOption;
+    private ExportOptions exportOptions = new();
+    private string customFileName;
+    private int maxRowsInput = 0;
+    private Dictionary<string, bool> columnSelection = new();
+    
+    // Generic properties
+    private bool IsProcessing => isExporting;
+    private bool IsDisabled => Disabled || (IsExportMode && !HasData);
+    private string DefaultIcon => IsExportMode ? "download" : "action";
+    private string DefaultText => IsExportMode ? "Export" : "Action";
+    
+    // Export-specific properties
+    private bool isExporting;
+    private bool HasData => DataSource?.Any() == true;
+    private bool IsExportMode => DataSource != null;
+    
+    protected override async Task OnInitializedAsync()
+    {
+        if (IsExportMode)
+        {
+            await InitializeExportFormats();
+            InitializeOptions();
+        }
+        else
+        {
+            selectedOption = DefaultOption;
+        }
+    }
+    
+    protected override async Task OnParametersSetAsync()
+    {
+        if (IsExportMode && HasData && availableFormats.Count == 0)
+        {
+            await InitializeExportFormats();
+        }
+    }
+    
+    private async Task InitializeExportFormats()
+    {
+        if (!HasData) return;
+        
+        if (AllowedFormats?.Any() == true)
+        {
+            availableFormats = AllowedFormats;
+        }
+        else
+        {
+            availableFormats = ExportService.GetSupportedFormats(DataSource);
+        }
+        
+        selectedFormat = availableFormats.Contains(DefaultFormat) ? DefaultFormat : availableFormats.FirstOrDefault();
+        
+        // Subscribe to progress events
+        ExportService.ExportProgressChanged += HandleProgressUpdate;
+    }
+    
+    private void InitializeOptions()
+    {
+        exportOptions = CustomOptions ?? ExportService.GetDefaultOptions(selectedFormat);
+        exportOptions.ColumnMappings = ColumnMappings ?? new Dictionary<string, string>();
+        exportOptions.CustomFormatters = CustomFormatters ?? new Dictionary<string, Func<object, string>>();
+        
+        // Initialize column selection
+        if (ColumnsToExport?.Any() == true)
+        {
+            foreach (var column in ColumnsToExport)
+            {
+                columnSelection[column] = true;
+            }
+        }
+    }
+    
+    private async Task HandleExportClick()
+    {
+        await ExportData(ShowDropdown ? selectedFormat : DefaultFormat);
+    }
+    
+    private async Task HandlePrimaryAction()
+    {
+        if (IsExportMode)
+        {
+            await HandleExportClick();
+        }
+        else
+        {
+            await OnAction.InvokeAsync();
+        }
+    }
+    
+    private async Task HandleOptionSelect(ExportFormat option)
+    {
+        selectedOption = option;
+        if (IsExportMode)
+        {
+            await HandleFormatSelect(option);
+        }
+        else
+        {
+            await OnOptionSelected.InvokeAsync(option);
+        }
+    }
+    
+    private async Task HandleFormatSelect(ExportFormat format)
+    {
+        selectedFormat = format;
+        await ExportData(format);
+    }
+    
+    private async Task ExportData(ExportFormat format)
+    {
+        if (!HasData || isExporting) return;
+        
+        isExporting = true;
+        Progress = new ExportProgress { CurrentOperation = "Preparing export..." };
+        
+        try
+        {
+            // Prepare data
+            var dataToExport = PrepareData();
+            
+            // Prepare options
+            var options = PrepareExportOptions(format);
+            
+            // Perform export
+            var result = await ExportService.ExportAsync(dataToExport, options);
+            
+            if (result.Success)
+            {
+                Logger.LogInformation($"Export successful: {result.FileName}, {result.RowCount} rows");
+                
+                if (AutoDownload && result.Data != null)
+                {
+                    await DownloadFile(result);
+                }
+                
+                await OnExportComplete.InvokeAsync(result);
+            }
+            else
+            {
+                Logger.LogWarning($"Export failed: {result.ErrorMessage}");
+                await OnExportError.InvokeAsync(result);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Export operation failed");
+            var errorResult = new ExportResult 
+            { 
+                Success = false, 
+                ErrorMessage = ex.Message,
+                Format = format
+            };
+            await OnExportError.InvokeAsync(errorResult);
+        }
+        finally
+        {
+            isExporting = false;
+            Progress = new ExportProgress();
+        }
+    }
+    
+    private IEnumerable<TItem> PrepareData()
+    {
+        var data = DataSource;
+        
+        // Apply filter if provided
+        if (FilterPredicate != null)
+        {
+            data = data.Where(FilterPredicate);
+        }
+        
+        // Apply transformer if provided
+        if (DataTransformer != null)
+        {
+            data = DataTransformer(data);
+        }
+        
+        return data;
+    }
+    
+    private ExportOptions PrepareExportOptions(ExportFormat format)
+    {
+        var options = new ExportOptions
+        {
+            Format = format,
+            FileName = GetFileName(format),
+            IncludeHeaders = exportOptions.IncludeHeaders,
+            IncludeMetadata = exportOptions.IncludeMetadata,
+            DateFormat = exportOptions.DateFormat,
+            NumberFormat = exportOptions.NumberFormat,
+            CurrencyFormat = exportOptions.CurrencyFormat,
+            BooleanTrueValue = exportOptions.BooleanTrueValue,
+            BooleanFalseValue = exportOptions.BooleanFalseValue,
+            NullValue = exportOptions.NullValue,
+            Delimiter = exportOptions.Delimiter,
+            UseQuotes = exportOptions.UseQuotes,
+            Encoding = exportOptions.Encoding,
+            SheetName = exportOptions.SheetName,
+            AutoFitColumns = exportOptions.AutoFitColumns,
+            FreezePanes = exportOptions.FreezePanes,
+            MaxRows = maxRowsInput > 0 ? maxRowsInput : int.MaxValue,
+            ColumnMappings = ColumnMappings,
+            CustomFormatters = CustomFormatters
+        };
+        
+        // Apply column selection
+        if (columnSelection.Any(kvp => kvp.Value))
+        {
+            options.IncludeColumns = columnSelection.Where(kvp => kvp.Value).Select(kvp => kvp.Key).ToList();
+        }
+        
+        return options;
+    }
+    
+    private string GetFileName(ExportFormat format)
+    {
+        if (!string.IsNullOrEmpty(customFileName))
+            return customFileName;
+        
+        if (!string.IsNullOrEmpty(FileName))
+            return FileName;
+        
+        var extension = format switch
+        {
+            ExportFormat.CSV => "csv",
+            ExportFormat.TSV => "tsv",
+            ExportFormat.Excel => "xlsx",
+            ExportFormat.JSON => "json",
+            ExportFormat.XML => "xml",
+            _ => "txt"
+        };
+        
+        return $"export_{DateTime.Now:yyyyMMdd_HHmmss}.{extension}";
+    }
+    
+    private async Task DownloadFile(ExportResult result)
+    {
+        try
+        {
+            var base64 = Convert.ToBase64String(result.Data);
+            await SafeInvokeAsync("downloadFile", base64, result.FileName, result.MimeType);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to download file");
+        }
+    }
+    
+    private void HandleProgressUpdate(ExportProgress progress)
+    {
+        Progress = progress;
+        InvokeAsync(() => OnProgress.InvokeAsync(progress));
+        InvokeAsync(StateHasChanged);
+    }
+    
+    private void ShowOptionsModal()
+    {
+        showOptionsModal = true;
+    }
+    
+    private void CloseOptionsModal()
+    {
+        showOptionsModal = false;
+    }
+    
+    private async Task ApplyOptionsAndExport()
+    {
+        CloseOptionsModal();
+        await ExportData(selectedFormat);
+    }
+    
+    private string GetContainerClass()
+    {
+        return $"{ContainerClass} {(isExporting ? "action-button-container-export-active" : "")}";
+    }
+    
+    private string GetFormatIcon(ExportFormat format)
+    {
+        return format switch
+        {
+            ExportFormat.CSV => "table_chart",
+            ExportFormat.TSV => "table_rows",
+            ExportFormat.Excel => "table_view",
+            ExportFormat.JSON => "data_object",
+            ExportFormat.PDF => "picture_as_pdf",
+            ExportFormat.XML => "code",
+            _ => "download"
+        };
+    }
+    
+    private string GetFormatDisplayName(ExportFormat? format = null)
+    {
+        format ??= selectedFormat;
+        return format switch
+        {
+            ExportFormat.CSV => "CSV",
+            ExportFormat.TSV => "TSV",
+            ExportFormat.Excel => "Excel",
+            ExportFormat.JSON => "JSON",
+            ExportFormat.PDF => "PDF",
+            ExportFormat.XML => "XML",
+            _ => "File"
+        };
+    }
+    
+    public void Dispose()
+    {
+        ExportService.ExportProgressChanged -= HandleProgressUpdate;
+    }
+}

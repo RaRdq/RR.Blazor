@@ -1,0 +1,179 @@
+@using RR.Blazor.Components
+@using RR.Blazor.Components.Base
+@using RR.Blazor.Components.Core
+@using RR.Blazor.Components.Form
+@using RR.Blazor.Enums
+@inherits RComponentBase
+
+<div class="pagination-footer @Class">
+    <div class="pagination-footer-info">
+        <span class="pagination-footer-info-count">
+            @if (TotalItems > 0)
+            {
+                @:Showing @GetStartIndex() to @GetEndIndex() of @TotalItems results
+            }
+            else
+            {
+                @:No items to display
+            }
+        </span>
+        @if (SelectedCount > 0)
+        {
+            <RChip Text="@($"{SelectedCount} selected")"
+                  Variant="VariantType.Primary"
+                  Size="SizeType.Small" />
+        }
+        @if (ShowBulkActions && BulkActionsContent != null && SelectedCount > 0)
+        {
+            <div class="pagination-footer-bulk-actions">
+                @BulkActionsContent
+            </div>
+        }
+        @if (ShowProcessingTime && ProcessingTime.HasValue && ProcessingTime.Value.TotalMilliseconds > 100)
+        {
+            <span class="pagination-footer-info-timing">(@(ProcessingTime.Value.TotalMilliseconds.ToString("F1"))ms)</span>
+        }
+        @if (AdditionalInfoContent != null)
+        {
+            @AdditionalInfoContent
+        }
+    </div>
+    
+    <div class="pagination-footer-controls">
+        @if (ShowPageSizeSelector && PageSizeOptions?.Any() == true)
+        {
+            <div class="pagination-footer-page-size">
+                <span>Show:</span>
+                @if (UseDropdown)
+                {
+                    <RChoice Items="@PageSizeOptions"
+                            SelectedValue="@PageSize"
+                            SelectedValueChangedTyped="@(async (int value) => await OnPageSizeChangedAsync(value))"
+                            Variant="ChoiceVariant.Dropdown"
+                            Size="SizeType.Small"
+                            Class="pagination-footer-page-size-selector" />
+                }
+                else
+                {
+                    <select class="pagination-footer-page-size-select" value="@PageSize" @onchange="OnPageSizeChangedEvent">
+                        @foreach (var size in PageSizeOptions)
+                        {
+                            <option value="@size">@size</option>
+                        }
+                    </select>
+                }
+                <span>per page</span>
+            </div>
+        }
+        
+        <div class="pagination-footer-navigation">
+            <RButton Icon="first_page"
+                    Variant="ButtonVariant.Ghost"
+                    Size="SizeType.Small"
+                    Disabled="@(!CanGoToPrevious)"
+                    OnClick="@(() => GoToPageAsync(1))"
+                    Dense="true" />
+            
+            <RButton Icon="chevron_left"
+                    Variant="ButtonVariant.Ghost"
+                    Size="SizeType.Small"
+                    Disabled="@(!CanGoToPrevious)"
+                    OnClick="@(() => GoToPageAsync(CurrentPage - 1))"
+                    Dense="true" />
+            
+            <span class="pagination-footer-navigation-info">
+                Page @CurrentPage of @TotalPages
+            </span>
+            
+            <RButton Icon="chevron_right"
+                    Variant="ButtonVariant.Ghost"
+                    Size="SizeType.Small"
+                    Disabled="@(!CanGoToNext)"
+                    OnClick="@(() => GoToPageAsync(CurrentPage + 1))"
+                    Dense="true" />
+            
+            <RButton Icon="last_page"
+                    Variant="ButtonVariant.Ghost"
+                    Size="SizeType.Small"
+                    Disabled="@(!CanGoToNext)"
+                    OnClick="@(() => GoToPageAsync(TotalPages))"
+                    Dense="true" />
+        </div>
+        
+        @if (AdditionalControlsContent != null)
+        {
+            @AdditionalControlsContent
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public int CurrentPage { get; set; } = 1;
+    [Parameter] public EventCallback<int> CurrentPageChanged { get; set; }
+    
+    [Parameter] public int PageSize { get; set; } = 10;
+    [Parameter] public EventCallback<int> PageSizeChanged { get; set; }
+    
+    [Parameter] public int TotalItems { get; set; }
+    [Parameter] public int SelectedCount { get; set; }
+    
+    [Parameter] public List<int> PageSizeOptions { get; set; } = new() { 10, 25, 50, 100 };
+    
+    [Parameter] public bool ShowPageSizeSelector { get; set; } = true;
+    [Parameter] public bool ShowBulkActions { get; set; }
+    [Parameter] public bool ShowProcessingTime { get; set; }
+    [Parameter] public bool UseDropdown { get; set; } = true;
+    
+    [Parameter] public TimeSpan? ProcessingTime { get; set; }
+    
+    [Parameter] public RenderFragment BulkActionsContent { get; set; }
+    [Parameter] public RenderFragment AdditionalInfoContent { get; set; }
+    [Parameter] public RenderFragment AdditionalControlsContent { get; set; }
+    
+    
+    private int TotalPages => Math.Max(1, (int)Math.Ceiling((double)TotalItems / PageSize));
+    private bool CanGoToPrevious => CurrentPage > 1;
+    private bool CanGoToNext => CurrentPage < TotalPages;
+    
+    private int GetStartIndex()
+    {
+        if (TotalItems == 0) return 0;
+        return ((CurrentPage - 1) * PageSize) + 1;
+    }
+    
+    private int GetEndIndex()
+    {
+        if (TotalItems == 0) return 0;
+        return Math.Min(CurrentPage * PageSize, TotalItems);
+    }
+    
+    private async Task GoToPageAsync(int page)
+    {
+        if (page < 1 || page > TotalPages) return;
+        if (page == CurrentPage) return;
+        
+        CurrentPage = page;
+        await CurrentPageChanged.InvokeAsync(page);
+    }
+    
+    private async Task OnPageSizeChangedAsync(int newSize)
+    {
+        if (newSize == PageSize) return;
+        
+        var currentFirstItem = GetStartIndex();
+        PageSize = newSize;
+        var newPage = Math.Max(1, (int)Math.Ceiling((double)currentFirstItem / newSize));
+        CurrentPage = Math.Min(newPage, TotalPages);
+        
+        await PageSizeChanged.InvokeAsync(newSize);
+        await CurrentPageChanged.InvokeAsync(CurrentPage);
+    }
+    
+    private async Task OnPageSizeChangedEvent(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var newSize))
+        {
+            await OnPageSizeChangedAsync(newSize);
+        }
+    }
+}
