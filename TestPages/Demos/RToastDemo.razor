@@ -1,0 +1,168 @@
+@using RR.Blazor.Components.Core
+@using RR.Blazor.Components.Feedback
+@using RR.Blazor.Enums
+@using RR.Blazor.Services
+@using RR.Blazor.Models
+
+<RCard Variant="CardVariant.Outlined" Text="RToast">
+    <ChildContent>
+        <RDivider Text="Toast Notification System" 
+                  Subtitle="Toast notifications for user feedback: simple, advanced, and custom" 
+                  Icon="notifications" />
+        
+        <div class="space-y-6">
+            <!-- Simple Toasts -->
+            <div class="space-y-2">
+                <div class="text-h6 font-semibold">Simple Toasts</div>
+                <div class="space-y-4">
+                    <RActionGroup>
+                        <RButton Text="Success Toast" 
+                                 Variant="ButtonVariant.Success" 
+                                 Icon="check_circle"
+                                 @onclick="@(() => ShowSuccessToast())" 
+                                 data-testid="success-toast-button" />
+                        <RButton Text="Error Toast" 
+                                 Variant="ButtonVariant.Danger" 
+                                 Icon="error"
+                                 @onclick="@(() => ShowErrorToast())"
+                                 data-testid="error-toast-button" />
+                        <RButton Text="Info Toast" 
+                                 Variant="ButtonVariant.Info" 
+                                 Icon="info"
+                                 @onclick="@(() => ShowInfoToast())"
+                                 data-testid="info-toast-button" />
+                    </RActionGroup>
+                </div>
+            </div>
+
+            <!-- Advanced Toasts -->
+            <div class="space-y-2">
+                <div class="text-h6 font-semibold">Advanced Toasts</div>
+                <div class="space-y-4">
+                    <RActionGroup>
+                        <RButton Text="Long Duration Toast" 
+                                 Variant="ButtonVariant.Primary" 
+                                 Icon="schedule"
+                                 @onclick="@(() => ShowLongToast())"
+                                 data-testid="long-toast-button" />
+                        <RButton Text="Auto-Dismiss Toast" 
+                                 Variant="ButtonVariant.Secondary" 
+                                 Icon="timer"
+                                 @onclick="@(() => ShowAutoDismissToast())"
+                                 data-testid="auto-toast-button" />
+                    </RActionGroup>
+                </div>
+            </div>
+
+            <!-- Custom Toast with Actions -->
+            <div class="space-y-2">
+                <div class="text-h6 font-semibold">Custom Toast with Actions</div>
+                <div>
+                    <RButton Text="Action Toast" 
+                             Variant="ButtonVariant.Warning" 
+                             Icon="touch_app"
+                             @onclick="@(() => ShowActionToast())"
+                             data-testid="action-toast-button" />
+                </div>
+            </div>
+
+            <!-- Toast Queue Test -->
+            <div class="space-y-2">
+                <div class="text-h6 font-semibold">Toast Queue System</div>
+                <div>
+                    <RButton Text="Queue Multiple Toasts" 
+                             Variant="ButtonVariant.Primary" 
+                             Icon="queue"
+                             @onclick="@(() => ShowMultipleToasts())"
+                             data-testid="queue-toast-button" />
+                </div>
+            </div>
+        </div>
+    </ChildContent>
+</RCard>
+
+<!-- Toast Container for notifications -->
+<RToastContainer />
+
+@code {
+    [Inject] private IToastService ToastService { get; set; }
+
+    // Toast Service Methods
+    private void ShowSuccessToast()
+    {
+        ToastService.ShowSuccess("Operation completed successfully!", "Success");
+    }
+
+    private void ShowErrorToast()
+    {
+        ToastService.ShowError("An error occurred during the operation.", "Error");
+    }
+
+    private void ShowInfoToast()
+    {
+        ToastService.ShowInfo("This is an informational message for the user.", "Information");
+    }
+
+    private void ShowLongToast()
+    {
+        ToastService.Show(new ToastMessage
+        {
+            Title = "Long Duration Toast",
+            Message = "This toast will stay visible for 10 seconds.",
+            Type = ToastType.Info,
+            Duration = 10000,
+            Icon = "schedule"
+        });
+    }
+
+    private void ShowAutoDismissToast()
+    {
+        ToastService.Show(new ToastMessage
+        {
+            Title = "Quick Toast",
+            Message = "This toast will disappear in 2 seconds.",
+            Type = ToastType.Success,
+            Duration = 2000,
+            Icon = "timer"
+        });
+    }
+
+    private void ShowActionToast()
+    {
+        ToastService.Show(new ToastMessage
+        {
+            Title = "Action Required",
+            Message = "Click the action button to proceed with the operation.",
+            Type = ToastType.Warning,
+            Duration = 0, // Won't auto-dismiss
+            Icon = "touch_app",
+            ShowCloseButton = true,
+            ActionText = "Proceed",
+            OnAction = () =>
+            {
+                ToastService.ShowSuccess("Action executed successfully!");
+            }
+        });
+    }
+
+    private async Task ShowMultipleToasts()
+    {
+        ToastService.ShowSuccess("First toast in the queue!");
+        await Task.Delay(500);
+        
+        ToastService.ShowInfo("Second toast - notice the stacking!");
+        await Task.Delay(500);
+        
+        ToastService.ShowWarning("Third toast - queue system working!");
+        await Task.Delay(500);
+        
+        ToastService.Show(new ToastMessage
+        {
+            Title = "Final Toast",
+            Message = "All toasts are properly queued and displayed!",
+            Type = ToastType.Success,
+            Duration = 5000,
+            Icon = "done_all"
+        });
+    }
+}

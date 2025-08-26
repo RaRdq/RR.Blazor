@@ -1,0 +1,576 @@
+@using RR.Blazor.Components.Core
+@using RR.Blazor.Components.Form
+@using RR.Blazor.Components.Display
+@using RR.Blazor.Components.Data
+@using RR.Blazor.Enums
+
+<RCard Variant="CardVariant.Outlined" Text="RFilter">
+    <ChildContent>
+        <RDivider Text="Advanced Filtering System"
+                  Subtitle="Comprehensive filtering with multiple data types, ranges, and real-time results"
+                  Icon="filter_list" />
+        
+        <div class="space-y-6">
+            <!-- Basic Filters -->
+            <div class="space-y-2">
+                <div class="text-h6 font-semibold">Basic Text & Choice Filters</div>
+                <RCard Variant="CardVariant.Glass" Class="p-4">
+                    <ChildContent>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <RTextInput Value="@_nameFilter" 
+                                      Label="Employee Name" 
+                                      Placeholder="Search by name..."
+                                      ValueChanged="@OnNameFilterChanged"
+                                      StartIcon="search" />
+                            
+                            <RChoice SelectedValue="@_departmentFilter"
+                                    SelectedValueChanged="@OnDepartmentFilterChanged"
+                                    Label="Department"
+                                    Items="@GetDepartmentOptions()" />
+                            
+                            <RChoice SelectedValue="@_positionFilter"
+                                    SelectedValueChanged="@OnPositionFilterChanged"
+                                    Label="Position"
+                                    Items="@GetPositionOptions()" />
+                        </div>
+                    </ChildContent>
+                </RCard>
+            </div>
+
+            <!-- Range Filters -->
+            <div class="space-y-2">
+                <div class="text-h6 font-semibold">Range & Numeric Filters</div>
+                <RCard Variant="CardVariant.Glass" Class="p-4">
+                    <ChildContent>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <RTextInput Value="@(_minSalary?.ToString() ?? "")" 
+                                       Type="FieldType.Number"
+                                       Label="Min Salary" 
+                                       Placeholder="Minimum..."
+                                       ValueChanged="@OnMinSalaryChanged"
+                                       StartIcon="attach_money" />
+                            
+                            <RTextInput Value="@(_maxSalary?.ToString() ?? "")" 
+                                       Type="FieldType.Number"
+                                       Label="Max Salary" 
+                                       Placeholder="Maximum..."
+                                       ValueChanged="@OnMaxSalaryChanged"
+                                       StartIcon="attach_money" />
+                            
+                            <RTextInput Value="@(_startDate?.ToString("yyyy-MM-dd") ?? "")" 
+                                       Type="FieldType.Date"
+                                       Label="Hired After" 
+                                       ValueChanged="@OnStartDateChanged"
+                                       StartIcon="event" />
+                            
+                            <RTextInput Value="@(_endDate?.ToString("yyyy-MM-dd") ?? "")" 
+                                       Type="FieldType.Date"
+                                       Label="Hired Before" 
+                                       ValueChanged="@OnEndDateChanged"
+                                       StartIcon="event" />
+                        </div>
+                    </ChildContent>
+                </RCard>
+            </div>
+
+            <!-- Boolean & Multi-Select Filters -->
+            <div class="space-y-2">
+                <div class="text-h6 font-semibold">Status & Multi-Select Filters</div>
+                <RCard Variant="CardVariant.Glass" Class="p-4">
+                    <ChildContent>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <div class="space-y-2">
+                                <label class="text-sm font-medium">Employment Status</label>
+                                <div class="space-y-2">
+                                    <RToggle @bind-Value="_activeOnlyFilter" Text="Active Employees Only" />
+                                    <RToggle @bind-Value="_inactiveOnlyFilter" Text="Inactive Employees Only" />
+                                </div>
+                            </div>
+                            
+                            <div class="space-y-2">
+                                <label class="text-sm font-medium">Salary Ranges</label>
+                                <div class="space-y-2">
+                                    <RCheckbox @bind-Value="_salaryRange1" Text="$50K - $75K" />
+                                    <RCheckbox @bind-Value="_salaryRange2" Text="$75K - $100K" />
+                                    <RCheckbox @bind-Value="_salaryRange3" Text="$100K+" />
+                                </div>
+                            </div>
+                            
+                            <div class="space-y-2">
+                                <label class="text-sm font-medium">Quick Filters</label>
+                                <div class="space-y-2">
+                                    <RCheckbox @bind-Value="_newHires" Text="New Hires (< 6 months)" />
+                                    <RCheckbox @bind-Value="_veterans" Text="Veterans (> 5 years)" />
+                                    <RCheckbox @bind-Value="_highEarners" Text="High Earners (Top 20%)" />
+                                </div>
+                            </div>
+                        </div>
+                    </ChildContent>
+                </RCard>
+            </div>
+
+            <!-- Filter Actions -->
+            <div class="space-y-2">
+                <div class="text-h6 font-semibold">Filter Management</div>
+                <div class="flex items-center gap-3 flex-wrap">
+                    <RButton Text="Apply Filters" 
+                             Icon="filter_list"
+                             Variant="ButtonVariant.Primary"
+                             @onclick="ApplyFilters" />
+                    <RButton Text="Clear All" 
+                             Icon="clear_all"
+                             Variant="ButtonVariant.Secondary"
+                             @onclick="ClearAllFilters" />
+                    <RButton Text="Save Filter Set" 
+                             Icon="bookmark"
+                             Variant="ButtonVariant.Ghost"
+                             @onclick="SaveFilters" />
+                    <RButton Text="Reset to Defaults" 
+                             Icon="restore"
+                             Variant="ButtonVariant.Ghost"
+                             @onclick="ResetFilters" />
+                    
+                    <div class="ml-auto">
+                        <RBadge Text="@($"{_filteredCount} of {_totalCount} records")" 
+                                Variant="VariantType.Info" />
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filtered Results Preview -->
+            <div class="space-y-2">
+                <div class="text-h6 font-semibold">Filtered Results (@_filteredCount records)</div>
+                
+                @if (_isFiltering)
+                {
+                    <div class="flex items-center gap-2 p-4">
+                        <RProgressBar Indeterminate="true" 
+                                      Text="Applying filters..." 
+                                      Size="SizeType.Small" />
+                    </div>
+                }
+                else
+                {
+                    <RTableGeneric TItem="Employee" 
+                                  Items="@_filteredEmployees"
+                                  ShowPagination="true"
+                                  PageSize="10"
+                                  Class="filtered-results-table">
+                        
+                        <RColumn Property="Name" Title="Name" Width="180px" />
+                        <RColumn Property="Department" Title="Department" Width="130px">
+                            <CellTemplate Context="employee">
+                                <RBadge Text="@(((Employee)employee).Department)" 
+                                        Variant="@GetDepartmentVariant((Employee)employee)"
+                                        Size="SizeType.Small" />
+                            </CellTemplate>
+                        </RColumn>
+                        <RColumn Property="Position" Title="Position" Width="180px" />
+                        <RColumn Property="Salary" Title="Salary" Format="C" Alignment="ColumnAlignment.Right" Width="120px" />
+                        <RColumn Property="HireDate" Title="Hire Date" Format="d" Width="120px" />
+                        <RColumn Property="IsActive" Title="Status" Width="100px">
+                            <CellTemplate Context="employee">
+                                <RChip Variant="@(((Employee)employee).IsActive ? VariantType.Success : VariantType.Error)"
+                                       Size="SizeType.Small">
+                                    <ChildContent>@(((Employee)employee).IsActive ? "Active" : "Inactive")</ChildContent>
+                                </RChip>
+                            </CellTemplate>
+                        </RColumn>
+                    </RTableGeneric>
+                }
+            </div>
+
+            <!-- Filter Statistics -->
+            <div class="space-y-2">
+                <div class="text-h6 font-semibold">Filter Statistics</div>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <RCard Text="Total Employees" 
+                           Content="@_totalCount.ToString("N0")"
+                           Icon="people"
+                           Variant="CardVariant.Glass" />
+                    <RCard Text="Filtered Results" 
+                           Content="@_filteredCount.ToString("N0")"
+                           Icon="filter_list"
+                           Variant="CardVariant.Glass" />
+                    <RCard Text="Active Filters" 
+                           Content="@_activeFiltersCount.ToString()"
+                           Icon="tune"
+                           Variant="CardVariant.Glass" />
+                    <RCard Text="Filter Time" 
+                           Content="@($"{_filterTime:F1}ms")"
+                           Icon="timer"
+                           Variant="CardVariant.Glass" />
+                </div>
+            </div>
+
+            <!-- Predefined Filter Sets -->
+            <div class="space-y-2">
+                <div class="text-h6 font-semibold">Quick Filter Presets</div>
+                <div class="flex gap-2 flex-wrap">
+                    <RButton Text="All Active" 
+                             Variant="ButtonVariant.Secondary"
+                             Size="SizeType.Small"
+                             @onclick="@(() => ApplyPreset("active"))" />
+                    <RButton Text="Engineering Team" 
+                             Variant="ButtonVariant.Secondary"
+                             Size="SizeType.Small"
+                             @onclick="@(() => ApplyPreset("engineering"))" />
+                    <RButton Text="High Salary" 
+                             Variant="ButtonVariant.Secondary"
+                             Size="SizeType.Small"
+                             @onclick="@(() => ApplyPreset("high-salary"))" />
+                    <RButton Text="New Hires 2024" 
+                             Variant="ButtonVariant.Secondary"
+                             Size="SizeType.Small"
+                             @onclick="@(() => ApplyPreset("new-hires"))" />
+                    <RButton Text="Management" 
+                             Variant="ButtonVariant.Secondary"
+                             Size="SizeType.Small"
+                             @onclick="@(() => ApplyPreset("management"))" />
+                </div>
+            </div>
+        </div>
+    </ChildContent>
+</RCard>
+
+@code {
+    // Sample data
+    private List<Employee> _allEmployees = new();
+    private List<Employee> _filteredEmployees = new();
+    
+    // Filter values
+    private string _nameFilter = string.Empty;
+    private string _departmentFilter = string.Empty;
+    private string _positionFilter = string.Empty;
+    private decimal? _minSalary = null;
+    private decimal? _maxSalary = null;
+    private DateTime? _startDate = null;
+    private DateTime? _endDate = null;
+    
+    // Boolean filters
+    private bool _activeOnlyFilter = false;
+    private bool _inactiveOnlyFilter = false;
+    private bool _salaryRange1 = false;
+    private bool _salaryRange2 = false;
+    private bool _salaryRange3 = false;
+    private bool _newHires = false;
+    private bool _veterans = false;
+    private bool _highEarners = false;
+    
+    // Statistics
+    private int _totalCount = 0;
+    private int _filteredCount = 0;
+    private int _activeFiltersCount = 0;
+    private double _filterTime = 0;
+    private bool _isFiltering = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _allEmployees = GenerateEmployeeData(200);
+        _filteredEmployees = new List<Employee>(_allEmployees);
+        _totalCount = _allEmployees.Count;
+        _filteredCount = _filteredEmployees.Count;
+        
+        // Auto-apply filters on load
+        await ApplyFilters();
+    }
+
+    private List<Employee> GenerateEmployeeData(int count)
+    {
+        var departments = new[] { "Engineering", "Sales", "Marketing", "HR", "Finance", "Operations", "Support", "Legal" };
+        var positions = new[] { "Manager", "Senior Developer", "Junior Developer", "Lead Engineer", "Specialist", "Coordinator", "Analyst", "Director", "VP" };
+        var random = new Random(42);
+
+        return Enumerable.Range(1, count).Select(i => new Employee
+        {
+            Id = i,
+            Name = $"Employee {i:D3}",
+            Department = departments[random.Next(departments.Length)],
+            Position = positions[random.Next(positions.Length)],
+            Salary = random.Next(45000, 200000),
+            HireDate = DateTime.Now.AddDays(-random.Next(1, 3650)),
+            IsActive = random.NextDouble() > 0.1,
+            Email = $"employee{i:D3}@company.com"
+        }).ToList();
+    }
+
+    private async Task ApplyFilters()
+    {
+        _isFiltering = true;
+        StateHasChanged();
+        
+        var startTime = DateTime.UtcNow;
+        
+        // Small delay to show loading state
+        await Task.Delay(100);
+        
+        var query = _allEmployees.AsEnumerable();
+        _activeFiltersCount = 0;
+
+        // Text filters
+        if (!string.IsNullOrWhiteSpace(_nameFilter))
+        {
+            query = query.Where(e => e.Name.Contains(_nameFilter, StringComparison.OrdinalIgnoreCase));
+            _activeFiltersCount++;
+        }
+
+        if (!string.IsNullOrWhiteSpace(_departmentFilter))
+        {
+            query = query.Where(e => e.Department == _departmentFilter);
+            _activeFiltersCount++;
+        }
+
+        if (!string.IsNullOrWhiteSpace(_positionFilter))
+        {
+            query = query.Where(e => e.Position == _positionFilter);
+            _activeFiltersCount++;
+        }
+
+        // Range filters
+        if (_minSalary.HasValue)
+        {
+            query = query.Where(e => e.Salary >= _minSalary.Value);
+            _activeFiltersCount++;
+        }
+
+        if (_maxSalary.HasValue)
+        {
+            query = query.Where(e => e.Salary <= _maxSalary.Value);
+            _activeFiltersCount++;
+        }
+
+        if (_startDate.HasValue)
+        {
+            query = query.Where(e => e.HireDate >= _startDate.Value);
+            _activeFiltersCount++;
+        }
+
+        if (_endDate.HasValue)
+        {
+            query = query.Where(e => e.HireDate <= _endDate.Value);
+            _activeFiltersCount++;
+        }
+
+        // Boolean filters
+        if (_activeOnlyFilter && !_inactiveOnlyFilter)
+        {
+            query = query.Where(e => e.IsActive);
+            _activeFiltersCount++;
+        }
+        else if (_inactiveOnlyFilter && !_activeOnlyFilter)
+        {
+            query = query.Where(e => !e.IsActive);
+            _activeFiltersCount++;
+        }
+
+        // Salary range checkboxes
+        if (_salaryRange1 || _salaryRange2 || _salaryRange3)
+        {
+            query = query.Where(e => 
+                (_salaryRange1 && e.Salary >= 50000 && e.Salary < 75000) ||
+                (_salaryRange2 && e.Salary >= 75000 && e.Salary < 100000) ||
+                (_salaryRange3 && e.Salary >= 100000));
+            _activeFiltersCount++;
+        }
+
+        // Quick filters
+        if (_newHires)
+        {
+            var sixMonthsAgo = DateTime.Now.AddMonths(-6);
+            query = query.Where(e => e.HireDate >= sixMonthsAgo);
+            _activeFiltersCount++;
+        }
+
+        if (_veterans)
+        {
+            var fiveYearsAgo = DateTime.Now.AddYears(-5);
+            query = query.Where(e => e.HireDate <= fiveYearsAgo);
+            _activeFiltersCount++;
+        }
+
+        if (_highEarners)
+        {
+            var threshold = _allEmployees.OrderByDescending(e => e.Salary).Take(_allEmployees.Count / 5).Last().Salary;
+            query = query.Where(e => e.Salary >= threshold);
+            _activeFiltersCount++;
+        }
+
+        _filteredEmployees = query.ToList();
+        _filteredCount = _filteredEmployees.Count;
+        _filterTime = (DateTime.UtcNow - startTime).TotalMilliseconds;
+        
+        _isFiltering = false;
+        StateHasChanged();
+    }
+
+    private void ClearAllFilters()
+    {
+        _nameFilter = string.Empty;
+        _departmentFilter = string.Empty;
+        _positionFilter = string.Empty;
+        _minSalary = null;
+        _maxSalary = null;
+        _startDate = null;
+        _endDate = null;
+        _activeOnlyFilter = false;
+        _inactiveOnlyFilter = false;
+        _salaryRange1 = false;
+        _salaryRange2 = false;
+        _salaryRange3 = false;
+        _newHires = false;
+        _veterans = false;
+        _highEarners = false;
+        
+        _filteredEmployees = new List<Employee>(_allEmployees);
+        _filteredCount = _filteredEmployees.Count;
+        _activeFiltersCount = 0;
+        StateHasChanged();
+    }
+
+    private void ResetFilters()
+    {
+        ClearAllFilters();
+    }
+
+    private void SaveFilters()
+    {
+        // Implementation for saving current filter state
+    }
+
+    private async Task ApplyPreset(string preset)
+    {
+        ClearAllFilters();
+        
+        switch (preset)
+        {
+            case "active":
+                _activeOnlyFilter = true;
+                break;
+            case "engineering":
+                _departmentFilter = "Engineering";
+                break;
+            case "high-salary":
+                _minSalary = 100000;
+                break;
+            case "new-hires":
+                _startDate = new DateTime(2024, 1, 1);
+                break;
+            case "management":
+                _nameFilter = "Manager";
+                break;
+        }
+        
+        await ApplyFilters();
+    }
+
+    // Filter change handlers
+    private async Task OnNameFilterChanged(object value)
+    {
+        _nameFilter = value?.ToString() ?? string.Empty;
+        await ApplyFilters();
+    }
+
+    private async Task OnDepartmentFilterChanged(object value)
+    {
+        _departmentFilter = value?.ToString() ?? string.Empty;
+        await ApplyFilters();
+    }
+
+    private async Task OnPositionFilterChanged(object value)
+    {
+        _positionFilter = value?.ToString() ?? string.Empty;
+        await ApplyFilters();
+    }
+
+    private async Task OnMinSalaryChanged(object value)
+    {
+        if (string.IsNullOrWhiteSpace(value?.ToString()))
+        {
+            _minSalary = null;
+        }
+        else if (decimal.TryParse(value.ToString(), out var salary))
+        {
+            _minSalary = salary;
+        }
+        await ApplyFilters();
+    }
+
+    private async Task OnMaxSalaryChanged(object value)
+    {
+        if (string.IsNullOrWhiteSpace(value?.ToString()))
+        {
+            _maxSalary = null;
+        }
+        else if (decimal.TryParse(value.ToString(), out var salary))
+        {
+            _maxSalary = salary;
+        }
+        await ApplyFilters();
+    }
+
+    private async Task OnStartDateChanged(object value)
+    {
+        if (DateTime.TryParse(value?.ToString(), out var date))
+        {
+            _startDate = date;
+        }
+        else
+        {
+            _startDate = null;
+        }
+        await ApplyFilters();
+    }
+
+    private async Task OnEndDateChanged(object value)
+    {
+        if (DateTime.TryParse(value?.ToString(), out var date))
+        {
+            _endDate = date;
+        }
+        else
+        {
+            _endDate = null;
+        }
+        await ApplyFilters();
+    }
+
+    // Helper methods
+    private string[] GetDepartmentOptions()
+    {
+        var options = new List<string> { "" };
+        options.AddRange(_allEmployees.Select(e => e.Department).Distinct().OrderBy(d => d));
+        return options.ToArray();
+    }
+
+    private string[] GetPositionOptions()
+    {
+        var options = new List<string> { "" };
+        options.AddRange(_allEmployees.Select(e => e.Position).Distinct().OrderBy(p => p));
+        return options.ToArray();
+    }
+
+    private VariantType GetDepartmentVariant(Employee employee)
+    {
+        return employee.Department switch
+        {
+            "Engineering" => VariantType.Primary,
+            "Sales" => VariantType.Success,
+            "Marketing" => VariantType.Info,
+            "HR" => VariantType.Warning,
+            "Finance" => VariantType.Error,
+            _ => VariantType.Secondary
+        };
+    }
+
+    public class Employee
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Department { get; set; } = string.Empty;
+        public string Position { get; set; } = string.Empty;
+        public decimal Salary { get; set; }
+        public DateTime HireDate { get; set; }
+        public bool IsActive { get; set; }
+        public string Email { get; set; } = string.Empty;
+    }
+}

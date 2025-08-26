@@ -1,0 +1,220 @@
+@using RR.Blazor.Components.Core
+@using RR.Blazor.Components.Feedback
+@using RR.Blazor.Enums
+
+<RCard Variant="CardVariant.Outlined" Text="RChoice">
+    <ChildContent>
+        <RDivider Text="Choice Component" 
+                         Subtitle="Professional dropdown for selections with enterprise features" 
+                         Icon="arrow_drop_down" />
+        
+        <div class="space-y-6">
+            <!-- Basic Choice Examples -->
+            <div class="space-y-2">
+                <div class="text-h6 font-semibold">Basic Dropdown Examples</div>
+                <div class="space-y-4">
+                    <div>
+                        <p class="text-sm text-muted mb-2">Simple User Selection</p>
+                        <RChoice Items="@basicUserOptions"
+                                 Placeholder="Select a user"
+                                 @bind-SelectedValue="@selectedUser"
+                                 ItemLabelSelector="@(user => user.ToString())"
+                                 ItemIconSelector="@(user => "person")" />
+                        @if (!string.IsNullOrEmpty(selectedUser?.ToString()))
+                        {
+                            <p class="text-xs text-muted mt-1">Selected: @selectedUser</p>
+                        }
+                    </div>
+
+                    <div>
+                        <p class="text-sm text-muted mb-2">Priority Status Selection</p>
+                        <RChoice Items="@statusOptions"
+                                 Placeholder="Choose priority level"
+                                 @bind-SelectedValue="@selectedStatus"
+                                 ItemLabelSelector="@(status => ((StatusOption)status).Name)"
+                                 ItemIconSelector="@(status => ((StatusOption)status).Icon)" />
+                        @if (selectedStatus != null)
+                        {
+                            <p class="text-xs text-muted mt-1">Selected Priority: @((StatusOption)selectedStatus).Name</p>
+                        }
+                    </div>
+
+                    <div>
+                        <p class="text-sm text-muted mb-2">Company Department Selection</p>
+                        <RChoice Items="@departmentOptions"
+                                 Placeholder="Select department"
+                                 @bind-SelectedValue="@selectedDepartment"
+                                 ItemLabelSelector="@(dept => ((DepartmentOption)dept).Name)"
+                                 ItemIconSelector="@(dept => ((DepartmentOption)dept).Icon)"
+                                 ItemTitleSelector="@(dept => ((DepartmentOption)dept).Description)" />
+                        @if (selectedDepartment != null)
+                        {
+                            <p class="text-xs text-muted mt-1">Department: @((DepartmentOption)selectedDepartment).Name - @((DepartmentOption)selectedDepartment).Description</p>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <!-- Advanced Choice Features -->
+            <div class="space-y-2">
+                <div class="text-h6 font-semibold">Advanced Features</div>
+                <div class="space-y-4">
+                    <div>
+                        <p class="text-sm text-muted mb-2">Team Members Selection</p>
+                        <RChoice Items="@teamMembers"
+                                 Placeholder="Select team member"
+                                 @bind-SelectedValue="@selectedTeamMember"
+                                 ItemLabelSelector="@(member => member.ToString())"
+                                 ItemIconSelector="@(member => "person")" />
+                        @if (!string.IsNullOrEmpty(selectedTeamMember?.ToString()))
+                        {
+                            <p class="text-xs text-muted mt-1">Selected member: @selectedTeamMember</p>
+                        }
+                    </div>
+
+                    <div>
+                        <p class="text-sm text-muted mb-2">Company Branch Selection with Icons</p>
+                        <RChoice Items="@branchOptions"
+                                 Placeholder="Choose branch office"
+                                 @bind-SelectedValue="@selectedBranch"
+                                 ItemLabelSelector="@(branch => ((BranchOption)branch).Name)"
+                                 ItemIconSelector="@(branch => ((BranchOption)branch).Icon)"
+                                 ItemTitleSelector="@(branch => ((BranchOption)branch).Address)" />
+                        @if (selectedBranch != null)
+                        {
+                            <p class="text-xs text-muted mt-1">Branch: @((BranchOption)selectedBranch).Name (@((BranchOption)selectedBranch).Region)</p>
+                        }
+                    </div>
+
+                    <div>
+                        <p class="text-sm text-muted mb-2">Action Items Selection</p>
+                        <RChoice Items="@actionOptions"
+                                 Placeholder="Select an option"
+                                 @bind-SelectedValue="@selectedAction"
+                                 Disabled="@isActionDisabled"
+                                 ItemLabelSelector="@(action => ((ActionOption)action).Name)"
+                                 ItemIconSelector="@(action => ((ActionOption)action).Icon)"
+                                 ItemTitleSelector="@(action => ((ActionOption)action).Description)"
+                                 ItemDisabledSelector="@(action => ((ActionOption)action).IsPremium && !hasProAccess)" />
+                        @if (selectedAction != null)
+                        {
+                            <div class="mt-2">
+                                <RChip Text="@($"Selected: {((ActionOption)selectedAction).Name}")" 
+                                       Variant="VariantType.Info" 
+                                       Icon="@(((ActionOption)selectedAction).Icon)" />
+                            </div>
+                        }
+                        <div class="mt-2">
+                            <RButton Text="@(isActionDisabled ? "Enable Actions" : "Disable Actions")" 
+                                     Variant="ButtonVariant.Secondary" 
+                                     Size="SizeType.Small"
+                                     @onclick="@(() => isActionDisabled = !isActionDisabled)" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </ChildContent>
+</RCard>
+
+@code {
+    // RChoice component data
+    private object selectedUser;
+    private object selectedStatus;
+    private object selectedDepartment;
+    private object selectedTeamMember;
+    private object selectedBranch;
+    private object selectedAction;
+    private bool isActionDisabled = false;
+    private bool hasProAccess = true;
+
+    private readonly List<string> basicUserOptions = new()
+    {
+        "Sarah Johnson",
+        "Michael Chen",
+        "Emma Rodriguez",
+        "David Thompson",
+        "Lisa Wang"
+    };
+
+    private readonly List<string> teamMembers = new()
+    {
+        "Alice Cooper",
+        "Bob Wilson",
+        "Carol Davis",
+        "Dan Miller",
+        "Eve Anderson",
+        "Frank Brown",
+        "Grace Lee",
+        "Henry Garcia"
+    };
+
+    private readonly List<StatusOption> statusOptions = new()
+    {
+        new() { Name = "Low", Variant = VariantType.Success, Icon = "arrow_downward" },
+        new() { Name = "Medium", Variant = VariantType.Warning, Icon = "remove" },
+        new() { Name = "High", Variant = VariantType.Error, Icon = "arrow_upward" },
+        new() { Name = "Critical", Variant = VariantType.Error, Icon = "priority_high" }
+    };
+
+    private readonly List<DepartmentOption> departmentOptions = new()
+    {
+        new() { Name = "Human Resources", Description = "People & culture management", Icon = "people" },
+        new() { Name = "Engineering", Description = "Software development", Icon = "code" },
+        new() { Name = "Marketing", Description = "Brand & customer outreach", Icon = "campaign" },
+        new() { Name = "Sales", Description = "Revenue generation", Icon = "trending_up" },
+        new() { Name = "Finance", Description = "Financial planning & analysis", Icon = "account_balance" },
+        new() { Name = "Operations", Description = "Business operations", Icon = "settings" }
+    };
+
+    private readonly List<BranchOption> branchOptions = new()
+    {
+        new() { Name = "New York HQ", Address = "123 Broadway St", Region = "North America", Icon = "business" },
+        new() { Name = "San Francisco", Address = "456 Market St", Region = "North America", Icon = "location_city" },
+        new() { Name = "London Office", Address = "789 Oxford St", Region = "Europe", Icon = "business" },
+        new() { Name = "Berlin Branch", Address = "321 Unter den Linden", Region = "Europe", Icon = "location_city" },
+        new() { Name = "Tokyo Center", Address = "654 Shibuya", Region = "Asia Pacific", Icon = "business" },
+        new() { Name = "Sydney Office", Address = "987 George St", Region = "Asia Pacific", Icon = "location_city" }
+    };
+
+    private readonly List<ActionOption> actionOptions = new()
+    {
+        new() { Name = "Export Data", Description = "Download reports as CSV/Excel", Icon = "download", Color = "#2196F3", IsPremium = false },
+        new() { Name = "Generate Report", Description = "Create detailed analytics report", Icon = "assessment", Color = "#4CAF50", IsPremium = true },
+        new() { Name = "Send Email", Description = "Notify team members", Icon = "email", Color = "#FF9800", IsPremium = false },
+        new() { Name = "Archive Records", Description = "Move to archive storage", Icon = "archive", Color = "#607D8B", IsPremium = false },
+        new() { Name = "AI Analysis", Description = "Advanced AI-powered insights", Icon = "psychology", Color = "#9C27B0", IsPremium = true }
+    };
+
+    // Data models for RChoice examples
+    public class StatusOption
+    {
+        public string Name { get; set; }
+        public VariantType Variant { get; set; }
+        public string Icon { get; set; }
+    }
+
+    public class DepartmentOption
+    {
+        public string Name { get; set; }
+        public string Description { get; set; }
+        public string Icon { get; set; }
+    }
+
+    public class BranchOption
+    {
+        public string Name { get; set; }
+        public string Address { get; set; }
+        public string Region { get; set; }
+        public string Icon { get; set; }
+    }
+
+    public class ActionOption
+    {
+        public string Name { get; set; }
+        public string Description { get; set; }
+        public string Icon { get; set; }
+        public string Color { get; set; }
+        public bool IsPremium { get; set; }
+    }
+}

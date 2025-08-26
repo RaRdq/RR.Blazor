@@ -1,0 +1,611 @@
+@using RR.Blazor.Components.Core
+@using RR.Blazor.Components.Feedback
+@using RR.Blazor.Services
+@using RR.Blazor.Enums
+
+<RCard Variant="CardVariant.Outlined" Text="RModal">
+    <ChildContent>
+        <RDivider Text="Modal System Showcase" 
+                  Subtitle="Essential modal patterns: 2 confirmations, 1 generic, 2 custom" 
+                  Icon="web_asset" />
+        
+        <div class="space-y-6">
+            <!-- 2 Confirmation Modals -->
+            <div class="space-y-2">
+                <div class="text-h6 font-semibold">Confirmation Modals</div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <RButton Text="Delete Confirmation" 
+                             Variant="ButtonVariant.Danger" 
+                             Icon="delete_forever"
+                             @onclick="@(() => ShowDestructiveConfirmation())"
+                             data-testid="delete-confirmation-button" />
+                    <RButton Text="Warning Confirmation" 
+                             Variant="ButtonVariant.Warning" 
+                             Icon="warning"
+                             @onclick="@(() => ShowWarningConfirmation())"
+                             data-testid="warning-confirmation-button" />
+                </div>
+                
+                <RDivider Text="Advanced Tests" Icon="science" />
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <RButton Text="Test All Variants" 
+                             Variant="ButtonVariant.Info" 
+                             Icon="quiz"
+                             @onclick="@(() => TestAllModalVariants())"
+                             data-testid="test-all-variants-button" />
+                    <RButton Text="Test Modal Stack" 
+                             Variant="ButtonVariant.Info" 
+                             Icon="layers"
+                             @onclick="@(() => TestModalStack())"
+                             data-testid="test-modal-stack-button" />
+                    <RButton Text="Test Portal System" 
+                             Variant="ButtonVariant.Info" 
+                             Icon="launch"
+                             @onclick="@(() => TestPortalSystem())"
+                             data-testid="test-portal-system-button" />
+                </div>
+            </div>
+
+            <!-- 1 Generic Modal -->
+            <div class="space-y-2">
+                <div class="text-h6 font-semibold">Generic Modal</div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <RButton Text="Show Info Modal" 
+                             Variant="ButtonVariant.Info" 
+                             Icon="info"
+                             @onclick="@(() => ShowInfoDialog())"
+                             data-testid="generic-modal-button" />
+                </div>
+            </div>
+
+            <!-- 2 Custom Modals -->
+            <div class="space-y-2">
+                <div class="text-h6 font-semibold">Custom Modals (Direct RModal Components)</div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <RButton Text="Direct RModal Test" 
+                             Variant="ButtonVariant.Primary" 
+                             Icon="open_in_new"
+                             @onclick="@(() => ShowDirectRModal())"
+                             data-testid="custom-modal-1-button" />
+                    <RButton Text="RModal with Content" 
+                             Variant="ButtonVariant.Secondary" 
+                             Icon="article"
+                             @onclick="@(() => ShowRModalWithContent())"
+                             data-testid="custom-modal-2-button" />
+                </div>
+            </div>
+
+            <!-- Modal Status Display -->
+            @if (!string.IsNullOrEmpty(modalTestStatus))
+            {
+                <div class="space-y-2">
+                    <div class="text-h6 font-semibold">Test Status</div>
+                    <RChip Text="@modalTestStatus" 
+                           Variant="@(modalTestStatus.Contains("Success") ? VariantType.Success : modalTestStatus.Contains("Error") ? VariantType.Error : VariantType.Info)" 
+                           Icon="@(modalTestStatus.Contains("Success") ? "check_circle" : modalTestStatus.Contains("Error") ? "error" : "info")"
+                           data-testid="modal-test-status" />
+                </div>
+            }
+        </div>
+    </ChildContent>
+</RCard>
+
+<!-- Modal Provider for confirmation modals -->
+<RModalProvider />
+
+<!-- Direct RModal for testing -->
+<RModal @bind-Visible="showDirectModal" 
+        Title="Direct RModal Test" 
+        Subtitle="Testing direct RModal binding and portal system"
+        Icon="science"
+        Size="SizeType.Medium"
+        Variant="ModalVariant.Default"
+        ShowCloseButton="true"
+        data-testid="direct-rmodal">
+    <ChildContent>
+        <div class="pa-4">
+            <p class="mb-4">This is a direct RModal component that uses two-way binding with bind-Visible.</p>
+            <p class="mb-4">It demonstrates the portal system and proper modal stacking.</p>
+            
+            <RDivider Text="Open Nested Modal (Level 2)" Icon="layers" />
+            <p class="text-sm mb-3">Click below to open a second modal on top of this one:</p>
+            <RButton Text="Open Custom Modal 2 (Level 2)" 
+                     Variant="ButtonVariant.Primary" 
+                     Icon="open_in_new"
+                     @onclick="@(() => ShowRModalWithContent())"
+                     data-testid="open-level-2-modal" />
+        </div>
+    </ChildContent>
+    <FooterContent>
+        <RActionGroup Alignment="ActionGroupAlignment.End">
+            <RButton Text="Cancel" 
+                     Variant="ButtonVariant.Secondary" 
+                     @onclick="@(() => CloseDirectModal())"
+                     data-testid="direct-modal-cancel" />
+            <RButton Text="Confirm" 
+                     Variant="ButtonVariant.Primary" 
+                     @onclick="@(() => ConfirmDirectModal())"
+                     data-testid="direct-modal-confirm" />
+        </RActionGroup>
+    </FooterContent>
+</RModal>
+
+<!-- Content RModal with rich content -->
+<RModal @bind-Visible="showContentModal" 
+        Title="RModal with Rich Content" 
+        Subtitle="Advanced modal content demonstration"
+        Icon="article"
+        Size="SizeType.Large"
+        Variant="ModalVariant.Default"
+        ShowCloseButton="true"
+        data-testid="content-rmodal">
+    <ChildContent>
+        <div class="space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pa-2">
+                <RCard Text="Feature Test" 
+                       Content="This modal demonstrates complex content rendering within RModal components"
+                       Icon="check_circle"
+                       Variant="CardVariant.Outlined" />
+                <RCard Text="Portal System" 
+                       Content="Modal content is rendered in a portal outside the main DOM tree"
+                       Icon="launch"
+                       Variant="CardVariant.Outlined" />
+            </div>
+
+            <div class="space-y-3">
+                <RDivider Text="Interactive Elements" Icon="touch_app" />
+                <div class="flex gap-3 flex-wrap">
+                    <RChip Text="Modal Tag" Variant="VariantType.Primary" />
+                    <RChip Text="Portal System" Variant="VariantType.Success" />
+                    <RChip Text="RR.Blazor" Variant="VariantType.Info" />
+                </div>
+                
+                <div class="p-4 bg-surface-elevated rounded">
+                    <p class="text-sm">
+                        This modal contains multiple RR.Blazor components to test the complete integration:
+                        RCard, RChip, RDivider, RButton, and RActionGroup components all working together
+                        within the modal portal system.
+                    </p>
+                </div>
+            </div>
+
+            <div class="space-y-2">
+                <p class="text-h6 font-semibold">Test Counter: @modalContentCounter</p>
+                <RActionGroup>
+                    <RButton Text="Increment" 
+                             Variant="ButtonVariant.Primary" 
+                             Icon="add"
+                             @onclick="@(() => IncrementModalCounter())"
+                             data-testid="modal-increment-button" />
+                    <RButton Text="Reset" 
+                             Variant="ButtonVariant.Secondary" 
+                             Icon="refresh"
+                             @onclick="@(() => ResetModalCounter())"
+                             data-testid="modal-reset-button" />
+                </RActionGroup>
+            </div>
+            
+            <div class="space-y-2">
+                <RDivider Text="Test 3-Level Modal Stacking" Icon="layers" />
+                <p class="text-sm mb-3">Click these buttons to test nested modal z-index stacking:</p>
+                <RActionGroup>
+                    <RButton Text="Open Info Modal (Level 3)" 
+                             Variant="ButtonVariant.Info" 
+                             Icon="info"
+                             @onclick="@(() => ShowNestedInfoModal())"
+                             data-testid="nested-info-modal-button" />
+                    <RButton Text="Open Warning Modal (Level 3)" 
+                             Variant="ButtonVariant.Warning" 
+                             Icon="warning"
+                             @onclick="@(() => ShowNestedWarningModal())"
+                             data-testid="nested-warning-modal-button" />
+                    <RButton Text="Open Delete Confirmation (Level 3)" 
+                             Variant="ButtonVariant.Danger" 
+                             Icon="delete"
+                             @onclick="@(() => ShowNestedDeleteModal())"
+                             data-testid="nested-delete-modal-button" />
+                </RActionGroup>
+            </div>
+        </div>
+    </ChildContent>
+    <FooterContent>
+        <RActionGroup Alignment="ActionGroupAlignment.End" Variant="ActionGroupVariant.Complex">
+            <RButton Text="Advanced Action" 
+                     Variant="ButtonVariant.Info" 
+                     Icon="settings"
+                     @onclick="@(() => AdvancedModalAction())"
+                     data-testid="modal-advanced-action" />
+            <div class="flex gap-2">
+                <RButton Text="Close" 
+                         Variant="ButtonVariant.Secondary" 
+                         @onclick="@(() => CloseContentModal())"
+                         data-testid="content-modal-close" />
+                <RButton Text="Save & Close" 
+                         Variant="ButtonVariant.Success" 
+                         Icon="save"
+                         @onclick="@(() => SaveAndCloseContentModal())"
+                         data-testid="content-modal-save" />
+            </div>
+        </RActionGroup>
+    </FooterContent>
+</RModal>
+
+@code {
+    [Inject] private IModalService ModalService { get; set; }
+    [Inject] private IToastService ToastService { get; set; }
+
+    private string modalTestStatus = "";
+    private bool showDirectModal = false;
+    private bool showContentModal = false;
+    private int modalContentCounter = 0;
+
+    // Modal Service Methods
+    private async Task ShowDestructiveConfirmation()
+    {
+        try
+        {
+            modalTestStatus = "Opening destructive confirmation...";
+            StateHasChanged();
+            
+            var result = await ModalService.ShowConfirmationAsync(
+                "This will permanently delete ALL records. This action cannot be undone!",
+                "Delete All Records",
+                "Delete",
+                "Cancel",
+                ModalVariant.Destructive);
+                
+            modalTestStatus = result ? "✅ Destructive action confirmed" : "❌ Destructive action cancelled";
+            StateHasChanged();
+            await Task.Delay(3000);
+            modalTestStatus = "";
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            modalTestStatus = $"❌ Error: {ex.Message}";
+            StateHasChanged();
+            await Task.Delay(3000);
+            modalTestStatus = "";
+            StateHasChanged();
+        }
+    }
+
+    private async Task ShowWarningConfirmation()
+    {
+        try
+        {
+            modalTestStatus = "Opening warning confirmation...";
+            StateHasChanged();
+            
+            var result = await ModalService.ShowConfirmationAsync(
+                "This will reset all settings to default values. Continue?",
+                "Reset Settings",
+                "Reset",
+                "Cancel", 
+                ModalVariant.Warning);
+                
+            modalTestStatus = result ? "✅ Reset confirmed" : "❌ Reset cancelled";
+            StateHasChanged();
+            await Task.Delay(3000);
+            modalTestStatus = "";
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            modalTestStatus = $"❌ Error: {ex.Message}";
+            StateHasChanged();
+            await Task.Delay(3000);
+            modalTestStatus = "";
+            StateHasChanged();
+        }
+    }
+
+    private async Task ShowInfoDialog()
+    {
+        try
+        {
+            modalTestStatus = "Opening info dialog...";
+            StateHasChanged();
+            
+            var result = await ModalService.ShowConfirmationAsync(
+                "This is an informational message with helpful details for the user.",
+                "Information",
+                "OK",
+                "",
+                ModalVariant.Info);
+                
+            modalTestStatus = "✅ Info dialog acknowledged";
+            StateHasChanged();
+            await Task.Delay(3000);
+            modalTestStatus = "";
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            modalTestStatus = $"❌ Error: {ex.Message}";
+            StateHasChanged();
+            await Task.Delay(3000);
+            modalTestStatus = "";
+            StateHasChanged();
+        }
+    }
+
+    private async Task TestAllModalVariants()
+    {
+        modalTestStatus = "Testing all modal variants...";
+        StateHasChanged();
+
+        try
+        {
+            // Test Default variant
+            await ModalService.ShowConfirmationAsync(
+                "Testing Default variant modal",
+                "Default Modal Test",
+                "OK",
+                "Cancel",
+                ModalVariant.Default);
+
+            // Test Info variant
+            await ModalService.ShowConfirmationAsync(
+                "Testing Info variant modal with blue styling",
+                "Info Modal Test", 
+                "OK",
+                "Cancel",
+                ModalVariant.Info);
+
+            // Test Success variant
+            await ModalService.ShowConfirmationAsync(
+                "Testing Success variant modal with green styling",
+                "Success Modal Test",
+                "OK", 
+                "Cancel",
+                ModalVariant.Success);
+
+            // Test Warning variant
+            await ModalService.ShowConfirmationAsync(
+                "Testing Warning variant modal with orange styling",
+                "Warning Modal Test",
+                "OK",
+                "Cancel", 
+                ModalVariant.Warning);
+
+            // Test Destructive variant
+            await ModalService.ShowConfirmationAsync(
+                "Testing Destructive variant modal with red styling",
+                "Destructive Modal Test",
+                "OK",
+                "Cancel",
+                ModalVariant.Destructive);
+
+            modalTestStatus = "Success: All modal variants tested successfully";
+        }
+        catch (Exception ex)
+        {
+            modalTestStatus = $"Error: Modal variant test failed - {ex.Message}";
+        }
+        
+        StateHasChanged();
+        await Task.Delay(5000);
+        modalTestStatus = "";
+        StateHasChanged();
+    }
+
+    private async Task TestModalStack()
+    {
+        modalTestStatus = "Testing modal stacking...";
+        StateHasChanged();
+
+        try
+        {
+            // First modal
+            var result1 = await ModalService.ShowConfirmationAsync(
+                "This is the first modal. Click OK to open a second modal on top.",
+                "First Modal",
+                "OK", 
+                "Cancel",
+                ModalVariant.Info);
+
+            if (result1)
+            {
+                // Second modal (should stack on top)
+                var result2 = await ModalService.ShowConfirmationAsync(
+                    "This is the second modal stacked on top. Notice the backdrop layers.",
+                    "Second Modal (Stacked)",
+                    "OK",
+                    "Cancel", 
+                    ModalVariant.Warning);
+
+                if (result2)
+                {
+                    // Third modal (should stack on top of both)
+                    await ModalService.ShowConfirmationAsync(
+                        "This is the third modal. Perfect stacking! The portal system is working correctly.",
+                        "Third Modal (Top Stack)",
+                        "OK",
+                        "Cancel",
+                        ModalVariant.Success);
+                }
+            }
+
+            modalTestStatus = "Success: Modal stacking system working correctly";
+        }
+        catch (Exception ex)
+        {
+            modalTestStatus = $"Error: Modal stacking test failed - {ex.Message}";
+        }
+
+        StateHasChanged();
+        await Task.Delay(5000);
+        modalTestStatus = "";
+        StateHasChanged();
+    }
+
+    private async Task TestPortalSystem()
+    {
+        modalTestStatus = "Testing portal system...";
+        StateHasChanged();
+
+        try
+        {
+            // Test portal creation and cleanup
+            await ModalService.ShowConfirmationAsync(
+                "This modal tests the portal system. Check the DOM - you should see a modal portal created outside the main app.",
+                "Portal System Test",
+                "OK",
+                "Cancel",
+                ModalVariant.Info);
+
+            modalTestStatus = "Success: Portal system working - modals are properly rendered in portals";
+        }
+        catch (Exception ex)
+        {
+            modalTestStatus = $"Error: Portal system test failed - {ex.Message}";
+        }
+
+        StateHasChanged();
+        await Task.Delay(5000);
+        modalTestStatus = "";
+        StateHasChanged();
+    }
+
+    // Direct RModal methods
+    private void ShowDirectRModal()
+    {
+        modalTestStatus = "Opening direct RModal...";
+        showDirectModal = true;
+        StateHasChanged();
+    }
+
+    private void ShowRModalWithContent()
+    {
+        modalTestStatus = "Opening RModal with rich content...";
+        showContentModal = true;
+        StateHasChanged();
+    }
+
+    private void CloseDirectModal()
+    {
+        showDirectModal = false;
+        modalTestStatus = "Direct RModal closed successfully";
+        StateHasChanged();
+        
+        Task.Delay(3000).ContinueWith(_ => {
+            modalTestStatus = "";
+            InvokeAsync(StateHasChanged);
+        });
+    }
+
+    private void ConfirmDirectModal()
+    {
+        showDirectModal = false;
+        modalTestStatus = "Direct RModal confirmed - portal system working correctly";
+        StateHasChanged();
+        
+        Task.Delay(5000).ContinueWith(_ => {
+            modalTestStatus = "";
+            InvokeAsync(StateHasChanged);
+        });
+    }
+
+    private void CloseContentModal()
+    {
+        showContentModal = false;
+        modalTestStatus = "Content modal closed";
+        StateHasChanged();
+        
+        Task.Delay(3000).ContinueWith(_ => {
+            modalTestStatus = "";
+            InvokeAsync(StateHasChanged);
+        });
+    }
+
+    private void SaveAndCloseContentModal()
+    {
+        showContentModal = false;
+        modalTestStatus = $"Content modal saved with counter value: {modalContentCounter}";
+        StateHasChanged();
+        
+        Task.Delay(5000).ContinueWith(_ => {
+            modalTestStatus = "";
+            InvokeAsync(StateHasChanged);
+        });
+    }
+
+    private void IncrementModalCounter()
+    {
+        modalContentCounter++;
+        StateHasChanged();
+    }
+
+    private void ResetModalCounter()
+    {
+        modalContentCounter = 0;
+        StateHasChanged();
+    }
+    
+    private async Task ShowNestedInfoModal()
+    {
+        if (ModalService != null)
+        {
+            var result = await ModalService.ShowConfirmationAsync(
+                "This is a Level 3 modal opened from within Custom Modal 2 (Level 2). It should appear ABOVE the parent modal.",
+                "Nested Information",
+                "Got It",
+                "Close",
+                ModalVariant.Info);
+            
+            if (result)
+            {
+                ToastService.ShowInfo("Info modal confirmed from Level 3!");
+            }
+        }
+    }
+    
+    private async Task ShowNestedWarningModal()
+    {
+        if (ModalService != null)
+        {
+            var result = await ModalService.ShowConfirmationAsync(
+                "⚠️ This is a warning modal at Level 3! Testing z-index stacking with 3 levels of modals.",
+                "Nested Warning",
+                "Acknowledge",
+                "Dismiss",
+                ModalVariant.Warning);
+            
+            if (result)
+            {
+                ToastService.ShowWarning("Warning acknowledged from Level 3!");
+            }
+        }
+    }
+    
+    private async Task ShowNestedDeleteModal()
+    {
+        if (ModalService != null)
+        {
+            var result = await ModalService.ShowConfirmationAsync(
+                "Delete Confirmation at Level 3",
+                "Are you sure you want to delete this item? This modal is at the 3rd nesting level and should be on top of all other modals.",
+                "Delete",
+                "Cancel",
+                ModalVariant.Destructive);
+            
+            if (result)
+            {
+                ToastService.ShowSuccess("Item deleted from Level 3 modal!");
+            }
+        }
+    }
+
+    private void AdvancedModalAction()
+    {
+        modalContentCounter += 10;
+        modalTestStatus = $"Advanced action executed - counter boosted by 10 to {modalContentCounter}";
+        StateHasChanged();
+        
+        Task.Delay(5000).ContinueWith(_ => {
+            modalTestStatus = "";
+            InvokeAsync(StateHasChanged);
+        });
+    }
+}

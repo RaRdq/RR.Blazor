@@ -1,0 +1,570 @@
+@using RR.Blazor.Components.Core
+@using RR.Blazor.Components.Display
+@using RR.Blazor.Components.Data
+@using RR.Blazor.Enums
+
+<RCard Variant="CardVariant.Outlined" Text="RExport">
+    <ChildContent>
+        <RDivider Text="Export System Component"
+                  Subtitle="Flexible data export with multiple formats, custom formatting, and batch operations"
+                  Icon="download" />
+        
+        <div class="space-y-6">
+            <!-- Basic Export Examples -->
+            <div class="space-y-2">
+                <div class="text-h6 font-semibold">Basic Export Options</div>
+                <RCard Variant="CardVariant.Glass" Class="p-4">
+                    <ChildContent>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            <RExportButton DataSource="@_employees" 
+                                         DefaultFormat="ExportFormat.CSV"
+                                         FileName="@($"employees-{DateTime.Now:yyyyMMdd}")"
+                                         Text="Export CSV"
+                                         Icon="description"
+                                         ButtonSize="SizeType.Small"
+                                         Variant="ButtonVariant.Secondary" />
+                            
+                            <RExportButton DataSource="@_employees" 
+                                         DefaultFormat="ExportFormat.Excel"
+                                         FileName="@($"employees-{DateTime.Now:yyyyMMdd}")"
+                                         Text="Export Excel"
+                                         Icon="table_view"
+                                         ButtonSize="SizeType.Small"
+                                         Variant="ButtonVariant.Secondary" />
+                            
+                            <RExportButton DataSource="@_employees" 
+                                         DefaultFormat="ExportFormat.JSON"
+                                         FileName="@($"employees-{DateTime.Now:yyyyMMdd}")"
+                                         Text="Export JSON"
+                                         Icon="code"
+                                         ButtonSize="SizeType.Small"
+                                         Variant="ButtonVariant.Secondary" />
+                            
+                            <RExportButton DataSource="@_employees" 
+                                         DefaultFormat="ExportFormat.PDF"
+                                         FileName="@($"employees-{DateTime.Now:yyyyMMdd}")"
+                                         Text="Export PDF"
+                                         Icon="picture_as_pdf"
+                                         ButtonSize="SizeType.Small"
+                                         Variant="ButtonVariant.Secondary" />
+                        </div>
+                    </ChildContent>
+                </RCard>
+            </div>
+
+            <!-- Advanced Export with Custom Settings -->
+            <div class="space-y-2">
+                <div class="text-h6 font-semibold">Advanced Export Configuration</div>
+                <RCard Variant="CardVariant.Glass" Class="p-4">
+                    <ChildContent>
+                        <div class="space-y-4">
+                            <!-- Export Configuration -->
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <RChoice SelectedValue="@_selectedFormat"
+                                        SelectedValueChanged="@OnFormatChanged"
+                                        Label="Export Format"
+                                        Items="@(new[] { "CSV", "Excel", "JSON", "PDF", "XML" })" />
+                                
+                                <RTextInput @bind-Value="_customFileName" 
+                                          Label="File Name" 
+                                          Placeholder="Enter custom filename..."
+                                          StartIcon="edit" />
+                                
+                                <RChoice SelectedValue="@_selectedColumns"
+                                        SelectedValueChanged="@OnColumnsChanged"
+                                        Label="Columns to Export"
+                                        Items="@(new[] { "All", "Basic", "Detailed", "Custom" })" />
+                            </div>
+                            
+                            <!-- Export Options -->
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <RToggle @bind-Value="_includeHeaders" Text="Include Headers" />
+                                <RToggle @bind-Value="_includeFooter" Text="Include Footer" />
+                                <RToggle @bind-Value="_compressOutput" Text="Compress Output" />
+                                <RToggle @bind-Value="_emailAfterExport" Text="Email After Export" />
+                            </div>
+                            
+                            <!-- Advanced Export Button -->
+                            <div class="flex gap-3">
+                                <RExportButton DataSource="@GetExportData()" 
+                                             DefaultFormat="ExportFormat.Excel"
+                                             FileName="@GetFileName()"
+                                             Text="Export with Settings"
+                                             Icon="download"
+                                             ButtonSize="SizeType.Medium"
+                                             Variant="ButtonVariant.Primary"
+ />
+                                
+                                <RButton Text="Preview Export"
+                                        Icon="preview"
+                                        Variant="ButtonVariant.Secondary"
+                                        @onclick="PreviewExport" />
+                            </div>
+                        </div>
+                    </ChildContent>
+                </RCard>
+            </div>
+
+            <!-- Batch Export Operations -->
+            <div class="space-y-2">
+                <div class="text-h6 font-semibold">Batch Export Operations</div>
+                <RCard Variant="CardVariant.Glass" Class="p-4">
+                    <ChildContent>
+                        <div class="space-y-4">
+                            <p class="text-sm text-muted">Export multiple datasets or formats simultaneously</p>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <!-- Department-wise exports -->
+                                <div class="space-y-3">
+                                    <div class="text-sm font-medium">Department-wise Exports</div>
+                                    @foreach (var dept in GetDepartments())
+                                    {
+                                        <div class="flex items-center justify-between p-2 bg-surface rounded">
+                                            <span class="text-sm">@dept (@GetDepartmentCount(dept) employees)</span>
+                                            <RExportButton DataSource="@GetEmployeesByDepartment(dept)" 
+                                                         DefaultFormat="ExportFormat.Excel"
+                                                         FileName="@($"{dept.ToLower()}-employees-{DateTime.Now:yyyyMMdd}")"
+                                                         Text="Export"
+                                                         Icon="download"
+                                                         ButtonSize="SizeType.ExtraSmall"
+                                                         Variant="ButtonVariant.Ghost" />
+                                        </div>
+                                    }
+                                </div>
+                                
+                                <!-- Multi-format exports -->
+                                <div class="space-y-3">
+                                    <div class="text-sm font-medium">Multi-Format Export</div>
+                                    <RButton Text="Export All Formats"
+                                             Icon="archive"
+                                             Variant="ButtonVariant.Primary"
+                                             @onclick="ExportAllFormats" />
+                                    <RButton Text="Export Summary Report"
+                                             Icon="assessment"
+                                             Variant="ButtonVariant.Secondary"
+                                             @onclick="ExportSummaryReport" />
+                                </div>
+                            </div>
+                        </div>
+                    </ChildContent>
+                </RCard>
+            </div>
+
+            <!-- Export Templates -->
+            <div class="space-y-2">
+                <div class="text-h6 font-semibold">Export Templates</div>
+                <RCard Variant="CardVariant.Glass" Class="p-4">
+                    <ChildContent>
+                        <div class="space-y-4">
+                            <p class="text-sm text-muted">Predefined export configurations for common use cases</p>
+                            
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                <RButton Text="HR Report"
+                                        Icon="people"
+                                        Variant="ButtonVariant.Secondary"
+                                        Size="SizeType.Small"
+                                        @onclick="@(() => ExportTemplate("hr"))" />
+                                
+                                <RButton Text="Payroll Export"
+                                        Icon="payments"
+                                        Variant="ButtonVariant.Secondary"
+                                        Size="SizeType.Small"
+                                        @onclick="@(() => ExportTemplate("payroll"))" />
+                                
+                                <RButton Text="Directory List"
+                                        Icon="contact_page"
+                                        Variant="ButtonVariant.Secondary"
+                                        Size="SizeType.Small"
+                                        @onclick="@(() => ExportTemplate("directory"))" />
+                                
+                                <RButton Text="Audit Trail"
+                                        Icon="history"
+                                        Variant="ButtonVariant.Secondary"
+                                        Size="SizeType.Small"
+                                        @onclick="@(() => ExportTemplate("audit"))" />
+                            </div>
+                        </div>
+                    </ChildContent>
+                </RCard>
+            </div>
+
+            <!-- Export History & Status -->
+            <div class="space-y-2">
+                <div class="text-h6 font-semibold">Export History & Status</div>
+                <RCard Variant="CardVariant.Glass" Class="p-4">
+                    <ChildContent>
+                        <div class="space-y-4">
+                            <!-- Current Export Status -->
+                            @if (_isExporting)
+                            {
+                                <div class="space-y-3">
+                                    <div class="text-sm font-medium">Export in Progress</div>
+                                    <RProgressBar Value="@_exportProgress" 
+                                                  Text="@_exportStatusText"
+                                                  Animated="true"
+                                                  ShowLabel="true"
+                                                  Variant="ProgressVariant.Primary" />
+                                </div>
+                            }
+                            
+                            <!-- Recent Exports -->
+                            <div class="space-y-3">
+                                <div class="text-sm font-medium">Recent Exports</div>
+                                <div class="space-y-2">
+                                    @foreach (var export in _exportHistory.Take(5))
+                                    {
+                                        <div class="flex items-center justify-between p-2 bg-surface rounded text-sm">
+                                            <div class="flex items-center gap-2">
+                                                <i class="icon text-lg">@GetExportIcon(export.Format)</i>
+                                                <span>@export.FileName</span>
+                                                <RBadge Text="@export.Status" 
+                                                        Variant="@GetStatusVariant(export.Status)"
+                                                        Size="SizeType.Small" />
+                                            </div>
+                                            <div class="text-muted">
+                                                @export.Timestamp.ToString("HH:mm:ss")
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                            
+                            <!-- Export Statistics -->
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                <RCard Text="Total Exports" 
+                                       Content="@_exportHistory.Count.ToString()"
+                                       Icon="download"
+                                       Variant="CardVariant.Glass" />
+                                <RCard Text="Success Rate" 
+                                       Content="@GetSuccessRate()"
+                                       Icon="check_circle"
+                                       Variant="CardVariant.Glass" />
+                                <RCard Text="Total Size" 
+                                       Content="@($"{_exportHistory.Sum(e => e.FileSize):F1} MB")"
+                                       Icon="storage"
+                                       Variant="CardVariant.Glass" />
+                                <RCard Text="Avg. Time" 
+                                       Content="@($"{_exportHistory.Average(e => e.Duration):F1}s")"
+                                       Icon="timer"
+                                       Variant="CardVariant.Glass" />
+                            </div>
+                        </div>
+                    </ChildContent>
+                </RCard>
+            </div>
+
+            <!-- Real-time Export Demo -->
+            <div class="space-y-2">
+                <div class="text-h6 font-semibold">Interactive Export Demo</div>
+                <div class="flex gap-3 flex-wrap">
+                    <RButton Text="Start Large Export"
+                             Icon="file_download"
+                             Variant="ButtonVariant.Primary"
+                             @onclick="@(() => StartLargeExport())"
+                             Disabled="@_isExporting" />
+                    <RButton Text="Cancel Export"
+                             Icon="cancel"
+                             Variant="ButtonVariant.Error"
+                             @onclick="CancelExport"
+                             Disabled="@(!_isExporting)" />
+                    <RButton Text="Clear History"
+                             Icon="delete_sweep"
+                             Variant="ButtonVariant.Secondary"
+                             @onclick="ClearHistory" />
+                </div>
+            </div>
+        </div>
+    </ChildContent>
+</RCard>
+
+@code {
+    // Sample data
+    private List<Employee> _employees = new();
+    
+    // Export configuration
+    private string _selectedFormat = "Excel";
+    private string _customFileName = string.Empty;
+    private string _selectedColumns = "All";
+    private bool _includeHeaders = true;
+    private bool _includeFooter = false;
+    private bool _compressOutput = false;
+    private bool _emailAfterExport = false;
+    
+    // Export status
+    private bool _isExporting = false;
+    private double _exportProgress = 0;
+    private string _exportStatusText = "";
+    private System.Threading.Timer? _exportTimer;
+    
+    // Export history
+    private List<ExportRecord> _exportHistory = new();
+
+    protected override Task OnInitializedAsync()
+    {
+        _employees = GenerateEmployeeData(100);
+        InitializeExportHistory();
+        return base.OnInitializedAsync();
+    }
+
+    private List<Employee> GenerateEmployeeData(int count)
+    {
+        var departments = new[] { "Engineering", "Sales", "Marketing", "HR", "Finance", "Operations", "Support", "Legal" };
+        var positions = new[] { "Manager", "Senior Developer", "Developer", "Lead", "Specialist", "Coordinator", "Analyst", "Director" };
+        var random = new Random(42);
+
+        return Enumerable.Range(1, count).Select(i => new Employee
+        {
+            Id = i,
+            Name = $"Employee {i:D3}",
+            Department = departments[random.Next(departments.Length)],
+            Position = positions[random.Next(positions.Length)],
+            Salary = random.Next(50000, 180000),
+            HireDate = DateTime.Now.AddDays(-random.Next(1, 2000)),
+            IsActive = random.NextDouble() > 0.1,
+            Email = $"employee{i:D3}@company.com"
+        }).ToList();
+    }
+
+    private void InitializeExportHistory()
+    {
+        var random = new Random(42);
+        var formats = new[] { "CSV", "Excel", "JSON", "PDF" };
+        var statuses = new[] { "Success", "Success", "Success", "Failed" };
+        
+        for (int i = 0; i < 10; i++)
+        {
+            _exportHistory.Add(new ExportRecord
+            {
+                FileName = $"employees-export-{i + 1}.{formats[random.Next(formats.Length)].ToLower()}",
+                Format = formats[random.Next(formats.Length)],
+                Status = statuses[random.Next(statuses.Length)],
+                Timestamp = DateTime.Now.AddHours(-random.Next(1, 24)),
+                FileSize = random.NextDouble() * 10 + 0.5,
+                Duration = random.NextDouble() * 30 + 2
+            });
+        }
+    }
+
+    // Event handlers
+    private void OnFormatChanged(object value)
+    {
+        _selectedFormat = value?.ToString() ?? "Excel";
+    }
+
+    private void OnColumnsChanged(object value)
+    {
+        _selectedColumns = value?.ToString() ?? "All";
+    }
+
+    private object GetExportData()
+    {
+        return _selectedColumns switch
+        {
+            "Basic" => _employees.Select(e => new { e.Name, e.Department, e.Position }),
+            "Detailed" => _employees,
+            "Custom" => _employees.Select(e => new { e.Name, e.Department, e.Salary, e.IsActive }),
+            _ => _employees
+        };
+    }
+
+    private object GetExportFormat()
+    {
+        return _selectedFormat switch
+        {
+            "CSV" => "CSV",
+            "Excel" => "Excel", 
+            "JSON" => "JSON",
+            "PDF" => "PDF",
+            "XML" => "XML",
+            _ => "Excel"
+        };
+    }
+
+    private string GetFileName()
+    {
+        if (!string.IsNullOrWhiteSpace(_customFileName))
+            return _customFileName;
+        
+        return $"employees-{DateTime.Now:yyyyMMdd}";
+    }
+
+
+    private void PreviewExport()
+    {
+        // Show preview modal
+    }
+
+    private async Task ExportAllFormats()
+    {
+        await StartLargeExport("Exporting all formats...");
+    }
+
+    private async Task ExportSummaryReport()
+    {
+        await StartLargeExport("Generating summary report...");
+    }
+
+    private async Task ExportTemplate(string template)
+    {
+        var templateName = template switch
+        {
+            "hr" => "HR Report",
+            "payroll" => "Payroll Export", 
+            "directory" => "Directory List",
+            "audit" => "Audit Trail",
+            _ => "Template Export"
+        };
+        
+        await StartLargeExport($"Exporting {templateName}...");
+    }
+
+    private async Task StartLargeExport(string statusText = "Exporting data...")
+    {
+        if (_isExporting) return;
+        
+        _isExporting = true;
+        _exportProgress = 0;
+        _exportStatusText = statusText;
+        
+        _exportTimer = new System.Threading.Timer(UpdateExportProgress, null, 0, 200);
+        StateHasChanged();
+    }
+
+    private void UpdateExportProgress(object? state)
+    {
+        if (!_isExporting) return;
+        
+        _exportProgress += Random.Shared.NextDouble() * 8 + 2;
+        
+        if (_exportProgress >= 100)
+        {
+            _exportProgress = 100;
+            _exportTimer?.Dispose();
+            _isExporting = false;
+            _exportStatusText = "Export completed!";
+            
+            AddToHistory($"large-export-{DateTime.Now:HHmmss}.xlsx", "Excel", "Success");
+            
+            Task.Delay(2000).ContinueWith(_ => 
+            {
+                _exportStatusText = "";
+                InvokeAsync(StateHasChanged);
+            });
+        }
+        
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void CancelExport()
+    {
+        _exportTimer?.Dispose();
+        _isExporting = false;
+        _exportProgress = 0;
+        _exportStatusText = "Export cancelled";
+        
+        AddToHistory("cancelled-export", "Excel", "Cancelled");
+        StateHasChanged();
+    }
+
+    private void ClearHistory()
+    {
+        _exportHistory.Clear();
+        StateHasChanged();
+    }
+
+    private string GetSuccessRate()
+    {
+        if (_exportHistory.Count == 0) return "0%";
+        var successCount = _exportHistory.Count(e => e.Status == "Success");
+        var rate = successCount * 100 / _exportHistory.Count;
+        return $"{rate}%";
+    }
+
+    // Helper methods
+    private string[] GetDepartments()
+    {
+        return _employees.Select(e => e.Department).Distinct().OrderBy(d => d).ToArray();
+    }
+
+    private int GetDepartmentCount(string department)
+    {
+        return _employees.Count(e => e.Department == department);
+    }
+
+    private object GetEmployeesByDepartment(string department)
+    {
+        return _employees.Where(e => e.Department == department);
+    }
+
+    private void AddToHistory(string fileName, string format, string status)
+    {
+        _exportHistory.Insert(0, new ExportRecord
+        {
+            FileName = fileName,
+            Format = format,
+            Status = status,
+            Timestamp = DateTime.Now,
+            FileSize = Random.Shared.NextDouble() * 5 + 0.5,
+            Duration = Random.Shared.NextDouble() * 10 + 1
+        });
+        
+        // Keep only last 20 records
+        if (_exportHistory.Count > 20)
+        {
+            _exportHistory = _exportHistory.Take(20).ToList();
+        }
+    }
+
+    private string GetExportIcon(string format)
+    {
+        return format switch
+        {
+            "CSV" => "description",
+            "Excel" => "table_view",
+            "JSON" => "code",
+            "PDF" => "picture_as_pdf",
+            "XML" => "code",
+            _ => "file_download"
+        };
+    }
+
+    private VariantType GetStatusVariant(string status)
+    {
+        return status switch
+        {
+            "Success" => VariantType.Success,
+            "Failed" => VariantType.Error,
+            "In Progress" => VariantType.Info,
+            "Cancelled" => VariantType.Warning,
+            _ => VariantType.Secondary
+        };
+    }
+
+    // Data models
+    public class Employee
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Department { get; set; } = string.Empty;
+        public string Position { get; set; } = string.Empty;
+        public decimal Salary { get; set; }
+        public DateTime HireDate { get; set; }
+        public bool IsActive { get; set; }
+        public string Email { get; set; } = string.Empty;
+    }
+
+    public class ExportRecord
+    {
+        public string FileName { get; set; } = string.Empty;
+        public string Format { get; set; } = string.Empty;
+        public string Status { get; set; } = string.Empty;
+        public DateTime Timestamp { get; set; }
+        public double FileSize { get; set; }
+        public double Duration { get; set; }
+    }
+
+    public void Dispose()
+    {
+        _exportTimer?.Dispose();
+    }
+}

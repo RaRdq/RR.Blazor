@@ -1,0 +1,330 @@
+@using RR.Blazor.Components.Core
+@using RR.Blazor.Components.Display
+@using RR.Blazor.Components.Data
+@using RR.Blazor.Enums
+
+<RCard Variant="CardVariant.Outlined" Text="RTable">
+    <ChildContent>
+        <RDivider Text="Advanced Data Table Component"
+                  Subtitle="High-performance table with search, pagination, export, column management, and virtualization"
+                  Icon="table_view" />
+        
+        <div class="space-y-6">
+            <!-- Basic Table -->
+            <div class="space-y-2">
+                <div class="text-h6 font-semibold">Basic Table</div>
+                <RTableGeneric TItem="Employee" 
+                              Items="@_employees.Take(8)"
+                              ShowPagination="false"
+                              Class="basic-table">
+                    <RColumn Property="Id" Title="ID" Width="80px" Sortable="true" />
+                    <RColumn Property="Name" Title="Employee Name" Sortable="true" />
+                    <RColumn Property="Department" Title="Department" Sortable="true" />
+                    <RColumn Property="Position" Title="Position" />
+                    <RColumn Property="Salary" Title="Salary" Format="C" Alignment="ColumnAlignment.Right" />
+                </RTableGeneric>
+            </div>
+
+            <!-- Advanced Table with All Features -->
+            <div class="space-y-2">
+                <div class="text-h6 font-semibold">Advanced Table with Full Feature Set</div>
+                <div class="flex gap-2 mb-3 flex-wrap">
+                    <RButton Text="@(_showSearch ? "Hide Search" : "Show Search")"
+                             Variant="ButtonVariant.Secondary"
+                             Size="SizeType.Small"
+                             @onclick="ToggleSearch" />
+                    <RButton Text="@(_showExport ? "Hide Export" : "Show Export")"
+                             Variant="ButtonVariant.Secondary"
+                             Size="SizeType.Small"
+                             @onclick="ToggleExport" />
+                    <RButton Text="@(_showColumnManager ? "Hide Column Manager" : "Show Column Manager")"
+                             Variant="ButtonVariant.Secondary"
+                             Size="SizeType.Small"
+                             @onclick="ToggleColumnManager" />
+                    <RButton Text="@(_enableVirtualization ? "Disable Virtualization" : "Enable Virtualization")"
+                             Variant="ButtonVariant.Secondary"
+                             Size="SizeType.Small"
+                             @onclick="ToggleVirtualization" />
+                </div>
+                
+                <RTableGeneric TItem="Employee" 
+                              Items="@_employees"
+                              ShowSearch="@_showSearch"
+                              ShowPagination="true"
+                              PageSize="@_pageSize"
+                              ShowExport="@_showExport"
+                              ShowColumnManager="@_showColumnManager"
+                              Virtualize="@_enableVirtualization"
+                              SelectionMode="SelectionMode.Multiple"
+                              @bind-SelectedItems="_selectedEmployees"
+                              OnRowClick="@HandleRowClick"
+                              Class="@GetTableClasses()">
+                    
+                    <RColumn Property="Id" Title="ID" Width="80px" Sortable="true" />
+                    <RColumn Property="Name" Title="Employee Name" Sortable="true" Searchable="true" Width="200px" />
+                    <RColumn Property="Department" Title="Department" Sortable="true" Filterable="true" Width="150px" />
+                    <RColumn Property="Position" Title="Position" Sortable="true" Width="180px" />
+                    <RColumn Property="Salary" Title="Salary" Sortable="true" Format="C" Alignment="ColumnAlignment.Right" Width="120px" />
+                    <RColumn Property="HireDate" Title="Hire Date" Sortable="true" Format="d" Width="120px" />
+                    <RColumn Property="IsActive" Title="Status" Width="100px">
+                        <CellTemplate Context="employee">
+                            <RChip Variant="@(((Employee)employee).IsActive ? VariantType.Success : VariantType.Error)"
+                                   Size="SizeType.Small">
+                                <ChildContent>@(((Employee)employee).IsActive ? "Active" : "Inactive")</ChildContent>
+                            </RChip>
+                        </CellTemplate>
+                    </RColumn>
+                    <RColumn Title="Actions" Width="140px">
+                        <CellTemplate Context="employee">
+                            <div class="flex gap-1">
+                                <RButton Icon="edit" 
+                                        Variant="ButtonVariant.Ghost" 
+                                        Size="SizeType.ExtraSmall"
+                                        OnClick="@(() => EditEmployee((Employee)employee))" />
+                                <RButton Icon="visibility" 
+                                        Variant="ButtonVariant.Ghost" 
+                                        Size="SizeType.ExtraSmall"
+                                        OnClick="@(() => ViewEmployee((Employee)employee))" />
+                                <RButton Icon="delete" 
+                                        Variant="ButtonVariant.Ghost" 
+                                        Size="SizeType.ExtraSmall"
+                                        OnClick="@(() => DeleteEmployee((Employee)employee))" />
+                            </div>
+                        </CellTemplate>
+                    </RColumn>
+                </RTableGeneric>
+                
+                @if (_selectedEmployees?.Any() == true)
+                {
+                    <RAlert Type="AlertType.Info" Variant="AlertVariant.Filled">
+                        <ChildContent>
+                            Selected @_selectedEmployees.Count() employees for bulk operations.
+                            <RButton Text="Clear Selection" 
+                                     Variant="ButtonVariant.Ghost"
+                                     Size="SizeType.Small"
+                                     @onclick="ClearSelection"
+                                     class="ml-2" />
+                        </ChildContent>
+                    </RAlert>
+                }
+            </div>
+
+            <!-- Custom Table with Templates -->
+            <div class="space-y-2">
+                <div class="text-h6 font-semibold">Custom Table with Rich Templates</div>
+                <RTableGeneric TItem="Employee" 
+                              Items="@_employees.Take(6)"
+                              ShowPagination="false"
+                              Class="custom-template-table">
+                    
+                    <RColumn Title="Employee" Width="300px">
+                        <CellTemplate Context="employee">
+                            <div class="flex items-center gap-3">
+                                <RAvatar Text="@GetEmployeeInitials((Employee)employee)"
+                                        Size="SizeType.Small" />
+                                <div>
+                                    <div class="font-medium">@((Employee)employee).Name</div>
+                                    <div class="text-sm text-muted">@((Employee)employee).Email</div>
+                                </div>
+                            </div>
+                        </CellTemplate>
+                    </RColumn>
+                    
+                    <RColumn Title="Role & Department" Width="200px">
+                        <CellTemplate Context="employee">
+                            <div>
+                                <div class="font-medium">@((Employee)employee).Position</div>
+                                <RBadge Text="@(((Employee)employee).Department)" 
+                                        Variant="@GetDepartmentVariant((Employee)employee)"
+                                        Size="SizeType.Small" />
+                            </div>
+                        </CellTemplate>
+                    </RColumn>
+                    
+                    <RColumn Title="Compensation" Width="150px" Alignment="ColumnAlignment.Right">
+                        <CellTemplate Context="employee">
+                            <div class="text-right">
+                                <div class="font-medium">@((Employee)employee).Salary.ToString("C0")</div>
+                                <div class="text-sm text-muted">Annual</div>
+                            </div>
+                        </CellTemplate>
+                    </RColumn>
+                    
+                    <RColumn Title="Status & Actions" Width="200px">
+                        <CellTemplate Context="employee">
+                            <div class="flex items-center justify-between">
+                                <RChip Variant="@(((Employee)employee).IsActive ? VariantType.Success : VariantType.Error)"
+                                       Size="SizeType.Small">
+                                    <ChildContent>@(((Employee)employee).IsActive ? "Active" : "Inactive")</ChildContent>
+                                </RChip>
+                                <RActionGroup>
+                                    <RButton Icon="more_vert" 
+                                            Variant="ButtonVariant.Ghost" 
+                                            Size="SizeType.Small" />
+                                </RActionGroup>
+                            </div>
+                        </CellTemplate>
+                    </RColumn>
+                </RTableGeneric>
+            </div>
+
+            <!-- Configuration Panel -->
+            <div class="space-y-2">
+                <div class="text-h6 font-semibold">Table Configuration</div>
+                <RCard Variant="CardVariant.Glass" Class="p-4">
+                    <ChildContent>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <RChoice SelectedValue="@_pageSize.ToString()"
+                                    SelectedValueChanged="@OnPageSizeChanged"
+                                    Label="Page Size"
+                                    Items="@(new[] { "5", "10", "25", "50" })" />
+                                    
+                            <RChoice SelectedValue="@_density"
+                                    SelectedValueChanged="@OnDensityChanged"
+                                    Label="Table Density"
+                                    Items="@(new[] { "compact", "normal", "spacious" })" />
+                                    
+                            <RToggle @bind-Value="_striped" 
+                                    Text="Striped Rows" />
+                                    
+                            <RToggle @bind-Value="_hoverable" 
+                                    Text="Hoverable Rows" />
+                        </div>
+                    </ChildContent>
+                </RCard>
+            </div>
+        </div>
+    </ChildContent>
+</RCard>
+
+@code {
+    // Sample data
+    private List<Employee> _employees = new();
+    private IEnumerable<Employee> _selectedEmployees = Enumerable.Empty<Employee>();
+    
+    // Configuration
+    private bool _showSearch = true;
+    private bool _showExport = true;
+    private bool _showColumnManager = true;
+    private bool _enableVirtualization = false;
+    private int _pageSize = 10;
+    private string _density = "normal";
+    private bool _striped = true;
+    private bool _hoverable = true;
+
+    protected override Task OnInitializedAsync()
+    {
+        _employees = GenerateEmployeeData(50);
+        return base.OnInitializedAsync();
+    }
+
+    private List<Employee> GenerateEmployeeData(int count)
+    {
+        var departments = new[] { "Engineering", "Sales", "Marketing", "HR", "Finance", "Operations", "Support", "Legal" };
+        var positions = new[] { "Manager", "Senior Developer", "Junior Developer", "Lead", "Specialist", "Coordinator", "Analyst", "Director" };
+        var random = new Random(42);
+
+        return Enumerable.Range(1, count).Select(i => new Employee
+        {
+            Id = i,
+            Name = $"Employee {i:D3}",
+            Department = departments[random.Next(departments.Length)],
+            Position = positions[random.Next(positions.Length)],
+            Salary = random.Next(50000, 180000),
+            HireDate = DateTime.Now.AddDays(-random.Next(1, 2000)),
+            IsActive = random.NextDouble() > 0.15,
+            Email = $"employee{i:D3}@company.com"
+        }).ToList();
+    }
+
+    // Toggle methods
+    private void ToggleSearch() => _showSearch = !_showSearch;
+    private void ToggleExport() => _showExport = !_showExport;
+    private void ToggleColumnManager() => _showColumnManager = !_showColumnManager;
+    private void ToggleVirtualization() => _enableVirtualization = !_enableVirtualization;
+
+    // Event handlers
+    private void OnPageSizeChanged(object value)
+    {
+        if (int.TryParse(value?.ToString(), out var pageSize))
+        {
+            _pageSize = pageSize;
+        }
+    }
+
+    private void OnDensityChanged(object value)
+    {
+        _density = value?.ToString() ?? "normal";
+    }
+
+    private async Task HandleRowClick(Employee employee)
+    {
+        // Handle row click
+    }
+
+    private void ClearSelection()
+    {
+        _selectedEmployees = Enumerable.Empty<Employee>();
+    }
+
+    private void EditEmployee(Employee employee)
+    {
+        // Edit employee logic
+    }
+
+    private void ViewEmployee(Employee employee)
+    {
+        // View employee logic
+    }
+
+    private void DeleteEmployee(Employee employee)
+    {
+        // Delete employee logic
+    }
+
+    // Helper methods for templates
+    private string GetEmployeeInitials(Employee employee)
+    {
+        var parts = employee.Name.Split(' ');
+        return string.Join("", parts.Take(2).Select(p => p.FirstOrDefault())).ToUpper();
+    }
+
+
+    private VariantType GetDepartmentVariant(Employee employee)
+    {
+        return employee.Department switch
+        {
+            "Engineering" => VariantType.Primary,
+            "Sales" => VariantType.Success,
+            "Marketing" => VariantType.Info,
+            "HR" => VariantType.Warning,
+            "Finance" => VariantType.Error,
+            _ => VariantType.Secondary
+        };
+    }
+
+    private string GetTableClasses()
+    {
+        var classes = new List<string> { "advanced-table" };
+        
+        classes.Add($"density-{_density}");
+        
+        if (_striped) classes.Add("table-striped");
+        if (_hoverable) classes.Add("table-hoverable");
+        if (_enableVirtualization) classes.Add("table-virtualized");
+        
+        return string.Join(" ", classes);
+    }
+
+    public class Employee
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Department { get; set; } = string.Empty;
+        public string Position { get; set; } = string.Empty;
+        public decimal Salary { get; set; }
+        public DateTime HireDate { get; set; }
+        public bool IsActive { get; set; }
+        public string Email { get; set; } = string.Empty;
+    }
+}
