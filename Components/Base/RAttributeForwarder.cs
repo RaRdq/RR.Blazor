@@ -148,7 +148,6 @@ public static class RAttributeForwarder
         {
             var value = property.GetValue(component);
             
-            // Fix PageSize casting error: convert string PageSize values to int
             if (property.Name == "PageSize" && value is string strPageSize)
             {
                 if (int.TryParse(strPageSize, out var intPageSize))
@@ -180,7 +179,6 @@ public static class RAttributeForwarder
         {
             var value = attr.Value;
             
-            // Fix PageSize casting error: convert string PageSize values to int
             if (attr.Key == "PageSize" && value is string strPageSize)
             {
                 if (int.TryParse(strPageSize, out var intPageSize))

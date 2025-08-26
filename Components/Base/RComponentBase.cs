@@ -43,14 +43,12 @@ namespace RR.Blazor.Components.Base
         /// </summary>
         [Parameter] 
         public DensityType Density { get; set; } = DensityType.Normal;
-        
         /// <summary>
         /// Whether the component should take the full width of its container
         /// </summary>
         [Parameter]
         [AIParameter(Hint = "Make component take full width of container", IsRequired = false)]
         public bool FullWidth { get; set; }
-        
         /// <summary>
         /// Elevation level (0-16) - controls shadow depth and prominence
         /// </summary>
@@ -121,46 +119,53 @@ namespace RR.Blazor.Components.Base
         
         protected async Task<T> SafeInvokeAsync<T>(string identifier, params object[] args)
         {
-            if (_disposed) throw new ObjectDisposedException(GetType().Name);
+            if (_disposed) return default(T);
             
-            // Only apply DOM synchronization for Blazor Server
-            if (!IsWebAssembly)
+            try
             {
-                // For Blazor Server: ensure DOM is ready before JS calls
-                T result = default(T);
-                await InvokeAsync(async () =>
+                if (!IsWebAssembly)
                 {
-                    await Task.Yield();
-                    result = await JSInterop.TryInvokeAsync<T>(identifier, args);
-                });
-                return result;
+                    T result = default(T);
+                    await InvokeAsync(async () =>
+                    {
+                        await Task.Yield();
+                        result = await JSInterop.TryInvokeAsync<T>(identifier, args);
+                    });
+                    return result;
+                }
+                return await JSInterop.TryInvokeAsync<T>(identifier, args);
             }
-            
-            // WebAssembly: Direct call
-            return await JSInterop.TryInvokeAsync<T>(identifier, args);
+            catch (Exception ex) when (_disposed)
+            {
+                Logger?.LogDebug(ex, "JavaScript call ignored during component disposal: {Identifier}", identifier);
+                return default(T);
+            }
         }
-
+        
         /// <summary>
         /// Safely invokes JavaScript function without expecting return value - optimized for void calls
         /// </summary>
         protected async Task SafeInvokeAsync(string identifier, params object[] args)
         {
-            if (_disposed) throw new ObjectDisposedException(GetType().Name);
+            if (_disposed) return;
             
-            // Only apply DOM synchronization for Blazor Server
-            if (!IsWebAssembly)
+            try
             {
-                // For Blazor Server: ensure DOM is ready before JS calls
-                await InvokeAsync(async () =>
+                if (!IsWebAssembly)
                 {
-                    await Task.Yield();
+                    await InvokeAsync(async () =>
+                    {
+                        await Task.Yield();
+                        await JSInterop.TryInvokeVoidAsync(identifier, args);
+                    });
+                }
+                else
+                {
                     await JSInterop.TryInvokeVoidAsync(identifier, args);
-                });
+                }
             }
-            else
+            catch (Exception ex) when (_disposed)
             {
-                // WebAssembly: Direct call
-                await JSInterop.TryInvokeVoidAsync(identifier, args);
             }
         }
 
@@ -172,7 +177,6 @@ namespace RR.Blazor.Components.Base
         {
             if (firstRender && !_jsInitialized && !_disposed)
             {
-                // For Blazor Server, ensure DOM is fully ready
                 if (!IsWebAssembly)
                 {
                     await Task.Yield();
@@ -197,16 +201,31 @@ namespace RR.Blazor.Components.Base
         public async ValueTask DisposeAsync()
         {
             if (_disposed) return;
-            _disposed = true;
-
-            foreach (var cts in _cancellationTokenSources)
+            
+            try
             {
-                cts.Cancel();
-                cts.Dispose();
-            }
-            _cancellationTokenSources.Clear();
+                _disposed = true;
 
-            await DisposeAsyncCore();
+                foreach (var cts in _cancellationTokenSources)
+                {
+                    try
+                    {
+                        cts.Cancel();
+                        cts.Dispose();
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger?.LogDebug(ex, "Error disposing cancellation token source");
+                    }
+                }
+                _cancellationTokenSources.Clear();
+
+                await DisposeAsyncCore();
+            }
+            catch (Exception ex)
+            {
+                Logger?.LogError(ex, "Error during component disposal");
+            }
         }
         
         #region Shared Methods
@@ -233,14 +252,11 @@ namespace RR.Blazor.Components.Base
             if (Disabled)
                 classes.Add("disabled");
                 
-            // Add density classes
             classes.Add(GetDensityClasses());
             
-            // Add full width class
             if (FullWidth)
                 classes.Add("w-full");
             
-            // Add elevation shadow class
             if (Elevation >= 0)
                 classes.Add($"shadow-{Math.Min(16, Math.Max(0, Elevation))}");
             

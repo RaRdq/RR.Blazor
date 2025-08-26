@@ -1,15 +1,16 @@
 @namespace RR.Blazor.Components
 @using RR.Blazor.Enums
 @using RR.Blazor.Components.Base
+@using RR.Blazor.Utilities
 @inherits RForwardingComponentBase
 
-<div class="progress-container w-full @Class" @attributes="GetSafeAttributes()">
+<div class="progress-container @GetContainerClasses()" @attributes="GetSafeAttributes()">
     @if (ShowLabel && !string.IsNullOrEmpty(Text))
     {
-        <div class="progress-label @GetLabelSpacingClasses() @GetLabelSizeClasses() font-medium text-secondary">@Text</div>
+        <div class="progress-label @GetLabelClasses()">@Text</div>
     }
-    <div class="progress relative @GetProgressClasses() @GetProgressContainerClasses() bg-surface-secondary rounded-full overflow-hidden">
-        <div class="progress-bar @GetProgressBarClasses() h-full d-flex items-center justify-center text-inverse @GetProgressBarTextClasses() font-medium progress-dynamic" 
+    <div class="progress @GetProgressClasses()">
+        <div class="progress-bar @GetProgressBarClasses()" 
              role="progressbar" 
              style="@GetProgressBarStyleVariables()"
              aria-valuenow="@Value" 
@@ -17,13 +18,13 @@
              aria-valuemax="100">
             @if (ShowLabel && LabelInside)
             {
-                <span class="progress-bar-label @GetInnerLabelPaddingClasses() text-truncate">@GetFormattedValue()</span>
+                <span class="progress-bar-label">@GetFormattedValue()</span>
             }
         </div>
     </div>
     @if (ShowLabel && !LabelInside && string.IsNullOrEmpty(Text))
     {
-        <div class="progress-value @GetValueSpacingClasses() @GetValueSizeClasses()  text-muted text-right">@GetFormattedValue()</div>
+        <div class="progress-value @GetValueClasses()">@GetFormattedValue()</div>
     }
 </div>
 
@@ -38,114 +39,84 @@
     [Parameter] public ProgressVariant Variant { get; set; } = ProgressVariant.Primary;
     [Parameter] public SizeType Size { get; set; } = SizeType.Medium;
     [Parameter] public bool Indeterminate { get; set; }
+    [Parameter] public Direction Direction { get; set; } = Direction.Right;
     [Parameter] public bool Striped { get; set; }
     [Parameter] public bool Animated { get; set; }
 
+    private string GetContainerClasses()
+    {
+        var classes = new List<string> { "w-full" };
+        
+        // Add density classes using enhanced progress-specific system
+        var densityClasses = DensityHelper.GetProgressDensityClasses(Density);
+        if (!string.IsNullOrEmpty(densityClasses))
+            classes.Add(densityClasses);
+            
+        if (!string.IsNullOrEmpty(Class))
+            classes.Add(Class);
+            
+        return string.Join(" ", classes);
+    }
+
     private string GetProgressClasses()
     {
-        var classes = new List<string>();
+        var classes = new List<string> { "progress" };
         
-
-        var baseHeight = Size switch
+        // Indeterminate mode
+        if (Indeterminate)
         {
-            SizeType.Small => "h-2",
-            SizeType.Large => "h-6",
-            _ => "h-4"
-        };
+            classes.Add("progress-indeterminate");
+            
+            // Direction-specific classes for indeterminate
+            var directionClass = Direction switch
+            {
+                Direction.Left => "progress-indeterminate-left",
+                Direction.Right => "progress-indeterminate-right", 
+                Direction.Up => "progress-indeterminate-up",
+                Direction.Down => "progress-indeterminate-down",
+                _ => "progress-indeterminate-right"
+            };
+            classes.Add(directionClass);
+        }
         
-
-        classes.Add(Density switch
+        // Size variants using unified system
+        classes.Add(Size switch
         {
-            DensityType.Compact when Size == SizeType.Small => "h-1",
-            DensityType.Compact when Size == SizeType.Large => "h-5",
-            DensityType.Compact => "h-3",
-            DensityType.Dense when Size == SizeType.Small => "h-2",
-            DensityType.Dense when Size == SizeType.Large => "h-6",
-            DensityType.Dense => "h-4",
-            DensityType.Spacious when Size == SizeType.Small => "h-3",
-            DensityType.Spacious when Size == SizeType.Large => "h-8",
-            DensityType.Spacious => "h-5",
-            _ => baseHeight
+            SizeType.Small => "progress-sm",
+            SizeType.Large => "progress-lg", 
+            SizeType.ExtraLarge => "progress-xl",
+            _ => ""
         });
+        
+        // Semantic variants
+        classes.Add($"progress-{Variant.ToString().ToLower()}");
         
         return string.Join(" ", classes.Where(c => !string.IsNullOrEmpty(c)));
     }
 
-    private string GetLabelSpacingClasses()
+    private string GetLabelClasses()
     {
-        return Density switch
-        {
-            DensityType.Compact => "mb-1",
-            DensityType.Dense => "mb-2",
-            DensityType.Normal => "mb-2",
-            DensityType.Spacious => "mb-3",
-            _ => "mb-2"
-        };
+        var classes = new List<string> { "progress-label" };
+        
+        // Add density-aware text size
+        classes.Add(DensityHelper.GetTextSize(Density, "base"));
+        
+        return string.Join(" ", classes);
     }
 
-    private string GetLabelSizeClasses()
+    private string GetValueClasses()
     {
-        return Density switch
-        {
-            DensityType.Compact => "text-xs",
-            DensityType.Dense => "text-sm",
-            DensityType.Normal => "text-sm",
-            DensityType.Spacious => "text-base",
-            _ => "text-sm"
-        };
-    }
-
-    private string GetProgressBarTextClasses()
-    {
-        return Density switch
-        {
-            DensityType.Compact => "text-xs",
-            DensityType.Dense => "text-xs",
-            DensityType.Normal => "text-xs",
-            DensityType.Spacious => "text-sm",
-            _ => "text-xs"
-        };
-    }
-
-    private string GetInnerLabelPaddingClasses()
-    {
-        return Density switch
-        {
-            DensityType.Compact => "pl-1 pr-1",
-            DensityType.Dense => "pl-2 pr-2",
-            DensityType.Normal => "pl-2 pr-2",
-            DensityType.Spacious => "pl-3 pr-3",
-            _ => "pl-2 pr-2"
-        };
-    }
-
-    private string GetValueSpacingClasses()
-    {
-        return Density switch
-        {
-            DensityType.Compact => "mt-1",
-            DensityType.Dense => "mt-1",
-            DensityType.Normal => "mt-1",
-            DensityType.Spacious => "mt-2",
-            _ => "mt-1"
-        };
-    }
-
-    private string GetValueSizeClasses()
-    {
-        return Density switch
-        {
-            DensityType.Compact => "text-xs",
-            DensityType.Dense => "text-sm",
-            DensityType.Normal => "text-sm",
-            DensityType.Spacious => "text-base",
-            _ => "text-sm"
-        };
+        var classes = new List<string> { "progress-value" };
+        
+        // Add density-aware text size  
+        classes.Add(DensityHelper.GetTextSize(Density, "sm"));
+        
+        return string.Join(" ", classes);
     }
 
     private string GetProgressBarClasses()
     {
-        var classes = new List<string> { "fill-dynamic" };
+        var classes = new List<string> { "progress-bar" };
         
         if (Striped)
         {
@@ -157,6 +128,12 @@
             classes.Add("progress-bar-animated");
         }
         
+        // Disable shimmer when label is inside
+        if (ShowLabel && LabelInside)
+        {
+            classes.Add("progress-bar-no-shimmer");
+        }
+        
         return string.Join(" ", classes);
     }
 
@@ -164,18 +141,7 @@
     {
         var styles = new List<string>();
         
-        // Set fill color based on variant
-        var fillColor = Variant switch
-        {
-            ProgressVariant.Success => "var(--color-success)",
-            ProgressVariant.Warning => "var(--color-warning)",
-            ProgressVariant.Danger or ProgressVariant.Error => "var(--color-error)",
-            ProgressVariant.Info => "var(--color-info)",
-            _ => "var(--color-primary)"
-        };
-        styles.Add($"--fill-color: {fillColor}");
-        
-        // Set progress width
+        // Set progress width for determinate progress
         if (!Indeterminate)
         {
             var percentage = Math.Max(0, Math.Min(100, Value));
@@ -183,18 +149,6 @@
         }
         
         return string.Join("; ", styles);
-    }
-
-    private string GetProgressContainerClasses()
-    {
-        var classes = new List<string>();
-        
-        if (Indeterminate)
-        {
-            classes.Add("progress-indeterminate");
-        }
-        
-        return string.Join(" ", classes);
     }
 
     private string GetFormattedValue()

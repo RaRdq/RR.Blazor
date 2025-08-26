@@ -171,6 +171,37 @@ namespace RR.Blazor.Utilities
         }
 
         /// <summary>
+        /// Gets density classes specific to progress components
+        /// </summary>
+        public static string GetProgressDensityClasses(DensityType density)
+        {
+            var classes = new List<string>();
+            var densityClass = density.ToString().ToLower();
+            
+            classes.Add($"progress-density-{densityClass}");
+            classes.Add($"density-{densityClass}");
+            
+            return string.Join(" ", classes);
+        }
+
+        /// <summary>
+        /// Gets height CSS variable based on density and component type
+        /// </summary>
+        public static string GetProgressHeightVar(DensityType density, SizeType size = SizeType.Medium)
+        {
+            var baseHeight = size switch
+            {
+                SizeType.Small => 2,
+                SizeType.Large => 4,
+                SizeType.ExtraLarge => 5,
+                _ => 3
+            };
+
+            var height = GetSpacing(density, baseHeight);
+            return GetSpaceVar(height);
+        }
+
+        /// <summary>
         /// Gets horizontal padding CSS variable
         /// </summary>
         public static string GetHorizontalPadding(DensityType density, string baseValue = "3")
