@@ -1,78 +1,135 @@
 @using RR.Blazor.Services
-@inject IModalServiceCore ModalService
+@inject IModalService ModalService
 @implements IDisposable
 
-@foreach (var modal in _activeModals.Values)
+@* Dynamic confirmation modals - support multiple instances *@
+@foreach (var confirmation in _confirmationModals.Values)
 {
-    if (modal.ComponentType == typeof(RConfirmationModal))
-    {
-        <RConfirmationModal @key="@modal.Id"
-                           ModalId="@modal.Id"
-                           Title="@(GetParam<string>(modal.Parameters, nameof(RConfirmationModal.Title)))"
-                           Message="@(GetParam<string>(modal.Parameters, nameof(RConfirmationModal.Message)))"
-                           ConfirmText="@(GetParam<string>(modal.Parameters, nameof(RConfirmationModal.ConfirmText)))"
-                           CancelText="@(GetParam<string>(modal.Parameters, nameof(RConfirmationModal.CancelText)))"
-                           Icon="@(GetParam<string>(modal.Parameters, nameof(RConfirmationModal.Icon)))"
-                           Variant="@(GetParam<ConfirmationVariant>(modal.Parameters, nameof(RConfirmationModal.Variant)))"
-                           Visible="@(GetParam<bool>(modal.Parameters, nameof(RConfirmationModal.Visible)))"
-                           OnConfirm="@((result) => HandleModalResult(modal.Id, result))" />
-    }
-    else if (modal.ComponentType != null)
-    {
-        @RenderCustomModal(modal)
-    }
+    <RConfirmationModal @key=@($"confirmation-{confirmation.Id}")
+                       ModalId="@($"confirmation-modal-{confirmation.Id}")"
+                       Title="@confirmation.Title"
+                       Message="@confirmation.Message"
+                       ConfirmText="@confirmation.ConfirmText"
+                       CancelText="@confirmation.CancelText"
+                       Icon="@confirmation.Icon"
+                       Variant="@confirmation.Variant"
+                       Visible="@confirmation.Visible"
+                       OnConfirm="@((result) => HandleConfirmationResult(confirmation.Id, result))" />
+}
+
+@* Dynamic modals for custom components *@
+@foreach (var modal in _customModals.Values)
+{
+    @RenderCustomModal(modal)
 }
 
 @code {
-    private readonly Dictionary<string, ModalData> _activeModals = new();
+    private readonly Dictionary<string, ModalData> _customModals = new();
+    private readonly Dictionary<string, ConfirmationModalData> _confirmationModals = new();
+    private int _confirmationIdCounter = 0;
 
     protected override void OnInitialized()
     {
-        if (ModalService is ModalService service)
+        ModalService.OnModalOpened += HandleModalOpened;
+        ModalService.OnModalClosed += HandleModalClosed;
+    }
+
+    private async Task<bool> ShowConfirmation(string message, string title, string confirmText, string cancelText, ModalVariant variant)
+    {
+        var modalId = $"confirm-{++_confirmationIdCounter}";
+        var confirmationData = new ConfirmationModalData
         {
-            service.OnModalOpened += HandleModalOpened;
-            service.OnModalClosed += HandleModalClosed;
+            Id = modalId,
+            Message = message,
+            Title = title,
+            ConfirmText = confirmText ?? "Confirm",
+            CancelText = cancelText ?? "Cancel",
+            Icon = variant == ModalVariant.Destructive ? "delete" : variant == ModalVariant.Warning ? "warning" : "help",
+            Variant = variant == ModalVariant.Destructive ? ModalVariant.Destructive : 
+                       variant == ModalVariant.Warning ? ModalVariant.Warning : 
+                       ModalVariant.Info,
+            Visible = true,
+            CompletionSource = new TaskCompletionSource<bool>()
+        };
+        
+        _confirmationModals[modalId] = confirmationData;
+        StateHasChanged();
+        
+        return await confirmationData.CompletionSource.Task;
+    }
+
+    private void HandleConfirmationResult(string modalId, bool result)
+    {
+        if (_confirmationModals.TryGetValue(modalId, out var confirmationData))
+        {
+            confirmationData.Visible = false;
+            confirmationData.CompletionSource?.TrySetResult(result);
+            StateHasChanged();
+            
+            // Clean up after a delay
+            Task.Delay(500).ContinueWith(_ =>
+            {
+                _confirmationModals.Remove(modalId);
+                InvokeAsync(StateHasChanged);
+            });
         }
     }
 
     private void HandleModalOpened(ModalInstance instance)
     {
-        _activeModals[instance.Id] = new ModalData
+        // Handle all modal types including confirmation modals
+        if (instance.Options?.ComponentType != null)
         {
-            Id = instance.Id,
-            ComponentType = instance.Options?.ComponentType,
-            Parameters = instance.Options?.Parameters ?? new Dictionary<string, object>()
-        };
-        InvokeAsync(StateHasChanged);
+            _customModals[instance.Id] = new ModalData
+            {
+                Id = instance.Id,
+                ComponentType = instance.Options.ComponentType,
+                Parameters = instance.Options.Parameters ?? new Dictionary<string, object>()
+            };
+            InvokeAsync(StateHasChanged);
+        }
     }
 
     private void HandleModalClosed(ModalInstance instance)
     {
-        _activeModals.Remove(instance.Id);
+        _customModals.Remove(instance.Id);
         InvokeAsync(StateHasChanged);
     }
 
     private async void HandleModalResult(string modalId, bool result)
     {
-        if (ModalService is ModalService service)
-        {
-            await service.CloseAsync(modalId, result ? Enums.ModalResult.Ok : Enums.ModalResult.Cancel);
-        }
+        await ModalService.CloseAsync(modalId, result ? Enums.ModalResult.Ok : Enums.ModalResult.Cancel);
     }
 
     private RenderFragment RenderCustomModal(ModalData modal) => builder =>
     {
         if (modal.ComponentType == null) return;
 
-        builder.OpenComponent(0, modal.ComponentType);
-        builder.AddAttribute(1, "ModalId", modal.Id);
+        builder.OpenComponent<RModal>(0);
+        builder.AddAttribute(1, "Visible", true);
+        builder.AddAttribute(2, "Title", GetParam<string>(modal.Parameters, "Title"));
+        builder.AddAttribute(3, "Icon", GetParam<string>(modal.Parameters, "Icon"));
+        builder.AddAttribute(4, "Size", SizeType.Small);
+        builder.AddAttribute(5, "Variant", ModalVariant.Info);
+        builder.AddAttribute(6, "CloseOnBackdrop", true);
+        builder.AddAttribute(7, "CloseOnEscape", true);
+        builder.AddAttribute(8, "ShowCloseButton", true);
+        builder.AddAttribute(9, "OnClose", EventCallback.Factory.Create(this, () => HandleModalResult(modal.Id, false)));
         
-        foreach (var param in modal.Parameters)
+        builder.AddAttribute(10, "ChildContent", (RenderFragment)(contentBuilder =>
         {
-            builder.AddAttribute(2, param.Key, param.Value);
-        }
+            contentBuilder.OpenComponent(0, modal.ComponentType);
+            contentBuilder.AddAttribute(1, "ModalId", modal.Id);
+            
+            foreach (var param in modal.Parameters)
+            {
+                contentBuilder.AddAttribute(2, param.Key, param.Value);
+            }
+            
+            contentBuilder.AddAttribute(3, "OnConfirm", EventCallback.Factory.Create<bool>(this, (result) => HandleModalResult(modal.Id, result)));
+            contentBuilder.CloseComponent();
+        }));
         
-        builder.AddAttribute(3, "OnConfirm", EventCallback.Factory.Create<bool>(this, (result) => HandleModalResult(modal.Id, result)));
         builder.CloseComponent();
     };
 
@@ -87,11 +144,8 @@
 
     public void Dispose()
     {
-        if (ModalService is ModalService service)
-        {
-            service.OnModalOpened -= HandleModalOpened;
-            service.OnModalClosed -= HandleModalClosed;
-        }
+        ModalService.OnModalOpened -= HandleModalOpened;
+        ModalService.OnModalClosed -= HandleModalClosed;
     }
 
     private class ModalData
@@ -99,5 +153,18 @@
         public string Id { get; set; }
         public Type ComponentType { get; set; }
         public Dictionary<string, object> Parameters { get; set; }
+    }
+    
+    private class ConfirmationModalData
+    {
+        public string Id { get; set; }
+        public string Title { get; set; }
+        public string Message { get; set; }
+        public string ConfirmText { get; set; }
+        public string CancelText { get; set; }
+        public string Icon { get; set; }
+        public ModalVariant Variant { get; set; }
+        public bool Visible { get; set; }
+        public TaskCompletionSource<bool> CompletionSource { get; set; }
     }
 }

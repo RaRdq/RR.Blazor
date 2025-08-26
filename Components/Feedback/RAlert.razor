@@ -16,6 +16,7 @@ Supports info, success, warning, and error states with consistent styling.
 @using RR.Blazor.Enums
 @using RR.Blazor.Attributes
 @using RR.Blazor.Components.Base
+@using RR.Blazor.Utilities
 @inherits RForwardingComponentBase
 
 @attribute [Component("RAlert", Category = "Feedback", Complexity = ComponentComplexity.Simple)]
@@ -32,54 +33,56 @@ Supports info, success, warning, and error states with consistent styling.
          @onclick:stopPropagation="StopPropagation"
          @attributes="GetSafeAttributes()">
         
-        @if (ShowIcon)
-        {
-            <div class="alert-icon shrink-0">
-                <i class="icon @GetIconClasses()">@GetIcon()</i>
-            </div>
-        }
-        
-        <div class="alert-content flex-1 @GetContentAlignmentClasses()">
-            @if (!string.IsNullOrEmpty(Title))
-            {
-                <div class="alert-title font-semibold @GetTitleClasses()">@Title</div>
-            }
-            
-            @if (!string.IsNullOrEmpty(Message))
-            {
-                <div class="alert-message @GetMessageClasses()">@Message</div>
-            }
-            
-            @if (!string.IsNullOrEmpty(Text))
-            {
-                <div class="alert-text @GetMessageClasses()">@Text</div>
-            }
-            
-            @if (ChildContent != null)
-            {
-                <div class="alert-content-custom">
-                    @ChildContent
-                </div>
-            }
-            
-            @if (Actions != null)
-            {
-                <div class="alert-actions mt-3 d-flex gap-2">
-                    @Actions
-                </div>
-            }
-        </div>
-        
         @if (Dismissible)
         {
-            <RButton Variant="ButtonVariant.Ghost" 
-                     Size="@GetCloseButtonSize()"
-                     Icon="close"
-                     OnClick="@(_ => Dismiss())"
-                     StopPropagation="true"
-                     AriaLabel="Close alert"
-                     Class="@GetCloseButtonClasses()" />
+            <button class="alert-close" 
+                    type="button"
+                    @onclick="@(_ => Dismiss())"
+                    @onclick:stopPropagation="true"
+                    aria-label="Close alert">
+                <i class="icon">close</i>
+            </button>
         }
+        
+        <div class="d-flex @GetMainFlexAlignmentClasses() flex-1 gap-3">
+            @if (ShowIcon)
+            {
+                <div class="alert-icon shrink-0">
+                    <i class="icon @GetIconClasses()">@GetIcon()</i>
+                </div>
+            }
+            
+            <div class="alert-content flex-1 @GetContentAlignmentClasses()">
+                @if (!string.IsNullOrEmpty(Title))
+                {
+                    <div class="alert-title font-semibold @GetTitleClasses()">@Title</div>
+                }
+                
+                @if (!string.IsNullOrEmpty(Message))
+                {
+                    <div class="alert-message @GetMessageClasses()">@Message</div>
+                }
+                
+                @if (!string.IsNullOrEmpty(Text))
+                {
+                    <div class="alert-text @GetMessageClasses()">@Text</div>
+                }
+                
+                @if (ChildContent != null)
+                {
+                    <div class="alert-content-custom">
+                        @ChildContent
+                    </div>
+                }
+                
+                @if (Actions != null)
+                {
+                    <div class="alert-actions mt-3 d-flex gap-2">
+                        @Actions
+                    </div>
+                }
+            </div>
+        </div>
     </div>
 }
 
@@ -169,6 +172,7 @@ Supports info, success, warning, and error states with consistent styling.
     {
         var classes = new List<string>
         {
+            "position-relative",
             "d-flex",
             "items-start",
             "border",
@@ -180,13 +184,13 @@ Supports info, success, warning, and error states with consistent styling.
 
         classes.Add(GetDensityClasses());
         
-
+        // Size classes (padding and text will be handled by density system)
         classes.Add(Size switch
         {
-            SizeType.Small => "pa-3 text-sm",
-            SizeType.Medium => "pa-4 text-base",
-            SizeType.Large => "pa-6 text-lg",
-            _ => "pa-4 text-base"
+            SizeType.Small => "alert-sm",
+            SizeType.Medium => "alert-md", 
+            SizeType.Large => "alert-lg",
+            _ => "alert-md"
         });
         
 
@@ -245,14 +249,7 @@ Supports info, success, warning, and error states with consistent styling.
     
     protected override string GetDensityClasses()
     {
-        return Density switch
-        {
-            DensityType.Compact => "gap-1 pa-2",
-            DensityType.Dense => "gap-2 pa-3",
-            DensityType.Normal => "gap-3 pa-4",
-            DensityType.Spacious => "gap-4 pa-5",
-            _ => "gap-3 pa-4"
-        };
+        return DensityHelper.BuildDensityClasses("alert", Density);
     }
     
     private string GetIcon()
@@ -316,6 +313,16 @@ Supports info, success, warning, and error states with consistent styling.
         return string.Join(" ", classes);
     }
     
+    private string GetMainFlexAlignmentClasses()
+    {
+        return ContentAlignment switch
+        {
+            AlertContentAlignment.Center => "items-center justify-center",
+            AlertContentAlignment.End => "items-end justify-end",
+            _ => "items-start"
+        };
+    }
+    
     private string GetContentAlignmentClasses()
     {
         return ContentAlignment switch
@@ -326,21 +333,6 @@ Supports info, success, warning, and error states with consistent styling.
         };
     }
     
-    private SizeType GetCloseButtonSize()
-    {
-        return Size switch
-        {
-            SizeType.Small => SizeType.Small,
-            SizeType.Medium => SizeType.Medium,
-            SizeType.Large => SizeType.Large,
-            _ => SizeType.Medium
-        };
-    }
-    
-    private string GetCloseButtonClasses()
-    {
-        return "shrink-0 opacity-70 hover:opacity-100";
-    }
     
     private async Task Dismiss()
     {

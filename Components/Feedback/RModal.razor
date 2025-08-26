@@ -8,7 +8,7 @@
 @implements IAsyncDisposable
 @if (Visible)
 {
-    <div class="modal-content @GetSizeClass() @GetVisibilityClass() @GetAnimationClass() @GetBaseClasses()" 
+    <div class="modal-content @GetVisibilityClass() @GetSizeClass() @GetBaseClasses()" 
          role="dialog" 
          aria-modal="@(Visible ? "true" : "false")"
          aria-hidden="@(!Visible ? "true" : "false")"
@@ -18,7 +18,6 @@
          @ref="modalElement"
          @onclick:stopPropagation="true"
          tabindex="-1"
-         style="@GetAnimationStyles()"
          @onkeydown="OnKeyDownHandler">
                      
                 @if (ShowHeader)
@@ -82,7 +81,7 @@
                 
                 @if (ShowFooter)
                 {
-                    <div class="modal-footer @GetModalFooterClasses()">
+                    <div class="modal-footer action-group action-group-modal-footer @GetModalFooterClasses()">
                         @if (FooterContent != null)
                         {
                             @FooterContent
@@ -449,23 +448,10 @@
         SizeType.XLarge => "modal-xlarge",
         SizeType.Wide => "modal-wide",
         SizeType.Full => "modal-full",
-        _ => "modal-medium" // default medium size
+        _ => "modal-medium"
     };
     
-    private string GetVisibilityClass() => Visible ? "modal-visible" : "modal-hidden";
-    
-    private string GetAnimationClass() => Animation switch
-    {
-        ModalAnimation.Fade => "modal-fade-in",
-        ModalAnimation.SlideUp => "modal-slide-up",
-        ModalAnimation.SlideUpSmooth => "modal-slide-up",
-        ModalAnimation.SlideDown => "modal-slide-down",
-        ModalAnimation.SlideLeft => "modal-slide-left",
-        ModalAnimation.SlideRight => "modal-slide-right",
-        ModalAnimation.DropdownSlideIn => "modal-slide-down",
-        ModalAnimation.None => "",
-        _ => "modal-scale-in" // default scale animation for Scale, Bounce, Zoom, Flip, Swing
-    };
+    private string GetVisibilityClass() => "modal-hidden"; // Always start hidden, JS will handle animation
 
     private string GetModalHeaderClasses()
     {
@@ -542,14 +528,6 @@
         };
     }
     
-    private string GetAnimationStyles()
-    {
-        var animationProperty = AnimationHelper.GetAnimationProperty(Animation, AnimationSpeed);
-        var duration = AnimationHelper.GetDuration(AnimationSpeed);
-        var timing = AnimationHelper.GetTimingFunction(AnimationSpeed);
-        
-        return $"--modal-animation: {animationProperty}; --modal-duration: {duration}; --modal-timing: {timing};";
-    }
     
 public async ValueTask DisposeAsync()
     {

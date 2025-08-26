@@ -1,9 +1,7 @@
 @using RR.Blazor.Components
 @using RR.Blazor.Components.Base
 @using RR.Blazor.Enums
-@using RR.Blazor.Services
-@inject IModalService ModalService
-@inherits RModalBase
+@inherits RComponentBase
 
 <RModal @ref="modalRef"
         Visible="@Visible" 
@@ -13,7 +11,7 @@
         UseBackdrop="true"
         CloseOnBackdrop="@AllowBackdropClose"
         CloseOnEscape="@AllowEscapeClose"
-        ModalId="@InternalModalId">
+        ModalId="@ModalId">
     <HeaderContent>
         @if (HeaderTemplate != null)
         {
@@ -95,7 +93,7 @@
                     </RCard>
                 }
                 
-                @if (ShowWarning && (Variant == ConfirmationVariant.Danger || Variant == ConfirmationVariant.Destructive))
+                @if (ShowWarning && Variant == ModalVariant.Destructive)
                 {
                     <div class="@(WarningClass ?? "mt-4 flex items-center gap-2 pa-3 bg-error-light text-error rounded-lg")">
                         <i class="icon">@WarningIcon</i>
@@ -178,6 +176,8 @@
 @code {
     private RModal modalRef;
     
+    [Parameter] public string ModalId { get; set; }
+    [Parameter] public bool Visible { get; set; }
     [Parameter] public string Title { get; set; } = "Confirm";
     [Parameter] public string Subtitle { get; set; }
     [Parameter] public string Message { get; set; }
@@ -188,7 +188,7 @@
     [Parameter] public string IconSize { get; set; } = "w-12 h-12";
     [Parameter] public bool CenterContent { get; set; } = true;
     
-    [Parameter] public ConfirmationVariant Variant { get; set; } = ConfirmationVariant.Info;
+    [Parameter] public ModalVariant Variant { get; set; } = ModalVariant.Info;
     [Parameter] public SizeType Size { get; set; } = SizeType.Small;
     
     [Parameter] public string ConfirmText { get; set; } = "Confirm";
@@ -253,23 +253,6 @@
     [Parameter] public Func<Task<bool>> OnBeforeConfirm { get; set; }
     [Parameter] public Func<Task<bool>> OnBeforeCancel { get; set; }
     
-    protected override void OnInitialized()
-    {
-        base.OnInitialized();
-        
-        if (!string.IsNullOrEmpty(ModalId) && ModalService != null)
-        {
-            RegisterWithModalService();
-        }
-    }
-    
-    private void RegisterWithModalService()
-    {
-        if (ModalService is ModalService service)
-        {
-            // Register for service callbacks if needed
-        }
-    }
     
     private async Task HandleConfirm()
     {
@@ -308,15 +291,7 @@
                 await OnConfirm.InvokeAsync(true);
             }
             
-            if (!string.IsNullOrEmpty(ModalId) && ModalService != null)
-            {
-                ModalService.ConfirmModal(ModalId);
-            }
-            else
-            {
-                // If no ModalId, just close the modal directly
-                await CloseAsync();
-            }
+            await CloseAsync();
         }
         finally
         {
@@ -336,16 +311,7 @@
         }
         
         await OnConfirm.InvokeAsync(false);
-        
-        if (!string.IsNullOrEmpty(ModalId) && ModalService != null)
-        {
-            ModalService.CancelModal(ModalId);
-        }
-        else
-        {
-            // If no ModalId, just close the modal directly
-            await CancelAsync();
-        }
+        await CancelAsync();
     }
     
     private bool IsConfirmDisabled()
@@ -354,6 +320,18 @@
         if (ShowInputField && InputRequired && string.IsNullOrWhiteSpace(InputValue)) return true;
         if (ShowCheckbox && CheckboxRequired && !CheckboxValue) return true;
         return false;
+    }
+    
+    private async Task CloseAsync()
+    {
+        Visible = false;
+        StateHasChanged();
+    }
+    
+    private async Task CancelAsync()
+    {
+        Visible = false;
+        StateHasChanged();
     }
     
     private async Task ValidateInput()
@@ -371,34 +349,26 @@
         
         return Variant switch
         {
-            ConfirmationVariant.Success => "check_circle",
-            ConfirmationVariant.Warning => "warning",
-            ConfirmationVariant.Danger => "error",
-            ConfirmationVariant.Destructive => "delete_forever",
+            ModalVariant.Success => "check_circle",
+            ModalVariant.Warning => "warning",
+            ModalVariant.Destructive => "delete_forever",
+            ModalVariant.Info => "info",
             _ => "help"
         };
     }
     
     private ModalVariant GetModalVariant()
     {
-        return Variant switch
-        {
-            ConfirmationVariant.Success => ModalVariant.Success,
-            ConfirmationVariant.Warning => ModalVariant.Warning,
-            ConfirmationVariant.Danger => ModalVariant.Destructive,
-            ConfirmationVariant.Destructive => ModalVariant.Destructive,
-            _ => ModalVariant.Default
-        };
+        return Variant;
     }
     
     private ButtonVariant GetConfirmVariant()
     {
         return Variant switch
         {
-            ConfirmationVariant.Success => ButtonVariant.Success,
-            ConfirmationVariant.Warning => ButtonVariant.Warning,
-            ConfirmationVariant.Danger => ButtonVariant.Danger,
-            ConfirmationVariant.Destructive => ButtonVariant.Danger,
+            ModalVariant.Success => ButtonVariant.Success,
+            ModalVariant.Warning => ButtonVariant.Warning,
+            ModalVariant.Destructive => ButtonVariant.Danger,
             _ => ButtonVariant.Primary
         };
     }
@@ -407,10 +377,9 @@
     {
         return Variant switch
         {
-            ConfirmationVariant.Success => "text-success",
-            ConfirmationVariant.Warning => "text-warning",
-            ConfirmationVariant.Danger => "text-error",
-            ConfirmationVariant.Destructive => "text-error",
+            ModalVariant.Success => "text-success",
+            ModalVariant.Warning => "text-warning",
+            ModalVariant.Destructive => "text-error",
             _ => "text-info"
         };
     }
@@ -424,10 +393,9 @@
     {
         return Variant switch
         {
-            ConfirmationVariant.Success => "bg-success-light",
-            ConfirmationVariant.Warning => "bg-warning-light",
-            ConfirmationVariant.Danger => "bg-error-light",
-            ConfirmationVariant.Destructive => "bg-error-light",
+            ModalVariant.Success => "bg-success-light",
+            ModalVariant.Warning => "bg-warning-light",
+            ModalVariant.Destructive => "bg-error-light",
             _ => "bg-info-light"
         };
     }
