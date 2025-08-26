@@ -7,12 +7,15 @@ using System.Collections.Concurrent;
 
 namespace RR.Blazor.Services;
 
-public sealed class ModalService : IModalService, IModalServiceCore, IDisposable
+public sealed class ModalService : IModalService, IDisposable
 {
     private readonly IJSRuntime _jsRuntime;
     private readonly ConcurrentDictionary<string, ModalInstance> _activeModals = new();
     private readonly ConcurrentDictionary<string, TaskCompletionSource<ModalResult<object>>> _modalCompletions = new();
-    private readonly Dictionary<string, TaskCompletionSource<bool>> _confirmationSources = [];
+    private readonly Stack<string> _modalStack = new();
+    private readonly object _stackLock = new();
+    private int _currentZIndexBase = 1000;
+    private readonly int _zIndexIncrement = 100;
     private bool _isDisposed;
 
     public event Action<ModalInstance> OnModalOpened;
@@ -54,16 +57,36 @@ public sealed class ModalService : IModalService, IModalServiceCore, IDisposable
         var taskSource = new TaskCompletionSource<ModalResult<object>>();
         _modalCompletions[modalId] = taskSource;
 
+        string parentModalId = null;
+        int stackLevel = 0;
+        int zIndex = _currentZIndexBase;
+        
+        lock (_stackLock)
+        {
+            if (_modalStack.Count > 0)
+            {
+                parentModalId = _modalStack.Peek();
+                var parentModal = _activeModals[parentModalId];
+                parentModal.ChildModalIds.Add(modalId);
+            }
+            
+            stackLevel = _modalStack.Count;
+            zIndex = _currentZIndexBase + (stackLevel * _zIndexIncrement);
+            _modalStack.Push(modalId);
+        }
+
         var instance = new ModalInstance
         {
             Id = modalId,
             Options = options,
             Visible = true,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            ParentModalId = parentModalId,
+            StackLevel = stackLevel,
+            ZIndex = zIndex
         };
 
         _activeModals[modalId] = instance;
-        _modalInstances[modalId] = this; // Register this instance for static callback
 
         try
         {
@@ -76,10 +99,22 @@ public sealed class ModalService : IModalService, IModalServiceCore, IDisposable
                 backdropClass = GetBackdropClass(options.Variant),
                 animation = "scale",
                 animationSpeed = "normal",
-                trapFocus = true
+                trapFocus = true,
+                stackLevel = stackLevel,
+                zIndex = zIndex,
+                parentModalId = parentModalId
             };
 
-            await _jsRuntime.InvokeVoidAsync("RRBlazor.Modal.createAndShow", modalId, modalType.Name, options.Parameters, jsOptions);
+            try
+            {
+                await _jsRuntime.InvokeVoidAsync("RRBlazor.Modal.createAndShow", modalId, modalType?.Name ?? "CustomModal", options.Parameters, jsOptions);
+            }
+            catch (JSException jsEx)
+            {
+                Console.WriteLine($"JS Error creating modal {modalId}: {jsEx.Message}");
+                // Try fallback method without parameters to avoid JS compatibility issues
+                await _jsRuntime.InvokeVoidAsync("RRBlazor.Modal.create", modalId, jsOptions);
+            }
 
             OnModalOpened?.Invoke(instance);
 
@@ -127,7 +162,6 @@ public sealed class ModalService : IModalService, IModalServiceCore, IDisposable
     };
 
 
-    private static readonly ConcurrentDictionary<string, ModalService> _modalInstances = new();
 
     private void RegisterEventHandlers<TResult>(string modalId, ModalEvents<TResult> events, TaskCompletionSource<ModalResult<object>> taskSource)
     {
@@ -217,8 +251,36 @@ public sealed class ModalService : IModalService, IModalServiceCore, IDisposable
 
     public async Task CloseAsync(string modalId, Enums.ModalResult result = Enums.ModalResult.None)
     {
-        if (!_activeModals.TryRemove(modalId, out var modal))
+        if (!_activeModals.TryGetValue(modalId, out var modal))
             return;
+        
+        if (modal.ChildModalIds.Count > 0)
+            foreach (var childId in modal.ChildModalIds.ToList())
+            {
+                await CloseAsync(childId, Enums.ModalResult.Cancel);
+            }
+        
+        if (!string.IsNullOrEmpty(modal.ParentModalId) && _activeModals.TryGetValue(modal.ParentModalId, out var parent))
+            parent.ChildModalIds.Remove(modalId);
+        
+        lock (_stackLock)
+        {
+            var tempStack = new Stack<string>();
+            while (_modalStack.Count > 0)
+            {
+                var id = _modalStack.Pop();
+                if (id != modalId)
+                {
+                    tempStack.Push(id);
+                }
+            }
+            while (tempStack.Count > 0)
+            {
+                _modalStack.Push(tempStack.Pop());
+            }
+        }
+        
+        _activeModals.TryRemove(modalId, out _);
 
         modal.Visible = false;
         modal.LastResult = result;
@@ -263,25 +325,6 @@ public sealed class ModalService : IModalService, IModalServiceCore, IDisposable
         return new ModalBuilder<T>(this);
     }
 
-    public void ConfirmModal(string modalId)
-    {
-        if (_confirmationSources.TryGetValue(modalId, out var source))
-        {
-            source.TrySetResult(true);
-            _confirmationSources.Remove(modalId);
-            _ = CloseAsync(modalId, Enums.ModalResult.Ok);
-        }
-    }
-
-    public void CancelModal(string modalId)
-    {
-        if (_confirmationSources.TryGetValue(modalId, out var source))
-        {
-            source.TrySetResult(false);
-            _confirmationSources.Remove(modalId);
-            _ = CloseAsync(modalId, Enums.ModalResult.Cancel);
-        }
-    }
 
     private static Dictionary<string, object> ConvertParametersToDict<TParams>(TParams parameters)
     {
@@ -295,18 +338,6 @@ public sealed class ModalService : IModalService, IModalServiceCore, IDisposable
     }
 
 
-    // IModalService methods - simple implementations that delegate to extensions
-    Task<bool> IModalService.ConfirmAsync(string message, string title, bool isDestructive) =>
-        this.ShowConfirmationAsync(message, title, "Confirm", "Cancel", isDestructive ? ModalVariant.Destructive : ModalVariant.Default);
-
-    Task<bool> IModalService.ConfirmAsync(ConfirmationOptions options) =>
-        this.ShowConfirmationAsync(options);
-
-    async Task<Models.ModalResult> IModalService.ConfirmWithResultAsync(string message, string title, ModalVariant variant)
-    {
-        var result = await this.ShowConfirmationAsync(message, title, "Confirm", "Cancel", variant);
-        return new Models.ModalResult { ResultType = result ? Enums.ModalResult.Ok : Enums.ModalResult.Cancel, Data = result };
-    }
 
     async Task<ModalResult<T>> IModalService.ShowFormAsync<T>(string title, T initialData, SizeType size)
     {
@@ -320,17 +351,6 @@ public sealed class ModalService : IModalService, IModalServiceCore, IDisposable
         return await ShowAsync<T>(null, parameters, new ModalOptions { Title = options.Title, Size = options.Size });
     }
 
-    Task IModalService.ShowInfoAsync(string message, string title) =>
-        this.ShowInfoAsync(message, title);
-
-    Task IModalService.ShowWarningAsync(string message, string title) =>
-        this.ShowWarningAsync(message, title);
-
-    Task IModalService.ShowErrorAsync(string message, string title) =>
-        this.ShowErrorAsync(message, title);
-
-    Task IModalService.ShowSuccessAsync(string message, string title) =>
-        this.ShowSuccessAsync(message, title);
 
     async Task IModalService.ShowDetailAsync<T>(T data, string title, SizeType size)
     {
@@ -364,7 +384,6 @@ public sealed class ModalService : IModalService, IModalServiceCore, IDisposable
         
         _activeModals.Clear();
         _modalCompletions.Clear();
-        _confirmationSources.Clear();
         
         _isDisposed = true;
     }

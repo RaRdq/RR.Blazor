@@ -226,6 +226,21 @@ public class ExportService : IExportService
         };
     }
     
+    
+    private string GetFileExtension(ExportFormat format)
+    {
+        return format switch
+        {
+            ExportFormat.CSV => "csv",
+            ExportFormat.Excel => "xlsx",
+            ExportFormat.JSON => "json",
+            ExportFormat.PDF => "pdf",
+            ExportFormat.XML => "xml",
+            ExportFormat.TSV => "tsv",
+            _ => "txt"
+        };
+    }
+    
     private IEnumerable<dynamic> FlattenPivotData<TItem>(PivotResult<TItem> pivotResult) where TItem : class
     {
         var result = new List<dynamic>();
@@ -256,13 +271,11 @@ public class ExportService : IExportService
                 expando[columnFieldNames[i]] = columnPath[i];
             }
             
-            // Add data field name and value
-            expando["Measure"] = cell.Field.DisplayName ?? cell.Field.Key;
-            expando["Value"] = cell.FormattedValue ?? cell.Value;
-            
-            // Add metadata
-            expando["IsTotal"] = cell.IsRowTotal || cell.IsColumnTotal;
-            expando["IsGrandTotal"] = cell.IsGrandTotal;
+            // Add data values
+            if (dataFieldNames.Count > 0)
+            {
+                expando[dataFieldNames[0]] = cell.Value;
+            }
             
             result.Add(expando);
         }
@@ -282,19 +295,5 @@ public class ExportService : IExportService
         }
         
         return path;
-    }
-    
-    private string GetFileExtension(ExportFormat format)
-    {
-        return format switch
-        {
-            ExportFormat.CSV => "csv",
-            ExportFormat.Excel => "xlsx",
-            ExportFormat.JSON => "json",
-            ExportFormat.PDF => "pdf",
-            ExportFormat.XML => "xml",
-            ExportFormat.TSV => "tsv",
-            _ => "txt"
-        };
     }
 }

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Components;
+using Microsoft.JSInterop;
 using RR.Blazor.Enums;
 using RR.Blazor.Models;
 
@@ -6,25 +7,32 @@ namespace RR.Blazor.Services;
 
 public interface IModalService
 {
-    // Core modal methods
+    // Core modal methods (from IModalServiceCore)
+    Task<ModalResult<TResult>> ShowAsync<TModal, TParams, TResult>(
+        TParams parameters = default,
+        ModalOptions options = null,
+        ModalEvents<TResult> events = null) where TModal : ComponentBase;
+    
+    Task<ModalResult<TResult>> ShowAsync<TResult>(
+        Type modalType,
+        Dictionary<string, object> parameters = null,
+        ModalOptions options = null,
+        ModalEvents<TResult> events = null);
+    
+    Task<Models.ModalResult> ShowAsync(
+        Type modalType,
+        Dictionary<string, object> parameters = null,
+        ModalOptions options = null,
+        ModalEvents events = null);
+    
+    // High-level modal methods (original IModalService)
     Task<ModalResult<T>> ShowAsync<T>(ModalOptions<T> options);
     Task<Models.ModalResult> ShowAsync(ModalOptions options);
     Task<ModalResult<T>> ShowAsync<T>(Type componentType, Dictionary<string, object> parameters = null, ModalOptions<T> options = null);
     
-    // Confirmation modals
-    Task<bool> ConfirmAsync(string message, string title = "Confirm", bool isDestructive = false);
-    Task<bool> ConfirmAsync(ConfirmationOptions options);
-    Task<Models.ModalResult> ConfirmWithResultAsync(string message, string title = "Confirm", ModalVariant variant = ModalVariant.Default);
-    
     // Form modals
     Task<ModalResult<T>> ShowFormAsync<T>(string title, T initialData = default, SizeType size = SizeType.Medium);
     Task<ModalResult<T>> ShowFormAsync<T>(FormModalOptions<T> options);
-    
-    // Quick modals
-    Task ShowInfoAsync(string message, string title = "Information");
-    Task ShowWarningAsync(string message, string title = "Warning");
-    Task ShowErrorAsync(string message, string title = "Error");
-    Task ShowSuccessAsync(string message, string title = "Success");
     
     // Detail/preview modals
     Task ShowDetailAsync<T>(T data, string title = "", SizeType size = SizeType.Large);
@@ -44,14 +52,13 @@ public interface IModalService
     // Builder pattern
     IModalBuilder<T> Create<T>();
     
-    // Confirmation modal callbacks
-    void ConfirmModal(string modalId);
-    void CancelModal(string modalId);
-    
     // Events
     event Action<ModalInstance> OnModalOpened;
     event Action<ModalInstance> OnModalClosed;
     event Action OnAllModalsClosed;
+    
+    // Access to JS runtime (from IModalServiceCore)
+    IJSRuntime JSRuntime { get; }
 }
 
 public interface IModalBuilder<T>

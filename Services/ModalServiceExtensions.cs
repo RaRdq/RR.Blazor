@@ -12,7 +12,7 @@ namespace RR.Blazor.Services;
 public static class ModalServiceExtensions
 {
     public static async Task<bool> ShowConfirmationAsync(
-        this IModalServiceCore modalService,
+        this IModalService modalService,
         string message,
         string title = "Confirm",
         string confirmText = "Confirm",
@@ -25,19 +25,13 @@ public static class ModalServiceExtensions
             { nameof(RConfirmationModal.Message), message },
             { nameof(RConfirmationModal.ConfirmText), confirmText },
             { nameof(RConfirmationModal.CancelText), cancelText },
-            { nameof(RConfirmationModal.Variant), 
-                variant == ModalVariant.Destructive ? ConfirmationVariant.Destructive : 
-                variant == ModalVariant.Warning ? ConfirmationVariant.Warning : 
-                ConfirmationVariant.Info },
+            { nameof(RConfirmationModal.Variant), variant },
             { nameof(RConfirmationModal.Visible), true }
         };
 
         var options = new ModalOptions
         {
-            Title = title,
-            Icon = variant == ModalVariant.Destructive ? "error" : "help",
             Size = SizeType.Small,
-            Variant = variant,
             CloseOnBackdrop = false,
             CloseOnEscape = true
         };
@@ -50,11 +44,11 @@ public static class ModalServiceExtensions
         return result.IsConfirmed && result.Data;
     }
 
-    public static async Task<bool> ShowConfirmationAsync(
-        this IModalServiceCore modalService,
+    public static Task<bool> ShowConfirmationAsync(
+        this IModalService modalService,
         ConfirmationOptions confirmOptions)
     {
-        return await modalService.ShowConfirmationAsync(
+        return modalService.ShowConfirmationAsync(
             confirmOptions.Message,
             confirmOptions.Title,
             confirmOptions.ConfirmText ?? "Confirm",
@@ -62,109 +56,54 @@ public static class ModalServiceExtensions
             confirmOptions.IsDestructive ? ModalVariant.Destructive : confirmOptions.Variant);
     }
 
-    public static async Task ShowInfoAsync(
-        this IModalServiceCore modalService,
+    public static Task<bool> ShowInfoAsync(
+        this IModalService modalService,
         string message,
         string title = "Information")
     {
-        var parameters = new Dictionary<string, object>
-        {
-            { nameof(RMessageModal.Message), message }
-        };
-
-        var options = new ModalOptions
-        {
-            Title = title,
-            Icon = "info",
-            Size = SizeType.Small,
-            Variant = ModalVariant.Info,
-            Buttons = new List<ModalButton> { ModalButton.Primary("OK") }
-        };
-
-        await modalService.ShowAsync(
-            typeof(RMessageModal),
-            parameters,
-            options);
+        return modalService.ShowConfirmationAsync(message, title, "OK", "", ModalVariant.Info);
     }
 
-    public static async Task ShowWarningAsync(
-        this IModalServiceCore modalService,
+    public static Task<bool> ShowWarningAsync(
+        this IModalService modalService,
         string message,
         string title = "Warning")
     {
-        var parameters = new Dictionary<string, object>
-        {
-            { nameof(RMessageModal.Message), message }
-        };
-
-        var options = new ModalOptions
-        {
-            Title = title,
-            Icon = "warning",
-            Size = SizeType.Small,
-            Variant = ModalVariant.Warning,
-            Buttons = new List<ModalButton> { ModalButton.Primary("OK") }
-        };
-
-        await modalService.ShowAsync(
-            typeof(RMessageModal),
-            parameters,
-            options);
+        return modalService.ShowConfirmationAsync(message, title, "OK", "", ModalVariant.Warning);
     }
 
-    public static async Task ShowErrorAsync(
-        this IModalServiceCore modalService,
+    public static Task<bool> ShowErrorAsync(
+        this IModalService modalService,
         string message,
         string title = "Error")
     {
-        var parameters = new Dictionary<string, object>
-        {
-            { nameof(RMessageModal.Message), message }
-        };
-
-        var options = new ModalOptions
-        {
-            Title = title,
-            Icon = "error",
-            Size = SizeType.Small,
-            Variant = ModalVariant.Destructive,
-            Buttons = new List<ModalButton> { ModalButton.Primary("OK") }
-        };
-
-        await modalService.ShowAsync(
-            typeof(RMessageModal),
-            parameters,
-            options);
+        return modalService.ShowConfirmationAsync(message, title, "OK", "", ModalVariant.Destructive);
     }
 
-    public static async Task ShowSuccessAsync(
-        this IModalServiceCore modalService,
+    public static Task<bool> ShowSuccessAsync(
+        this IModalService modalService,
         string message,
         string title = "Success")
     {
-        var parameters = new Dictionary<string, object>
-        {
-            { nameof(RMessageModal.Message), message }
-        };
+        return modalService.ShowConfirmationAsync(message, title, "OK", "", ModalVariant.Success);
+    }
 
-        var options = new ModalOptions
-        {
-            Title = title,
-            Icon = "check_circle",
-            Size = SizeType.Small,
-            Variant = ModalVariant.Success,
-            Buttons = new List<ModalButton> { ModalButton.Success("OK") },
-            AutoCloseDelay = TimeSpan.FromSeconds(3)
-        };
-
-        await modalService.ShowAsync(
-            typeof(RMessageModal),
-            parameters,
-            options);
+    public static Task<bool> ConfirmAsync(
+        this IModalService modalService,
+        string message,
+        string title = "Confirm",
+        bool isDestructive = false)
+    {
+        return modalService.ShowConfirmationAsync(
+            message, 
+            title, 
+            "Confirm", 
+            "Cancel", 
+            isDestructive ? ModalVariant.Destructive : ModalVariant.Default);
     }
 
     public static async Task<ModalResult<T>> ShowFormAsync<T>(
-        this IModalServiceCore modalService,
+        this IModalService modalService,
         string title,
         T initialData = default,
         SizeType size = SizeType.Medium,
@@ -203,7 +142,7 @@ public static class ModalServiceExtensions
     }
 
     public static async Task<ModalResult<T>> ShowFormAsync<T>(
-        this IModalServiceCore modalService,
+        this IModalService modalService,
         FormModalOptions<T> formOptions)
     {
         return await modalService.ShowFormAsync(
@@ -215,7 +154,7 @@ public static class ModalServiceExtensions
     }
 
     public static async Task ShowDetailAsync<T>(
-        this IModalServiceCore modalService,
+        this IModalService modalService,
         T data,
         string title = "",
         SizeType size = SizeType.Large)
@@ -258,7 +197,7 @@ public static class ModalServiceExtensions
     }
 
     public static async Task ShowPreviewAsync(
-        this IModalServiceCore modalService,
+        this IModalService modalService,
         string content,
         string title = "Preview",
         string contentType = "text/plain")
@@ -283,7 +222,7 @@ public static class ModalServiceExtensions
     }
 
     public static async Task<T> ShowSelectAsync<T>(
-        this IModalServiceCore modalService,
+        this IModalService modalService,
         IEnumerable<T> items,
         string title = "Select Item",
         Func<T, string> displaySelector = null)
@@ -333,7 +272,7 @@ public static class ModalServiceExtensions
     }
 
     public static async Task<IEnumerable<T>> ShowMultiSelectAsync<T>(
-        this IModalServiceCore modalService,
+        this IModalService modalService,
         IEnumerable<T> items,
         string title = "Select Items",
         Func<T, string> displaySelector = null)
@@ -383,7 +322,7 @@ public static class ModalServiceExtensions
     }
 
     public static async Task<ModalResult<T>> ShowCustomAsync<T>(
-        this IModalServiceCore modalService,
+        this IModalService modalService,
         Type componentType,
         object parameters = null,
         ModalOptions options = null)
@@ -405,7 +344,7 @@ public static class ModalServiceExtensions
             options);
     }
 
-    public static IModalBuilder<T> BuildModal<T>(this IModalServiceCore modalService)
+    public static IModalBuilder<T> BuildModal<T>(this IModalService modalService)
     {
         return modalService.Create<T>();
     }

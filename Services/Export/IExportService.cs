@@ -22,7 +22,7 @@ public interface IExportService
         CancellationToken cancellationToken = default) where TItem : class;
     
     /// <summary>
-    /// Export pivot result data
+    /// Export pivot table data
     /// </summary>
     Task<ExportResult> ExportPivotDataAsync<TItem>(
         PivotResult<TItem> pivotResult,
