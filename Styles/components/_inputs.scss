@@ -94,21 +94,49 @@
     @include loading-inline('start', 'sm', 'default');
   }
 
-  @include semantic-variants((error, success, warning, info, primary), (filled));
-
-  @include modifier(compact) {
-    @extend %spacing-minimal;
-    min-height: var(--space-10);
+  // Input-specific semantic states
+  &-error {
+    @include input-semantic-state(error);
+  }
+  
+  &-success {
+    @include input-semantic-state(success);
+  }
+  
+  &-warning {
+    @include input-semantic-state(warning);
+  }
+  
+  &-info {
+    @include input-semantic-state(info);  
+  }
+  
+  &-disabled {
+    background: color-mix(in srgb, var(--color-text) 3%, var(--color-surface-elevated));
+    color: var(--color-text-muted);
+    border-color: var(--color-border-light);
+    cursor: not-allowed;
+    opacity: var(--opacity-disabled);
+    
+    &::placeholder {
+      color: var(--color-text-subtle);
+    }
   }
 
-  @include modifier(dense) {
-    @extend %spacing-compact;
-    min-height: var(--space-12);
+  // Unified density system integration
+  &-density-compact {
+    @include apply-density(compact, md);
+    min-height: density-calc(10, compact);
   }
-
-  @include modifier(spacious) {
-    @extend %spacing-default;
-    min-height: var(--space-16);
+  
+  &-density-dense {
+    @include apply-density(dense, md);
+    min-height: density-calc(12, dense);
+  }
+  
+  &-density-spacious {
+    @include apply-density(spacious, md);
+    min-height: density-calc(16, spacious);
   }
 
   @include modifier(glass) {
@@ -144,10 +172,37 @@
     pointer-events: none;
     z-index: calc(var(--z-base) + 10);
     transition: all var(--duration-normal) var(--ease-out);
+    color: var(--color-text-muted);
+    opacity: 0.8;
 
     .input:focus + & {
       color: var(--color-primary);
       transform: translateY(-50%) scale(1.05);
+      opacity: 1;
+    }
+    
+    // State-specific icon colors
+    .input-error:focus + &,
+    .input-error + & {
+      color: var(--color-error);
+      opacity: 1;
+    }
+    
+    .input-success:focus + &,
+    .input-success + & {
+      color: var(--color-success);
+      opacity: 1;
+    }
+    
+    .input-warning:focus + &,
+    .input-warning + & {
+      color: var(--color-warning);
+      opacity: 1;
+    }
+    
+    .input-disabled + & {
+      color: var(--color-text-subtle);
+      opacity: var(--opacity-disabled);
     }
   }
 
@@ -230,74 +285,7 @@
   appearance: none;
 }
 
-.checkbox {
-  @extend %touch-target;
-  @extend %interactive-base;
-  @include interactive-base(button);
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-3);
-  border-radius: var(--radius-lg);
-  cursor: pointer;
-
-  @include modifier(disabled) {
-    @include interactive-disabled();
-  }
-
-  @include element(input) {
-    @extend %sr-only;
-
-    &:checked ~ .checkbox-mark {
-      @include semantic-base(primary);
-
-      .checkbox-icon {
-        opacity: 1;
-        transform: scale(1);
-      }
-    }
-
-    &:focus ~ .checkbox-mark {
-      @include interactive-focus-ring();
-    }
-  }
-
-  @include element(mark) {
-    @extend %icon-base;
-    width: var(--space-5);
-    height: var(--space-5);
-    border: var(--border-width-regular) solid var(--color-border);
-    border-radius: var(--radius-sm);
-    background: var(--color-surface-elevated);
-    flex-shrink: 0;
-    transition: all var(--duration-normal) var(--ease-out);
-
-    @include semantic-variants((primary, success, warning, error), (outlined));
-
-    @include modifier(small) {
-      width: var(--space-4);
-      height: var(--space-4);
-    }
-
-    @include modifier(large) {
-      width: var(--space-6);
-      height: var(--space-6);
-    }
-  }
-
-  @include element(label) {
-    color: var(--color-text);
-    font-weight: var(--font-medium);
-    font-size: var(--text-sm);
-    cursor: pointer;
-    flex: 1;
-
-    @include modifier(disabled) {
-      color: var(--color-text-subtle);
-      cursor: not-allowed;
-    }
-  }
-}
+// Checkbox styles moved to _checkbox.scss
 
 .validation-message {
   @extend %icon-text-base;
@@ -305,66 +293,7 @@
   font-size: var(--text-sm);
   margin-top: var(--space-2);
 }
-.radio {
-  @extend %touch-target;
-  @extend %interactive-base;
-
-  @include element(group) {
-    @extend %form-group-base;
-    gap: var(--space-3);
-  }
-
-  @include element(option) {
-    @extend %card-base-enhanced;
-    @include interactive-enhanced(card, ('glow-on-hover': true));
-    display: flex;
-    align-items: flex-start;
-    gap: var(--space-3);
-    padding: var(--space-4);
-    cursor: pointer;
-  }
-
-  @include element(input) {
-    @extend %sr-only;
-
-    &:checked ~ .radio-mark {
-      border-color: var(--color-primary);
-
-      &::after {
-        content: '';
-        position: absolute;
-        width: 50%;
-        height: 50%;
-        background: var(--color-primary);
-        border-radius: var(--radius-full);
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-      }
-    }
-  }
-
-  @include element(mark) {
-    @extend %icon-base;
-    width: var(--space-5);
-    height: var(--space-5);
-    border: var(--border-width-regular) solid var(--color-border);
-    border-radius: var(--radius-full);
-    flex-shrink: 0;
-  }
-
-  @include element(card) {
-    @extend %card-base-enhanced;
-    @include interactive-enhanced(card, ('glow-on-hover': true, 'bounce-on-click': true));
-    position: relative;
-    cursor: pointer;
-    text-align: center;
-
-    .radio-input:checked + .radio-card-content {
-      @include semantic-base(primary);
-    }
-  }
-}
+// Radio styles moved to _radio.scss
 
 .input, .textarea, .select {
   @include modifier(with-start-icon) {
