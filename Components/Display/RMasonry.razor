@@ -1,0 +1,114 @@
+@namespace RR.Blazor.Components.Display
+@using RR.Blazor.Components.Base
+@inherits RComponentBase
+
+<div class="@GetClasses()" style="@GetStyles()" @attributes="@AdditionalAttributes">
+    @if (Items != null && Items.Any())
+    {
+        @foreach (var item in Items)
+        {
+            <div class="rmasonry-item">
+                @if (ItemTemplate != null)
+                {
+                    @ItemTemplate(item)
+                }
+                else
+                {
+                    @RenderDefaultItem(item)
+                }
+            </div>
+        }
+    }
+    else if (ChildContent != null)
+    {
+        @ChildContent
+    }
+    else
+    {
+        <div class="rmasonry-empty">
+            No items to display
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public IEnumerable<object> Items { get; set; }
+    [Parameter] public RenderFragment<object> ItemTemplate { get; set; }
+    [Parameter] public int Columns { get; set; } = 3;
+    [Parameter] public int ColumnsSm { get; set; } = 2;
+    [Parameter] public int ColumnsMd { get; set; } = 3;
+    [Parameter] public int ColumnsLg { get; set; } = 4;
+    [Parameter] public string Gap { get; set; } = "var(--space-4)";
+    [Parameter] public bool AnimateLayout { get; set; } = true;
+
+    private string GetClasses()
+    {
+        var classes = new List<string> { "rmasonry" };
+        
+        if (AnimateLayout)
+            classes.Add("rmasonry-animated");
+            
+        if (!string.IsNullOrEmpty(Class))
+            classes.Add(Class);
+            
+        return string.Join(" ", classes);
+    }
+
+    private string GetStyles()
+    {
+        var styles = new List<string>();
+        
+        styles.Add($"--masonry-columns: {Columns}");
+        styles.Add($"--masonry-columns-sm: {ColumnsSm}");
+        styles.Add($"--masonry-columns-md: {ColumnsMd}");
+        styles.Add($"--masonry-columns-lg: {ColumnsLg}");
+        styles.Add($"--masonry-gap: {Gap}");
+        
+        return string.Join("; ", styles);
+    }
+
+    private RenderFragment RenderDefaultItem(object item) => builder =>
+    {
+        var title = GetPropertyValue(item, "Title")?.ToString() ?? 
+                   GetPropertyValue(item, "Name")?.ToString();
+        var content = GetPropertyValue(item, "Content")?.ToString() ?? 
+                     GetPropertyValue(item, "Description")?.ToString();
+        var imageUrl = GetPropertyValue(item, "ImageUrl")?.ToString();
+
+        builder.OpenElement(0, "div");
+        builder.AddAttribute(1, "class", "rmasonry-default-item");
+        
+        if (!string.IsNullOrEmpty(imageUrl))
+        {
+            builder.OpenElement(2, "img");
+            builder.AddAttribute(3, "src", imageUrl);
+            builder.AddAttribute(4, "class", "rmasonry-image");
+            builder.CloseElement();
+        }
+        
+        if (!string.IsNullOrEmpty(title))
+        {
+            builder.OpenElement(5, "h4");
+            builder.AddAttribute(6, "class", "rmasonry-title");
+            builder.AddContent(7, title);
+            builder.CloseElement();
+        }
+        
+        if (!string.IsNullOrEmpty(content))
+        {
+            builder.OpenElement(8, "p");
+            builder.AddAttribute(9, "class", "rmasonry-content");
+            builder.AddContent(10, content);
+            builder.CloseElement();
+        }
+        
+        builder.CloseElement();
+    };
+
+    private object GetPropertyValue(object item, string propertyName)
+    {
+        if (item == null) return null;
+        var property = item.GetType().GetProperty(propertyName);
+        return property?.GetValue(item);
+    }
+}

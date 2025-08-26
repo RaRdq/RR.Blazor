@@ -1,0 +1,93 @@
+@namespace RR.Blazor.Components.Display
+@using RR.Blazor.Components.Base
+@using RR.Blazor.Enums
+@inherits RComponentBase
+
+<div class="@GetClasses()" @attributes="@AdditionalAttributes">
+    @if (Images != null && Images.Any())
+    {
+        @foreach (var image in Images)
+        {
+            <div class="rgallery-item" @onclick="@(() => OnImageClick.InvokeAsync(image))">
+                <img src="@GetImageUrl(image)" alt="@GetImageAlt(image)" class="rgallery-image" />
+                @if (ShowCaptions && !string.IsNullOrEmpty(GetImageCaption(image)))
+                {
+                    <div class="rgallery-caption">@GetImageCaption(image)</div>
+                }
+            </div>
+        }
+    }
+    else if (ChildContent != null)
+    {
+        @ChildContent
+    }
+    else
+    {
+        <div class="rgallery-empty">
+            No images to display
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public IEnumerable<object> Images { get; set; }
+    [Parameter] public bool ShowCaptions { get; set; } = true;
+    [Parameter] public EventCallback<object> OnImageClick { get; set; }
+    [Parameter] public int Columns { get; set; } = 3;
+    [Parameter] public int ColumnsSm { get; set; } = 2;
+    [Parameter] public int ColumnsMd { get; set; } = 3;
+    [Parameter] public int ColumnsLg { get; set; } = 4;
+    [Parameter] public string Gap { get; set; } = "var(--space-4)";
+    [Parameter] public GalleryLayout Layout { get; set; } = GalleryLayout.Grid;
+
+    private string GetClasses()
+    {
+        var classes = new List<string> { "rgallery", $"rgallery-{Layout.ToString().ToLower()}" };
+        
+        if (!string.IsNullOrEmpty(Class))
+            classes.Add(Class);
+            
+        return string.Join(" ", classes);
+    }
+
+    private string GetImageUrl(object image)
+    {
+        if (image is string url)
+            return url;
+            
+        var urlProp = image.GetType().GetProperty("Url") ?? 
+                     image.GetType().GetProperty("ImageUrl") ?? 
+                     image.GetType().GetProperty("Src");
+        return urlProp?.GetValue(image)?.ToString() ?? "";
+    }
+
+    private string GetImageAlt(object image)
+    {
+        if (image is string)
+            return "Gallery image";
+            
+        var altProp = image.GetType().GetProperty("Alt") ?? 
+                     image.GetType().GetProperty("Title") ?? 
+                     image.GetType().GetProperty("Name");
+        return altProp?.GetValue(image)?.ToString() ?? "Gallery image";
+    }
+
+    private string GetImageCaption(object image)
+    {
+        if (image is string)
+            return "";
+            
+        var captionProp = image.GetType().GetProperty("Caption") ?? 
+                         image.GetType().GetProperty("Description") ?? 
+                         image.GetType().GetProperty("Title");
+        return captionProp?.GetValue(image)?.ToString() ?? "";
+    }
+}
+
+public enum GalleryLayout
+{
+    Grid,
+    Carousel,
+    Masonry,
+    List
+}

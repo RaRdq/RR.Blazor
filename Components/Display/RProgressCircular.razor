@@ -1,0 +1,124 @@
+@namespace RR.Blazor.Components
+@using RR.Blazor.Enums
+@using RR.Blazor.Components.Base
+@using RR.Blazor.Utilities
+@inherits RForwardingComponentBase
+
+<div class="progress-circle @GetContainerClasses()" @attributes="GetSafeAttributes()">
+    @if (ShowLabel && !string.IsNullOrEmpty(Text))
+    {
+        <div class="progress-label @GetLabelClasses()">@Text</div>
+    }
+    
+    <svg class="progress-circle-svg" viewBox="0 0 @ViewBoxSize @ViewBoxSize">
+        <circle class="progress-circle-track"
+                cx="@Center"
+                cy="@Center"
+                r="@Radius"
+                stroke-dasharray="@Circumference @Circumference"
+                stroke-dashoffset="0"></circle>
+        <circle class="progress-circle-bar"
+                cx="@Center"
+                cy="@Center"
+                r="@Radius"
+                stroke-dasharray="@Circumference @Circumference"
+                stroke-dashoffset="@GetStrokeDashOffset()"
+                style="@GetProgressBarStyleVariables()"></circle>
+    </svg>
+    
+    @if (ShowValue)
+    {
+        <div class="progress-circle-text">@GetFormattedValue()</div>
+    }
+</div>
+
+@code {
+    [Parameter] public double Value { get; set; }
+    [Parameter] public bool ShowLabel { get; set; } = false;
+    [Parameter] public bool ShowValue { get; set; } = true;
+    [Parameter] 
+    [AIParameter("Progress label text", Example = "Loading Progress")] 
+    public string Text { get; set; } = string.Empty;
+    [Parameter] public string LabelFormat { get; set; } = "{0}%";
+    [Parameter] public ProgressVariant Variant { get; set; } = ProgressVariant.Primary;
+    [Parameter] public SizeType Size { get; set; } = SizeType.Medium;
+    [Parameter] public bool Indeterminate { get; set; }
+    [Parameter] public DensityType Density { get; set; } = DensityType.Normal;
+    [Parameter] public double StrokeWidth { get; set; } = 4;
+
+    private int ViewBoxSize => 100;
+    private double Center => ViewBoxSize / 2.0;
+    private double Radius => (ViewBoxSize - StrokeWidth) / 2.0;
+    private double Circumference => 2 * Math.PI * Radius;
+
+    private string GetContainerClasses()
+    {
+        var classes = new List<string> { "progress-circle" };
+        
+        // Add density classes using enhanced progress-specific system
+        var densityClasses = DensityHelper.GetProgressDensityClasses(Density);
+        if (!string.IsNullOrEmpty(densityClasses))
+            classes.Add($"progress-circle-{densityClasses}");
+        
+        // Size variants using unified system
+        classes.Add(Size switch
+        {
+            SizeType.Small => "progress-circle-sm",
+            SizeType.Large => "progress-circle-lg", 
+            SizeType.ExtraLarge => "progress-circle-xl",
+            _ => ""
+        });
+        
+        // Semantic variants
+        classes.Add($"progress-circle-{Variant.ToString().ToLower()}");
+        
+        if (Indeterminate)
+            classes.Add("progress-circle-indeterminate");
+            
+        if (!string.IsNullOrEmpty(Class))
+            classes.Add(Class);
+            
+        return string.Join(" ", classes.Where(c => !string.IsNullOrEmpty(c)));
+    }
+
+    private string GetLabelClasses()
+    {
+        var classes = new List<string> { "progress-label" };
+        
+        // Add density-aware text size
+        classes.Add(DensityHelper.GetTextSize(Density, "base"));
+        
+        return string.Join(" ", classes);
+    }
+
+    private string GetProgressBarStyleVariables()
+    {
+        var styles = new List<string>();
+        
+        if (Indeterminate)
+        {
+            styles.Add("animation: progress-circle-spin 2s linear infinite");
+        }
+        
+        return string.Join("; ", styles);
+    }
+
+    private double GetStrokeDashOffset()
+    {
+        if (Indeterminate)
+            return Circumference * 0.75; // Show 25% of circle for indeterminate
+        
+        var percentage = Math.Max(0, Math.Min(100, Value));
+        return Circumference - (Circumference * percentage / 100);
+    }
+
+    private string GetFormattedValue()
+    {
+        if (Indeterminate)
+        {
+            return "...";
+        }
+        
+        return string.Format(LabelFormat, Value);
+    }
+}

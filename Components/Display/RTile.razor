@@ -1,0 +1,77 @@
+@namespace RR.Blazor.Components.Display
+@using RR.Blazor.Components.Base
+@using RR.Blazor.Enums
+@inherits RComponentBase
+
+<div class="@GetClasses()" @attributes="@AdditionalAttributes">
+    @if (!string.IsNullOrEmpty(ImageUrl))
+    {
+        <div class="rtile-media">
+            <img src="@ImageUrl" alt="@Title" class="rtile-image" />
+            @if (!string.IsNullOrEmpty(Badge))
+            {
+                <span class="rtile-badge">@Badge</span>
+            }
+        </div>
+    }
+    <div class="rtile-content">
+        @if (!string.IsNullOrEmpty(Title))
+        {
+            <h4 class="rtile-title">@Title</h4>
+        }
+        @if (!string.IsNullOrEmpty(Subtitle))
+        {
+            <p class="rtile-subtitle">@Subtitle</p>
+        }
+        @if (!string.IsNullOrEmpty(Description))
+        {
+            <p class="rtile-description">@Description</p>
+        }
+        @if (Actions != null)
+        {
+            <div class="rtile-actions">
+                @Actions
+            </div>
+        }
+    </div>
+    @ChildContent
+</div>
+
+@code {
+    [Parameter] public string Title { get; set; }
+    [Parameter] public string Subtitle { get; set; }
+    [Parameter] public string Description { get; set; }
+    [Parameter] public string ImageUrl { get; set; }
+    [Parameter] public string Badge { get; set; }
+    [Parameter] public RenderFragment Actions { get; set; }
+    [Parameter] public TileVariant Variant { get; set; } = TileVariant.Default;
+    [Parameter] public bool Clickable { get; set; }
+    [Parameter] public EventCallback OnClick { get; set; }
+
+    private string GetClasses()
+    {
+        var classes = new List<string> { "rtile" };
+        
+        classes.Add($"rtile-{Variant.ToString().ToLower()}");
+        
+        if (Clickable || OnClick.HasDelegate)
+            classes.Add("rtile-clickable");
+            
+        if (Density != DensityType.Normal)
+            classes.Add($"rtile-{Density.ToString().ToLower()}");
+            
+        if (!string.IsNullOrEmpty(Class))
+            classes.Add(Class);
+            
+        return string.Join(" ", classes);
+    }
+}
+
+public enum TileVariant
+{
+    Default,
+    Elevated,
+    Outlined,
+    Glass,
+    Flat
+}
