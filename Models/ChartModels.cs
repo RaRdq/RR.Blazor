@@ -72,14 +72,14 @@ namespace RR.Blazor.Models
         private static bool IsCategoricalProperty(PropertyInfo prop) =>
             prop.PropertyType == typeof(string);
 
-        private static PropertyInfo? FindLabelProperty(PropertyInfo[] properties) =>
+        private static PropertyInfo FindLabelProperty(PropertyInfo[] properties) =>
             properties.FirstOrDefault(p => 
                 p.Name.Equals("Label", StringComparison.OrdinalIgnoreCase) ||
                 p.Name.Equals("Name", StringComparison.OrdinalIgnoreCase) ||
                 p.PropertyType == typeof(string)) ??
             properties.FirstOrDefault();
 
-        private static PropertyInfo? FindValueProperty(PropertyInfo[] properties) =>
+        private static PropertyInfo FindValueProperty(PropertyInfo[] properties) =>
             properties.FirstOrDefault(p =>
                 p.Name.Equals("Value", StringComparison.OrdinalIgnoreCase) ||
                 p.Name.Equals("Amount", StringComparison.OrdinalIgnoreCase) ||
@@ -87,12 +87,12 @@ namespace RR.Blazor.Models
                 IsNumericProperty(p)) ??
             properties.FirstOrDefault(IsNumericProperty);
 
-        private static PropertyInfo? FindCategoryProperty(PropertyInfo[] properties) =>
+        private static PropertyInfo FindCategoryProperty(PropertyInfo[] properties) =>
             properties.FirstOrDefault(p =>
                 p.Name.Equals("Category", StringComparison.OrdinalIgnoreCase) ||
                 p.Name.Equals("Group", StringComparison.OrdinalIgnoreCase));
 
-        private static double GetNumericValue(object? value) =>
+        private static double GetNumericValue(object value) =>
             value switch
             {
                 null => 0,

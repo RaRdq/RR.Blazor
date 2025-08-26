@@ -19,11 +19,6 @@ public enum ChoiceType
     Cards       // Card-style items for groups
 }
 
-public enum ChoiceDirection
-{
-    Horizontal,
-    Vertical
-}
 
 public enum ChoiceSelectionMode
 {

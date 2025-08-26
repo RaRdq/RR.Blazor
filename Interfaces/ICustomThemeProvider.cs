@@ -21,6 +21,6 @@ namespace RR.Blazor.Interfaces
         /// <summary>
         /// Get the compiled CSS for a theme
         /// </summary>
-        Task<string?> GetCompiledThemeAsync(string themeName);
+        Task<string> GetCompiledThemeAsync(string themeName);
     }
 }

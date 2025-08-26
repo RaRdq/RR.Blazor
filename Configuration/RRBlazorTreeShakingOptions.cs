@@ -111,7 +111,7 @@ public class RRBlazorTreeShakingBuilder
     /// <summary>
     /// Enable tree-shaking with custom options
     /// </summary>
-    public RRBlazorTreeShakingBuilder WithTreeShaking(Action<RRBlazorTreeShakingOptions>? configure = null)
+    public RRBlazorTreeShakingBuilder WithTreeShaking(Action<RRBlazorTreeShakingOptions> configure = null)
     {
         _options.EnableTreeShaking = true;
         configure?.Invoke(_options);
@@ -158,7 +158,7 @@ public class RRBlazorTreeShakingBuilder
     /// <summary>
     /// Configure caching options
     /// </summary>
-    public RRBlazorTreeShakingBuilder WithCaching(bool enabled = true, string? cachePath = null)
+    public RRBlazorTreeShakingBuilder WithCaching(bool enabled = true, string cachePath = null)
     {
         _options.EnableCaching = enabled;
         if (!string.IsNullOrEmpty(cachePath))

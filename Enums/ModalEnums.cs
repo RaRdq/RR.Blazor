@@ -34,11 +34,3 @@ public enum ModalResult
     Custom = 7
 }
 
-public enum ConfirmationVariant
-{
-    Info = 0,
-    Warning = 1,
-    Danger = 2,
-    Destructive = 3,
-    Success = 4
-}

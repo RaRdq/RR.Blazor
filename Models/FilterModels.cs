@@ -37,6 +37,12 @@ public class UniversalFilterConfig
     // Persistence
     public bool EnablePersistence { get; set; } = false;
     public string PersistenceKey { get; set; } = string.Empty;
+    
+    // Excel Mode Configuration
+    public bool ExcelMode { get; set; } = false;
+    public bool ExcelSimpleCheckboxes { get; set; } = false;
+    public bool ExcelHideOperators { get; set; } = false;
+    public bool ExcelCompactUI { get; set; } = false;
 }
 
 /// <summary>

@@ -4,7 +4,12 @@ namespace RR.Blazor.Enums
     {
         Standard,
         Rounded,
-        Square
+        Square,
+        Primary,
+        Success,
+        Warning,
+        Error,
+        Info
     }
 
     }

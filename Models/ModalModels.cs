@@ -101,6 +101,10 @@ public class ModalInstance<T>
 public class ModalInstance : ModalInstance<object>
 {
     public Enums.ModalResult? LastResult { get; set; }
+    public string ParentModalId { get; set; }
+    public HashSet<string> ChildModalIds { get; set; } = new();
+    public int StackLevel { get; set; }
+    public int ZIndex { get; set; }
 }
 
 public class ModalResult

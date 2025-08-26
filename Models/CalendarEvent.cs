@@ -18,7 +18,7 @@ namespace RR.Blazor.Models
         
         /// <summary>Event description or details</summary>
         [AIParameter("Event description", Example = "Weekly team standup meeting")]
-        public string? Description { get; set; }
+        public string Description { get; set; } = string.Empty;
         
         /// <summary>Event start date and time</summary>
         [AIParameter("Event start date", Example = "DateTime.Today")]
@@ -34,15 +34,15 @@ namespace RR.Blazor.Models
         
         /// <summary>Event category for styling and grouping</summary>
         [AIParameter("Event category", Example = "meeting, vacation, holiday")]
-        public string? Category { get; set; }
+        public string Category { get; set; } = string.Empty;
         
         /// <summary>Event location</summary>
         [AIParameter("Event location", Example = "Conference Room A")]
-        public string? Location { get; set; }
+        public string Location { get; set; } = string.Empty;
         
         /// <summary>Event organizer or owner</summary>
         [AIParameter("Event organizer", Example = "John Smith")]
-        public string? Organizer { get; set; }
+        public string Organizer { get; set; } = string.Empty;
         
         /// <summary>Event attendees</summary>
         [AIParameter("Event attendees", Example = "List of participant names")]
@@ -50,7 +50,7 @@ namespace RR.Blazor.Models
         
         /// <summary>Custom CSS class for styling</summary>
         [AIParameter("Custom styling class", Example = "bg-success text-white")]
-        public string? Class { get; set; }
+        public string Class { get; set; } = string.Empty;
         
         /// <summary>Event priority level</summary>
         [AIParameter("Event priority", Example = "EventPriority.High")]
@@ -66,7 +66,7 @@ namespace RR.Blazor.Models
         
         /// <summary>Event URL for external links</summary>
         [AIParameter("Event URL", Example = "https://example.com/event/123")]
-        public string? Url { get; set; }
+        public string Url { get; set; } = string.Empty;
     }
     
     /// <summary>Event priority levels for visual hierarchy</summary>

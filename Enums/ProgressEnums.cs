@@ -9,5 +9,4 @@ namespace RR.Blazor.Enums
         Error,
         Info
     }
-
-    }
+}

@@ -79,14 +79,13 @@ namespace RR.Blazor.ServiceSetup
             // Register core RR.Blazor services - Universal services work with both Server and WebAssembly
             serviceCollection.AddScoped<IJavaScriptInteropService, JavaScriptInteropService>();
             serviceCollection.AddScoped<IThemeService, BlazorThemeService>();
+            
             serviceCollection.AddScoped<IModalService, ModalService>();
-            serviceCollection.AddScoped<IModalServiceCore>(provider => provider.GetRequiredService<IModalService>() as IModalServiceCore);
             serviceCollection.AddSingleton<IToastService, ToastService>();
             serviceCollection.AddSingleton<IAppSearchService, AppSearchService>();
             serviceCollection.AddScoped<IAppConfigurationService, AppConfigurationService>();
-            serviceCollection.AddSingleton<IPivotService, PivotService>();
             serviceCollection.AddScoped<IFilterPersistenceService, FilterPersistenceService>();
-            serviceCollection.AddScoped<GridService>();
+            serviceCollection.AddScoped<IPivotService, PivotService>();
             
             // Register export services with default providers (enabled by default - use DisableExport to remove)
             RegisterExportServices(serviceCollection);

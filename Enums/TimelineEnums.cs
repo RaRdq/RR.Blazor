@@ -9,11 +9,6 @@ namespace RR.Blazor.Enums
         Info
     }
     
-    public enum TimelineOrientation
-    {
-        Vertical,
-        Horizontal
-    }
     
     public enum TimelineItemType
     {

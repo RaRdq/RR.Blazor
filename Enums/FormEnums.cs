@@ -121,22 +121,6 @@ public enum SectionElevation
 
 
 /// <summary>
-/// Orientation for layout of form elements
-/// </summary>
-public enum Orientation
-{
-    /// <summary>
-    /// Vertical layout (default)
-    /// </summary>
-    Vertical = 0,
-    
-    /// <summary>
-    /// Horizontal layout
-    /// </summary>
-    Horizontal = 1
-}
-
-/// <summary>
 /// Spacing size between form elements
 /// </summary>
 public enum SpacingType

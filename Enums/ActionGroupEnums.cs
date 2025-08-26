@@ -1,13 +1,5 @@
 namespace RR.Blazor.Enums;
 
-/// <summary>
-/// Direction variants for action groups
-/// </summary>
-public enum ActionGroupDirection
-{
-    Horizontal,
-    Vertical
-}
 
 /// <summary>
 /// Alignment variants for action groups

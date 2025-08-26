@@ -63,6 +63,7 @@ namespace RR.Blazor.Enums
         LessThanOrEqual = 13,
         Between = 14,
         NotBetween = 15,
+        Range = 16,  // Alias for Between
         
         // Date operators
         On = 20,

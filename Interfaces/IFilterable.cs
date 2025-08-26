@@ -59,7 +59,7 @@ public interface IFilterProvider<T>
     /// <summary>
     /// Get current filter predicate
     /// </summary>
-    Expression<Func<T, bool>>? GetPredicate();
+    Expression<Func<T, bool>> GetPredicate();
     
     /// <summary>
     /// Apply filter and return results
@@ -69,7 +69,7 @@ public interface IFilterProvider<T>
     /// <summary>
     /// Event fired when filter changes
     /// </summary>
-    event Action<FilterStateChangedEventArgs>? OnFilterChanged;
+    event Action<FilterStateChangedEventArgs> OnFilterChanged;
 }
 
 /// <summary>
@@ -95,12 +95,12 @@ public interface IFilterPersistenceService
     /// <summary>
     /// Load filter configuration
     /// </summary>
-    Task<FilterConfiguration?> LoadFilterAsync(string key);
+    Task<FilterConfiguration> LoadFilterAsync(string key);
     
     /// <summary>
     /// Load filter state by key
     /// </summary>
-    Task<GridFilterState?> LoadFilterStateAsync(string key);
+    Task<GridFilterState> LoadFilterStateAsync(string key);
     
     /// <summary>
     /// Save filter state
