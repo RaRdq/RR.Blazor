@@ -11,13 +11,10 @@
 @using Microsoft.AspNetCore.Components
 @using RR.Blazor.Components.Form
 @using RR.Blazor.Enums
-@using RR.Blazor.Models
 @using RR.Blazor.Services
 @using RR.Blazor.Utilities
 @using static RR.Blazor.Enums.ChoiceVariant
 @using static RR.Blazor.Enums.ChoiceType
-@using static RR.Blazor.Enums.ChoiceDirection
-@using static RR.Blazor.Enums.ChoiceSelectionMode
 @implements IAsyncDisposable
 
 <div class="@GetComponentClasses()">
@@ -26,71 +23,9 @@
         <label class="@GetLabelClasses()">@Label</label>
     }
     
-    @if (HasSearchBox)
+    @if (EffectiveVariant == Dropdown || TriggerContent != null)
     {
-        <div class="choice-search">
-            <div class="choice-search-wrapper">
-                <i class="icon choice-search-icon">search</i>
-                <input class="choice-search-input" 
-                       type="text" 
-                       placeholder="@(SearchPlaceholder ?? "Search options...")"
-                       value="@SearchTerm"
-                       @oninput="OnSearchInput" />
-                @if (!string.IsNullOrEmpty(SearchTerm))
-                {
-                    <button class="choice-search-clear" type="button" @onclick="ClearSearch">
-                        <i class="icon">close</i>
-                    </button>
-                }
-            </div>
-        </div>
-    }
-    
-    @if (EffectiveVariant == Grouped && GroupedItems.Any())
-    {
-        <div class="choice-grouped @GetGroupedClasses()">
-            @foreach (var group in GetVisibleGroups())
-            {
-                <RChoiceGroup Group="group" 
-                             GroupStyle="@GroupStyle" 
-                             Size="@Size" 
-                             Density="@Density"
-                             SelectionMode="@SelectionMode"
-                             ShowHeader="true"
-                             ShowExpandIcon="true"
-                             ShowAlternatingRows="@ShowAlternatingRows"
-                             SearchTerm="@SearchTerm"
-                             SelectedItemIds="@SelectedItemIds"
-                             ItemTemplate="@GroupItemTemplate"
-                             OnItemSelected="OnGroupItemSelected"
-                             OnGroupToggled="OnGroupToggled" />
-            }
-        </div>
-    }
-    else if (EffectiveVariant == Tree && TreeItems.Any())
-    {
-        <div class="choice-tree @GetTreeClasses()">
-            <RChoiceTree Items="@GetVisibleTreeItems()" 
-                        TreeStyle="@TreeStyle" 
-                        Size="@Size" 
-                        Density="@Density"
-                        SelectionMode="@SelectionMode"
-                        ShowExpandIcon="true"
-                        ShowConnectingLines="@ShowTreeLines"
-                        EnableCascadeSelection="@EnableCascadeSelection"
-                        ShowAlternatingRows="@ShowAlternatingRows"
-                        SearchTerm="@SearchTerm"
-                        SelectedItemIds="@SelectedItemIds"
-                        ExpandedItemIds="@ExpandedItemIds"
-                        ItemTemplate="@TreeItemTemplate"
-                        OnItemSelected="OnTreeItemSelected"
-                        OnItemExpanded="HandleTreeItemExpanded"
-                        OnItemCollapsed="HandleTreeItemCollapsed" />
-        </div>
-    }
-    else if (EffectiveVariant == Dropdown || TriggerContent != null)
-    {
-        <div @ref="choiceElement" class="choice-dropdown relative @(TriggerContent != null ? "w-auto" : "") @(TriggerContent != null ? "" : GetDropdownDensityClass())" 
+        <div @ref="choiceElement" class="choice choice-dropdown relative @(TriggerContent != null ? "w-auto" : "") @(TriggerContent != null ? "" : GetDropdownDensityClass())" 
              data-choice-id="@choiceElementId">
         
             @if (TriggerContent != null)
@@ -135,10 +70,11 @@
                             }
                             else if (OnItemClick.HasDelegate)
                             {
-                                <div class="choice-item @GetItemClass(item) cursor-pointer"
+                                <div class="choice-item @GetItemClass(item)"
                                      data-value="@GetItemValue(item)"
                                      @onclick="() => OnItemSelected(item)"
-                                     @onclick:stopPropagation="true">
+                                     @onclick:stopPropagation="true"
+                                     style="cursor: pointer;">
                                     @ItemTemplate(item)
                                 </div>
                             }
@@ -176,7 +112,7 @@
     }
     else
     {
-        <div class="@GetInlineClass()">
+        <div class="choice @GetInlineClass()">
             @if (Items != null)
             {
                 @foreach (var item in Items)
@@ -232,6 +168,7 @@
     private ElementReference viewportElement;
     private string choiceElementId = Guid.NewGuid().ToString("N")[..8];
     private bool disposed = false;
+    private bool isDropdownOpen = false;
 
     [Parameter] public IEnumerable<TValue> Items { get; set; }
     [Parameter] public TValue SelectedValue { get; set; }
@@ -254,35 +191,6 @@
     [Parameter] public bool CloseOnBackdropClick { get; set; } = true;
     [Parameter] public bool CloseOnEscape { get; set; } = true;
     [Parameter] public bool EnableVirtualScrolling { get; set; } = true;
-    
-    // Group and Tree Parameters
-    [Parameter] public IEnumerable<IChoiceGroup> GroupedItems { get; set; } = Enumerable.Empty<IChoiceGroup>();
-    [Parameter] public IEnumerable<IChoiceTreeItem> TreeItems { get; set; } = Enumerable.Empty<IChoiceTreeItem>();
-    [Parameter] public ChoiceSelectionMode SelectionMode { get; set; } = ChoiceSelectionMode.Single;
-    [Parameter] public ChoiceGroupStyle GroupStyle { get; set; } = ChoiceGroupStyle.Header;
-    [Parameter] public ChoiceTreeStyle TreeStyle { get; set; } = ChoiceTreeStyle.Standard;
-    [Parameter] public bool ShowAlternatingRows { get; set; } = true;
-    [Parameter] public bool ShowTreeLines { get; set; } = false;
-    [Parameter] public bool EnableCascadeSelection { get; set; } = true;
-    
-    // Search Parameters
-    [Parameter] public bool HasSearchBox { get; set; } = false;
-    [Parameter] public string SearchTerm { get; set; } = "";
-    [Parameter] public string SearchPlaceholder { get; set; } = "";
-    [Parameter] public EventCallback<string> SearchTermChanged { get; set; }
-    
-    // Template Parameters
-    [Parameter] public RenderFragment<IChoiceItem> GroupItemTemplate { get; set; }
-    [Parameter] public RenderFragment<IChoiceTreeItem> TreeItemTemplate { get; set; }
-    
-    // Selection State
-    [Parameter] public HashSet<string> SelectedItemIds { get; set; } = new();
-    [Parameter] public HashSet<string> ExpandedItemIds { get; set; } = new();
-    
-    // Events
-    [Parameter] public EventCallback<IChoiceGroup> OnGroupToggled { get; set; }
-    [Parameter] public EventCallback<IChoiceTreeItem> OnTreeItemExpanded { get; set; }
-    [Parameter] public EventCallback<IChoiceTreeItem> OnTreeItemCollapsed { get; set; }
 
     protected override bool ShouldRender() => true;
 
@@ -290,7 +198,7 @@
     {
         var styleClass = GetStyleClass();
         var densityClass = DensityHelper.GetGap(Density);
-        var directionClass = Direction == Vertical ? " choice-vertical flex-col" : "";
+        var directionClass = Direction == Direction.Vertical ? " choice-vertical flex-col" : "";
         
         return $"choice-inline {styleClass} {densityClass}{directionClass}";
     }
@@ -313,7 +221,7 @@
     };
 
     private string GetDropdownDensityClass() => 
-        $"{GetDensityClass()} {DensityHelper.GetInputDensityClasses(Density)}";
+        $"choice-dropdown {GetDensityClass()} {DensityHelper.GetInputDensityClasses(Density)}";
 
     private string GetItemClass(TValue item)
     {
@@ -352,7 +260,7 @@
     }
     
     private string GetLabelClasses() => 
-        $"choice-label form-label {GetTextSizeClasses()} font-medium text-muted mb-2" + (Required ? " choice-label-required form-label-required" : "");
+        $"choice-label form-label {GetTextSizeClasses()} font-medium  text-muted mb-2" + (Required ? " choice-label-required form-label-required" : "");
     
     private string GetErrorMessageClasses() => 
         $"choice-error-message form-error text-error {GetTextSizeClasses()} mt-1 d-flex align-center {DensityHelper.GetGap(Density)}";
@@ -378,25 +286,25 @@
     /// Gets icon classes using design system patterns  
     /// </summary>
     private string GetItemIconClasses() =>
-        $"icon choice-icon {GetIconSizeClasses()}";
+        $"material-symbols-rounded choice-icon {GetIconSizeClasses()}";
     
     /// <summary>
     /// Gets check icon classes using design system patterns
     /// </summary>
     private string GetCheckIconClasses() =>
-        $"icon choice-check {GetIconSizeClasses()}";
+        $"material-symbols-rounded choice-check {GetIconSizeClasses()}";
     
     /// <summary>
     /// Gets loading icon classes using design system patterns
     /// </summary>
     private string GetLoadingIconClasses() =>
-        $"icon animate-spin {GetIconSizeClasses()}";
+        $"material-symbols-rounded animate-spin {GetIconSizeClasses()}";
     
     /// <summary>
     /// Gets error icon classes using design system patterns
     /// </summary>
     private string GetErrorIconClasses() =>
-        $"icon text-error mr-1 {GetIconSizeClasses()}";
+        $"material-symbols-rounded text-error mr-1 {GetIconSizeClasses()}";
     
     #endregion
 
@@ -421,13 +329,22 @@
     {
         if (Disabled) return;
         
-        await SafeInvokeAsync("RRBlazor.Choice.toggleDropdown", choiceElementId, new {
-            direction = DropdownDirection.ToString().ToLowerInvariant(),
-            useBackdrop = UseBackdrop,
-            backdropClass = BackdropClass,
-            closeOnBackdropClick = CloseOnBackdropClick,
-            closeOnEscape = CloseOnEscape
-        });
+        try 
+        {
+            var isOpen = await JS.InvokeAsync<bool>("RRBlazor.Choice.isDropdownOpen", choiceElementId);
+            
+            if (isOpen)
+                await CloseDropdown();
+            else
+                await OpenDropdown();
+        }
+        catch 
+        {
+            if (isDropdownOpen)
+                await CloseDropdown();
+            else
+                await OpenDropdown();
+        }
     }
     
     private async Task OpenDropdown() 
@@ -437,7 +354,7 @@
         StateHasChanged();
         await Task.Yield();
         
-        await SafeInvokeAsync("RRBlazor.Choice.openDropdown", choiceElementId, new {
+        await JS.InvokeAsync<object>("RRBlazor.Choice.openDropdown", choiceElementId, new {
             direction = DropdownDirection.ToString().ToLowerInvariant(),
             useBackdrop = UseBackdrop,
             backdropClass = BackdropClass,
@@ -446,7 +363,7 @@
         });
     }
     
-    private async Task CloseDropdown() => await SafeInvokeAsync("RRBlazor.Choice.closeDropdown", choiceElementId);
+    private Task CloseDropdown() => JS.InvokeAsync<object>("RRBlazor.Choice.closeDropdown", choiceElementId).AsTask();
 
     private async Task OnItemSelected(TValue item)
     {
@@ -459,191 +376,12 @@
         if (SelectedValueChangedTyped.HasDelegate) await SelectedValueChangedTyped.InvokeAsync(item);
         if (SelectedValueChangedObject.HasDelegate) await SelectedValueChangedObject.InvokeAsync(item);
         
-        if (EffectiveVariant == Dropdown && CloseOnSelect) 
-            await SafeInvokeAsync("RRBlazor.Choice.closeDropdown", choiceElementId);
+        if (EffectiveVariant == Dropdown && CloseOnSelect) await CloseDropdown();
     }
     
-    #region Group and Tree Support Methods
-    
-    private string GetGroupedClasses()
-    {
-        var classes = new List<string>
-        {
-            $"choice-grouped-{GroupStyle.ToString().ToLowerInvariant()}",
-            DensityHelper.GetInputDensityClasses(Density)
-        };
-        
-        if (HasSearchBox) classes.Add("choice-grouped-searchable");
-        if (ShowAlternatingRows) classes.Add("choice-grouped-striped");
-        
-        return string.Join(" ", classes);
-    }
-    
-    private string GetTreeClasses()
-    {
-        var classes = new List<string>
-        {
-            $"choice-tree-{TreeStyle.ToString().ToLowerInvariant()}",
-            DensityHelper.GetInputDensityClasses(Density)
-        };
-        
-        if (HasSearchBox) classes.Add("choice-tree-searchable");
-        if (ShowTreeLines) classes.Add("choice-tree-lines");
-        if (EnableCascadeSelection) classes.Add("choice-tree-cascade");
-        if (ShowAlternatingRows) classes.Add("choice-tree-striped");
-        
-        return string.Join(" ", classes);
-    }
-    
-    private IEnumerable<IChoiceGroup> GetVisibleGroups()
-    {
-        var groups = GroupedItems;
-        
-        if (!string.IsNullOrEmpty(SearchTerm))
-        {
-            groups = groups.Where(g => 
-                g.Label.Contains(SearchTerm, StringComparison.OrdinalIgnoreCase) ||
-                g.Items.Any(i => i.Label.Contains(SearchTerm, StringComparison.OrdinalIgnoreCase)));
-        }
-        
-        return groups;
-    }
-    
-    private IEnumerable<IChoiceTreeItem> GetVisibleTreeItems()
-    {
-        var items = TreeItems;
-        
-        if (!string.IsNullOrEmpty(SearchTerm))
-        {
-            return FilterTreeItemsBySearch(items).ToList();
-        }
-        
-        return items;
-    }
-    
-    private IEnumerable<IChoiceTreeItem> FilterTreeItemsBySearch(IEnumerable<IChoiceTreeItem> items)
-    {
-        foreach (var item in items)
-        {
-            var matches = item.Label.Contains(SearchTerm, StringComparison.OrdinalIgnoreCase) ||
-                         (!string.IsNullOrEmpty(item.Description) && item.Description.Contains(SearchTerm, StringComparison.OrdinalIgnoreCase));
-            
-            var hasMatchingChildren = item.Children.Any() && FilterTreeItemsBySearch(item.Children).Any();
-            
-            if (matches || hasMatchingChildren)
-            {
-                // Expand nodes with matching descendants for better UX
-                if (hasMatchingChildren && !ExpandedItemIds.Contains(item.Id))
-                {
-                    ExpandedItemIds.Add(item.Id);
-                    item.IsExpanded = true;
-                }
-                
-                yield return item;
-            }
-        }
-    }
-    
-    private async Task OnSearchInput(ChangeEventArgs e)
-    {
-        SearchTerm = e.Value?.ToString() ?? "";
-        if (SearchTermChanged.HasDelegate)
-        {
-            await SearchTermChanged.InvokeAsync(SearchTerm);
-        }
-        StateHasChanged();
-    }
-    
-    private async Task ClearSearch()
-    {
-        SearchTerm = "";
-        if (SearchTermChanged.HasDelegate)
-        {
-            await SearchTermChanged.InvokeAsync(SearchTerm);
-        }
-        StateHasChanged();
-    }
-    
-    private async Task OnGroupItemSelected(IChoiceItem item)
-    {
-        if (SelectionMode == ChoiceSelectionMode.Single)
-        {
-            SelectedItemIds.Clear();
-        }
-        
-        if (SelectedItemIds.Contains(item.Id))
-        {
-            SelectedItemIds.Remove(item.Id);
-        }
-        else
-        {
-            SelectedItemIds.Add(item.Id);
-        }
-        
-        // Convert to TValue if possible for compatibility
-        if (item.Value is TValue typedValue)
-        {
-            SelectedValue = typedValue;
-            if (SelectedValueChangedTyped.HasDelegate) await SelectedValueChangedTyped.InvokeAsync(typedValue);
-            if (SelectedValueChangedObject.HasDelegate) await SelectedValueChangedObject.InvokeAsync(typedValue);
-        }
-        
-        StateHasChanged();
-    }
-    
-    private async Task OnTreeItemSelected(IChoiceTreeItem item)
-    {
-        if (SelectionMode == ChoiceSelectionMode.Single)
-        {
-            SelectedItemIds.Clear();
-        }
-        
-        if (SelectedItemIds.Contains(item.Id))
-        {
-            SelectedItemIds.Remove(item.Id);
-        }
-        else
-        {
-            SelectedItemIds.Add(item.Id);
-        }
-        
-        // Convert to TValue if possible for compatibility
-        if (item.Value is TValue typedValue)
-        {
-            SelectedValue = typedValue;
-            if (SelectedValueChangedTyped.HasDelegate) await SelectedValueChangedTyped.InvokeAsync(typedValue);
-            if (SelectedValueChangedObject.HasDelegate) await SelectedValueChangedObject.InvokeAsync(typedValue);
-        }
-        
-        StateHasChanged();
-    }
-    
-    private async Task HandleTreeItemExpanded(IChoiceTreeItem item)
-    {
-        ExpandedItemIds.Add(item.Id);
-        if (OnTreeItemExpanded.HasDelegate)
-        {
-            await OnTreeItemExpanded.InvokeAsync(item);
-        }
-    }
-    
-    private async Task HandleTreeItemCollapsed(IChoiceTreeItem item)
-    {
-        ExpandedItemIds.Remove(item.Id);
-        if (OnTreeItemCollapsed.HasDelegate)
-        {
-            await OnTreeItemCollapsed.InvokeAsync(item);
-        }
-    }
-    
-    #endregion
-    
-    public new async ValueTask DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         if (disposed) return;
         disposed = true;
-        
-        await SafeInvokeAsync("RRBlazor.Choice.closeDropdown", choiceElementId);
-        await base.DisposeAsync();
     }
 }

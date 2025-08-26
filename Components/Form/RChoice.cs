@@ -8,7 +8,6 @@ using System.Collections;
 using static RR.Blazor.Enums.ChoiceVariant;
 using static RR.Blazor.Enums.ChoiceType;
 using static RR.Blazor.Enums.SizeType;
-using static RR.Blazor.Enums.ChoiceDirection;
 
 namespace RR.Blazor.Components.Form;
 
@@ -47,7 +46,7 @@ public abstract class RChoiceBase : RSizedComponentBase<SizeType>
     [Parameter] public Func<object, bool> ItemLoadingSelector { get; set; }
     [Parameter] public bool ShowLabels { get; set; } = true;
     [Parameter] public bool ShowActiveIndicator { get; set; }
-    [Parameter] public ChoiceDirection Direction { get; set; } = Horizontal;
+    [Parameter] public Direction Direction { get; set; } = Direction.Horizontal;
     [Parameter] public bool CloseOnSelect { get; set; } = true;
     [Parameter] public int? MaxItemsInline { get; set; } = 5;
     [Parameter] public int? MaxLabelLength { get; set; } = 20;
@@ -188,7 +187,7 @@ public class RChoice : RChoiceBase
     public object SelectedValue { get; set; }
     
     [Parameter, AIParameter("Auto detects inline vs dropdown, or force specific mode", "ChoiceVariant.Auto")]
-    public ChoiceVariant Variant { get; set; } = Auto;
+    public ChoiceVariant Variant { get; set; } = ChoiceVariant.Auto;
     
 
 
@@ -314,25 +313,25 @@ public class RChoice : RChoiceBase
     private ChoiceVariant GetEffectiveVariant(List<object> items)
     {
         // Explicit variant takes precedence
-        if (Variant != Auto)
+        if (Variant != ChoiceVariant.Auto)
             return Variant;
         
         // Smart detection rules
         
         // Rule 1: Too many items? Use dropdown
         if (MaxItemsInline.HasValue && items.Count > MaxItemsInline.Value)
-            return Dropdown;
+            return ChoiceVariant.Dropdown;
         
         // Rule 2: Long text content? Use dropdown  
         if (MaxLabelLength.HasValue && HasLongLabels(items))
-            return Dropdown;
+            return ChoiceVariant.Dropdown;
         
         // Rule 3: Vertical direction with many items? Use dropdown
-        if (Direction == Vertical && items.Count > 3)
-            return Dropdown;
+        if (Direction == Direction.Vertical && items.Count > 3)
+            return ChoiceVariant.Dropdown;
         
         // Rule 4: Default to inline for simple cases
-        return Inline;
+        return ChoiceVariant.Inline;
     }
     
     private bool HasLongLabels(List<object> items)
