@@ -169,7 +169,7 @@ class BackdropManagerBase {
         
         const opacity = this.#calculateOpacity(level);
         backdrop.style.setProperty('--backdrop-opacity', opacity);
-        backdrop.style.opacity = '0'; // Start invisible for animation
+        backdrop.style.opacity = '0';
         
         if (config.blur) {
             backdrop.style.setProperty('--backdrop-blur', `${config.blur}px`);
@@ -181,16 +181,6 @@ class BackdropManagerBase {
             container.id = 'portal-root';
             container.className = 'portal-root';
             container.setAttribute('data-rr-blazor-portal', 'true');
-            container.style.cssText = `
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100vw;
-                height: 100vh;
-                z-index: 9999;
-                pointer-events: none;
-                overflow: hidden;
-            `;
             document.body.appendChild(container);
         }
         
@@ -247,7 +237,6 @@ class BackdropManagerBase {
 }
 
 export const BackdropManager = createSingleton(BackdropManagerBase, 'BackdropManager');
-// Defer event listener registration until RRBlazor.Events is available
 function setupBackdropEventListeners() {
     if (!window.RRBlazor || !window.RRBlazor.Events) {
         setTimeout(setupBackdropEventListeners, 10);

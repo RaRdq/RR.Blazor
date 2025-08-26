@@ -1,12 +1,15 @@
+const debugLogger = window.debugLogger;
 
 class ModalManager {
     constructor() {
         this.activeModals = new Map();
+        this.modalStack = [];
         this.stateTransitions = new Map();
         this.eventHandlers = new Map();
+        this.baseZIndex = 1000;
+        this.zIndexIncrement = 100;
         
         this.animationDurations = this._initializeAnimationDurations();
-        
         this._setupEventListeners();
     }
     
@@ -30,12 +33,26 @@ class ModalManager {
             throw new Error(`Modal ${modalId} already exists in state: ${currentState}. Destroy it first.`);
         }
         
+        const parentModalId = this.modalStack.length > 0 ? this.modalStack[this.modalStack.length - 1] : null;
+        const stackLevel = this.modalStack.length;
+        const zIndex = this.baseZIndex + (stackLevel * this.zIndexIncrement);
+        const stackInfo = {
+            level: stackLevel,
+            zIndex: zIndex,
+            backdropZIndex: zIndex,
+            parentId: parentModalId
+        };
+        
         this.activeModals.set(modalId, {
             element: modalElement,
             state: 'opening',
             options,
-            createdAt: Date.now()
+            createdAt: Date.now(),
+            stackInfo: stackInfo,
+            parentId: parentModalId
         });
+        
+        this.modalStack.push(modalId);
         
         this._setupCloseRequestListener(modalId);
         
@@ -58,11 +75,12 @@ class ModalManager {
                 {
                     requesterId: modalId,
                     config: {
-                        level: this.activeModals.size - 1,
+                        level: stackLevel,
                         className: options.backdropClass || 'modal-backdrop-dark',
                         blur: options.backdropBlur || 8,
                         animationDuration: this.animationDurations[options.animationSpeed || 'normal'],
-                        shared: true
+                        shared: false,
+                        zIndex: stackInfo.backdropZIndex
                     }
                 }
             );
@@ -79,7 +97,10 @@ class ModalManager {
                     className: 'modal-portal',
                     attributes: {
                         'role': 'presentation',
-                        'data-modal-id': modalId
+                        'data-portal-type': 'modal',
+                        'data-modal-id': modalId,
+                        'data-portal-level': stackLevel.toString(),
+                        'data-modal-stack-level': stackLevel.toString()
                     }
                 }
             }
@@ -96,9 +117,29 @@ class ModalManager {
         
         this._applyModalContainerStyles(portal);
         
+        if (stackInfo?.zIndex) {
+            portal.style.zIndex = stackInfo.zIndex;
+            modalElement.setAttribute('data-modal-id', modalId);
+            modalElement.setAttribute('data-modal-level', stackInfo.level);
+            modalElement.style.zIndex = stackInfo.zIndex + 10;
+        }
+        
         portal.appendChild(modalElement);
         
         this._applyModalStyles(modalElement, options);
+        
+        // Force layout calculation
+        modalElement.offsetHeight;
+        
+        // Add portal-ready class to show the portal, then animate modal
+        requestAnimationFrame(() => {
+            portal.classList.add('portal-ready');
+            
+            if (modalElement.classList) {
+                modalElement.classList.remove('modal-hidden');
+                modalElement.classList.add('modal-visible');
+            }
+        });
         
         if (options.trapFocus !== false) {
             await window.RRBlazor.FocusTrap.create(modalElement, modalId);
@@ -122,12 +163,12 @@ class ModalManager {
             try {
                 window.RRBlazor.Backdrop.onClick(modalId, (event) => {
                     if (this.isTopModal(modalId)) {
-                        event.stopPropagation();
                         this.destroyModal(modalId);
+                        event.stopPropagation();
                     }
                 });
             } catch (error) {
-                console.warn(`Failed to register backdrop click handler for modal ${modalId}:`, error);
+                debugLogger.warn(`Failed to register backdrop click handler for modal ${modalId}:`, error);
             }
         }
         
@@ -177,12 +218,14 @@ class ModalManager {
             this._applyClosingAnimation(modal.element, modal.options);
         }
         
-        window.RRBlazor.EventDispatcher.dispatch(
-            window.RRBlazor.Events.PORTAL_DESTROY_REQUEST,
-            { requesterId: modalId, portalId: modalId }
-        );
+        if (modalId) {
+            window.RRBlazor.EventDispatcher.dispatch(
+                window.RRBlazor.Events.PORTAL_DESTROY_REQUEST,
+                { requesterId: modalId, portalId: modalId }
+            );
+        }
         
-        if (modal.options.useBackdrop !== false) {
+        if (modal.options.useBackdrop !== false && modalId) {
             window.RRBlazor.EventDispatcher.dispatch(
                 window.RRBlazor.Events.BACKDROP_DESTROY_REQUEST,
                 { requesterId: modalId }
@@ -191,6 +234,13 @@ class ModalManager {
         
         modal.state = 'closed';
         this.activeModals.delete(modalId);
+        
+        const stackIndex = this.modalStack.indexOf(modalId);
+        if (stackIndex > -1) {
+            this.modalStack.splice(stackIndex, 1);
+        }
+        
+        this._recalculateZIndexes();
         
         window.RRBlazor.EventDispatcher.dispatch(
             window.RRBlazor.Events.UI_COMPONENT_CLOSED,
@@ -222,12 +272,7 @@ class ModalManager {
     }
     
     isTopModal(modalId) {
-        const activeModalIds = Array.from(this.activeModals.entries())
-            .filter(([id, modal]) => modal.state === 'open' || modal.state === 'opening')
-            .map(([id]) => id)
-            .sort((a, b) => this.activeModals.get(a).createdAt - this.activeModals.get(b).createdAt);
-        
-        return activeModalIds.length > 0 && activeModalIds[activeModalIds.length - 1] === modalId;
+        return this.modalStack.length > 0 && this.modalStack[this.modalStack.length - 1] === modalId;
     }
     
     forceUnlock() {
@@ -239,11 +284,41 @@ class ModalManager {
         });
         
         this.activeModals.clear();
+        this.modalStack = [];
         this.eventHandlers.clear();
         window.RRBlazor.ScrollLock.forceUnlock();
         
         window.RRBlazor.EventDispatcher.dispatch(window.RRBlazor.Events.PORTAL_CLEANUP_ALL_REQUEST);
         window.RRBlazor.EventDispatcher.dispatch(window.RRBlazor.Events.BACKDROP_CLEANUP_ALL_REQUEST);
+    }
+    
+    _recalculateZIndexes() {
+        this.modalStack.forEach((modalId, index) => {
+            const modal = this.activeModals.get(modalId);
+            if (modal) {
+                const newZIndex = this.baseZIndex + (index * this.zIndexIncrement);
+                modal.stackInfo.level = index;
+                modal.stackInfo.zIndex = newZIndex;
+                modal.stackInfo.backdropZIndex = newZIndex;
+                
+                const portal = document.getElementById(modalId);
+                if (portal) {
+                    portal.style.zIndex = newZIndex;
+                }
+                
+                if (modal.element) {
+                    modal.element.style.zIndex = newZIndex + 10;
+                    modal.element.setAttribute('data-modal-level', index);
+                }
+                window.RRBlazor.EventDispatcher.dispatch(
+                    window.RRBlazor.Events.BACKDROP_UPDATE_ZINDEX,
+                    {
+                        requesterId: modalId,
+                        zIndex: newZIndex
+                    }
+                );
+            }
+        });
     }
     
     
@@ -284,33 +359,19 @@ class ModalManager {
     }
     
     _applyModalContainerStyles(element) {
-        element.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: var(--space-4);
-            pointer-events: auto;
-        `;
+        element.classList.add('modal-portal');
     }
     
     _applyModalStyles(element, options) {
+        if (options.skipStyling || element.classList.contains('modal-content')) {
+            return;
+        }
+        
         element.style.position = 'relative';
         element.style.margin = 'auto';
-        element.style.transition = 'all var(--duration-normal) var(--ease-out)';
-        
-        requestAnimationFrame(() => {
-            element.classList.add('modal-in');
-        });
     }
     
     _applyClosingAnimation(element, options) {
-        element.classList.remove('modal-in');
-        element.classList.add('modal-out');
     }
     
     async _waitForAnimation(speed) {
@@ -389,22 +450,54 @@ window.RRBlazor.Modal = {
     forceUnlock: () => modalManager.forceUnlock(),
     getActiveCount: () => modalManager.getActiveCount(),
     
-    // Find existing Blazor-rendered modal component and create modal portal
     createAndShow: (modalId, modalTypeName, parameters, options) => {
-        // Wait for Blazor to render the component, then find it
         const findAndCreateModal = () => {
             const modalElement = document.getElementById(modalId) || 
                                 document.querySelector(`[data-modal-id="${modalId}"]`);
             
             if (modalElement) {
-                modalManager.createModal(modalElement, options);
+                const hasModalContent = modalElement.querySelector('.modal-content') || 
+                                      modalElement.classList.contains('modal-content');
+                
+                if (hasModalContent) {
+                    requestAnimationFrame(() => {
+                        if (modalElement.classList) {
+                            modalElement.classList.remove('modal-hidden');
+                            modalElement.classList.add('modal-visible');
+                        }
+                    });
+                } else {
+                    modalManager.createModal(modalElement, {
+                        ...options,
+                        id: modalId,
+                        skipStyling: true
+                    });
+                }
             } else {
-                // Keep checking for the component for a short time
-                setTimeout(findAndCreateModal, 10);
+                const observer = new MutationObserver((mutations) => {
+                    mutations.forEach((mutation) => {
+                        mutation.addedNodes.forEach((node) => {
+                            if (node.nodeType === 1 && 
+                                (node.id === modalId || node.getAttribute('data-modal-id') === modalId)) {
+                                observer.disconnect();
+                                findAndCreateModal();
+                            }
+                        });
+                    });
+                });
+                
+                observer.observe(document.body, {
+                    childList: true,
+                    subtree: true
+                });
+                
+                setTimeout(() => {
+                    observer.disconnect();
+                    findAndCreateModal();
+                }, 5);
             }
         };
         
-        // Start looking for the modal
         findAndCreateModal();
     },
 
@@ -439,7 +532,7 @@ window.RRBlazor.Modal = {
                 <div class="modal-body">
                     <p class="modal-message">${message}</p>
                 </div>
-                <div class="modal-footer">
+                <div class="modal-footer action-group action-group-modal-footer">
                     <button class="btn btn-secondary modal-cancel" data-action="cancel">${cancelText}</button>
                     <button class="btn btn-primary modal-confirm" data-action="confirm">${confirmText}</button>
                 </div>

@@ -84,7 +84,7 @@ class ModalEventCoordinator {
     destroyBackdrop(modalId) {
         
         window.RRBlazor.EventDispatcher.dispatch(
-            'backdrop-destroy-request',
+            window.RRBlazor.Events.BACKDROP_DESTROY_REQUEST,
             {
                 requesterId: modalId
             }

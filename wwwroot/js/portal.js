@@ -1,5 +1,7 @@
 import { createSingleton, WeakRegistry } from './utils/singleton-factory.js';
 
+const debugLogger = window.debugLogger;
+
 class PortalManagerBase {
     static _baseZIndex = 1000;
     static _zIndexIncrement = 10;
@@ -86,7 +88,8 @@ class PortalManagerBase {
     destroy(id) {
         const portal = this._portals.get(id);
         if (!portal) {
-            throw new Error(`Portal ${id} not found - cannot destroy non-existent portal`);
+            debugLogger.warn(`Portal ${id} not found - already destroyed or never created`);
+            return false;
         }
         
         if (window.RRBlazor && window.RRBlazor.EventDispatcher) {

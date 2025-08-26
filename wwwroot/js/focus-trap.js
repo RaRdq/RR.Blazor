@@ -97,7 +97,31 @@ export class FocusTrap {
         
         this.activeTraps.delete(trapId);
 
-        if (this.activeTraps.size === 0 && this.previousFocus) {
+        // Find and restore focus from stack
+        const focusIndex = this.focusStack.findIndex(f => f.trapId === trapId);
+        if (focusIndex !== -1) {
+            const focusInfo = this.focusStack[focusIndex];
+            this.focusStack.splice(focusIndex, 1);
+            
+            // Only restore focus if this was the last trap or topmost
+            if (this.activeTraps.size === 0 || focusIndex === this.focusStack.length) {
+                if (focusInfo.previousFocus && focusInfo.previousFocus.focus) {
+                    try {
+                        focusInfo.previousFocus.focus();
+                    } catch (e) {
+                        document.body.focus();
+                    }
+                }
+                
+                // Update legacy previousFocus
+                if (this.focusStack.length > 0) {
+                    this.previousFocus = this.focusStack[this.focusStack.length - 1].previousFocus;
+                } else {
+                    this.previousFocus = null;
+                }
+            }
+        } else if (this.activeTraps.size === 0 && this.previousFocus) {
+            // Fallback to legacy behavior if not in stack
             try {
                 this.previousFocus.focus();
             } catch (e) {

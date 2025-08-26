@@ -3,6 +3,8 @@
  * Provides column resizing, sticky columns, scroll management, and interactions
  */
 
+const debugLogger = window.debugLogger;
+
 export const RTableManager = {
     
     instances: new Map(),
@@ -28,7 +30,7 @@ export const RTableManager = {
 
         const table = document.querySelector(`[data-table-id="${tableId}"]`);
         if (!table) {
-            console.warn(`Table with id ${tableId} not found`);
+            debugLogger.warn(`Table with id ${tableId} not found`);
             return false;
         }
 
@@ -450,7 +452,7 @@ export const RTableManager = {
             stored[columnIndex] = width;
             localStorage.setItem(key, JSON.stringify(stored));
         } catch (error) {
-            console.warn('Failed to persist column width:', error);
+            debugLogger.warn('Failed to persist column width:', error);
         }
     },
 
@@ -472,7 +474,7 @@ export const RTableManager = {
                 }
             });
         } catch (error) {
-            console.warn('Failed to restore column widths:', error);
+            debugLogger.warn('Failed to restore column widths:', error);
         }
     },
 
@@ -645,7 +647,7 @@ class TableScrollInstance {
             }
             
         } catch (error) {
-            console.error('[TableScrollInstance] Update scroll shadows failed:', error);
+            debugLogger.error('[TableScrollInstance] Update scroll shadows failed:', error);
         }
     }
     
@@ -658,7 +660,7 @@ class TableScrollInstance {
             });
             
         } catch (error) {
-            console.error('[TableScrollInstance] Header focus setup failed:', error);
+            debugLogger.error('[TableScrollInstance] Header focus setup failed:', error);
         }
     }
     
@@ -680,7 +682,7 @@ class TableScrollInstance {
             }
             
         } catch (error) {
-            console.error('[TableScrollInstance] Header focus handling failed:', error);
+            debugLogger.error('[TableScrollInstance] Header focus handling failed:', error);
         }
     }
     
@@ -706,7 +708,7 @@ class TableScrollInstance {
             }
             
         } catch (error) {
-            console.error('[TableScrollInstance] Dispose failed:', error);
+            debugLogger.error('[TableScrollInstance] Dispose failed:', error);
         }
     }
 }

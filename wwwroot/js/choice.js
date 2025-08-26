@@ -1,5 +1,8 @@
 
-let positioningEngine = null;
+import { PositioningEngine } from './positioning.js';
+
+const positioningEngine = new PositioningEngine();
+const debugLogger = window.debugLogger;
 
 let activeDropdown = null;
 let keyboardNavigationEnabled = false;
@@ -9,17 +12,11 @@ let activePortals = new Map();
 let viewportLocations = new Map();
 
 const Choice = {
-    async initialize() {
-        // Get positioning engine through RRBlazor proxy
-        if (!positioningEngine && window.RRBlazor?.Positioning) {
-            const PositioningModule = await window.RRBlazor.Positioning.getPositioningEngine();
-            if (PositioningModule && PositioningModule.PositioningEngine) {
-                positioningEngine = new PositioningModule.PositioningEngine();
-            } else if (PositioningModule) {
-                positioningEngine = PositioningModule;
-            }
-        }
-        
+    initialize() {
+        this.setupEventListeners();
+    },
+    
+    setupEventListeners() {
         document.addEventListener(window.RRBlazor.Events.UI_COMPONENT_CLOSE_REQUEST, (event) => {
             if (event.detail.componentType === window.RRBlazor.ComponentTypes.CHOICE && activeDropdown === event.detail.componentId) {
                 this.closeDropdown(event.detail.componentId);
@@ -27,15 +24,16 @@ const Choice = {
         });
     },
     
-    /**
-     * Find viewport element for a choice component - always a child
-     */
     findViewport(choiceElement, choiceElementId) {
         if (!choiceElement) {
+            debugLogger.error(`Choice element not found for id: ${choiceElementId}`);
             return null;
         }
         
         const viewport = choiceElement.querySelector('.choice-viewport');
+        if (!viewport) {
+            debugLogger.error(`Viewport not found as child of choice element: ${choiceElementId}`);
+        }
         return viewport;
     },
     
@@ -46,16 +44,19 @@ const Choice = {
         try {
             const choiceElement = document.querySelector(`[data-choice-id="${choiceElementId}"]`);
             if (!choiceElement) {
+                debugLogger.warn(`Choice element not found: ${choiceElementId}`);
                 return;
             }
             
             const trigger = choiceElement.querySelector('.choice-trigger') || choiceElement.querySelector('.choice-trigger-wrapper');
             if (!trigger) {
+                debugLogger.warn(`Trigger element not found for choice: ${choiceElementId}`);
                 return;
             }
             
             const viewport = this.findViewport(choiceElement, choiceElementId);
             if (!viewport) {
+                debugLogger.warn(`Viewport element not found for choice: ${choiceElementId}`);
                 return;
             }
             
@@ -73,8 +74,6 @@ const Choice = {
             );
 
             const portalId = `choice-${choiceElementId}`;
-            
-
             const triggerRect = trigger.getBoundingClientRect();
             const dropdownMaxHeight = 320;
             const isUserMenu = choiceElement.closest('[class*="role-switcher"], [class*="user-menu"], .choice-dropdown[data-choice-id*="user"]');
@@ -82,12 +81,11 @@ const Choice = {
             const minWidth = Math.max(triggerRect.width, baseMinWidth);
             
             const itemCount = viewport.querySelectorAll('.choice-item').length;
-            const estimatedHeight = Math.min(itemCount * 40 + 16, dropdownMaxHeight); // 40px per item + padding
+            const estimatedHeight = Math.min(itemCount * 40 + 16, dropdownMaxHeight);
             const targetDimensions = {
                 width: minWidth,
                 height: estimatedHeight
             };
-            
             
             let desiredPosition;
             if (!options.direction || options.direction === 'auto') {
@@ -130,27 +128,32 @@ const Choice = {
                 adaptedDimensions,
                 {
                     position: desiredPosition,
-                    offset: 4, // Reduced from 8 to 4 since we removed SCSS transform offset
+                    offset: 4,
                     flip: true,
                     constrain: true,
                     container: containerRect
                 }
             );
 
-            const portalPromise = this._waitForPortal(choiceElementId);
-            
-            window.RRBlazor.EventDispatcher.dispatch(
-                window.RRBlazor.Events.PORTAL_CREATE_REQUEST,
-                {
-                    requesterId: `choice-${choiceElementId}`,
-                    config: {
-                        id: `choice-portal-${choiceElementId}`,
-                        className: 'choice-portal'
+            let portal = null;
+            try {
+                const portalPromise = this._waitForPortal(choiceElementId);
+                
+                window.RRBlazor.EventDispatcher.dispatch(
+                    window.RRBlazor.Events.PORTAL_CREATE_REQUEST,
+                    {
+                        requesterId: `choice-${choiceElementId}`,
+                        config: {
+                            id: `choice-portal-${choiceElementId}`,
+                            className: 'choice-portal'
+                        }
                     }
-                }
-            );
-            
-            const portal = await portalPromise;
+                );
+                
+                portal = await portalPromise;
+            } catch (portalError) {
+                debugLogger.warn('[Choice] Portal creation failed, falling back to document body positioning:', portalError);
+            }
             
             viewport._originalParent = viewport.parentNode;
             viewport._originalNextSibling = viewport.nextSibling;
@@ -160,23 +163,24 @@ const Choice = {
             viewport.style.left = '';
             viewport.style.transform = '';
             
+            let targetContainer = document.body;
             if (portal && portal.element) {
+                targetContainer = portal.element;
                 portal.element.appendChild(viewport);
                 viewportLocations.set(choiceElementId, portal.element);
-                
-                viewport.style.position = 'fixed';
-                viewport.style.left = `${position.x}px`;
-                viewport.style.top = `${position.y}px`;
-                viewport.style.width = `${adaptedDimensions.width}px`;
-                viewport.style.maxHeight = `${dropdownMaxHeight}px`;
             } else {
-                viewport.style.position = 'fixed';
-                viewport.style.left = `${position.x}px`;
-                viewport.style.top = `${position.y}px`;
-                viewport.style.width = `${adaptedDimensions.width}px`;
-                viewport.style.maxHeight = `${dropdownMaxHeight}px`;
-                viewportLocations.set(choiceElementId, viewport.parentElement || document.body);
+                // FIXED: Fallback - append to document body instead of staying in original location
+                document.body.appendChild(viewport);
+                viewportLocations.set(choiceElementId, document.body);
             }
+            
+            viewport.style.position = 'fixed';
+            viewport.style.left = `${position.x}px`;
+            viewport.style.top = `${position.y}px`;
+            viewport.style.width = `${adaptedDimensions.width}px`;
+            viewport.style.maxHeight = `${dropdownMaxHeight}px`;
+            
+            debugLogger.log(`[Choice] Positioned dropdown at ${position.x}, ${position.y} in`, targetContainer);
 
             this.applyDropdownStyles(viewport, adaptedDimensions.width);
             
@@ -185,13 +189,17 @@ const Choice = {
                 display: 'block',
                 opacity: '1',
                 zIndex: '9999',
-                pointerEvents: 'auto'
+                pointerEvents: 'auto',
+                position: 'fixed',
+                left: `${position.x}px`,
+                top: `${position.y}px`
             });
-            viewport.style.zIndex = '9999';
             
             viewport.classList.remove('choice-viewport-closed');
             viewport.classList.add('choice-viewport-open');
-            choiceElement.classList.add('choice-dropdown-open');
+            choiceElement.classList.add('choice-open');
+            
+            debugLogger.log(`[Choice] Dropdown should now be visible at ${position.x}, ${position.y}`);
 
             activeDropdown = choiceElementId;
             activePortals.set(choiceElementId, portalId);
@@ -250,11 +258,8 @@ const Choice = {
                 viewport.style.top = `${position.y}px`;
             };
             
-            // Throttle scroll/resize events
-            let repositionTimer;
             const throttledReposition = () => {
-                clearTimeout(repositionTimer);
-                repositionTimer = setTimeout(repositionHandler, 10);
+                requestAnimationFrame(repositionHandler);
             };
             
             window.addEventListener('scroll', throttledReposition, true);
@@ -310,7 +315,7 @@ const Choice = {
 
         viewport.classList.remove('choice-viewport-open');
         viewport.classList.add('choice-viewport-closed');
-        choiceElement.classList.remove('choice-dropdown-open');
+        choiceElement.classList.remove('choice-open');
 
         if (viewport._originalParent) {
             if (viewport._originalNextSibling) {
@@ -328,7 +333,6 @@ const Choice = {
             delete viewport._originalNextSibling;
         }
 
-        // Request portal cleanup via events (Dependency Inversion)
         window.RRBlazor.EventDispatcher.dispatch(
             window.RRBlazor.Events.PORTAL_DESTROY_REQUEST,
             { requesterId: `choice-${choiceElementId}`, portalId: `choice-portal-${choiceElementId}` }
@@ -337,13 +341,11 @@ const Choice = {
         this.disableKeyboardNavigation();
         window.RRBlazor.ClickOutside.unregister(`choice-${choiceElementId}`);
         
-        // Clean up click-outside handler if it exists
         if (choiceElement && choiceElement._clickOutsideHandler) {
             document.removeEventListener(window.RRBlazor.Events.CLICK_OUTSIDE, choiceElement._clickOutsideHandler);
             delete choiceElement._clickOutsideHandler;
         }
         
-        // Clean up scroll and resize handlers
         if (choiceElement && choiceElement._scrollHandler) {
             window.removeEventListener('scroll', choiceElement._scrollHandler, true);
             delete choiceElement._scrollHandler;
@@ -547,15 +549,19 @@ document.addEventListener('click', (event) => {
     Choice.selectItem(choiceId, item);
 });
 
-Choice.initialize();
+if (typeof window !== 'undefined') {
+    if (!window.RRBlazor || !window.RRBlazor.moduleManager) {
+        if (document.readyState !== 'loading') {
+            Choice.initialize();
+        } else {
+            document.addEventListener('DOMContentLoaded', () => Choice.initialize());
+        }
+    }
+}
 
 export default {
     openDropdown: (choiceElementId, options) => Choice.openDropdown(choiceElementId, options),
     closeDropdown: (choiceElementId) => Choice.closeDropdown(choiceElementId),
-    toggleDropdown: async (choiceElementId, options) => {
-        const isOpen = activeDropdown === choiceElementId;
-        return isOpen ? Choice.closeDropdown(choiceElementId) : Choice.openDropdown(choiceElementId, options);
-    },
     isDropdownOpen: (choiceElementId) => activeDropdown === choiceElementId,
     closeAllDropdowns: () => {
         if (activeDropdown) {

@@ -99,7 +99,6 @@ class ModuleManager {
             'theme': { path: './theme.js', preload: true },
             'chart': { path: './chart.js' },
             'table': { path: './table.js' },
-            'grid': { path: './grid.js' },
             'fileUpload': { path: './file-upload.js' },
             'clipboard': { path: './clipboard.js' },
             'loader': { path: './loader.js' },
@@ -108,6 +107,7 @@ class ModuleManager {
             'columnManagement': { path: './column-management.js' },
             'intersectionObserver': { path: './intersection-observer.js' },
             'filter': { path: './filter.js', preload: true },
+            'rgrid': { path: './rgrid.js' },
             'pageDebug': { path: './_dev_tools/page-debug.js', preload: true }
         };
     }
@@ -229,38 +229,28 @@ class ModuleManager {
             debugLogger.error('Failed to preload eventConstants:', error);
         }
         
-        // Now load other critical modules
-        const otherModules = preloadModules.filter(name => name !== 'eventConstants');
-        const results = await Promise.allSettled(
-            otherModules.map(name => this.loadModule(name))
-        );
+        const essentialModules = ['portal', 'positioning', 'backdrop', 'uiCoordinator', 'clickOutside', 'scrollLock', 'modalEvents', 'keyboardNavigation', 'modal', 'choice', 'filter', 'theme', 'appShell'];
         
-        results.forEach((result, index) => {
-            if (result.status === 'rejected') {
-                debugLogger.error(`Failed to preload ${otherModules[index]}: ${result.reason}`);
+        for (const moduleName of essentialModules) {
+            await this.loadModule(moduleName);
+        }
+        
+        const modulesToInit = ['filter', 'choice', 'modal'];
+        for (const moduleName of modulesToInit) {
+            const module = this.modules.get(moduleName);
+            const moduleObject = module?.default || module;
+            if (moduleObject?.initialize) {
+                await moduleObject.initialize();
+                debugLogger.log(`Initialized ${moduleName}`);
             }
-        });
+        }
         
-        // Initialize modules that need it
-        const modulesToInitialize = ['filter', 'choice', 'modal', 'portal'];
-        for (const moduleName of modulesToInitialize) {
-            if (this.modules.has(moduleName)) {
-                const module = this.modules.get(moduleName);
-                if (module && module.initialize && typeof module.initialize === 'function') {
-                    try {
-                        await module.initialize();
-                        debugLogger.log(`Initialized ${moduleName} module`);
-                    } catch (error) {
-                        debugLogger.error(`Failed to initialize ${moduleName}:`, error);
-                    }
-                } else if (module && module.default && module.default.initialize && typeof module.default.initialize === 'function') {
-                    try {
-                        await module.default.initialize();
-                        debugLogger.log(`Initialized ${moduleName} module (default export)`);
-                    } catch (error) {
-                        debugLogger.error(`Failed to initialize ${moduleName}:`, error);
-                    }
-                }
+        const portalModule = this.modules.get('portal');
+        if (portalModule) {
+            const portalManager = portalModule.PortalManager || portalModule.default;
+            if (portalManager?.getInstance) {
+                portalManager.getInstance();
+                debugLogger.log('Portal manager instantiated');
             }
         }
         
@@ -485,6 +475,10 @@ const RRBlazor = {
         }
     },
     
+    async loadModule(moduleName) {
+        return await moduleManager.loadModule(moduleName);
+    },
+    
     async dispose() {
         debugLogger.log('Disposing RR.Blazor...');
         await moduleManager.dispose();
@@ -494,6 +488,32 @@ const RRBlazor = {
 };
 
 window.RRBlazor = RRBlazor;
+window.moduleManager = moduleManager;
+window.RRBlazor.Choice = {
+    openDropdown: async (choiceElementId, options) => {
+        const module = moduleManager.modules.get('choice');
+        const choiceObject = module?.default || module;
+        return choiceObject?.openDropdown(choiceElementId, options) || false;
+    },
+    
+    closeDropdown: async (choiceElementId) => {
+        const module = moduleManager.modules.get('choice');
+        const choiceObject = module?.default || module;
+        return choiceObject?.closeDropdown(choiceElementId) || false;
+    },
+    
+    isDropdownOpen: (choiceElementId) => {
+        const module = moduleManager.modules.get('choice');
+        const choiceObject = module?.default || module;
+        return choiceObject?.isDropdownOpen(choiceElementId) || false;
+    },
+    
+    closeAllDropdowns: async () => {
+        const module = moduleManager.modules.get('choice');
+        const choiceObject = module?.default || module;
+        return choiceObject?.closeAllDropdowns() || false;
+    }
+};
 
 window.RRBlazor.isSafeForInterop = function() {
     if (typeof window === 'undefined' || typeof document === 'undefined') {
