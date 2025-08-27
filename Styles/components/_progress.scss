@@ -58,7 +58,7 @@
     border-radius: inherit;
     position: relative;
     width: var(--progress-width, 0%);
-    transition: width var(--duration-slow) var(--ease-out);
+    transition: width var(--duration-normal) var(--ease-out);
     will-change: width;
     display: flex;
     align-items: center;
@@ -81,7 +81,10 @@
     &::after {
       content: '';
       position: absolute;
-      inset: 0;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      right: calc(100% - var(--progress-width, 0%));
       background: linear-gradient(90deg,
         transparent 0%,
         color-mix(in srgb, var(--color-text-inverse) 20%, transparent) 50%,
@@ -90,6 +93,7 @@
       background-position: -200% center;
       animation: shimmer 2s infinite;
       will-change: background-position;
+      border-radius: inherit;
 
       @media (prefers-reduced-motion: reduce) {
         animation: none;
@@ -107,38 +111,48 @@
     }
   }
 
-  // Unified density system integration
   &-density-compact {
-    @include apply-density(compact, sm);
-    height: density-calc(2, compact);
+    .progress-label {
+      font-size: var(--text-xs);
+      margin-bottom: var(--space-1);
+    }
+    .progress-value {
+      font-size: var(--text-2xs);
+    }
   }
   
   &-density-dense {
-    @include apply-density(dense, sm);
-    height: density-calc(3, dense);
+    .progress-label {
+      font-size: var(--text-sm);
+      margin-bottom: var(--space-2);
+    }
+    .progress-value {
+      font-size: var(--text-xs);
+    }
   }
   
   &-density-spacious {
-    @include apply-density(spacious, lg);
-    height: density-calc(4, spacious);
+    .progress-label {
+      font-size: var(--text-lg);
+      margin-bottom: var(--space-4);
+    }
+    .progress-value {
+      font-size: var(--text-base);
+    }
   }
   
-  // Size variants (legacy support)
   &-sm {
-    height: density-calc(2, dense);
+    height: var(--space-2);
   }
 
   &-lg {
-    height: density-calc(4, normal);
+    height: var(--space-4);
   }
 
   &-xl {
-    height: density-calc(5, normal);
+    height: var(--space-5);
   }
 
-  // Semantic variants using unified system
-  @include semantic-variants((primary, success, warning, error, info), (filled));
-  
   &-primary &-bar {
     background: var(--gradient-primary, var(--color-primary));
   }
@@ -173,14 +187,16 @@
 &-bar-animated {
     animation: progress-stripes 1s linear infinite;
     will-change: background-position;
+    transition: none;
 
     @media (prefers-reduced-motion: reduce) {
       animation: none;
+      transition: width var(--duration-normal) var(--ease-out);
     }
   }
 
 &-indeterminate &-bar {
-    width: 100%;
+    width: 100% !important;
     position: relative;
     overflow: hidden;
     
@@ -280,8 +296,21 @@
   }
 
   &-animated {
+    .progress-bar {
+      transition: none;
+    }
+    
     .progress-bar::after {
       animation: progress-stripes var(--duration-normal) linear infinite;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .progress-bar {
+        transition: width var(--duration-normal) var(--ease-out);
+      }
+      .progress-bar::after {
+        animation: none;
+      }
     }
   }
 
@@ -402,52 +431,45 @@
     }
   }
   
-  // Size variants (legacy support)
   &-sm {
-    width: density-calc(12, dense);
-    height: density-calc(12, dense);
+    width: var(--space-8);
+    height: var(--space-8);
 
-    .progress-circle {
-      &-track,
-      &-bar {
-        stroke-width: var(--border-3);
-      }
+    .progress-circle-track,
+    .progress-circle-bar {
+      stroke-width: var(--border-2);
+    }
 
-      &-text {
-        font-size: var(--text-2xs);
-      }
+    .progress-circle-text {
+      font-size: var(--text-2xs);
     }
   }
 
   &-lg {
-    width: density-calc(20, normal);
-    height: density-calc(20, normal);
+    width: var(--space-20);
+    height: var(--space-20);
 
-    .progress-circle {
-      &-track,
-      &-bar {
-        stroke-width: var(--border-5);
-      }
+    .progress-circle-track,
+    .progress-circle-bar {
+      stroke-width: var(--border-6);
+    }
 
-      &-text {
-        font-size: var(--text-sm);
-      }
+    .progress-circle-text {
+      font-size: var(--text-lg);
     }
   }
 
   &-xl {
-    width: density-calc(28, normal);
-    height: density-calc(28, normal);
+    width: var(--space-24);
+    height: var(--space-24);
 
-    .progress-circle {
-      &-track,
-      &-bar {
-        stroke-width: var(--border-6);
-      }
+    .progress-circle-track,
+    .progress-circle-bar {
+      stroke-width: var(--border-8);
+    }
 
-      &-text {
-        font-size: var(--text-base);
-      }
+    .progress-circle-text {
+      font-size: var(--text-xl);
     }
   }
 
