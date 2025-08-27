@@ -1,40 +1,40 @@
 @** 
-<summary>Professional radio button component with enterprise styling and accessibility</summary>
+<summary>Unified radio button component that works standalone or within RRadioGroup</summary>
 <category>Form</category>
 <complexity>Simple</complexity>
 <ai-prompt>Create a modern radio button for single selections with professional styling</ai-prompt>
 <ai-common-use>option selection, settings toggles, form choices, exclusive selections</ai-common-use>
 <ai-avoid>Don't use for multiple selections (use RCheckbox) or on/off toggles (use RChoice)</ai-avoid>
-<ai-pattern name="basic-radio">Text="Option 1" Value="@option1" @bind-SelectedValue="@selectedOption" Name="options"</ai-pattern>
-<ai-pattern name="with-description">Text="Premium Plan" Description="Advanced features included" Value="@premium" @bind-SelectedValue="@plan"</ai-pattern>
+<ai-pattern name="standalone">Text="Option 1" Value="@option1" @bind-SelectedValue="@selectedOption" Name="options"</ai-pattern>
+<ai-pattern name="in-group">Use within RRadioGroup: <RRadio Value="@option1" Text="Option 1" /></ai-pattern>
+<ai-pattern name="with-description">Text="Premium Plan" Description="Advanced features included" Value="@premium"</ai-pattern>
 <ai-pattern name="disabled-option">Text="Enterprise" Value="@enterprise" Disabled="true" Description="Contact sales"</ai-pattern>
-<ai-pattern name="with-icon">Text="Email Notifications" Icon="email" Value="@email" @bind-SelectedValue="@notifyMethod"</ai-pattern>
-<ai-pattern name="group-radio">Multiple RRadio components with same Name property for grouping</ai-pattern>
+<ai-pattern name="with-icon">Text="Email Notifications" Icon="email" Value="@email"</ai-pattern>
 **@
 
 @using RR.Blazor.Components.Base
 @using RR.Blazor.Enums
 @inherits RForwardingComponentBase
+@implements IDisposable
 @attribute [Component("RRadio", Category = "Form")]
-@attribute [AIOptimized(Prompt = "Create professional radio button with validation")]
+@attribute [AIOptimized(Prompt = "Unified radio button for standalone and group usage")]
+@typeparam TValue
 
 <div class="flex items-start gap-3 @GetContainerClasses()">
-    <div class="relative flex items-center justify-center">
+    <div class="radio relative flex items-center justify-center">
         <input type="radio" 
                id="@Id"
-               name="@Name"
+               name="@ActualName"
                value="@(Value?.ToString())"
                checked="@IsSelected"
-               @onchange="OnSelectionChanged"
-               disabled="@Disabled"
+               @onclick="OnClick"
+               @onchange="OnChange"
+               disabled="@IsDisabled"
                class="peer absolute opacity-0 w-6 h-6 cursor-pointer disabled:cursor-not-allowed"
                @attributes="GetSafeAttributes()" />
         
         <div class="@GetRadioClasses()">
-            @if (IsSelected)
-            {
-                <div class="@GetInnerDotClasses()"></div>
-            }
+            <div class="@GetInnerDotClasses()"></div>
         </div>
     </div>
     
@@ -79,17 +79,20 @@
     /// <summary>Unique identifier for the radio input</summary>
     [Parameter] public string Id { get; set; } = $"radio-{Guid.NewGuid():N}";
     
-    /// <summary>Name attribute for grouping radio buttons</summary>
+    /// <summary>Name attribute for grouping radio buttons (used in standalone mode)</summary>
     [Parameter] public string? Name { get; set; }
     
     /// <summary>Value of this radio option</summary>
-    [Parameter] public object? Value { get; set; }
+    [Parameter] public TValue? Value { get; set; }
     
-    /// <summary>Currently selected value in the radio group</summary>
+    /// <summary>Currently selected value (used in standalone mode)</summary>
     [Parameter] public string? SelectedValue { get; set; }
     
-    /// <summary>Callback when selection changes</summary>
+    /// <summary>Callback when selection changes (used in standalone mode)</summary>
     [Parameter] public EventCallback<string?> SelectedValueChanged { get; set; }
+    
+    /// <summary>Parent radio group (cascaded when used within RRadioGroup)</summary>
+    [CascadingParameter] private RRadioGroup<TValue>? RadioGroup { get; set; }
     
     /// <summary>Label text for the radio button</summary>
     [Parameter] public string? Text { get; set; }
@@ -112,33 +115,61 @@
     /// <summary>Validation error message to display</summary>
     [Parameter] public string? ValidationMessage { get; set; }
     
-    /// <summary>Callback when radio button is clicked</summary>
-    [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
+    /// <summary>Callback when radio button is clicked (used in standalone mode)</summary>
+    [Parameter] public EventCallback<MouseEventArgs> OnClickCallback { get; set; }
     
-    /// <summary>Track the previous selected value to detect actual changes</summary>
-    private object? _previousSelectedValue;
+    private string _groupName = string.Empty;
+    private bool _isInGroup => RadioGroup != null;
+    private bool _groupDisabled;
 
-    private bool IsSelected => AreValuesEqual(Value, SelectedValue);
+    private bool IsSelected
+    {
+        get
+        {
+            if (_isInGroup)
+            {
+                return RadioGroup?.IsValueSelected(Value) ?? false;
+            }
+            else
+            {
+                return AreValuesEqual(Value, SelectedValue);
+            }
+        }
+    }
+    
+    private bool IsDisabled => Disabled || _groupDisabled;
+    
+    private string ActualName => _isInGroup ? _groupName : (Name ?? $"radio-{Guid.NewGuid():N}");
     
     private bool AreValuesEqual(object? value1, object? value2)
     {
         if (value1 == null && value2 == null) return true;
         if (value1 == null || value2 == null) return false;
         
-        // Handle string comparison
         var str1 = value1.ToString();
         var str2 = value2.ToString();
         return string.Equals(str1, str2, StringComparison.Ordinal);
     }
     
-    protected override void OnParametersSet()
+    protected override void OnInitialized()
     {
-        // Track when SelectedValue changes externally
-        if (!AreValuesEqual(_previousSelectedValue, SelectedValue))
+        if (_isInGroup)
         {
-            _previousSelectedValue = SelectedValue;
+            RadioGroup!.RegisterItem(this);
         }
-        base.OnParametersSet();
+        base.OnInitialized();
+    }
+    
+    internal void SetGroupInfo(string groupName, TValue? selectedValue, bool groupDisabled)
+    {
+        _groupName = groupName;
+        _groupDisabled = groupDisabled;
+        StateHasChanged();
+    }
+    
+    internal void UpdateSelection(TValue? selectedValue)
+    {
+        StateHasChanged();
     }
     
     /// <summary>
@@ -149,25 +180,48 @@
         return RAttributeForwarder.GetSafeAttributes(AdditionalAttributes);
     }
 
-    private async Task OnSelectionChanged(ChangeEventArgs e)
+    private async Task OnClick(MouseEventArgs e)
     {
-        // Only fire events when this radio is becoming selected (not already selected)
-        // Radio buttons in HTML automatically deselect others in the same name group
-        // So we only need to handle the selection event, not deselection
-        var isBecomingSelected = e.Value?.ToString() == "on" || e.Value?.ToString() == "true";
-        
-        if (isBecomingSelected && !IsSelected)
+        if (!IsDisabled)
         {
-            await SelectedValueChanged.InvokeAsync(Value?.ToString());
-            await OnClick.InvokeAsync();
+            if (_isInGroup && !IsSelected)
+            {
+                await RadioGroup!.OnItemSelected(Value);
+            }
+            else if (!_isInGroup)
+            {
+                await OnClickCallback.InvokeAsync(e);
+            }
+        }
+    }
+    
+    private async Task OnChange(ChangeEventArgs e)
+    {
+        if (!IsDisabled)
+        {
+            if (_isInGroup && !IsSelected)
+            {
+                await RadioGroup!.OnItemSelected(Value);
+            }
+            else if (!_isInGroup)
+            {
+                var selectedValue = e.Value?.ToString();
+                var thisRadioValue = Value?.ToString();
+                var isBecomingSelected = string.Equals(selectedValue, thisRadioValue, StringComparison.Ordinal);
+                
+                if (isBecomingSelected && !IsSelected)
+                {
+                    await SelectedValueChanged.InvokeAsync(Value?.ToString());
+                }
+            }
         }
     }
 
     private string GetContainerClasses()
     {
-        var classes = new List<string> { "radio" };
+        var classes = new List<string> { "radio-item" };
         
-        if (Disabled)
+        if (IsDisabled)
             classes.Add("radio-disabled");
             
         if (!string.IsNullOrEmpty(ValidationMessage))
@@ -186,67 +240,33 @@
     {
         var classes = new List<string> 
         { 
-            "rounded-full border-2 transition-all duration-200 flex items-center justify-center",
-            "peer-focus:ring-2 peer-focus:ring-primary peer-focus:ring-opacity-50"
+            "radio-mark"
         };
 
-
-        if (IsSelected)
+        if (Variant != RadioVariant.Default)
         {
-            classes.Add(Variant switch
-            {
-                RadioVariant.Primary => "bg-primary border-primary",
-                RadioVariant.Success => "bg-success border-success",
-                RadioVariant.Warning => "bg-warning border-warning",
-                RadioVariant.Danger => "bg-error border-error",
-                _ => "bg-primary border-primary"
-            });
-        }
-        else
-        {
-            classes.Add("bg-surface-elevated border-2 border-medium hover:border-primary");
+            var variantName = Variant == RadioVariant.Danger ? "error" : Variant.ToString().ToLower();
+            classes.Add($"radio-mark-{variantName}");
         }
 
-
-        if (Disabled)
+        if (Size != SizeType.Medium)
         {
-            classes.Add("opacity-50 cursor-not-allowed");
+            classes.Add($"radio-mark-{Size.ToString().ToLower()}");
         }
-        else
-        {
-            classes.Add("cursor-pointer hover:shadow-sm");
-        }
-
-
-        classes.Add(Size switch
-        {
-            Small => "w-4 h-4",
-            Large => "w-7 h-7",
-            _ => "w-6 h-6"
-        });
 
         return string.Join(" ", classes);
     }
 
     private string GetInnerDotClasses()
     {
-        var classes = new List<string> { "rounded-full bg-surface" };
-
-        classes.Add(Size switch
-        {
-            Small => "w-1.5 h-1.5",
-            Large => "w-3 h-3",
-            _ => "w-2.5 h-2.5"
-        });
-
-        return string.Join(" ", classes);
+        return "radio-dot";
     }
 
     private string GetLabelClasses()
     {
         var classes = new List<string> { "cursor-pointer select-none grow" };
         
-        if (Disabled)
+        if (IsDisabled)
             classes.Add("cursor-not-allowed opacity-60");
 
         return string.Join(" ", classes);
@@ -292,5 +312,13 @@
         });
 
         return string.Join(" ", classes);
+    }
+    
+    public void Dispose()
+    {
+        if (_isInGroup)
+        {
+            RadioGroup?.UnregisterItem(this);
+        }
     }
 }
