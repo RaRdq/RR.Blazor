@@ -378,6 +378,31 @@ public sealed class ModalService : IModalService, IDisposable
         return result.Data;
     }
 
+    public async Task<ModalResult<TResult>> ShowAsync<TModal, TParameters, TResult>(
+        TParameters parameters = default, 
+        ModalOptions options = null)
+        where TModal : ComponentBase 
+        where TParameters : IModalParameters, new()
+    {
+        options ??= new ModalOptions();
+        
+        // Use RModal<T> as the wrapper component, pass the target component type and parameters to it
+        var modalParameters = new Dictionary<string, object>
+        {
+            { "ComponentType", typeof(TModal) },
+            { "Parameters", parameters ?? new TParameters() }
+        };
+
+        // Use RModalTyped<T> as wrapper component instead of the target component directly
+        var rModalTypedType = typeof(RR.Blazor.Components.Feedback.RModalTyped<>).MakeGenericType(typeof(TParameters));
+        
+        return await ShowAsync<TResult>(
+            rModalTypedType,
+            modalParameters,
+            options,
+            null);
+    }
+
     public void Dispose()
     {
         if (_isDisposed) return;

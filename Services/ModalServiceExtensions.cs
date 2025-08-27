@@ -25,8 +25,7 @@ public static class ModalServiceExtensions
             { nameof(RConfirmationModal.Message), message },
             { nameof(RConfirmationModal.ConfirmText), confirmText },
             { nameof(RConfirmationModal.CancelText), cancelText },
-            { nameof(RConfirmationModal.Variant), variant },
-            { nameof(RConfirmationModal.Visible), true }
+            { nameof(RConfirmationModal.Variant), variant }
         };
 
         var options = new ModalOptions

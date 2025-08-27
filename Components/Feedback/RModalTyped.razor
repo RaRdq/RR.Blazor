@@ -1,0 +1,107 @@
+@using RR.Blazor.Enums
+@using RR.Blazor.Models
+@using Microsoft.AspNetCore.Components
+@typeparam TParameters where TParameters : IModalParameters, new()
+@inherits ComponentBase
+
+<RModal Visible="@Visible" 
+        VisibleChanged="@HandleVisibleChanged"
+        Title="@Title"
+        Subtitle="@Subtitle"
+        Icon="@Icon"
+        Size="@Size"
+        Variant="@Variant"
+        CloseOnBackdrop="@CloseOnBackdrop"
+        CloseOnEscape="@CloseOnEscape"
+        ShowHeader="@ShowHeader"
+        ShowFooter="@ShowFooter"
+        ShowCloseButton="@ShowCloseButton"
+        ShowCancelButton="@ShowCancelButton"
+        CancelText="@CancelText"
+        ShowPrimaryButton="@ShowPrimaryButton"
+        PrimaryText="@PrimaryText"
+        PrimaryButtonDisabled="@PrimaryButtonDisabled"
+        Processing="@Processing"
+        ProcessingMessage="@ProcessingMessage"
+        OnClose="@HandleClose"
+        OnCancel="@HandleCancel"
+        OnPrimaryAction="@HandlePrimaryAction"
+        Class="@Class">
+    @if (ComponentType != null)
+    {
+        <DynamicComponent Type="@ComponentType" Parameters="@GetComponentParameters()" />
+    }
+    else
+    {
+        @ChildContent
+    }
+</RModal>
+
+@code {
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public EventCallback<bool> VisibleChanged { get; set; }
+    
+    [Parameter] public string Title { get; set; }
+    [Parameter] public string Subtitle { get; set; }
+    [Parameter] public string Icon { get; set; }
+    [Parameter] public SizeType Size { get; set; } = SizeType.Medium;
+    [Parameter] public ModalVariant Variant { get; set; } = ModalVariant.Default;
+    
+    [Parameter] public bool CloseOnBackdrop { get; set; } = true;
+    [Parameter] public bool CloseOnEscape { get; set; } = true;
+    
+    [Parameter] public bool ShowHeader { get; set; } = true;
+    [Parameter] public bool ShowFooter { get; set; } = true;
+    [Parameter] public bool ShowCloseButton { get; set; } = true;
+    
+    [Parameter] public bool ShowCancelButton { get; set; } = true;
+    [Parameter] public string CancelText { get; set; } = "Cancel";
+    
+    [Parameter] public bool ShowPrimaryButton { get; set; } = true;
+    [Parameter] public string PrimaryText { get; set; } = "Save";
+    [Parameter] public bool PrimaryButtonDisabled { get; set; }
+    
+    [Parameter] public bool Processing { get; set; }
+    [Parameter] public string ProcessingMessage { get; set; } = "Processing...";
+    
+    [Parameter] public string Class { get; set; }
+    
+    [Parameter] public Type ComponentType { get; set; }
+    [Parameter] public TParameters Parameters { get; set; } = new();
+    
+    [Parameter] public RenderFragment ChildContent { get; set; }
+    
+    [Parameter] public EventCallback<TParameters> OnClose { get; set; }
+    [Parameter] public EventCallback<TParameters> OnCancel { get; set; }
+    [Parameter] public EventCallback<TParameters> OnPrimaryAction { get; set; }
+    
+    private async Task HandleVisibleChanged(bool visible)
+    {
+        Visible = visible;
+        await VisibleChanged.InvokeAsync(visible);
+    }
+    
+    private async Task HandleClose()
+    {
+        await OnClose.InvokeAsync(Parameters);
+    }
+    
+    private async Task HandleCancel()
+    {
+        await OnCancel.InvokeAsync(Parameters);
+    }
+    
+    private async Task HandlePrimaryAction()
+    {
+        await OnPrimaryAction.InvokeAsync(Parameters);
+    }
+    
+    private Dictionary<string, object> GetComponentParameters()
+    {
+        // Only pass the Parameters object - the component should receive it as a single parameter
+        return new Dictionary<string, object>
+        {
+            { "Parameters", Parameters }
+        };
+    }
+}

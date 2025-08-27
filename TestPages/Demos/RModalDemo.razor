@@ -2,6 +2,7 @@
 @using RR.Blazor.Components.Feedback
 @using RR.Blazor.Services
 @using RR.Blazor.Enums
+@using RR.Blazor.TestPages.Demos.Components
 
 <RCard Variant="CardVariant.Outlined" Text="RModal">
     <ChildContent>
@@ -72,6 +73,26 @@
                              Icon="article"
                              @onclick="@(() => ShowRModalWithContent())"
                              data-testid="custom-modal-2-button" />
+                </div>
+            </div>
+
+            <!-- Strongly-typed Modals -->
+            <div class="space-y-2">
+                <div class="text-h6 font-semibold">Strongly-Typed Modals (New System)</div>
+                <div class="text-sm text-muted mb-3">
+                    New approach using strongly-typed parameters instead of string dictionaries
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <RButton Text="User Form Modal" 
+                             Variant="ButtonVariant.Success" 
+                             Icon="person_add"
+                             @onclick="@(() => ShowTypedUserFormModal())"
+                             data-testid="typed-user-form-button" />
+                    <RButton Text="Product Selection Modal" 
+                             Variant="ButtonVariant.Info" 
+                             Icon="shopping_cart"
+                             @onclick="@(() => ShowTypedProductSelectionModal())"
+                             data-testid="typed-product-selection-button" />
                 </div>
             </div>
 
@@ -607,5 +628,117 @@
             modalTestStatus = "";
             InvokeAsync(StateHasChanged);
         });
+    }
+    
+    // Strongly-typed modal methods
+    private async Task ShowTypedUserFormModal()
+    {
+        try
+        {
+            modalTestStatus = "Opening strongly-typed user form modal...";
+            StateHasChanged();
+            
+            var userParams = new UserFormModal.UserFormParameters
+            {
+                Name = "John Doe",
+                Email = "john@example.com",
+                Bio = "Default biography",
+                ModalId = $"user-form-{Guid.NewGuid():N}"
+            };
+            
+            var result = await ModalService.ShowAsync<UserFormModal, UserFormModal.UserFormParameters, UserFormModal.UserFormParameters>(
+                userParams,
+                new ModalOptions
+                {
+                    Title = "Edit User Information",
+                    Subtitle = "Update user details with type-safe parameters",
+                    Icon = "person",
+                    Size = SizeType.Medium,
+                    Variant = ModalVariant.Default
+                });
+            
+            if (result.ResultType == Enums.ModalResult.Ok)
+            {
+                modalTestStatus = $"✅ User form completed: {result.Data.Name} ({result.Data.Email})";
+            }
+            else
+            {
+                modalTestStatus = "❌ User form cancelled";
+            }
+            
+            StateHasChanged();
+            await Task.Delay(5000);
+            modalTestStatus = "";
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            modalTestStatus = $"❌ Error: {ex.Message}";
+            StateHasChanged();
+            await Task.Delay(3000);
+            modalTestStatus = "";
+            StateHasChanged();
+        }
+    }
+    
+    private async Task ShowTypedProductSelectionModal()
+    {
+        try
+        {
+            modalTestStatus = "Opening strongly-typed product selection modal...";
+            StateHasChanged();
+            
+            var productParams = new ProductSelectionModal.ProductSelectionParameters
+            {
+                CustomerName = "Sarah Johnson",
+                AvailableProducts = new List<ProductSelectionModal.ProductInfo>
+                {
+                    new() { Id = 1, Name = "Premium Widget", Price = 29.99m },
+                    new() { Id = 2, Name = "Standard Widget", Price = 19.99m },
+                    new() { Id = 3, Name = "Basic Widget", Price = 9.99m },
+                    new() { Id = 4, Name = "Deluxe Widget", Price = 39.99m }
+                },
+                SelectedProductIds = new List<int> { 2 }, // Pre-select Standard Widget
+                ModalId = $"product-selection-{Guid.NewGuid():N}"
+            };
+            
+            var result = await ModalService.ShowAsync<ProductSelectionModal, ProductSelectionModal.ProductSelectionParameters, ProductSelectionModal.ProductSelectionParameters>(
+                productParams,
+                new ModalOptions
+                {
+                    Title = "Select Products",
+                    Subtitle = "Choose products for your customer",
+                    Icon = "shopping_cart",
+                    Size = SizeType.Large,
+                    Variant = ModalVariant.Default
+                });
+            
+            if (result.ResultType == Enums.ModalResult.Ok)
+            {
+                var selectedProducts = result.Data.AvailableProducts
+                    .Where(p => result.Data.SelectedProductIds.Contains(p.Id))
+                    .Select(p => p.Name)
+                    .ToList();
+                    
+                modalTestStatus = $"✅ Selected {result.Data.SelectedProductIds.Count} products: {string.Join(", ", selectedProducts)}";
+            }
+            else
+            {
+                modalTestStatus = "❌ Product selection cancelled";
+            }
+            
+            StateHasChanged();
+            await Task.Delay(5000);
+            modalTestStatus = "";
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            modalTestStatus = $"❌ Error: {ex.Message}";
+            StateHasChanged();
+            await Task.Delay(3000);
+            modalTestStatus = "";
+            StateHasChanged();
+        }
     }
 }

@@ -49,6 +49,13 @@ public interface IModalService
     bool HasVisibleModals { get; }
     IEnumerable<ModalInstance> ActiveModals { get; }
     
+    // Strongly-typed modal methods
+    Task<ModalResult<TResult>> ShowAsync<TModal, TParameters, TResult>(
+        TParameters parameters = default,
+        ModalOptions options = null) 
+        where TModal : ComponentBase 
+        where TParameters : IModalParameters, new();
+    
     // Builder pattern
     IModalBuilder<T> Create<T>();
     

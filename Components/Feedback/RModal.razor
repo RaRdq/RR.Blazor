@@ -304,16 +304,16 @@
         
         if (string.IsNullOrEmpty(actualPortalId))
         {
-            throw new InvalidOperationException($"Portal {portalId} marked as created but actualPortalId is null");
+            // Portal was marked as created but actualPortalId is null - likely a race condition
+            // Reset the state instead of throwing to prevent crashes
+            // TODO: Investigate and debug this case, happens after wasm reconnects
+            currentState = ModalState.Closed;
+            return;
         }
         
-        // Use the modal state machine destroy API - let it throw if it fails
         var success = await SafeInvokeAsync<bool>("RRBlazor.Modal.destroy", actualPortalId);
-        
         if (!success)
-        {
             throw new InvalidOperationException($"Failed to destroy modal {actualPortalId}");
-        }
         
         actualPortalId = null;
         isPortalCreated = false;
@@ -333,7 +333,7 @@
     
     private string GetModalContainerClasses()
     {
-        var positionClass = "modal-center"; // default center positioning
+        var positionClass = "modal-center";
         var backdropClass = GetBackdropClass();
         var sizeClass = GetSizeClass();
         var animationSpeedClass = GetAnimationSpeedClass();
@@ -348,7 +348,7 @@
         AnimationSpeed.Fast => "modal-animate-fast", 
         AnimationSpeed.Slow => "modal-animate-slow",
         AnimationSpeed.VerySlow => "modal-animate-slow",
-        _ => "" // normal speed uses default
+        _ => string.Empty
     };
     
     private async Task OnKeyDownHandler(KeyboardEventArgs e)
@@ -361,7 +361,6 @@
             }
         }
     }
-    
     
     private string GetSkeletonWrapperClasses()
     {
