@@ -1,5 +1,3 @@
-// RR.Blazor - Universal module proxy system
-// Dynamic imports with smart export pattern detection
 
 class DebugLogger {
     constructor(prefix = '[RR.Blazor]') {
@@ -99,6 +97,7 @@ class ModuleManager {
             'theme': { path: './theme.js', preload: true },
             'chart': { path: './chart.js' },
             'table': { path: './table.js' },
+            'tableScroll': { path: './table-scroll.js' },
             'fileUpload': { path: './file-upload.js' },
             'clipboard': { path: './clipboard.js' },
             'loader': { path: './loader.js' },
@@ -108,6 +107,7 @@ class ModuleManager {
             'intersectionObserver': { path: './intersection-observer.js' },
             'filter': { path: './filter.js', preload: true },
             'rgrid': { path: './rgrid.js' },
+            'skeleton': { path: './skeleton.js', preload: true },
             'pageDebug': { path: './_dev_tools/page-debug.js', preload: true }
         };
     }
@@ -416,6 +416,7 @@ const RRBlazor = {
     Theme: createUniversalProxy('theme'),
     Chart: createUniversalProxy('chart'),
     Table: createUniversalProxy('table'),
+    TableScroll: createUniversalProxy('tableScroll'),
     Grid: createUniversalProxy('grid'),
     Clipboard: createUniversalProxy('clipboard'),
     Loader: createUniversalProxy('loader'),

@@ -232,8 +232,18 @@ export function initializeTabs(element, navContainer, navWrapper) {
         });
     };
     
+    let orientationCleanup = null;
+    if ('orientation' in screen && 'addEventListener' in screen.orientation) {
+        screen.orientation.addEventListener('change', handleOrientationChange);
+        orientationCleanup = () => screen.orientation.removeEventListener('change', handleOrientationChange);
+    } else {
+        const orientationMediaQuery = window.matchMedia('(orientation: portrait)');
+        const handleOrientationMediaChange = (e) => handleOrientationChange();
+        orientationMediaQuery.addEventListener('change', handleOrientationMediaChange);
+        orientationCleanup = () => orientationMediaQuery.removeEventListener('change', handleOrientationMediaChange);
+    }
+    
     window.addEventListener('resize', handleResize);
-    window.addEventListener('orientationchange', handleOrientationChange);
     
     if (navWrapper) {
         let scrollTimeout;
@@ -267,7 +277,9 @@ export function initializeTabs(element, navContainer, navWrapper) {
     
     element._rrCleanup = () => {
         window.removeEventListener('resize', handleResize);
-        window.removeEventListener('orientationchange', handleOrientationChange);
+        if (orientationCleanup) {
+            orientationCleanup();
+        }
         if (navWrapper) {
             navWrapper.removeEventListener('scroll', updateScrollState);
         }

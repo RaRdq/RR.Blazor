@@ -282,7 +282,7 @@ function optimizeChartPerformance(element) {
 function initializeChart(element, options = {}) {
     if (!element) return null;
     
-    const chartId = `chart-${Math.random().toString(36).substr(2, 9)}`;
+    const chartId = `chart-${Math.random().toString(36).substring(2, 11)}`;
     element.setAttribute('data-chart-id', chartId);
     
     const container = element.querySelector('.column-chart-container, .pie-chart-container');

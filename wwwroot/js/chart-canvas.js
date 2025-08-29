@@ -425,7 +425,7 @@ class CanvasLineChart extends CanvasChart {
 }
 
 function createCanvasChart(element, type, options = {}) {
-    const chartId = `canvas-chart-${Math.random().toString(36).substr(2, 9)}`;
+    const chartId = `canvas-chart-${Math.random().toString(36).substring(2, 11)}`;
     
     let chart;
     switch (type) {

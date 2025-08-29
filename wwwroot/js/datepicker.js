@@ -5,7 +5,7 @@ async function positionPopup(element, immediate = false) {
     const trigger = element.querySelector('.rr-datepicker-trigger');
     
     if (!datepickerInstances.has(element)) {
-        const portalId = `datepicker-${element.id || Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        const portalId = `datepicker-${element.id || Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
         const datepickerId = element.dataset.datepickerId || element.id || portalId;
         
         window.RRBlazor.ClickOutside.register(datepickerId, element, {
@@ -17,7 +17,6 @@ async function positionPopup(element, immediate = false) {
             type: 'datepicker',
             anchor: trigger,
             className: 'datepicker-portal'
-            // Width and height are handled by CSS using variables
         });
         
         if (result) {

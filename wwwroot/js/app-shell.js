@@ -69,7 +69,6 @@ function setupClickOutside() {
         const searchContainer = e.target.closest('[data-search-container]');
         const searchButton = e.target.closest('.search-toggle-button, [aria-label="Open search"]');
         
-        // Don't close search if clicking the search button or inside search container
         if (!searchContainer && !searchButton) {
             closeSearch();
         }
@@ -257,7 +256,7 @@ export function scrollToElement(selector) {
 }
 
 export function copyToClipboard(text) {
-    return RRBlazor.copyToClipboard(text).then(() => {
+    return window.RRBlazor.Clipboard.writeText(text).then(() => {
         announce('Copied to clipboard');
         return true;
     }).catch(() => {
@@ -271,7 +270,6 @@ export function updateUrlWithoutScroll(newUrl) {
 }
 
 export function dispose() {
-    // rr-blazor disposal of modules
 }
 
 window.RRAppShell = {
