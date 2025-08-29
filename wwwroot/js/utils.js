@@ -136,6 +136,20 @@ export function addEventListener(elementId, eventName, dotNetRef, methodName, op
     });
 }
 
+window.RRBlazor = window.RRBlazor || {};
+window.RRBlazor.Utils = {
+    scrollIntoView,
+    getElementDimensions,
+    toggleClass,
+    updateUrlWithoutScroll,
+    downloadContent,
+    downloadFileFromStream,
+    downloadFile,
+    setupOutsideClickHandler,
+    removeOutsideClickHandler,
+    addEventListener
+};
+
 export default {
     scrollIntoView,
     getElementDimensions,

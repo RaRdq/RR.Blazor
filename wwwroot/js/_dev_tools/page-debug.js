@@ -6,11 +6,11 @@ const RRDebugAPI = (() => {
         if (typeof obj === 'string') {
             try {
                 let clean = obj
-                    .replace(/[\u0000-\u001F\u007F-\u009F]/g, '') // Control characters
-                    .replace(/[\uD800-\uDFFF]/g, '') // ALL surrogates - prevent "no low surrogate" errors
-                    .replace(/[\uFEFF\uFFFE\uFFFF]/g, '') // BOM and invalid chars
-                    .replace(/[\u200B-\u200F\u2028-\u202F]/g, '') // Zero-width and line separators
-                    .replace(/[^\x09\x0A\x0D\x20-\x7E\u00A0-\u017F\u0400-\u04FF]/g, '') // Only basic Latin + common extended
+                    .replace(/[\u0000-\u001F\u007F-\u009F]/g, '')
+                    .replace(/[\uD800-\uDFFF]/g, '')
+                    .replace(/[\uFEFF\uFFFE\uFFFF]/g, '')
+                    .replace(/[\u200B-\u200F\u2028-\u202F]/g, '')
+                    .replace(/[^\x09\x0A\x0D\x20-\x7E\u00A0-\u017F\u0400-\u04FF]/g, '')
                     .trim();
                 
                 if (clean.length > 1000) {
@@ -24,7 +24,7 @@ const RRDebugAPI = (() => {
         }
         if (typeof obj === 'number') {
             if (isNaN(obj) || !isFinite(obj)) return 0;
-            return Math.round(obj * 100) / 100; // Round to 2 decimals
+            return Math.round(obj * 100) / 100;
         }
         if (typeof obj === 'boolean') return obj;
         if (Array.isArray(obj)) {
@@ -40,8 +40,8 @@ const RRDebugAPI = (() => {
                 let count = 0;
                 let totalSize = 0;
                 for (const [key, value] of Object.entries(obj)) {
-                    if (count++ >= 50) break; // Reasonable limit
-                    if (totalSize > 20000) break; // Reasonable payload size
+                    if (count++ >= 50) break;
+                    if (totalSize > 20000) break;
                     
                     const cleanKey = sanitizeForJSON(key);
                     if (cleanKey && typeof cleanKey === 'string' && cleanKey.length > 0 && cleanKey.length < 200) {
@@ -407,7 +407,6 @@ const RRDebugAPI = (() => {
         return verification;
     }
 
-    // Helper functions for AI agent integration
     function generateSelector(el) {
         if (el.id) return `#${el.id}`;
         
@@ -417,7 +416,6 @@ const RRDebugAPI = (() => {
             if (classes.length > 0) selector += '.' + classes.join('.');
         }
         
-        // Add position context if needed
         const parent = el.parentElement;
         if (parent && parent.children.length > 1) {
             const index = Array.from(parent.children).indexOf(el);
@@ -438,7 +436,6 @@ const RRDebugAPI = (() => {
             height: s.height
         };
 
-        // Add issue-specific styles
         if (issueType === 'cssCorruption') relevantStyles.minHeight = s.minHeight;
         if (issueType === 'invisibleText') relevantStyles.color = s.color;
         if (issueType === 'brokenLayout') {
@@ -456,7 +453,7 @@ const RRDebugAPI = (() => {
             return acc;
         }, { total: 0 });
 
-        const detectedIssues = []; // Store actual problem elements with DOM references
+        const detectedIssues = [];
 
         Array.from(allElements).forEach(el => {
             Object.entries(CRITICAL_ISSUES).forEach(([type, checkFn]) => {
@@ -489,7 +486,7 @@ const RRDebugAPI = (() => {
             status,
             totalElements: allElements.length,
             issues,
-            detectedIssues: detectedIssues.slice(0, 20), // Limit for performance, most critical first
+            detectedIssues: detectedIssues.slice(0, 20),
             criticalCount,
             isHealthy: criticalCount === 0 && score >= 80,
             actionable: generateActionableInsights(issues, allElements.length)
@@ -609,7 +606,6 @@ const RRDebugAPI = (() => {
                     typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
                 ).join(' ');
                 
-                // Skip Serilog and other problematic console messages
                 if (message.includes('%cserilog') || 
                     message.includes('color:white;background') ||
                     message.includes('�') ||
@@ -711,10 +707,22 @@ const RRDebugAPI = (() => {
                     consoleErrors.map(e => e.summary).join(' | ') : 'No errors detected'
             },
             performance: {
-                loadTime: performance.timing ? 
-                    performance.timing.loadEventEnd - performance.timing.navigationStart : null,
+                loadTime: (() => {
+                                const navEntries = performance.getEntriesByType('navigation');
+                    if (navEntries && navEntries.length > 0) {
+                        return Math.round(navEntries[0].loadEventEnd);
+                    }
+                    return performance.timing ? 
+                        performance.timing.loadEventEnd - performance.timing.navigationStart : null;
+                })(),
                 domElements: allElements.length,
-                renderStart: performance.timing ? performance.timing.domContentLoadedEventStart : null,
+                renderStart: (() => {
+                    const navEntries = performance.getEntriesByType('navigation');
+                    if (navEntries && navEntries.length > 0) {
+                        return Math.round(navEntries[0].domContentLoadedEventStart);
+                    }
+                    return performance.timing ? performance.timing.domContentLoadedEventStart : null;
+                })(),
                 memoryUsage: performance.memory ? {
                     used: Math.round(performance.memory.usedJSHeapSize / 1024 / 1024) + 'MB',
                     total: Math.round(performance.memory.totalJSHeapSize / 1024 / 1024) + 'MB'
@@ -913,15 +921,6 @@ const RRDebugAPI = (() => {
             }
         });
         
-        // Auto-highlighting disabled to prevent unwanted visual debug borders
-        // issues.concat(layoutIssues).slice(0, 5).forEach((issue, i) => {
-        //     const elements = document.querySelectorAll(issue.selector ? `.${issue.selector.split(' ')[0]}` : issue.element);
-        //     const colors = ['red', 'orange', 'yellow', 'purple', 'blue'];
-        //     elements.forEach(el => {
-        //         el.style.outline = `2px solid ${colors[i % colors.length]}`;
-        //         setTimeout(() => el.style.outline = '', 3000);
-        //     });
-        // });
         
         const totalIssues = issues.length + layoutIssues.length + accessibilityIssues.length + performanceIssues.length;
         const severity = totalIssues > 10 ? 'critical' : totalIssues > 5 ? 'high' : totalIssues > 2 ? 'medium' : 'low';
@@ -952,7 +951,6 @@ const RRDebugAPI = (() => {
         const invalidElements = [];
         let corruptedCount = 0;
         
-        // Limit elements for performance, but allow full analysis of specific selectors
         const elementsToCheck = selector === '*' ? Array.from(allElements).slice(0, 100) : Array.from(allElements);
         
         for (const el of elementsToCheck) {
@@ -1030,7 +1028,6 @@ const RRDebugAPI = (() => {
         };
     };
 
-    // Helper function for element-specific analysis
     const analyzeElements = (elements) => {
         const issues = Object.keys(CRITICAL_ISSUES).reduce((acc, key) => {
             acc[key] = 0;
@@ -1061,7 +1058,6 @@ const RRDebugAPI = (() => {
         };
     };
 
-    // Comprehensive device testing matrix for maximum coverage
     const responsiveBreakpoints = {
         'mobile-xs': { width: 320, height: 568, name: 'iPhone 5/SE' },
         'mobile-portrait': { width: 375, height: 667, name: 'iPhone 6/7/8' },
@@ -1213,7 +1209,10 @@ const RRDebugAPI = (() => {
     }
 
     const checkPerformance = (selector = '*') => {
-        const timing = performance.timing;
+        const navEntries = performance.getEntriesByType('navigation');
+        const navTiming = navEntries && navEntries.length > 0 ? navEntries[0] : null;
+        
+        const timing = navTiming || performance.timing;
         const memory = performance.memory;
         const responsiveResults = testResponsiveLayout();
         const elements = document.querySelectorAll(selector);
@@ -1221,9 +1220,12 @@ const RRDebugAPI = (() => {
         
         return {
             selector: selector,
-            loadTime: timing ? timing.loadEventEnd - timing.navigationStart : null,
-            domReady: timing ? timing.domContentLoadedEventEnd - timing.navigationStart : null,
-            renderTime: timing ? timing.domInteractive - timing.navigationStart : null,
+            loadTime: navTiming ? Math.round(navTiming.loadEventEnd) : 
+                (timing ? timing.loadEventEnd - timing.navigationStart : null),
+            domReady: navTiming ? Math.round(navTiming.domContentLoadedEventEnd) :
+                (timing ? timing.domContentLoadedEventEnd - timing.navigationStart : null),
+            renderTime: navTiming ? Math.round(navTiming.domInteractive) :
+                (timing ? timing.domInteractive - timing.navigationStart : null),
             memory: memory ? {
                 used: Math.round(memory.usedJSHeapSize / 1024 / 1024) + 'MB',
                 total: Math.round(memory.totalJSHeapSize / 1024 / 1024) + 'MB',
@@ -1231,9 +1233,20 @@ const RRDebugAPI = (() => {
             } : null,
             elements: elements.length,
             images: images.length,
-            status: (timing?.loadEventEnd - timing?.navigationStart) > 3000 ? 'slow' : 'acceptable',
+            status: (() => {
+                const loadTime = navTiming ? navTiming.loadEventEnd : 
+                    (timing && timing.loadEventEnd && timing.navigationStart ? 
+                        timing.loadEventEnd - timing.navigationStart : 0);
+                return loadTime > 3000 ? 'slow' : 'acceptable';
+            })(),
             responsive: responsiveResults,
-            summary: `Performance for '${selector}': ${(timing?.loadEventEnd - timing?.navigationStart) || 'N/A'}ms load, ${elements.length} elements, ${images.length} images, ${responsiveResults.summary.totalIssues} responsive issues`
+            summary: `Performance for '${selector}': ${(() => {
+                if (navTiming) return Math.round(navTiming.loadEventEnd) + 'ms';
+                if (timing && timing.loadEventEnd && timing.navigationStart) {
+                    return (timing.loadEventEnd - timing.navigationStart) + 'ms';
+                }
+                return 'N/A';
+            })()} load, ${elements.length} elements, ${images.length} images, ${responsiveResults.summary.totalIssues} responsive issues`
         };
     };
 
