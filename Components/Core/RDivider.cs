@@ -84,8 +84,12 @@ namespace RR.Blazor.Components.Core
             
             if (!string.IsNullOrEmpty(Text) || ChildContent != null || !string.IsNullOrEmpty(Icon) || IconContent != null)
             {
+                // Check if we should use stacked layout (centered with subtitle, icon, or child content)
+                var useStackedLayout = TextAlign == DividerTextAlign.Center && 
+                                     (!string.IsNullOrEmpty(Subtitle) || !string.IsNullOrEmpty(Icon) || IconContent != null || ChildContent != null);
+                
                 builder.OpenElement(++sequence, "span");
-                builder.AddAttribute(++sequence, "class", "divider-content");
+                builder.AddAttribute(++sequence, "class", useStackedLayout ? "divider-content divider-content-stacked" : "divider-content");
                 
                 if (!string.IsNullOrEmpty(Icon))
                 {
@@ -99,19 +103,27 @@ namespace RR.Blazor.Components.Core
                     builder.AddContent(++sequence, IconContent);
                 }
                 
-                if (!string.IsNullOrEmpty(Text))
+                if (!string.IsNullOrEmpty(Text) || !string.IsNullOrEmpty(Subtitle))
                 {
-                    builder.OpenElement(++sequence, "span");
-                    builder.AddAttribute(++sequence, "class", "font-semibold");
-                    builder.AddContent(++sequence, Text);
-                    builder.CloseElement();
-                }
-                
-                if (!string.IsNullOrEmpty(Subtitle))
-                {
-                    builder.OpenElement(++sequence, "span");
-                    builder.AddAttribute(++sequence, "class", "text-muted ml-2");
-                    builder.AddContent(++sequence, Subtitle);
+                    builder.OpenElement(++sequence, "div");
+                    builder.AddAttribute(++sequence, "class", "divider-text-group");
+                    
+                    if (!string.IsNullOrEmpty(Text))
+                    {
+                        builder.OpenElement(++sequence, "span");
+                        builder.AddAttribute(++sequence, "class", "font-semibold");
+                        builder.AddContent(++sequence, Text);
+                        builder.CloseElement();
+                    }
+                    
+                    if (!string.IsNullOrEmpty(Subtitle))
+                    {
+                        builder.OpenElement(++sequence, "span");
+                        builder.AddAttribute(++sequence, "class", "divider-subtitle");
+                        builder.AddContent(++sequence, Subtitle);
+                        builder.CloseElement();
+                    }
+                    
                     builder.CloseElement();
                 }
                 
@@ -156,8 +168,14 @@ namespace RR.Blazor.Components.Core
                 if (!string.IsNullOrEmpty(SemanticVariant)) classes.Add($"divider-{SemanticVariant.ToLower()}");
                 if (!ShowLine) classes.Add("divider-no-line");
                 
-                if (Size == SizeType.Small) classes.Add("divider-compact");
-                else if (Size == SizeType.Large) classes.Add("divider-spacious");
+                // Always apply a size class - normal is the default
+                var sizeClass = Size switch
+                {
+                    SizeType.Small => "divider-compact",
+                    SizeType.Large => "divider-spacious",
+                    _ => "divider-normal" // Default for Medium and any other size
+                };
+                classes.Add(sizeClass);
             }
             
             if (!string.IsNullOrEmpty(Class)) classes.Add(Class);
