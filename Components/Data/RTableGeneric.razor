@@ -322,7 +322,6 @@
         </div>
     </div>
 }
-}
 
 @* Chart Modal *@
 @if (_showChartModal && _chartModalReady)
@@ -559,6 +558,19 @@
                 catch (Exception ex)
                 {
                     Console.WriteLine($"Failed to initialize table enhancements: {ex.Message}");
+                }
+            }
+            
+            // Initialize horizontal scroll manager if enabled
+            if (EnableHorizontalScroll)
+            {
+                try
+                {
+                    await JSRuntime.InvokeAsync<bool>("RRBlazor.TableScroll.initialize", TableId);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Failed to initialize table scroll manager: {ex.Message}");
                 }
             }
             
@@ -1368,6 +1380,19 @@
         if (_lastBindFilter != null)
         {
             _lastBindFilter.OnFilterChanged -= OnBindFilterChanged;
+        }
+        
+        // Dispose table scroll manager if initialized
+        if (EnableHorizontalScroll)
+        {
+            try
+            {
+                await JSRuntime.InvokeVoidAsync("RRBlazor.TableScroll.dispose", TableId);
+            }
+            catch (Exception)
+            {
+                // Ignore disposal errors
+            }
         }
         
         if (_jsModule != null)

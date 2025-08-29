@@ -59,6 +59,7 @@ public abstract class RTableBase : RComponentBase
                 nameof(Loading) => ConvertToBool(value, false),
                 "ShowFilters" => ConvertToBool(value, false),
                 "EnableColumnFilters" => ConvertToBool(value, false),
+                "RowClickable" => ConvertToBool(value, false),
                 _ => value // Keep original value for all other parameters
             };
             

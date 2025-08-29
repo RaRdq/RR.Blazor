@@ -87,27 +87,7 @@ export function focusElement(elementId) {
 }
 
 export function copyToClipboard(text) {
-    if (navigator.clipboard && window.isSecureContext) {
-        return navigator.clipboard.writeText(text);
-    }
-    
-    const textArea = document.createElement('textarea');
-    textArea.value = text;
-    textArea.style.position = 'fixed';
-    textArea.style.left = '-999999px';
-    textArea.style.top = '-999999px';
-    document.body.appendChild(textArea);
-    textArea.focus();
-    textArea.select();
-
-    const success = document.execCommand('copy');
-    textArea.remove();
-    
-    if (!success) {
-        throw new Error('Failed to copy to clipboard');
-    }
-    
-    return Promise.resolve();
+    return window.RRBlazor.Clipboard.writeText(text);
 }
 
 export function cleanupComponent(elementId) {
