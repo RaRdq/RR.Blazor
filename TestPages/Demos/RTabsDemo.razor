@@ -1,13 +1,190 @@
 @using RR.Blazor.Components.Core
-@using RR.Blazor.Components.Display
 @using RR.Blazor.Components.Navigation
+@using RR.Blazor.Components.Form
 @using RR.Blazor.Enums
 
 <RCard Variant="CardVariant.Outlined" Text="RTabs">
     <ChildContent>
-        <RDivider Text="Tab Navigation Component"
-                  Subtitle="Organize content into tabbed sections with smooth transitions and professional styling"
+        <RDivider Text="Interactive Tab Navigation Showcase"
+                  Subtitle="Dynamically test all RTabs features with real-time configuration"
                   Icon="tab" />
+        
+        <!-- Control Panel -->
+        <RCard Variant="CardVariant.Glass" Class="mb-6 p-4">
+            <ChildContent>
+                <div class="text-h6 font-semibold mb-4 flex items-center gap-2">
+                    <i class="material-symbols-rounded">tune</i>
+                    Tab Configuration Panel
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <!-- Variant Selector -->
+                    <div>
+                        <label class="text-sm text-muted mb-1 block">Variant</label>
+                        <select @bind="_currentVariant" class="w-full px-3 py-2 rounded border border-light bg-surface text-sm">
+                            <option value="@TabsVariant.Default">Default</option>
+                            <option value="@TabsVariant.Pills">Pills</option>
+                            <option value="@TabsVariant.Card">Card</option>
+                            <option value="@TabsVariant.Underline">Underline</option>
+                            <option value="@TabsVariant.Segment">Segment</option>
+                            <option value="@TabsVariant.Elevated">Elevated</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Orientation Selector -->
+                    <div>
+                        <label class="text-sm text-muted mb-1 block">Orientation</label>
+                        <select @bind="_currentOrientation" class="w-full px-3 py-2 rounded border border-light bg-surface text-sm">
+                            <option value="@TabOrientation.Horizontal">Horizontal</option>
+                            <option value="@TabOrientation.Vertical">Vertical</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Size Selector -->
+                    <div>
+                        <label class="text-sm text-muted mb-1 block">Size</label>
+                        <select @bind="_currentSize" class="w-full px-3 py-2 rounded border border-light bg-surface text-sm">
+                            <option value="@SizeType.ExtraSmall">Extra Small</option>
+                            <option value="@SizeType.Small">Small</option>
+                            <option value="@SizeType.Medium">Medium</option>
+                            <option value="@SizeType.Large">Large</option>
+                            <option value="@SizeType.ExtraLarge">Extra Large</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Density Selector -->
+                    <div>
+                        <label class="text-sm text-muted mb-1 block">Density</label>
+                        <select @bind="_currentDensity" class="w-full px-3 py-2 rounded border border-light bg-surface text-sm">
+                            <option value="@DensityType.Compact">Compact</option>
+                            <option value="@DensityType.Dense">Dense</option>
+                            <option value="@DensityType.Normal">Normal</option>
+                            <option value="@DensityType.Spacious">Spacious</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 mt-4">
+                    <!-- Toggle Options -->
+                    <RToggle @bind-Value="_showIcons" Label="Show Icons" Size="SizeType.Small" />
+                    <RToggle @bind-Value="_showBadges" Label="Show Badges" Size="SizeType.Small" />
+                    <RToggle @bind-Value="_closableTabs" Label="Closable Tabs" Size="SizeType.Small" />
+                    <RToggle @bind-Value="_showAddButton" Label="Add Button" Size="SizeType.Small" />
+                    <RToggle @bind-Value="_scrollableTabs" Label="Scrollable" Size="SizeType.Small" />
+                    <RToggle @bind-Value="_fadeAnimation" Label="Fade Animation" Size="SizeType.Small" />
+                    <RToggle @bind-Value="_keepAlive" Label="Keep Alive" Size="SizeType.Small" />
+                    <RToggle @bind-Value="_noPadding" Label="No Padding" Size="SizeType.Small" />
+                    <RToggle @bind-Value="_hasDisabledTab" Label="Disabled Tab" Size="SizeType.Small" />
+                    <RToggle @bind-Value="_hasLoadingTab" Label="Loading Tab" Size="SizeType.Small" />
+                    <RToggle @bind-Value="_hasErrorTab" Label="Error Tab" Size="SizeType.Small" />
+                    <RToggle @bind-Value="_showTooltips" Label="Tooltips" Size="SizeType.Small" />
+                </div>
+                
+                <div class="flex gap-2 mt-4">
+                    <RButton Text="Add Tab" 
+                             Icon="add"
+                             Variant="ButtonVariant.Primary"
+                             Size="SizeType.Small"
+                             @onclick="AddConfigurableTab" />
+                    <RButton Text="Remove Last Tab" 
+                             Icon="remove"
+                             Variant="ButtonVariant.Secondary"
+                             Size="SizeType.Small"
+                             @onclick="RemoveLastConfigurableTab"
+                             Disabled="@(_configurableTabs.Count <= 2)" />
+                    <RButton Text="Reset to Default" 
+                             Icon="refresh"
+                             Variant="ButtonVariant.Ghost"
+                             Size="SizeType.Small"
+                             @onclick="ResetConfiguration" />
+                </div>
+                
+                <div class="mt-3 p-2 bg-surface rounded text-xs text-muted">
+                    Current Config: @_currentVariant | @_currentOrientation | @_currentSize | @_currentDensity | 
+                    Tabs: @_configurableTabs.Count | Selected: @_configurableSelectedTab
+                </div>
+            </ChildContent>
+        </RCard>
+        
+        <!-- Live Demo Area -->
+        <RCard Variant="CardVariant.Elevated" Class="mb-6">
+            <ChildContent>
+                <div class="text-h6 font-semibold mb-4 flex items-center gap-2">
+                    <i class="material-symbols-rounded">play_circle</i>
+                    Live Demo - Interactive Configuration
+                </div>
+                
+                <div class="@(_currentOrientation == TabOrientation.Vertical ? "h-96" : "")">
+                    <RTabs @bind-SelectedTab="_configurableSelectedTab"
+                           Variant="_currentVariant"
+                           Orientation="_currentOrientation"
+                           Size="_currentSize"
+                           Density="_currentDensity"
+                           ShowAddButton="_showAddButton"
+                           NoPadding="_noPadding"
+                           FadeOnly="_fadeAnimation"
+                           KeepPanelsAlive="_keepAlive"
+                           OnAddTab="@(() => HandleAddTab())"
+                           OnTabChanged="@((args) => HandleTabChanged(args))"
+                           OnTabClosed="@((args) => HandleTabClosed(args))"
+                           Class="@(_scrollableTabs ? "max-w-full overflow-x-auto" : "")">
+                        @foreach (var tab in _configurableTabs)
+                        {
+                            <RTabItem Value="@tab.Value" 
+                                      Text="@tab.Text" 
+                                      Icon="@(_showIcons ? tab.Icon : null)"
+                                      Badge="@(_showBadges && tab.Badge > 0 ? tab.Badge.ToString() : null)"
+                                      Closable="@(_closableTabs && tab.Closable)"
+                                      Disabled="@(_hasDisabledTab && tab.Value == "disabled")"
+                                      Loading="@(_hasLoadingTab && tab.Value == "loading")"
+                                      HasError="@(_hasErrorTab && tab.Value == "error")"
+                                      Tooltip="@(_showTooltips ? tab.Tooltip : null)">
+                                <div class="p-4">
+                                    <h4 class="text-lg font-semibold mb-2">@tab.Text Content</h4>
+                                    <p class="text-body-2 text-muted mb-3">@tab.Description</p>
+                                    
+                                    @if (tab.ShowMetrics)
+                                    {
+                                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                                            <div class="text-center p-3 bg-surface rounded">
+                                                <div class="text-2xl font-bold text-primary">@tab.Metric1</div>
+                                                <div class="text-sm text-muted">Metric 1</div>
+                                            </div>
+                                            <div class="text-center p-3 bg-surface rounded">
+                                                <div class="text-2xl font-bold text-success">@tab.Metric2</div>
+                                                <div class="text-sm text-muted">Metric 2</div>
+                                            </div>
+                                            <div class="text-center p-3 bg-surface rounded">
+                                                <div class="text-2xl font-bold text-warning">@tab.Metric3</div>
+                                                <div class="text-sm text-muted">Metric 3</div>
+                                            </div>
+                                        </div>
+                                    }
+                                    
+                                    <div class="mt-4 text-xs text-muted">
+                                        Tab ID: @tab.Value | Created: @tab.CreatedAt.ToString("HH:mm:ss")
+                                        @if (tab.LastModified != null)
+                                        {
+                                            <span> | Modified: @tab.LastModified.Value.ToString("HH:mm:ss")</span>
+                                        }
+                                    </div>
+                                </div>
+                            </RTabItem>
+                        }
+                    </RTabs>
+                </div>
+                
+                @if (!string.IsNullOrEmpty(_lastEvent))
+                {
+                    <div class="mt-4 p-3 bg-info-light rounded">
+                        <span class="text-sm text-info">
+                            <i class="material-symbols-rounded text-sm">info</i>
+                            Last Event: @_lastEvent
+                        </span>
+                    </div>
+                }
+            </ChildContent>
+        </RCard>
         
         <div class="space-y-6">
             <!-- Basic Tabs -->
@@ -52,10 +229,10 @@
                 <div class="text-h6 font-semibold">Tab Variants</div>
                 
                 <div class="space-y-4">
-                    <!-- Outlined Tabs -->
+                    <!-- Pills Tabs -->
                     <div>
-                        <h5 class="text-base font-medium mb-2">Outlined Style</h5>
-                        <RTabs @bind-SelectedTab="_outlinedSelectedTab">
+                        <h5 class="text-base font-medium mb-2">Pills Style</h5>
+                        <RTabs @bind-SelectedTab="_outlinedSelectedTab" Variant="TabsVariant.Pills">
                             <RTabItem Value="profile" Text="Profile" Icon="person">
                                 <div class="p-4">
                                     <h4 class="text-lg font-semibold mb-2">User Profile</h4>
@@ -77,10 +254,10 @@
                         </RTabs>
                     </div>
 
-                    <!-- Filled Tabs -->
+                    <!-- Card Tabs -->
                     <div>
-                        <h5 class="text-base font-medium mb-2">Filled Style</h5>
-                        <RTabs @bind-SelectedTab="_filledSelectedTab">
+                        <h5 class="text-base font-medium mb-2">Card Style</h5>
+                        <RTabs @bind-SelectedTab="_filledSelectedTab" Variant="TabsVariant.Card">
                             <RTabItem Value="analytics" Text="Analytics" Icon="analytics">
                                 <div class="p-4">
                                     <h4 class="text-lg font-semibold mb-2">Analytics Dashboard</h4>
@@ -97,6 +274,44 @@
                                 <div class="p-4">
                                     <h4 class="text-lg font-semibold mb-2">Trend Analysis</h4>
                                     <p class="text-body-2">Analyze trends and patterns in your data.</p>
+                                </div>
+                            </RTabItem>
+                        </RTabs>
+                    </div>
+
+                    <!-- Underline Tabs -->
+                    <div>
+                        <h5 class="text-base font-medium mb-2">Underline Style</h5>
+                        <RTabs @bind-SelectedTab="_underlineSelectedTab" Variant="TabsVariant.Underline">
+                            <RTabItem Value="home" Text="Home" Icon="home">
+                                <div class="p-4">
+                                    <h4 class="text-lg font-semibold mb-2">Home Dashboard</h4>
+                                    <p class="text-body-2">Welcome to your home dashboard.</p>
+                                </div>
+                            </RTabItem>
+                            <RTabItem Value="profile" Text="Profile" Icon="person">
+                                <div class="p-4">
+                                    <h4 class="text-lg font-semibold mb-2">User Profile</h4>
+                                    <p class="text-body-2">Manage your profile settings.</p>
+                                </div>
+                            </RTabItem>
+                        </RTabs>
+                    </div>
+
+                    <!-- Segment Tabs -->
+                    <div>
+                        <h5 class="text-base font-medium mb-2">Segment Style</h5>
+                        <RTabs @bind-SelectedTab="_segmentSelectedTab" Variant="TabsVariant.Segment">
+                            <RTabItem Value="list" Text="List" Icon="list">
+                                <div class="p-4">
+                                    <h4 class="text-lg font-semibold mb-2">List View</h4>
+                                    <p class="text-body-2">Display items in a list format.</p>
+                                </div>
+                            </RTabItem>
+                            <RTabItem Value="grid" Text="Grid" Icon="grid_view">
+                                <div class="p-4">
+                                    <h4 class="text-lg font-semibold mb-2">Grid View</h4>
+                                    <p class="text-body-2">Display items in a grid format.</p>
                                 </div>
                             </RTabItem>
                         </RTabs>
@@ -351,10 +566,38 @@
 </RCard>
 
 @code {
+    // Configuration Panel State
+    private TabsVariant _currentVariant = TabsVariant.Default;
+    private TabOrientation _currentOrientation = TabOrientation.Horizontal;
+    private SizeType _currentSize = SizeType.Medium;
+    private DensityType _currentDensity = DensityType.Normal;
+    
+    // Toggle Options
+    private bool _showIcons = true;
+    private bool _showBadges = true;
+    private bool _closableTabs = false;
+    private bool _showAddButton = false;
+    private bool _scrollableTabs = false;
+    private bool _fadeAnimation = false;
+    private bool _keepAlive = false;
+    private bool _noPadding = false;
+    private bool _hasDisabledTab = false;
+    private bool _hasLoadingTab = false;
+    private bool _hasErrorTab = false;
+    private bool _showTooltips = true;
+    
+    // Configurable Tabs
+    private string _configurableSelectedTab = "tab1";
+    private List<ConfigurableTab> _configurableTabs = new();
+    private int _configurableTabCounter = 4;
+    private string _lastEvent = "";
+    
     // Tab selections
     private string _basicSelectedTab = "overview";
     private string _outlinedSelectedTab = "profile";
     private string _filledSelectedTab = "analytics";
+    private string _underlineSelectedTab = "home";
+    private string _segmentSelectedTab = "list";
     private string _verticalSelectedTab = "dashboard";
     private string _statesSelectedTab = "active";
     private string _productSelectedTab = "description";
@@ -371,6 +614,71 @@
 
     protected override Task OnInitializedAsync()
     {
+        // Initialize configurable tabs
+        _configurableTabs = new List<ConfigurableTab>
+        {
+            new() { 
+                Value = "tab1", 
+                Text = "Dashboard", 
+                Icon = "dashboard",
+                Description = "Main dashboard with key metrics and overview information",
+                Tooltip = "View dashboard metrics",
+                Badge = 5,
+                ShowMetrics = true,
+                Metric1 = "1,234",
+                Metric2 = "98.5%",
+                Metric3 = "42",
+                CreatedAt = DateTime.Now 
+            },
+            new() { 
+                Value = "tab2", 
+                Text = "Analytics", 
+                Icon = "analytics",
+                Description = "Detailed analytics and reporting features",
+                Tooltip = "View analytics",
+                Badge = 12,
+                ShowMetrics = true,
+                Metric1 = "5,678",
+                Metric2 = "87.3%",
+                Metric3 = "156",
+                CreatedAt = DateTime.Now 
+            },
+            new() { 
+                Value = "tab3", 
+                Text = "Settings", 
+                Icon = "settings",
+                Description = "Configuration and preferences",
+                Tooltip = "Configure settings",
+                Closable = true,
+                CreatedAt = DateTime.Now 
+            },
+            new() { 
+                Value = "disabled", 
+                Text = "Disabled", 
+                Icon = "block",
+                Description = "This tab is disabled for demonstration",
+                Tooltip = "This tab is disabled",
+                CreatedAt = DateTime.Now 
+            },
+            new() { 
+                Value = "loading", 
+                Text = "Loading", 
+                Icon = "hourglass_empty",
+                Description = "This tab shows loading state",
+                Tooltip = "Loading content...",
+                CreatedAt = DateTime.Now 
+            },
+            new() { 
+                Value = "error", 
+                Text = "Error", 
+                Icon = "error",
+                Description = "This tab has an error state",
+                Tooltip = "Error occurred",
+                Badge = 1,
+                CreatedAt = DateTime.Now 
+            }
+        };
+        
         // Initialize dynamic tabs
         _dynamicTabs.Add(new DynamicTab
         {
@@ -382,6 +690,99 @@
         });
         
         return base.OnInitializedAsync();
+    }
+    
+    // Configuration Panel Methods
+    private void AddConfigurableTab()
+    {
+        _configurableTabCounter++;
+        var newTab = new ConfigurableTab
+        {
+            Value = $"tab{_configurableTabCounter}",
+            Text = $"Tab {_configurableTabCounter}",
+            Icon = GetRandomIcon(),
+            Description = $"Dynamically added tab #{_configurableTabCounter}",
+            Tooltip = $"Tab {_configurableTabCounter} tooltip",
+            Badge = Random.Shared.Next(0, 100),
+            Closable = true,
+            ShowMetrics = Random.Shared.Next(0, 2) == 1,
+            Metric1 = Random.Shared.Next(100, 9999).ToString(),
+            Metric2 = $"{Random.Shared.Next(70, 100)}.{Random.Shared.Next(0, 9)}%",
+            Metric3 = Random.Shared.Next(10, 500).ToString(),
+            CreatedAt = DateTime.Now
+        };
+        
+        _configurableTabs.Add(newTab);
+        _configurableSelectedTab = newTab.Value;
+        _lastEvent = $"Added tab: {newTab.Text}";
+    }
+    
+    private void RemoveLastConfigurableTab()
+    {
+        if (_configurableTabs.Count > 2)
+        {
+            var lastTab = _configurableTabs.Last();
+            _configurableTabs.Remove(lastTab);
+            
+            if (_configurableSelectedTab == lastTab.Value)
+            {
+                _configurableSelectedTab = _configurableTabs.First().Value;
+            }
+            
+            _lastEvent = $"Removed tab: {lastTab.Text}";
+        }
+    }
+    
+    private void ResetConfiguration()
+    {
+        _currentVariant = TabsVariant.Default;
+        _currentOrientation = TabOrientation.Horizontal;
+        _currentSize = SizeType.Medium;
+        _currentDensity = DensityType.Normal;
+        _showIcons = true;
+        _showBadges = true;
+        _closableTabs = false;
+        _showAddButton = false;
+        _scrollableTabs = false;
+        _fadeAnimation = false;
+        _keepAlive = false;
+        _noPadding = false;
+        _hasDisabledTab = false;
+        _hasLoadingTab = false;
+        _hasErrorTab = false;
+        _showTooltips = true;
+        _lastEvent = "Configuration reset to defaults";
+    }
+    
+    private void HandleAddTab()
+    {
+        AddConfigurableTab();
+    }
+    
+    private void HandleTabChanged(TabChangedEventArgs args)
+    {
+        _lastEvent = $"Tab changed: {args.OldValue} → {args.NewValue}";
+    }
+    
+    private void HandleTabClosed(TabClosedEventArgs args)
+    {
+        var tabToRemove = _configurableTabs.FirstOrDefault(t => t.Value == args.TabValue);
+        if (tabToRemove != null)
+        {
+            _configurableTabs.Remove(tabToRemove);
+            _lastEvent = $"Tab closed: {tabToRemove.Text}";
+            
+            if (_configurableSelectedTab == args.TabValue && _configurableTabs.Any())
+            {
+                _configurableSelectedTab = _configurableTabs.First().Value;
+            }
+        }
+    }
+    
+    private string GetRandomIcon()
+    {
+        var icons = new[] { "folder", "star", "bookmark", "favorite", "info", "help", "article", "description", "assignment", "task" };
+        return icons[Random.Shared.Next(icons.Length)];
     }
 
     private void AddDynamicTab()
@@ -422,5 +823,39 @@
         public string Icon { get; set; } = string.Empty;
         public bool Closable { get; set; }
         public DateTime CreatedAt { get; set; }
+    }
+    
+    public class ConfigurableTab
+    {
+        public string Value { get; set; } = string.Empty;
+        public string Text { get; set; } = string.Empty;
+        public string Icon { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public string Tooltip { get; set; } = string.Empty;
+        public int Badge { get; set; }
+        public bool Closable { get; set; }
+        public bool ShowMetrics { get; set; }
+        public string Metric1 { get; set; } = "0";
+        public string Metric2 { get; set; } = "0%";
+        public string Metric3 { get; set; } = "0";
+        public DateTime CreatedAt { get; set; }
+        public DateTime? LastModified { get; set; }
+    }
+    
+    public class TabChangedEventArgs
+    {
+        public string OldValue { get; set; } = string.Empty;
+        public string NewValue { get; set; } = string.Empty;
+    }
+    
+    public class TabClosedEventArgs
+    {
+        public string TabValue { get; set; } = string.Empty;
+    }
+    
+    public enum TabOrientation
+    {
+        Horizontal,
+        Vertical
     }
 }
