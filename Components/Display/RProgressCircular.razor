@@ -43,12 +43,23 @@
     [Parameter] public ProgressVariant Variant { get; set; } = ProgressVariant.Primary;
     [Parameter] public SizeType Size { get; set; } = SizeType.Medium;
     [Parameter] public bool Indeterminate { get; set; }
-    [Parameter] public double StrokeWidth { get; set; } = 4;
 
     private int ViewBoxSize => 100;
     private double Center => ViewBoxSize / 2.0;
+    private double StrokeWidth => GetStrokeWidthForSize();
     private double Radius => (ViewBoxSize - StrokeWidth) / 2.0;
     private double Circumference => 2 * Math.PI * Radius;
+
+    private double GetStrokeWidthForSize()
+    {
+        return Size switch
+        {
+            SizeType.Small => 2,
+            SizeType.Large => 6,
+            SizeType.ExtraLarge => 8,
+            _ => 4
+        };
+    }
 
     private string GetContainerClasses()
     {
@@ -57,7 +68,7 @@
         // Add density classes using enhanced progress-specific system
         var densityClasses = DensityHelper.GetProgressDensityClasses(Density);
         if (!string.IsNullOrEmpty(densityClasses))
-            classes.Add($"progress-circle-{densityClasses}");
+            classes.Add(densityClasses.Replace("progress-", "progress-circle-"));
         
         // Size variants using unified system
         classes.Add(Size switch

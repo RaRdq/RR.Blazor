@@ -35,7 +35,7 @@ Tab container for organizing content with smooth animations.
         else
         {
         <!-- Tab Navigation with Scroll Arrows -->
-        <nav class="tabs-nav position-relative d-flex @GetNavClasses()" role="tablist" aria-label="@AriaLabel">
+        <nav class="@GetNavClasses()" role="tablist" aria-label="@AriaLabel">
         <!-- Left Scroll Arrow -->
         <button type="button" 
                 class="tabs-nav-arrow tabs-nav-arrow-left @GetScrollArrowClasses(canScrollLeft)"
@@ -45,8 +45,8 @@ Tab container for organizing content with smooth animations.
         </button>
         
         <!-- Scrollable Tab Container -->
-        <div class="tabs-nav-container flex-1 position-relative" @ref="navContainer">
-            <div class="tabs-nav-wrapper d-flex gap-2" @ref="navWrapper">
+        <div class="tabs-nav-container" @ref="navContainer">
+            <div class="tabs-nav-wrapper" @ref="navWrapper">
                 <!-- Animated Indicator -->
                 @if (Variant != TabsVariant.Card)
                 {
@@ -124,7 +124,7 @@ Tab container for organizing content with smooth animations.
     </nav>
     
         <!-- Tab Content -->
-        <div class="tabs-content flex-1 position-relative @GetContentClasses()">
+        <div class="@GetContentClasses()">
             @foreach (var tab in tabs)
             {
                 @if (KeepPanelsAlive || tab.Id == ActiveTabId)
@@ -164,6 +164,17 @@ Tab container for organizing content with smooth animations.
     
     /// <summary>Callback when active tab changes</summary>
     [Parameter] public EventCallback<string> ActiveTabIdChanged { get; set; }
+    
+    /// <summary>Selected tab for two-way binding (alias for ActiveTabId)</summary>
+    [Parameter, AIParameter("ID of currently selected tab", "Use with @bind-SelectedTab for two-way binding")] 
+    public string SelectedTab 
+    { 
+        get => ActiveTabId; 
+        set => ActiveTabId = value; 
+    }
+    
+    /// <summary>Callback when selected tab changes</summary>
+    [Parameter] public EventCallback<string> SelectedTabChanged { get; set; }
     
     /// <summary>Whether to show add tab button</summary>
     [Parameter, AIParameter("Show + button for adding new tabs", "true for dynamic tab creation")] 
@@ -358,10 +369,15 @@ Tab container for organizing content with smooth animations.
         ActiveTabId = tabId;
         wasActiveTabIdSetExternally = true; // Mark as set so it won't be overridden
         
-        // Invoke the two-way binding callback IMMEDIATELY for proper data binding
+        // Invoke the two-way binding callbacks IMMEDIATELY for proper data binding
         if (ActiveTabIdChanged.HasDelegate)
         {
             await ActiveTabIdChanged.InvokeAsync(ActiveTabId);
+        }
+        
+        if (SelectedTabChanged.HasDelegate)
+        {
+            await SelectedTabChanged.InvokeAsync(ActiveTabId);
         }
         
         // Trigger state change after binding update
@@ -573,22 +589,15 @@ Tab container for organizing content with smooth animations.
     {
         var classes = new List<string>();
         
-        classes.Add("tabs-tab touch-target d-flex align-center justify-center gap-2");
+        classes.Add("tabs-tab");
         
         classes.Add(GetTabSizeUtilities());
         
-        classes.Add("rounded-lg transition-all cursor-pointer border border-transparent");
-        
-        classes.Add("bg-transparent hover:bg-surface-elevated");
-        
         if (tab.Id == ActiveTabId)
         {
-            classes.Add("tabs-tab-active");
+            classes.Add("tabs-tab-active tab-active");
         }
-        else
-        {
-            classes.Add("hover-lift-sm  text-muted hover:text-primary");
-        }
+        // Hover and inactive states are handled by CSS
         
         if (tab.IsDisabled)
         {
@@ -631,14 +640,19 @@ Tab container for organizing content with smooth animations.
     
     private string GetTabsClasses()
     {
-        var classes = new List<string> { "d-flex flex-col w-full" };
+        var classes = new List<string> { "tabs d-flex flex-col w-full" };
         
-        classes.Add(Variant switch
+        // Add variant-specific classes
+        var variantClass = Variant switch
         {
-            TabsVariant.Elevated => "shadow-4 rounded-lg",
-            TabsVariant.Card => "bg-transparent",
-            _ => "bg-surface-elevated rounded-lg"
-        });
+            TabsVariant.Pills => "tabs-pills",
+            TabsVariant.Card => "tabs-card",
+            TabsVariant.Underline => "tabs-underline", 
+            TabsVariant.Elevated => "tabs-elevated",
+            TabsVariant.Segment => "tabs-segment",
+            _ => "tabs-default"
+        };
+        classes.Add(variantClass);
         
         if (!string.IsNullOrEmpty(Class))
             classes.Add(Class);
@@ -648,36 +662,26 @@ Tab container for organizing content with smooth animations.
     
     private string GetNavClasses()
     {
-        var classes = new List<string> { "pa-2" };
+        var classes = new List<string> { "tabs-nav" };
         
-        return Variant switch
-        {
-            TabsVariant.Pills => "bg-surface rounded-full p-1 m-2",
-            TabsVariant.Card => "bg-transparent px-0 py-2 gap-1",
-            TabsVariant.Underline => "bg-transparent px-0 py-0 border-b border-light",
-            TabsVariant.Segment => "bg-surface rounded-lg p-1",
-            _ => "bg-surface-elevated rounded-t-lg"
-        };
+        // The variant-specific styling is handled by CSS, just add the base class
+        return string.Join(" ", classes);
     }
     
     private string GetContentClasses()
     {
-        var classes = new List<string> { "bg-surface-elevated" };
+        var classes = new List<string> { "tabs-content" };
         
         if (!NoPadding)
         {
-            classes.Add("pa-6");
+            // Padding is handled by CSS variants
+        }
+        else
+        {
+            classes.Add("tabs-content-no-padding");
         }
         
-        if (Variant == TabsVariant.Card)
-        {
-            classes.Add("border border-light rounded-b-lg rounded-tr-lg");
-        }
-        else if (Variant != TabsVariant.Underline)
-        {
-            classes.Add("rounded-b-lg");
-        }
-        
+        // Variant-specific styling is handled by CSS
         return string.Join(" ", classes);
     }
     

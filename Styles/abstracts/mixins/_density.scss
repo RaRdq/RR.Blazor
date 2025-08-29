@@ -44,21 +44,25 @@ $density-bases: (
 
 // Core Density Calculation Function
 // ==========================================================================
+@use "sass:map";
+@use "sass:meta";
+@use "sass:math";
+
 @function density-calc($base-value, $density: 'normal') {
-  $scale: map-get($density-scales, $density);
+  $scale: map.get($density-scales, $density);
   @if not $scale {
     @warn "Unknown density: #{$density}";
     @return $base-value;
   }
   
-  @if type-of($base-value) == 'number' {
+  @if meta.type-of($base-value) == 'number' {
     $calculated: $base-value * $scale;
     
     // Round to nearest 0.5 for cleaner values
     @if $calculated < 1 {
       @return 0.5;
     } @else if $calculated < 2 {
-      @return round($calculated * 2) / 2; // Round to 0.5
+      @return math.div(round($calculated * 2), 2); // Round to 0.5
     } @else {
       @return round($calculated);
     }
@@ -113,20 +117,15 @@ $density-bases: (
 // Apply density to a component's spacing
 @mixin apply-density($density: 'normal', $component-size: 'md') {
   // Get base values
-  $padding-base: map-get($density-bases, 'padding-#{$component-size}');
-  $gap-base: map-get($density-bases, 'gap-#{$component-size}');
-  $margin-base: map-get($density-bases, 'margin-#{$component-size}');
+  $padding-base: map.get($density-bases, 'padding-#{$component-size}');
+  $gap-base: map.get($density-bases, 'gap-#{$component-size}');
+  $margin-base: map.get($density-bases, 'margin-#{$component-size}');
   
   // Calculate density-adjusted values
   $padding: density-calc($padding-base, $density);
   $gap: density-calc($gap-base, $density);
   $margin: density-calc($margin-base, $density);
   
-  // Apply spacing
-  padding: space-var($padding);
-  gap: space-var($gap);
-  
-  // Text and icon sizing
   @if $component-size == 'sm' {
     font-size: var(--text-#{text-size-for-density('sm', $density)});
   } @else if $component-size == 'lg' {
@@ -134,9 +133,13 @@ $density-bases: (
   } @else {
     font-size: var(--text-#{text-size-for-density('base', $density)});
   }
+  
+  & {
+    padding: space-var($padding);
+    gap: space-var($gap);
+  }
 }
 
-// Component-Specific Density Mixins
 // ==========================================================================
 
 // Card density

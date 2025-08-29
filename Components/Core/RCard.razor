@@ -81,14 +81,9 @@
         </div>
     }
     
-    @if (Loading)
+    @if (Loading && !string.IsNullOrEmpty(LoadingText))
     {
-        <div class="@GetLoadingOverlayClasses()">
-            @if (!string.IsNullOrEmpty(LoadingText))
-            {
-                <span class="loading-text">@LoadingText</span>
-            }
-        </div>
+        <div class="loading-text">@LoadingText</div>
     }
     
     
@@ -207,7 +202,7 @@
         if (Clickable && !Disabled) classes.Add("card-clickable");
         if (Selected) classes.Add("card-primary");
         if (Disabled) classes.Add("state-disabled");
-        if (Loading) classes.Add("card-loading");
+        if (Loading) classes.Add("loading-state");
         
         
         if (!string.IsNullOrEmpty(Class)) classes.Add(Class);
@@ -238,7 +233,13 @@
     
     private string GetSubtitleClasses()
     {
-        var classes = new List<string> { "text-secondary", "mb-0" };
+        var classes = new List<string> { "mb-0" };
+        
+        // Avoid color conflicts with gradient cards
+        if (Variant != CardVariant.Gradient && Variant != CardVariant.GlassGradient)
+        {
+            classes.Add("text-secondary");
+        }
         
         var textSize = SizeHelper.GetTextSize(SizeType.Small, Density);
         var margin = DensityHelper.GetMargin(Density, "1");
@@ -281,7 +282,9 @@
     private string GetContentTextClasses()
     {
         var textSize = SizeHelper.GetTextSize(SizeType.Medium, Density);
-        return $"{textSize} text-primary mb-0";
+        // Avoid color conflicts with gradient cards
+        var colorClass = (Variant == CardVariant.Gradient || Variant == CardVariant.GlassGradient) ? "" : " text-primary";
+        return $"{textSize}{colorClass} mb-0";
     }
     
     private string GetFooterClasses()
