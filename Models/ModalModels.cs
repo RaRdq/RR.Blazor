@@ -21,6 +21,10 @@ public class ModalOptions<T>
     public List<ModalButton> Buttons { get; set; } = new();
     public T Data { get; set; }
     public TimeSpan? AutoCloseDelay { get; set; }
+    public AnimationType Animation { get; set; } = AnimationType.Scale;
+    public AnimationSpeed AnimationSpeed { get; set; } = AnimationSpeed.Normal;
+    public bool UsePortal { get; set; } = true;
+    public bool UseBackdrop { get; set; } = true;
 }
 
 public class ModalOptions : ModalOptions<object>
@@ -100,11 +104,6 @@ public class ModalInstance<T>
 
 public class ModalInstance : ModalInstance<object>
 {
-    public Enums.ModalResult? LastResult { get; set; }
-    public string ParentModalId { get; set; }
-    public HashSet<string> ChildModalIds { get; set; } = new();
-    public int StackLevel { get; set; }
-    public int ZIndex { get; set; }
 }
 
 public class ModalResult

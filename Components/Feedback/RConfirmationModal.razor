@@ -1,402 +1,78 @@
-@using RR.Blazor.Components
-@using RR.Blazor.Components.Base
-@using RR.Blazor.Enums
-@inherits RComponentBase
+@* RConfirmationModal - Generic confirmation modal component *@
+@* This component is rendered INSIDE RModal by ModalProvider - do not nest RModal *@
 
-<RModal @ref="modalRef"
-        Visible="@Visible" 
-        Size="@Size" 
-        Variant="@GetModalVariant()"
-        OnClose="HandleCancel"
-        UseBackdrop="true"
-        CloseOnBackdrop="@AllowBackdropClose"
-        CloseOnEscape="@AllowEscapeClose"
-        ModalId="@ModalId">
-    <HeaderContent>
-        @if (HeaderTemplate != null)
+<div class="d-flex flex-column align-center text-center gap-4">
+    <div class="d-flex align-center justify-center w-12 h-12 rounded-xl @GetIconBackgroundClass()">
+        <i class="material-symbols-rounded @GetIconColorClass()">@Icon</i>
+    </div>
+    <div class="d-flex flex-column gap-2">
+        @if (ChildContent != null)
         {
-            @HeaderTemplate
+            @ChildContent
         }
         else
         {
-            <div class="flex items-center gap-3">
-                @if (ShowHeaderIcon && !string.IsNullOrEmpty(GetEffectiveIcon()))
-                {
-                    <i class="icon text-2xl @GetIconClass()">@GetEffectiveIcon()</i>
-                }
-                <div class="text-h5 font-semibold">@Title</div>
-                @if (!string.IsNullOrEmpty(Subtitle))
-                {
-                    <div class="text-body-2 text-secondary">@Subtitle</div>
-                }
-            </div>
+            <p class="text-center text-base">@Message</p>
         }
-    </HeaderContent>
-    <ChildContent>
-        <div class="@ContentClass">
-            @if (ContentTemplate != null)
-            {
-                @ContentTemplate
-            }
-            else
-            {
-                <div class="flex flex-col @(CenterContent ? "items-center text-center" : "") gap-4">
-                    @if (ShowCenteredIcon && !string.IsNullOrEmpty(GetEffectiveIcon()))
-                    {
-                        <div class="flex items-center justify-center @IconSize rounded-xl @GetIconBackgroundClass()">
-                            <i class="icon @GetIconColorClass()">@GetEffectiveIcon()</i>
-                        </div>
-                    }
-                    
-                    <div class="flex flex-col gap-2">
-                        @if (ChildContent != null)
-                        {
-                            @ChildContent
-                        }
-                        else if (!string.IsNullOrEmpty(Message))
-                        {
-                            <p class="text-body-1 @(MessageClass ?? "text-secondary") ma-0">@((MarkupString)Message)</p>
-                        }
-                        
-                        @if (!string.IsNullOrEmpty(Details))
-                        {
-                            <div class="@(DetailsClass ?? "mt-3 pa-3 bg-surface-elevated rounded-lg border border-light")">
-                                <p class="text-sm text-muted ma-0">@((MarkupString)Details)</p>
-                            </div>
-                        }
-                        
-                        @if (AdditionalContent != null)
-                        {
-                            @AdditionalContent
-                        }
-                    </div>
-                </div>
-                
-                @if (ShowDetails && DetailsDictionary != null && DetailsDictionary.Any())
-                {
-                    <RCard Variant="@DetailsCardVariant" Class="@(DetailsCardClass ?? "mt-4")">
-                        <div class="pa-4">
-                            @if (!string.IsNullOrEmpty(DetailsTitle))
-                            {
-                                <div class="text-h6 font-semibold mb-3">@DetailsTitle</div>
-                            }
-                            <div class="flex flex-col gap-2">
-                                @foreach (var detail in DetailsDictionary)
-                                {
-                                    <div class="@(DetailRowClass ?? "flex justify-between items-center")">
-                                        <span class="text-body-2 text-secondary">@detail.Key:</span>
-                                        <span class="text-body-2 font-medium">@detail.Value</span>
-                                    </div>
-                                }
-                            </div>
-                        </div>
-                    </RCard>
-                }
-                
-                @if (ShowWarning && Variant == ModalVariant.Destructive)
-                {
-                    <div class="@(WarningClass ?? "mt-4 flex items-center gap-2 pa-3 bg-error-light text-error rounded-lg")">
-                        <i class="icon">@WarningIcon</i>
-                        <span class="text-sm">@(WarningText ?? "This action cannot be undone")</span>
-                    </div>
-                }
-                
-                @if (ShowInputField)
-                {
-                    <div class="mt-4">
-                        @* RTextField component for input - using simple input for now *@
-                        <div class="form-group">
-                            <label>@InputLabel</label>
-                            <input type="text" 
-                                   class="form-control" 
-                                   @bind="InputValue" 
-                                   @bind:event="oninput"
-                                   placeholder="@InputPlaceholder" 
-                                   required="@InputRequired" />
-                            @if (!string.IsNullOrEmpty(InputErrorMessage))
-                            {
-                                <div class="text-error text-sm mt-1">@InputErrorMessage</div>
-                            }
-                        </div>
-                    </div>
-                }
-                
-                @if (ShowCheckbox)
-                {
-                    <div class="mt-4">
-                        <RCheckbox @bind-Checked="CheckboxValue"
-                                  Label="@CheckboxLabel"
-                                  Required="@CheckboxRequired" />
-                    </div>
-                }
-            }
-        </div>
-    </ChildContent>
-    <FooterContent>
-        @if (FooterTemplate != null)
-        {
-            @FooterTemplate
-        }
-        else
-        {
-            <RActionGroup Direction="@ButtonDirection" 
-                          Alignment="@ButtonAlignment" 
-                          Spacing="@ButtonSpacing"
-                          Class="w-full">
-                @if (ShowCancelButton)
-                {
-                    <RButton Text="@CancelText"
-                             Variant="@CancelButtonVariant"
-                             Size="@ButtonSize"
-                             OnClick="@HandleCancel"
-                             Disabled="@(IsProcessing || CancelDisabled)"
-                             Icon="@CancelIcon"
-                             Class="@CancelButtonClass" />
-                }
-                @if (AdditionalButtons != null)
-                {
-                    @AdditionalButtons
-                }
-                @if (ShowConfirmButton)
-                {
-                    <RButton Text="@ConfirmText"
-                             Variant="@GetConfirmVariant()"
-                             Size="@ButtonSize"
-                             Loading="@IsProcessing"
-                             OnClick="@HandleConfirm"
-                             Disabled="@(IsConfirmDisabled())"
-                             Icon="@(IsProcessing ? "" : ConfirmIcon)"
-                             Class="@ConfirmButtonClass" />
-                }
-            </RActionGroup>
-        }
-    </FooterContent>
-</RModal>
+    </div>
+</div>
 
 @code {
-    private RModal modalRef;
+    [Parameter] public string Message { get; set; } = "Are you sure you want to proceed?";
+    [Parameter] public string Icon { get; set; } = "warning";
+    [Parameter] public ModalVariant Variant { get; set; } = ModalVariant.Warning;
+    [Parameter] public bool IsDestructive { get; set; }
+    [Parameter] public RenderFragment ChildContent { get; set; }
+    [Parameter] public object Data { get; set; }
+    [Parameter] public EventCallback<object> OnDataChanged { get; set; }
     
-    [Parameter] public string ModalId { get; set; }
+    // Legacy compatibility parameters (ignored but prevent errors)
     [Parameter] public bool Visible { get; set; }
-    [Parameter] public string Title { get; set; } = "Confirm";
-    [Parameter] public string Subtitle { get; set; }
-    [Parameter] public string Message { get; set; }
-    [Parameter] public string Details { get; set; }
-    [Parameter] public string Icon { get; set; }
-    [Parameter] public bool ShowHeaderIcon { get; set; } = true;
-    [Parameter] public bool ShowCenteredIcon { get; set; }
-    [Parameter] public string IconSize { get; set; } = "w-12 h-12";
-    [Parameter] public bool CenterContent { get; set; } = true;
-    
-    [Parameter] public ModalVariant Variant { get; set; } = ModalVariant.Info;
-    [Parameter] public SizeType Size { get; set; } = SizeType.Small;
-    
-    [Parameter] public string ConfirmText { get; set; } = "Confirm";
-    [Parameter] public string CancelText { get; set; } = "Cancel";
-    [Parameter] public string ConfirmIcon { get; set; }
-    [Parameter] public string CancelIcon { get; set; }
-    [Parameter] public ButtonVariant CancelButtonVariant { get; set; } = ButtonVariant.Ghost;
-    [Parameter] public SizeType ButtonSize { get; set; } = SizeType.Medium;
-    [Parameter] public bool ShowConfirmButton { get; set; } = true;
-    [Parameter] public bool ShowCancelButton { get; set; } = true;
-    
-    [Parameter] public ActionGroupDirection ButtonDirection { get; set; } = ActionGroupDirection.Horizontal;
-    [Parameter] public ActionGroupAlignment ButtonAlignment { get; set; } = ActionGroupAlignment.End;
-    [Parameter] public ActionGroupSpacing ButtonSpacing { get; set; } = ActionGroupSpacing.Medium;
-    
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public string Header { get; set; } = "";
+    [Parameter] public string ConfirmText { get; set; } = "";
+    [Parameter] public string CancelText { get; set; } = "";
     [Parameter] public bool IsProcessing { get; set; }
-    [Parameter] public bool CancelDisabled { get; set; }
-    [Parameter] public bool ConfirmDisabled { get; set; }
-    
+    [Parameter] public EventCallback OnConfirm { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+    [Parameter] public SizeType Size { get; set; }
+    [Parameter] public string ConfirmIcon { get; set; } = "";
     [Parameter] public bool ShowDetails { get; set; }
-    [Parameter] public Dictionary<string, string> DetailsDictionary { get; set; } = new();
-    [Parameter] public string DetailsTitle { get; set; } = "Details:";
-    [Parameter] public CardVariant DetailsCardVariant { get; set; } = CardVariant.Outlined;
-    [Parameter] public string DetailsCardClass { get; set; }
-    [Parameter] public string DetailRowClass { get; set; }
-    
-    [Parameter] public bool ShowWarning { get; set; } = true;
-    [Parameter] public string WarningText { get; set; }
-    [Parameter] public string WarningIcon { get; set; } = "warning";
-    [Parameter] public string WarningClass { get; set; }
-    
-    [Parameter] public bool ShowInputField { get; set; }
-    [Parameter] public string InputValue { get; set; } = "";
-    [Parameter] public string InputLabel { get; set; }
-    [Parameter] public string InputPlaceholder { get; set; }
-    [Parameter] public bool InputRequired { get; set; }
-    [Parameter] public string InputErrorMessage { get; set; }
-    [Parameter] public Func<string, Task<bool>> OnInputValidate { get; set; }
-    
-    [Parameter] public bool ShowCheckbox { get; set; }
-    [Parameter] public bool CheckboxValue { get; set; }
-    [Parameter] public string CheckboxLabel { get; set; }
-    [Parameter] public bool CheckboxRequired { get; set; }
-    
-    [Parameter] public bool AllowBackdropClose { get; set; } = false;
-    [Parameter] public bool AllowEscapeClose { get; set; } = true;
-    
-    [Parameter] public string ContentClass { get; set; } = "pa-6";
-    [Parameter] public string MessageClass { get; set; }
-    [Parameter] public string DetailsClass { get; set; }
-    [Parameter] public string ConfirmButtonClass { get; set; }
-    [Parameter] public string CancelButtonClass { get; set; }
-    
-    [Parameter] public RenderFragment HeaderTemplate { get; set; }
-    [Parameter] public RenderFragment ContentTemplate { get; set; }
-    [Parameter] public RenderFragment FooterTemplate { get; set; }
-    [Parameter] public RenderFragment AdditionalContent { get; set; }
-    [Parameter] public RenderFragment AdditionalButtons { get; set; }
-    
-    [Parameter] public EventCallback<bool> OnConfirm { get; set; }
-    [Parameter] public EventCallback<Dictionary<string, object>> OnConfirmWithData { get; set; }
-    [Parameter] public Func<Task<bool>> OnBeforeConfirm { get; set; }
-    [Parameter] public Func<Task<bool>> OnBeforeCancel { get; set; }
-    
-    
-    private async Task HandleConfirm()
+    [Parameter] public Dictionary<string, object> DetailsDictionary { get; set; }
+
+    private string GetConfirmButtonClass() => Variant switch
     {
-        if (IsProcessing || IsConfirmDisabled()) return;
-        
-        if (OnBeforeConfirm != null)
-        {
-            var canConfirm = await OnBeforeConfirm();
-            if (!canConfirm) return;
-        }
-        
-        if (OnInputValidate != null && ShowInputField)
-        {
-            var isValid = await OnInputValidate(InputValue);
-            if (!isValid)
-            {
-                InputErrorMessage = "Invalid input";
-                return;
-            }
-        }
-        
-        IsProcessing = true;
-        StateHasChanged();
-        
-        try
-        {
-            if (OnConfirmWithData.HasDelegate)
-            {
-                var data = new Dictionary<string, object>();
-                if (ShowInputField) data["InputValue"] = InputValue;
-                if (ShowCheckbox) data["CheckboxValue"] = CheckboxValue;
-                await OnConfirmWithData.InvokeAsync(data);
-            }
-            else
-            {
-                await OnConfirm.InvokeAsync(true);
-            }
-            
-            await CloseAsync();
-        }
-        finally
-        {
-            IsProcessing = false;
-            StateHasChanged();
-        }
-    }
-    
-    private async Task HandleCancel()
+        ModalVariant.Destructive => "bg-error text-white hover:opacity-90",
+        ModalVariant.Warning => "bg-warning text-white hover:opacity-90",
+        ModalVariant.Success => "bg-success text-white hover:opacity-90",
+        ModalVariant.Info => "bg-info text-white hover:opacity-90",
+        _ => "bg-primary text-white hover:opacity-90"
+    };
+
+    private string GetConfirmIcon() => Variant switch
     {
-        if (IsProcessing) return;
-        
-        if (OnBeforeCancel != null)
-        {
-            var canCancel = await OnBeforeCancel();
-            if (!canCancel) return;
-        }
-        
-        await OnConfirm.InvokeAsync(false);
-        await CancelAsync();
-    }
-    
-    private bool IsConfirmDisabled()
+        ModalVariant.Destructive => "delete",
+        ModalVariant.Warning => "warning",
+        ModalVariant.Success => "check",
+        ModalVariant.Info => "info",
+        _ => "check"
+    };
+
+    private string GetIconBackgroundClass() => Variant switch
     {
-        if (ConfirmDisabled) return true;
-        if (ShowInputField && InputRequired && string.IsNullOrWhiteSpace(InputValue)) return true;
-        if (ShowCheckbox && CheckboxRequired && !CheckboxValue) return true;
-        return false;
-    }
-    
-    private async Task CloseAsync()
+        ModalVariant.Destructive => "bg-danger-light border border-error-border",
+        ModalVariant.Warning => "bg-warning-light border border-warning-border",
+        ModalVariant.Success => "bg-success-light border border-success-border",
+        ModalVariant.Info => "bg-info-light border border-info-border",
+        _ => "bg-info-light border border-primary-border"
+    };
+
+    private string GetIconColorClass() => Variant switch
     {
-        Visible = false;
-        StateHasChanged();
-    }
-    
-    private async Task CancelAsync()
-    {
-        Visible = false;
-        StateHasChanged();
-    }
-    
-    private async Task ValidateInput()
-    {
-        if (OnInputValidate != null)
-        {
-            var isValid = await OnInputValidate(InputValue);
-            InputErrorMessage = isValid ? null : "Invalid input";
-        }
-    }
-    
-    private string GetEffectiveIcon()
-    {
-        if (!string.IsNullOrEmpty(Icon)) return Icon;
-        
-        return Variant switch
-        {
-            ModalVariant.Success => "check_circle",
-            ModalVariant.Warning => "warning",
-            ModalVariant.Destructive => "delete_forever",
-            ModalVariant.Info => "info",
-            _ => "help"
-        };
-    }
-    
-    private ModalVariant GetModalVariant()
-    {
-        return Variant;
-    }
-    
-    private ButtonVariant GetConfirmVariant()
-    {
-        return Variant switch
-        {
-            ModalVariant.Success => ButtonVariant.Success,
-            ModalVariant.Warning => ButtonVariant.Warning,
-            ModalVariant.Destructive => ButtonVariant.Danger,
-            _ => ButtonVariant.Primary
-        };
-    }
-    
-    private string GetIconClass()
-    {
-        return Variant switch
-        {
-            ModalVariant.Success => "text-success",
-            ModalVariant.Warning => "text-warning",
-            ModalVariant.Destructive => "text-error",
-            _ => "text-info"
-        };
-    }
-    
-    private string GetIconColorClass()
-    {
-        return GetIconClass() + " text-3xl";
-    }
-    
-    private string GetIconBackgroundClass()
-    {
-        return Variant switch
-        {
-            ModalVariant.Success => "bg-success-light",
-            ModalVariant.Warning => "bg-warning-light",
-            ModalVariant.Destructive => "bg-error-light",
-            _ => "bg-info-light"
-        };
-    }
+        ModalVariant.Destructive => "text-error-text",
+        ModalVariant.Warning => "text-warning-text",
+        ModalVariant.Success => "text-success-text",
+        ModalVariant.Info => "text-info-text",
+        _ => "text-primary"
+    };
 }

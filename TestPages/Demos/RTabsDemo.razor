@@ -35,8 +35,8 @@
                     <div>
                         <label class="text-sm text-muted mb-1 block">Orientation</label>
                         <select @bind="_currentOrientation" class="w-full px-3 py-2 rounded border border-light bg-surface text-sm">
-                            <option value="@TabOrientation.Horizontal">Horizontal</option>
-                            <option value="@TabOrientation.Vertical">Vertical</option>
+                            <option value="@Orientation.Horizontal">Horizontal</option>
+                            <option value="@Orientation.Vertical">Vertical</option>
                         </select>
                     </div>
                     
@@ -66,18 +66,18 @@
                 
                 <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 mt-4">
                     <!-- Toggle Options -->
-                    <RToggle @bind-Value="_showIcons" Label="Show Icons" Size="SizeType.Small" />
-                    <RToggle @bind-Value="_showBadges" Label="Show Badges" Size="SizeType.Small" />
-                    <RToggle @bind-Value="_closableTabs" Label="Closable Tabs" Size="SizeType.Small" />
-                    <RToggle @bind-Value="_showAddButton" Label="Add Button" Size="SizeType.Small" />
-                    <RToggle @bind-Value="_scrollableTabs" Label="Scrollable" Size="SizeType.Small" />
-                    <RToggle @bind-Value="_fadeAnimation" Label="Fade Animation" Size="SizeType.Small" />
-                    <RToggle @bind-Value="_keepAlive" Label="Keep Alive" Size="SizeType.Small" />
-                    <RToggle @bind-Value="_noPadding" Label="No Padding" Size="SizeType.Small" />
-                    <RToggle @bind-Value="_hasDisabledTab" Label="Disabled Tab" Size="SizeType.Small" />
-                    <RToggle @bind-Value="_hasLoadingTab" Label="Loading Tab" Size="SizeType.Small" />
-                    <RToggle @bind-Value="_hasErrorTab" Label="Error Tab" Size="SizeType.Small" />
-                    <RToggle @bind-Value="_showTooltips" Label="Tooltips" Size="SizeType.Small" />
+                    <RToggle @bind-Value="_showIcons" Text="Show Icons" Size="SizeType.Small" />
+                    <RToggle @bind-Value="_showBadges" Text="Show Badges" Size="SizeType.Small" />
+                    <RToggle @bind-Value="_closableTabs" Text="Closable Tabs" Size="SizeType.Small" />
+                    <RToggle @bind-Value="_showAddButton" Text="Add Button" Size="SizeType.Small" />
+                    <RToggle @bind-Value="_scrollableTabs" Text="Scrollable" Size="SizeType.Small" />
+                    <RToggle @bind-Value="_fadeAnimation" Text="Fade Animation" Size="SizeType.Small" />
+                    <RToggle @bind-Value="_keepAlive" Text="Keep Alive" Size="SizeType.Small" />
+                    <RToggle @bind-Value="_noPadding" Text="No Padding" Size="SizeType.Small" />
+                    <RToggle @bind-Value="_hasDisabledTab" Text="Disabled Tab" Size="SizeType.Small" />
+                    <RToggle @bind-Value="_hasLoadingTab" Text="Loading Tab" Size="SizeType.Small" />
+                    <RToggle @bind-Value="_hasErrorTab" Text="Error Tab" Size="SizeType.Small" />
+                    <RToggle @bind-Value="_showTooltips" Text="Tooltips" Size="SizeType.Small" />
                 </div>
                 
                 <div class="flex gap-2 mt-4">
@@ -114,7 +114,7 @@
                     Live Demo - Interactive Configuration
                 </div>
                 
-                <div class="@(_currentOrientation == TabOrientation.Vertical ? "h-96" : "")">
+                <div class="@(_currentOrientation == Orientation.Vertical ? "h-96" : "")">
                     <RTabs @bind-SelectedTab="_configurableSelectedTab"
                            Variant="_currentVariant"
                            Orientation="_currentOrientation"
@@ -326,7 +326,7 @@
                     <!-- Vertical Tabs -->
                     <div>
                         <h5 class="text-base font-medium mb-2">Vertical Tabs</h5>
-                        <RTabs @bind-SelectedTab="_verticalSelectedTab" Orientation="TabOrientation.Vertical" Class="h-64">
+                        <RTabs @bind-SelectedTab="_verticalSelectedTab" Orientation="Orientation.Vertical" Class="h-64">
                             <RTabItem Value="dashboard" Text="Dashboard" Icon="dashboard">
                                 <div class="p-4">
                                     <h4 class="text-lg font-semibold mb-2">Dashboard</h4>
@@ -568,7 +568,7 @@
 @code {
     // Configuration Panel State
     private TabsVariant _currentVariant = TabsVariant.Default;
-    private RR.Blazor.Components.Navigation.RTabs.TabOrientation _currentOrientation = RR.Blazor.Components.Navigation.RTabs.TabOrientation.Horizontal;
+    private Orientation _currentOrientation = Orientation.Horizontal;
     private SizeType _currentSize = SizeType.Medium;
     private DensityType _currentDensity = DensityType.Normal;
     
@@ -736,7 +736,7 @@
     private void ResetConfiguration()
     {
         _currentVariant = TabsVariant.Default;
-        _currentOrientation = TabOrientation.Horizontal;
+        _currentOrientation = Orientation.Horizontal;
         _currentSize = SizeType.Medium;
         _currentDensity = DensityType.Normal;
         _showIcons = true;
@@ -759,20 +759,20 @@
         AddConfigurableTab();
     }
     
-    private void HandleTabChanged(RR.Blazor.Components.Navigation.RTabs.TabChangedEventArgs args)
+    private void HandleTabChanged(RTabs.TabChangedEventArgs args)
     {
-        _lastEvent = $"Tab changed: {args.OldValue} → {args.NewValue}";
+        _lastEvent = $"Tab changed: {args.OldTabId} → {args.NewTabId}";
     }
     
-    private void HandleTabClosed(RR.Blazor.Components.Navigation.RTabs.TabClosedEventArgs args)
+    private void HandleTabClosed(RTabs.TabClosedEventArgs args)
     {
-        var tabToRemove = _configurableTabs.FirstOrDefault(t => t.Value == args.TabValue);
+        var tabToRemove = _configurableTabs.FirstOrDefault(t => t.Value == args.TabId);
         if (tabToRemove != null)
         {
             _configurableTabs.Remove(tabToRemove);
             _lastEvent = $"Tab closed: {tabToRemove.Text}";
             
-            if (_configurableSelectedTab == args.TabValue && _configurableTabs.Any())
+            if (_configurableSelectedTab == args.TabId && _configurableTabs.Any())
             {
                 _configurableSelectedTab = _configurableTabs.First().Value;
             }

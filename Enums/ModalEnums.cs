@@ -1,5 +1,6 @@
 namespace RR.Blazor.Enums;
 
+
 public enum ModalVariant
 {
     Default = 0,
@@ -33,4 +34,3 @@ public enum ModalResult
     Delete = 6,
     Custom = 7
 }
-

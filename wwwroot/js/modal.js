@@ -450,55 +450,76 @@ window.RRBlazor.Modal = {
     forceUnlock: () => modalManager.forceUnlock(),
     getActiveCount: () => modalManager.getActiveCount(),
     
-    createAndShow: (modalId, modalTypeName, parameters, options) => {
-        const findAndCreateModal = () => {
-            const modalElement = document.getElementById(modalId) || 
-                                document.querySelector(`[data-modal-id="${modalId}"]`);
-            
-            if (modalElement) {
-                const hasModalContent = modalElement.querySelector('.modal-content') || 
-                                      modalElement.classList.contains('modal-content');
-                
-                if (hasModalContent) {
-                    requestAnimationFrame(() => {
-                        if (modalElement.classList) {
-                            modalElement.classList.remove('modal-hidden');
-                            modalElement.classList.add('modal-visible');
-                        }
-                    });
-                } else {
-                    modalManager.createModal(modalElement, {
-                        ...options,
-                        id: modalId,
-                        skipStyling: true
-                    });
-                }
-            } else {
-                const observer = new MutationObserver((mutations) => {
-                    mutations.forEach((mutation) => {
-                        mutation.addedNodes.forEach((node) => {
-                            if (node.nodeType === 1 && 
-                                (node.id === modalId || node.getAttribute('data-modal-id') === modalId)) {
-                                observer.disconnect();
-                                findAndCreateModal();
-                            }
-                        });
-                    });
-                });
-                
-                observer.observe(document.body, {
-                    childList: true,
-                    subtree: true
-                });
-                
-                setTimeout(() => {
-                    observer.disconnect();
-                    findAndCreateModal();
-                }, 5);
+    createAndShow: async (modalId, modalTypeName, parameters, options) => {
+        // Enhanced version that handles all DOM operations internally
+        const config = options || {};
+        const retryConfig = config.retryConfig || { maxRetries: 10, retryDelay: 50 };
+        const portalConfig = config.portalConfig || {};
+        
+        // Smart DOM element discovery with retry logic
+        const waitForElement = async (selector, maxRetries, retryDelay) => {
+            for (let i = 0; i < maxRetries; i++) {
+                const element = document.querySelector(selector);
+                if (element) return element;
+                await new Promise(resolve => setTimeout(resolve, retryDelay));
             }
+            return null;
         };
         
-        findAndCreateModal();
+        // Find or wait for modal element
+        const modalElement = await waitForElement(
+            config.selector || `[data-modal-id="${modalId}"]`,
+            retryConfig.maxRetries,
+            retryConfig.retryDelay
+        );
+        
+        if (!modalElement) {
+            console.warn(`Modal element not found: ${modalId}`);
+            return;
+        }
+        
+        // Handle portal creation if configured
+        if (portalConfig.targetSelector) {
+            // Create portal container
+            const portalId = portalConfig.portalId || `modal-portal-${modalId}`;
+            let portal = document.getElementById(portalId);
+            
+            if (!portal) {
+                portal = document.createElement('div');
+                portal.id = portalId;
+                portal.className = portalConfig.portalClass || 'modal-portal';
+                portal.setAttribute('data-portal-type', 'modal');
+                portal.setAttribute('data-modal-id', modalId);
+                
+                // Copy theme from root
+                const rootElement = document.documentElement;
+                if (rootElement.dataset.theme) {
+                    portal.dataset.theme = rootElement.dataset.theme;
+                }
+                if (rootElement.dataset.density) {
+                    portal.dataset.density = rootElement.dataset.density;
+                }
+                
+                // Append to target (usually body)
+                const target = portalConfig.targetSelector === 'body' 
+                    ? document.body 
+                    : document.querySelector(portalConfig.targetSelector);
+                    
+                if (target) {
+                    target.appendChild(portal);
+                }
+            }
+            
+            // Move modal element to portal
+            portal.appendChild(modalElement);
+        }
+        
+        // Create modal with all behaviors
+        return modalManager.createModal(modalElement, {
+            ...config,
+            id: modalId,
+            skipStyling: true
+        });
     },
 
     _getVariantClass: (variant) => {

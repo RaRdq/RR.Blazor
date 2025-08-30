@@ -1,157 +1,117 @@
 @using RR.Blazor.Enums
-@using RR.Blazor.Services
-@using RR.Blazor.Utilities
-@using RR.Blazor.Components.Base
-@using Microsoft.JSInterop
-@using System.Collections.Generic
-@inherits RVariantComponentBase<SizeType, ModalVariant>
-@implements IAsyncDisposable
+@* RModal - Generic modal component with comprehensive configuration *@
+
 @if (Visible)
 {
-    <div class="modal-content @GetVisibilityClass() @GetSizeClass() @GetBaseClasses()" 
-         role="dialog" 
-         aria-modal="@(Visible ? "true" : "false")"
-         aria-hidden="@(!Visible ? "true" : "false")"
-         aria-labelledby="@ModalTitleId" 
-         aria-describedby="@(!string.IsNullOrEmpty(Subtitle) ? ModalDescriptionId : null)"
-         data-modal-id="@portalId"
-         @ref="modalElement"
-         @onclick:stopPropagation="true"
-         tabindex="-1"
-         @onkeydown="OnKeyDownHandler">
-                     
-                @if (ShowHeader)
-                {
-                    <div class="modal-header @GetModalHeaderClasses()">
-                        <div class="d-flex items-center @GetModalHeaderClasses()">
-                            @if (!string.IsNullOrEmpty(Icon))
-                            {
-                                <i class="icon text-primary @GetIconSizeClass()" aria-hidden="true">@Icon</i>
-                            }
-                            <div class="d-flex flex-col">
-                                <h3 id="@ModalTitleId" class="modal-title ma-0 @GetTitleClasses()">@Title</h3>
-                                @if (!string.IsNullOrEmpty(Subtitle))
-                                {
-                                    <p id="@ModalDescriptionId" class="modal-subtitle ma-0 text-sm text-muted">@Subtitle</p>
-                                }
-                            </div>
-                        </div>
-                        <div class="header-actions d-flex items-center gap-2">
-                            @HeaderContent
-                            @if (ShowCloseButton)
-                            {
-                                <button type="button" 
-                                        class="modal-close" 
-                                        @onclick="HandleClose"
-                                        @onclick:preventDefault="true"
-                                        @onclick:stopPropagation="true"
-                                        disabled="@Processing"
-                                        aria-label="Close dialog">
-                                    <i class="icon icon-no-pointer" aria-hidden="true">close</i>
-                                </button>
-                            }
-                        </div>
-                    </div>
-                }
-                
-                <div class="modal-body @GetModalBodyClasses()">
-                    @if (Processing && ShowProcessingOverlay)
+<div class="modal @Class" @onclick="HandleBackdropClick" @attributes="AdditionalAttributes">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content @GetSizeClass()" @onclick:stopPropagation="true">
+        @if (ShowHeader)
+        {
+            <div class="modal-header">
+                <div class="modal-header-content">
+                    @if (!string.IsNullOrEmpty(Icon))
                     {
-                        <div class="overlay-full overlay-light d-flex items-center justify-center">
-                            <div class="d-flex flex-col items-center @GetProcessingOverlayClasses() bg-surface-elevated rounded-lg shadow-lg">
-                                <div class="spinner-lg"></div>
-                                <p class="text-base text-muted ma-0">@ProcessingMessage</p>
-                            </div>
-                        </div>
+                        <i class="material-symbols-rounded text-primary text-xl">@Icon</i>
                     }
-                    @if (EnableSmartSkeleton)
+                    <h3 class="modal-title">@Title</h3>
+                    @if (!string.IsNullOrEmpty(Subtitle))
                     {
-                        <RSkeleton Loading="@Loading" 
-                                   SmartMode="true" 
-                                   UseGlassEffect="@UseSkeletonGlass"
-                                   Class="@GetSkeletonWrapperClasses()">
-                            @ChildContent
-                        </RSkeleton>
-                    }
-                    else
-                    {
-                        @ChildContent
+                        <p class="modal-subtitle">@Subtitle</p>
                     }
                 </div>
-                
-                @if (ShowFooter)
+                <div class="modal-header-actions">
+                    @HeaderContent
+                    @if (ShowCloseButton)
+                    {
+                        <button type="button" class="modal-close" @onclick="HandleClose" disabled="@IsProcessing">
+                            <i class="material-symbols-rounded">close</i>
+                        </button>
+                    }
+                </div>
+            </div>
+        }
+        
+        <div class="modal-body">
+            @if (IsProcessing && ShowProcessingOverlay)
+            {
+                <div class="modal-overlay modal-overlay-processing">
+                    <div class="modal-processing">
+                        <div class="spinner"></div>
+                        <p class="modal-processing-text">@ProcessingMessage</p>
+                    </div>
+                </div>
+            }
+            @ChildContent
+        </div>
+        
+        @if (ShowFooter)
+        {
+            <div class="modal-footer">
+                @if (FooterContent != null)
                 {
-                    <div class="modal-footer action-group action-group-modal-footer @GetModalFooterClasses()">
-                        @if (FooterContent != null)
+                    @FooterContent
+                }
+                else
+                {
+                    <div class="modal-footer-buttons">
+                        @if (ShowCancelButton)
                         {
-                            @FooterContent
+                            <RButton Variant="ButtonVariant.Ghost" 
+                                    Size="@ButtonSize" 
+                                    Icon="@CancelIcon" IconPosition="IconPosition.Start" 
+                                    Class="@CancelButtonClass" 
+                                    OnClick="HandleCancel" 
+                                    Disabled="@IsProcessing">
+                                @CancelText
+                            </RButton>
                         }
-                        else
+                        @if (ShowPrimaryButton)
                         {
-                            <RActionGroup Direction="ActionGroupDirection.Horizontal" 
-                                          Alignment="ActionGroupAlignment.End" 
-                                          Spacing="ActionGroupSpacing.Medium"
-                                          Density="@Density">
-                                @if (ShowCancelButton)
-                                {
-                                    <RButton Variant="ButtonVariant.Ghost" 
-                                            Size="@ButtonSize" 
-                                            Icon="@CancelIcon" IconPosition="IconPosition.Start" 
-                                            Class="@CancelButtonClass" 
-                                            OnClick="@HandleCancel" 
-                                            Disabled="@Processing">
-                                        @CancelText
-                                    </RButton>
-                                }
-                                @if (ShowPrimaryButton)
-                                {
-                                    <RButton Variant="ButtonVariant.Primary" 
-                                            Size="@ButtonSize" 
-                                            Icon="@(Processing && ShowPrimaryButtonSpinner ? null : PrimaryIcon)" IconPosition="IconPosition.Start" 
-                                            Class="@PrimaryButtonClass" 
-                                            OnClick="@HandlePrimaryAction" 
-                                            Disabled="@(Processing || PrimaryButtonDisabled)"
-                                            Loading="@(Processing && ShowPrimaryButtonSpinner)">
-                                        @(Processing && !string.IsNullOrEmpty(ProcessingButtonText) ? ProcessingButtonText : PrimaryText)
-                                    </RButton>
-                                }
-                            </RActionGroup>
-                            @if (ShowUnsavedIndicator && HasUnsavedChanges)
-                            {
-                                <div class="d-flex items-center gap-2 pa-3 bg-info-light text-info rounded-lg">
-                                    <i class="icon">info</i>
-                                    <span class="text-sm">You have unsaved changes</span>
-                                </div>
-                            }
+                            <RButton Variant="ButtonVariant.Primary" 
+                                    Size="@ButtonSize" 
+                                    Icon="@(IsProcessing && ShowPrimaryButtonSpinner ? null : PrimaryIcon)" IconPosition="IconPosition.Start" 
+                                    Class="@PrimaryButtonClass" 
+                                    OnClick="HandlePrimaryAction" 
+                                    Disabled="@(IsProcessing || PrimaryButtonDisabled)"
+                                    Loading="@(IsProcessing && ShowPrimaryButtonSpinner)">
+                                @(IsProcessing && !string.IsNullOrEmpty(ProcessingButtonText) ? ProcessingButtonText : PrimaryText)
+                            </RButton>
                         }
                     </div>
+                    @if (ShowUnsavedIndicator && HasUnsavedChanges)
+                    {
+                        <div class="modal-unsaved-indicator">
+                            <i class="material-symbols-rounded">info</i>
+                            <span>You have unsaved changes</span>
+                        </div>
+                    }
                 }
+            </div>
+        }
     </div>
+</div>
 }
 
 @code {
     [Parameter] public bool Visible { get; set; }
     [Parameter] public EventCallback<bool> VisibleChanged { get; set; }
+    [Parameter] public SizeType Size { get; set; } = SizeType.Medium;
+    [Parameter] public ModalVariant Variant { get; set; } = ModalVariant.Default;
+    [Parameter] public string Class { get; set; }
     
-    [Parameter] public bool UseBackdrop { get; set; } = true;
-    [Parameter] public string BackdropClass { get; set; } = "";
-    [Parameter] public bool BackdropBlur { get; set; } = false;
+    // Additional attributes for test IDs and other attributes
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object> AdditionalAttributes { get; set; }
     
-    /// <summary>
-    /// Animation style for modal appearance
-    /// </summary>
-    [Parameter] public ModalAnimation Animation { get; set; } = ModalAnimation.Scale;
-    
-    /// <summary>
-    /// Speed/duration of the modal animation (controls both modal and backdrop)
-    /// </summary>
-    [Parameter] public AnimationSpeed AnimationSpeed { get; set; } = AnimationSpeed.Normal;
-    
+    // Header Configuration
     [Parameter] public bool ShowHeader { get; set; } = true;
-    
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public string Subtitle { get; set; }
+    [Parameter] public string Icon { get; set; }
     [Parameter] public RenderFragment HeaderContent { get; set; }
     [Parameter] public bool ShowCloseButton { get; set; } = true;
     
+    // Footer Configuration
     [Parameter] public bool ShowFooter { get; set; } = true;
     [Parameter] public RenderFragment FooterContent { get; set; }
     [Parameter] public bool ShowCancelButton { get; set; } = true;
@@ -164,455 +124,60 @@
     [Parameter] public string PrimaryButtonClass { get; set; }
     [Parameter] public bool PrimaryButtonDisabled { get; set; }
     [Parameter] public SizeType ButtonSize { get; set; } = SizeType.Medium;
-
-    [Parameter] public bool Processing { get; set; }
+    
+    // Processing State
+    [Parameter] public bool IsProcessing { get; set; }
     [Parameter] public string ProcessingMessage { get; set; } = "Processing...";
     [Parameter] public string ProcessingButtonText { get; set; }
     [Parameter] public bool ShowProcessingOverlay { get; set; } = true;
     [Parameter] public bool ShowPrimaryButtonSpinner { get; set; } = true;
-
-    [Parameter] public bool EnableSmartSkeleton { get; set; } = true;
-    [Parameter] public bool UseSkeletonGlass { get; set; } = true;
-
+    
+    // Unsaved Changes
     [Parameter] public bool ShowUnsavedIndicator { get; set; }
     [Parameter] public bool HasUnsavedChanges { get; set; }
-
+    
+    // Behavior Configuration
     [Parameter] public bool CloseOnBackdrop { get; set; } = true;
     [Parameter] public bool CloseOnEscape { get; set; } = true;
-
+    
+    // Event Callbacks
     [Parameter] public EventCallback OnClose { get; set; }
     [Parameter] public EventCallback OnCancel { get; set; }
     [Parameter] public EventCallback OnPrimaryAction { get; set; }
-
-    private ElementReference modalElement;
-    private string ModalTitleId { get; set; } = $"modal-title-{Guid.NewGuid():N}";
-    private string ModalDescriptionId { get; set; } = $"modal-desc-{Guid.NewGuid():N}";
-
-    private static int portalCounter = 0;
-    private readonly string portalId = $"modal-auto-{System.Threading.Interlocked.Increment(ref portalCounter)}";
-    private string? actualPortalId = null;
-    private bool isPortalCreated = false;
-    private bool previousVisible = false;
-    private int modalZIndex = 1000;
+    [Parameter] public RenderFragment ChildContent { get; set; }
     
-    private ModalState currentState = ModalState.Closed;
-    private readonly SemaphoreSlim stateLock = new SemaphoreSlim(1, 1);
-    
-    [Inject] private IJSRuntime JSRuntime { get; set; } = default!;
-
-    // State machine for modal lifecycle
-    private enum ModalState
+    private async Task HandleBackdropClick()
     {
-        Closed,
-        Opening,
-        Open,
-        Closing
+        if (CloseOnBackdrop && Variant != ModalVariant.Protected)
+            await HandleClose();
     }
     
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (Visible != previousVisible && UseBackdrop)
-        {
-            if (currentState == ModalState.Closing && Visible)
-            {
-                throw new InvalidOperationException($"Cannot reopen modal {portalId} while closing");
-            }
-            
-            await stateLock.WaitAsync();
-            try
-            {
-                if (Visible && currentState == ModalState.Closed)
-                {
-                    currentState = ModalState.Opening;
-                    
-                    await Task.Yield();
-                    await CreatePortal();
-                    
-                    currentState = ModalState.Open;
-                }
-                else if (Visible && (currentState == ModalState.Open || currentState == ModalState.Opening))
-                {
-                    return;
-                }
-                else if (!Visible && (currentState == ModalState.Open || currentState == ModalState.Opening))
-                {
-                    // Close the modal
-                    currentState = ModalState.Closing;
-                    
-                    await DestroyFocusTrap();
-                    await CleanupPortal();
-                    currentState = ModalState.Closed;
-                }
-                previousVisible = Visible;
-            }
-            finally
-            {
-                stateLock.Release();
-            }
-        }
-        else if (Visible != previousVisible && !UseBackdrop)
-        {
-            previousVisible = Visible;
-        }
-    }
-    
-    private bool IsValidTransition(ModalState from, ModalState to)
-    {
-        return (from, to) switch
-        {
-            (ModalState.Closed, ModalState.Opening) => true,
-            (ModalState.Opening, ModalState.Open) => true,
-            (ModalState.Open, ModalState.Closing) => true,
-            (ModalState.Closing, ModalState.Closed) => true,
-            _ => false
-        };
-    }
-    
-    private async Task<bool> CreatePortal()
-    {
-        if (isPortalCreated)
-            throw new InvalidOperationException($"Portal {portalId} already created");
-        
-        var options = new
-        {
-            id = portalId,
-            useBackdrop = UseBackdrop,
-            backdropClass = GetBackdropClass() ?? "",
-            backdropBlur = BackdropBlur ? 8 : 0,
-            closeOnBackdropClick = CloseOnBackdrop,
-            closeOnEscape = CloseOnEscape,
-            animation = Animation.ToString().ToLowerInvariant(),
-            animationSpeed = AnimationSpeed.ToString().ToLowerInvariant(),
-            variant = Variant.ToString().ToLowerInvariant(),
-            trapFocus = true
-        };
-        
-        var result = await SafeInvokeAsync<string>("RRBlazor.Modal.create", modalElement, options);
-        
-        actualPortalId = result;
-        isPortalCreated = true;
-        
-        return true;
-    }
-    
-    private async Task CleanupPortal()
-    {
-        if (!isPortalCreated)
-        {
-            return;
-        }
-        
-        if (string.IsNullOrEmpty(actualPortalId))
-        {
-            // Portal was marked as created but actualPortalId is null - likely a race condition
-            // Reset the state instead of throwing to prevent crashes
-            // TODO: Investigate and debug this case, happens after wasm reconnects
-            currentState = ModalState.Closed;
-            return;
-        }
-        
-        var success = await SafeInvokeAsync<bool>("RRBlazor.Modal.destroy", actualPortalId);
-        if (!success)
-            throw new InvalidOperationException($"Failed to destroy modal {actualPortalId}");
-        
-        actualPortalId = null;
-        isPortalCreated = false;
-    }
-    
-    private string GetBackdropClass()
-    {
-        var variantClass = Variant switch
-        {
-            ModalVariant.Glass => "portal-backdrop-glass",
-            ModalVariant.Protected => "modal-backdrop-protected",
-            _ => "modal-backdrop-dark"
-        };
-        
-        return $"{variantClass} {BackdropClass}".Trim();
-    }
-    
-    private string GetModalContainerClasses()
-    {
-        var positionClass = "modal-center";
-        var backdropClass = GetBackdropClass();
-        var sizeClass = GetSizeClass();
-        var animationSpeedClass = GetAnimationSpeedClass();
-        var protectedClass = Variant == ModalVariant.Protected ? "modal-protected" : "";
-        
-        return $"modal-container modal-backdrop {backdropClass} {positionClass} {sizeClass} {animationSpeedClass} {protectedClass}".Trim();
-    }
-    
-    private string GetAnimationSpeedClass() => AnimationSpeed switch
-    {
-        AnimationSpeed.UltraFast => "modal-animate-fast",
-        AnimationSpeed.Fast => "modal-animate-fast", 
-        AnimationSpeed.Slow => "modal-animate-slow",
-        AnimationSpeed.VerySlow => "modal-animate-slow",
-        _ => string.Empty
-    };
-    
-    private async Task OnKeyDownHandler(KeyboardEventArgs e)
-    {
-        if (e.Key == "Escape" && CloseOnEscape && !Processing && Variant != ModalVariant.Protected && currentState == ModalState.Open)
-        {
-            if (await SafeInvokeAsync<bool>("RRBlazor.Modal.isTopModal", portalId))
-            {
-                await HandleClose();
-            }
-        }
-    }
-    
-    private string GetSkeletonWrapperClasses()
-    {
-        var classes = new List<string>();
-        
-        if (Density == DensityType.Compact)
-            classes.Add("skeleton-compact");
-        else if (Density == DensityType.Spacious)
-            classes.Add("skeleton-spacious");
-            
-        return string.Join(" ", classes);
-    }
-
     private async Task HandleClose()
     {
-        if (!Processing)
-        {
-            await stateLock.WaitAsync();
-            try
-            {
-                // Don't close if already closing/closed
-                if (currentState == ModalState.Closing || currentState == ModalState.Closed)
-                {
-                    return;
-                }
-                
-                // Perform cleanup for portal-based modals
-                if (UseBackdrop && currentState == ModalState.Open)
-                {
-                    currentState = ModalState.Closing;
-                    
-                    await DestroyFocusTrap();
-                    await CleanupPortal();
-                        currentState = ModalState.Closed;
-                }
-                
-                if (Visible)
-                {
-                    Visible = false;
-                    previousVisible = false; // Update previousVisible to prevent duplicate cleanup
-                    await VisibleChanged.InvokeAsync(false);
-                }
-                
-                // Invoke OnClose callback after visibility change
-                if (OnClose.HasDelegate)
-                {
-                    await OnClose.InvokeAsync();
-                }
-            }
-            finally
-            {
-                stateLock.Release();
-            }
-        }
+        Visible = false;
+        await VisibleChanged.InvokeAsync(false);
+        await OnClose.InvokeAsync();
     }
     
     private async Task HandleCancel()
     {
-        if (!Processing)
-        {
-            if (OnCancel.HasDelegate)
-            {
-                await OnCancel.InvokeAsync();
-            }
-            else
-            {
-                await HandleClose();
-            }
-        }
+        if (OnCancel.HasDelegate)
+            await OnCancel.InvokeAsync();
+        else
+            await HandleClose();
     }
     
     private async Task HandlePrimaryAction()
     {
-        if (!Processing && !PrimaryButtonDisabled)
-        {
-            await OnPrimaryAction.InvokeAsync();
-        }
+        await OnPrimaryAction.InvokeAsync();
     }
     
     private string GetSizeClass() => Size switch
     {
-        SizeType.Small => "modal-small",
-        SizeType.Large => "modal-large", 
-        SizeType.XLarge => "modal-xlarge",
-        SizeType.Wide => "modal-wide",
-        SizeType.Full => "modal-full",
-        _ => "modal-medium"
+        SizeType.Small => "modal-content-small",
+        SizeType.Large => "modal-content-large",
+        SizeType.XLarge => "modal-content-xlarge",
+        SizeType.Wide => "modal-content-wide",
+        _ => "" // default size (medium)
     };
-    
-    private string GetVisibilityClass() => "modal-hidden"; // Always start hidden, JS will handle animation
-
-    private string GetModalHeaderClasses()
-    {
-        // Only return gap classes - padding handled by SCSS .modal-header
-        return Density switch
-        {
-            DensityType.Compact => "gap-2",
-            DensityType.Dense => "gap-3",
-            DensityType.Normal => "gap-3",
-            DensityType.Spacious => "gap-4",
-            _ => "gap-3"
-        };
-    }
-
-    private string GetModalBodyClasses()
-    {
-        // No padding classes - handled by SCSS .modal-body based on density
-        return Density switch
-        {
-            DensityType.Compact => "modal-body-compact",
-            DensityType.Dense => "modal-body-dense",
-            DensityType.Normal => "",
-            DensityType.Spacious => "modal-body-spacious",
-            _ => ""
-        };
-    }
-
-    private string GetModalFooterClasses()
-    {
-        // No padding classes - handled by SCSS .modal-footer with dynamic height scaling
-        return Density switch
-        {
-            DensityType.Compact => "modal-footer-compact",
-            DensityType.Dense => "modal-footer-dense", 
-            DensityType.Normal => "",
-            DensityType.Spacious => "modal-footer-spacious",
-            _ => ""
-        };
-    }
-
-    private string GetIconSizeClass()
-    {
-        return Density switch
-        {
-            DensityType.Compact => "text-lg",
-            DensityType.Dense => "text-xl",
-            DensityType.Normal => "text-xl",
-            DensityType.Spacious => "text-2xl",
-            _ => "text-xl"
-        };
-    }
-
-    private string GetTitleClasses()
-    {
-        return Density switch
-        {
-            DensityType.Compact => "text-base",
-            DensityType.Dense => "text-lg",
-            DensityType.Normal => "text-lg",
-            DensityType.Spacious => "text-xl",
-            _ => "text-lg"
-        };
-    }
-
-    private string GetProcessingOverlayClasses()
-    {
-        return Density switch
-        {
-            DensityType.Compact => "pa-3 gap-2",
-            DensityType.Dense => "pa-4 gap-3",
-            DensityType.Normal => "pa-6 gap-3",
-            DensityType.Spacious => "pa-8 gap-4",
-            _ => "pa-6 gap-3"
-        };
-    }
-    
-    
-public async ValueTask DisposeAsync()
-    {
-        await stateLock.WaitAsync();
-        try
-        {
-            if (currentState != ModalState.Closed)
-            {
-                currentState = ModalState.Closing;
-                
-                await DestroyFocusTrap();
-                await CleanupPortal();
-                currentState = ModalState.Closed;
-            }
-        }
-        finally
-        {
-            stateLock.Release();
-            stateLock.Dispose();
-        }
-    }
-    
-    private async Task CreateFocusTrap()
-    {
-        // Focus trap managed by modal.js
-    }
-    
-    private async Task DestroyFocusTrap()
-    {
-        // Focus trap managed by modal.js
-    }
-
-    
-    #region Abstract Method Implementations
-    
-    /// <summary>
-    /// Gets default size for modals
-    /// </summary>
-    protected override SizeType GetDefaultSize() => SizeType.Medium;
-    
-    /// <summary>
-    /// Gets default variant for modals
-    /// </summary>
-    protected override ModalVariant GetDefaultVariant() => ModalVariant.Default;
-    
-    /// <summary>
-    /// Provides modal-specific size classes
-    /// </summary>
-    protected override string GetSizeClasses()
-    {
-        return GetSizeClass();
-    }
-    
-    /// <summary>
-    /// Provides modal-specific variant classes
-    /// </summary>
-    protected override string GetVariantClasses()
-    {
-        return Variant switch
-        {
-            ModalVariant.Confirmation => "modal-confirmation",
-            ModalVariant.Destructive => "modal-destructive",
-            ModalVariant.Success => "modal-success",
-            ModalVariant.Warning => "modal-warning",
-            ModalVariant.Info => "modal-info",
-            ModalVariant.Glass => "modal-glass",
-            ModalVariant.Protected => "modal-protected",
-            _ => "modal-default"
-        };
-    }
-    
-    /// <summary>
-    /// Provides modal-specific text size classes
-    /// </summary>
-    protected override string GetTextSizeClasses()
-    {
-        return "text-xl";
-    }
-    
-    /// <summary>
-    /// Provides modal-specific icon size classes
-    /// </summary>
-    protected override string GetIconSizeClasses()
-    {
-        return "text-2xl";
-    }
-    
-    #endregion
 }

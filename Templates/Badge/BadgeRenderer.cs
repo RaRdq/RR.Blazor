@@ -1,18 +1,18 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
+using RR.Blazor.Components;
 using RR.Blazor.Enums;
 
 namespace RR.Blazor.Templates.Badge;
 
 /// <summary>
-/// Renders badge templates using HTML output
-/// Delegates DOM management to JavaScript via ui-coordinator.js
+/// Renders badge templates using RBadge component
 /// </summary>
 /// <typeparam name="T">Type of data being rendered</typeparam>
 public class BadgeRenderer<T> where T : class
 {
     /// <summary>
-    /// Renders the badge template
+    /// Renders the badge template using RBadge component
     /// </summary>
     public RenderFragment Render(BadgeContext<T> context)
     {
@@ -20,41 +20,36 @@ public class BadgeRenderer<T> where T : class
         {
             if (context?.Item == null) return;
             
-            var badgeClass = $"badge-{context.Variant.ToString().ToLower()} {context.CssClass}".Trim();
+            var badgeType = typeof(RR.Blazor.Components.RBadge);
+            builder.OpenComponent(0, badgeType);
+            builder.AddAttribute(1, "Text", context.Text);
+            builder.AddAttribute(2, "Variant", context.Variant);
+            builder.AddAttribute(3, "Size", context.Size);
             
-            builder.OpenElement(0, "span");
-            builder.AddAttribute(1, "class", badgeClass);
-            builder.AddAttribute(2, "data-template", "badge");
+            if (!string.IsNullOrEmpty(context.Icon))
+                builder.AddAttribute(4, "Icon", context.Icon);
             
             if (context.Disabled)
-                builder.AddAttribute(3, "disabled", true);
-                
+                builder.AddAttribute(5, "Disabled", true);
+            
             if (context.Selected)
-                builder.AddAttribute(4, "data-selected", true);
+                builder.AddAttribute(6, "Selected", true);
             
             if (context.Clickable && context.OnClick.HasDelegate)
             {
-                builder.AddAttribute(5, "onclick", EventCallback.Factory.Create(context.Item, () => context.OnClick.InvokeAsync(context.Item)));
-                builder.AddAttribute(6, "style", "cursor: pointer;");
-                builder.AddAttribute(7, "data-clickable", true);
+                builder.AddAttribute(7, "Clickable", true);
+                builder.AddAttribute(8, "OnClick", EventCallback.Factory.Create(context.Item, () => context.OnClick.InvokeAsync(context.Item)));
             }
             
-            if (!string.IsNullOrEmpty(context.Icon))
-            {
-                builder.OpenElement(8, "i");
-                builder.AddAttribute(9, "class", "icon mr-1");
-                builder.AddAttribute(10, "data-icon", context.Icon);
-                builder.AddContent(11, context.Icon);
-                builder.CloseElement();
-            }
+            if (!string.IsNullOrEmpty(context.CssClass))
+                builder.AddAttribute(9, "Class", context.CssClass);
             
-            builder.AddContent(12, context.Text);
-            builder.CloseElement();
+            builder.CloseComponent();
         };
     }
     
     /// <summary>
-    /// Create fluent badge with simplified API
+    /// Create fluent badge with simplified API using RBadge component
     /// </summary>
     public static RenderFragment<T> Create(
         Func<T, string> textSelector,
@@ -71,29 +66,21 @@ public class BadgeRenderer<T> where T : class
             var variant = variantSelector?.Invoke(item) ?? VariantType.Primary;
             var icon = iconSelector?.Invoke(item);
             
-            var badgeClass = $"badge-{variant.ToString().ToLower()}";
-            builder.OpenElement(0, "span");
-            builder.AddAttribute(1, "class", badgeClass);
-            builder.AddAttribute(2, "data-template", "badge");
+            var badgeType = typeof(RR.Blazor.Components.RBadge);
+            builder.OpenComponent(0, badgeType);
+            builder.AddAttribute(1, "Text", text);
+            builder.AddAttribute(2, "Variant", variant);
+            
+            if (!string.IsNullOrEmpty(icon))
+                builder.AddAttribute(3, "Icon", icon);
             
             if (clickable && onClick.HasDelegate)
             {
-                builder.AddAttribute(3, "onclick", EventCallback.Factory.Create(item, () => onClick.InvokeAsync(item)));
-                builder.AddAttribute(4, "style", "cursor: pointer;");
-                builder.AddAttribute(5, "data-clickable", true);
+                builder.AddAttribute(4, "Clickable", true);
+                builder.AddAttribute(5, "OnClick", EventCallback.Factory.Create(item, () => onClick.InvokeAsync(item)));
             }
             
-            if (!string.IsNullOrEmpty(icon))
-            {
-                builder.OpenElement(6, "i");
-                builder.AddAttribute(7, "class", "icon mr-1");
-                builder.AddAttribute(8, "data-icon", icon);
-                builder.AddContent(9, icon);
-                builder.CloseElement();
-            }
-            
-            builder.AddContent(10, text);
-            builder.CloseElement();
+            builder.CloseComponent();
         };
     }
 }

@@ -1,6 +1,4 @@
-@using RR.Blazor.Components.Base
 @typeparam T
-@inherits RComponentBase
 @* RDetailModal - Object detail display modal *@
 
 <div class="detail-modal">
@@ -12,30 +10,28 @@
         }
         else
         {
-            <div class="detail-modal-content">
+            <div class="detail-modal__content">
                 @if (ShowPropertyGrid)
                 {
-                    <div class="detail-modal-properties">
+                    <div class="detail-modal__properties">
                         @foreach (var property in GetDisplayProperties())
                         {
-                            <div class="detail-modal-property">
-                                <div class="detail-modal-property-label">@GetPropertyLabel(property.Name)</div>
-                                <div class="detail-modal-property-value">
+                            <div class="detail-modal__property">
+                                <div class="detail-modal__property-label">@GetPropertyLabel(property.Name)</div>
+                                <div class="detail-modal__property-value">
                                     @if (property.PropertyType == typeof(bool) || property.PropertyType == typeof(bool?))
                                     {
-                                        <RChip Text="@(GetBoolDisplayText(property.GetValue(Data)))"
-                                               StyleVariant="ChipStyle.Status"
+                                        <RBadge Text="@(GetBoolDisplayText(property.GetValue(Data)))"
                                                Variant="@(GetBoolValue(property.GetValue(Data)) ? VariantType.Success : VariantType.Secondary)" />
                                     }
                                     else if (property.PropertyType.IsEnum)
                                     {
-                                        <RChip Text="@GetPropertyDisplayValue(property)"
-                                               StyleVariant="ChipStyle.Badge"
+                                        <RBadge Text="@GetPropertyDisplayValue(property)"
                                                Variant="VariantType.Primary" />
                                     }
                                     else if (property.PropertyType == typeof(DateTime) || property.PropertyType == typeof(DateTime?))
                                     {
-                                        <span class="text-secondary">@GetDateDisplayValue(property)</span>
+                                        <span class="text--secondary">@GetDateDisplayValue(property)</span>
                                     }
                                     else
                                     {
@@ -55,26 +51,26 @@
         
         @if (ShowMetadata)
         {
-            <div class="detail-modal-metadata">
-                <div class="detail-modal-metadata-title">Metadata</div>
-                <div class="detail-modal-metadata-content">
-                    <div class="detail-modal-metadata-item">
-                        <span class="detail-modal-metadata-label">Type:</span>
-                        <span class="detail-modal-metadata-value">@typeof(T).Name</span>
+            <div class="detail-modal__metadata">
+                <div class="detail-modal__metadata-title">Metadata</div>
+                <div class="detail-modal__metadata-content">
+                    <div class="detail-modal__metadata-item">
+                        <span class="detail-modal__metadata-label">Type:</span>
+                        <span class="detail-modal__metadata-value">@typeof(T).Name</span>
                     </div>
-                    <div class="detail-modal-metadata-item">
-                        <span class="detail-modal-metadata-label">Assembly:</span>
-                        <span class="detail-modal-metadata-value">@typeof(T).Assembly.GetName().Name</span>
+                    <div class="detail-modal__metadata-item">
+                        <span class="detail-modal__metadata-label">Assembly:</span>
+                        <span class="detail-modal__metadata-value">@typeof(T).Assembly.GetName().Name</span>
                     </div>
                     @if (Data is IHasTimestamps timestamped)
                     {
-                        <div class="detail-modal-metadata-item">
-                            <span class="detail-modal-metadata-label">Created:</span>
-                            <span class="detail-modal-metadata-value">@timestamped.CreatedOn.ToString("g")</span>
+                        <div class="detail-modal__metadata-item">
+                            <span class="detail-modal__metadata-label">Created:</span>
+                            <span class="detail-modal__metadata-value">@timestamped.CreatedOn.ToString("g")</span>
                         </div>
-                        <div class="detail-modal-metadata-item">
-                            <span class="detail-modal-metadata-label">Modified:</span>
-                            <span class="detail-modal-metadata-value">@timestamped.UpdatedOn?.ToString("g")</span>
+                        <div class="detail-modal__metadata-item">
+                            <span class="detail-modal__metadata-label">Modified:</span>
+                            <span class="detail-modal__metadata-value">@timestamped.UpdatedOn?.ToString("g")</span>
                         </div>
                     }
                 </div>
@@ -83,8 +79,8 @@
     }
     else
     {
-        <div class="detail-modal-empty">
-            <REmptyState Text="No data available"
+        <div class="detail-modal__empty">
+            <REmptyState Title="No data available"
                        Description="The requested data could not be loaded"
                        Icon="error_outline" />
         </div>
@@ -99,6 +95,7 @@
     [Parameter] public List<string> ExcludedProperties { get; set; } = new();
     [Parameter] public List<string> IncludedProperties { get; set; } = new();
     [Parameter] public Dictionary<string, string> PropertyLabels { get; set; } = new();
+    [Parameter] public RenderFragment ChildContent { get; set; }
 
     private IEnumerable<System.Reflection.PropertyInfo> GetDisplayProperties()
     {

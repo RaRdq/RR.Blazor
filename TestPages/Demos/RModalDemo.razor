@@ -2,6 +2,7 @@
 @using RR.Blazor.Components.Feedback
 @using RR.Blazor.Services
 @using RR.Blazor.Enums
+@using RR.Blazor.Models
 @using RR.Blazor.TestPages.Demos.Components
 
 <RCard Variant="CardVariant.Outlined" Text="RModal">
@@ -110,9 +111,6 @@
         </div>
     </ChildContent>
 </RCard>
-
-<!-- Modal Provider for confirmation modals -->
-<RModalProvider />
 
 <!-- Direct RModal for testing -->
 <RModal @bind-Visible="showDirectModal" 
@@ -268,12 +266,15 @@
             modalTestStatus = "Opening destructive confirmation...";
             StateHasChanged();
             
-            var result = await ModalService.ShowConfirmationAsync(
-                "This will permanently delete ALL records. This action cannot be undone!",
-                "Delete All Records",
-                "Delete",
-                "Cancel",
-                ModalVariant.Destructive);
+            var result = await ModalService.ShowConfirmationAsync(new ConfirmationOptions
+            {
+                Title = "Delete All Records",
+                Message = "This will permanently delete ALL records. This action cannot be undone!",
+                ConfirmText = "Delete",
+                CancelText = "Cancel",
+                Variant = ModalVariant.Destructive,
+                IsDestructive = true
+            });
                 
             modalTestStatus = result ? "✅ Destructive action confirmed" : "❌ Destructive action cancelled";
             StateHasChanged();
@@ -298,12 +299,15 @@
             modalTestStatus = "Opening warning confirmation...";
             StateHasChanged();
             
-            var result = await ModalService.ShowConfirmationAsync(
-                "This will reset all settings to default values. Continue?",
-                "Reset Settings",
-                "Reset",
-                "Cancel", 
-                ModalVariant.Warning);
+            var result = await ModalService.ShowConfirmationAsync(new ConfirmationOptions
+            {
+                Title = "Reset Settings",
+                Message = "This will reset all settings to default values. Continue?",
+                ConfirmText = "Reset",
+                CancelText = "Cancel",
+                Variant = ModalVariant.Warning,
+                IsDestructive = false
+            });
                 
             modalTestStatus = result ? "✅ Reset confirmed" : "❌ Reset cancelled";
             StateHasChanged();
@@ -328,12 +332,9 @@
             modalTestStatus = "Opening info dialog...";
             StateHasChanged();
             
-            var result = await ModalService.ShowConfirmationAsync(
+            await ModalService.ShowInfoAsync(
                 "This is an informational message with helpful details for the user.",
-                "Information",
-                "OK",
-                "",
-                ModalVariant.Info);
+                "Information");
                 
             modalTestStatus = "✅ Info dialog acknowledged";
             StateHasChanged();
@@ -646,15 +647,16 @@
                 ModalId = $"user-form-{Guid.NewGuid():N}"
             };
             
-            var result = await ModalService.ShowAsync<UserFormModal, UserFormModal.UserFormParameters, UserFormModal.UserFormParameters>(
-                userParams,
-                new ModalOptions
+            var result = await ModalService.ShowAsync(
+                new ModalOptions<UserFormModal.UserFormParameters>
                 {
                     Title = "Edit User Information",
                     Subtitle = "Update user details with type-safe parameters",
                     Icon = "person",
                     Size = SizeType.Medium,
-                    Variant = ModalVariant.Default
+                    Variant = ModalVariant.Default,
+                    ComponentType = typeof(UserFormModal),
+                    Parameters = new Dictionary<string, object> { { "Parameters", userParams } }
                 });
             
             if (result.ResultType == Enums.ModalResult.Ok)
@@ -702,15 +704,16 @@
                 ModalId = $"product-selection-{Guid.NewGuid():N}"
             };
             
-            var result = await ModalService.ShowAsync<ProductSelectionModal, ProductSelectionModal.ProductSelectionParameters, ProductSelectionModal.ProductSelectionParameters>(
-                productParams,
-                new ModalOptions
+            var result = await ModalService.ShowAsync(
+                new ModalOptions<ProductSelectionModal.ProductSelectionParameters>
                 {
                     Title = "Select Products",
                     Subtitle = "Choose products for your customer",
                     Icon = "shopping_cart",
                     Size = SizeType.Large,
-                    Variant = ModalVariant.Default
+                    Variant = ModalVariant.Default,
+                    ComponentType = typeof(ProductSelectionModal),
+                    Parameters = new Dictionary<string, object> { { "Parameters", productParams } }
                 });
             
             if (result.ResultType == Enums.ModalResult.Ok)

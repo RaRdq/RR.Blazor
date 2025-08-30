@@ -105,15 +105,26 @@ namespace RR.Blazor.Utilities
         /// </summary>
         public static string GetBadgeSize(SizeType size, DensityType density)
         {
-            var baseClasses = size switch
+            var sizeClass = size switch
             {
-                SizeType.Small => "px-2 py-0.5 text-xs",
-                SizeType.Medium => "px-2.5 py-1 text-sm",
-                SizeType.Large => "px-3 py-1.5 text-base",
-                _ => "px-2.5 py-1 text-sm"
+                SizeType.ExtraSmall => "badge-xs",
+                SizeType.Small => "badge-sm",
+                SizeType.Medium => "", // Default badge size
+                SizeType.Large => "badge-lg",
+                SizeType.ExtraLarge => "badge-xl",
+                _ => ""
             };
             
-            return ApplyDensityToClasses(baseClasses, density);
+            var densityClass = density switch
+            {
+                DensityType.Compact => "badge-compact",
+                DensityType.Dense => "badge-dense",
+                DensityType.Normal => "",
+                DensityType.Spacious => "badge-spacious",
+                _ => ""
+            };
+            
+            return string.Join(" ", new[] { sizeClass, densityClass }.Where(c => !string.IsNullOrEmpty(c)));
         }
         
         #endregion

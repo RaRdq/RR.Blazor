@@ -1,170 +1,310 @@
+@using RR.Blazor.Models
 @using RR.Blazor.Services
-@inject IModalService ModalService
+@using RR.Blazor.Enums
+@using System.Reflection
+@using Microsoft.AspNetCore.Components
 @implements IDisposable
+@inject IModalService ModalService
+@inject IJSRuntime JSRuntime
+@inject IJavaScriptInteropService JSInterop
 
-@* Dynamic confirmation modals - support multiple instances *@
-@foreach (var confirmation in _confirmationModals.Values)
-{
-    <RConfirmationModal @key=@($"confirmation-{confirmation.Id}")
-                       ModalId="@($"confirmation-modal-{confirmation.Id}")"
-                       Title="@confirmation.Title"
-                       Message="@confirmation.Message"
-                       ConfirmText="@confirmation.ConfirmText"
-                       CancelText="@confirmation.CancelText"
-                       Icon="@confirmation.Icon"
-                       Variant="@confirmation.Variant"
-                       Visible="@confirmation.Visible"
-                       OnConfirm="@((result) => HandleConfirmationResult(confirmation.Id, result))" />
-}
-
-@* Dynamic modals for custom components *@
-@foreach (var modal in _customModals.Values)
-{
-    @RenderCustomModal(modal)
-}
+@* RModalProvider - Portal-based modal container for body-level rendering *@
+<div id="modal-portal-container" style="display: none;">
+    @foreach (var modal in _activeModals)
+    {
+        @if (modal.Options.ComponentType != null && ComponentHasInternalModal(modal.Options.ComponentType))
+        {
+            @* Case 3: Component with RModal wrapper - render directly without double-wrapping *@
+            <div @key="modal.Id" data-modal-id="@modal.Id" data-portal="true">
+                <DynamicComponent Type="@modal.Options.ComponentType" Parameters="@GetComponentParameters(modal)" />
+            </div>
+        }
+        else
+        {
+            @* Case 4: Component without RModal - auto-wrap in RModal *@
+            <RModal @key="modal.Id"
+                    @ref="modalRefs[modal.Id]"
+                    Visible="@modal.Visible"
+                    Title="@modal.Options.Title"
+                    Subtitle="@modal.Options.Subtitle"
+                    Icon="@modal.Options.Icon"
+                    Size="@modal.Options.Size"
+                    Variant="@modal.Options.Variant"
+                    CloseOnBackdrop="@modal.Options.CloseOnBackdrop"
+                    CloseOnEscape="@modal.Options.CloseOnEscape"
+                    ShowCloseButton="@modal.Options.ShowCloseButton"
+                    ShowHeader="@modal.Options.ShowHeader"
+                    ShowFooter="@modal.Options.ShowFooter"
+                    Class="@modal.Options.Class"
+                    data-modal-id="@modal.Id"
+                    data-portal="true"
+                    OnClose="@(() => HandleModalClose(modal))"
+                    OnCancel="@(() => HandleModalCancel(modal))"
+                    OnPrimaryAction="@(() => HandlePrimaryAction(modal))"
+                    FooterContent="@(modal.Options.Buttons.Any() ? CreateModalFooter(modal) : null)">
+                
+                @if (modal.Options.ComponentType != null)
+                {
+                    <DynamicComponent Type="@modal.Options.ComponentType" Parameters="@GetComponentParameters(modal)" />
+                }
+                else if (modal.Options.Data != null)
+                {
+                    @* Display simple content if no component specified *@
+                    <div class="modal-simple-content">
+                        @if (modal.Options.Data is string message)
+                        {
+                            <p>@message</p>
+                        }
+                        else
+                        {
+                            <pre>@System.Text.Json.JsonSerializer.Serialize(modal.Options.Data)</pre>
+                        }
+                    </div>
+                }
+            </RModal>
+        }
+    }
+</div>
 
 @code {
-    private readonly Dictionary<string, ModalData> _customModals = new();
-    private readonly Dictionary<string, ConfirmationModalData> _confirmationModals = new();
-    private int _confirmationIdCounter = 0;
+    private readonly List<ModalInstance> _activeModals = new();
+    private readonly Dictionary<string, RModal> modalRefs = new();
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        ModalService.OnModalOpened += HandleModalOpened;
-        ModalService.OnModalClosed += HandleModalClosed;
+        ModalService.OnModalOpened += OnModalOpened;
+        ModalService.OnModalClosed += OnModalClosed;
+    }
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Ensure portal container exists at body level
+            await JSInterop.TryInvokeVoidAsync("RRBlazor.Portal.ensureContainer");
+        }
     }
 
-    private async Task<bool> ShowConfirmation(string message, string title, string confirmText, string cancelText, ModalVariant variant)
+    private void OnModalOpened(ModalInstance modal)
     {
-        var modalId = $"confirm-{++_confirmationIdCounter}";
-        var confirmationData = new ConfirmationModalData
-        {
-            Id = modalId,
-            Message = message,
-            Title = title,
-            ConfirmText = confirmText ?? "Confirm",
-            CancelText = cancelText ?? "Cancel",
-            Icon = variant == ModalVariant.Destructive ? "delete" : variant == ModalVariant.Warning ? "warning" : "help",
-            Variant = variant == ModalVariant.Destructive ? ModalVariant.Destructive : 
-                       variant == ModalVariant.Warning ? ModalVariant.Warning : 
-                       ModalVariant.Info,
-            Visible = true,
-            CompletionSource = new TaskCompletionSource<bool>()
-        };
+        _activeModals.Add(modal);
         
-        _confirmationModals[modalId] = confirmationData;
-        StateHasChanged();
-        
-        return await confirmationData.CompletionSource.Task;
-    }
-
-    private void HandleConfirmationResult(string modalId, bool result)
-    {
-        if (_confirmationModals.TryGetValue(modalId, out var confirmationData))
+        // SOW COMPLIANT: Portal FIRST, then animate
+        // Render modal content hidden, portal it, then animate entrance
+        modal.Visible = false; // Start hidden for proper animation
+        InvokeAsync(async () =>
         {
-            confirmationData.Visible = false;
-            confirmationData.CompletionSource?.TrySetResult(result);
-            StateHasChanged();
+            await InvokeAsync(StateHasChanged);
             
-            // Clean up after a delay
-            Task.Delay(500).ContinueWith(_ =>
+            // Yield to allow DOM render to complete, then create portal and animate
+            await Task.Yield(); // Proper async yielding, no magic delays
+            await CreateModal(modal);
+            
+            // Enable visibility for animation after portal is ready
+            modal.Visible = true;
+            await InvokeAsync(StateHasChanged);
+        });
+    }
+
+    private void OnModalClosed(ModalInstance modal)
+    {
+        InvokeAsync(async () =>
+        {
+            // Let modal.js handle cleanup
+            await DestroyModal(modal);
+            
+            _activeModals.Remove(modal);
+            modalRefs.Remove(modal.Id);
+            
+            await InvokeAsync(StateHasChanged);
+        });
+    }
+
+    private Dictionary<string, object> GetComponentParameters(ModalInstance modal)
+    {
+        var parameters = new Dictionary<string, object>();
+        
+        foreach (var param in modal.Options.Parameters)
+        {
+            parameters[param.Key] = param.Value;
+        }
+        
+        if (modal.Options.Data != null)
+        {
+            parameters["Data"] = modal.Options.Data;
+        }
+
+        // Only add OnDataChanged if component supports it
+        if (ComponentSupportsParameter(modal.Options.ComponentType, "OnDataChanged"))
+        {
+            parameters["OnDataChanged"] = EventCallback.Factory.Create<object>(this, data =>
             {
-                _confirmationModals.Remove(modalId);
-                InvokeAsync(StateHasChanged);
+                modal.Result = data;
             });
         }
+
+        return parameters;
     }
 
-    private void HandleModalOpened(ModalInstance instance)
+    private bool ComponentSupportsParameter(Type componentType, string parameterName)
     {
-        // Handle all modal types including confirmation modals
-        if (instance.Options?.ComponentType != null)
-        {
-            _customModals[instance.Id] = new ModalData
-            {
-                Id = instance.Id,
-                ComponentType = instance.Options.ComponentType,
-                Parameters = instance.Options.Parameters ?? new Dictionary<string, object>()
-            };
-            InvokeAsync(StateHasChanged);
-        }
-    }
-
-    private void HandleModalClosed(ModalInstance instance)
-    {
-        _customModals.Remove(instance.Id);
-        InvokeAsync(StateHasChanged);
-    }
-
-    private async void HandleModalResult(string modalId, bool result)
-    {
-        await ModalService.CloseAsync(modalId, result ? Enums.ModalResult.Ok : Enums.ModalResult.Cancel);
-    }
-
-    private RenderFragment RenderCustomModal(ModalData modal) => builder =>
-    {
-        if (modal.ComponentType == null) return;
-
-        builder.OpenComponent<RModal>(0);
-        builder.AddAttribute(1, "Visible", true);
-        builder.AddAttribute(2, "Title", GetParam<string>(modal.Parameters, "Title"));
-        builder.AddAttribute(3, "Icon", GetParam<string>(modal.Parameters, "Icon"));
-        builder.AddAttribute(4, "Size", SizeType.Small);
-        builder.AddAttribute(5, "Variant", ModalVariant.Info);
-        builder.AddAttribute(6, "CloseOnBackdrop", true);
-        builder.AddAttribute(7, "CloseOnEscape", true);
-        builder.AddAttribute(8, "ShowCloseButton", true);
-        builder.AddAttribute(9, "OnClose", EventCallback.Factory.Create(this, () => HandleModalResult(modal.Id, false)));
+        if (componentType == null) return false;
         
-        builder.AddAttribute(10, "ChildContent", (RenderFragment)(contentBuilder =>
+        return componentType.GetProperties()
+            .Any(p => p.Name == parameterName && 
+                     p.GetCustomAttributes(typeof(ParameterAttribute), false).Any());
+    }
+    
+    /// <summary>
+    /// SOW COMPLIANT: Detection based on ModalContext parameter ONLY
+    /// If component has ModalContext parameter, it has internal RModal wrapper
+    /// If no ModalContext, it needs RModal wrapper from provider
+    /// </summary>
+    private bool ComponentHasInternalModal(Type componentType)
+    {
+        if (componentType == null) return false;
+        
+        // SOW Requirement: Detection via ModalContext ONLY
+        return componentType.GetProperties()
+            .Where(p => p.GetCustomAttributes(typeof(ParameterAttribute), false).Any())
+            .Any(p => p.PropertyType == typeof(ModalContext));
+    }
+
+    private RenderFragment CreateModalFooter(ModalInstance modal)
+    {
+        return builder =>
         {
-            contentBuilder.OpenComponent(0, modal.ComponentType);
-            contentBuilder.AddAttribute(1, "ModalId", modal.Id);
-            
-            foreach (var param in modal.Parameters)
+            builder.OpenElement(0, "div");
+            builder.AddAttribute(1, "class", "modal-footer-buttons");
+
+            var index = 2;
+            foreach (var button in modal.Options.Buttons)
             {
-                contentBuilder.AddAttribute(2, param.Key, param.Value);
+                builder.OpenComponent(index++, typeof(RButton));
+                builder.AddAttribute(index++, nameof(RButton.Text), button.Text);
+                builder.AddAttribute(index++, nameof(RButton.Variant), button.Variant);
+                builder.AddAttribute(index++, nameof(RButton.Icon), button.Icon);
+                builder.AddAttribute(index++, nameof(RButton.IconPosition), IconPosition.Start);
+                builder.AddAttribute(index++, nameof(RButton.Class), button.Class);
+                builder.AddAttribute(index++, nameof(RButton.Disabled), button.IsDisabled);
+                builder.AddAttribute(index++, nameof(RButton.Loading), button.IsLoading);
+                builder.AddAttribute(index++, nameof(RButton.OnClick), EventCallback.Factory.Create<MouseEventArgs>(this, async (MouseEventArgs e) =>
+                {
+                    await HandleButtonClick(modal, button);
+                }));
+                builder.CloseComponent();
             }
-            
-            contentBuilder.AddAttribute(3, "OnConfirm", EventCallback.Factory.Create<bool>(this, (result) => HandleModalResult(modal.Id, result)));
-            contentBuilder.CloseComponent();
-        }));
-        
-        builder.CloseComponent();
-    };
 
-    private T GetParam<T>(Dictionary<string, object> parameters, string key)
+            builder.CloseElement();
+        };
+    }
+
+    private async Task HandleModalClose(ModalInstance modal) => await CloseModal(modal, Enums.ModalResult.Cancel);
+
+    private async Task HandleModalCancel(ModalInstance modal) => await CloseModal(modal, Enums.ModalResult.Cancel);
+
+    private async Task HandlePrimaryAction(ModalInstance modal)
     {
-        if (parameters?.TryGetValue(key, out var value) == true && value is T typedValue)
+        var primaryButton = modal.Options.Buttons.FirstOrDefault(b => b.Type == ModalButtonType.Primary);
+        if (primaryButton?.OnClick != null)
         {
-            return typedValue;
+            var canClose = await primaryButton.OnClick(modal.Result ?? modal.Options.Data);
+            if (canClose)
+            {
+                await CloseModal(modal, primaryButton.Result);
+            }
         }
-        return default(T);
+        else
+        {
+            await CloseModal(modal, Enums.ModalResult.Ok);
+        }
+    }
+
+    private async Task HandleButtonClick(ModalInstance modal, ModalButton button)
+    {
+        if (button.OnClick != null)
+        {
+            var canClose = await button.OnClick(modal.Result ?? modal.Options.Data);
+            if (canClose)
+            {
+                await CloseModal(modal, button.Result);
+            }
+        }
+        else
+        {
+            await CloseModal(modal, button.Result);
+        }
+    }
+
+    private async Task CloseModal(ModalInstance modal, Enums.ModalResult result)
+    {
+        modal.Visible = false;
+        
+        await ModalService.CloseAsync(modal.Id, result);
     }
 
     public void Dispose()
     {
-        ModalService.OnModalOpened -= HandleModalOpened;
-        ModalService.OnModalClosed -= HandleModalClosed;
-    }
-
-    private class ModalData
-    {
-        public string Id { get; set; }
-        public Type ComponentType { get; set; }
-        public Dictionary<string, object> Parameters { get; set; }
+        ModalService.OnModalOpened -= OnModalOpened;
+        ModalService.OnModalClosed -= OnModalClosed;
+        
+        // Let modal.js handle cleanup through RR-Blazor proxy
+        try
+        {
+            _ = JSInterop.TryInvokeVoidAsync("RRBlazor.Modal.forceUnlock");
+        }
+        catch
+        {
+            // Ignore cleanup errors on dispose
+        }
     }
     
-    private class ConfirmationModalData
+    private async Task CreateModal(ModalInstance modal)
     {
-        public string Id { get; set; }
-        public string Title { get; set; }
-        public string Message { get; set; }
-        public string ConfirmText { get; set; }
-        public string CancelText { get; set; }
-        public string Icon { get; set; }
-        public ModalVariant Variant { get; set; }
-        public bool Visible { get; set; }
-        public TaskCompletionSource<bool> CompletionSource { get; set; }
+        try
+        {
+            // Single JS call - all DOM management delegated to JavaScript
+            var modalConfig = new
+            {
+                id = modal.Id,
+                selector = $"[data-modal-id='{modal.Id}']",
+                useBackdrop = modal.Options.UseBackdrop,
+                closeOnEscape = modal.Options.CloseOnEscape,
+                closeOnBackdropClick = modal.Options.CloseOnBackdrop,
+                trapFocus = true,
+                animationSpeed = modal.Options.AnimationSpeed.ToString().ToLower(),
+                portalConfig = new
+                {
+                    targetSelector = "body",
+                    portalId = $"modal-portal-{modal.Id}",
+                    portalClass = "modal-portal"
+                },
+                retryConfig = new
+                {
+                    maxRetries = 10,
+                    retryDelay = 50
+                }
+            };
+            
+            // JavaScript handles all DOM operations internally
+            await JSInterop.TryInvokeVoidAsync("RRBlazor.Modal.createAndShow", modal.Id, "RModal", null, modalConfig);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Modal creation failed for {modal.Id}: {ex.Message}");
+        }
+    }
+    
+    private async Task DestroyModal(ModalInstance modal)
+    {
+        try
+        {
+            // Single call - JavaScript handles both modal and portal cleanup internally
+            await JSInterop.TryInvokeVoidAsync("RRBlazor.Modal.destroy", modal.Id);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Modal destruction failed for {modal.Id}: {ex.Message}");
+        }
     }
 }

@@ -1,28 +1,26 @@
-﻿@using RR.Blazor.Enums
-@using RR.Blazor.Components.Base
-@inherits RComponentBase
+@using RR.Blazor.Enums
 @* RPreviewModal - Content preview modal *@
 
 <div class="preview-modal">
     @if (!string.IsNullOrEmpty(Content))
     {
-        <div class="preview-modal-toolbar">
-            <div class="preview-modal-toolbar-left">
-                <RChip Text="@ContentType" StyleVariant="ChipStyle.Badge" Variant="VariantType.Secondary" />
+        <div class="preview-modal__toolbar">
+            <div class="preview-modal__toolbar-left">
+                <RBadge Text="@ContentType" Variant="VariantType.Secondary" />
                 @if (ShowWordCount)
                 {
-                    <span class="preview-modal-word-count">@GetWordCount() words</span>
+                    <span class="preview-modal__word-count">@GetWordCount() words</span>
                 }
             </div>
             
-            <div class="preview-modal-toolbar-right">
+            <div class="preview-modal__toolbar-right">
                 @if (AllowCopy)
                 {
                     <RButton Text="Copy"
                            Size="SizeType.Small"
                            Variant="ButtonVariant.Ghost"
                            Icon="content_copy" IconPosition="IconPosition.Start"
-                           OnClick="@CopyContent" />
+                           OnClick="CopyContent" />
                 }
                 
                 @if (AllowDownload)
@@ -31,47 +29,47 @@
                            Size="SizeType.Small"
                            Variant="ButtonVariant.Ghost"
                            Icon="download" IconPosition="IconPosition.Start"
-                           OnClick="@DownloadContent" />
+                           OnClick="DownloadContent" />
                 }
             </div>
         </div>
         
-        <div class="preview-modal-content">
+        <div class="preview-modal__content">
             @if (ContentType.StartsWith("text/"))
             {
-                <div class="preview-modal-text">
+                <div class="preview-modal__text">
                     @if (ContentType == "text/html")
                     {
                         @((MarkupString)Content)
                     }
                     else if (ContentType == "text/markdown")
                     {
-                        <div class="preview-modal-markdown">
+                        <div class="preview-modal__markdown">
                             @((MarkupString)ConvertMarkdownToHtml(Content))
                         </div>
                     }
                     else
                     {
-                        <pre class="preview-modal-code"><code>@Content</code></pre>
+                        <pre class="preview-modal__code"><code>@Content</code></pre>
                     }
                 </div>
             }
             else if (ContentType.StartsWith("image/"))
             {
-                <div class="preview-modal-image">
-                    <img src="@Content" alt="Preview" class="preview-modal-img" />
+                <div class="preview-modal__image">
+                    <img src="@Content" alt="Preview" class="preview-modal__img" />
                 </div>
             }
             else if (ContentType == "application/json")
             {
-                <div class="preview-modal-json">
-                    <pre class="preview-modal-code"><code>@FormatJson(Content)</code></pre>
+                <div class="preview-modal__json">
+                    <pre class="preview-modal__code"><code>@FormatJson(Content)</code></pre>
                 </div>
             }
             else
             {
-                <div class="preview-modal-unsupported">
-                    <REmptyState Text="Preview not supported"
+                <div class="preview-modal__unsupported">
+                    <REmptyState Title="Preview not supported"
                                Description="@($"Content type '{ContentType}' cannot be previewed")"
                                Icon="visibility_off" />
                     
@@ -81,7 +79,7 @@
                             <RButton Text="Download File"
                                    Variant="ButtonVariant.Primary"
                                    Icon="download" IconPosition="IconPosition.Start"
-                                   OnClick="@DownloadContent" />
+                                   OnClick="DownloadContent" />
                         </div>
                     }
                 </div>
@@ -90,26 +88,26 @@
         
         @if (ShowMetadata)
         {
-            <div class="preview-modal-metadata">
-                <div class="preview-modal-metadata-title">Content Information</div>
-                <div class="preview-modal-metadata-grid">
-                    <div class="preview-modal-metadata-item">
-                        <span class="preview-modal-metadata-label">Type:</span>
-                        <span class="preview-modal-metadata-value">@ContentType</span>
+            <div class="preview-modal__metadata">
+                <div class="preview-modal__metadata-title">Content Information</div>
+                <div class="preview-modal__metadata-grid">
+                    <div class="preview-modal__metadata-item">
+                        <span class="preview-modal__metadata-label">Type:</span>
+                        <span class="preview-modal__metadata-value">@ContentType</span>
                     </div>
-                    <div class="preview-modal-metadata-item">
-                        <span class="preview-modal-metadata-label">Size:</span>
-                        <span class="preview-modal-metadata-value">@GetContentSize()</span>
+                    <div class="preview-modal__metadata-item">
+                        <span class="preview-modal__metadata-label">Size:</span>
+                        <span class="preview-modal__metadata-value">@GetContentSize()</span>
                     </div>
                     @if (ShowWordCount && ContentType.StartsWith("text/"))
                     {
-                        <div class="preview-modal-metadata-item">
-                            <span class="preview-modal-metadata-label">Words:</span>
-                            <span class="preview-modal-metadata-value">@GetWordCount()</span>
+                        <div class="preview-modal__metadata-item">
+                            <span class="preview-modal__metadata-label">Words:</span>
+                            <span class="preview-modal__metadata-value">@GetWordCount()</span>
                         </div>
-                        <div class="preview-modal-metadata-item">
-                            <span class="preview-modal-metadata-label">Characters:</span>
-                            <span class="preview-modal-metadata-value">@Content.Length</span>
+                        <div class="preview-modal__metadata-item">
+                            <span class="preview-modal__metadata-label">Characters:</span>
+                            <span class="preview-modal__metadata-value">@Content.Length</span>
                         </div>
                     }
                 </div>
@@ -118,13 +116,15 @@
     }
     else
     {
-        <div class="preview-modal-empty">
-            <REmptyState Text="No content to preview"
+        <div class="preview-modal__empty">
+            <REmptyState Title="No content to preview"
                        Description="The content is empty or could not be loaded"
                        Icon="description" />
         </div>
     }
 </div>
+
+@inject IJSRuntime JSRuntime
 
 @code {
     [Parameter] public string Content { get; set; } = "";
@@ -141,13 +141,13 @@
     {
         try
         {
-            await SafeInvokeAsync("navigator.clipboard.writeText", Content);
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", Content);
             await OnCopy.InvokeAsync();
         }
         catch (Exception)
         {
-
-            await SafeInvokeAsync("previewModal.copyToClipboard", Content);
+            // Fallback for browsers that don't support clipboard API
+            await JSRuntime.InvokeVoidAsync("previewModal.copyToClipboard", Content);
         }
     }
 
@@ -156,7 +156,7 @@
         var extension = GetFileExtension();
         var fileName = $"{FileName}{extension}";
         
-        await SafeInvokeAsync("previewModal.downloadContent", Content, fileName, ContentType);
+        await JSRuntime.InvokeVoidAsync("previewModal.downloadContent", Content, fileName, ContentType);
         await OnDownload.InvokeAsync();
     }
 
@@ -221,13 +221,13 @@
             .Replace("`", "<code>", StringComparison.OrdinalIgnoreCase);
 
         var regex = new System.Text.RegularExpressions.Regex(@"^### (.+)$", System.Text.RegularExpressions.RegexOptions.Multiline);
-        html = regex.Replace(html, "<div class=\"text-h5 font-semibold\">$1</div>");
+        html = regex.Replace(html, "<h3>$1</h3>");
         
         regex = new System.Text.RegularExpressions.Regex(@"^## (.+)$", System.Text.RegularExpressions.RegexOptions.Multiline);
-        html = regex.Replace(html, "<div class=\"text-h4 font-bold\">$1</div>");
+        html = regex.Replace(html, "<h2>$1</h2>");
         
         regex = new System.Text.RegularExpressions.Regex(@"^# (.+)$", System.Text.RegularExpressions.RegexOptions.Multiline);
-        html = regex.Replace(html, "<div class=\"text-h3 font-bold\">$1</div>");
+        html = regex.Replace(html, "<h1>$1</h1>");
 
         return html;
     }
