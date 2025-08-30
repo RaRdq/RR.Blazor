@@ -87,22 +87,16 @@
 
     private void OnModalOpened(ModalInstance modal)
     {
-        _activeModals.Add(modal);
-        
-        // SOW COMPLIANT: Portal FIRST, then animate
-        // Render modal content hidden, portal it, then animate entrance
-        modal.Visible = false; // Start hidden for proper animation
         InvokeAsync(async () =>
         {
-            await InvokeAsync(StateHasChanged);
+            _activeModals.Add(modal);
             
-            // Yield to allow DOM render to complete, then create portal and animate
-            await Task.Yield(); // Proper async yielding, no magic delays
-            await CreateModal(modal);
-            
-            // Enable visibility for animation after portal is ready
             modal.Visible = true;
-            await InvokeAsync(StateHasChanged);
+            StateHasChanged();
+            
+            await Task.Yield();
+            
+            await CreateModal(modal);
         });
     }
 
@@ -116,7 +110,7 @@
             _activeModals.Remove(modal);
             modalRefs.Remove(modal.Id);
             
-            await InvokeAsync(StateHasChanged);
+            StateHasChanged();
         });
     }
 
