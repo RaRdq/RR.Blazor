@@ -1,25 +1,20 @@
 @use '../abstracts' as *;
 
-$alert-types: (info, success, warning, error);
-
 .alert {
   @extend %card-base-enhanced;
+  position: relative;
   padding: var(--space-4);
   margin-bottom: var(--space-4);
   border-radius: var(--radius-md);
   transition: all var(--duration-fast) var(--ease-out);
-  position: relative;
-
-  &-header {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    margin-bottom: var(--space-1);
-  }
 
   &-icon {
     flex-shrink: 0;
     font-size: var(--text-xl);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
   }
 
   &-content {
@@ -32,10 +27,24 @@ $alert-types: (info, success, warning, error);
     display: inline;
   }
 
-  &-message {
-    color: var(--color-text-muted);
+  &-message,
+  &-text {
     font-size: var(--text-sm);
     margin-top: var(--space-1);
+    line-height: var(--leading-relaxed);
+    color: inherit;
+  }
+
+  &-content-custom {
+    margin-top: var(--space-2);
+    line-height: var(--leading-relaxed);
+  }
+
+  &-actions {
+    margin-top: var(--space-3);
+    display: flex;
+    gap: var(--space-2);
+    flex-wrap: wrap;
   }
 
   &-close {
@@ -49,12 +58,12 @@ $alert-types: (info, success, warning, error);
     display: flex;
     align-items: center;
     justify-content: center;
-    opacity: 0.7;
-    z-index: 10;
     background: transparent;
     border: none;
     cursor: pointer;
     border-radius: var(--radius-sm);
+    opacity: 0.7;
+    z-index: 10;
     transition: all var(--duration-fast) var(--ease-out);
 
     .icon {
@@ -64,20 +73,21 @@ $alert-types: (info, success, warning, error);
 
     &:hover {
       opacity: 1;
-      background: color-mix(in srgb, var(--color-text) 8%, transparent);
+      background: color-mix(in srgb, currentColor 8%, transparent);
     }
 
     &:active {
       transform: scale(0.95);
     }
 
-    &:focus {
+    &:focus-visible {
       opacity: 1;
       outline: 2px solid var(--color-focus);
       outline-offset: 2px;
     }
   }
 
+  // Size variants
   &-sm {
     padding: var(--space-2) var(--space-3);
     font-size: var(--text-sm);
@@ -99,7 +109,7 @@ $alert-types: (info, success, warning, error);
   }
 
   &-lg {
-    padding: var(--space-6) var(--space-6);
+    padding: var(--space-6);
 
     .alert-icon {
       font-size: var(--text-2xl);
@@ -121,6 +131,7 @@ $alert-types: (info, success, warning, error);
     }
   }
 
+  // Dismissible variant
   &-dismissible {
     padding-right: var(--space-12);
     
@@ -137,92 +148,67 @@ $alert-types: (info, success, warning, error);
     }
   }
 
-  &-outline {
-    background: transparent;
-    border: var(--border-1) solid currentColor;
-
-    @each $type in $alert-types {
-      &-alert-#{$type} {
-        color: var(--color-#{$type});
-        border-color: var(--color-#{$type});
-      }
-    }
-  }
-
   &-animated {
     animation: fadeInUp var(--duration-fast) var(--ease-out);
   }
 
-  // Generate density classes using the global system
   @include generate-density-classes('alert', 'alert');
+}
 
-  // Semantic variants using unified system
-  @include semantic-variants((primary, success, warning, error, info), (outlined, ghost));
+@each $type in (info, success, warning, error) {
+  .alert-#{$type} {
+    background:
+      radial-gradient(ellipse at top left, color-mix(in srgb, var(--color-#{$type}) 12%, transparent) 0%, transparent 50%),
+      color-mix(in srgb, var(--color-#{$type}) 6%, var(--color-surface));
+    color: var(--color-text);
+    border-left: var(--border-4) solid var(--color-#{$type});
+
+    .alert-icon {
+      color: var(--color-#{$type});
+    }
+  }
 }
 
 .alert {
-  &-info {
-    background:
-      radial-gradient(ellipse at top left, color-mix(in srgb, var(--color-info) 12%, transparent) 0%, transparent 50%),
-      color-mix(in srgb, var(--color-info) 6%, var(--color-surface));
-    color: var(--color-text);
-    border-left: var(--border-4) solid var(--color-info);
-
-    & .alert-icon {
-      color: var(--color-info);
+  &.bg-error,
+  &.bg-success,
+  &.bg-warning,
+  &.bg-info {
+    border-left-width: 0;
+    
+    .alert-title,
+    .alert-message,
+    .alert-text,
+    .alert-content-custom {
+      color: inherit;
     }
-  }
-
-  &-success {
-    background:
-      radial-gradient(ellipse at top left, color-mix(in srgb, var(--color-success) 12%, transparent) 0%, transparent 50%),
-      color-mix(in srgb, var(--color-success) 6%, var(--color-surface));
-    color: var(--color-text);
-    border-left: var(--border-4) solid var(--color-success);
-
-    & .alert-icon {
-      color: var(--color-success);
+    
+    .alert-icon {
+      color: currentColor;
+      opacity: 0.9;
     }
-  }
 
-  &-warning {
-    background:
-      radial-gradient(ellipse at top left, color-mix(in srgb, var(--color-warning) 12%, transparent) 0%, transparent 50%),
-      color-mix(in srgb, var(--color-warning) 6%, var(--color-surface));
-    color: var(--color-text);
-    border-left: var(--border-4) solid var(--color-warning);
-
-    & .alert-icon {
-      color: var(--color-warning);
-    }
-  }
-
-  &-error {
-    background:
-      radial-gradient(ellipse at top left, color-mix(in srgb, var(--color-error) 12%, transparent) 0%, transparent 50%),
-      color-mix(in srgb, var(--color-error) 6%, var(--color-surface));
-    color: var(--color-text);
-    border-left: var(--border-4) solid var(--color-error);
-
-    & .alert-icon {
-      color: var(--color-error);
+    .alert-close {
+      &:hover {
+        background: color-mix(in srgb, var(--color-text-inverse) 15%, transparent);
+      }
     }
   }
 }
 
-.alert-text {
-  line-height: var(--leading-relaxed);
-  color: inherit;
-}
+.alert-outline {
+  background: transparent;
+  border: var(--border-2) solid;
+  border-left-width: var(--border-4);
 
-.alert-content-custom {
-  margin-top: var(--space-2);
-  line-height: var(--leading-relaxed);
-}
-
-.alert-actions {
-  margin-top: var(--space-3);
-  display: flex;
-  gap: var(--space-2);
-  flex-wrap: wrap;
+  @each $type in (info, success, warning, error) {
+    &.alert-#{$type} {
+      color: var(--color-#{$type});
+      border-color: var(--color-#{$type});
+      
+      .alert-icon {
+        color: var(--color-#{$type});
+      }
+    }
+  }
 }

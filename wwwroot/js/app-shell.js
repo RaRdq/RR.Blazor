@@ -66,11 +66,14 @@ function setupKeyboardShortcuts() {
 
 function setupClickOutside() {
     document.addEventListener('click', (e) => {
-        const searchContainer = e.target.closest('[data-search-container]');
+        // More specific targeting for search elements
+        const searchContainer = e.target.closest('[data-search-container], .search-autosuggest, .autosuggest-viewport, .autosuggest-dropdown');
         const searchButton = e.target.closest('.search-toggle-button, [aria-label="Open search"]');
         
+        // Only close search if clicked completely outside search area AND search results
         if (!searchContainer && !searchButton) {
-            closeSearch();
+            // Add delay to prevent interference with search result selection
+            setTimeout(() => closeSearch(), 100);
         }
         
         const dropdown = e.target.closest('.dropdown');
@@ -182,10 +185,20 @@ function toggleSidebar() {
 
 function closeSearch() {
     const searchContainer = document.querySelector('[data-search-container]');
-    const searchIconContainer = searchContainer.querySelector('.search-icon-container');
+    const searchIconContainer = searchContainer?.querySelector('.search-icon-container');
     if (searchIconContainer && searchIconContainer.classList.contains('search-expanded')) {
-        if (appShellDotNetRef) {
-            appShellDotNetRef.invokeMethodAsync('OnSearchCollapsed');
+        // Only close search if user explicitly clicked outside - not on every event
+        const activeElement = document.activeElement;
+        const isSearchInput = activeElement?.closest('.search-autosuggest') || 
+                             activeElement?.tagName === 'INPUT' && activeElement?.placeholder?.toLowerCase().includes('search');
+        
+        // Don't auto-close if user is still typing in search
+        if (!isSearchInput && appShellDotNetRef) {
+            // Use throttled approach to prevent rapid calls
+            clearTimeout(window._searchCollapseTimeout);
+            window._searchCollapseTimeout = setTimeout(() => {
+                appShellDotNetRef.invokeMethodAsync('OnSearchCollapsed');
+            }, 200);
         }
     }
 }

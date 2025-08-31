@@ -1,0 +1,221 @@
+@use '../abstracts' as *;
+
+// Scrollbar styling mixin
+@mixin choice-scrollbar($width: 6px, $thumb-hover-width: 8px) {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+  
+  &::-webkit-scrollbar {
+    width: $width;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: transparent;
+    margin: var(--space-1) 0;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: var(--radius-full);
+    transition: all var(--duration-fast);
+    
+    &:hover {
+      background: var(--color-primary);
+      @if $thumb-hover-width > $width {
+        width: $thumb-hover-width;
+      }
+    }
+  }
+}
+
+// Size variations mixin
+@mixin choice-size-variations() {
+  &-xs {
+    .choice-item, .choice-trigger {
+      font-size: var(--text-xs);
+      padding: var(--space-1) var(--space-2);
+    }
+  }
+  
+  &-sm {
+    .choice-item, .choice-trigger {
+      font-size: var(--text-sm);
+      padding: var(--space-2) var(--space-3);
+    }
+  }
+  
+  &-md {
+    .choice-item, .choice-trigger {
+      font-size: var(--text-sm);
+      padding: var(--space-2-5) var(--space-3);
+    }
+  }
+  
+  &-lg {
+    .choice-item, .choice-trigger {
+      font-size: var(--text-base);
+      padding: var(--space-3) var(--space-4);
+    }
+  }
+  
+  &-xl {
+    .choice-item, .choice-trigger {
+      font-size: var(--text-lg);
+      padding: var(--space-4) var(--space-5);
+    }
+  }
+}
+
+// Density variations mixin
+@mixin choice-density-variations() {
+  &-density-compact {
+    @include form-density(compact);
+    
+    .choice-item, .choice-trigger {
+      padding: var(--space-1) var(--space-2);
+    }
+  }
+  
+  &-density-dense {
+    @include form-density(dense);
+    
+    .choice-item, .choice-trigger {
+      padding: var(--space-2) var(--space-3);
+    }
+  }
+  
+  &-density-spacious {
+    @include form-density(spacious);
+    
+    .choice-item, .choice-trigger {
+      padding: var(--space-4) var(--space-5);
+    }
+  }
+}
+
+// Semantic variants mixin for choice items
+@mixin choice-semantic-item($color, $bg-opacity: 12%, $hover-opacity: 20%) {
+  background: color-mix(in srgb, var(--color-#{$color}) #{$bg-opacity}, transparent);
+  color: var(--color-#{$color});
+  border-color: color-mix(in srgb, var(--color-#{$color}) 30%, transparent);
+  
+  &:hover {
+    background: color-mix(in srgb, var(--color-#{$color}) #{$hover-opacity}, transparent);
+    border-color: var(--color-#{$color});
+  }
+  
+  &.choice-item-active,
+  &-active {
+    background: var(--color-#{$color});
+    color: var(--color-text-inverse);
+    border-color: var(--color-#{$color});
+    
+    &:hover {
+      background: var(--color-#{$color}-hover);
+      border-color: var(--color-#{$color}-hover);
+    }
+  }
+}
+
+// Semantic color mixin without nested selectors (for attribute selectors)
+@mixin choice-semantic-colors($color, $bg-opacity: 12%, $hover-opacity: 20%) {
+  background: color-mix(in srgb, var(--color-#{$color}) #{$bg-opacity}, transparent);
+  color: var(--color-#{$color});
+  border-color: color-mix(in srgb, var(--color-#{$color}) 30%, transparent);
+  
+  &:hover {
+    background: color-mix(in srgb, var(--color-#{$color}) #{$hover-opacity}, transparent);
+    border-color: var(--color-#{$color});
+  }
+}
+
+// Apply semantic variants to items
+@mixin choice-semantic-variants() {
+  &-success {
+    @include choice-semantic-item(success);
+  }
+  
+  &-warning {
+    @include choice-semantic-item(warning);
+  }
+  
+  &-error {
+    @include choice-semantic-item(error);
+  }
+  
+  // Handle attribute selectors separately to avoid nesting issues
+  &[data-severity="low"],
+  &[data-variant="success"] {
+    @include choice-semantic-colors(success);
+  }
+  
+  &[data-severity="medium"],
+  &[data-variant="warning"] {
+    @include choice-semantic-colors(warning);
+  }
+  
+  &[data-severity="high"],
+  &[data-variant="error"] {
+    @include choice-semantic-colors(error);
+  }
+  
+  &-primary {
+    @include choice-semantic-item(primary);
+  }
+  
+  &-info {
+    @include choice-semantic-item(info);
+  }
+  
+  // Handle remaining attribute selectors separately
+  &[data-severity="critical"],
+  &[data-variant="primary"] {
+    @include choice-semantic-colors(primary);
+  }
+  
+  &[data-variant="info"] {
+    @include choice-semantic-colors(info);
+  }
+}
+
+// Badge semantic variants
+@mixin badge-semantic-variants() {
+  &.badge-secondary {
+    background: var(--color-border-light);
+    color: var(--color-text-muted);
+  }
+  
+  &.badge-success {
+    background: color-mix(in srgb, var(--color-success) 10%, transparent);
+    color: var(--color-success-dark);
+  }
+  
+  &.badge-warning {
+    background: color-mix(in srgb, var(--color-warning) 10%, transparent);
+    color: var(--color-warning-dark);
+  }
+  
+  &.badge-error {
+    background: color-mix(in srgb, var(--color-error) 10%, transparent);
+    color: var(--color-error-dark);
+  }
+  
+  &.badge-info {
+    background: color-mix(in srgb, var(--color-info) 10%, transparent);
+    color: var(--color-info-dark);
+  }
+}
+
+// Mobile touch targets
+@mixin choice-mobile-touch() {
+  @media (hover: none) and (pointer: coarse) {
+    .choice-item, .choice-trigger {
+      min-height: 44px;
+      padding-top: max(var(--space-2), 8px);
+      padding-bottom: max(var(--space-2), 8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+  }
+}

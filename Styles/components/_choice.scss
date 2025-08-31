@@ -1,4 +1,5 @@
 @use '../abstracts' as *;
+@use 'choice-mixins' as *;
 
 // Mixin for compact choice styles (reusable across responsive contexts)
 @mixin choice-compact-style() {
@@ -270,8 +271,8 @@
     color: var(--color-text-muted);
     font-weight: var(--font-medium);
     user-select: none;
-    @include touch-interaction(default, visual);
     padding: var(--space-2) var(--space-3);
+    @include touch-interaction(default, visual);
     
     &:focus-visible {
       outline: none;
@@ -302,83 +303,98 @@
       opacity: var(--opacity-50);
     }
     
-    &-primary {
-      background: var(--color-primary-light);
-      color: var(--color-primary);
-      border-color: var(--color-primary);
-      
-      &:hover {
-        background: var(--color-primary);
-        color: var(--color-text-inverse);
-      }
-      
-      &-active {
-        background: var(--color-primary);
-        color: var(--color-text-inverse);
-      }
-    }
-    
-    &-success {
-      @include semantic-tint(success, 10);
+    // Semantic variants - keep manual implementation for attribute selectors compatibility
+    &-success,
+    &[data-severity="low"],
+    &[data-variant="success"] {
+      background: color-mix(in srgb, var(--color-success) 12%, transparent);
       color: var(--color-success);
-      border-color: var(--color-success);
+      border-color: color-mix(in srgb, var(--color-success) 30%, transparent);
       
       &:hover {
-        background: var(--color-success);
-        color: var(--color-text-inverse);
+        background: color-mix(in srgb, var(--color-success) 20%, transparent);
+        border-color: var(--color-success);
       }
       
-      &-active {
+      &.choice-item-active {
         background: var(--color-success);
         color: var(--color-text-inverse);
+        border-color: var(--color-success);
       }
     }
     
-    &-warning {
-      @include semantic-tint(warning, 10);
+    &-warning,
+    &[data-severity="medium"],
+    &[data-variant="warning"] {
+      background: color-mix(in srgb, var(--color-warning) 12%, transparent);
       color: var(--color-warning);
-      border-color: var(--color-warning);
+      border-color: color-mix(in srgb, var(--color-warning) 30%, transparent);
       
       &:hover {
-        background: var(--color-warning);
-        color: var(--color-text-inverse);
+        background: color-mix(in srgb, var(--color-warning) 20%, transparent);
+        border-color: var(--color-warning);
       }
       
-      &-active {
+      &.choice-item-active {
         background: var(--color-warning);
         color: var(--color-text-inverse);
+        border-color: var(--color-warning);
       }
     }
     
-    &-error {
-      @include semantic-tint(error, 10);
+    &-error,
+    &[data-severity="high"],
+    &[data-variant="error"] {
+      background: color-mix(in srgb, var(--color-error) 12%, transparent);
       color: var(--color-error);
-      border-color: var(--color-error);
+      border-color: color-mix(in srgb, var(--color-error) 30%, transparent);
       
       &:hover {
-        background: var(--color-error);
-        color: var(--color-text-inverse);
+        background: color-mix(in srgb, var(--color-error) 20%, transparent);
+        border-color: var(--color-error);
       }
       
-      &-active {
+      &.choice-item-active {
         background: var(--color-error);
         color: var(--color-text-inverse);
+        border-color: var(--color-error);
       }
     }
     
-    &-info {
-      @include semantic-tint(info, 10);
-      color: var(--color-info);
-      border-color: var(--color-info);
+    &-primary,
+    &[data-severity="critical"],
+    &[data-variant="primary"] {
+      background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+      color: var(--color-primary);
+      border-color: color-mix(in srgb, var(--color-primary) 30%, transparent);
       
       &:hover {
-        background: var(--color-info);
-        color: var(--color-text-inverse);
+        background: color-mix(in srgb, var(--color-primary) 20%, transparent);
+        border-color: var(--color-primary);
       }
       
-      &-active {
+      &.choice-item-active {
+        background: var(--color-primary);
+        color: var(--color-text-inverse);
+        border-color: var(--color-primary);
+      }
+    }
+    
+    &-info,
+    &[data-variant="info"] {
+      background: color-mix(in srgb, var(--color-info) 12%, transparent);
+      color: var(--color-info);
+      border-color: color-mix(in srgb, var(--color-info) 30%, transparent);
+      
+      &:hover {
+        background: color-mix(in srgb, var(--color-info) 20%, transparent);
+        border-color: var(--color-info);
+      }
+      
+      &.choice-item-active {
         background: var(--color-info);
         color: var(--color-text-inverse);
+        border-color: var(--color-info);
       }
     }
     
@@ -424,6 +440,8 @@
     align-items: center;
     gap: var(--space-2);
     width: 100%;
+    padding: var(--space-2) var(--space-3);
+    padding-right: var(--space-10);
     background: var(--color-surface-elevated);
     border: var(--border-1) solid var(--color-border);
     border-radius: var(--radius-lg);
@@ -455,7 +473,7 @@
       border-color: var(--color-primary);
       
       // Remove the elevation/box-shadow effect  
-      box-shadow: none !important;
+      box-shadow: none;
     }
     
     &:disabled {
@@ -464,6 +482,15 @@
       
       &::after {
         opacity: 0.3;
+      }
+    }
+    
+    &-error {
+      border-color: var(--color-error);
+      
+      &:focus-visible {
+        border-color: var(--color-error);
+        box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-error) 20%, transparent);
       }
     }
   }
@@ -490,22 +517,8 @@
       max-height: 80vh;
       overflow-y: auto;
       
-      // Scrollbar styling
-      scrollbar-width: thin;
-      scrollbar-color: var(--color-border) transparent;
-      
-      &::-webkit-scrollbar {
-        width: 4px;
-      }
-      
-      &::-webkit-scrollbar-track {
-        background: transparent;
-      }
-      
-      &::-webkit-scrollbar-thumb {
-        background: var(--color-border);
-        border-radius: var(--radius-full);
-      }
+      // Use scrollbar mixin
+      @include choice-scrollbar(4px);
       
       @media (max-width: 768px) {
         min-width: var(--space-48);
@@ -527,37 +540,14 @@
       backdrop-filter: blur(var(--blur-md));
       width: 100%;
       min-width: 200px;
-      max-width: 400px;
       max-height: 320px;
       overflow-y: auto;
       overflow-x: hidden;
       padding: var(--space-1) 0;
       box-sizing: border-box;
       
-      &::-webkit-scrollbar {
-        width: 8px;
-      }
-      
-      &::-webkit-scrollbar-track {
-        background: var(--color-surface);
-        border-radius: var(--radius-sm);
-        margin: var(--space-2) 0;
-      }
-      
-      &::-webkit-scrollbar-thumb {
-        background: var(--color-border);
-        border-radius: var(--radius-full);
-        transition: all var(--duration-fast);
-        
-        &:hover {
-          background: var(--color-primary);
-          transform: scaleY(1.1);
-        }
-      }
-      
-      // Firefox scrollbar
-      scrollbar-width: thin;
-      scrollbar-color: var(--color-border) var(--color-surface);
+      // Use scrollbar mixin with 8px width
+      @include choice-scrollbar(8px);
       
       .choice-item {
         border: none;
@@ -732,6 +722,96 @@
           border-color: var(--color-primary-hover);
         }
       }
+      
+      // Manual semantic variants for pills (avoiding mixin issues)
+      &[data-severity="low"],
+      &[data-variant="success"] {
+        background: color-mix(in srgb, var(--color-success) 12%, transparent);
+        color: var(--color-success);
+        border-color: color-mix(in srgb, var(--color-success) 30%, transparent);
+        
+        &:hover {
+          background: color-mix(in srgb, var(--color-success) 20%, transparent);
+          border-color: var(--color-success);
+        }
+        
+        &.choice-item-active {
+          background: var(--color-success);
+          color: var(--color-text-inverse);
+          border-color: var(--color-success);
+        }
+      }
+      
+      &[data-severity="medium"],
+      &[data-variant="warning"] {
+        background: color-mix(in srgb, var(--color-warning) 12%, transparent);
+        color: var(--color-warning);
+        border-color: color-mix(in srgb, var(--color-warning) 30%, transparent);
+        
+        &:hover {
+          background: color-mix(in srgb, var(--color-warning) 20%, transparent);
+          border-color: var(--color-warning);
+        }
+        
+        &.choice-item-active {
+          background: var(--color-warning);
+          color: var(--color-text-inverse);
+          border-color: var(--color-warning);
+        }
+      }
+      
+      &[data-severity="high"],
+      &[data-variant="error"] {
+        background: color-mix(in srgb, var(--color-error) 12%, transparent);
+        color: var(--color-error);
+        border-color: color-mix(in srgb, var(--color-error) 30%, transparent);
+        
+        &:hover {
+          background: color-mix(in srgb, var(--color-error) 20%, transparent);
+          border-color: var(--color-error);
+        }
+        
+        &.choice-item-active {
+          background: var(--color-error);
+          color: var(--color-text-inverse);
+          border-color: var(--color-error);
+        }
+      }
+      
+      &[data-severity="critical"],
+      &[data-variant="primary"] {
+        background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+        color: var(--color-primary);
+        border-color: color-mix(in srgb, var(--color-primary) 30%, transparent);
+        
+        &:hover {
+          background: color-mix(in srgb, var(--color-primary) 20%, transparent);
+          border-color: var(--color-primary);
+        }
+        
+        &.choice-item-active {
+          background: var(--color-primary);
+          color: var(--color-text-inverse);
+          border-color: var(--color-primary);
+        }
+      }
+      
+      &[data-variant="info"] {
+        background: color-mix(in srgb, var(--color-info) 12%, transparent);
+        color: var(--color-info);
+        border-color: color-mix(in srgb, var(--color-info) 30%, transparent);
+        
+        &:hover {
+          background: color-mix(in srgb, var(--color-info) 20%, transparent);
+          border-color: var(--color-info);
+        }
+        
+        &.choice-item-active {
+          background: var(--color-info);
+          color: var(--color-text-inverse);
+          border-color: var(--color-info);
+        }
+      }
     }
   }
   
@@ -794,109 +874,12 @@
       }
     }
   }
-  &-xs {
-    .choice-item, .choice-trigger {
-      font-size: var(--text-xs);
-      padding: var(--space-1) var(--space-2);
-    }
-  }
-  
-  &-sm {
-    .choice-item, .choice-trigger {
-      font-size: var(--text-sm);
-      padding: var(--space-2) var(--space-3);
-    }
-  }
-  
-  &-lg {
-    .choice-item, .choice-trigger {
-      font-size: var(--text-base);
-      padding: var(--space-3) var(--space-4);
-    }
-  }
-  
-  &-xl {
-    .choice-item, .choice-trigger {
-      font-size: var(--text-lg);
-      padding: var(--space-4) var(--space-5);
-    }
-  }
-  
-  // Density variants that work with size variants (TODO: refactor to &- consistent pattern)
-  &.density-compact {
-    @include form-density(compact);
-    
-    .choice-item, .choice-trigger {
-      padding: var(--space-1) var(--space-2);
-    }
-  }
-  
-  &.density-dense {
-    @include form-density(dense);
-    
-    .choice-item, .choice-trigger {
-      padding: var(--space-2) var(--space-3);
-    }
-  }
-  
-  &.density-spacious {
-    @include form-density(spacious);
-    
-    .choice-item, .choice-trigger {
-      padding: var(--space-4) var(--space-5);
-    }
-  }
+  // Use size and density mixins
+  @include choice-size-variations();
+  @include choice-density-variations();
 
-  // Mobile touch target enhancement - ensure 44px minimum height
-  @media (hover: none) and (pointer: coarse) {
-    .choice-item, .choice-trigger {
-      min-height: 44px;
-      padding-top: max(var(--space-2), 8px);
-      padding-bottom: max(var(--space-2), 8px);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    
-    &.choice-size-xs {
-      .choice-item, .choice-trigger {
-        min-height: 44px;
-        padding: 8px var(--space-2);
-      }
-    }
-    
-    &.choice-size-sm {
-      .choice-item, .choice-trigger {
-        min-height: 44px;
-        padding: 8px var(--space-3);
-      }
-    }
-  }
+  // Mobile touch target enhancement
+  @include choice-mobile-touch();
 }
 
-// Scrollbar styling for dropdown content
-.choice-dropdown .choice-content {
-  &::-webkit-scrollbar {
-    width: 6px; // Slimmer scrollbar
-  }
-  
-  &::-webkit-scrollbar-track {
-    background: transparent;
-    margin: var(--space-1) 0;
-  }
-  
-  &::-webkit-scrollbar-thumb {
-    background: var(--color-border);
-    border-radius: var(--radius-full);
-    transition: all var(--duration-fast);
-    
-    &:hover {
-      background: var(--color-primary);
-      width: 8px; // Expand on hover
-    }
-  }
-  
-  // Firefox
-  scrollbar-width: thin;
-  scrollbar-color: var(--color-border) transparent;
-}
+// Additional dropdown scrollbar styling (already applied via mixin above)

@@ -1,0 +1,474 @@
+@use '../variables' as *;
+@use 'sass:color';
+
+// ===================================
+// Design Mode System
+// ===================================
+// Orthogonal visual styling system that works with semantic variants
+// Material Design is our base/default styling - no mixin needed
+// These mixins are for alternative design modes only
+
+// Note: Material Design is the default throughout the system
+// No design-material mixin needed as all base styles already follow Material Design
+
+// Alternative design modes below:
+
+// Glass/Glassmorphism - Enhanced visibility
+@mixin design-glass($variant: primary, $intensity: medium) {
+  @if $intensity == light {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(8px) saturate(110%);
+    -webkit-backdrop-filter: blur(8px) saturate(110%);
+  } @else if $intensity == medium {
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(12px) saturate(120%);
+    -webkit-backdrop-filter: blur(12px) saturate(120%);
+  } @else if $intensity == heavy {
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(16px) saturate(130%);
+    -webkit-backdrop-filter: blur(16px) saturate(130%);
+  }
+  
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: var(--color-#{$variant});
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+  transition: var(--transition-normal);
+  position: relative;
+  
+  // Add subtle gradient overlay for better visibility
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, 
+      color-mix(in srgb, var(--color-#{$variant}) 10%, transparent),
+      transparent);
+    border-radius: inherit;
+    pointer-events: none;
+  }
+  
+  &:hover {
+    background: rgba(255, 255, 255, 0.25);
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.25);
+    transform: translateY(calc(var(--offset-2) * -1));
+  }
+  
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
+// Neumorphism/Soft UI - Enhanced visibility
+@mixin design-neumorphism($variant: primary, $intensity: medium) {
+  background: var(--color-surface-elevated);
+  color: var(--color-#{$variant});
+  border: none;
+  position: relative;
+  
+  @if $intensity == light {
+    box-shadow: 
+      4px 4px 8px rgba(0, 0, 0, 0.15),
+      -4px -4px 8px rgba(255, 255, 255, 0.7);
+  } @else if $intensity == medium {
+    box-shadow: 
+      6px 6px 12px rgba(0, 0, 0, 0.15),
+      -6px -6px 12px rgba(255, 255, 255, 0.7);
+  } @else if $intensity == heavy {
+    box-shadow: 
+      8px 8px 16px rgba(0, 0, 0, 0.15),
+      -8px -8px 16px rgba(255, 255, 255, 0.7);
+  }
+  
+  transition: var(--transition-fast);
+  
+  &:hover {
+    transform: translateY(var(--transform-offset-hover-y));
+    @if $intensity == light {
+      box-shadow: 
+        5px 5px 10px rgba(0, 0, 0, 0.15),
+        -5px -5px 10px rgba(255, 255, 255, 0.7);
+    } @else if $intensity == medium {
+      box-shadow: 
+        7px 7px 14px rgba(0, 0, 0, 0.15),
+        -7px -7px 14px rgba(255, 255, 255, 0.7);
+    } @else if $intensity == heavy {
+      box-shadow: 
+        9px 9px 18px rgba(0, 0, 0, 0.15),
+        -9px -9px 18px rgba(255, 255, 255, 0.7);
+    }
+  }
+  
+  &:active {
+    box-shadow: 
+      inset 2px 2px 4px rgba(0, 0, 0, 0.15),
+      inset -2px -2px 4px rgba(255, 255, 255, 0.7);
+  }
+}
+
+// Gradient (without Material effects)
+@mixin design-gradient($variant: primary, $intensity: medium) {
+  @if $intensity == light {
+    background: linear-gradient(135deg, 
+      var(--color-#{$variant}),
+      color-mix(in srgb, var(--color-#{$variant}) 80%, white));
+  } @else if $intensity == medium {
+    background: var(--gradient-#{$variant}, 
+      linear-gradient(135deg, 
+        var(--color-#{$variant}),
+        color-mix(in srgb, var(--color-#{$variant}) 70%, black)));
+  } @else if $intensity == heavy {
+    background: linear-gradient(135deg,
+      color-mix(in srgb, var(--color-#{$variant}) 90%, black),
+      var(--color-#{$variant}),
+      color-mix(in srgb, var(--color-#{$variant}) 80%, white));
+  }
+  
+  color: var(--color-text-inverse);
+  border: none;
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition-fast);
+  
+  &:hover {
+    filter: brightness(1.15);
+    transform: translateY(var(--transform-offset-hover-y));
+    box-shadow: var(--shadow-md);
+  }
+}
+
+// Outlined
+@mixin design-outlined($variant: primary, $intensity: medium) {
+  background: transparent;
+  color: var(--color-#{$variant});
+  
+  @if $intensity == light {
+    border: 1px solid var(--color-#{$variant});
+  } @else if $intensity == medium {
+    border: var(--border-width-regular) solid var(--color-#{$variant});
+  } @else if $intensity == heavy {
+    border: 3px solid var(--color-#{$variant});
+  }
+  
+  transition: var(--transition-fast);
+  
+  &:hover {
+    background: color-mix(in srgb, var(--color-#{$variant}) 10%, transparent);
+    box-shadow: 0 0 0 1px var(--color-#{$variant});
+  }
+  
+  &:active {
+    background: color-mix(in srgb, var(--color-#{$variant}) 15%, transparent);
+  }
+}
+
+// Ghost
+@mixin design-ghost($variant: primary, $intensity: medium) {
+  @if $intensity == light {
+    background: color-mix(in srgb, var(--color-#{$variant}) 5%, transparent);
+  } @else if $intensity == medium {
+    background: color-mix(in srgb, var(--color-#{$variant}) 8%, transparent);
+  } @else if $intensity == heavy {
+    background: color-mix(in srgb, var(--color-#{$variant}) 12%, transparent);
+  }
+  
+  color: var(--color-#{$variant});
+  border: var(--border-1) solid transparent;
+  transition: var(--transition-fast);
+  
+  &:hover {
+    @if $intensity == light {
+      background: color-mix(in srgb, var(--color-#{$variant}) 10%, transparent);
+    } @else if $intensity == medium {
+      background: color-mix(in srgb, var(--color-#{$variant}) 15%, transparent);
+    } @else if $intensity == heavy {
+      background: color-mix(in srgb, var(--color-#{$variant}) 20%, transparent);
+    }
+    border-color: color-mix(in srgb, var(--color-#{$variant}) 20%, transparent);
+  }
+  
+  &:active {
+    transform: scale(0.97);
+  }
+}
+
+// Neon Glow - Enhanced with stronger glow
+@mixin design-neon($variant: primary, $intensity: medium) {
+  background: transparent;
+  color: var(--color-#{$variant});
+  border: var(--border-width-regular) solid var(--color-#{$variant});
+  position: relative;
+  
+  @if $intensity == light {
+    box-shadow: 
+      0 0 5px var(--color-#{$variant}),
+      0 0 10px var(--color-#{$variant}),
+      inset 0 0 5px var(--color-#{$variant});
+    text-shadow: 0 0 5px currentColor;
+  } @else if $intensity == medium {
+    box-shadow: 
+      0 0 10px var(--color-#{$variant}),
+      0 0 20px var(--color-#{$variant}),
+      0 0 30px var(--color-#{$variant}),
+      inset 0 0 10px var(--color-#{$variant});
+    text-shadow: 0 0 10px currentColor;
+  } @else if $intensity == heavy {
+    box-shadow: 
+      0 0 15px var(--color-#{$variant}),
+      0 0 30px var(--color-#{$variant}),
+      0 0 45px var(--color-#{$variant}),
+      0 0 60px var(--color-#{$variant}),
+      inset 0 0 15px var(--color-#{$variant});
+    text-shadow: 0 0 15px currentColor;
+  }
+  
+  transition: var(--transition-normal);
+  
+  &:hover {
+    @if $intensity == light {
+      box-shadow: 
+        0 0 15px var(--color-#{$variant}),
+        inset 0 0 15px color-mix(in srgb, var(--color-surface) 30%, transparent);
+    } @else if $intensity == medium {
+      box-shadow: 
+        0 0 25px var(--color-#{$variant}),
+        0 0 50px color-mix(in srgb, var(--color-#{$variant}) 60%, transparent),
+        inset 0 0 20px color-mix(in srgb, var(--color-surface) 40%, transparent);
+    } @else if $intensity == heavy {
+      box-shadow: 
+        0 0 30px var(--color-#{$variant}),
+        0 0 60px var(--color-#{$variant}),
+        0 0 80px color-mix(in srgb, var(--color-#{$variant}) 60%, transparent),
+        inset 0 0 25px color-mix(in srgb, var(--color-surface) 50%, transparent);
+    }
+    transform: translateY(calc(var(--offset-2) * -1));
+  }
+}
+
+// Shimmer Animation
+@mixin design-shimmer($variant: primary, $intensity: medium) {
+  background: var(--color-#{$variant});
+  color: var(--color-text-inverse);
+  position: relative;
+  overflow: hidden;
+  
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.3),
+      transparent
+    );
+    
+    @if $intensity == light {
+      animation: shimmer 2s infinite;
+    } @else if $intensity == medium {
+      animation: shimmer 1.5s infinite;
+    } @else if $intensity == heavy {
+      animation: shimmer 1s infinite;
+    }
+  }
+  
+  @keyframes shimmer {
+    100% {
+      left: 100%;
+    }
+  }
+}
+
+// Enterprise
+@mixin design-enterprise($variant: primary, $intensity: medium) {
+  @if $intensity == light {
+    background: linear-gradient(180deg,
+      var(--color-#{$variant}),
+      color-mix(in srgb, var(--color-#{$variant}) 95%, black));
+  } @else if $intensity == medium {
+    background: linear-gradient(180deg,
+      color-mix(in srgb, var(--color-#{$variant}) 95%, white),
+      var(--color-#{$variant}),
+      color-mix(in srgb, var(--color-#{$variant}) 90%, black));
+  } @else if $intensity == heavy {
+    background: linear-gradient(180deg,
+      color-mix(in srgb, var(--color-#{$variant}) 90%, white),
+      var(--color-#{$variant}),
+      color-mix(in srgb, var(--color-#{$variant}) 85%, black));
+  }
+  
+  color: var(--color-text-inverse);
+  border: 1px solid color-mix(in srgb, var(--color-#{$variant}) 80%, black);
+  box-shadow: 
+    0 2px 4px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transition: var(--transition-fast);
+  
+  &:hover {
+    filter: brightness(1.05);
+    transform: translateY(var(--transform-offset-hover-y));
+    box-shadow: 
+      0 4px 8px rgba(0, 0, 0, 0.15),
+      inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  }
+  
+  &:active {
+    box-shadow: 
+      inset 0 2px 4px rgba(0, 0, 0, 0.2),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+  }
+}
+
+// Elevated - Fixed with proper shadows
+@mixin design-elevated($variant: primary, $intensity: medium) {
+  background: var(--color-#{$variant});
+  color: var(--color-text-inverse);
+  border: none;
+  position: relative;
+  
+  @if $intensity == light {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+    transform: translateY(0);
+  } @else if $intensity == medium {
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
+    transform: translateY(calc(var(--offset-2) * -1));
+  } @else if $intensity == heavy {
+    box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05);
+    transform: translateY(-4px);
+  }
+  
+  transition: var(--transition-normal);
+  
+  &:hover {
+    @if $intensity == light {
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
+      transform: translateY(calc(var(--offset-2) * -1));
+    } @else if $intensity == medium {
+      box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05);
+      transform: translateY(-4px);
+    } @else if $intensity == heavy {
+      box-shadow: 0 20px 25px rgba(0, 0, 0, 0.1), 0 10px 10px rgba(0, 0, 0, 0.04);
+      transform: translateY(-6px);
+    }
+  }
+  
+  &:active {
+    @if $intensity == light {
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+      transform: translateY(0);
+    } @else if $intensity == medium {
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+      transform: translateY(var(--transform-offset-hover-y));
+    } @else if $intensity == heavy {
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
+      transform: translateY(calc(var(--offset-2) * -1));
+    }
+  }
+}
+
+// Flat
+@mixin design-flat($variant: primary, $intensity: medium) {
+  background: var(--color-#{$variant});
+  color: var(--color-text-inverse);
+  border: none;
+  box-shadow: none;
+  transition: var(--transition-fast);
+  
+  &:hover {
+    @if $intensity == light {
+      filter: brightness(0.95);
+    } @else if $intensity == medium {
+      filter: brightness(0.9);
+    } @else if $intensity == heavy {
+      filter: brightness(0.85);
+    }
+  }
+  
+  &:active {
+    transform: scale(0.97);
+  }
+}
+
+// Frosted
+@mixin design-frosted($variant: primary, $intensity: medium) {
+  @if $intensity == light {
+    background: color-mix(in srgb, white 80%, var(--color-#{$variant}) 20%);
+    backdrop-filter: blur(20px) saturate(120%);
+    -webkit-backdrop-filter: blur(20px) saturate(120%);
+  } @else if $intensity == medium {
+    background: color-mix(in srgb, white 70%, var(--color-#{$variant}) 30%);
+    backdrop-filter: blur(30px) saturate(140%);
+    -webkit-backdrop-filter: blur(30px) saturate(140%);
+  } @else if $intensity == heavy {
+    background: color-mix(in srgb, white 60%, var(--color-#{$variant}) 40%);
+    backdrop-filter: blur(40px) saturate(160%);
+    -webkit-backdrop-filter: blur(40px) saturate(160%);
+  }
+  
+  color: var(--color-#{$variant});
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 
+    0 8px 32px 0 rgba(31, 38, 135, 0.1),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.3);
+  transition: var(--transition-normal);
+  
+  &:hover {
+    background: color-mix(in srgb, white 65%, var(--color-#{$variant}) 35%);
+    box-shadow: 
+      0 8px 32px 0 rgba(31, 38, 135, 0.2),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.4);
+  }
+}
+
+// Main mixin to apply design modes
+@mixin apply-design-mode($mode: material, $variant: primary, $intensity: medium) {
+  // Material is default - no special styles needed
+  @if $mode == material {
+    // Return without applying any special styles - use default Material Design
+  } @else if $mode == glass {
+    @include design-glass($variant, $intensity);
+  } @else if $mode == neumorphism {
+    @include design-neumorphism($variant, $intensity);
+  } @else if $mode == gradient {
+    @include design-gradient($variant, $intensity);
+  } @else if $mode == outlined {
+    @include design-outlined($variant, $intensity);
+  } @else if $mode == ghost {
+    @include design-ghost($variant, $intensity);
+  } @else if $mode == neon {
+    @include design-neon($variant, $intensity);
+  } @else if $mode == shimmer {
+    @include design-shimmer($variant, $intensity);
+  } @else if $mode == enterprise {
+    @include design-enterprise($variant, $intensity);
+  } @else if $mode == elevated {
+    @include design-elevated($variant, $intensity);
+  } @else if $mode == flat {
+    @include design-flat($variant, $intensity);
+  } @else if $mode == frosted {
+    @include design-frosted($variant, $intensity);
+  }
+}
+
+// Generate design mode classes for components
+@mixin generate-design-classes {
+  // Note: 'material' is not included as it's the default styling
+  $modes: (glass, neumorphism, gradient, outlined, ghost, neon, shimmer, enterprise, elevated, flat, frosted);
+  $variants: (primary, secondary, success, warning, error, danger, info);
+  $intensities: (light, medium, heavy);
+  
+  @each $mode in $modes {
+    @each $variant in $variants {
+      .design-#{$mode}-#{$variant} {
+        @include apply-design-mode($mode, $variant, medium);
+        
+        @each $intensity in $intensities {
+          &.design-#{$mode}-#{$intensity} {
+            @include apply-design-mode($mode, $variant, $intensity);
+          }
+        }
+      }
+    }
+  }
+}

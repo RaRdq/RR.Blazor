@@ -126,17 +126,17 @@ $density-bases: (
   $gap: density-calc($gap-base, $density);
   $margin: density-calc($margin-base, $density);
   
-  @if $component-size == 'sm' {
-    font-size: var(--text-#{text-size-for-density('sm', $density)});
-  } @else if $component-size == 'lg' {
-    font-size: var(--text-#{text-size-for-density('lg', $density)});
-  } @else {
-    font-size: var(--text-#{text-size-for-density('base', $density)});
-  }
-  
   & {
     padding: space-var($padding);
     gap: space-var($gap);
+    
+    @if $component-size == 'sm' {
+      font-size: var(--text-#{text-size-for-density('sm', $density)});
+    } @else if $component-size == 'lg' {
+      font-size: var(--text-#{text-size-for-density('lg', $density)});
+    } @else {
+      font-size: var(--text-#{text-size-for-density('base', $density)});
+    }
   }
 }
 
@@ -177,25 +177,26 @@ $density-bases: (
 @mixin button-density($density: 'normal') {
   @include apply-density($density, 'md');
   
-  $height-base: 10; // base height in space units
-  $height: density-calc($height-base, $density);
-  min-height: space-var($height);
-  
-  // Adjust horizontal padding to be more generous
-  $h-padding: density-calc(4, $density);
-  padding-left: space-var($h-padding);
-  padding-right: space-var($h-padding);
+  & {
+    $height-base: 10;
+    $height: density-calc($height-base, $density);
+    min-height: space-var($height);
+    
+    $h-padding: density-calc(4, $density);
+    padding-left: space-var($h-padding);
+    padding-right: space-var($h-padding);
+  }
 }
 
-// Form field density
 @mixin form-field-density($density: 'normal') {
   @include apply-density($density, 'md');
   
-  $height-base: 10;
-  $height: density-calc($height-base, $density);
-  min-height: space-var($height);
+  & {
+    $height-base: 10;
+    $height: density-calc($height-base, $density);
+    min-height: space-var($height);
+  }
   
-  // Label spacing
   .form-label {
     margin-bottom: space-var(density-calc(1, $density));
     font-size: var(--text-#{text-size-for-density('sm', $density)});
@@ -470,6 +471,61 @@ $density-bases: (
   }
 }
 
+// Tabs density
+@mixin tabs-density($density: 'normal') {
+  // ONLY affects padding, gaps, spacing - NOT font-size or height
+  
+  .tabs-nav {
+    gap: space-var(density-calc(1, $density));
+    $padding: density-calc(2, $density);
+    padding: space-var($padding) space-var(density-calc(3, $density));
+  }
+  
+  .tabs-tab {
+    // Only padding and gap - no font-size (that's Size's job)
+    $padding-x: density-calc(4, $density);
+    $padding-y: density-calc(3, $density);
+    padding: space-var($padding-y) space-var($padding-x);
+    gap: space-var(density-calc(2, $density));
+    // REMOVED font-size - that's controlled by Size, not Density
+    
+    // Ultra-dense special styling for dense variant
+    @if $density == 'dense' {
+      &.tab-active {
+        background: var(--color-surface);
+        border-bottom: none;
+        position: relative;
+        
+        &::after {
+          content: '';
+          position: absolute;
+          bottom: -1px;
+          left: 0;
+          right: 0;
+          height: 2px;
+          background: var(--color-surface);
+        }
+      }
+    }
+  }
+  
+  .tabs-content {
+    // Content padding based on density
+    $content-padding: density-calc(6, $density);
+    padding: space-var($content-padding);
+    
+    @if $density == 'dense' {
+      border-top: 1px solid var(--color-border);
+      margin-top: -1px;
+    } @else {
+      margin-top: space-var(density-calc(3, $density));
+    }
+  }
+  
+  // Indicator height is controlled by Size, not Density
+  // REMOVED indicator height control
+}
+
 // Form density (legacy compatibility)
 @mixin form-density($density: 'normal') {
   @include apply-density($density, 'md');
@@ -513,6 +569,8 @@ $density-bases: (
         @include radio-density($density-name);
       } @else if $mixin-name == 'toggle' {
         @include toggle-density($density-name);
+      } @else if $mixin-name == 'tabs' {
+        @include tabs-density($density-name);
       } @else {
         @include apply-density($density-name, 'md');
       }

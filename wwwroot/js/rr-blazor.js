@@ -490,31 +490,6 @@ const RRBlazor = {
 
 window.RRBlazor = RRBlazor;
 window.moduleManager = moduleManager;
-window.RRBlazor.Choice = {
-    openDropdown: async (choiceElementId, options) => {
-        const module = moduleManager.modules.get('choice');
-        const choiceObject = module?.default || module;
-        return choiceObject?.openDropdown(choiceElementId, options) || false;
-    },
-    
-    closeDropdown: async (choiceElementId) => {
-        const module = moduleManager.modules.get('choice');
-        const choiceObject = module?.default || module;
-        return choiceObject?.closeDropdown(choiceElementId) || false;
-    },
-    
-    isDropdownOpen: (choiceElementId) => {
-        const module = moduleManager.modules.get('choice');
-        const choiceObject = module?.default || module;
-        return choiceObject?.isDropdownOpen(choiceElementId) || false;
-    },
-    
-    closeAllDropdowns: async () => {
-        const module = moduleManager.modules.get('choice');
-        const choiceObject = module?.default || module;
-        return choiceObject?.closeAllDropdowns() || false;
-    }
-};
 
 window.RRBlazor.isSafeForInterop = function() {
     if (typeof window === 'undefined' || typeof document === 'undefined') {

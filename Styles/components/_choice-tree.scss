@@ -1,0 +1,608 @@
+@use '../abstracts' as *;
+@use 'choice-mixins' as *;
+
+// Base tree container
+.choice-tree {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface);
+  overflow: hidden;
+  
+  // Tree style variants
+  &-standard {
+    background: var(--color-surface);
+  }
+  
+  &-bordered {
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-sm);
+  }
+  
+  &-elevated {
+    background: var(--color-surface-elevated);
+    box-shadow: var(--shadow-md);
+    border: none;
+  }
+  
+  &-flat {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+  }
+  
+  &-glass {
+    @extend %glass-light;
+    backdrop-filter: blur(10px);
+  }
+  
+  // Show connecting lines
+  &-lines {
+    .choice-tree-indent-line {
+      position: relative;
+      
+      &::before {
+        content: '';
+        position: absolute;
+        left: 50%;
+        top: 0;
+        bottom: 0;
+        width: 1px;
+        background: var(--color-border-light);
+        transform: translateX(-50%);
+      }
+    }
+    
+    .choice-tree-node-row {
+      position: relative;
+      
+      &::before {
+        content: '';
+        position: absolute;
+        left: calc(var(--tree-indent-width) * var(--tree-level) - var(--space-3));
+        top: 50%;
+        width: var(--space-3);
+        height: 1px;
+        background: var(--color-border-light);
+      }
+    }
+  }
+  
+  // Striped rows
+  &-striped {
+    .choice-tree-node-row-alt {
+      background: color-mix(in srgb, var(--color-text) 3%, transparent);
+    }
+  }
+}
+
+// Individual tree node
+.choice-tree-node {
+  --tree-level: 0;
+  --tree-indent-width: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  transition: all var(--duration-fast) var(--ease-out);
+  
+  &-expanded {
+    > .choice-tree-children {
+      display: block;
+    }
+  }
+  
+  &-selected {
+    > .choice-tree-node-row {
+      background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+      
+      &::after {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 3px;
+        background: var(--color-primary);
+      }
+    }
+  }
+  
+  &-partial {
+    > .choice-tree-node-row {
+      background: color-mix(in srgb, var(--color-primary) 4%, transparent);
+    }
+  }
+  
+  &-disabled {
+    opacity: 0.5;
+    pointer-events: none;
+    
+    .choice-tree-item {
+      cursor: not-allowed;
+    }
+  }
+  
+  // Hover state
+  &:not(&-disabled) > .choice-tree-node-row:hover {
+    background: color-mix(in srgb, var(--color-text) 5%, transparent);
+  }
+  
+  // Focus state
+  &:focus-within > .choice-tree-node-row {
+    outline: 2px solid var(--color-primary);
+    outline-offset: -2px;
+  }
+}
+
+// Node row container
+.choice-tree-node-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: var(--space-10);
+  padding: var(--space-2) var(--space-3);
+  transition: background var(--duration-fast) var(--ease-out);
+}
+
+// Indentation spacer
+.choice-tree-indent {
+  flex-shrink: 0;
+  width: var(--tree-indent-width);
+  height: 100%;
+  position: relative;
+}
+
+// Expand/collapse button
+.choice-tree-expand-btn {
+  @include reset-button;
+  @include flex-center;
+  flex-shrink: 0;
+  width: var(--space-6);
+  height: var(--space-6);
+  margin-right: var(--space-2);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  transition: all var(--duration-fast) var(--ease-out);
+  
+  &:hover {
+    background: color-mix(in srgb, var(--color-text) 10%, transparent);
+    color: var(--color-text);
+  }
+  
+  &:focus-visible {
+    @include focus-ring();
+  }
+  
+  &:active {
+    transform: scale(0.95);
+  }
+}
+
+// Expand icon
+.choice-tree-expand-icon {
+  font-size: var(--text-lg);
+  transition: transform var(--duration-normal) var(--ease-spring);
+  
+  &-expanded {
+    transform: rotate(180deg);
+  }
+}
+
+// Spacer when no expand button
+.choice-tree-spacer {
+  flex-shrink: 0;
+  width: var(--space-6);
+  margin-right: var(--space-2);
+}
+
+// Main item button
+.choice-tree-item {
+  @include reset-button;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  text-align: left;
+  color: var(--color-text);
+  transition: all var(--duration-fast) var(--ease-out);
+  
+  &:hover:not(&-disabled) {
+    background: color-mix(in srgb, var(--color-primary) 5%, transparent);
+    color: var(--color-primary);
+  }
+  
+  &:focus-visible {
+    @include focus-ring();
+  }
+  
+  &-selected {
+    background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+    color: var(--color-primary);
+    font-weight: var(--font-medium);
+    
+    &:hover {
+      background: color-mix(in srgb, var(--color-primary) 15%, transparent);
+    }
+  }
+  
+  &-disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+  
+  &-loading {
+    pointer-events: none;
+    opacity: 0.7;
+  }
+}
+
+// Custom template wrapper
+.choice-tree-item-template {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+  
+  &:hover {
+    background: color-mix(in srgb, var(--color-primary) 5%, transparent);
+  }
+}
+
+// Checkbox for multi-select
+.choice-tree-checkbox {
+  @include flex-center;
+  flex-shrink: 0;
+  width: var(--space-5);
+  height: var(--space-5);
+}
+
+.choice-tree-checkbox-icon {
+  font-size: var(--text-lg);
+  color: var(--color-text-muted);
+  transition: all var(--duration-fast) var(--ease-out);
+  
+  &-checked {
+    color: var(--color-primary);
+  }
+  
+  &-partial {
+    color: var(--color-primary);
+    opacity: 0.7;
+  }
+}
+
+// Item icon
+.choice-tree-item-icon {
+  flex-shrink: 0;
+  font-size: var(--text-lg);
+  color: var(--color-text-muted);
+}
+
+// Avatar
+.choice-tree-avatar {
+  flex-shrink: 0;
+  width: var(--space-8);
+  height: var(--space-8);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  border: 2px solid var(--color-border-light);
+  
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
+// Item content
+.choice-tree-item-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-0-5);
+  min-width: 0; // Allow text truncation
+}
+
+.choice-tree-item-label {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: inherit;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.choice-tree-item-description {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+// Badge
+.choice-tree-item-badge {
+  flex-shrink: 0;
+  padding: var(--space-0-5) var(--space-2);
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  border-radius: var(--radius-full);
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  
+  @include badge-semantic-variants();
+}
+
+// Selected icon for single selection
+.choice-tree-selected-icon {
+  flex-shrink: 0;
+  font-size: var(--text-lg);
+  color: var(--color-primary);
+  animation: zoomIn var(--duration-normal) var(--ease-spring);
+}
+
+// Loading indicator
+.choice-tree-loading {
+  @include flex-center;
+  flex-shrink: 0;
+}
+
+.choice-tree-loading-icon {
+  font-size: var(--text-lg);
+  color: var(--color-primary);
+}
+
+// Children container
+.choice-tree-children {
+  display: none;
+  padding-left: 0;
+  animation: slideInDown var(--duration-normal) var(--ease-out);
+  
+  // Nested level styling
+  .choice-tree-node-level-1 {
+    --tree-level: 1;
+  }
+  
+  .choice-tree-node-level-2 {
+    --tree-level: 2;
+  }
+  
+  .choice-tree-node-level-3 {
+    --tree-level: 3;
+  }
+  
+  .choice-tree-node-level-4 {
+    --tree-level: 4;
+  }
+  
+  .choice-tree-node-level-5 {
+    --tree-level: 5;
+  }
+  
+  // Add more levels as needed
+  @for $i from 6 through 10 {
+    .choice-tree-node-level-#{$i} {
+      --tree-level: #{$i};
+    }
+  }
+}
+
+// No results state
+.choice-tree-no-results {
+  @include flex-center;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-8) var(--space-4);
+  color: var(--color-text-muted);
+  text-align: center;
+  
+  .icon {
+    font-size: var(--text-3xl);
+    opacity: 0.5;
+  }
+  
+  span {
+    font-size: var(--text-sm);
+  }
+}
+
+// Density variations - can be consolidated with mixins in future
+.dense {
+  .choice-tree-node-row {
+    min-height: var(--space-8);
+    padding: var(--space-1) var(--space-2);
+  }
+  
+  .choice-tree-item {
+    padding: var(--space-1) var(--space-2);
+    gap: var(--space-1);
+  }
+  
+  .choice-tree-expand-btn,
+  .choice-tree-spacer {
+    width: var(--space-5);
+    height: var(--space-5);
+  }
+  
+  .choice-tree-avatar {
+    width: var(--space-6);
+    height: var(--space-6);
+  }
+  
+  .choice-tree-indent {
+    width: var(--space-5);
+  }
+}
+
+.ultra-dense {
+  .choice-tree-node-row {
+    min-height: var(--space-6);
+    padding: var(--space-0-5) var(--space-1);
+  }
+  
+  .choice-tree-item {
+    padding: var(--space-0-5) var(--space-1);
+    gap: var(--space-0-5);
+  }
+  
+  .choice-tree-expand-btn,
+  .choice-tree-spacer {
+    width: var(--space-4);
+    height: var(--space-4);
+    margin-right: var(--space-1);
+  }
+  
+  .choice-tree-avatar {
+    width: var(--space-5);
+    height: var(--space-5);
+  }
+  
+  .choice-tree-indent {
+    width: var(--space-4);
+  }
+  
+  .choice-tree-item-label {
+    font-size: var(--text-xs);
+  }
+  
+  .choice-tree-item-description {
+    font-size: var(--text-2xs);
+  }
+}
+
+// Size variations - can be consolidated with mixins in future
+.text-xs {
+  .choice-tree-item-label {
+    font-size: var(--text-xs);
+  }
+  
+  .choice-tree-item-icon,
+  .choice-tree-expand-icon,
+  .choice-tree-checkbox-icon {
+    font-size: var(--text-sm);
+  }
+}
+
+.text-sm {
+  .choice-tree-item-label {
+    font-size: var(--text-sm);
+  }
+  
+  .choice-tree-item-icon,
+  .choice-tree-expand-icon,
+  .choice-tree-checkbox-icon {
+    font-size: var(--text-base);
+  }
+}
+
+.text-lg {
+  .choice-tree-item-label {
+    font-size: var(--text-base);
+  }
+  
+  .choice-tree-item-description {
+    font-size: var(--text-sm);
+  }
+  
+  .choice-tree-item-icon,
+  .choice-tree-expand-icon,
+  .choice-tree-checkbox-icon {
+    font-size: var(--text-xl);
+  }
+  
+  .choice-tree-node-row {
+    min-height: var(--space-12);
+  }
+}
+
+.text-xl {
+  .choice-tree-item-label {
+    font-size: var(--text-lg);
+  }
+  
+  .choice-tree-item-description {
+    font-size: var(--text-base);
+  }
+  
+  .choice-tree-item-icon,
+  .choice-tree-expand-icon,
+  .choice-tree-checkbox-icon {
+    font-size: var(--text-2xl);
+  }
+  
+  .choice-tree-node-row {
+    min-height: var(--space-14);
+  }
+}
+
+// Responsive adjustments
+@include responsive-max(sm) {
+  .choice-tree {
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+  }
+  
+  .choice-tree-item-label {
+    font-size: var(--text-sm);
+  }
+  
+  .choice-tree-indent {
+    width: var(--space-4);
+  }
+}
+
+// Accessibility
+@media (prefers-reduced-motion: reduce) {
+  .choice-tree-children {
+    animation: none;
+  }
+  
+  .choice-tree-expand-icon {
+    transition: none;
+  }
+  
+  .choice-tree-selected-icon {
+    animation: none;
+  }
+}
+
+// High contrast mode
+@media (prefers-contrast: high) {
+  .choice-tree {
+    border-width: 2px;
+  }
+  
+  .choice-tree-node-selected > .choice-tree-node-row {
+    outline: 2px solid var(--color-primary);
+    outline-offset: -2px;
+  }
+  
+  .choice-tree-item-selected {
+    outline: 2px solid var(--color-primary);
+    outline-offset: -2px;
+  }
+}
+
+// Dark mode specific adjustments
+:root[data-theme="dark"] {
+  .choice-tree-striped {
+    .choice-tree-node-row-alt {
+      background: color-mix(in srgb, var(--color-surface-elevated) 50%, transparent);
+    }
+  }
+  
+  .choice-tree-node-selected > .choice-tree-node-row {
+    background: color-mix(in srgb, var(--color-primary) 15%, transparent);
+  }
+  
+  .choice-tree-item-selected {
+    background: color-mix(in srgb, var(--color-primary) 20%, transparent);
+  }
+}

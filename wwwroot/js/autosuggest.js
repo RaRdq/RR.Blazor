@@ -250,7 +250,8 @@ export function calculateOptimalPosition(triggerElement, options = {}) {
     };
 }
 
-window.RRAutosuggest = {
+window.RRBlazor = window.RRBlazor || {};
+window.RRBlazor.Autosuggest = {
     createPortal: createAutosuggestPortal,
     destroyPortal: destroyAutosuggestPortal,
     updatePosition: updateAutosuggestPosition,
