@@ -31,6 +31,10 @@ Supports closable tabs, disabled states, and badge notifications for professiona
     [Parameter, AIParameter("Unique tab identifier", "Auto-generated if not provided")] 
     public string Id { get; set; } = $"tab-item-{Guid.NewGuid():N}";
     
+    /// <summary>Value alias for Id (for demo compatibility)</summary>
+    [Parameter, AIParameter("Alias for Id parameter", "Use Id or Value interchangeably")]
+    public string Value { get; set; }
+    
     /// <summary>Tab text/title</summary>
     [Parameter, AIParameter("Tab display text", "Shown in tab header")] 
     public string Text { get; set; }
@@ -42,10 +46,21 @@ Supports closable tabs, disabled states, and badge notifications for professiona
     /// <summary>Icon position</summary>
     [Parameter] public IconPosition IconPosition { get; set; } = IconPosition.Start;
     
+    /// <summary>Loading state for tab</summary>
+    [Parameter, AIParameter("Show loading indicator", "true shows spinner in tab header")]
+    public bool Loading { get; set; }
+    
+    /// <summary>Error state for tab</summary>
+    [Parameter, AIParameter("Show error indicator", "true shows error icon in tab header")]
+    public bool HasError { get; set; }
     
     /// <summary>Whether tab can be closed</summary>
     [Parameter, AIParameter("Allow tab to be closed", "true for document-style tabs")] 
     public bool Closable { get; set; }
+    
+    /// <summary>Badge string content (flexible badge)</summary>
+    [Parameter, AIParameter("Badge text content", "Can be number or text")]
+    public string Badge { get; set; }
     
     /// <summary>Badge count to display</summary>
     [Parameter, AIParameter("Notification badge count", "0 to hide badge, >0 to show")] 
@@ -53,6 +68,10 @@ Supports closable tabs, disabled states, and badge notifications for professiona
     
     /// <summary>Badge variant (danger, warning, success)</summary>
     [Parameter] public string BadgeVariant { get; set; }
+    
+    /// <summary>Tooltip text for hover</summary>
+    [Parameter, AIParameter("Tooltip text on hover", "Shows on tab header hover")]
+    public string Tooltip { get; set; }
     
     /// <summary>ARIA label for accessibility</summary>
     [Parameter, AIParameter("Accessibility label for screen readers", "Descriptive text for the tab")]
@@ -66,17 +85,33 @@ Supports closable tabs, disabled states, and badge notifications for professiona
             throw new InvalidOperationException("RTabItem must be used within RTabs component");
         }
         
+        // Support Value as alias for Id
+        if (!string.IsNullOrEmpty(Value) && Id.StartsWith("tab-item-"))
+        {
+            Id = Value;
+        }
+        
+        // Support Badge string parameter
+        if (!string.IsNullOrEmpty(Badge) && int.TryParse(Badge, out var badgeNum))
+        {
+            BadgeCount = badgeNum;
+        }
+        
         Parent.AddTab(new RTabs.RTabItemInfo
         {
             Id = Id,
             Text = Text,
             Icon = Icon,
             IconPosition = IconPosition,
-            IsDisabled = Disabled,
+            Disabled = Disabled,
+            Loading = Loading,
+            HasError = HasError,
             Closable = Closable,
+            Badge = Badge,
             BadgeCount = BadgeCount,
             BadgeVariant = BadgeVariant,
-            AriaLabel = AriaLabel,
+            AriaLabel = AriaLabel ?? Tooltip,
+            Tooltip = Tooltip,
             Content = ChildContent
         });
     }
@@ -95,11 +130,15 @@ Supports closable tabs, disabled states, and badge notifications for professiona
                     Text = Text,
                     Icon = Icon,
                     IconPosition = IconPosition,
-                    IsDisabled = Disabled,
+                    Disabled = Disabled,
+                    Loading = Loading,
+                    HasError = HasError,
                     Closable = Closable,
+                    Badge = Badge,
                     BadgeCount = BadgeCount,
                     BadgeVariant = BadgeVariant,
-                    AriaLabel = AriaLabel,
+                    AriaLabel = AriaLabel ?? Tooltip,
+                    Tooltip = Tooltip,
                     Content = ChildContent
                 });
             }
@@ -108,6 +147,17 @@ Supports closable tabs, disabled states, and badge notifications for professiona
     
     protected override void OnParametersSet()
     {
+        // Support Value as alias for Id
+        if (!string.IsNullOrEmpty(Value) && Id.StartsWith("tab-item-"))
+        {
+            Id = Value;
+        }
+        
+        // Support Badge string parameter
+        if (!string.IsNullOrEmpty(Badge) && int.TryParse(Badge, out var badgeNum))
+        {
+            BadgeCount = badgeNum;
+        }
 
         if (Parent != null)
         {
@@ -117,11 +167,15 @@ Supports closable tabs, disabled states, and badge notifications for professiona
                 existingTab.Text = Text;
                 existingTab.Icon = Icon;
                 existingTab.IconPosition = IconPosition;
-                existingTab.IsDisabled = Disabled;
+                existingTab.Disabled = Disabled;
+                existingTab.Loading = Loading;
+                existingTab.HasError = HasError;
                 existingTab.Closable = Closable;
+                existingTab.Badge = Badge;
                 existingTab.BadgeCount = BadgeCount;
                 existingTab.BadgeVariant = BadgeVariant;
-                existingTab.AriaLabel = AriaLabel;
+                existingTab.AriaLabel = AriaLabel ?? Tooltip;
+                existingTab.Tooltip = Tooltip;
                 existingTab.Content = ChildContent;
             }
         }

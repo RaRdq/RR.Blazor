@@ -13,6 +13,7 @@ Tab container for organizing content with smooth animations.
 @using RR.Blazor.Components
 @using RR.Blazor.Components.Base
 @using RR.Blazor.Components.Display
+@using RR.Blazor.Components.Feedback
 @using RR.Blazor.Utilities
 @inherits RSizedComponentBase<SizeType>
 @implements IDisposable
@@ -38,10 +39,10 @@ Tab container for organizing content with smooth animations.
         <nav class="@GetNavClasses()" role="tablist" aria-label="@AriaLabel">
         <!-- Left Scroll Arrow -->
         <button type="button" 
-                class="tabs-nav-arrow tabs-nav-arrow-left @GetScrollArrowClasses(canScrollLeft)"
+                class="tabs-nav-arrow tabs-nav-arrow-left @GetLeftArrowClasses()"
                 @onclick="ScrollLeft"
-                aria-label="Scroll tabs left">
-            <i class="icon">chevron_left</i>
+                aria-label="@(Orientation == Orientation.Vertical ? "Scroll tabs up" : "Scroll tabs left")">
+            <i class="icon">@(Orientation == Orientation.Vertical ? "keyboard_arrow_up" : "chevron_left")</i>
         </button>
         
         <!-- Scrollable Tab Container -->
@@ -56,50 +57,40 @@ Tab container for organizing content with smooth animations.
                 <!-- Tab Headers -->
                 @foreach (var tab in tabs)
                 {
-                    <button type="button"
-                            id="tab-@tab.Id"
-                            class="@GetTabClasses(tab)"
-                            role="tab"
-                            aria-selected="@(tab.Id == ActiveTabId)"
-                            aria-controls="panel-@tab.Id"
-                            aria-label="@(!string.IsNullOrEmpty(tab.AriaLabel) ? tab.AriaLabel : tab.Text)"
-                            tabindex="@(tab.Id == ActiveTabId ? 0 : -1)"
-                            disabled="@tab.IsDisabled"
-                            @onclick="() => SelectTab(tab.Id)"
-                            @onkeydown="@(e => HandleKeyDown(e, tab.Id))">
-                        
-                        @if (!string.IsNullOrEmpty(tab.Icon) && tab.IconPosition == IconPosition.Start)
-                        {
-                            <i class="icon @GetTabIconSize() mr-2">@tab.Icon</i>
-                        }
-                        
-                        @if (!string.IsNullOrEmpty(tab.Text))
-                        {
-                            <span>@tab.Text</span>
-                        }
-                        
-                        @if (tab.BadgeCount > 0)
-                        {
-                            <span class="tabs-tab-badge ml-2 px-2 py-1 text-xs rounded-full @GetBadgeVariant(tab.BadgeVariant)">
-                                @(tab.BadgeCount > 99 ? "99+" : tab.BadgeCount.ToString())
-                            </span>
-                        }
-                        
-                        @if (!string.IsNullOrEmpty(tab.Icon) && tab.IconPosition == IconPosition.End)
-                        {
-                            <i class="icon @GetTabIconSize() ml-2">@tab.Icon</i>
-                        }
-                        
-                        @if (tab.Closable)
-                        {
-                            <button type="button" 
-                                    class="ml-2 p-1 rounded hover-scale-sm active-scale-sm transition-transform"
-                                    @onclick="() => CloseTab(tab.Id)"
-                                    @onclick:stopPropagation="true">
-                                <i class="icon text-xs">close</i>
+                    @if (ShowTooltips && !string.IsNullOrEmpty(tab.Tooltip))
+                    {
+                        <RTooltip Content="@tab.Tooltip" Position="TooltipPosition.Bottom" Size="SizeType.Small">
+                            <button type="button"
+                                    id="tab-@tab.Id"
+                                    class="@GetTabClasses(tab)"
+                                    role="tab"
+                                    aria-selected="@(tab.Id == ActiveTabId)"
+                                    aria-controls="panel-@tab.Id"
+                                    aria-label="@(!string.IsNullOrEmpty(tab.AriaLabel) ? tab.AriaLabel : tab.Text)"
+                                    tabindex="@(tab.Id == ActiveTabId ? 0 : -1)"
+                                    disabled="@tab.Disabled"
+                                    @onclick="() => !tab.Disabled ? SelectTab(tab.Id) : Task.CompletedTask"
+                                    @onkeydown="@(e => HandleKeyDown(e, tab.Id))">
+                                @GetTabContentFragment(tab)
                             </button>
-                        }
-                    </button>
+                        </RTooltip>
+                    }
+                    else
+                    {
+                        <button type="button"
+                                id="tab-@tab.Id"
+                                class="@GetTabClasses(tab)"
+                                role="tab"
+                                aria-selected="@(tab.Id == ActiveTabId)"
+                                aria-controls="panel-@tab.Id"
+                                aria-label="@(!string.IsNullOrEmpty(tab.AriaLabel) ? tab.AriaLabel : tab.Text)"
+                                tabindex="@(tab.Id == ActiveTabId ? 0 : -1)"
+                                disabled="@tab.Disabled"
+                                @onclick="() => !tab.Disabled ? SelectTab(tab.Id) : Task.CompletedTask"
+                                @onkeydown="@(e => HandleKeyDown(e, tab.Id))">
+                            @GetTabContentFragment(tab)
+                        </button>
+                    }
                 }
                 
                 <!-- Add Tab Button -->
@@ -116,10 +107,10 @@ Tab container for organizing content with smooth animations.
         
         <!-- Right Scroll Arrow -->
         <button type="button" 
-                class="tabs-nav-arrow tabs-nav-arrow-right @GetScrollArrowClasses(canScrollRight)"
+                class="tabs-nav-arrow tabs-nav-arrow-right @GetRightArrowClasses()"
                 @onclick="ScrollRight"
-                aria-label="Scroll tabs right">
-            <i class="icon">chevron_right</i>
+                aria-label="@(Orientation == Orientation.Vertical ? "Scroll tabs down" : "Scroll tabs right")">
+            <i class="icon">@(Orientation == Orientation.Vertical ? "keyboard_arrow_down" : "chevron_right")</i>
         </button>
     </nav>
     
@@ -130,10 +121,11 @@ Tab container for organizing content with smooth animations.
                 @if (KeepPanelsAlive || tab.Id == ActiveTabId)
                 {
                     <div id="panel-@tab.Id"
-                         class="tabs-panel @(tab.Id == ActiveTabId ? "tabs-panel-active" : "") @(FadeOnly ? "tabs-panel-fade-only" : "")"
+                         class="tabs-panel @(tab.Id == ActiveTabId ? "tabs-panel-active" : "") @(FadeOnly || !ShowAnimation ? "tabs-panel-fade-only" : "")"
                          role="tabpanel"
                          aria-labelledby="tab-@tab.Id"
-                         tabindex="0">
+                         tabindex="0"
+                         style="@(!KeepPanelsAlive && tab.Id != ActiveTabId ? "display: none;" : "")">
                         @if (Loading && tab.Id == ActiveTabId)
                         {
                             <RSkeleton Loading="true" Type="SkeletonType.Card">
@@ -191,6 +183,18 @@ Tab container for organizing content with smooth animations.
     /// <summary>Use fade only animation (no slide)</summary>
     [Parameter] public bool FadeOnly { get; set; }
     
+    /// <summary>Show tooltips on tab headers</summary>
+    [Parameter, AIParameter("Enable tooltips on tab headers", "true to show tooltips, false to hide")] 
+    public bool ShowTooltips { get; set; } = true;
+    
+    /// <summary>Enable animations for tab transitions</summary>
+    [Parameter, AIParameter("Enable smooth tab transition animations", "true for animations, false for instant transitions")] 
+    public bool ShowAnimation { get; set; } = true;
+    
+    /// <summary>Whether to show badges on tabs</summary>
+    [Parameter, AIParameter("Show badges on tab headers", "true to display badges, false to hide")] 
+    public bool ShowBadges { get; set; } = true;
+    
     
     /// <summary>Whether to keep all tab panels alive (renders all content, disables lazy loading)</summary>
     [Parameter, AIParameter("Keep all tab panels alive in DOM", "false for lazy loading (performance), true to keep all panels rendered")] 
@@ -218,6 +222,8 @@ Tab container for organizing content with smooth animations.
     private bool isScrollable = false;
     private bool canScrollLeft = false;
     private bool canScrollRight = false;
+    private bool canScrollUp = false;
+    private bool canScrollDown = false;
     private bool isUpdatingIndicator = false;
     private bool isUpdatingScrollState = false;
     private bool wasActiveTabIdSetExternally = false;
@@ -247,7 +253,7 @@ Tab container for organizing content with smooth animations.
         {
             try
             {
-                await SafeInvokeAsync("initializeTabs", tabsElement, navContainer, navWrapper);
+                await SafeInvokeAsync("RRBlazor.Tabs.initializeTabs", tabsElement, navContainer, navWrapper, Orientation == Orientation.Vertical ? "vertical" : "horizontal");
                 
                 if (tabs.Count > 0)
                 {
@@ -292,8 +298,9 @@ Tab container for organizing content with smooth animations.
             existingTab.Text = tab.Text;
             existingTab.Icon = tab.Icon;
             existingTab.IconPosition = tab.IconPosition;
-            existingTab.IsDisabled = tab.IsDisabled;
+            existingTab.Disabled = tab.Disabled;
             existingTab.Closable = tab.Closable;
+            existingTab.Badge = tab.Badge;
             existingTab.BadgeCount = tab.BadgeCount;
             existingTab.BadgeVariant = tab.BadgeVariant;
             existingTab.Content = tab.Content;
@@ -314,20 +321,28 @@ Tab container for organizing content with smooth animations.
         
         StateHasChanged();
         
-        // Debounce updates to prevent render loops
+        // Debounce updates to prevent render loops - multiple attempts to ensure scroll detection works
         _ = Task.Run(async () =>
         {
             try
             {
-                await Task.Yield(); // Let DOM update
+                await Task.Delay(50); // Let DOM update
                 await InvokeAsync(async () => 
                 {
                     await UpdateScrollState();
                     await UpdateIndicatorPosition();
                 });
+                
+                // Additional delayed update for reliable detection
+                await Task.Delay(200);
+                await InvokeAsync(async () => 
+                {
+                    await UpdateScrollState();
+                });
             }
-            catch
+            catch (Exception ex)
             {
+                // Silently handle error
             }
         });
     }
@@ -362,9 +377,22 @@ Tab container for organizing content with smooth animations.
         }
     }
     
+    public void RemoveLastTab()
+    {
+        if (tabs.Any())
+        {
+            var lastTab = tabs.Last();
+            RemoveTab(lastTab.Id);
+        }
+    }
+    
     private async Task SelectTab(string tabId)
     {
         if (tabId == ActiveTabId) return;
+        
+        // Check if the tab is disabled
+        var targetTab = tabs.FirstOrDefault(t => t.Id == tabId);
+        if (targetTab?.Disabled == true) return;
         
         var oldTabId = ActiveTabId;
         
@@ -482,7 +510,7 @@ Tab container for organizing content with smooth animations.
             var activeTab = tabs.FirstOrDefault(t => t.Id == ActiveTabId);
             if (activeTab != null)
             {
-                var result = await SafeInvokeAsync<TabIndicatorPosition>("getTabIndicatorPosition", $"tab-{ActiveTabId}", navWrapper);
+                var result = await SafeInvokeAsync<TabIndicatorPosition>("RRBlazor.Tabs.getTabIndicatorPosition", $"tab-{ActiveTabId}", navWrapper);
                 
                 // Only update if values have actually changed to prevent unnecessary re-renders
                 if (Math.Abs(indicatorLeft - result.Left) > 0.5 || Math.Abs(indicatorWidth - result.Width) > 0.5)
@@ -509,40 +537,57 @@ Tab container for organizing content with smooth animations.
         try
         {
             isUpdatingScrollState = true;
-
-            if (tabs.Count <= 1)
-            {
-                if (isScrollable || canScrollLeft || canScrollRight)
-                {
-                    isScrollable = false;
-                    canScrollLeft = false;
-                    canScrollRight = false;
-                    StateHasChanged();
-                }
-                return;
-            }
             
-            var scrollInfo = await SafeInvokeAsync<ScrollInfo>("getTabScrollInfo", navWrapper);
+            // Always check for scroll state regardless of tab count - even one wide tab can overflow
+            var scrollInfo = await SafeInvokeAsync<ScrollInfo>("RRBlazor.Tabs.getTabScrollInfo", navWrapper, Orientation == Orientation.Vertical ? "vertical" : "horizontal");
             
+            // Scroll state updated successfully
 
-            if (isScrollable != scrollInfo.IsScrollable || 
-                canScrollLeft != scrollInfo.CanScrollLeft || 
-                canScrollRight != scrollInfo.CanScrollRight)
+            bool stateChanged = false;
+            
+            if (isScrollable != scrollInfo.IsScrollable)
             {
                 isScrollable = scrollInfo.IsScrollable;
-                canScrollLeft = scrollInfo.CanScrollLeft;
-                canScrollRight = scrollInfo.CanScrollRight;
+                stateChanged = true;
+            }
+            
+            if (Orientation == Orientation.Vertical)
+            {
+                if (canScrollUp != scrollInfo.CanScrollUp || canScrollDown != scrollInfo.CanScrollDown)
+                {
+                    canScrollUp = scrollInfo.CanScrollUp;
+                    canScrollDown = scrollInfo.CanScrollDown;
+                    stateChanged = true;
+                }
+            }
+            else
+            {
+                if (canScrollLeft != scrollInfo.CanScrollLeft || canScrollRight != scrollInfo.CanScrollRight)
+                {
+                    canScrollLeft = scrollInfo.CanScrollLeft;
+                    canScrollRight = scrollInfo.CanScrollRight;
+                    stateChanged = true;
+                }
+            }
+            
+            if (stateChanged)
+            {
                 StateHasChanged();
+                // State has changed, UI will update
             }
         }
-        catch
+        catch (Exception ex)
         {
-
-            if (isScrollable || canScrollLeft || canScrollRight)
+            // Silently handle scroll state error
+            // Reset scroll state on error but keep existing state if was working
+            bool shouldReset = isScrollable || canScrollLeft || canScrollRight || canScrollUp || canScrollDown;
+            if (shouldReset)
             {
                 isScrollable = false;
                 canScrollLeft = false;
                 canScrollRight = false;
+                canScrollUp = false;
+                canScrollDown = false;
                 StateHasChanged();
             }
         }
@@ -556,7 +601,12 @@ Tab container for organizing content with smooth animations.
     {
         try
         {
-            await SafeInvokeAsync("scrollTabsLeft", navWrapper);
+            if (Orientation == Orientation.Vertical)
+            {
+                await SafeInvokeAsync("RRBlazor.Tabs.scrollTabsUp", navWrapper);
+            } else {
+                await SafeInvokeAsync("RRBlazor.Tabs.scrollTabsLeft", navWrapper);
+            }
             await UpdateScrollState();
         }
         catch
@@ -568,7 +618,12 @@ Tab container for organizing content with smooth animations.
     {
         try
         {
-            await SafeInvokeAsync("scrollTabsRight", navWrapper);
+            if (Orientation == Orientation.Vertical)
+            {
+                await SafeInvokeAsync("RRBlazor.Tabs.scrollTabsDown", navWrapper);
+            } else {
+                await SafeInvokeAsync("RRBlazor.Tabs.scrollTabsRight", navWrapper);
+            }
             await UpdateScrollState();
         }
         catch
@@ -580,7 +635,7 @@ Tab container for organizing content with smooth animations.
     {
         try
         {
-            await SafeInvokeAsync("scrollToTab", navWrapper, $"tab-{tabId}");
+            await SafeInvokeAsync("RRBlazor.Tabs.scrollToTab", navWrapper, $"tab-{tabId}", Orientation == Orientation.Vertical ? "vertical" : "horizontal");
             await UpdateScrollState();
         }
         catch
@@ -594,7 +649,15 @@ Tab container for organizing content with smooth animations.
         
         classes.Add("tabs-tab");
         
-        classes.Add(GetTabSizeUtilities());
+        // Apply Size and Density separately - they are orthogonal concerns
+        var sizeClasses = GetTabSizeClasses();
+        var densityClasses = GetTabDensityClasses();
+        
+        // Split and add individual classes since these methods return space-separated strings
+        if (!string.IsNullOrEmpty(sizeClasses))
+            classes.AddRange(sizeClasses.Split(' ', StringSplitOptions.RemoveEmptyEntries));
+        if (!string.IsNullOrEmpty(densityClasses))
+            classes.AddRange(densityClasses.Split(' ', StringSplitOptions.RemoveEmptyEntries));
         
         if (tab.Id == ActiveTabId)
         {
@@ -602,25 +665,56 @@ Tab container for organizing content with smooth animations.
         }
         // Hover and inactive states are handled by CSS
         
-        if (tab.IsDisabled)
+        if (tab.Disabled)
         {
             classes.Add("state-disabled");
+        }
+        
+        if (tab.Loading)
+        {
+            // Don't add CSS loading class to avoid double spinner - handled by icon only
+            classes.Add("tabs-tab-has-loading");  // Use semantic class for styling without animation
+        }
+        
+        if (tab.HasError)
+        {
+            classes.Add("tabs-tab-error state-error");
+        }
+        
+        if (tab.Closable)
+        {
+            classes.Add("tabs-tab-closable");
         }
         
         return string.Join(" ", classes.Where(c => !string.IsNullOrEmpty(c)));
     }
 
-    private string GetTabSizeUtilities()
+    private string GetTabSizeClasses()
     {
-        var buttonClasses = SizeHelper.GetButtonSize(Size, Density);
+        // Size-only properties (font size, icon size, min-height)
         var textClass = SizeHelper.GetTextSize(Size, Density);
-        var gap = DensityHelper.GetGap(Density);
+        var minHeight = Size switch
+        {
+            SizeType.ExtraSmall => "min-h-8",
+            SizeType.Small => "min-h-9",
+            SizeType.Medium => "min-h-10",
+            SizeType.Large => "min-h-11",
+            SizeType.ExtraLarge => "min-h-12",
+            _ => "min-h-10"
+        };
         
+        return $"{textClass} {minHeight}";
+    }
+    
+    private string GetTabDensityClasses()
+    {
+        // Density-only properties (padding, margin, gap)
+        var gap = DensityHelper.GetGap(Density);
         var hPadding = DensityHelper.GetHorizontalPadding(Density, "4");
         var vPadding = DensityHelper.GetVerticalPadding(Density, "3");
         var paddingClass = $"px-{hPadding} py-{vPadding}";
         
-        return $"{paddingClass} {textClass} gap-{gap}";
+        return $"{paddingClass} gap-{gap}";
     }
     
     private string GetTabIconSize()
@@ -628,9 +722,10 @@ Tab container for organizing content with smooth animations.
         return SizeHelper.GetIconSize(Size, Density);
     }
     
+    
     private string GetBadgeVariant(string variant) => variant switch
     {
-        "danger" => "tabs-tab-badge-danger",
+        "error" => "tabs-tab-badge-error",
         "warning" => "tabs-tab-badge-warning", 
         "success" => "tabs-tab-badge-success",
         _ => ""
@@ -638,6 +733,11 @@ Tab container for organizing content with smooth animations.
     
     private string GetIndicatorStyle()
     {
+        if (Orientation == Orientation.Vertical)
+        {
+            // For vertical tabs, use top and height instead of left and width
+            return $"--indicator-top: {indicatorLeft.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)}px; --indicator-height: {indicatorWidth.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)}px;";
+        }
         return $"--indicator-left: {indicatorLeft.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)}px; --indicator-width: {indicatorWidth.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)}px;";
     }
     
@@ -645,14 +745,18 @@ Tab container for organizing content with smooth animations.
     {
         var classes = new List<string> { "tabs d-flex w-full" };
         
+        // Add size classes - following SRP, Size determines font sizes, icon sizes, component height
+        var sizeClasses = GetSizeClasses();
+        if (!string.IsNullOrEmpty(sizeClasses))
+            classes.Add(sizeClasses);
+        
+        // Add density class - following SRP, Density determines spacing, padding, margins
+        classes.Add(DensityHelper.BuildDensityClasses("tabs", Density));
+        
         // Add orientation class
         if (Orientation == Orientation.Vertical)
         {
             classes.Add("tabs-vertical");
-        }
-        else
-        {
-            classes.Add("flex-col");
         }
         
         // Add variant-specific classes
@@ -710,6 +814,16 @@ Tab container for organizing content with smooth animations.
         return string.Join(" ", classes);
     }
     
+    private string GetLeftArrowClasses()
+    {
+        return GetScrollArrowClasses(Orientation == Orientation.Vertical ? canScrollUp : canScrollLeft);
+    }
+    
+    private string GetRightArrowClasses()
+    {
+        return GetScrollArrowClasses(Orientation == Orientation.Vertical ? canScrollDown : canScrollRight);
+    }
+    
     protected override string GetSizeClasses()
     {
         return Size switch
@@ -725,6 +839,103 @@ Tab container for organizing content with smooth animations.
     
     protected override SizeType GetDefaultSize() => SizeType.Medium;
     
+    private RenderFragment GetTabContentFragment(RTabItemInfo tab) => builder =>
+    {
+        var seq = 0;
+        
+        // Show icon with loading/error state overlay or standalone icon
+        if (!string.IsNullOrEmpty(tab.Icon) && tab.IconPosition == IconPosition.Start)
+        {
+            if (tab.Loading)
+            {
+                // Show loading spinner using proper loading system
+                builder.OpenElement(seq++, "span");
+                builder.AddAttribute(seq++, "class", "loading-spinner loading-spinner-inline");
+                builder.CloseElement();
+            }
+            else if (tab.HasError)
+            {
+                // Show error icon instead of original icon
+                builder.OpenElement(seq++, "i");
+                builder.AddAttribute(seq++, "class", $"icon text-error {GetTabIconSize()}");
+                builder.AddContent(seq++, "error");
+                builder.CloseElement();
+            }
+            else
+            {
+                // Normal icon
+                builder.OpenElement(seq++, "i");
+                builder.AddAttribute(seq++, "class", $"icon {GetTabIconSize()}");
+                builder.AddContent(seq++, tab.Icon);
+                builder.CloseElement();
+            }
+        }
+        else if (tab.Loading)
+        {
+            // Loading state without original icon
+            builder.OpenElement(seq++, "span");
+            builder.AddAttribute(seq++, "class", "loading-spinner loading-spinner-inline");
+            builder.CloseElement();
+        }
+        else if (tab.HasError)
+        {
+            // Error state without original icon
+            builder.OpenElement(seq++, "i");
+            builder.AddAttribute(seq++, "class", $"icon text-error {GetTabIconSize()}");
+            builder.AddContent(seq++, "error");
+            builder.CloseElement();
+        }
+        
+        if (!string.IsNullOrEmpty(tab.Text))
+        {
+            builder.OpenElement(seq++, "span");
+            builder.AddContent(seq++, tab.Text);
+            builder.CloseElement();
+        }
+        
+        // Show badge if ShowBadges is true and tab has badge data
+        if (ShowBadges)
+        {
+            if (tab.BadgeCount > 0)
+            {
+                builder.OpenElement(seq++, "span");
+                builder.AddAttribute(seq++, "class", $"tabs-tab-badge {GetBadgeVariant(tab.BadgeVariant)}");
+                builder.AddContent(seq++, tab.BadgeCount > 99 ? "99+" : tab.BadgeCount.ToString());
+                builder.CloseElement();
+            }
+            else if (!string.IsNullOrEmpty(tab.Badge))
+            {
+                // Support string badges too
+                builder.OpenElement(seq++, "span");
+                builder.AddAttribute(seq++, "class", $"tabs-tab-badge {GetBadgeVariant(tab.BadgeVariant)}");
+                builder.AddContent(seq++, tab.Badge);
+                builder.CloseElement();
+            }
+        }
+        
+        if (!string.IsNullOrEmpty(tab.Icon) && tab.IconPosition == IconPosition.End)
+        {
+            builder.OpenElement(seq++, "i");
+            builder.AddAttribute(seq++, "class", $"icon {GetTabIconSize()}");
+            builder.AddContent(seq++, tab.Icon);
+            builder.CloseElement();
+        }
+        
+        if (tab.Closable)
+        {
+            builder.OpenElement(seq++, "button");
+            builder.AddAttribute(seq++, "type", "button");
+            builder.AddAttribute(seq++, "class", "tabs-tab-close");
+            builder.AddAttribute(seq++, "onclick", EventCallback.Factory.Create(this, () => CloseTab(tab.Id)));
+            builder.AddEventStopPropagationAttribute(seq++, "onclick", true);
+            builder.OpenElement(seq++, "i");
+            builder.AddAttribute(seq++, "class", "icon text-xs");
+            builder.AddContent(seq++, "close");
+            builder.CloseElement();
+            builder.CloseElement();
+        }
+    };
+    
     public void Dispose()
     {
 
@@ -736,11 +947,15 @@ Tab container for organizing content with smooth animations.
         public string Text { get; set; }
         public string Icon { get; set; }
         public IconPosition IconPosition { get; set; } = IconPosition.Start;
-        public bool IsDisabled { get; set; }
+        public bool Disabled { get; set; }
+        public bool Loading { get; set; }
+        public bool HasError { get; set; }
         public bool Closable { get; set; }
+        public string Badge { get; set; }  // Support string badges
         public int BadgeCount { get; set; }
         public string BadgeVariant { get; set; }
         public string AriaLabel { get; set; }
+        public string Tooltip { get; set; }
         public RenderFragment Content { get; set; }
     }
     
@@ -766,6 +981,8 @@ Tab container for organizing content with smooth animations.
         public bool IsScrollable { get; set; }
         public bool CanScrollLeft { get; set; }
         public bool CanScrollRight { get; set; }
+        public bool CanScrollUp { get; set; }
+        public bool CanScrollDown { get; set; }
     }
 }
 
