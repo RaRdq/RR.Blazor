@@ -34,7 +34,8 @@
                 @if (ShowSidebar && ShowSidebarToggle)
                 {
                     <RButton Icon="@GetToggleIcon()" 
-                             Variant="ButtonVariant.Ghost"
+                             Variant="VariantType.Primary"
+                             Mode="ButtonMode.Outline"
                              Size="SizeType.Medium"
                              OnClick="@ToggleSidebar"
                              AriaLabel="Toggle sidebar"
@@ -105,7 +106,8 @@
                             @if (!searchExpanded && SearchCollapsible)
                             {
                                 <RButton Icon="search" 
-                                         Variant="ButtonVariant.Ghost"
+                                         Variant="VariantType.Primary"
+                                         Mode="ButtonMode.Outline"
                                          Size="SizeType.Small"
                                          OnClick="@ExpandSearch"
                                          AriaLabel="Open search"
@@ -114,7 +116,6 @@
                             
                             <div class="search-input-container">
                                 <RAutosuggestGeneric TItem="AppSearchResult" 
-                                                     @bind-Value="selectedSearchResult"
                                                      SearchFunc="@SearchAppSearchResultsAsync"
                                                      ItemTextSelector="@(r => r.Title)"
                                                      ItemIconSelector="@(r => r.Icon)"
@@ -122,9 +123,9 @@
                                                      Size="SizeType.Small"
                                                      Icon="search"
                                                      ShowDropdownIcon="false"
-                                                     ClearOnSelect="true"
-                                                     MinSearchLength="1"
-                                                     DebounceDelay="300"
+                                                     ClearOnSelect="false"
+                                                     MinSearchLength="3"
+                                                     DebounceDelay="800"
                                                      OnItemSelected="@HandleSearchItemSelected"
                                                      Class="search-autosuggest" />
                             </div>
@@ -135,7 +136,7 @@
                 @if (ShowNotifications)
                 {
                     <RButton Icon="notifications" 
-                             Variant="ButtonVariant.Ghost" 
+                             Variant="VariantType.Secondary" 
                              Size="SizeType.Small"
                              ShowBadge="@(NotificationCount > 0)"
                              BadgeCount="@NotificationCount"
@@ -404,7 +405,6 @@
     private bool disposed = false;
     private bool sidebarCollapsed = false;
     private bool sidebarOpen = true;
-    private AppSearchResult selectedSearchResult;
     private bool searchExpanded = false;
     private bool ShowSidebar => Features.HasFlag(AppShellFeatures.Sidebar);
     private bool ShowHeader => Features.HasFlag(AppShellFeatures.Header);
@@ -536,8 +536,26 @@
     {
         try
         {
-            if (string.IsNullOrWhiteSpace(query)) return Enumerable.Empty<AppSearchResult>();
-            return await SearchService.SearchAsync(query, cancellationToken);
+            if (string.IsNullOrWhiteSpace(query) || query.Length < 3) 
+            {
+                return Enumerable.Empty<AppSearchResult>();
+            }
+            
+            // Add a small delay to further debounce and prevent rapid calls
+            await Task.Delay(50, cancellationToken);
+            
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return Enumerable.Empty<AppSearchResult>();
+            }
+            
+            var results = await SearchService.SearchAsync(query, cancellationToken);
+            return results ?? Enumerable.Empty<AppSearchResult>();
+        }
+        catch (OperationCanceledException)
+        {
+            // Normal cancellation, don't log as error
+            return Enumerable.Empty<AppSearchResult>();
         }
         catch (Exception ex)
         {
@@ -561,8 +579,6 @@
     private async Task ExpandSearch(MouseEventArgs args = null)
     {
         searchExpanded = true;
-        StateHasChanged();
-        
         await Task.Yield();
         
         if (appShellModule != null)
@@ -581,8 +597,11 @@
     [JSInvokable]
     public void OnSearchCollapsed()
     {
-        searchExpanded = false;
-        StateHasChanged();
+        if (searchExpanded)
+        {
+            searchExpanded = false;
+            // DO NOT call StateHasChanged() - let natural render cycle handle it
+        }
     }
 
     

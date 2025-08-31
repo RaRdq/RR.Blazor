@@ -97,8 +97,12 @@ Supports info, success, warning, and error states with consistent styling.
     public AlertType Type { get; set; } = AlertType.Info;
     
     /// <summary>Alert variant style</summary>
-    [Parameter, AIParameter("Alert visual variant", "AlertVariant.Default, AlertVariant.Filled, AlertVariant.Outline, AlertVariant.Subtle")] 
-    public AlertVariant Variant { get; set; } = AlertVariant.Default;
+    [Parameter, AIParameter("Alert visual variant", "VariantType.Default, VariantType.Primary, VariantType.Secondary, VariantType.Secondary")] 
+    public VariantType Variant { get; set; } = VariantType.Default;
+    
+    /// <summary>Whether to use filled background style</summary>
+    [Parameter, AIParameter("Use filled background", "true for solid background color")] 
+    public bool Filled { get; set; } = false;
     
     /// <summary>Alert size</summary>
     [Parameter, AIParameter("Alert size", "SizeType.Small, SizeType.Medium, SizeType.Large")] 
@@ -202,19 +206,26 @@ Supports info, success, warning, and error states with consistent styling.
             _ => ("bg-info-light", "text-info", "border-info")
         };
         
-        var variantClasses = Variant switch
+        // Handle filled style independently
+        string variantClasses;
+        if (Filled)
         {
-            AlertVariant.Filled => Type switch
+            variantClasses = Type switch
             {
-                AlertType.Success => "bg-success text-on-success border-success",
-                AlertType.Warning => "bg-warning text-on-warning border-warning",
-                AlertType.Error => "bg-error text-on-error border-error",
-                _ => "bg-info text-on-info border-info"
-            },
-            AlertVariant.Outline => $"bg-transparent {textClass} {borderClass}",
-            AlertVariant.Subtle => $"{bgClass} {textClass} {borderClass}",
-            _ => $"{bgClass} {textClass} {borderClass}"
-        };
+                AlertType.Success => "bg-success border-success",
+                AlertType.Warning => "bg-warning border-warning",
+                AlertType.Error => "bg-error border-error",
+                _ => "bg-info border-info"
+            };
+        }
+        else
+        {
+            variantClasses = Variant switch
+            {
+                VariantType.Secondary => $"{bgClass} {textClass} {borderClass}",
+                _ => $"{bgClass} {textClass} {borderClass}"
+            };
+        }
         
         classes.Add(variantClasses);
         
@@ -318,8 +329,8 @@ Supports info, success, warning, and error states with consistent styling.
         return ContentAlignment switch
         {
             AlertContentAlignment.Center => "items-center justify-center",
-            AlertContentAlignment.End => "items-end justify-end",
-            _ => "items-start"
+            AlertContentAlignment.End => "items-center justify-end",
+            _ => "items-center"
         };
     }
     
