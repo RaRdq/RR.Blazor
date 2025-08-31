@@ -10,7 +10,7 @@
                   Icon="tab" />
         
         <!-- Control Panel -->
-        <RCard Variant="CardVariant.Glass" Class="mb-6 p-4">
+        <RCard Variant="CardVariant.Glass" Class="mb-6 p-3">
             <ChildContent>
                 <div class="text-h6 font-semibold mb-4 flex items-center gap-2">
                     <i class="material-symbols-rounded">tune</i>
@@ -34,7 +34,7 @@
                     <!-- Orientation Selector -->
                     <div>
                         <label class="text-sm text-muted mb-1 block">Orientation</label>
-                        <select @bind="_currentOrientation" class="w-full px-3 py-2 rounded border border-light bg-surface text-sm">
+                        <select @bind="_currentOrientation" class="w-full px-3 py-2 rounded border border-light bg-surface text-sm rtabs-orientation-selector">
                             <option value="@Orientation.Horizontal">Horizontal</option>
                             <option value="@Orientation.Vertical">Vertical</option>
                         </select>
@@ -43,12 +43,12 @@
                     <!-- Size Selector -->
                     <div>
                         <label class="text-sm text-muted mb-1 block">Size</label>
-                        <select @bind="_currentSize" class="w-full px-3 py-2 rounded border border-light bg-surface text-sm">
-                            <option value="@SizeType.ExtraSmall">Extra Small</option>
-                            <option value="@SizeType.Small">Small</option>
-                            <option value="@SizeType.Medium">Medium</option>
-                            <option value="@SizeType.Large">Large</option>
-                            <option value="@SizeType.ExtraLarge">Extra Large</option>
+                        <select @bind="_currentSize" class="w-full px-3 py-2 rounded border border-light bg-surface text-sm rtabs-size-selector">
+                            <option value="@SizeType.ExtraSmall" class="rtabs-size-xs-option">Extra Small</option>
+                            <option value="@SizeType.Small" class="rtabs-size-sm-option">Small</option>
+                            <option value="@SizeType.Medium" class="rtabs-size-md-option">Medium</option>
+                            <option value="@SizeType.Large" class="rtabs-size-lg-option">Large</option>
+                            <option value="@SizeType.ExtraLarge" class="rtabs-size-xl-option">Extra Large</option>
                         </select>
                     </div>
                     
@@ -64,44 +64,36 @@
                     </div>
                 </div>
                 
-                <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 mt-4">
+                <div class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 mt-3">
                     <!-- Toggle Options -->
                     <RToggle @bind-Value="_showIcons" Text="Show Icons" Size="SizeType.Small" />
                     <RToggle @bind-Value="_showBadges" Text="Show Badges" Size="SizeType.Small" />
-                    <RToggle @bind-Value="_closableTabs" Text="Closable Tabs" Size="SizeType.Small" />
+                    <RToggle @bind-Value="_closableTabs" Text="Closable" Size="SizeType.Small" />
                     <RToggle @bind-Value="_showAddButton" Text="Add Button" Size="SizeType.Small" />
-                    <RToggle @bind-Value="_scrollableTabs" Text="Scrollable" Size="SizeType.Small" />
-                    <RToggle @bind-Value="_fadeAnimation" Text="Fade Animation" Size="SizeType.Small" />
+                    <RToggle @bind-Value="_fadeAnimation" Text="Animation" Size="SizeType.Small" />
                     <RToggle @bind-Value="_keepAlive" Text="Keep Alive" Size="SizeType.Small" />
-                    <RToggle @bind-Value="_noPadding" Text="No Padding" Size="SizeType.Small" />
-                    <RToggle @bind-Value="_hasDisabledTab" Text="Disabled Tab" Size="SizeType.Small" />
-                    <RToggle @bind-Value="_hasLoadingTab" Text="Loading Tab" Size="SizeType.Small" />
-                    <RToggle @bind-Value="_hasErrorTab" Text="Error Tab" Size="SizeType.Small" />
-                    <RToggle @bind-Value="_showTooltips" Text="Tooltips" Size="SizeType.Small" />
                 </div>
                 
-                <div class="flex gap-2 mt-4">
+                <div class="flex gap-2 mt-3">
                     <RButton Text="Add Tab" 
                              Icon="add"
-                             Variant="ButtonVariant.Primary"
+                             Variant="VariantType.Primary"
                              Size="SizeType.Small"
+                             Class="rtabs-config-add-button"
                              @onclick="AddConfigurableTab" />
-                    <RButton Text="Remove Last Tab" 
+                    <RButton Text="Remove Last" 
                              Icon="remove"
-                             Variant="ButtonVariant.Secondary"
+                             Variant="VariantType.Secondary"
                              Size="SizeType.Small"
+                             Class="rtabs-config-remove-last-button"
                              @onclick="RemoveLastConfigurableTab"
                              Disabled="@(_configurableTabs.Count <= 2)" />
-                    <RButton Text="Reset to Default" 
+                    <RButton Text="Reset" 
                              Icon="refresh"
-                             Variant="ButtonVariant.Ghost"
+                             Variant="VariantType.Secondary"
                              Size="SizeType.Small"
+                             Class="rtabs-config-reset-button"
                              @onclick="ResetConfiguration" />
-                </div>
-                
-                <div class="mt-3 p-2 bg-surface rounded text-xs text-muted">
-                    Current Config: @_currentVariant | @_currentOrientation | @_currentSize | @_currentDensity | 
-                    Tabs: @_configurableTabs.Count | Selected: @_configurableSelectedTab
                 </div>
             </ChildContent>
         </RCard>
@@ -115,19 +107,23 @@
                 </div>
                 
                 <div class="@(_currentOrientation == Orientation.Vertical ? "h-96" : "")">
-                    <RTabs @bind-SelectedTab="_configurableSelectedTab"
+                    <RTabs @ref="_configurableTabsRef"
+                           @bind-SelectedTab="_configurableSelectedTab"
                            Variant="_currentVariant"
                            Orientation="_currentOrientation"
                            Size="_currentSize"
                            Density="_currentDensity"
                            ShowAddButton="_showAddButton"
+                           ShowBadges="_showBadges"
+                           ShowAnimation="_fadeAnimation"
+                           ShowTooltips="_showTooltips"
                            NoPadding="_noPadding"
                            FadeOnly="_fadeAnimation"
                            KeepPanelsAlive="_keepAlive"
                            OnAddTab="@(() => HandleAddTab())"
                            OnTabChanged="@((args) => HandleTabChanged(args))"
                            OnTabClosed="@((args) => HandleTabClosed(args))"
-                           Class="@(_scrollableTabs ? "max-w-full overflow-x-auto" : "")">
+                           Class="">
                         @foreach (var tab in _configurableTabs)
                         {
                             <RTabItem Value="@tab.Value" 
@@ -135,9 +131,9 @@
                                       Icon="@(_showIcons ? tab.Icon : null)"
                                       Badge="@(_showBadges && tab.Badge > 0 ? tab.Badge.ToString() : null)"
                                       Closable="@(_closableTabs && tab.Closable)"
-                                      Disabled="@(_hasDisabledTab && tab.Value == "disabled")"
-                                      Loading="@(_hasLoadingTab && tab.Value == "loading")"
-                                      HasError="@(_hasErrorTab && tab.Value == "error")"
+                                      Disabled="@(tab.Value == "disabled")"
+                                      Loading="@(tab.Value == "loading")"
+                                      HasError="@(tab.Value == "error")"
                                       Tooltip="@(_showTooltips ? tab.Tooltip : null)">
                                 <div class="p-4">
                                     <h4 class="text-lg font-semibold mb-2">@tab.Text Content</h4>
@@ -186,361 +182,75 @@
             </ChildContent>
         </RCard>
         
-        <div class="space-y-6">
-            <!-- Basic Tabs -->
+        <!-- Core Examples Section -->
+        <div class="space-y-6 mt-6">
+            <!-- 1. Basic Implementation -->
             <div class="space-y-2">
-                <div class="text-h6 font-semibold">Basic Tabs</div>
+                <div class="text-h6 font-semibold">Basic Implementation</div>
                 <RTabs @bind-SelectedTab="_basicSelectedTab">
                     <RTabItem Value="overview" Text="Overview" Icon="dashboard">
                         <div class="p-4">
-                            <h4 class="text-lg font-semibold mb-2">Project Overview</h4>
-                            <p class="text-body-1 text-muted">
-                                This is the overview tab content. It contains general information about the project,
-                                including key metrics, progress updates, and high-level summaries.
-                            </p>
+                            <h4 class="text-lg font-semibold mb-2">Overview</h4>
+                            <p class="text-body-1 text-muted">Simple tab implementation with icons and content.</p>
                         </div>
                     </RTabItem>
-                    
                     <RTabItem Value="details" Text="Details" Icon="info">
                         <div class="p-4">
-                            <h4 class="text-lg font-semibold mb-2">Project Details</h4>
-                            <p class="text-body-1 text-muted">
-                                Detailed information about the project specifications, requirements, and implementation details.
-                                This tab typically contains more technical or comprehensive information.
-                            </p>
+                            <h4 class="text-lg font-semibold mb-2">Details</h4>
+                            <p class="text-body-1 text-muted">Additional information displayed in a separate tab.</p>
                         </div>
                     </RTabItem>
-                    
                     <RTabItem Value="settings" Text="Settings" Icon="settings">
                         <div class="p-4">
-                            <h4 class="text-lg font-semibold mb-2">Project Settings</h4>
-                            <p class="text-body-1 text-muted">
-                                Configuration options and preferences for the project. Users can modify various
-                                settings and preferences from this tab.
-                            </p>
-                        </div>
-                    </RTabItem>
-                </RTabs>
-                <div class="mt-2 text-sm text-muted">Currently selected: @_basicSelectedTab</div>
-            </div>
-
-            <!-- Tab Variants -->
-            <div class="space-y-2">
-                <div class="text-h6 font-semibold">Tab Variants</div>
-                
-                <div class="space-y-4">
-                    <!-- Pills Tabs -->
-                    <div>
-                        <h5 class="text-base font-medium mb-2">Pills Style</h5>
-                        <RTabs @bind-SelectedTab="_outlinedSelectedTab" Variant="TabsVariant.Pills">
-                            <RTabItem Value="profile" Text="Profile" Icon="person">
-                                <div class="p-4">
-                                    <h4 class="text-lg font-semibold mb-2">User Profile</h4>
-                                    <p class="text-body-2">Manage your personal information and account preferences.</p>
-                                </div>
-                            </RTabItem>
-                            <RTabItem Value="security" Text="Security" Icon="security">
-                                <div class="p-4">
-                                    <h4 class="text-lg font-semibold mb-2">Security Settings</h4>
-                                    <p class="text-body-2">Configure password, two-factor authentication, and security preferences.</p>
-                                </div>
-                            </RTabItem>
-                            <RTabItem Value="notifications" Text="Notifications" Icon="notifications">
-                                <div class="p-4">
-                                    <h4 class="text-lg font-semibold mb-2">Notification Preferences</h4>
-                                    <p class="text-body-2">Control how and when you receive notifications.</p>
-                                </div>
-                            </RTabItem>
-                        </RTabs>
-                    </div>
-
-                    <!-- Card Tabs -->
-                    <div>
-                        <h5 class="text-base font-medium mb-2">Card Style</h5>
-                        <RTabs @bind-SelectedTab="_filledSelectedTab" Variant="TabsVariant.Card">
-                            <RTabItem Value="analytics" Text="Analytics" Icon="analytics">
-                                <div class="p-4">
-                                    <h4 class="text-lg font-semibold mb-2">Analytics Dashboard</h4>
-                                    <p class="text-body-2">View detailed analytics and performance metrics.</p>
-                                </div>
-                            </RTabItem>
-                            <RTabItem Value="reports" Text="Reports" Icon="assessment">
-                                <div class="p-4">
-                                    <h4 class="text-lg font-semibold mb-2">Generated Reports</h4>
-                                    <p class="text-body-2">Access and download various reports and exports.</p>
-                                </div>
-                            </RTabItem>
-                            <RTabItem Value="trends" Text="Trends" Icon="trending_up">
-                                <div class="p-4">
-                                    <h4 class="text-lg font-semibold mb-2">Trend Analysis</h4>
-                                    <p class="text-body-2">Analyze trends and patterns in your data.</p>
-                                </div>
-                            </RTabItem>
-                        </RTabs>
-                    </div>
-
-                    <!-- Underline Tabs -->
-                    <div>
-                        <h5 class="text-base font-medium mb-2">Underline Style</h5>
-                        <RTabs @bind-SelectedTab="_underlineSelectedTab" Variant="TabsVariant.Underline">
-                            <RTabItem Value="home" Text="Home" Icon="home">
-                                <div class="p-4">
-                                    <h4 class="text-lg font-semibold mb-2">Home Dashboard</h4>
-                                    <p class="text-body-2">Welcome to your home dashboard.</p>
-                                </div>
-                            </RTabItem>
-                            <RTabItem Value="profile" Text="Profile" Icon="person">
-                                <div class="p-4">
-                                    <h4 class="text-lg font-semibold mb-2">User Profile</h4>
-                                    <p class="text-body-2">Manage your profile settings.</p>
-                                </div>
-                            </RTabItem>
-                        </RTabs>
-                    </div>
-
-                    <!-- Segment Tabs -->
-                    <div>
-                        <h5 class="text-base font-medium mb-2">Segment Style</h5>
-                        <RTabs @bind-SelectedTab="_segmentSelectedTab" Variant="TabsVariant.Segment">
-                            <RTabItem Value="list" Text="List" Icon="list">
-                                <div class="p-4">
-                                    <h4 class="text-lg font-semibold mb-2">List View</h4>
-                                    <p class="text-body-2">Display items in a list format.</p>
-                                </div>
-                            </RTabItem>
-                            <RTabItem Value="grid" Text="Grid" Icon="grid_view">
-                                <div class="p-4">
-                                    <h4 class="text-lg font-semibold mb-2">Grid View</h4>
-                                    <p class="text-body-2">Display items in a grid format.</p>
-                                </div>
-                            </RTabItem>
-                        </RTabs>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Tab Positions -->
-            <div class="space-y-2">
-                <div class="text-h6 font-semibold">Tab Positions</div>
-                <div class="space-y-4">
-                    <!-- Vertical Tabs -->
-                    <div>
-                        <h5 class="text-base font-medium mb-2">Vertical Tabs</h5>
-                        <RTabs @bind-SelectedTab="_verticalSelectedTab" Orientation="Orientation.Vertical" Class="h-64">
-                            <RTabItem Value="dashboard" Text="Dashboard" Icon="dashboard">
-                                <div class="p-4">
-                                    <h4 class="text-lg font-semibold mb-2">Dashboard</h4>
-                                    <p class="text-body-2">Main dashboard with key metrics and overview information.</p>
-                                </div>
-                            </RTabItem>
-                            <RTabItem Value="users" Text="Users" Icon="people">
-                                <div class="p-4">
-                                    <h4 class="text-lg font-semibold mb-2">User Management</h4>
-                                    <p class="text-body-2">Manage user accounts, permissions, and access levels.</p>
-                                </div>
-                            </RTabItem>
-                            <RTabItem Value="content" Text="Content" Icon="article">
-                                <div class="p-4">
-                                    <h4 class="text-lg font-semibold mb-2">Content Management</h4>
-                                    <p class="text-body-2">Create, edit, and organize content across your platform.</p>
-                                </div>
-                            </RTabItem>
-                        </RTabs>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Disabled and Loading States -->
-            <div class="space-y-2">
-                <div class="text-h6 font-semibold">Special States</div>
-                <RTabs @bind-SelectedTab="_statesSelectedTab">
-                    <RTabItem Value="active" Text="Active Tab" Icon="check_circle">
-                        <div class="p-4">
-                            <h4 class="text-lg font-semibold mb-2">Active Content</h4>
-                            <p class="text-body-2">This tab is active and fully functional.</p>
-                        </div>
-                    </RTabItem>
-                    
-                    <RTabItem Value="loading" Text="Loading" Icon="hourglass_empty" Loading="true">
-                        <div class="p-4">
-                            <h4 class="text-lg font-semibold mb-2">Loading Content</h4>
-                            <p class="text-body-2">This content is being loaded...</p>
-                        </div>
-                    </RTabItem>
-                    
-                    <RTabItem Value="disabled" Text="Disabled" Icon="block" Disabled="true">
-                        <div class="p-4">
-                            <h4 class="text-lg font-semibold mb-2">Disabled Content</h4>
-                            <p class="text-body-2">This tab is disabled and cannot be accessed.</p>
-                        </div>
-                    </RTabItem>
-                    
-                    <RTabItem Value="error" Text="Error State" Icon="error" HasError="true">
-                        <div class="p-4">
-                            <h4 class="text-lg font-semibold mb-2">Error Content</h4>
-                            <p class="text-body-2 text-error">This tab has an error state.</p>
+                            <h4 class="text-lg font-semibold mb-2">Settings</h4>
+                            <p class="text-body-1 text-muted">Configuration options in the third tab.</p>
                         </div>
                     </RTabItem>
                 </RTabs>
             </div>
 
-            <!-- Professional Use Cases -->
+            <!-- 2. Vertical Orientation -->
             <div class="space-y-2">
-                <div class="text-h6 font-semibold">Professional Use Cases</div>
-                <div class="space-y-6">
-                    <!-- E-commerce Product Tabs -->
-                    <RCard Variant="CardVariant.Glass" Class="p-4">
-                        <ChildContent>
-                            <h4 class="text-lg font-semibold mb-3">E-commerce Product Details</h4>
-                            <RTabs @bind-SelectedTab="_productSelectedTab">
-                                <RTabItem Value="description" Text="Description">
-                                    <div class="p-4">
-                                        <h5 class="font-semibold mb-2">Product Description</h5>
-                                        <p class="text-body-2 mb-3">
-                                            This premium wireless headphone delivers exceptional audio quality with active noise cancellation.
-                                            Perfect for music lovers and professionals who demand superior sound performance.
-                                        </p>
-                                        <ul class="list-disc ml-5 text-body-2 space-y-1">
-                                            <li>40mm dynamic drivers for rich, detailed sound</li>
-                                            <li>Active Noise Cancellation (ANC) technology</li>
-                                            <li>30-hour battery life with quick charge</li>
-                                            <li>Premium comfortable over-ear design</li>
-                                        </ul>
-                                    </div>
-                                </RTabItem>
-                                
-                                <RTabItem Value="specifications" Text="Specifications">
-                                    <div class="p-4">
-                                        <h5 class="font-semibold mb-3">Technical Specifications</h5>
-                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                                            <div><strong>Driver Size:</strong> 40mm</div>
-                                            <div><strong>Frequency Response:</strong> 20Hz - 20kHz</div>
-                                            <div><strong>Impedance:</strong> 32Ω</div>
-                                            <div><strong>Sensitivity:</strong> 105dB</div>
-                                            <div><strong>Battery Life:</strong> 30 hours</div>
-                                            <div><strong>Charging Time:</strong> 2 hours</div>
-                                            <div><strong>Weight:</strong> 250g</div>
-                                            <div><strong>Connectivity:</strong> Bluetooth 5.0</div>
-                                        </div>
-                                    </div>
-                                </RTabItem>
-                                
-                                <RTabItem Value="reviews" Text="Reviews" Badge="@_reviewCount.ToString()">
-                                    <div class="p-4">
-                                        <h5 class="font-semibold mb-3">Customer Reviews</h5>
-                                        <div class="space-y-4">
-                                            <div class="border-l-4 border-success pl-4">
-                                                <div class="flex items-center gap-2 mb-1">
-                                                    <span class="font-medium">John D.</span>
-                                                    <span class="text-warning">★★★★★</span>
-                                                </div>
-                                                <p class="text-body-2">"Excellent sound quality and comfortable for long sessions."</p>
-                                            </div>
-                                            
-                                            <div class="border-l-4 border-success pl-4">
-                                                <div class="flex items-center gap-2 mb-1">
-                                                    <span class="font-medium">Sarah M.</span>
-                                                    <span class="text-warning">★★★★☆</span>
-                                                </div>
-                                                <p class="text-body-2">"Great ANC performance, battery life is impressive."</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </RTabItem>
-                                
-                                <RTabItem Value="shipping" Text="Shipping & Returns">
-                                    <div class="p-4">
-                                        <h5 class="font-semibold mb-3">Shipping Information</h5>
-                                        <div class="space-y-3 text-body-2">
-                                            <div>
-                                                <strong>Free Shipping:</strong> Orders over $50
-                                            </div>
-                                            <div>
-                                                <strong>Standard Delivery:</strong> 3-5 business days ($5.99)
-                                            </div>
-                                            <div>
-                                                <strong>Express Delivery:</strong> 1-2 business days ($12.99)
-                                            </div>
-                                            <div>
-                                                <strong>Return Policy:</strong> 30-day money-back guarantee
-                                            </div>
-                                        </div>
-                                    </div>
-                                </RTabItem>
-                            </RTabs>
-                        </ChildContent>
-                    </RCard>
-
-                    <!-- Admin Dashboard Tabs -->
-                    <RCard Variant="CardVariant.Glass" Class="p-4">
-                        <ChildContent>
-                            <h4 class="text-lg font-semibold mb-3">Admin Dashboard</h4>
-                            <RTabs @bind-SelectedTab="_adminSelectedTab">
-                                <RTabItem Value="overview" Text="Overview" Icon="dashboard">
-                                    <div class="p-4">
-                                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                            <div class="text-center p-4 bg-surface rounded">
-                                                <div class="text-2xl font-bold text-primary">1,247</div>
-                                                <div class="text-sm text-muted">Total Users</div>
-                                            </div>
-                                            <div class="text-center p-4 bg-surface rounded">
-                                                <div class="text-2xl font-bold text-success">98.5%</div>
-                                                <div class="text-sm text-muted">Uptime</div>
-                                            </div>
-                                            <div class="text-center p-4 bg-surface rounded">
-                                                <div class="text-2xl font-bold text-warning">23</div>
-                                                <div class="text-sm text-muted">Active Issues</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </RTabItem>
-                                
-                                <RTabItem Value="users" Text="Users" Icon="people" Badge="@_userCount.ToString()">
-                                    <div class="p-4">
-                                        <h5 class="font-semibold mb-3">User Management</h5>
-                                        <p class="text-body-2">Manage user accounts, roles, and permissions.</p>
-                                    </div>
-                                </RTabItem>
-                                
-                                <RTabItem Value="analytics" Text="Analytics" Icon="analytics">
-                                    <div class="p-4">
-                                        <h5 class="font-semibold mb-3">Analytics & Reports</h5>
-                                        <p class="text-body-2">View detailed analytics and generate reports.</p>
-                                    </div>
-                                </RTabItem>
-                                
-                                <RTabItem Value="settings" Text="Settings" Icon="settings">
-                                    <div class="p-4">
-                                        <h5 class="font-semibold mb-3">System Settings</h5>
-                                        <p class="text-body-2">Configure system-wide settings and preferences.</p>
-                                    </div>
-                                </RTabItem>
-                            </RTabs>
-                        </ChildContent>
-                    </RCard>
-                </div>
+                <div class="text-h6 font-semibold">Vertical Orientation</div>
+                <RTabs @bind-SelectedTab="_verticalSelectedTab" Orientation="Orientation.Vertical" Class="h-48">
+                    <RTabItem Value="dashboard" Text="Dashboard" Icon="dashboard">
+                        <div class="p-4">
+                            <h4 class="text-lg font-semibold mb-2">Dashboard</h4>
+                            <p class="text-body-2">Vertical tabs are useful for sidebar navigation.</p>
+                        </div>
+                    </RTabItem>
+                    <RTabItem Value="users" Text="Users" Icon="people">
+                        <div class="p-4">
+                            <h4 class="text-lg font-semibold mb-2">Users</h4>
+                            <p class="text-body-2">Content flows to the right of vertical tabs.</p>
+                        </div>
+                    </RTabItem>
+                    <RTabItem Value="reports" Text="Reports" Icon="assessment">
+                        <div class="p-4">
+                            <h4 class="text-lg font-semibold mb-2">Reports</h4>
+                            <p class="text-body-2">Great for settings panels and documentation.</p>
+                        </div>
+                    </RTabItem>
+                </RTabs>
             </div>
 
-            <!-- Dynamic Tab Management -->
+            <!-- 3. Dynamic Tabs -->
             <div class="space-y-2">
                 <div class="text-h6 font-semibold">Dynamic Tab Management</div>
                 <RCard Variant="CardVariant.Glass" Class="p-4">
                     <ChildContent>
-                        <div class="mb-4">
-                            <h4 class="text-lg font-semibold mb-2">Manage Tabs Dynamically</h4>
-                            <div class="flex gap-2 mb-3">
-                                <RButton Text="Add Tab" 
-                                         Icon="add"
-                                         Variant="ButtonVariant.Primary"
-                                         Size="SizeType.Small"
-                                         @onclick="AddDynamicTab" />
-                                <RButton Text="Remove Last Tab" 
-                                         Icon="remove"
-                                         Variant="ButtonVariant.Secondary"
-                                         Size="SizeType.Small"
-                                         @onclick="RemoveDynamicTab"
-                                         Disabled="@(_dynamicTabs.Count <= 1)" />
-                            </div>
+                        <div class="flex gap-2 mb-3">
+                            <RButton Text="Add Tab" 
+                                     Icon="add"
+                                     Variant="VariantType.Primary"
+                                     Size="SizeType.Small"
+                                     @onclick="AddDynamicTab" />
+                            <RButton Text="Remove Last" 
+                                     Icon="remove"
+                                     Variant="VariantType.Secondary"
+                                     Size="SizeType.Small"
+                                     @onclick="RemoveDynamicTab"
+                                     Disabled="@(_dynamicTabs.Count <= 1)" />
                         </div>
                         
                         <RTabs @bind-SelectedTab="_dynamicSelectedTab">
@@ -548,16 +258,11 @@
                             {
                                 <RTabItem Value="@tab.Value" Text="@tab.Text" Icon="@tab.Icon" Closable="@tab.Closable">
                                     <div class="p-4">
-                                        <h5 class="font-semibold mb-2">@tab.Text</h5>
-                                        <p class="text-body-2">Content for @tab.Text tab. Created dynamically at @tab.CreatedAt.ToString("HH:mm:ss").</p>
+                                        <p class="text-body-2">Dynamic content for @tab.Text</p>
                                     </div>
                                 </RTabItem>
                             }
                         </RTabs>
-                        
-                        <div class="mt-3 text-sm text-muted">
-                            Total tabs: @_dynamicTabs.Count | Selected: @_dynamicSelectedTab
-                        </div>
                     </ChildContent>
                 </RCard>
             </div>
@@ -577,7 +282,6 @@
     private bool _showBadges = true;
     private bool _closableTabs = false;
     private bool _showAddButton = false;
-    private bool _scrollableTabs = false;
     private bool _fadeAnimation = false;
     private bool _keepAlive = false;
     private bool _noPadding = false;
@@ -587,26 +291,16 @@
     private bool _showTooltips = true;
     
     // Configurable Tabs
+    private RTabs _configurableTabsRef;
     private string _configurableSelectedTab = "tab1";
     private List<ConfigurableTab> _configurableTabs = new();
-    private int _configurableTabCounter = 4;
+    private int _configurableTabCounter = 10;
     private string _lastEvent = "";
     
     // Tab selections
     private string _basicSelectedTab = "overview";
-    private string _outlinedSelectedTab = "profile";
-    private string _filledSelectedTab = "analytics";
-    private string _underlineSelectedTab = "home";
-    private string _segmentSelectedTab = "list";
     private string _verticalSelectedTab = "dashboard";
-    private string _statesSelectedTab = "active";
-    private string _productSelectedTab = "description";
-    private string _adminSelectedTab = "overview";
     private string _dynamicSelectedTab = "tab1";
-
-    // Badge counts
-    private int _reviewCount = 127;
-    private int _userCount = 1247;
 
     // Dynamic tabs
     private List<DynamicTab> _dynamicTabs = new();
@@ -676,6 +370,41 @@
                 Tooltip = "Error occurred",
                 Badge = 1,
                 CreatedAt = DateTime.Now 
+            },
+            new() { 
+                Value = "reports", 
+                Text = "Reports", 
+                Icon = "assessment",
+                Description = "Generate and view reports",
+                Tooltip = "View reports",
+                Badge = 3,
+                CreatedAt = DateTime.Now 
+            },
+            new() { 
+                Value = "users", 
+                Text = "Users", 
+                Icon = "people",
+                Description = "Manage user accounts",
+                Tooltip = "User management",
+                Badge = 42,
+                CreatedAt = DateTime.Now 
+            },
+            new() { 
+                Value = "notifications", 
+                Text = "Notifications", 
+                Icon = "notifications",
+                Description = "System notifications",
+                Tooltip = "View notifications",
+                Badge = 7,
+                CreatedAt = DateTime.Now 
+            },
+            new() { 
+                Value = "performance", 
+                Text = "Performance", 
+                Icon = "speed",
+                Description = "System performance metrics",
+                Tooltip = "Performance monitoring",
+                CreatedAt = DateTime.Now 
             }
         };
         
@@ -743,7 +472,6 @@
         _showBadges = true;
         _closableTabs = false;
         _showAddButton = false;
-        _scrollableTabs = false;
         _fadeAnimation = false;
         _keepAlive = false;
         _noPadding = false;

@@ -1,0 +1,231 @@
+@using RR.Blazor.Components.Core
+@using RR.Blazor.Components.Feedback
+@using RR.Blazor.Components.Form
+@using RR.Blazor.Enums
+@using RR.Blazor.Models
+
+<RCard Variant="CardVariant.Outlined" Text="RChoice Components Demo">
+    <ChildContent>
+        <RDivider Text="RChoice Component System" 
+                  Subtitle="Comprehensive choice component for dropdowns, pills, tabs, trees, and groups" 
+                  Icon="checklist" />
+        
+        <div class="space-y-6">
+            
+            <!-- 1. Standard Dropdown RChoice -->
+            <div>
+                <p class="text-sm font-medium mb-2">1. Standard Dropdown Selection</p>
+                <RChoice Items="@departments"
+                         Placeholder="Select department"
+                         @bind-SelectedValue="@selectedDepartment"
+                         ItemLabelSelector="@(d => ((Department)d).Name)"
+                         ItemIconSelector="@(d => ((Department)d).Icon)"
+                         ItemTitleSelector="@(d => ((Department)d).Description)" />
+                @if (selectedDepartment != null)
+                {
+                    <RChip Text="@($"Selected: {((Department)selectedDepartment).Name}")" 
+                           Icon="@(((Department)selectedDepartment).Icon)" 
+                           Variant="VariantType.Success" />
+                }
+            </div>
+
+            <!-- 2. Pills Style RChoice -->
+            <div>
+                <p class="text-sm font-medium mb-2">2. Pills Style Selection</p>
+                <RChoice Items="@priorities"
+                         @bind-SelectedValue="@selectedPriority"
+                         ItemLabelSelector="@(p => ((Priority)p).Name)"
+                         ItemIconSelector="@(p => ((Priority)p).Icon)"
+                         Type="Pills"
+                         Variant="Inline" />
+            </div>
+
+            <!-- 3. Tabs Style RChoice -->
+            <div>
+                <p class="text-sm font-medium mb-2">3. Tabs Style Selection</p>
+                <RChoice Items="@viewModes"
+                         @bind-SelectedValue="@selectedViewMode"
+                         ItemLabelSelector="@(v => ((ViewMode)v).Name)"
+                         ItemIconSelector="@(v => ((ViewMode)v).Icon)"
+                         Type="Tabs"
+                         Variant="Inline" />
+            </div>
+
+            <!-- 4. Tree Selection RChoice -->
+            <div>
+                <p class="text-sm font-medium mb-2">4. Hierarchical Tree Selection</p>
+                <RChoice Items="@organizationTree" />
+                <div class="mt-2 text-xs text-muted">
+                    <i class="material-symbols-rounded text-xs">account_tree</i>
+                    Multi-select with cascade selection. Click parent to select all children.
+                </div>
+            </div>
+
+            <!-- 5. Grouped Selection RChoice -->
+            <div class="w-full">
+                <p class="text-sm font-medium mb-2">5. Grouped Options Selection</p>
+                <div class="w-full">
+                    <RChoice Items="@payrollGroups" />
+                </div>
+                <div class="mt-2 text-xs text-muted">
+                    <i class="material-symbols-rounded text-xs">category</i>
+                    Organized into collapsible groups with headers.
+                </div>
+            </div>
+
+            <!-- 6. Cascading Dropdowns -->
+            <div class="w-full">
+                <p class="text-sm font-medium mb-2">6. Cascading Dropdown Selection</p>
+                <div class="w-full space-y-3">
+                    <RChoice Items="@countries"
+                             Placeholder="Select country"
+                             SelectedValue="@selectedCountry"
+                             SelectedValueChanged="@OnCountryChanged" 
+                             Class="w-full" />
+                    
+                    <RChoice Items="@states"
+                             Placeholder="Select state"
+                             SelectedValue="@selectedState"
+                             SelectedValueChanged="@OnStateChanged"
+                             Disabled="@(selectedCountry == null)" 
+                             Class="w-full transition-all duration-300" />
+                    
+                    <RChoice Items="@cities"
+                             Placeholder="Select city"
+                             @bind-SelectedValue="@selectedCity"
+                             Disabled="@(selectedState == null)" 
+                             Class="w-full transition-all duration-300" />
+                </div>
+                @if (selectedCity != null)
+                {
+                    <RAlert Variant="VariantType.Success" Icon="location_on">
+                        Selected: @selectedCountry → @selectedState → @selectedCity
+                    </RAlert>
+                }
+            </div>
+        </div>
+    </ChildContent>
+</RCard>
+
+@code {
+    // Core selections
+    private object selectedDepartment;
+    private object selectedPriority;
+    private object selectedViewMode = viewModes[0];
+    private object selectedCountry;
+    private object selectedState;
+    private object selectedCity;
+    
+    // Core data models
+    private record Department(string Name, string Description, string Icon);
+    private record Priority(string Name, string Icon);
+    private record ViewMode(string Name, string Icon);
+    
+    // Core data collections
+    private static readonly List<Department> departments = new()
+    {
+        new("Human Resources", "People & culture management", "people"),
+        new("Engineering", "Software development", "code"),
+        new("Sales", "Revenue generation", "trending_up"),
+        new("Finance", "Financial analysis", "account_balance"),
+        new("Operations", "Business operations", "settings")
+    };
+    
+    private static readonly List<Priority> priorities = new()
+    {
+        new("Low", "arrow_downward"),
+        new("Medium", "remove"),
+        new("High", "arrow_upward"),
+        new("Critical", "priority_high")
+    };
+    
+    private static readonly List<ViewMode> viewModes = new()
+    {
+        new("Grid", "grid_view"),
+        new("List", "view_list"),
+        new("Calendar", "calendar_month"),
+        new("Analytics", "analytics")
+    };
+    
+    // Tree data - Organization structure
+    private readonly List<IChoiceTreeItem> organizationTree = new()
+    {
+        ChoiceFactory.CreateTreeItem("Engineering", "eng", new List<IChoiceTreeItem>
+        {
+            ChoiceFactory.CreateTreeItem("Frontend Team", "fe", new List<IChoiceTreeItem>
+            {
+                ChoiceFactory.CreateTreeItem("John Smith", "john", null, "person"),
+                ChoiceFactory.CreateTreeItem("Jane Doe", "jane", null, "person")
+            }, "group"),
+            ChoiceFactory.CreateTreeItem("Backend Team", "be", new List<IChoiceTreeItem>
+            {
+                ChoiceFactory.CreateTreeItem("Bob Wilson", "bob", null, "person"),
+                ChoiceFactory.CreateTreeItem("Alice Brown", "alice", null, "person")
+            }, "group")
+        }, "code", true),
+        ChoiceFactory.CreateTreeItem("Sales", "sales", new List<IChoiceTreeItem>
+        {
+            ChoiceFactory.CreateTreeItem("North Region", "north", new List<IChoiceTreeItem>
+            {
+                ChoiceFactory.CreateTreeItem("Tom Davis", "tom", null, "person"),
+                ChoiceFactory.CreateTreeItem("Mary Johnson", "mary", null, "person")
+            }, "north"),
+            ChoiceFactory.CreateTreeItem("South Region", "south", null, "south")
+        }, "trending_up")
+    };
+    
+    // Group data - Payroll components
+    private readonly List<IChoiceGroup> payrollGroups = new()
+    {
+        ChoiceFactory.CreateGroup("Earnings", new List<IChoiceItem>
+        {
+            ChoiceFactory.CreateItem("Basic Salary", "basic", "attach_money"),
+            ChoiceFactory.CreateItem("Overtime", "overtime", "schedule"),
+            ChoiceFactory.CreateItem("Bonus", "bonus", "card_giftcard")
+        }, "add_circle", true),
+        ChoiceFactory.CreateGroup("Deductions", new List<IChoiceItem>
+        {
+            ChoiceFactory.CreateItem("Tax", "tax", "account_balance"),
+            ChoiceFactory.CreateItem("Insurance", "insurance", "health_and_safety"),
+            ChoiceFactory.CreateItem("Retirement", "retirement", "savings")
+        }, "remove_circle", true)
+    };
+    
+    // Cascading dropdown data
+    private readonly List<string> countries = new() { "United States", "Canada", "United Kingdom" };
+    private List<string> states = new();
+    private List<string> cities = new();
+    
+    // Event handlers
+    private async Task OnCountryChanged(object value)
+    {
+        selectedCountry = value?.ToString();
+        selectedState = null;
+        selectedCity = null;
+        cities.Clear();
+        
+        states = selectedCountry switch
+        {
+            "United States" => new() { "California", "New York", "Texas" },
+            "Canada" => new() { "Ontario", "Quebec", "British Columbia" },
+            "United Kingdom" => new() { "England", "Scotland", "Wales" },
+            _ => new()
+        };
+    }
+    
+    private async Task OnStateChanged(object value)
+    {
+        selectedState = value?.ToString();
+        selectedCity = null;
+        
+        cities = selectedState switch
+        {
+            "California" => new() { "Los Angeles", "San Francisco", "San Diego" },
+            "New York" => new() { "New York City", "Buffalo", "Albany" },
+            "Texas" => new() { "Houston", "Austin", "Dallas" },
+            "Ontario" => new() { "Toronto", "Ottawa", "Hamilton" },
+            "England" => new() { "London", "Manchester", "Birmingham" },
+            _ => new()
+        };
+    }
+}
