@@ -34,7 +34,7 @@ public abstract class RExportButtonBase : RComponentBase
     [Parameter] public string ButtonClass { get; set; }
     [Parameter] public string ContainerClass { get; set; }
     [Parameter] public ButtonType ButtonType { get; set; } = ButtonType.Secondary;
-    [Parameter] public ButtonVariant ButtonVariant { get; set; } = ButtonVariant.Primary;
+    [Parameter] public VariantType ButtonVariant { get; set; } = VariantType.Primary;
     [Parameter] public SizeType ButtonSize { get; set; } = SizeType.Medium;
 }
 

@@ -70,62 +70,67 @@
             @if (ShowToolbar && (ShowSearch || ShowFilters || ShowChartButton || ShowExportButton || ShowColumnManager || ToolbarContent != null))
             {
                 <div class="table-toolbar">
-                    @if (ShowSearch)
-                    {
-                        <div class="table-search">
-                            <i class="icon">search</i>
-                            <input type="text" 
-                                   class="table-search-input" 
-                                   placeholder="@SearchPlaceholder"
-                                   value="@_searchTerm"
-                                   disabled="@Disabled"
-                                   @oninput="@OnSearchInput" />
-                        </div>
-                    }
-                    @if (ShowFilters)
-                    {
-                        <div class="table-filters">
-                            <button class="button-outline button-sm" @onclick="@ToggleFilterPanel">
-                                <i class="icon mr-2">filter_list</i>
-                                Filters
-                                @if (_filterPanelExpanded)
-                                {
-                                    <i class="icon ml-2">expand_less</i>
-                                }
-                                else
-                                {
-                                    <i class="icon ml-2">expand_more</i>
-                                }
+                    <div class="table-toolbar-left">
+                        @if (ShowSearch)
+                        {
+                            <div class="table-search">
+                                <i class="icon">search</i>
+                                <input type="text" 
+                                       class="table-search-input" 
+                                       placeholder="@SearchPlaceholder"
+                                       value="@_searchTerm"
+                                       disabled="@Disabled"
+                                       @oninput="@OnSearchInput" />
+                            </div>
+                        }
+                        @if (ShowFilters)
+                        {
+                            <div class="table-filters">
+                                <button class="button-outline button-sm" @onclick="@ToggleFilterPanel">
+                                    <i class="icon mr-2">filter_list</i>
+                                    Filters
+                                    @if (_filterPanelExpanded)
+                                    {
+                                        <i class="icon ml-2">expand_less</i>
+                                    }
+                                    else
+                                    {
+                                        <i class="icon ml-2">expand_more</i>
+                                    }
+                                </button>
+                            </div>
+                        }
+                        @if (ShowChartButton)
+                        {
+                            <button class="button-outline button-sm" @onclick="@ShowChartModal" disabled="@(!FilteredData.Any())">
+                                <i class="icon mr-2">analytics</i>
+                                @ChartButtonText
                             </button>
-                        </div>
-                    }
-                    @if (ShowChartButton)
-                    {
-                        <button class="button-outline button-sm" @onclick="@ShowChartModal" disabled="@(!FilteredData.Any())">
-                            <i class="icon mr-2">analytics</i>
-                            @ChartButtonText
-                        </button>
-                    }
-                    @if (ShowExportButton)
-                    {
-                        <RExportButton DataSource="@FilteredData" 
-                                      ButtonClass="button-outline button-sm"
-                                      Text="Export"
-                                      Icon="download" />
-                    }
-                    @if (ShowColumnManager)
-                    {
-                        <RTableColumnManager Columns="@GetEffectiveColumns()"
-                                           Preferences="@ColumnPreferences"
-                                           PreferencesChanged="@OnColumnPreferencesChanged"
-                                           EnableReordering="@EnableColumnReordering"
-                                           SupportsStickyColumns="@EnableStickyColumns"
-                                           TableId="@TableId" />
-                    }
-                    @if (ToolbarContent != null)
-                    {
-                        @ToolbarContent
-                    }
+                        }
+                        @if (ToolbarContent != null)
+                        {
+                            @ToolbarContent
+                        }
+                    </div>
+                    <div class="table-toolbar-right">
+                        @if (ShowExportButton)
+                        {
+                            <RExportButton DataSource="@FilteredData" 
+                                          ButtonClass="button-outline button-sm"
+                                          Text=""
+                                          Icon="download"
+                                          AriaLabel="Export data" />
+                        }
+                        @if (ShowColumnManager)
+                        {
+                            <RTableColumnManager Columns="@GetEffectiveColumns()"
+                                               Preferences="@ColumnPreferences"
+                                               PreferencesChanged="@OnColumnPreferencesChanged"
+                                               EnableReordering="@EnableColumnReordering"
+                                               SupportsStickyColumns="@EnableStickyColumns"
+                                               TableId="@TableId" />
+                        }
+                    </div>
                 </div>
             }
 
@@ -369,7 +374,7 @@
 
         <FooterContent>
             <div class="d-flex justify-end gap-2">
-                <RButton Text="Close" Variant="ButtonVariant.Ghost" OnClick="@(() => _showChartModal = false)" />
+                <RButton Text="Close" Variant="VariantType.Secondary" OnClick="@(() => _showChartModal = false)" />
             </div>
         </FooterContent>
     </RModal>
@@ -724,12 +729,15 @@
 
     private IQueryable<TItem> ApplySearch(IQueryable<TItem> query, string searchTerm)
     {
-        var searchableColumns = GetEffectiveColumns().Where(c => c.Searchable).ToList();
+        var searchableColumns = GetEffectiveColumns()
+            .Where(c => c.Searchable && c.Property != null) // Only include columns with actual property bindings
+            .ToList();
         if (!searchableColumns.Any())
         {
-            // If no columns are marked searchable, search all string properties
-            searchableColumns = GetEffectiveColumns().Where(c => 
-                GetPropertyType(c.Key) == typeof(string)).ToList();
+            // If no columns are marked searchable, search all string properties that have bindings
+            searchableColumns = GetEffectiveColumns()
+                .Where(c => c.Property != null && GetPropertyType(c.Key) == typeof(string))
+                .ToList();
         }
 
         if (!searchableColumns.Any())
@@ -769,18 +777,26 @@
     {
         return _propertyGetterCache.GetOrAdd(propertyName, key =>
         {
-            var param = Expression.Parameter(typeof(TItem), "item");
-            var property = Expression.Property(param, key);
-            var convert = Expression.Convert(property, typeof(object));
-            var lambda = Expression.Lambda<Func<TItem, object>>(convert, param);
-            return lambda.Compile();
+            try
+            {
+                var param = Expression.Parameter(typeof(TItem), "item");
+                var property = Expression.Property(param, key);
+                var convert = Expression.Convert(property, typeof(object));
+                var lambda = Expression.Lambda<Func<TItem, object>>(convert, param);
+                return lambda.Compile();
+            }
+            catch (ArgumentException)
+            {
+                // Property doesn't exist, return null getter
+                return null;
+            }
         });
     }
 
     private static object GetPropertyValue(TItem item, string propertyName)
     {
         var getter = GetPropertyGetter(propertyName);
-        return getter(item);
+        return getter?.Invoke(item);
     }
 
     private static Type GetPropertyType(string propertyName)

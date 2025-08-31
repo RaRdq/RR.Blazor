@@ -4,8 +4,8 @@ using RR.Blazor.Attributes;
 using RR.Blazor.Enums;
 using RR.Blazor.Components.Base;
 using RR.Blazor.Utilities;
+using RR.Blazor.Models;
 using System.Collections;
-using static RR.Blazor.Enums.ChoiceVariant;
 using static RR.Blazor.Enums.ChoiceType;
 using static RR.Blazor.Enums.SizeType;
 
@@ -70,14 +70,15 @@ public abstract class RChoiceBase : RSizedComponentBase<SizeType>
     /// </summary>
     protected override string GetSizeClasses()
     {
+        var densityClass = Density != DensityType.Normal ? $"choice-density-{Density.ToString().ToLower()}" : "";
         return Size switch
         {
-            ExtraSmall => "choice-xs " + DensityHelper.GetInputDensityClasses(Density),
-            Small => "choice-sm " + DensityHelper.GetInputDensityClasses(Density),
-            Medium => "choice-md " + DensityHelper.GetInputDensityClasses(Density),
-            Large => "choice-lg " + DensityHelper.GetInputDensityClasses(Density),
-            ExtraLarge => "choice-xl " + DensityHelper.GetInputDensityClasses(Density),
-            _ => "choice-md " + DensityHelper.GetInputDensityClasses(Density)
+            ExtraSmall => $"choice-xs {densityClass}".Trim(),
+            Small => $"choice-sm {densityClass}".Trim(),
+            Medium => $"choice-md {densityClass}".Trim(),
+            Large => $"choice-lg {densityClass}".Trim(),
+            ExtraLarge => $"choice-xl {densityClass}".Trim(),
+            _ => $"choice-md {densityClass}".Trim()
         };
     }
     
@@ -111,7 +112,7 @@ public abstract class RChoiceBase : RSizedComponentBase<SizeType>
 /// 
 /// AI GUIDANCE:
 /// - Use for 2-20 exclusive options (status, roles, modes, filters, view switching)
-/// - ChoiceVariant.Auto intelligently chooses inline vs dropdown based on item count and label length
+/// - ChoiceMode.Auto intelligently chooses inline vs dropdown based on item count and label length
 /// - For boolean toggles use RToggle, for large datasets use searchable components
 /// 
 /// SMART DETECTION RULES:
@@ -119,7 +120,7 @@ public abstract class RChoiceBase : RSizedComponentBase<SizeType>
 /// - Otherwise uses inline mode with configurable styles (Standard, Pills, Tabs, Buttons, Compact)
 /// 
 /// COMMON PATTERNS:
-/// - Status selection: RChoice Items="@statuses" Variant="ChoiceVariant.Auto" ItemIconSelector for icons
+/// - Status selection: RChoice Items="@statuses" Variant="ChoiceMode.Auto" ItemIconSelector for icons
 /// - View switching: Type="ChoiceType.Tabs" for tab-like behavior  
 /// - Filters: Type="ChoiceType.Pills" Density="DensityType.Compact"
 /// - Settings: Use with form integration (Label, Required, HelpText, ErrorMessage)
@@ -186,9 +187,11 @@ public class RChoice : RChoiceBase
     [Parameter, AIParameter("Currently selected value from Items collection", "selectedOption")]
     public object SelectedValue { get; set; }
     
-    [Parameter, AIParameter("Auto detects inline vs dropdown, or force specific mode", "ChoiceVariant.Auto")]
-    public ChoiceVariant Variant { get; set; } = ChoiceVariant.Auto;
+    [Parameter, AIParameter("Auto detects inline vs dropdown, or force specific mode", "ChoiceMode.Auto")]
+    public ChoiceMode Variant { get; set; } = ChoiceMode.Auto;
     
+    [Parameter, AIParameter("Selection mode - Single or Multiple", "ChoiceSelectionMode.Single")]
+    public ChoiceSelectionMode? SelectionMode { get; set; }
 
 
     private Type _valueType;
@@ -217,7 +220,52 @@ public class RChoice : RChoiceBase
             _valueType = GetValueType();
         }
 
-        // Smart detection logic
+        // Smart component detection - check for specialized types first
+        Type componentType;
+        
+        // Check if items are IChoiceTreeItem for tree rendering
+        if (itemsList.Any() && itemsList.First() is IChoiceTreeItem)
+        {
+            componentType = typeof(RChoiceTree);
+            
+            builder.OpenComponent(0, componentType);
+            ForwardTreeParameters(builder, itemsList);
+            builder.CloseComponent();
+            return;
+        }
+        
+        // Check if items are IChoiceGroup for grouped rendering
+        if (itemsList.Any() && itemsList.First() is IChoiceGroup)
+        {
+            // Handle single group or multiple groups
+            if (itemsList.Count == 1 && itemsList.First() is IChoiceGroup singleGroup)
+            {
+                componentType = typeof(RChoiceGroup);
+                
+                builder.OpenComponent(0, componentType);
+                ForwardGroupParameters(builder, singleGroup);
+                builder.CloseComponent();
+                return;
+            }
+            
+            // Multiple groups - wrap in container
+            builder.OpenElement(0, "div");
+            builder.AddAttribute(1, "class", "choice-groups-container w-full");
+            
+            var seq = 2;
+            foreach (var group in itemsList.OfType<IChoiceGroup>())
+            {
+                builder.OpenComponent(seq++, typeof(RChoiceGroup));
+                ForwardGroupParameters(builder, group, seq);
+                seq += 100;
+                builder.CloseComponent();
+            }
+            
+            builder.CloseElement();
+            return;
+        }
+
+        // Default to RChoiceGeneric for standard items
         var effectiveVariant = GetEffectiveVariant(itemsList);
         
         var genericChoiceType = typeof(RChoiceGeneric<>).MakeGenericType(_valueType);
@@ -228,7 +276,7 @@ public class RChoice : RChoiceBase
         ForwardBaseParameters(builder, _valueType);
         
         // Set computed variant and style
-        builder.AddAttribute(1, "EffectiveVariant", effectiveVariant);
+        builder.AddAttribute(1, "Mode", effectiveVariant);
         
         // Convert items to the correct generic type for RChoiceGeneric
         var convertedItems = ConvertItemsToGenericType(itemsToUse, _valueType);
@@ -310,28 +358,28 @@ public class RChoice : RChoiceBase
         return singleItemList;
     }
     
-    private ChoiceVariant GetEffectiveVariant(List<object> items)
+    private ChoiceMode GetEffectiveVariant(List<object> items)
     {
         // Explicit variant takes precedence
-        if (Variant != ChoiceVariant.Auto)
+        if (Variant != ChoiceMode.Auto)
             return Variant;
         
         // Smart detection rules
         
         // Rule 1: Too many items? Use dropdown
-        if (MaxItemsInline.HasValue && items.Count > MaxItemsInline.Value)
-            return ChoiceVariant.Dropdown;
+        if (MaxItemsInline.HasValue && items.Count >= MaxItemsInline.Value)
+            return ChoiceMode.Dropdown;
         
         // Rule 2: Long text content? Use dropdown  
         if (MaxLabelLength.HasValue && HasLongLabels(items))
-            return ChoiceVariant.Dropdown;
+            return ChoiceMode.Dropdown;
         
         // Rule 3: Vertical direction with many items? Use dropdown
         if (Direction == Direction.Vertical && items.Count > 3)
-            return ChoiceVariant.Dropdown;
+            return ChoiceMode.Dropdown;
         
         // Rule 4: Default to inline for simple cases
-        return ChoiceVariant.Inline;
+        return ChoiceMode.Inline;
     }
     
     private bool HasLongLabels(List<object> items)
@@ -379,13 +427,15 @@ public class RChoice : RChoiceBase
         builder.AddAttribute(sequence++, "Size", Size);
         builder.AddAttribute(sequence++, "Type", Type);
         builder.AddAttribute(sequence++, "ChildContent", ChildContent);
+        builder.AddAttribute(sequence++, "HasError", HasError);
+        builder.AddAttribute(sequence++, "ErrorMessage", ErrorMessage);
         
         // Use RAttributeForwarder for all remaining parameters
         builder.ForwardParameters(ref sequence, this, 
-            "Items", "SelectedValue", "Variant",
+            "Items", "SelectedValue", "Variant", "Loading",
             "ItemLabelSelector", "ItemIconSelector", "ItemTitleSelector", "ItemAriaLabelSelector",
             "ItemDisabledSelector", "ItemLoadingSelector", "ShowLabels", "ShowActiveIndicator",
-            "Size", "Type", "ChildContent", "SelectedValueChanged");
+            "Size", "Type", "ChildContent", "SelectedValueChanged", "HasError", "ErrorMessage");
     }
 
     private Type GetValueType()
@@ -424,6 +474,96 @@ public class RChoice : RChoiceBase
 
         // Default to object
         return typeof(object);
+    }
+    
+    private void ForwardTreeParameters(RenderTreeBuilder builder, List<object> items, int startSequence = 1)
+    {
+        var sequence = startSequence;
+        
+        // Convert items to IEnumerable<IChoiceTreeItem>
+        var treeItems = items.OfType<IChoiceTreeItem>();
+        builder.AddAttribute(sequence++, "Items", treeItems);
+        
+        // Forward sizing and styling
+        builder.AddAttribute(sequence++, "Size", Size);
+        builder.AddAttribute(sequence++, "Density", Density);
+        
+        // Forward selection mode based on SelectionMode parameter or Type
+        var selectionMode = SelectionMode ?? (Type switch
+        {
+            ChoiceType.Checkbox => ChoiceSelectionMode.Multiple,
+            ChoiceType.RadioGroup => ChoiceSelectionMode.Single,
+            _ => ChoiceSelectionMode.Single
+        });
+        builder.AddAttribute(sequence++, "SelectionMode", selectionMode);
+        
+        // Forward common parameters
+        builder.AddAttribute(sequence++, "Disabled", Disabled);
+        builder.AddAttribute(sequence++, "CssClass", Class);
+        
+        // Forward events
+        if (SelectedValueChanged.HasDelegate)
+        {
+            builder.AddAttribute(sequence++, "OnItemSelected", EventCallback.Factory.Create<IChoiceTreeItem>(this, async (item) =>
+            {
+                await SelectedValueChanged.InvokeAsync(item.Value);
+            }));
+        }
+        
+        // Forward additional tree-specific parameters
+        builder.AddAttribute(sequence++, "ShowExpandIcon", true);
+        builder.AddAttribute(sequence++, "EnableCascadeSelection", selectionMode == ChoiceSelectionMode.Multiple);
+        
+        // Forward child content if any
+        if (ChildContent != null)
+        {
+            builder.AddAttribute(sequence++, "ItemTemplate", ChildContent);
+        }
+    }
+    
+    private void ForwardGroupParameters(RenderTreeBuilder builder, IChoiceGroup group, int startSequence = 1)
+    {
+        var sequence = startSequence;
+        
+        // Set the group
+        builder.AddAttribute(sequence++, "Group", group);
+        
+        // Forward sizing and styling
+        builder.AddAttribute(sequence++, "Size", Size);
+        builder.AddAttribute(sequence++, "Density", Density);
+        
+        // Forward selection mode based on SelectionMode parameter or Type
+        var selectionMode = SelectionMode ?? (Type switch
+        {
+            ChoiceType.Checkbox => ChoiceSelectionMode.Multiple,
+            ChoiceType.RadioGroup => ChoiceSelectionMode.Single,
+            _ => ChoiceSelectionMode.Single
+        });
+        builder.AddAttribute(sequence++, "SelectionMode", selectionMode);
+        
+        // Forward common parameters
+        builder.AddAttribute(sequence++, "Disabled", Disabled);
+        builder.AddAttribute(sequence++, "CssClass", Class);
+        
+        // Forward events
+        if (SelectedValueChanged.HasDelegate)
+        {
+            builder.AddAttribute(sequence++, "OnItemSelected", EventCallback.Factory.Create<IChoiceItem>(this, async (item) =>
+            {
+                await SelectedValueChanged.InvokeAsync(item.Value);
+            }));
+        }
+        
+        // Forward group-specific parameters
+        builder.AddAttribute(sequence++, "ShowHeader", true);
+        builder.AddAttribute(sequence++, "ShowExpandIcon", true);
+        builder.AddAttribute(sequence++, "ShowAlternatingRows", false);
+        
+        // Forward child content if any
+        if (ChildContent != null)
+        {
+            builder.AddAttribute(sequence++, "ItemTemplate", ChildContent);
+        }
     }
 
 }

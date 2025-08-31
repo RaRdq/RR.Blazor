@@ -295,7 +295,7 @@ public static class PropertyColumnGenerator
         var badgeClass = status.ToLowerInvariant() switch
         {
             "active" or "enabled" or "success" => "badge-success",
-            "inactive" or "disabled" or "error" => "badge-danger", 
+            "inactive" or "disabled" or "error" => "badge-error", 
             "pending" or "warning" => "badge-warning",
             _ => "badge-secondary"
         };

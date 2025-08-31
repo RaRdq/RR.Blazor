@@ -13,8 +13,6 @@
 @using RR.Blazor.Enums
 @using RR.Blazor.Services
 @using RR.Blazor.Utilities
-@using static RR.Blazor.Enums.ChoiceVariant
-@using static RR.Blazor.Enums.ChoiceType
 @implements IAsyncDisposable
 
 <div class="@GetComponentClasses()">
@@ -23,9 +21,9 @@
         <label class="@GetLabelClasses()">@Label</label>
     }
     
-    @if (EffectiveVariant == Dropdown || TriggerContent != null)
+    @if (Mode == Dropdown || TriggerContent != null)
     {
-        <div @ref="choiceElement" class="choice choice-dropdown relative @(TriggerContent != null ? "w-auto" : "") @(TriggerContent != null ? "" : GetDropdownDensityClass())" 
+        <div @ref="choiceElement" class="choice choice-dropdown relative @(TriggerContent != null ? "w-auto" : "w-full") @(TriggerContent != null ? "" : GetDropdownDensityClass()) @(Loading ? "choice-loading" : "")" 
              data-choice-id="@choiceElementId">
         
             @if (TriggerContent != null)
@@ -38,19 +36,26 @@
             }
             else
             {
-                <button class="choice-trigger w-full"
+                <button class="@GetTriggerButtonClasses()"
                         type="button"
+                        tabindex="0"
                         aria-haspopup="true"
-                        aria-expanded="false"
+                        aria-expanded="@(isDropdownOpen ? "true" : "false")"
                         aria-label="@(AriaLabel ?? "Open dropdown")"
-                        disabled="@Disabled"
-                        @onclick="ToggleDropdown">
+                        disabled="@(Disabled || Loading)"
+                        @onclick="ToggleDropdown"
+                        @onkeydown="HandleTriggerKeyDown"
+                        @ref="triggerButtonElement">
                     <div class="@GetTriggerClasses()">
-                        @if (!string.IsNullOrEmpty(GetSelectedItemIcon()))
+                        @if (Loading)
+                        {
+                            <i class="@GetLoadingIconClasses()">hourglass_empty</i>
+                        }
+                        else if (!string.IsNullOrEmpty(GetSelectedItemIcon()))
                         {
                             <i class="@GetIconClasses()">@GetSelectedItemIcon()</i>
                         }
-                        <span class="@GetTextClasses()">@GetSelectedItemLabel()</span>
+                        <span class="@GetTextClasses()">@(Loading ? LoadingText ?? "Loading..." : GetSelectedItemLabel())</span>
                     </div>
                 </button>
             }
@@ -112,8 +117,15 @@
     }
     else
     {
-        <div class="choice @GetInlineClass()">
-            @if (Items != null)
+        <div class="choice @GetInlineClass() @(Loading ? "choice-loading" : "")">
+            @if (Loading)
+            {
+                <div class="choice-loading-indicator d-flex align-center justify-center pa-4">
+                    <i class="@GetLoadingIconClasses() mr-2">hourglass_empty</i>
+                    <span class="@GetTextClasses()">@(LoadingText ?? "Loading...")</span>
+                </div>
+            }
+            else if (Items != null)
             {
                 @foreach (var item in Items)
                 {
@@ -166,9 +178,11 @@
 @code {
     private ElementReference choiceElement;
     private ElementReference viewportElement;
+    private ElementReference triggerButtonElement;
     private string choiceElementId = Guid.NewGuid().ToString("N")[..8];
     private bool disposed = false;
     private bool isDropdownOpen = false;
+    private DotNetObjectReference<RChoiceGeneric<TValue>> dotNetRef;
 
     [Parameter] public IEnumerable<TValue> Items { get; set; }
     [Parameter] public TValue SelectedValue { get; set; }
@@ -180,7 +194,7 @@
     [Parameter] public Func<TValue, string> ItemAriaLabelSelectorTyped { get; set; }
     [Parameter] public Func<TValue, bool> ItemDisabledSelectorTyped { get; set; }
     [Parameter] public Func<TValue, bool> ItemLoadingSelectorTyped { get; set; }
-    [Parameter] public ChoiceVariant EffectiveVariant { get; set; } = Inline;
+    [Parameter] public ChoiceMode Mode { get; set; } = Inline;
     [Parameter] public RenderFragment TriggerContent { get; set; }
     [Parameter] public RenderFragment<object> ItemTemplate { get; set; }
     [Parameter] public EventCallback<TValue> OnItemClick { get; set; }
@@ -193,6 +207,30 @@
     [Parameter] public bool EnableVirtualScrolling { get; set; } = true;
 
     protected override bool ShouldRender() => true;
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+    }
+    
+    
+    private async Task HandleTriggerKeyDown(KeyboardEventArgs args)
+    {
+        switch (args.Key)
+        {
+            case " ": // Space
+            case "Enter":
+                await ToggleDropdown();
+                break;
+            case "ArrowDown":
+            case "ArrowUp":
+                if (!isDropdownOpen)
+                {
+                    await OpenDropdown();
+                }
+                break;
+        }
+    }
 
     private string GetInlineClass()
     {
@@ -306,6 +344,22 @@
     private string GetErrorIconClasses() =>
         $"material-symbols-rounded text-error mr-1 {GetIconSizeClasses()}";
     
+    /// <summary>
+    /// Gets trigger button classes including error state
+    /// </summary>
+    private string GetTriggerButtonClasses()
+    {
+        var classes = new List<string> { "choice-trigger", "w-full" };
+        
+        if (HasError)
+        {
+            classes.Add("choice-trigger-error");
+            classes.Add("form-input-error");
+        }
+        
+        return string.Join(" ", classes);
+    }
+    
     #endregion
 
     private bool IsItemActive(TValue item) => EqualityComparer<TValue>.Default.Equals(item, SelectedValue);
@@ -351,6 +405,7 @@
     {
         if (Disabled) return;
         
+        isDropdownOpen = true;
         StateHasChanged();
         await Task.Yield();
         
@@ -363,7 +418,12 @@
         });
     }
     
-    private Task CloseDropdown() => JS.InvokeAsync<object>("RRBlazor.Choice.closeDropdown", choiceElementId).AsTask();
+    private async Task CloseDropdown() 
+    {
+        isDropdownOpen = false;
+        StateHasChanged();
+        await JS.InvokeAsync<object>("RRBlazor.Choice.closeDropdown", choiceElementId);
+    }
 
     private async Task OnItemSelected(TValue item)
     {
@@ -376,12 +436,13 @@
         if (SelectedValueChangedTyped.HasDelegate) await SelectedValueChangedTyped.InvokeAsync(item);
         if (SelectedValueChangedObject.HasDelegate) await SelectedValueChangedObject.InvokeAsync(item);
         
-        if (EffectiveVariant == Dropdown && CloseOnSelect) await CloseDropdown();
+        if (Mode == Dropdown && CloseOnSelect) await CloseDropdown();
     }
     
     public async ValueTask DisposeAsync()
     {
         if (disposed) return;
         disposed = true;
+        dotNetRef?.Dispose();
     }
 }

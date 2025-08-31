@@ -58,6 +58,10 @@ Extensible foundation for text search, datepicker autosuggest, and custom implem
                 @if (ShowLoading && IsLoading)
                 {
                     <div class="autosuggest-loading">
+                        <div class="search-loading-indicator">
+                            <i class="icon animate-spin">refresh</i>
+                            <span class="text-sm text-muted">Searching...</span>
+                        </div>
                         <RSkeleton Height="2rem" />
                         <RSkeleton Height="2rem" />
                         <RSkeleton Height="2rem" />
@@ -118,6 +122,7 @@ Extensible foundation for text search, datepicker autosuggest, and custom implem
     private int selectedIndex = -1;
     private Timer debounceTimer;
     private CancellationTokenSource cancellationTokenSource;
+    private int searchGeneration = 0;
     private string portalId;
     private string currentDirection = "down";
     private bool disposed = false;
@@ -155,14 +160,7 @@ Extensible foundation for text search, datepicker autosuggest, and custom implem
     private string SearchQuery
     {
         get => searchQuery;
-        set
-        {
-            if (searchQuery != value)
-            {
-                searchQuery = value;
-                HandleSearch();
-            }
-        }
+        set => searchQuery = value;
     }
 
     private bool IsOpen => isOpen && !Disabled && !ReadOnly;
@@ -182,8 +180,11 @@ Extensible foundation for text search, datepicker autosuggest, and custom implem
 
     private async Task HandleValueChanged(string value)
     {
-        SearchQuery = value;
+        if (searchQuery == value) return;
+        
+        searchQuery = value;
         await OnSearchChanged.InvokeAsync(value);
+        await HandleSearch();
     }
 
     private async Task HandleInputFocus()
@@ -206,10 +207,18 @@ Extensible foundation for text search, datepicker autosuggest, and custom implem
         cancellationTokenSource?.Cancel();
         debounceTimer?.Dispose();
 
-        if (string.IsNullOrWhiteSpace(SearchQuery) || SearchQuery.Length < MinSearchLength)
+        if (string.IsNullOrWhiteSpace(searchQuery) || searchQuery.Length < MinSearchLength)
         {
             await CloseDropdown();
             return;
+        }
+
+        searchGeneration++;
+        var currentGeneration = searchGeneration;
+        
+        if (!isLoading)
+        {
+            isLoading = true;
         }
 
         cancellationTokenSource = new CancellationTokenSource();
@@ -219,27 +228,28 @@ Extensible foundation for text search, datepicker autosuggest, and custom implem
             
             await InvokeAsync(async () =>
             {
-                if (disposed || SearchFunc == null) return;
-                
-                isLoading = true;
-                StateHasChanged();
+                if (disposed || SearchFunc == null || currentGeneration != searchGeneration) return;
 
                 if (SearchFunc != null)
                 {
                     try
                     {
-                        var results = await SearchFunc(SearchQuery, cancellationTokenSource.Token);
-                        Items = results ?? Enumerable.Empty<TItem>();
-                        await OpenDropdown();
-                        
-                        // Update direction after results are loaded and dropdown repositions
-                        await Task.Yield();
-                        await UpdateCurrentDirection();
+                        var results = await SearchFunc(searchQuery, cancellationTokenSource.Token);
+                        if (!disposed && currentGeneration == searchGeneration)
+                        {
+                            Items = results ?? Enumerable.Empty<TItem>();
+                            
+                            if (!isOpen)
+                            {
+                                isOpen = true;
+                                selectedIndex = -1;
+                            }
+                        }
                     }
                     catch (OperationCanceledException) { }
                     finally
                     {
-                        if (!disposed)
+                        if (!disposed && currentGeneration == searchGeneration)
                         {
                             isLoading = false;
                             StateHasChanged();
@@ -248,11 +258,16 @@ Extensible foundation for text search, datepicker autosuggest, and custom implem
                 }
                 else
                 {
-                    await OpenDropdown();
-                    
-                    // Update direction after dropdown opens
-                    await Task.Yield();
-                    await UpdateCurrentDirection();
+                    if (!disposed && currentGeneration == searchGeneration)
+                    {
+                        if (!isOpen)
+                        {
+                            isOpen = true;
+                            selectedIndex = -1;
+                        }
+                        isLoading = false;
+                        StateHasChanged();
+                    }
                 }
             });
         }, null, DebounceDelay, Timeout.Infinite);
@@ -269,18 +284,29 @@ Extensible foundation for text search, datepicker autosuggest, and custom implem
 
     private async Task HandleKeyDown(KeyboardEventArgs e)
     {
-        if (!IsOpen || !FilteredItems.Any()) return;
+        if (!IsOpen || !FilteredItems.Any() || disposed) return;
+
+        var needsStateChange = false;
+        var newSelectedIndex = selectedIndex;
 
         switch (e.Key)
         {
             case "ArrowDown":
-                selectedIndex = Math.Min(selectedIndex + 1, FilteredItems.Count() - 1);
-                StateHasChanged();
+                newSelectedIndex = Math.Min(selectedIndex + 1, FilteredItems.Count() - 1);
+                if (newSelectedIndex != selectedIndex)
+                {
+                    selectedIndex = newSelectedIndex;
+                    needsStateChange = true;
+                }
                 break;
 
             case "ArrowUp":
-                selectedIndex = Math.Max(selectedIndex - 1, -1);
-                StateHasChanged();
+                newSelectedIndex = Math.Max(selectedIndex - 1, -1);
+                if (newSelectedIndex != selectedIndex)
+                {
+                    selectedIndex = newSelectedIndex;
+                    needsStateChange = true;
+                }
                 break;
 
             case "Enter":
@@ -296,6 +322,11 @@ Extensible foundation for text search, datepicker autosuggest, and custom implem
                     await CloseDropdown();
                 }
                 break;
+        }
+
+        if (needsStateChange && !disposed)
+        {
+            StateHasChanged();
         }
     }
 
@@ -407,12 +438,12 @@ Extensible foundation for text search, datepicker autosuggest, and custom implem
 
     private async Task UpdateCurrentDirection()
     {
-        if (string.IsNullOrEmpty(ElementId)) return;
+        if (string.IsNullOrEmpty(ElementId) || disposed) return;
         
         try
         {
             var newDirection = await SafeInvokeAsync<string>("RRBlazor.Autosuggest.getDirection", ElementId);
-            if (currentDirection != newDirection)
+            if (!disposed && !string.IsNullOrEmpty(newDirection) && currentDirection != newDirection)
             {
                 currentDirection = newDirection;
                 StateHasChanged();
