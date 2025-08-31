@@ -1,6 +1,6 @@
 namespace RR.Blazor.Enums;
 
-public enum ChoiceVariant
+public enum ChoiceMode
 {
     Auto,       // Smart detection based on content and context
     Inline,     // Always show as inline switcher
@@ -16,7 +16,9 @@ public enum ChoiceType
     Pills,      // Pill-shaped items
     Tabs,       // Tab-style items
     Buttons,    // Button-style items
-    Cards       // Card-style items for groups
+    Cards,      // Card-style items for groups
+    Checkbox,   // Checkbox style for multiple selection
+    RadioGroup  // Radio group style for single selection
 }
 
 

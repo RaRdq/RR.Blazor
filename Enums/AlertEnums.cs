@@ -8,14 +8,6 @@ namespace RR.Blazor.Enums
         Error
     }
     
-    public enum AlertVariant
-    {
-        Default,
-        Filled,
-        Outline,
-        Subtle
-    }
-    
     public enum AlertContentAlignment
     {
         Start,

@@ -24,19 +24,7 @@ namespace RR.Blazor.Enums
         /// <summary>Red color variant for errors, failures, critical states (alias for Danger)</summary>
         Error,
         
-        /// <summary>Red color variant for destructive actions (alias for Error)</summary>
-        Danger,
-        
         /// <summary>Blue color variant for information, tips, neutral notifications</summary>
-        Info,
-        
-        /// <summary>Muted/subtle styling for less prominent elements</summary>
-        Muted,
-        
-        /// <summary>Outline style with transparent background</summary>
-        Outline,
-        
-        /// <summary>Ghost style with minimal visual presence</summary>
-        Ghost
+        Info
     }
 }

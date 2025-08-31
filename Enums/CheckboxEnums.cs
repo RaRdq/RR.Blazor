@@ -15,8 +15,8 @@ public enum CheckboxVariant
     /// <summary>Warning/attention state</summary>
     Warning,
     
-    /// <summary>Error/danger state</summary>
-    Danger
+    /// <summary>Error state</summary>
+    Error
 }
 
 /// <summary>Size variants for checkbox components</summary>
@@ -35,8 +35,8 @@ public enum RadioVariant
     /// <summary>Warning/attention state</summary>
     Warning,
     
-    /// <summary>Error/danger state</summary>
-    Danger
+    /// <summary>Error state</summary>
+    Error
 }
 
 /// <summary>Size variants for radio button components</summary>

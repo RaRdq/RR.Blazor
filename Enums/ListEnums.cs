@@ -34,7 +34,7 @@ public enum ListItemVariant
     Flat,
     Glass,
     Card,
-    Danger
+    Error
 }
 
 /// <summary>
