@@ -415,7 +415,7 @@ public class ProgressRenderer<T> where T : class
         VariantType.Success => "var(--bs-success)",
         VariantType.Info => "var(--bs-info)",
         VariantType.Warning => "var(--bs-warning)",
-        VariantType.Danger => "var(--bs-danger)",
+        VariantType.Error => "var(--bs-danger)",
         _ => "var(--bs-primary)"
     };
     

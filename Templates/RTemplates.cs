@@ -317,7 +317,7 @@ public static class RTemplates
         {
             builder.OpenComponent<RR.Blazor.Components.Core.RButton>(0);
             builder.AddAttribute(1, "Text", text);
-            builder.AddAttribute(2, "Variant", isActive ? ButtonVariant.Primary : ButtonVariant.Secondary);
+            builder.AddAttribute(2, "Variant", isActive ? VariantType.Primary : VariantType.Secondary);
             builder.AddAttribute(3, "Size", size);
             builder.AddAttribute(4, "OnClick", onClick);
             if (!string.IsNullOrEmpty(icon))

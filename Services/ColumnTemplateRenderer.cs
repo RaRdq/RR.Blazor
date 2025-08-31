@@ -577,7 +577,7 @@ public class ColumnTemplateRenderer<TItem>(ColumnDefinition<TItem> column)
                     Text = "Delete",
                     Icon = "delete",
                     Style = ButtonStyle.Ghost,
-                    Variant = RR.Blazor.Enums.VariantType.Danger,
+                    Variant = RR.Blazor.Enums.VariantType.Error,
                     IconOnly = true,
                     RequiresConfirmation = true,
                     ConfirmationMessage = "Are you sure you want to delete this item?"

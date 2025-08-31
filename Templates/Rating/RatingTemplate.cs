@@ -187,7 +187,7 @@ public class RatingTemplate<T> where T : class
         
         return percentage switch
         {
-            < 20 => VariantType.Danger,
+            < 20 => VariantType.Error,
             < 40 => VariantType.Warning,
             < 60 => VariantType.Info,
             < 80 => VariantType.Primary,

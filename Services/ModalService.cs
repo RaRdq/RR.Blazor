@@ -214,7 +214,7 @@ public class ModalBuilder<T>(ModalService modalService) : IModalBuilder<T>
         return this;
     }
 
-    public IModalBuilder<T> WithVariant(ModalVariant variant)
+    public IModalBuilder<T> WithVariant(VariantType variant)
     {
         _options.Variant = variant;
         return this;
@@ -259,12 +259,12 @@ public class ModalBuilder<T>(ModalService modalService) : IModalBuilder<T>
         return this;
     }
 
-    public IModalBuilder<T> WithButton(string text, ModalButtonType type, Func<T, Task<bool>> onClick = null)
+    public IModalBuilder<T> WithButton(string text, VariantType variant, Func<T, Task<bool>> onClick = null)
     {
         var button = new ModalButton
         {
             Text = text,
-            Type = type,
+            Variant = variant,
             OnClick = onClick != null ? data => onClick((T)data) : null
         };
         _options.Buttons.Add(button);

@@ -28,14 +28,14 @@ public interface IModalBuilder<T>
     IModalBuilder<T> WithSubtitle(string subtitle);
     IModalBuilder<T> WithIcon(string icon);
     IModalBuilder<T> WithSize(SizeType size);
-    IModalBuilder<T> WithVariant(ModalVariant variant);
+    IModalBuilder<T> WithVariant(VariantType variant);
     IModalBuilder<T> WithComponent<TComponent>() where TComponent : ComponentBase;
     IModalBuilder<T> WithComponent(Type componentType);
     IModalBuilder<T> WithParameter(string name, object value);
     IModalBuilder<T> WithParameters(Dictionary<string, object> parameters);
     IModalBuilder<T> WithData(T data);
     IModalBuilder<T> WithButton(ModalButton button);
-    IModalBuilder<T> WithButton(string text, ModalButtonType type, Func<T, Task<bool>> onClick = null);
+    IModalBuilder<T> WithButton(string text, VariantType variant, Func<T, Task<bool>> onClick = null);
     IModalBuilder<T> WithCloseButton(bool show = true);
     IModalBuilder<T> WithBackdropClose(bool allow = true);
     IModalBuilder<T> WithEscapeClose(bool allow = true);

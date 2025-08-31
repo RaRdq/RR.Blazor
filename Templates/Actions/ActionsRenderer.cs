@@ -156,7 +156,7 @@ public class ActionsRenderer<T> where T : class
                 
                 builder.OpenElement(sequence++, "button");
                 builder.AddAttribute(sequence++, "type", "button");
-                builder.AddAttribute(sequence++, "class", $"dropdown-item {(!isEnabled ? "disabled" : "")} {(action.Variant == VariantType.Danger ? "text-danger" : "")}");
+                builder.AddAttribute(sequence++, "class", $"dropdown-item {(!isEnabled ? "disabled" : "")} {(action.Variant == VariantType.Error ? "text-danger" : "")}");
                 builder.AddAttribute(sequence++, "disabled", !isEnabled);
                 
                 if (isEnabled && action.OnClick.HasDelegate)
@@ -243,7 +243,7 @@ public class ActionsRenderer<T> where T : class
         VariantType.Secondary => "btn-secondary",
         VariantType.Success => "btn-success",
         VariantType.Warning => "btn-warning",
-        VariantType.Danger => "btn-danger",
+        VariantType.Error => "btn-danger",
         VariantType.Info => "btn-info",
         _ => "btn-secondary"
     };

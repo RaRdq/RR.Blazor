@@ -145,7 +145,7 @@ public class ActionsBuilder<T> where T : class
             Id = "delete",
             Text = text,
             Icon = icon,
-            Variant = VariantType.Danger,
+            Variant = VariantType.Error,
             Style = ButtonStyle.Ghost,
             IconOnly = true,
             RequiresConfirmation = true,

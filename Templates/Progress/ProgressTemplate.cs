@@ -135,7 +135,7 @@ public class ProgressTemplate<T> where T : class
     /// </summary>
     public Dictionary<double, VariantType> ThresholdMapping { get; set; } = new()
     {
-        { 0, VariantType.Danger },
+        { 0, VariantType.Error },
         { 25, VariantType.Warning },
         { 50, VariantType.Info },
         { 75, VariantType.Primary },

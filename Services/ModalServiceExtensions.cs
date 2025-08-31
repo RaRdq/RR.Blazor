@@ -11,35 +11,54 @@ namespace RR.Blazor.Services;
 
 public static class ModalServiceExtensions
 {
+    private static string GetIconForVariant(VariantType variant) => variant switch
+    {
+        VariantType.Info => "info",
+        VariantType.Warning => "warning",
+        VariantType.Error => "error",
+        VariantType.Success => "check_circle",
+        VariantType.Primary => "star",
+        VariantType.Secondary => "circle",
+        _ => "help_outline"
+    };
+    
     public static async Task<bool> ShowConfirmationAsync<TComponent>(
         this IModalService modalService,
         string message,
         string title = "Confirm",
         string confirmText = "Confirm",
         string cancelText = "Cancel",
-        ModalVariant variant = ModalVariant.Default) where TComponent : ComponentBase
+        VariantType variant = VariantType.Default) where TComponent : ComponentBase
     {
         var parameters = new Dictionary<string, object>
         {
             { "Message", message },
             { "Variant", variant },
-            { "IsDestructive", variant == ModalVariant.Destructive }
+            { "IsDestructive", variant == VariantType.Error }
         };
 
         var options = new ModalOptions<bool>
         {
             Title = title,
+            Icon = GetIconForVariant(variant),
             Size = SizeType.Small,
             Variant = variant,
             CloseOnBackdrop = false,
             CloseOnEscape = true,
-            Buttons = new List<ModalButton>
-            {
-                ModalButton.Cancel(cancelText),
-                variant == ModalVariant.Destructive
-                    ? ModalButton.Danger(confirmText)
-                    : ModalButton.Primary(confirmText)
-            }
+            Buttons = string.IsNullOrEmpty(cancelText) 
+                ? new List<ModalButton>
+                {
+                    variant == VariantType.Error
+                        ? ModalButton.Error(confirmText)
+                        : ModalButton.Primary(confirmText)
+                }
+                : new List<ModalButton>
+                {
+                    ModalButton.Cancel(cancelText),
+                    variant == VariantType.Error
+                        ? ModalButton.Error(confirmText)
+                        : ModalButton.Primary(confirmText)
+                }
         };
 
         var result = await modalService.ShowAsync(typeof(TComponent), parameters, options);
@@ -53,7 +72,7 @@ public static class ModalServiceExtensions
         string title = "Confirm",
         string confirmText = "Confirm",
         string cancelText = "Cancel",
-        ModalVariant variant = ModalVariant.Default)
+        VariantType variant = VariantType.Default)
     {
         // Use RConfirmationModal as default but via generic compile-time resolution
         return modalService.ShowConfirmationAsync<RConfirmationModal>(
@@ -69,23 +88,67 @@ public static class ModalServiceExtensions
             confirmOptions.Title,
             confirmOptions.ConfirmText ?? "Confirm",
             confirmOptions.CancelText ?? "Cancel",
-            confirmOptions.IsDestructive ? ModalVariant.Destructive : confirmOptions.Variant);
+            confirmOptions.IsDestructive ? VariantType.Error : confirmOptions.Variant);
     }
 
-    public static Task<bool> ShowInfoAsync(
+    public static async Task<bool> ShowInfoAsync(
         this IModalService modalService,
         string message,
         string title = "Information")
     {
-        return modalService.ShowConfirmationAsync(message, title, "OK", "", ModalVariant.Info);
+        var parameters = new Dictionary<string, object>
+        {
+            { "Message", message },
+            { "Variant", VariantType.Info },
+            { "IsDestructive", false }
+        };
+
+        var options = new ModalOptions<bool>
+        {
+            Title = title,
+            Icon = "info", // Set the info icon
+            Size = SizeType.Small,
+            Variant = VariantType.Info,
+            CloseOnBackdrop = true,
+            CloseOnEscape = true,
+            Buttons = new List<ModalButton>
+            {
+                ModalButton.Primary("OK")
+            }
+        };
+
+        var result = await modalService.ShowAsync(typeof(RConfirmationModal), parameters, options);
+        return result.IsConfirmed;
     }
 
-    public static Task<bool> ShowWarningAsync(
+    public static async Task<bool> ShowWarningAsync(
         this IModalService modalService,
         string message,
         string title = "Warning")
     {
-        return modalService.ShowConfirmationAsync(message, title, "OK", "", ModalVariant.Warning);
+        var parameters = new Dictionary<string, object>
+        {
+            { "Message", message },
+            { "Variant", VariantType.Warning },
+            { "IsDestructive", false }
+        };
+
+        var options = new ModalOptions<bool>
+        {
+            Title = title,
+            Icon = "warning", // Set the warning icon
+            Size = SizeType.Small,
+            Variant = VariantType.Warning,
+            CloseOnBackdrop = true,
+            CloseOnEscape = true,
+            Buttons = new List<ModalButton>
+            {
+                ModalButton.Primary("OK")
+            }
+        };
+
+        var result = await modalService.ShowAsync(typeof(RConfirmationModal), parameters, options);
+        return result.IsConfirmed;
     }
 
     public static Task<bool> ShowErrorAsync(
@@ -93,7 +156,7 @@ public static class ModalServiceExtensions
         string message,
         string title = "Error")
     {
-        return modalService.ShowConfirmationAsync(message, title, "OK", "", ModalVariant.Destructive);
+        return modalService.ShowConfirmationAsync(message, title, "OK", "", VariantType.Error);
     }
 
     public static Task<bool> ShowSuccessAsync(
@@ -101,7 +164,7 @@ public static class ModalServiceExtensions
         string message,
         string title = "Success")
     {
-        return modalService.ShowConfirmationAsync(message, title, "OK", "", ModalVariant.Success);
+        return modalService.ShowConfirmationAsync(message, title, "OK", "", VariantType.Success);
     }
 
     public static Task<bool> ConfirmAsync(
@@ -115,7 +178,7 @@ public static class ModalServiceExtensions
             title, 
             "Confirm", 
             "Cancel", 
-            isDestructive ? ModalVariant.Destructive : ModalVariant.Default);
+            isDestructive ? VariantType.Error : VariantType.Default);
     }
 
     public static async Task<ModalResult<T>> ShowFormAsync<T, TComponent>(
@@ -443,7 +506,7 @@ public static class ModalServiceExtensions
             Subtitle = options?.Subtitle,
             Icon = options?.Icon,
             Size = options?.Size ?? SizeType.Medium,
-            Variant = options?.Variant ?? ModalVariant.Default,
+            Variant = options?.Variant ?? VariantType.Default,
             ComponentType = componentType,
             Parameters = paramDict ?? new Dictionary<string, object>()
         };

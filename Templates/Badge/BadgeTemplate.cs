@@ -78,7 +78,7 @@ public class BadgeTemplate<T> where T : class
         { "active", VariantType.Success },
         { "inactive", VariantType.Secondary },
         { "pending", VariantType.Warning },
-        { "error", VariantType.Danger },
+        { "error", VariantType.Error },
         { "success", VariantType.Success },
         { "warning", VariantType.Warning },
         { "info", VariantType.Info }

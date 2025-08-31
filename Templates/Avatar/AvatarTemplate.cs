@@ -141,7 +141,7 @@ public class AvatarTemplate<T> where T : class
             VariantType.Success, 
             VariantType.Info, 
             VariantType.Warning, 
-            VariantType.Danger 
+            VariantType.Error 
         };
         
         var hash = name.GetHashCode();

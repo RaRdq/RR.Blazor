@@ -57,7 +57,7 @@ public sealed class ModalPortalRenderer : IDisposable
                 trapFocus = true,
                 animation = "scale",
                 animationSpeed = "normal",
-                backdropClass = GetBackdropClass(options?.Variant ?? ModalVariant.Default),
+                backdropClass = GetBackdropClass(options?.Variant ?? VariantType.Default),
                 className = GetModalClass(options)
             };
 
@@ -176,7 +176,7 @@ public sealed class ModalPortalRenderer : IDisposable
             {
                 foreach (var button in context.Options.Buttons)
                 {
-                    var buttonClass = GetButtonClass(button.Type);
+                    var buttonClass = GetButtonClass(button.Variant);
                     var onClick = $"window.__modalButtonClick('{context.ModalId}', '{button.Text}')";
                     
                     sb.Append($@"
@@ -235,7 +235,7 @@ public sealed class ModalPortalRenderer : IDisposable
             if (options.Size != SizeType.Medium) // Assuming Medium is default
                 classes.Add($"modal-{options.Size.ToString().ToLower()}");
             
-            if (options.Variant != ModalVariant.Default) // Assuming Default is default
+            if (options.Variant != VariantType.Default) // Assuming Default is default
                 classes.Add($"modal-{options.Variant.ToString().ToLower()}");
             
             if (!string.IsNullOrEmpty(options.Class))
@@ -245,24 +245,26 @@ public sealed class ModalPortalRenderer : IDisposable
         return string.Join(" ", classes);
     }
 
-    private string GetBackdropClass(ModalVariant variant)
+    private string GetBackdropClass(VariantType variant)
     {
         return variant switch
         {
-            ModalVariant.Destructive => "modal-backdrop-destructive",
-            ModalVariant.Warning => "modal-backdrop-warning",
+            VariantType.Error => "modal-backdrop-destructive",
+            VariantType.Warning => "modal-backdrop-warning",
             _ => "modal-backdrop-dark"
         };
     }
 
-    private string GetButtonClass(ModalButtonType type)
+    private string GetButtonClass(VariantType variant)
     {
-        return type switch
+        return variant switch
         {
-            ModalButtonType.Primary => "btn btn-primary",
-            ModalButtonType.Secondary => "btn btn-secondary",
-            ModalButtonType.Danger => "btn btn-danger",
-            ModalButtonType.Cancel => "btn btn-outline",
+            VariantType.Primary => "btn btn-primary",
+            VariantType.Secondary => "btn btn-secondary",
+            VariantType.Error => "btn btn-danger",
+            VariantType.Success => "btn btn-success",
+            VariantType.Warning => "btn btn-warning",
+            VariantType.Info => "btn btn-info",
             _ => "btn btn-default"
         };
     }

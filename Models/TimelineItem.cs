@@ -26,7 +26,7 @@ namespace RR.Blazor.Models
     {
         public string Text { get; set; } = "";
         public string Icon { get; set; } = "";
-        public ButtonVariant Variant { get; set; } = ButtonVariant.Ghost;
+        public VariantType Variant { get; set; } = VariantType.Secondary;
         public EventCallback OnClick { get; set; }
         public bool IsDisabled { get; set; }
     }

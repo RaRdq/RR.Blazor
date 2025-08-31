@@ -9,7 +9,7 @@ public class ModalOptions<T>
     public string Subtitle { get; set; } = "";
     public string Icon { get; set; } = "";
     public SizeType Size { get; set; } = SizeType.Medium;
-    public ModalVariant Variant { get; set; } = ModalVariant.Default;
+    public VariantType Variant { get; set; } = VariantType.Default;
     public bool CloseOnBackdrop { get; set; } = true;
     public bool CloseOnEscape { get; set; } = true;
     public bool ShowCloseButton { get; set; } = true;
@@ -35,8 +35,7 @@ public class ModalButton
 {
     public string Text { get; set; } = "";
     public string Icon { get; set; } = "";
-    public ModalButtonType Type { get; set; } = ModalButtonType.Primary;
-    public ButtonVariant Variant { get; set; } = ButtonVariant.Primary;
+    public VariantType Variant { get; set; } = VariantType.Primary;
     public bool IsDisabled { get; set; }
     public bool IsLoading { get; set; }
     public string Class { get; set; } = "";
@@ -48,8 +47,7 @@ public class ModalButton
         return new ModalButton
         {
             Text = text,
-            Type = ModalButtonType.Cancel,
-            Variant = ButtonVariant.Ghost,
+            Variant = VariantType.Secondary,
             Result = Enums.ModalResult.Cancel,
             OnClick = onClick ?? (_ => Task.FromResult(true))
         };
@@ -60,8 +58,7 @@ public class ModalButton
         return new ModalButton
         {
             Text = text,
-            Type = ModalButtonType.Primary,
-            Variant = ButtonVariant.Primary,
+            Variant = VariantType.Primary,
             Result = result,
             OnClick = onClick ?? (_ => Task.FromResult(true))
         };
@@ -72,23 +69,27 @@ public class ModalButton
         return new ModalButton
         {
             Text = text,
-            Type = ModalButtonType.Success,
-            Variant = ButtonVariant.Success,
+            Variant = VariantType.Success,
             Result = Enums.ModalResult.Yes,
             OnClick = onClick ?? (_ => Task.FromResult(true))
         };
     }
 
-    public static ModalButton Danger(string text = "Delete", Func<object, Task<bool>> onClick = null)
+    public static ModalButton Error(string text = "Delete", Func<object, Task<bool>> onClick = null)
     {
         return new ModalButton
         {
             Text = text,
-            Type = ModalButtonType.Danger,
-            Variant = ButtonVariant.Danger,
+            Variant = VariantType.Error,
             Result = Enums.ModalResult.Delete,
             OnClick = onClick ?? (_ => Task.FromResult(true))
         };
+    }
+
+    [Obsolete("Use Error instead - Danger variant no longer exists")]
+    public static ModalButton Danger(string text = "Delete", Func<object, Task<bool>> onClick = null)
+    {
+        return Error(text, onClick);
     }
 }
 
@@ -143,7 +144,7 @@ public class ConfirmationOptions
     public string Icon { get; set; } = "help";
     public string ConfirmText { get; set; } = "Confirm";
     public string CancelText { get; set; } = "Cancel";
-    public ModalVariant Variant { get; set; } = ModalVariant.Default;
+    public VariantType Variant { get; set; } = VariantType.Default;
     public bool IsDestructive { get; set; }
 }
 
