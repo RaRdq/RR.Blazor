@@ -2,7 +2,7 @@
 @using RR.Blazor.Attributes
 @using RR.Blazor.Components.Base
 @using RR.Blazor.Utilities
-@inherits RVariantComponentBase<SizeType, ButtonVariant>
+@inherits RDesignableComponentBase<SizeType, VariantType>
 
 @attribute [Component("RButton", Category = "Core", Complexity = ComponentComplexity.Simple)]
 @attribute [AIOptimized(Prompt = "Create button for user actions", 
@@ -52,6 +52,18 @@
     [AIParameter("Button type", SuggestedValues = new[] { "Button", "Submit", "Reset" })]
     public ButtonType Type { get; set; } = ButtonType.Button;
     
+    [Parameter]
+    [AIParameter("Button aesthetic style", SuggestedValues = new[] { "Material", "Glass", "Neumorphism", "Neon" })]
+    public ButtonStyleType StyleType { get; set; } = ButtonStyleType.Material;
+    
+    [Parameter]
+    [AIParameter("Button structural mode", SuggestedValues = new[] { "Filled", "Outline", "Ghost" })]
+    public ButtonMode Mode { get; set; } = ButtonMode.Filled;
+    
+    [Parameter]
+    [AIParameter("Visual intensity level", SuggestedValues = new[] { "Normal", "Muted", "Bold", "Subtle" })]
+    public IntensityType Intensity { get; set; } = IntensityType.Normal;
+    
     [Parameter] 
     [AIParameter("Icon position", SuggestedValues = new[] { "Start", "End", "Top", "Bottom" })]
     public IconPosition IconPosition { get; set; } = IconPosition.Start;
@@ -76,29 +88,65 @@
     protected override string GetVariantClasses()
     {
         var variantName = Variant.ToString().ToLower();
+        var classes = new List<string>();
         
-        var variantClass = variantName switch
+        // Map semantic variant to button class
+        var semanticClass = variantName switch
         {
-            "primary" => "button-primary",
+            "default" or "primary" => "button-primary",
             "secondary" => "button-secondary",
             "success" => "button-success",
             "warning" => "button-warning",
             "danger" or "error" => "button-error",
             "info" => "button-info",
-            "outline" => "button-outlined-primary",
-            "ghost" => "button-ghost-primary",
-            "glass" => "button-glass-primary",
-            "link" => "button-link",
-            "muted" => "button-muted",
-            "gradient" => "button-gradient",
-            "neon" => "button-neon",
-            "neumorphism" => "button-neumorphism",
-            "shimmer" => "button-shimmer",
-            "enterprise" => "button-enterprise",
             _ => "button-primary"
         };
+        classes.Add(semanticClass);
         
-        return variantClass;
+        // Apply structural mode modifier if not filled (default)
+        if (Mode == ButtonMode.Outline)
+        {
+            classes.Add("button-outline");
+        }
+        else if (Mode == ButtonMode.Ghost)
+        {
+            classes.Add("button-ghost");
+        }
+        
+        // Apply aesthetic style modifier if not Material (default)
+        if (StyleType != ButtonStyleType.Material)
+        {
+            var styleClass = StyleType switch
+            {
+                ButtonStyleType.Glass => "button-glass",
+                ButtonStyleType.Neumorphism => "button-neumorphism",
+                ButtonStyleType.Neon => "button-neon",
+                ButtonStyleType.Elevated => "button-elevated",
+                ButtonStyleType.Flat => "button-flat",
+                ButtonStyleType.Frosted => "button-frosted",
+                _ => ""
+            };
+            
+            if (!string.IsNullOrEmpty(styleClass))
+                classes.Add(styleClass);
+        }
+        
+        // Apply intensity modifier
+        if (Intensity != IntensityType.Normal)
+        {
+            var intensityClass = Intensity switch
+            {
+                IntensityType.Muted => "button-muted",
+                IntensityType.Bold => "button-bold", 
+                IntensityType.Subtle => "button-subtle",
+                _ => ""
+            };
+            
+            if (!string.IsNullOrEmpty(intensityClass))
+                classes.Add(intensityClass);
+        }
+        
+        return string.Join(" ", classes);
     }
     
     protected override SizeType GetDefaultSize()
@@ -106,9 +154,9 @@
         return SizeType.Medium;
     }
     
-    protected override ButtonVariant GetDefaultVariant()
+    protected override VariantType GetDefaultVariant()
     {
-        return ButtonVariant.Primary;
+        return VariantType.Primary;
     }
     
     protected override string GetTextSizeClasses()
@@ -127,7 +175,18 @@
     
     protected override bool ShouldRender()
     {
-        var currentHash = HashCode.Combine(Icon, Text, Variant, Size, Disabled, Loading, IconPosition);
+        var hash = new HashCode();
+        hash.Add(Icon);
+        hash.Add(Text);
+        hash.Add(Variant);
+        hash.Add(Size);
+        hash.Add(Mode);
+        hash.Add(StyleType);
+        hash.Add(Intensity);
+        hash.Add(Disabled);
+        hash.Add(Loading);
+        hash.Add(IconPosition);
+        var currentHash = hash.ToHashCode();
         if (_lastRenderHash == currentHash) return false;
         _lastRenderHash = currentHash;
         return true;
@@ -153,9 +212,12 @@
         var baseClasses = GetBaseClasses();
         if (!string.IsNullOrEmpty(baseClasses)) classes.AddRange(baseClasses.Split(' ').Where(c => !string.IsNullOrEmpty(c)));
         
+        // Note: Semantic color and style modifiers are now handled in GetVariantClasses()
+        
         classes.Add(GetCursorClasses());
         classes.Add(DensityHelper.GetGap(Density));
         
         return string.Join(" ", classes.Where(c => !string.IsNullOrEmpty(c)));
     }
+    
 }

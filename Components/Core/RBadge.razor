@@ -45,6 +45,24 @@
     [AIParameter(Hint = "Set to true for interactive badges that perform actions")]
     public bool Clickable { get; set; }
     
+    /// <summary>
+    /// Visual intensity/prominence of the badge
+    /// </summary>
+    [Parameter]
+    [AIParameter(Hint = "Visual prominence level", 
+                 SuggestedValues = new[] { "Normal", "Muted", "Bold", "Subtle" }, 
+                 IsRequired = false)]
+    public IntensityType Intensity { get; set; } = IntensityType.Normal;
+    
+    /// <summary>
+    /// Visual style/aesthetic of the badge
+    /// </summary>
+    [Parameter]
+    [AIParameter(Hint = "Visual style variant", 
+                 SuggestedValues = new[] { "Material", "Glass", "Neumorphism", "Elevated", "Flat" }, 
+                 IsRequired = false)]
+    public ButtonStyleType StyleVariant { get; set; } = ButtonStyleType.Material;
+    
     
 
     private string GetBadgeClasses()
@@ -53,6 +71,8 @@
         
         classes.Add(GetVariantUtilityClasses());
         classes.Add(GetSizeUtilityClasses());
+        classes.Add(GetIntensityClasses());
+        classes.Add(GetStyleClasses());
         if (Clickable) classes.Add("badge-clickable cursor-pointer hover-scale-sm transition-transform");
         
         classes.AddRange(GetBaseCssClasses());
@@ -72,11 +92,37 @@
             VariantType.Primary => "badge-primary",
             VariantType.Success => "badge-success", 
             VariantType.Warning => "badge-warning",
-            VariantType.Danger => "badge-danger",
             VariantType.Error => "badge-error",
             VariantType.Info => "badge-info",
-            VariantType.Outline => "badge-outlined-primary",
+            VariantType.Secondary => "badge-outlined-primary",
             _ => "badge-secondary"
+        };
+    }
+    
+    private string GetIntensityClasses()
+    {
+        return Intensity switch
+        {
+            IntensityType.Muted => "badge-muted",
+            IntensityType.Bold => "badge-bold", 
+            IntensityType.Subtle => "badge-subtle",
+            IntensityType.Normal => "",
+            _ => ""
+        };
+    }
+    
+    private string GetStyleClasses()
+    {
+        return StyleVariant switch
+        {
+            ButtonStyleType.Glass => "badge-glass",
+            ButtonStyleType.Neumorphism => "badge-neumorphism",
+            ButtonStyleType.Elevated => "badge-elevated", 
+            ButtonStyleType.Flat => "badge-flat",
+            ButtonStyleType.Neon => "badge-neon",
+            ButtonStyleType.Frosted => "badge-frosted",
+            ButtonStyleType.Material => "",
+            _ => ""
         };
     }
 
@@ -116,7 +162,7 @@
             nameof(Text), nameof(Variant), nameof(Size), nameof(Density), nameof(Class),
             nameof(Icon), nameof(Clickable), nameof(Title), nameof(Subtitle), nameof(Disabled),
             nameof(OnClick), nameof(Loading), nameof(LoadingText), nameof(AriaLabel), nameof(TabIndex),
-            nameof(ChildContent)
+            nameof(ChildContent), nameof(Intensity), nameof(StyleVariant)
         };
 
         var forwarded = new Dictionary<string, object>();
