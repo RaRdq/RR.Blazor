@@ -188,46 +188,29 @@ Supports info, success, warning, and error states with consistent styling.
 
         classes.Add(GetDensityClasses());
         
-        // Size classes (padding and text will be handled by density system)
         classes.Add(Size switch
         {
             SizeType.Small => "alert-sm",
-            SizeType.Medium => "alert-md", 
             SizeType.Large => "alert-lg",
-            _ => "alert-md"
+            _ => "" // Medium is default, no class needed
         });
         
-
-        var (bgClass, textClass, borderClass) = Type switch
-        {
-            AlertType.Success => ("bg-success-light", "text-success", "border-success"),
-            AlertType.Warning => ("bg-warning-light", "text-warning", "border-warning"), 
-            AlertType.Error => ("bg-error-light", "text-error", "border-error"),
-            _ => ("bg-info-light", "text-info", "border-info")
-        };
+        string alertTypeClass = $"alert-{Type.ToString().ToLower()}";
         
-        // Handle filled style independently
-        string variantClasses;
         if (Filled)
         {
-            variantClasses = Type switch
-            {
-                AlertType.Success => "bg-success border-success",
-                AlertType.Warning => "bg-warning border-warning",
-                AlertType.Error => "bg-error border-error",
-                _ => "bg-info border-info"
-            };
+            classes.Add(alertTypeClass);
+            classes.Add($"bg-{Type.ToString().ToLower()}");
+        }
+        else if (Variant == VariantType.Secondary)
+        {
+            classes.Add(alertTypeClass);
+            classes.Add("alert-outline");
         }
         else
         {
-            variantClasses = Variant switch
-            {
-                VariantType.Secondary => $"{bgClass} {textClass} {borderClass}",
-                _ => $"{bgClass} {textClass} {borderClass}"
-            };
+            classes.Add(alertTypeClass);
         }
-        
-        classes.Add(variantClasses);
         
 
         if (FullWidth)

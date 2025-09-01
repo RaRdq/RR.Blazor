@@ -456,19 +456,34 @@
   // Note: 'material' is not included as it's the default styling
   $modes: (glass, neumorphism, gradient, outlined, ghost, neon, shimmer, enterprise, elevated, flat, frosted);
   $variants: (primary, secondary, success, warning, error, danger, info);
-  $intensities: (light, medium, heavy);
+  $intensities: (
+    light: light,
+    heavy: heavy,
+    minimal: light  // subtle maps to light intensity
+  );
   
+  // Generate base design mode classes (medium intensity by default)
   @each $mode in $modes {
     @each $variant in $variants {
       .design-#{$mode}-#{$variant} {
         @include apply-design-mode($mode, $variant, medium);
-        
-        @each $intensity in $intensities {
-          &.design-#{$mode}-#{$intensity} {
-            @include apply-design-mode($mode, $variant, $intensity);
-          }
+      }
+      
+      // Generate intensity variations
+      @each $intensity-name, $intensity-value in $intensities {
+        .design-#{$mode}-#{$variant}-#{$intensity-name} {
+          @include apply-design-mode($mode, $variant, $intensity-value);
         }
       }
     }
+  }
+  
+  // Generate structural modifiers that work with design modes
+  .design-outlined {
+    @include design-outlined(primary, medium);
+  }
+  
+  .design-ghost {
+    @include design-ghost(primary, medium);
   }
 }

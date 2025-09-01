@@ -2,6 +2,7 @@
 @using RR.Blazor.Components.Display  
 @using RR.Blazor.Components.Data
 @using RR.Blazor.Enums
+@using RR.Blazor.Models
 
 <RCard Variant="CardVariant.Outlined" Text="RGrid">
     <ChildContent>
@@ -13,10 +14,9 @@
             <!-- Basic Grid Example -->
             <div class="space-y-2">
                 <div class="text-h6 font-semibold">Basic Grid</div>
-                <RGrid DataSource="@_employees"
-                       EnablePaging="true"
+                <RGrid Items="@_employees"
+                       EnablePagination="true"
                        PageSize="5"
-                       EnableSorting="true"
                        Class="basic-grid">
                     <!-- Auto-generated columns -->
                 </RGrid>
@@ -40,20 +40,12 @@
                              @onclick="ToggleExport" />
                 </div>
                 
-                <RGrid DataSource="@_employees"
-                       EnablePaging="true"
+                <RGrid Items="@_employees"
+                       EnablePagination="true"
                        PageSize="10"
-                       EnableSorting="true"
-                       EnableFiltering="@_enableFiltering"
-                       EnableGrouping="true"
-                       EnableColumnReordering="true"
-                       EnableExport="@_enableExport"
+                       EnableFilter="@_enableFiltering"
                        EnableVirtualization="@_enableVirtualization"
                        VirtualizationThreshold="100"
-                       EnableRowSelection="true"
-                       SelectionMode="GridSelectionMode.Multiple"
-                       OnRowClick="@HandleRowClick"
-                       OnSelectionChanged="@HandleSelectionChanged"
                        Class="advanced-grid">
                     <!-- Auto-generated columns with smart detection -->
                 </RGrid>
@@ -90,13 +82,11 @@
                     Current dataset: @_dataSize.ToString("N0") records | Render time: @_renderTime.ToString("F1")ms
                 </div>
                 
-                <RGrid DataSource="@_largeEmployees"
-                       EnablePaging="true"
+                <RGrid Items="@_largeEmployees"
+                       EnablePagination="true"
                        PageSize="25"
-                       EnableSorting="true"
                        EnableVirtualization="true"
                        VirtualizationThreshold="100"
-                       EnableRowSelection="true"
                        Class="performance-grid">
                     <!-- Auto-generated columns -->
                 </RGrid>
@@ -120,9 +110,9 @@
                              @onclick="@(() => SetDensity("spacious"))" />
                 </div>
                 
-                <RGrid DataSource="@_employees.Take(8).ToList()"
-                       EnablePaging="false"
-                       EnableSorting="true"
+                <RGrid Items="@_employees.Take(8).ToList()"
+                       EnablePagination="false"
+                       Density="@GetDensityType()"
                        Class="@($"density-grid density-{_density}")">
                     <!-- Auto-generated columns -->
                 </RGrid>
@@ -189,21 +179,14 @@
         StateHasChanged();
     }
 
-    private async Task HandleRowClick(object rowData)
+    private DensityType GetDensityType()
     {
-        if (rowData is Employee employee)
+        return _density switch
         {
-            // Handle row click - could show details modal
-        }
-    }
-
-    private async Task HandleSelectionChanged(object selection)
-    {
-        if (selection is IEnumerable<Employee> employees)
-        {
-            _selectedEmployees = employees;
-            StateHasChanged();
-        }
+            "compact" => DensityType.Compact,
+            "spacious" => DensityType.Spacious,
+            _ => DensityType.Normal
+        };
     }
 
     public class Employee

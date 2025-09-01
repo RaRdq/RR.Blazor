@@ -13,7 +13,7 @@
 
 @inherits LayoutComponentBase
 @inject IJSRuntime JS
-@inject IThemeService ThemeService
+@inject IRThemeService ThemeService
 @inject IToastService ToastService
 @inject IAppSearchService SearchService
 @inject IAppConfigurationService ConfigService
@@ -36,10 +36,10 @@
                     <RButton Icon="@GetToggleIcon()" 
                              Variant="VariantType.Primary"
                              Mode="ButtonMode.Outline"
-                             Size="SizeType.Medium"
+                             Size="SizeType.Small"
                              OnClick="@ToggleSidebar"
                              AriaLabel="Toggle sidebar"
-                             Class="shrink-0 touch-target" />
+                             Class="shrink-0" />
                 }
                 
                 @if (LogoContent != null)
@@ -111,23 +111,22 @@
                                          Size="SizeType.Small"
                                          OnClick="@ExpandSearch"
                                          AriaLabel="Open search"
-                                         Class="search-toggle-button touch-target" />
+                                         Class="search-toggle-button" />
                             }
                             
                             <div class="search-input-container">
-                                <RAutosuggestGeneric TItem="AppSearchResult" 
-                                                     SearchFunc="@SearchAppSearchResultsAsync"
-                                                     ItemTextSelector="@(r => r.Title)"
-                                                     ItemIconSelector="@(r => r.Icon)"
-                                                     Placeholder="Search..."
-                                                     Size="SizeType.Small"
-                                                     Icon="search"
-                                                     ShowDropdownIcon="false"
-                                                     ClearOnSelect="false"
-                                                     MinSearchLength="3"
-                                                     DebounceDelay="800"
-                                                     OnItemSelected="@HandleSearchItemSelected"
-                                                     Class="search-autosuggest" />
+                                <RAutosuggestClean TItem="AppSearchResult" 
+                                                   SearchFunc="@SearchAppSearchResultsAsync"
+                                                   ItemTextSelector="@((AppSearchResult r) => r.Title)"
+                                                   ItemIconSelector="@((AppSearchResult r) => r.Icon)"
+                                                   Placeholder="Search..."
+                                                   Size="SizeType.Small"
+                                                   Icon="search"
+                                                   ClearOnSelect="false"
+                                                   MinSearchLength="3"
+                                                   DebounceDelay="500"
+                                                   ValueChanged="@HandleSearchItemSelected"
+                                                   Class="search-autosuggest" />
                             </div>
                         </div>
                     </div>
@@ -141,8 +140,7 @@
                              ShowBadge="@(NotificationCount > 0)"
                              BadgeCount="@NotificationCount"
                              OnClick="@HandleNotificationsClick"
-                             AriaLabel="Notifications" 
-                             Class="touch-target" />
+                             AriaLabel="Notifications" />
                 }
                 
                 @if (QuickActions != null)
@@ -541,25 +539,15 @@
                 return Enumerable.Empty<AppSearchResult>();
             }
             
-            // Add a small delay to further debounce and prevent rapid calls
-            await Task.Delay(50, cancellationToken);
-            
-            if (cancellationToken.IsCancellationRequested)
-            {
-                return Enumerable.Empty<AppSearchResult>();
-            }
-            
             var results = await SearchService.SearchAsync(query, cancellationToken);
             return results ?? Enumerable.Empty<AppSearchResult>();
         }
         catch (OperationCanceledException)
         {
-            // Normal cancellation, don't log as error
             return Enumerable.Empty<AppSearchResult>();
         }
-        catch (Exception ex)
+        catch
         {
-            Console.WriteLine($"Search error: {ex.Message}");
             return Enumerable.Empty<AppSearchResult>();
         }
     }

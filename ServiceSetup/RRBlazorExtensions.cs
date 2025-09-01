@@ -78,7 +78,7 @@ namespace RR.Blazor.ServiceSetup
 
             // Register core RR.Blazor services - Universal services work with both Server and WebAssembly
             serviceCollection.AddScoped<IJavaScriptInteropService, JavaScriptInteropService>();
-            serviceCollection.AddScoped<IThemeService, BlazorThemeService>();
+            serviceCollection.AddScoped<IRThemeService, RThemeService>();
             
             serviceCollection.AddScoped<IModalService, ModalService>();
             serviceCollection.AddSingleton<IToastService, ToastService>();

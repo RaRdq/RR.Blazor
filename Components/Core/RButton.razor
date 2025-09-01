@@ -46,15 +46,13 @@
 </button>
 
 @code {
-    #region Button-Specific Properties
-    
     [Parameter] 
     [AIParameter("Button type", SuggestedValues = new[] { "Button", "Submit", "Reset" })]
     public ButtonType Type { get; set; } = ButtonType.Button;
     
     [Parameter]
     [AIParameter("Button aesthetic style", SuggestedValues = new[] { "Material", "Glass", "Neumorphism", "Neon" })]
-    public ButtonStyleType StyleType { get; set; } = ButtonStyleType.Material;
+    public StyleType StyleType { get; set; } = StyleType.Material;
     
     [Parameter]
     [AIParameter("Button structural mode", SuggestedValues = new[] { "Filled", "Outline", "Ghost" })]
@@ -76,10 +74,6 @@
     [AIParameter("Prevent default behavior")]
     public bool PreventDefault { get; set; }
     
-    #endregion
-    
-    #region Abstract Method Implementations
-    
     protected override string GetSizeClasses()
     {
         return SizeHelper.GetButtonSize(Size, Density);
@@ -90,60 +84,112 @@
         var variantName = Variant.ToString().ToLower();
         var classes = new List<string>();
         
-        // Map semantic variant to button class
-        var semanticClass = variantName switch
+        var semanticColor = variantName switch
         {
-            "default" or "primary" => "button-primary",
-            "secondary" => "button-secondary",
-            "success" => "button-success",
-            "warning" => "button-warning",
-            "danger" or "error" => "button-error",
-            "info" => "button-info",
-            _ => "button-primary"
+            "default" or "primary" => "primary",
+            "secondary" => "secondary",
+            "success" => "success",
+            "warning" => "warning",
+            "danger" or "error" => "error",
+            "info" => "info",
+            _ => "primary"
         };
-        classes.Add(semanticClass);
         
-        // Apply structural mode modifier if not filled (default)
-        if (Mode == ButtonMode.Outline)
+        if (StyleType != StyleType.Material)
         {
-            classes.Add("button-outline");
-        }
-        else if (Mode == ButtonMode.Ghost)
-        {
-            classes.Add("button-ghost");
-        }
-        
-        // Apply aesthetic style modifier if not Material (default)
-        if (StyleType != ButtonStyleType.Material)
-        {
-            var styleClass = StyleType switch
+            var designMode = StyleType switch
             {
-                ButtonStyleType.Glass => "button-glass",
-                ButtonStyleType.Neumorphism => "button-neumorphism",
-                ButtonStyleType.Neon => "button-neon",
-                ButtonStyleType.Elevated => "button-elevated",
-                ButtonStyleType.Flat => "button-flat",
-                ButtonStyleType.Frosted => "button-frosted",
+                StyleType.Glass => "glass",
+                StyleType.Neumorphism => "neumorphism",
+                StyleType.Neon => "neon",
+                StyleType.Elevated => "elevated",
+                StyleType.Flat => "flat",
+                StyleType.Frosted => "frosted",
                 _ => ""
             };
             
-            if (!string.IsNullOrEmpty(styleClass))
-                classes.Add(styleClass);
-        }
-        
-        // Apply intensity modifier
-        if (Intensity != IntensityType.Normal)
-        {
-            var intensityClass = Intensity switch
+            if (!string.IsNullOrEmpty(designMode))
             {
-                IntensityType.Muted => "button-muted",
-                IntensityType.Bold => "button-bold", 
-                IntensityType.Subtle => "button-subtle",
-                _ => ""
-            };
+                var designClass = $"design-{designMode}-{semanticColor}";
+                
+                if (Intensity != IntensityType.Normal)
+                {
+                    var intensitySuffix = Intensity switch
+                    {
+                        IntensityType.Muted => "light",
+                        IntensityType.Bold => "heavy",
+                        IntensityType.Subtle => "minimal",
+                        _ => ""
+                    };
+                    if (!string.IsNullOrEmpty(intensitySuffix))
+                        designClass += $"-{intensitySuffix}";
+                }
+                
+                classes.Add(designClass);
+                
+                if (Mode == ButtonMode.Outline)
+                {
+                    classes.Clear();
+                    classes.Add($"design-outlined-{semanticColor}");
+                    if (Intensity != IntensityType.Normal)
+                    {
+                        var intensitySuffix = Intensity switch
+                        {
+                            IntensityType.Muted => "light",
+                            IntensityType.Bold => "heavy",
+                            IntensityType.Subtle => "minimal",
+                            _ => ""
+                        };
+                        if (!string.IsNullOrEmpty(intensitySuffix))
+                            classes[0] += $"-{intensitySuffix}";
+                    }
+                }
+                else if (Mode == ButtonMode.Ghost)
+                {
+                    classes.Clear();
+                    classes.Add($"design-ghost-{semanticColor}");
+                    if (Intensity != IntensityType.Normal)
+                    {
+                        var intensitySuffix = Intensity switch
+                        {
+                            IntensityType.Muted => "light",
+                            IntensityType.Bold => "heavy",
+                            IntensityType.Subtle => "minimal",
+                            _ => ""
+                        };
+                        if (!string.IsNullOrEmpty(intensitySuffix))
+                            classes[0] += $"-{intensitySuffix}";
+                    }
+                }
+            }
+        }
+        else
+        {
+            // Use traditional button classes for material style
+            classes.Add($"button-{semanticColor}");
             
-            if (!string.IsNullOrEmpty(intensityClass))
-                classes.Add(intensityClass);
+            if (Mode == ButtonMode.Outline)
+            {
+                classes.Add("button-outline");
+            }
+            else if (Mode == ButtonMode.Ghost)
+            {
+                classes.Add("button-ghost");
+            }
+            
+            if (Intensity != IntensityType.Normal)
+            {
+                var intensityClass = Intensity switch
+                {
+                    IntensityType.Muted => "button-muted",
+                    IntensityType.Bold => "button-bold",
+                    IntensityType.Subtle => "button-subtle",
+                    _ => ""
+                };
+                
+                if (!string.IsNullOrEmpty(intensityClass))
+                    classes.Add(intensityClass);
+            }
         }
         
         return string.Join(" ", classes);
@@ -168,8 +214,6 @@
     {
         return SizeHelper.GetButtonIconSize(Size, Density);
     }
-    
-    #endregion
     
     private int _lastRenderHash = 0;
     

@@ -2,6 +2,7 @@
 @using RR.Blazor.Components.Display
 @using RR.Blazor.Components.Data
 @using RR.Blazor.Enums
+@using RR.Blazor.Models
 
 <RCard Variant="CardVariant.Outlined" Text="RTable">
     <ChildContent>
@@ -55,14 +56,19 @@
                               Items="@_employees"
                               ShowSearch="@_showSearch"
                               ShowPagination="true"
-                              PageSize="@_pageSize"
-                              ShowExport="@_showExport"
+                              @bind-PageSize="_pageSize"
+                              ShowExportButton="@_showExport"
                               ShowColumnManager="@_showColumnManager"
                               Virtualize="@_enableVirtualization"
                               EnableHorizontalScroll="@_enableHorizontalScroll"
-                              SelectionMode="SelectionMode.Multiple"
+                              Selectable="true"
+                              MultiSelect="true"
                               @bind-SelectedItems="_selectedEmployees"
-                              OnRowClick="@HandleRowClick"
+                              OnRowClicked="@HandleRowClick"
+                              RowClickable="true"
+                              Density="@GetDensityType()"
+                              Striped="@_striped"
+                              Hover="@_hoverable"
                               Class="@GetTableClasses()">
                     
                     <RColumn Property="Id" Title="ID" Width="80px" Sortable="true" />
@@ -112,8 +118,90 @@
                         </ChildContent>
                     </RAlert>
                 }
+                
+                <!-- Configuration Panel for Advanced Table -->
+                <div class="mt-4">
+                    <RCard Variant="CardVariant.Glass" Class="p-4">
+                        <ChildContent>
+                            <div class="text-subtitle-2 mb-3">Advanced Table Configuration</div>
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <RChoice SelectedValue="@_pageSize.ToString()"
+                                        SelectedValueChanged="@OnPageSizeChanged"
+                                        Label="Page Size"
+                                        Items="@(new[] { "5", "10", "25", "50" })" />
+                                        
+                                <RChoice SelectedValue="@_density"
+                                        SelectedValueChanged="@OnDensityChanged"
+                                        Label="Table Density"
+                                        Items="@(new[] { "compact", "normal", "spacious" })" />
+                                        
+                                <RToggle @bind-Value="_striped" 
+                                        Text="Striped Rows" />
+                                        
+                                <RToggle @bind-Value="_hoverable" 
+                                        Text="Hoverable Rows" />
+                            </div>
+                        </ChildContent>
+                    </RCard>
+                </div>
             </div>
 
+
+            <!-- Enhanced Table with RFilter Integration -->
+            <div class="space-y-2">
+                <div class="text-h6 font-semibold">Enhanced Table with Integrated Filters (ShowEnhancedFilters)</div>
+                <div class="flex gap-2 mb-3 flex-wrap">
+                    <RButton Text="@(_showEnhancedFilters ? "Hide Enhanced Filters" : "Show Enhanced Filters")"
+                             Variant="VariantType.Secondary"
+                             Size="SizeType.Small"
+                             @onclick="ToggleEnhancedFilters" />
+                </div>
+                
+                <RTableGeneric TItem="Employee" 
+                              Items="@_employees"
+                              ShowPagination="true"
+                              PageSize="15"
+                              ShowEnhancedFilters="@_showEnhancedFilters"
+                              EnhancementsEnabled="true"
+                              Selectable="true"
+                              MultiSelect="true"
+                              Class="enhanced-filters-table">
+                    
+                    <RColumn Property="Id" Title="ID" Width="80px" Sortable="true" />
+                    <RColumn Property="Name" Title="Employee Name" Sortable="true" Searchable="true" Width="200px" />
+                    <RColumn Property="Department" Title="Department" Sortable="true" Filterable="true" Width="150px" />
+                    <RColumn Property="Position" Title="Position" Sortable="true" Width="180px" />
+                    <RColumn Property="Salary" Title="Salary" Sortable="true" Format="C" Alignment="ColumnAlignment.Right" Width="120px" />
+                    <RColumn Property="HireDate" Title="Hire Date" Sortable="true" Format="d" Width="120px" />
+                    <RColumn Property="IsActive" Title="Status" Width="100px">
+                        <CellTemplate Context="employee">
+                            <RChip Variant="@(((Employee)employee).IsActive ? VariantType.Success : VariantType.Error)"
+                                   Size="SizeType.Small">
+                                <ChildContent>@(((Employee)employee).IsActive ? "Active" : "Inactive")</ChildContent>
+                            </RChip>
+                        </CellTemplate>
+                    </RColumn>
+                </RTableGeneric>
+                
+                @if (_showEnhancedFilters)
+                {
+                    <RAlert Type="AlertType.Info" Filled="false" Class="mt-3">
+                        <ChildContent>
+                            <div class="text-sm">
+                                <strong>Filter Features Demonstrated:</strong>
+                                <ul class="ml-4 mt-2 space-y-1 text-xs">
+                                    <li>• <strong>Search:</strong> Text search across searchable columns</li>
+                                    <li>• <strong>Quick Filters:</strong> Status (Active/Inactive) toggle filters</li>
+                                    <li>• <strong>Department Filters:</strong> Multi-select department filtering</li>
+                                    <li>• <strong>Advanced Panel:</strong> Field-specific filter conditions</li>
+                                    <li>• <strong>Filter Stacking:</strong> Multiple filters work together</li>
+                                    <li>• <strong>Real-time Updates:</strong> Results update as you type/select</li>
+                                </ul>
+                            </div>
+                        </ChildContent>
+                    </RAlert>
+                }
+            </div>
             <!-- Custom Table with Templates -->
             <div class="space-y-2">
                 <div class="text-h6 font-semibold">Custom Table with Rich Templates</div>
@@ -128,8 +216,8 @@
                                 <RAvatar Text="@GetEmployeeInitials((Employee)employee)"
                                         Size="SizeType.Small" />
                                 <div>
-                                    <div class="font-medium">@((Employee)employee).Name</div>
-                                    <div class="text-sm text-muted">@((Employee)employee).Email</div>
+                                    <div class="font-medium">@(((Employee)employee).Name)</div>
+                                    <div class="text-sm text-muted">@(((Employee)employee).Email)</div>
                                 </div>
                             </div>
                         </CellTemplate>
@@ -138,7 +226,7 @@
                     <RColumn Title="Role & Department" Width="200px">
                         <CellTemplate Context="employee">
                             <div>
-                                <div class="font-medium">@((Employee)employee).Position</div>
+                                <div class="font-medium">@(((Employee)employee).Position)</div>
                                 <RBadge Text="@(((Employee)employee).Department)" 
                                         Variant="@GetDepartmentVariant((Employee)employee)"
                                         Size="SizeType.Small" />
@@ -149,7 +237,7 @@
                     <RColumn Title="Compensation" Width="150px" Alignment="ColumnAlignment.Right">
                         <CellTemplate Context="employee">
                             <div class="text-right">
-                                <div class="font-medium">@((Employee)employee).Salary.ToString("C0")</div>
+                                <div class="font-medium">@(((Employee)employee).Salary.ToString("C0"))</div>
                                 <div class="text-sm text-muted">Annual</div>
                             </div>
                         </CellTemplate>
@@ -172,32 +260,6 @@
                     </RColumn>
                 </RTableGeneric>
             </div>
-
-            <!-- Configuration Panel -->
-            <div class="space-y-2">
-                <div class="text-h6 font-semibold">Table Configuration</div>
-                <RCard Variant="CardVariant.Glass" Class="p-4">
-                    <ChildContent>
-                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            <RChoice SelectedValue="@_pageSize.ToString()"
-                                    SelectedValueChanged="@OnPageSizeChanged"
-                                    Label="Page Size"
-                                    Items="@(new[] { "5", "10", "25", "50" })" />
-                                    
-                            <RChoice SelectedValue="@_density"
-                                    SelectedValueChanged="@OnDensityChanged"
-                                    Label="Table Density"
-                                    Items="@(new[] { "compact", "normal", "spacious" })" />
-                                    
-                            <RToggle @bind-Value="_striped" 
-                                    Text="Striped Rows" />
-                                    
-                            <RToggle @bind-Value="_hoverable" 
-                                    Text="Hoverable Rows" />
-                        </div>
-                    </ChildContent>
-                </RCard>
-            </div>
         </div>
     </ChildContent>
 </RCard>
@@ -217,6 +279,7 @@
     private string _density = "normal";
     private bool _striped = true;
     private bool _hoverable = true;
+    private bool _showEnhancedFilters = true;
 
     protected override Task OnInitializedAsync()
     {
@@ -249,6 +312,7 @@
     private void ToggleColumnManager() => _showColumnManager = !_showColumnManager;
     private void ToggleVirtualization() => _enableVirtualization = !_enableVirtualization;
     private void ToggleHorizontalScroll() => _enableHorizontalScroll = !_enableHorizontalScroll;
+    private void ToggleEnhancedFilters() => _showEnhancedFilters = !_showEnhancedFilters;
 
     // Event handlers
     private void OnPageSizeChanged(object value)
@@ -321,6 +385,16 @@
         if (_enableVirtualization) classes.Add("table-virtualized");
         
         return string.Join(" ", classes);
+    }
+    
+    private DensityType GetDensityType()
+    {
+        return _density switch
+        {
+            "compact" => DensityType.Dense,
+            "spacious" => DensityType.Spacious,
+            _ => DensityType.Normal
+        };
     }
 
     public class Employee

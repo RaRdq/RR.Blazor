@@ -45,7 +45,6 @@
 }
 
 .toast {
-  @extend %glass-light;
   @extend %interactive-base;
 
   display: flex;
@@ -57,30 +56,44 @@
   min-height: 56px;
   position: relative;
   overflow: hidden;
-  background: linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0.1) 0%,
-    rgba(255, 255, 255, 0.05) 100%
-  );
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  box-shadow:
-    0 8px 32px 0 rgba(31, 38, 135, 0.37),
-    inset 0 2px 4px 0 rgba(255, 255, 255, 0.2),
-    inset 0 -1px 2px 0 rgba(0, 0, 0, 0.1);
-
-&-glass-light {
-    @extend %glass-light;
-  }
-
-  &-glass-heavy {
-    @extend %glass-heavy;
-  }
-
-opacity: 0;
+  
+  // Material Design 3 default styling
+  background: var(--color-surface-elevated);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-md);
+  color: var(--color-text);
+  
+  opacity: 0;
   transform: translateY(-20px) scale(0.9);
   transition: all var(--duration-normal) var(--ease-spring);
+
+  // Glass styling variant
+  &-glass {
+    @extend %glass-light;
+    background: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.1) 0%,
+      rgba(255, 255, 255, 0.05) 100%
+    );
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    box-shadow:
+      0 8px 32px 0 rgba(31, 38, 135, 0.37),
+      inset 0 2px 4px 0 rgba(255, 255, 255, 0.2),
+      inset 0 -1px 2px 0 rgba(0, 0, 0, 0.1);
+    
+    // Use inverted colors for better contrast on glass backgrounds
+    color: var(--color-text-inverse);
+    
+    .toast-title {
+      color: var(--color-text-inverse);
+    }
+    
+    .toast-message {
+      color: color-mix(in srgb, var(--color-text-inverse) 80%, transparent);
+    }
+  }
 
 &.entering {
     opacity: 0;
@@ -94,13 +107,17 @@ opacity: 0;
 
     &:hover {
       transform: translateY(-2px) scale(1.02);
-      box-shadow:
-        var(--shadow-2xl),
-        inset 0 1px 0 0 rgba(255, 255, 255, 0.15),
-        0 0 0 1px rgba(0, 0, 0, 0.1);
-
-      backdrop-filter: blur(16px) saturate(140%);
-      -webkit-backdrop-filter: blur(16px) saturate(140%);
+      box-shadow: var(--shadow-lg);
+      
+      // Enhanced glass effect on hover for glass variant
+      &.toast-glass {
+        backdrop-filter: blur(16px) saturate(140%);
+        -webkit-backdrop-filter: blur(16px) saturate(140%);
+        box-shadow:
+          var(--shadow-2xl),
+          inset 0 1px 0 0 rgba(255, 255, 255, 0.15),
+          0 0 0 1px rgba(0, 0, 0, 0.1);
+      }
     }
   }
 
@@ -112,44 +129,48 @@ opacity: 0;
     --toast-color: var(--color-success);
     --toast-rgb: 76, 175, 80;
     
-    background: linear-gradient(
-      135deg,
-      rgba(var(--toast-rgb), 0.08) 0%,
-      rgba(var(--toast-rgb), 0.03) 50%,
-      rgba(255, 255, 255, 0.05) 100%
-    );
+    // Material Design styling
+    background: var(--color-primary-light);
+    border-color: var(--color-success);
     border-left: 3px solid var(--toast-color);
-    border-right: 1px solid rgba(var(--toast-rgb), 0.2);
+    color: var(--color-text);
     
-    &::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 100%;
-      background: linear-gradient(
-        90deg,
-        rgba(var(--toast-rgb), 0.15) 0%,
-        transparent 30%
-      );
-      pointer-events: none;
-    }
+    // Glass variant overrides - tinted glass with inverted text
+    &.toast-glass {
+      background: color-mix(in srgb, white 70%, var(--toast-color) 30%);
+      border: 1px solid color-mix(in srgb, var(--toast-color) 30%, rgba(255, 255, 255, 0.3));
+      color: var(--color-text-inverse);
+      
+      .toast-title {
+        color: var(--color-text-inverse);
+      }
+      
+      .toast-message {
+        color: color-mix(in srgb, var(--color-text-inverse) 85%, transparent);
+      }
+      
+      .toast-icon {
+        color: var(--color-text-inverse);
+      }
+      
+      &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 100%;
+        background: linear-gradient(
+          90deg,
+          color-mix(in srgb, var(--toast-color) 15%, transparent) 0%,
+          transparent 30%
+        );
+        pointer-events: none;
+      }
 
-    &::after {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 1px;
-      background: linear-gradient(
-        90deg,
-        transparent,
-        rgba(var(--toast-rgb), 0.8),
-        transparent
-      );
-      opacity: 0.7;
+      &:hover {
+        background: color-mix(in srgb, white 65%, var(--toast-color) 35%);
+      }
     }
   }
 
@@ -157,45 +178,61 @@ opacity: 0;
     --toast-color: var(--color-error);
     --toast-rgb: 244, 67, 54;
     
-    background: linear-gradient(
-      135deg,
-      rgba(var(--toast-rgb), 0.08) 0%,
-      rgba(var(--toast-rgb), 0.03) 50%,
-      rgba(255, 255, 255, 0.05) 100%
-    );
+    // Material Design styling
+    background: color-mix(in srgb, var(--color-error) 10%, var(--color-surface));
+    border-color: var(--color-error);
     border-left: 3px solid var(--toast-color);
-    border-right: 1px solid rgba(var(--toast-rgb), 0.2);
+    color: var(--color-text);
     
-    &::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 100%;
-      background: linear-gradient(
-        90deg,
-        rgba(var(--toast-rgb), 0.15) 0%,
-        transparent 30%
-      );
-      pointer-events: none;
-    }
+    // Glass variant overrides - tinted glass with inverted text  
+    &.toast-glass {
+      background: color-mix(in srgb, white 70%, var(--toast-color) 30%);
+      border: 1px solid color-mix(in srgb, var(--toast-color) 30%, rgba(255, 255, 255, 0.3));
+      color: var(--color-text-inverse);
+      
+      .toast-title {
+        color: var(--color-text-inverse);
+      }
+      
+      .toast-message {
+        color: color-mix(in srgb, var(--color-text-inverse) 85%, transparent);
+      }
+      
+      .toast-icon {
+        color: var(--color-text-inverse);
+      }
+      
+      &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 100%;
+        background: linear-gradient(
+          90deg,
+          color-mix(in srgb, var(--toast-color) 15%, transparent) 0%,
+          transparent 30%
+        );
+        pointer-events: none;
+      }
 
-    &::after {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 1px;
-      background: linear-gradient(
-        90deg,
-        transparent,
-        rgba(var(--toast-rgb), 0.8),
-        transparent
-      );
-      opacity: 0.7;
-      animation: pulse 2s ease-in-out infinite;
+      // Error-specific pulse animation for urgency
+      &::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 2px;
+        background: var(--toast-color);
+        opacity: 0.8;
+        animation: pulse 2s ease-in-out infinite;
+      }
+
+      &:hover {
+        background: color-mix(in srgb, white 65%, var(--toast-color) 35%);
+      }
     }
   }
 
@@ -203,44 +240,48 @@ opacity: 0;
     --toast-color: var(--color-warning);
     --toast-rgb: 255, 152, 0;
     
-    background: linear-gradient(
-      135deg,
-      rgba(var(--toast-rgb), 0.08) 0%,
-      rgba(var(--toast-rgb), 0.03) 50%,
-      rgba(255, 255, 255, 0.05) 100%
-    );
+    // Material Design styling
+    background: color-mix(in srgb, var(--color-warning) 10%, var(--color-surface));
+    border-color: var(--color-warning);
     border-left: 3px solid var(--toast-color);
-    border-right: 1px solid rgba(var(--toast-rgb), 0.2);
+    color: var(--color-text);
     
-    &::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 100%;
-      background: linear-gradient(
-        90deg,
-        rgba(var(--toast-rgb), 0.15) 0%,
-        transparent 30%
-      );
-      pointer-events: none;
-    }
+    // Glass variant overrides - tinted glass with inverted text
+    &.toast-glass {
+      background: color-mix(in srgb, white 70%, var(--toast-color) 30%);
+      border: 1px solid color-mix(in srgb, var(--toast-color) 30%, rgba(255, 255, 255, 0.3));
+      color: var(--color-text-inverse);
+      
+      .toast-title {
+        color: var(--color-text-inverse);
+      }
+      
+      .toast-message {
+        color: color-mix(in srgb, var(--color-text-inverse) 85%, transparent);
+      }
+      
+      .toast-icon {
+        color: var(--color-text-inverse);
+      }
+      
+      &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 100%;
+        background: linear-gradient(
+          90deg,
+          color-mix(in srgb, var(--toast-color) 15%, transparent) 0%,
+          transparent 30%
+        );
+        pointer-events: none;
+      }
 
-    &::after {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 1px;
-      background: linear-gradient(
-        90deg,
-        transparent,
-        rgba(var(--toast-rgb), 0.8),
-        transparent
-      );
-      opacity: 0.7;
+      &:hover {
+        background: color-mix(in srgb, white 65%, var(--toast-color) 35%);
+      }
     }
   }
 
@@ -248,44 +289,48 @@ opacity: 0;
     --toast-color: var(--color-info);
     --toast-rgb: 33, 150, 243;
     
-    background: linear-gradient(
-      135deg,
-      rgba(var(--toast-rgb), 0.08) 0%,
-      rgba(var(--toast-rgb), 0.03) 50%,
-      rgba(255, 255, 255, 0.05) 100%
-    );
+    // Material Design styling
+    background: color-mix(in srgb, var(--color-info) 10%, var(--color-surface));
+    border-color: var(--color-info);
     border-left: 3px solid var(--toast-color);
-    border-right: 1px solid rgba(var(--toast-rgb), 0.2);
+    color: var(--color-text);
     
-    &::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 100%;
-      background: linear-gradient(
-        90deg,
-        rgba(var(--toast-rgb), 0.15) 0%,
-        transparent 30%
-      );
-      pointer-events: none;
-    }
+    // Glass variant overrides - tinted glass with inverted text
+    &.toast-glass {
+      background: color-mix(in srgb, white 70%, var(--toast-color) 30%);
+      border: 1px solid color-mix(in srgb, var(--toast-color) 30%, rgba(255, 255, 255, 0.3));
+      color: var(--color-text-inverse);
+      
+      .toast-title {
+        color: var(--color-text-inverse);
+      }
+      
+      .toast-message {
+        color: color-mix(in srgb, var(--color-text-inverse) 85%, transparent);
+      }
+      
+      .toast-icon {
+        color: var(--color-text-inverse);
+      }
+      
+      &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 100%;
+        background: linear-gradient(
+          90deg,
+          color-mix(in srgb, var(--toast-color) 15%, transparent) 0%,
+          transparent 30%
+        );
+        pointer-events: none;
+      }
 
-    &::after {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 1px;
-      background: linear-gradient(
-        90deg,
-        transparent,
-        rgba(var(--toast-rgb), 0.8),
-        transparent
-      );
-      opacity: 0.7;
+      &:hover {
+        background: color-mix(in srgb, white 65%, var(--toast-color) 35%);
+      }
     }
   }
 
@@ -549,18 +594,25 @@ opacity: 0;
 
 [data-theme="dark"] {
   .toast {
-    background: var(--glass-bg-medium);
-    border-color: var(--glass-border-light);
+    // Dark theme Material Design adjustments
+    background: var(--color-surface);
+    border-color: var(--color-border);
 
-    &::before {
-      opacity: 0.3;
-    }
+    // Dark theme glass variant
+    &-glass {
+      background: var(--glass-bg-medium);
+      border-color: var(--glass-border-light);
 
-    &-success,
-    &-error,
-    &-warning,
-    &-info {
-      background: var(--glass-bg-light);
+      &::before {
+        opacity: 0.3;
+      }
+
+      &-success,
+      &-error,
+      &-warning,
+      &-info {
+        background: var(--glass-bg-light);
+      }
     }
   }
 }

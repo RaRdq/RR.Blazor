@@ -183,6 +183,7 @@ Extensible foundation for text search, datepicker autosuggest, and custom implem
         if (searchQuery == value) return;
         
         searchQuery = value;
+        
         await OnSearchChanged.InvokeAsync(value);
         await HandleSearch();
     }
@@ -197,9 +198,11 @@ Extensible foundation for text search, datepicker autosuggest, and custom implem
 
     private async Task HandleInputBlur()
     {
-
-        await Task.Yield(); // Let Blazor complete render cycle
-        await CloseDropdown();
+        await Task.Yield();
+        if (!disposed) 
+        {
+            await CloseDropdown();
+        }
     }
 
     private async Task HandleSearch()
@@ -252,7 +255,6 @@ Extensible foundation for text search, datepicker autosuggest, and custom implem
                         if (!disposed && currentGeneration == searchGeneration)
                         {
                             isLoading = false;
-                            StateHasChanged();
                         }
                     }
                 }
@@ -266,7 +268,6 @@ Extensible foundation for text search, datepicker autosuggest, and custom implem
                             selectedIndex = -1;
                         }
                         isLoading = false;
-                        StateHasChanged();
                     }
                 }
             });
@@ -324,10 +325,7 @@ Extensible foundation for text search, datepicker autosuggest, and custom implem
                 break;
         }
 
-        if (needsStateChange && !disposed)
-        {
-            StateHasChanged();
-        }
+        // Keyboard navigation changes trigger natural re-renders
     }
 
 
@@ -337,16 +335,11 @@ Extensible foundation for text search, datepicker autosuggest, and custom implem
         {
             isOpen = true;
             selectedIndex = -1;
-            StateHasChanged();
             
-            // Allow DOM to update before creating portal
             await Task.Yield();
-            
-            // Create portal for positioning
             await CreatePortal();
             
-            // Update direction after portal is positioned
-            await Task.Yield(); // Allow portal positioning to complete
+            await Task.Yield();
             await UpdateCurrentDirection();
         }
     }
@@ -358,10 +351,9 @@ Extensible foundation for text search, datepicker autosuggest, and custom implem
             isOpen = false;
             selectedIndex = -1;
             
-            // Destroy portal
             await DestroyPortal();
             
-            StateHasChanged();
+            await Task.Yield();
         }
     }
 
@@ -446,7 +438,7 @@ Extensible foundation for text search, datepicker autosuggest, and custom implem
             if (!disposed && !string.IsNullOrEmpty(newDirection) && currentDirection != newDirection)
             {
                 currentDirection = newDirection;
-                StateHasChanged();
+                // Direction changes trigger icon updates which naturally re-render
             }
         }
         catch (Exception ex)

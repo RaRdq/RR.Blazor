@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using RR.Blazor.Enums;
 using System;
 
 namespace RR.Blazor.Services;
@@ -42,6 +43,7 @@ public class ToastMessage
     public string Message { get; set; } = string.Empty;
     public string Title { get; set; }
     public ToastType Type { get; set; } = ToastType.Info;
+    public StyleType StyleType { get; set; } = StyleType.Material;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public int Duration { get; set; } = 4000; // milliseconds
     public bool ShowCloseButton { get; set; } = true;
@@ -57,6 +59,7 @@ public class ToastMessage
 public class ToastServiceOptions
 {
     public ToastPosition Position { get; set; } = ToastPosition.TopRight;
+    public StyleType DefaultStyleType { get; set; } = StyleType.Material;
     public int MaxToasts { get; set; } = 5;
     public int DefaultDuration { get; set; } = 4000;
     public bool ShowCloseButton { get; set; } = true;
@@ -75,12 +78,12 @@ public interface IToastService
     
     ToastServiceOptions Options { get; }
     
-    void Show(string message, ToastType type = ToastType.Info, string title = null);
+    void Show(string message, ToastType type = ToastType.Info, string title = null, StyleType? styleType = null);
     void Show(ToastMessage toast);
-    void ShowSuccess(string message, string title = null);
-    void ShowError(string message, string title = null);
-    void ShowWarning(string message, string title = null);
-    void ShowInfo(string message, string title = null);
+    void ShowSuccess(string message, string title = null, StyleType? styleType = null);
+    void ShowError(string message, string title = null, StyleType? styleType = null);
+    void ShowWarning(string message, string title = null, StyleType? styleType = null);
+    void ShowInfo(string message, string title = null, StyleType? styleType = null);
     void Remove(string id);
     void ClearAll();
 }
@@ -98,13 +101,14 @@ public class ToastService(ToastServiceOptions options = null) : IToastService
     
     public ToastServiceOptions Options { get; } = options ?? new ToastServiceOptions();
 
-    public void Show(string message, ToastType type = ToastType.Info, string title = null)
+    public void Show(string message, ToastType type = ToastType.Info, string title = null, StyleType? styleType = null)
     {
         var toast = new ToastMessage
         {
             Message = message,
             Title = title,
             Type = type,
+            StyleType = styleType ?? Options.DefaultStyleType,
             Duration = Options.DefaultDuration,
             ShowCloseButton = Options.ShowCloseButton
         };
@@ -137,18 +141,19 @@ public class ToastService(ToastServiceOptions options = null) : IToastService
         OnShow?.Invoke(toast);
     }
     
-    public void ShowSuccess(string message, string title = null)
+    public void ShowSuccess(string message, string title = null, StyleType? styleType = null)
     {
-        Show(message, ToastType.Success, title);
+        Show(message, ToastType.Success, title, styleType);
     }
     
-    public void ShowError(string message, string title = null)
+    public void ShowError(string message, string title = null, StyleType? styleType = null)
     {
         var toast = new ToastMessage
         {
             Message = message,
             Title = title,
             Type = ToastType.Error,
+            StyleType = styleType ?? Options.DefaultStyleType,
             Duration = 8000, // Longer duration for errors to give users time to read
             ShowCloseButton = true
         };
@@ -156,13 +161,14 @@ public class ToastService(ToastServiceOptions options = null) : IToastService
         Show(toast);
     }
     
-    public void ShowWarning(string message, string title = null)
+    public void ShowWarning(string message, string title = null, StyleType? styleType = null)
     {
         var toast = new ToastMessage
         {
             Message = message,
             Title = title,
             Type = ToastType.Warning,
+            StyleType = styleType ?? Options.DefaultStyleType,
             Duration = 6000, // Slightly longer duration for warnings
             ShowCloseButton = true
         };
@@ -170,9 +176,9 @@ public class ToastService(ToastServiceOptions options = null) : IToastService
         Show(toast);
     }
     
-    public void ShowInfo(string message, string title = null)
+    public void ShowInfo(string message, string title = null, StyleType? styleType = null)
     {
-        Show(message, ToastType.Info, title);
+        Show(message, ToastType.Info, title, styleType);
     }
     
     public void Remove(string id)

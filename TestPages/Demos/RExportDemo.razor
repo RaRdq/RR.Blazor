@@ -16,7 +16,7 @@
                 <RCard Variant="CardVariant.Glass" Class="p-4">
                     <ChildContent>
                         <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-                            <RExportButton DataSource="@_employees" 
+                            <RExportButtonGeneric TItem="Employee" DataSource="@_employees" 
                                          DefaultFormat="ExportFormat.CSV"
                                          FileName="@($"employees-{DateTime.Now:yyyyMMdd}")"
                                          Text="Export CSV"
@@ -24,7 +24,7 @@
                                          ButtonSize="SizeType.Small"
                                          Variant="VariantType.Secondary" />
                             
-                            <RExportButton DataSource="@_employees" 
+                            <RExportButtonGeneric TItem="Employee" DataSource="@_employees" 
                                          DefaultFormat="ExportFormat.Excel"
                                          FileName="@($"employees-{DateTime.Now:yyyyMMdd}")"
                                          Text="Export Excel"
@@ -32,7 +32,7 @@
                                          ButtonSize="SizeType.Small"
                                          Variant="VariantType.Secondary" />
                             
-                            <RExportButton DataSource="@_employees" 
+                            <RExportButtonGeneric TItem="Employee" DataSource="@_employees" 
                                          DefaultFormat="ExportFormat.JSON"
                                          FileName="@($"employees-{DateTime.Now:yyyyMMdd}")"
                                          Text="Export JSON"
@@ -40,7 +40,7 @@
                                          ButtonSize="SizeType.Small"
                                          Variant="VariantType.Secondary" />
                             
-                            <RExportButton DataSource="@_employees" 
+                            <RExportButtonGeneric TItem="Employee" DataSource="@_employees" 
                                          DefaultFormat="ExportFormat.PDF"
                                          FileName="@($"employees-{DateTime.Now:yyyyMMdd}")"
                                          Text="Export PDF"
@@ -63,7 +63,7 @@
                                 <RChoice SelectedValue="@_selectedFormat"
                                         SelectedValueChanged="@OnFormatChanged"
                                         Label="Export Format"
-                                        Items="@(new[] { "CSV", "Excel", "JSON", "PDF", "XML" })" />
+                                        Items="@(new[] { "CSV", "JSON", "PDF", "XML" })" />
                                 
                                 <RTextInput @bind-Value="_customFileName" 
                                           Label="File Name" 
@@ -86,14 +86,13 @@
                             
                             <!-- Advanced Export Button -->
                             <div class="flex gap-3">
-                                <RExportButton DataSource="@GetExportData()" 
-                                             DefaultFormat="ExportFormat.Excel"
+                                <RExportButtonGeneric TItem="Employee" DataSource="@GetTypedExportData()" 
+                                             DefaultFormat="@GetSelectedExportFormat()"
                                              FileName="@GetFileName()"
                                              Text="Export with Settings"
                                              Icon="download"
                                              ButtonSize="SizeType.Medium"
-                                             Variant="VariantType.Primary"
- />
+                                             Variant="VariantType.Primary" />
                                 
                                 <RButton Text="Preview Export"
                                         Icon="preview"
@@ -121,7 +120,7 @@
                                     {
                                         <div class="flex items-center justify-between p-2 bg-surface rounded">
                                             <span class="text-sm">@dept (@GetDepartmentCount(dept) employees)</span>
-                                            <RExportButton DataSource="@GetEmployeesByDepartment(dept)" 
+                                            <RExportButtonGeneric TItem="Employee" DataSource="@GetEmployeesByDepartment(dept)" 
                                                          DefaultFormat="ExportFormat.Excel"
                                                          FileName="@($"{dept.ToLower()}-employees-{DateTime.Now:yyyyMMdd}")"
                                                          Text="Export"
@@ -282,7 +281,7 @@
     private List<Employee> _employees = new();
     
     // Export configuration
-    private string _selectedFormat = "Excel";
+    private string _selectedFormat = "CSV";
     private string _customFileName = string.Empty;
     private string _selectedColumns = "All";
     private bool _includeHeaders = true;
@@ -356,6 +355,13 @@
         _selectedColumns = value?.ToString() ?? "All";
     }
 
+    private IEnumerable<Employee> GetTypedExportData()
+    {
+        // For typed export, we always return Employee objects
+        // Column filtering should be handled by the export component
+        return _employees;
+    }
+
     private object GetExportData()
     {
         return _selectedColumns switch
@@ -364,6 +370,18 @@
             "Detailed" => _employees,
             "Custom" => _employees.Select(e => new { e.Name, e.Department, e.Salary, e.IsActive }),
             _ => _employees
+        };
+    }
+
+    private ExportFormat GetSelectedExportFormat()
+    {
+        return _selectedFormat switch
+        {
+            "CSV" => ExportFormat.CSV,
+            "JSON" => ExportFormat.JSON,
+            "PDF" => ExportFormat.PDF,
+            "XML" => ExportFormat.XML,
+            _ => ExportFormat.CSV
         };
     }
 
@@ -491,7 +509,7 @@
         return _employees.Count(e => e.Department == department);
     }
 
-    private object GetEmployeesByDepartment(string department)
+    private IEnumerable<Employee> GetEmployeesByDepartment(string department)
     {
         return _employees.Where(e => e.Department == department);
     }
