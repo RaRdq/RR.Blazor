@@ -12,7 +12,7 @@ public class AppNavItem : NavMenuItem
     public string[] AllowedRoles { get; set; }
     
     /// <summary>Whether this item requires authentication</summary>
-    public bool RequiresAuth { get; set; } = true;
+    public bool RequiresAuth { get; set; } = false;
     
     /// <summary>Custom action to execute on click (instead of navigation)</summary>
     public Func<Task> OnClickAction { get; set; }
