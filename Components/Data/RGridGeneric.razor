@@ -1,0 +1,866 @@
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Rendering
+@using Microsoft.AspNetCore.Components.Web.Virtualization
+@using RR.Blazor.Components.Core
+@using RR.Blazor.Components.Form
+@using RR.Blazor.Components.Data
+@using RR.Blazor.Components.Display
+@using RR.Blazor.Components.Feedback
+@using RR.Blazor.Components.Base
+@using RR.Blazor.Enums
+@using RR.Blazor.Models
+@using RR.Blazor.Services
+@using RR.Blazor.Interfaces
+@using System.Linq.Expressions
+@using System.Collections.Concurrent
+@using System.Reflection
+@using Microsoft.JSInterop
+@typeparam TItem where TItem : class
+@inherits RComponentBase
+@implements IAsyncDisposable
+@inject IJSRuntime JSRuntime
+
+@* Smart grid component with responsive layout and pagination *@
+
+<CascadingValue Value="@_gridContext" IsFixed="true">
+    <div class="grid-container @GetContainerClasses()" data-grid-id="@GridId">
+        @* Header Section *@
+        @if (ShowTitle && (!string.IsNullOrEmpty(Title) || HeaderContent != null))
+        {
+            <div class="grid-header">
+                <div class="grid-header-content">
+                    @if (!string.IsNullOrEmpty(Title))
+                    {
+                        <div class="text-h5 font-semibold">
+                            @if (!string.IsNullOrEmpty(Icon))
+                            {
+                                <i class="icon">@Icon</i>
+                            }
+                            @Title
+                        </div>
+                    }
+                    @if (!string.IsNullOrEmpty(Subtitle))
+                    {
+                        <p class="grid-subtitle">@Subtitle</p>
+                    }
+                </div>
+                @if (HeaderContent != null)
+                {
+                    <div class="grid-header-actions">
+                        @HeaderContent
+                    </div>
+                }
+            </div>
+        }
+
+        @* Toolbar Section *@
+        @if (ShowToolbar && (ShowSearch || ShowFilters || ShowExportButton || ToolbarContent != null))
+        {
+            <div class="grid-toolbar">
+                <div class="grid-toolbar-left">
+                    @if (ShowSearch)
+                    {
+                        <div class="grid-search">
+                            <i class="icon">search</i>
+                            <input type="text" 
+                                   class="grid-search-input" 
+                                   placeholder="@SearchPlaceholder"
+                                   value="@_searchTerm"
+                                   disabled="@Disabled"
+                                   @oninput="@OnSearchInput" />
+                        </div>
+                    }
+                    @if (ShowFilters)
+                    {
+                        <div class="grid-filters">
+                            <button class="button-outline button-sm" @onclick="@ToggleFilterPanel">
+                                <i class="icon mr-2">filter_list</i>
+                                Filters
+                                @if (_filterPanelExpanded)
+                                {
+                                    <i class="icon ml-2">expand_less</i>
+                                }
+                                else
+                                {
+                                    <i class="icon ml-2">expand_more</i>
+                                }
+                            </button>
+                        </div>
+                    }
+                    @if (ToolbarContent != null)
+                    {
+                        @ToolbarContent
+                    }
+                </div>
+                <div class="grid-toolbar-right">
+                    @if (ShowExportButton)
+                    {
+                        <RExportButton DataSource="@FilteredData" 
+                                      ButtonClass="button-outline button-sm"
+                                      Text=""
+                                      Icon="download"
+                                      AriaLabel="Export data" />
+                    }
+                </div>
+            </div>
+        }
+
+        @* Filter Panel (shown when expanded) *@
+        @if (ShowFilters && _filterPanelExpanded)
+        {
+            <div class="grid-filter-panel pa-4 border-b border-surface-outline bg-surface-elevated">
+                <RFilterGeneric TItem="TItem" 
+                         DataSource="@_allData.AsQueryable()"
+                         OnDataFiltered="@OnFilterApplied"
+                         Config="@(new UniversalFilterConfig { ShowAdvancedPanel = true, ShowSearch = false })" />
+            </div>
+        }
+
+        <div class="grid-content-container @(EnableVirtualization ? "grid-virtualized" : "")"
+             style="--grid-height: @Height; height: @Height; max-height: @MaxHeight;">
+            @if (Loading && !Items.Any())
+            {
+                <div class="grid-loading">
+                    <RProgressCircular Indeterminate="true" Size="SizeType.Medium" />
+                    <p>@LoadingText</p>
+                </div>
+            }
+            else if (!_processedItems.Any())
+            {
+                @* Empty state *@
+                <div class="empty-state">
+                    @if (EmptyContent != null)
+                    {
+                        @EmptyContent
+                    }
+                    else
+                    {
+                        <i class="icon empty-icon">inbox</i>
+                        <p class="empty-description">@EmptyMessage</p>
+                    }
+                </div>
+            }
+            else
+            {
+                @if (EnableVirtualization && _processedItems.Count() >= VirtualizationThreshold)
+                {
+                    @* Virtualized grid for large datasets *@
+                    <div class="@GetGridClasses()" style="@GetGridStyles()">
+                        <Virtualize Items="@GetPagedItems().ToList()" Context="item" ItemSize="@VirtualItemHeight">
+                            <ItemContent>
+                                @if (ItemTemplate != null)
+                                {
+                                    @ItemTemplate(item)
+                                }
+                                else
+                                {
+                                    @BuildAutoItem(item)
+                                }
+                            </ItemContent>
+                        </Virtualize>
+                    </div>
+                }
+                else
+                {
+                    @* Standard grid layout *@
+                    <div class="@GetGridClasses()" style="@GetGridStyles()">
+                        @foreach (var item in GetPagedItems())
+                        {
+                            @if (ItemTemplate != null)
+                            {
+                                @ItemTemplate(item)
+                            }
+                            else
+                            {
+                                @BuildAutoItem(item)
+                            }
+                        }
+                    </div>
+                }
+            }
+        </div>
+
+        @* Footer Section with Pagination *@
+        @if (EnablePagination && _processedItems.Any())
+        {
+            <RPaginationFooter CurrentPage="@CurrentPage"
+                              CurrentPageChanged="@OnPageChanged"
+                              PageSize="@PageSize"
+                              PageSizeChanged="@OnPageSizeChanged"
+                              TotalItems="@_processedItems.Count()"
+                              SelectedCount="@_selectedItems.Count"
+                              PageSizeOptions="@_effectivePageSizeOptions?.ToList()"
+                              ShowPageSizeSelector="@(_effectivePageSizeOptions?.Any() == true)"
+                              UseDropdown="false"
+                              Class="@GetFooterClass()" />
+        }
+
+        @* Child content for custom templates *@
+        <div class="d-none">
+            @ChildContent
+        </div>
+    </div>
+</CascadingValue>
+
+@code {
+    #region Parameters
+
+    [Parameter] public IEnumerable<TItem> Items { get; set; } = Enumerable.Empty<TItem>();
+    [Parameter] public RenderFragment<TItem> ItemTemplate { get; set; }
+    [Parameter] public RenderFragment ChildContent { get; set; }
+    
+    // Header
+    [Parameter] public string Title { get; set; }
+    [Parameter] public string Subtitle { get; set; }
+    [Parameter] public string Icon { get; set; }
+    [Parameter] public bool ShowTitle { get; set; } = true;
+    [Parameter] public RenderFragment HeaderContent { get; set; }
+    
+    // Toolbar
+    [Parameter] public bool ShowToolbar { get; set; } = true;
+    [Parameter] public bool ShowSearch { get; set; } = true;
+    [Parameter] public string SearchPlaceholder { get; set; } = "Search...";
+    [Parameter] public bool ShowFilters { get; set; }
+    [Parameter] public bool ShowExportButton { get; set; }
+    [Parameter] public RenderFragment ToolbarContent { get; set; }
+    
+    // Grid Layout
+    [Parameter] public GridMode Mode { get; set; } = GridMode.Auto;
+    [Parameter] public int Columns { get; set; } = 4;
+    [Parameter] public int ColumnsXs { get; set; } = 1;
+    [Parameter] public int ColumnsSm { get; set; } = 2;
+    [Parameter] public int ColumnsMd { get; set; } = 3;
+    [Parameter] public int ColumnsLg { get; set; } = 4;
+    [Parameter] public int ColumnsXl { get; set; } = 6;
+    [Parameter] public string Gap { get; set; } = "var(--space-4)";
+    
+    // Pagination - CRITICAL: 1-based pagination to match RPaginationFooter
+    [Parameter] public bool EnablePagination { get; set; } = true;
+    [Parameter] public int PageSize { get; set; } = 24;
+    [Parameter] public int CurrentPage { get; set; } = 1; // 1-based pagination
+    [Parameter] public EventCallback<int> CurrentPageChanged { get; set; }
+    [Parameter] public EventCallback<int> PageSizeChanged { get; set; }
+    [Parameter] public int[] PageSizeOptions { get; set; }
+    
+    // Virtualization
+    [Parameter] public bool EnableVirtualization { get; set; }
+    [Parameter] public int VirtualizationThreshold { get; set; } = 1000;
+    [Parameter] public float VirtualItemHeight { get; set; } = 200f;
+    
+    // Content
+    [Parameter] public string EmptyMessage { get; set; } = "No items to display";
+    [Parameter] public RenderFragment EmptyContent { get; set; }
+    [Parameter] public bool Loading { get; set; }
+    [Parameter] public string LoadingText { get; set; } = "Loading...";
+    [Parameter] public string Height { get; set; }
+    [Parameter] public string MaxHeight { get; set; }
+    
+    // Selection
+    [Parameter] public bool Selectable { get; set; }
+    [Parameter] public bool MultiSelect { get; set; }
+    [Parameter] public IEnumerable<TItem> SelectedItems { get; set; } = Enumerable.Empty<TItem>();
+    [Parameter] public EventCallback<IEnumerable<TItem>> SelectedItemsChanged { get; set; }
+    [Parameter] public TItem SelectedItem { get; set; }
+    [Parameter] public EventCallback<TItem> SelectedItemChanged { get; set; }
+    
+    // Events
+    [Parameter] public EventCallback<TItem> OnItemClicked { get; set; }
+    [Parameter] public EventCallback<GridMode> OnModeChanged { get; set; }
+
+    #endregion
+
+    #region Private Fields
+
+    private GridContext _gridContext;
+    private readonly HashSet<TItem> _selectedItems = new();
+    private string _searchTerm = "";
+    private bool _filterPanelExpanded = false;
+    private IEnumerable<TItem> _processedItems = Enumerable.Empty<TItem>();
+    private IEnumerable<TItem> _allData => Items ?? Enumerable.Empty<TItem>();
+    private string GridId => $"grid-{GetHashCode()}";
+    private int[] _effectivePageSizeOptions = new[] { 12, 24, 48, 96 }; // Grid-appropriate page sizes
+    private GridMode _detectedMode = GridMode.Auto;
+    private Type _itemType;
+    
+    // Performance: Cache compiled expressions
+    private static readonly ConcurrentDictionary<string, Func<TItem, object>> _propertyGetterCache = new();
+    
+    #endregion
+
+    #region Public Properties
+
+    /// <summary>Gets the filtered and sorted data</summary>
+    public IEnumerable<TItem> FilteredData => _processedItems;
+
+    #endregion
+
+    #region Lifecycle
+
+    protected override void OnInitialized()
+    {
+        _gridContext = new GridContext(typeof(TItem), GridId, true);
+        _itemType = typeof(TItem);
+        _detectedMode = Mode == GridMode.Auto ? DetectGridMode() : Mode;
+        base.OnInitialized();
+    }
+
+    protected override void OnParametersSet()
+    {
+        ProcessItems();
+        UpdateSelection();
+        UpdatePageSizeOptions();
+        UpdateGridContext();
+        base.OnParametersSet();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                await InitializeJavaScript();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to initialize RGrid JavaScript: {ex.Message}");
+            }
+        }
+        
+        await base.OnAfterRenderAsync(firstRender);
+    }
+
+    #endregion
+
+    #region Data Processing
+
+    private void ProcessItems()
+    {
+        if (Items == null)
+        {
+            _processedItems = Enumerable.Empty<TItem>();
+            return;
+        }
+
+        var query = Items.AsQueryable();
+
+        // Apply search
+        if (!string.IsNullOrWhiteSpace(_searchTerm))
+        {
+            query = ApplySearch(query, _searchTerm);
+        }
+
+        _processedItems = query.ToList();
+    }
+
+    private IQueryable<TItem> ApplySearch(IQueryable<TItem> query, string searchTerm)
+    {
+        var searchableProperties = _itemType.GetProperties()
+            .Where(p => p.PropertyType == typeof(string) && p.CanRead)
+            .ToList();
+
+        if (!searchableProperties.Any())
+            return query;
+
+        var lowerSearchTerm = searchTerm.ToLower();
+        
+        // Search in memory for client-side Blazor
+        var items = query.ToList();
+        var filteredItems = items.Where(item =>
+            searchableProperties.Any(prop =>
+            {
+                var value = prop.GetValue(item)?.ToString();
+                return value?.ToLower().Contains(lowerSearchTerm) ?? false;
+            }));
+        return filteredItems.AsQueryable();
+    }
+
+    #endregion
+
+    #region Pagination - 1-based Implementation
+
+    private IEnumerable<TItem> GetPagedItems()
+    {
+        if (!EnablePagination)
+            return _processedItems;
+
+        // CRITICAL: Use 1-based pagination calculation
+        return _processedItems
+            .Skip((CurrentPage - 1) * PageSize)
+            .Take(PageSize);
+    }
+
+    private int TotalPages => Math.Max(1, (int)Math.Ceiling(_processedItems.Count() / (double)PageSize));
+
+    private async Task OnPageChanged(int newPage)
+    {
+        // RPaginationFooter passes 1-based page numbers
+        CurrentPage = Math.Max(1, Math.Min(newPage, TotalPages));
+        await CurrentPageChanged.InvokeAsync(CurrentPage);
+        StateHasChanged();
+    }
+
+    private async Task OnPageSizeChanged(int newSize)
+    {
+        if (newSize == PageSize) return;
+        
+        PageSize = newSize;
+        CurrentPage = 1; // Reset to first page
+        await PageSizeChanged.InvokeAsync(newSize);
+        await CurrentPageChanged.InvokeAsync(CurrentPage);
+        ProcessItems();
+        StateHasChanged();
+    }
+
+    private void UpdatePageSizeOptions()
+    {
+        // If user explicitly provided PageSizeOptions, use them
+        if (PageSizeOptions?.Any() == true)
+        {
+            _effectivePageSizeOptions = PageSizeOptions;
+            return;
+        }
+        
+        // Default grid-appropriate page sizes
+        _effectivePageSizeOptions = new[] { 12, 24, 48, 96 };
+        
+        // Add current PageSize if not in options
+        if (PageSize > 0 && !_effectivePageSizeOptions.Contains(PageSize))
+        {
+            var list = _effectivePageSizeOptions.ToList();
+            list.Add(PageSize);
+            _effectivePageSizeOptions = list.OrderBy(x => x).ToArray();
+        }
+    }
+
+    #endregion
+
+    #region Selection
+
+    private void UpdateSelection()
+    {
+        _selectedItems.Clear();
+        
+        if (MultiSelect && SelectedItems != null)
+        {
+            foreach (var item in SelectedItems)
+            {
+                _selectedItems.Add(item);
+            }
+        }
+        else if (!MultiSelect && SelectedItem != null)
+        {
+            _selectedItems.Add(SelectedItem);
+        }
+    }
+
+    private bool IsSelected(TItem item)
+    {
+        return _selectedItems.Contains(item);
+    }
+
+    private async Task OnSelectionChanged(TItem item, bool selected)
+    {
+        if (MultiSelect)
+        {
+            if (selected)
+                _selectedItems.Add(item);
+            else
+                _selectedItems.Remove(item);
+
+            await SelectedItemsChanged.InvokeAsync(_selectedItems.ToList());
+        }
+        else
+        {
+            _selectedItems.Clear();
+            if (selected)
+            {
+                _selectedItems.Add(item);
+                await SelectedItemChanged.InvokeAsync(item);
+            }
+            else
+            {
+                await SelectedItemChanged.InvokeAsync(default(TItem));
+            }
+        }
+    }
+
+    #endregion
+
+    #region Event Handlers
+
+    private async Task OnSearchInput(ChangeEventArgs e)
+    {
+        _searchTerm = e.Value?.ToString() ?? "";
+        CurrentPage = 1; // Reset to first page on search
+        ProcessItems();
+        await CurrentPageChanged.InvokeAsync(CurrentPage);
+    }
+
+    private void ToggleFilterPanel()
+    {
+        _filterPanelExpanded = !_filterPanelExpanded;
+        StateHasChanged();
+    }
+
+    private void OnFilterApplied(object result)
+    {
+        if (result is FilterResult<TItem> filterResult)
+        {
+            _processedItems = filterResult.Data ?? _allData;
+            CurrentPage = 1; // Reset to first page on filter
+            StateHasChanged();
+        }
+    }
+
+    private async Task OnItemClick(TItem item)
+    {
+        if (OnItemClicked.HasDelegate)
+        {
+            await OnItemClicked.InvokeAsync(item);
+        }
+        
+        // Handle selection if enabled
+        if (Selectable && !Disabled)
+        {
+            var isCurrentlySelected = IsSelected(item);
+            await OnSelectionChanged(item, !isCurrentlySelected);
+        }
+    }
+
+    #endregion
+
+    #region Auto Item Rendering
+
+    private RenderFragment BuildAutoItem(TItem item)
+    {
+        return builder =>
+        {
+            switch (_detectedMode)
+            {
+                case GridMode.Cards:
+                    BuildAutoCard(builder, item);
+                    break;
+                case GridMode.List:
+                    BuildAutoListItem(builder, item);
+                    break;
+                case GridMode.Tiles:
+                    BuildAutoTile(builder, item);
+                    break;
+                default:
+                    BuildAutoCard(builder, item);
+                    break;
+            }
+        };
+    }
+
+    private void BuildAutoCard(RenderTreeBuilder builder, TItem item)
+    {
+        try
+        {
+            var cardType = typeof(RCard);
+            builder.OpenComponent(0, cardType);
+            
+            var properties = _itemType.GetProperties()
+                .Where(p => p.CanRead && p.GetIndexParameters().Length == 0)
+                .ToList();
+            
+            // Smart property detection for card content
+            var title = GetSmartPropertyValue(item, properties, "Name", "Title", "DisplayName");
+            var subtitle = GetSmartPropertyValue(item, properties, "Description", "Category", "Type");
+            var imageUrl = GetSmartPropertyValue(item, properties, "ImageUrl", "Avatar", "Thumbnail", "Photo");
+            
+            // Build content from remaining properties
+            var contentParts = new List<string>();
+            var usedProperties = new HashSet<string> { "Name", "Title", "DisplayName", "Description", "Category", "Type", "ImageUrl", "Avatar", "Thumbnail", "Photo" };
+            
+            foreach (var prop in properties.Take(3).Where(p => !usedProperties.Contains(p.Name)))
+            {
+                var value = prop.GetValue(item);
+                if (value != null && !string.IsNullOrWhiteSpace(value.ToString()))
+                {
+                    var formatted = FormatValue(value);
+                    contentParts.Add($"{prop.Name}: {formatted}");
+                }
+            }
+            
+            // Set card properties
+            builder.AddAttribute(1, "Text", title ?? _itemType.Name);
+            
+            if (!string.IsNullOrWhiteSpace(subtitle))
+                builder.AddAttribute(2, "Subtitle", subtitle);
+                
+            if (contentParts.Any())
+                builder.AddAttribute(3, "Content", string.Join(" • ", contentParts));
+                
+            if (!string.IsNullOrWhiteSpace(imageUrl))
+                builder.AddAttribute(4, "ImageSrc", imageUrl);
+                
+            builder.AddAttribute(5, "Clickable", true);
+            builder.AddAttribute(6, "Variant", CardVariant.Elevated);
+            builder.AddAttribute(7, "Class", "h-full");
+            
+            if (OnItemClicked.HasDelegate)
+            {
+                builder.AddAttribute(8, "OnClick", EventCallback.Factory.Create(this, () => OnItemClick(item)));
+            }
+            
+            builder.CloseComponent();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error building auto card: {ex.Message}");
+            BuildFallbackCard(builder, item, ex.Message);
+        }
+    }
+
+    private void BuildAutoListItem(RenderTreeBuilder builder, TItem item)
+    {
+        var listItemType = typeof(RListItem);
+        builder.OpenComponent(0, listItemType);
+        
+        var properties = _itemType.GetProperties().Where(p => p.CanRead).ToList();
+        var title = GetSmartPropertyValue(item, properties, "Name", "Title", "DisplayName");
+        var subtitle = GetSmartPropertyValue(item, properties, "Position", "Department", "Category", "Email");
+        
+        builder.AddAttribute(1, "Text", title ?? item.ToString());
+        if (!string.IsNullOrWhiteSpace(subtitle))
+            builder.AddAttribute(2, "Subtitle", subtitle);
+            
+        builder.AddAttribute(3, "Clickable", true);
+        builder.AddAttribute(4, "Class", "grid-list-item");
+        
+        if (OnItemClicked.HasDelegate)
+        {
+            builder.AddAttribute(5, "OnClick", EventCallback.Factory.Create(this, () => OnItemClick(item)));
+        }
+        
+        builder.CloseComponent();
+    }
+
+    private void BuildAutoTile(RenderTreeBuilder builder, TItem item)
+    {
+        var tileType = typeof(RTile);
+        builder.OpenComponent(0, tileType);
+        
+        var properties = _itemType.GetProperties().Where(p => p.CanRead).ToList();
+        var title = GetSmartPropertyValue(item, properties, "Name", "Title");
+        var subtitle = GetSmartPropertyValue(item, properties, "Department", "Category");
+        var imageUrl = GetSmartPropertyValue(item, properties, "ImageUrl", "Avatar");
+        
+        if (!string.IsNullOrEmpty(title))
+            builder.AddAttribute(1, "Title", title);
+        if (!string.IsNullOrEmpty(subtitle))
+            builder.AddAttribute(2, "Subtitle", subtitle);
+        if (!string.IsNullOrEmpty(imageUrl))
+            builder.AddAttribute(3, "ImageUrl", imageUrl);
+            
+        if (OnItemClicked.HasDelegate)
+        {
+            builder.AddAttribute(4, "OnClick", EventCallback.Factory.Create(this, () => OnItemClick(item)));
+        }
+        
+        builder.CloseComponent();
+    }
+
+    private void BuildFallbackCard(RenderTreeBuilder builder, TItem item, string error)
+    {
+        var cardType = typeof(RCard);
+        builder.OpenComponent(0, cardType);
+        builder.AddAttribute(1, "Text", "Error");
+        builder.AddAttribute(2, "Content", error);
+        builder.AddAttribute(3, "Variant", CardVariant.Outlined);
+        builder.CloseComponent();
+    }
+
+    #endregion
+
+    #region Helper Methods
+
+    private string GetSmartPropertyValue(TItem item, IList<PropertyInfo> properties, params string[] preferredNames)
+    {
+        foreach (var name in preferredNames)
+        {
+            var prop = properties.FirstOrDefault(p => 
+                p.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+            if (prop != null)
+            {
+                var value = prop.GetValue(item)?.ToString();
+                if (!string.IsNullOrWhiteSpace(value))
+                    return value;
+            }
+        }
+        return null;
+    }
+
+    private string FormatValue(object value)
+    {
+        return value switch
+        {
+            DateTime dt => dt.ToString("MMM dd, yyyy"),
+            decimal dec => dec.ToString("C"),
+            double d => d.ToString("F2"),
+            float f => f.ToString("F2"),
+            bool b => b ? "✓" : "✗",
+            _ => value.ToString()
+        };
+    }
+
+    private GridMode DetectGridMode()
+    {
+        if (_itemType == null) return GridMode.Cards;
+        
+        var properties = _itemType.GetProperties();
+        var propertyNames = properties.Select(p => p.Name.ToLowerInvariant()).ToHashSet();
+        
+        // Image properties → Gallery mode
+        if (HasAnyProperty(propertyNames, "imageurl", "url", "thumbnail", "src", "image"))
+            return GridMode.Gallery;
+        
+        // Complex objects (many properties) → Cards mode
+        if (properties.Length > 5)
+            return GridMode.Cards;
+        
+        // Simple objects → List mode
+        if (properties.Length <= 3)
+            return GridMode.List;
+        
+        // Default to Cards
+        return GridMode.Cards;
+    }
+
+    private bool HasAnyProperty(HashSet<string> propertyNames, params string[] searchNames)
+    {
+        return searchNames.Any(name => propertyNames.Contains(name));
+    }
+
+    private void UpdateGridContext()
+    {
+        if (_gridContext != null)
+        {
+            _gridContext.CurrentPage = CurrentPage;
+            _gridContext.PageSize = PageSize;
+            _gridContext.TotalItems = _processedItems.Count();
+            _gridContext.CurrentMode = (GridLayoutMode)(int)_detectedMode;
+            _gridContext.IsFiltered = !string.IsNullOrWhiteSpace(_searchTerm) || _filterPanelExpanded;
+        }
+    }
+
+    #endregion
+
+    #region Styling
+
+    private string GetContainerClasses()
+    {
+        var classes = new List<string> { "grid-container", "w-full" };
+        
+        if (!string.IsNullOrEmpty(Class))
+            classes.Add(Class);
+
+        if (!string.IsNullOrEmpty(Height))
+            classes.Add("grid-fixed-height");
+
+        if (Disabled)
+            classes.Add("disabled");
+
+        return string.Join(" ", classes);
+    }
+
+    private string GetGridClasses()
+    {
+        var classes = new List<string> { "rgrid" };
+        
+        // Add mode-specific classes
+        classes.Add($"rgrid-{_detectedMode.ToString().ToLower()}");
+        
+        // Add density classes
+        if (Density != DensityType.Normal)
+            classes.Add($"rgrid-{Density.ToString().ToLower()}");
+        
+        return string.Join(" ", classes);
+    }
+
+    private string GetGridStyles()
+    {
+        var styles = new List<string>();
+        
+        // Set CSS Grid column variables for responsive design
+        styles.Add($"--grid-columns-xs: {ColumnsXs}");
+        styles.Add($"--grid-columns-sm: {ColumnsSm}");
+        styles.Add($"--grid-columns-md: {ColumnsMd}");
+        styles.Add($"--grid-columns-lg: {ColumnsLg}");
+        styles.Add($"--grid-columns-xl: {ColumnsXl}");
+        
+        // Gap
+        styles.Add($"gap: {Gap}");
+        
+        return string.Join("; ", styles);
+    }
+    
+    private string GetFooterClass()
+    {
+        var classes = new List<string>();
+        
+        if (Density == DensityType.Dense)
+            classes.Add("dense");
+        else if (Density == DensityType.Spacious)
+            classes.Add("comfortable");
+            
+        return string.Join(" ", classes);
+    }
+
+    #endregion
+
+    #region JavaScript Integration
+
+    private async Task InitializeJavaScript()
+    {
+        try
+        {
+            var options = new
+            {
+                gridId = GridId,
+                mode = _detectedMode.ToString().ToLower(),
+                columns = Columns,
+                columnsXs = ColumnsXs,
+                columnsSm = ColumnsSm,
+                columnsMd = ColumnsMd,
+                columnsLg = ColumnsLg,
+                columnsXl = ColumnsXl,
+                enableVirtualization = EnableVirtualization
+            };
+            
+            await JSRuntime.InvokeVoidAsync("eval", $@"
+                if (window.RGridModule) {{
+                    window.RGridModule.initialize('{GridId}', {System.Text.Json.JsonSerializer.Serialize(options)});
+                }}
+            ");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to initialize RGrid JavaScript: {ex.Message}");
+        }
+    }
+
+    #endregion
+
+    #region Cleanup
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("eval", $@"
+                if (window.RGridModule && window.RGridModule.dispose) {{
+                    window.RGridModule.dispose('{GridId}');
+                }}
+            ");
+        }
+        catch (Exception)
+        {
+            // Ignore disposal errors
+        }
+    }
+
+    #endregion
+}
