@@ -4,7 +4,7 @@
 @using RR.Blazor.Enums
 @inherits RComponentBase
 
-<RModal Visible="true"
+<RModal Visible="@Visible"
         Title="@Title"
         Icon="@Icon"
         Size="@Size"
@@ -53,15 +53,12 @@
     [Parameter] public string CancelText { get; set; } = "Cancel";
     [Parameter] public string Icon { get; set; } = "warning";
     [Parameter] public VariantType Variant { get; set; } = VariantType.Warning;
-    [Parameter] public bool IsDestructive { get; set; }
-    [Parameter] public object Data { get; set; }
-    [Parameter] public EventCallback<object> OnDataChanged { get; set; }
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public EventCallback<bool> VisibleChanged { get; set; }
     [Parameter] public EventCallback OnConfirm { get; set; }
     [Parameter] public EventCallback OnCancel { get; set; }
     
     // Modal parameters
-    [Parameter] public bool Visible { get; set; } = true;
-    [Parameter] public EventCallback<bool> VisibleChanged { get; set; }
     [Parameter] public string Title { get; set; } = "Confirm";
     [Parameter] public SizeType Size { get; set; } = SizeType.Small;
     [Parameter] public bool CloseOnBackdrop { get; set; } = false;
@@ -72,6 +69,7 @@
     
     private async Task HandleClose()
     {
+        await VisibleChanged.InvokeAsync(false);
         if (OnModalClosed.HasDelegate)
         {
             await OnModalClosed.InvokeAsync();
@@ -96,14 +94,6 @@
         await HandleClose();
     }
 
-    private string GetConfirmButtonClass() => Variant switch
-    {
-        VariantType.Error => "bg-error text-white hover:opacity-90",
-        VariantType.Warning => "bg-warning text-white hover:opacity-90",
-        VariantType.Success => "bg-success text-white hover:opacity-90",
-        VariantType.Info => "bg-info text-white hover:opacity-90",
-        _ => "bg-primary text-white hover:opacity-90"
-    };
 
     private string GetConfirmIcon() => Variant switch
     {
