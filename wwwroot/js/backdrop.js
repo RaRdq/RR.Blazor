@@ -171,6 +171,9 @@ class BackdropManagerBase {
         backdrop.style.setProperty('--backdrop-opacity', opacity);
         backdrop.style.opacity = '0';
         
+        const backdropZIndex = config.zIndex || window.RRBlazor.ZIndexManager.registerElement(`${portalId}-backdrop`, 'backdrop');
+        backdrop.style.zIndex = backdropZIndex.toString();
+        
         if (config.blur) {
             backdrop.style.setProperty('--backdrop-blur', `${config.blur}px`);
         }
@@ -184,12 +187,7 @@ class BackdropManagerBase {
             document.body.appendChild(container);
         }
         
-        const portal = document.getElementById(portalId);
-        if (portal && portal.parentNode === container) {
-            container.insertBefore(backdrop, portal);
-        } else {
-            container.appendChild(backdrop);
-        }
+        container.appendChild(backdrop);
         
         return { element: backdrop, refCount: 0 };
     }
@@ -220,6 +218,7 @@ class BackdropManagerBase {
         }
         
         element.dataset.removing = 'true';
+        element.style.pointerEvents = 'none';
         
         if (duration > 0) {
             element.style.transition = `opacity ${duration}ms ease-in`;
@@ -245,18 +244,24 @@ function setupBackdropEventListeners() {
     
     document.addEventListener(window.RRBlazor.Events.BACKDROP_CREATE_REQUEST, (event) => {
         const { requesterId, config } = event.detail;
-        const backdrop = BackdropManager.getInstance().create(requesterId, config);
         
-        window.RRBlazor.EventDispatcher.dispatch(
-            window.RRBlazor.Events.BACKDROP_CREATED,
-            { requesterId, backdrop }
-        );
+        try {
+            const backdrop = BackdropManager.getInstance().create(requesterId, config);
+            
+            window.RRBlazor.EventDispatcher.dispatch(
+                window.RRBlazor.Events.BACKDROP_CREATED,
+                { requesterId, backdrop }
+            );
+        } catch (error) {
+            console.error('Backdrop creation failed:', error);
+        }
     });
     
     document.addEventListener(window.RRBlazor.Events.BACKDROP_DESTROY_REQUEST, (event) => {
         const { requesterId } = event.detail;
-        if (BackdropManager.getInstance().hasBackdrop(requesterId)) {
-            BackdropManager.getInstance().destroy(requesterId);
+        const manager = BackdropManager.getInstance();
+        if (manager.hasBackdrop(requesterId)) {
+            manager.destroy(requesterId);
             
             window.RRBlazor.EventDispatcher.dispatch(
                 window.RRBlazor.Events.BACKDROP_DESTROYED,
@@ -284,6 +289,10 @@ window.addEventListener('beforeunload', () => {
         BackdropManager.destroyInstance();
     }
 });
+
+if (window.RRBlazor) {
+    window.RRBlazor.BackdropSingleton = BackdropManager;
+}
 
 export default BackdropManager;
 export function createBackdrop(portalId, config) {

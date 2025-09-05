@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Components;
 using RR.Blazor.Enums;
-using RR.Blazor.Templates.Badge;
+using RR.Blazor.Templates.Chip;
 using RR.Blazor.Templates.Currency;
 using RR.Blazor.Templates.Stack;
 using RR.Blazor.Templates.Avatar;
@@ -33,51 +33,50 @@ public static class TemplateRegistry
     /// </summary>
     public static TemplateConfiguration GetConfiguration() => _configuration;
 
-    #region Badge Templates
-
-    /// <summary>
-    /// Create a badge template with current defaults
-    /// </summary>
-    public static RenderFragment<T> Badge<T>(
+    #region Chip Templates
+    
+    public static RenderFragment<T> Chip<T>(
         Func<T, string> textSelector,
         Func<T, VariantType> variantSelector = null,
         Func<T, string> iconSelector = null,
-        bool? clickable = null,
-        EventCallback<T> onClick = default) where T : class
+        ChipStyle style = ChipStyle.Chip,
+        bool clickable = false,
+        bool closeable = false,
+        EventCallback<T> onClick = default,
+        EventCallback<T> onClose = default) where T : class
     {
-        return BadgeRenderer<T>.Create(
+        return ChipRenderer<T>.Create(
             textSelector,
             variantSelector,
             iconSelector,
-            clickable ?? _configuration.Badge.DefaultClickable,
-            onClick);
+            style,
+            clickable,
+            closeable,
+            onClick,
+            onClose);
     }
-
-    /// <summary>
-    /// Create a badge template from configured BadgeTemplate
-    /// </summary>
-    public static RenderFragment<T> Badge<T>(BadgeTemplate<T> template) where T : class
+    
+    public static RenderFragment<T> FilterChip<T>(
+        Func<T, string> textSelector,
+        Func<T, bool> selectedSelector = null,
+        EventCallback<T> onToggle = default) where T : class
     {
-        // Apply global defaults if not set
-        ApplyBadgeDefaults(template);
-        return item => template.Render(item);
-    }
-
-    private static void ApplyBadgeDefaults<T>(BadgeTemplate<T> template) where T : class
-    {
-        template.Size = template.Size == default ? _configuration.Badge.DefaultSize : template.Size;
-        template.Density = template.Density == default ? _configuration.Badge.DefaultDensity : template.Density;
-        template.Variant = template.Variant == default ? _configuration.Badge.DefaultVariant : template.Variant;
-        
-        if (!template.StatusMapping.Any())
+        return item => builder =>
         {
-            foreach (var mapping in _configuration.Badge.GlobalStatusMapping)
-            {
-                template.StatusMapping[mapping.Key] = mapping.Value;
-            }
-        }
+            var isSelected = selectedSelector?.Invoke(item) ?? false;
+            builder.OpenComponent<RChip>(0);
+            builder.AddAttribute(1, nameof(RChip.Text), textSelector(item));
+            builder.AddAttribute(2, nameof(RChip.Selected), isSelected);
+            builder.AddAttribute(3, nameof(RChip.Clickable), true);
+            builder.AddAttribute(4, nameof(RChip.StyleVariant), ChipStyle.Chip);
+            
+            if (onToggle.HasDelegate)
+                builder.AddAttribute(5, nameof(RChip.OnClick), EventCallback.Factory.Create(item, () => onToggle.InvokeAsync(item)));
+                
+            builder.CloseComponent();
+        };
     }
-
+    
     #endregion
 
     #region Currency Templates
@@ -439,7 +438,6 @@ public static class TemplateRegistry
 
             RenderFragment fragment = suggestion.TemplateType switch
             {
-                Detection.TemplateType.Badge => Badge<T>(t => property.GetValue(t)?.ToString() ?? string.Empty)(item),
                 Detection.TemplateType.Currency => Currency<T>(t => Convert.ToDecimal(property.GetValue(t) ?? 0))(item),
                 Detection.TemplateType.Stack => Stack<T>(t => property.GetValue(t)?.ToString() ?? string.Empty)(item),
                 Detection.TemplateType.Avatar => Avatar<T>(t => property.GetValue(t)?.ToString() ?? string.Empty)(item),
@@ -504,10 +502,11 @@ public static class TemplateRegistry
                 ? $"{activeCount}/{totalCount} filters"
                 : $"{activeCount} active";
                 
-            builder.OpenComponent<RBadge>(0);
-            builder.AddAttribute(1, nameof(RBadge.Text), text);
-            builder.AddAttribute(2, nameof(RBadge.Variant), variant);
-            builder.AddAttribute(3, nameof(RBadge.Size), SizeType.Small);
+            builder.OpenComponent<RChip>(0);
+            builder.AddAttribute(1, nameof(RChip.Text), text);
+            builder.AddAttribute(2, nameof(RChip.Variant), variant);
+            builder.AddAttribute(3, nameof(RChip.Size), SizeType.Small);
+            builder.AddAttribute(4, nameof(RChip.StyleVariant), ChipStyle.Badge);
             builder.CloseComponent();
         };
     }

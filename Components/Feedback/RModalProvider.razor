@@ -8,94 +8,109 @@
 @inject IJSRuntime JSRuntime
 @inject IJavaScriptInteropService JSInterop
 
-@* RModalProvider - Portal-based modal container for body-level rendering *@
-<div id="modal-portal-container" style="display: none;">
+<div id="modal-portal-container">
     @foreach (var modal in _activeModals)
     {
-        @if (modal.Options.ComponentType != null && ComponentHasInternalModal(modal.Options.ComponentType))
+        @if (modal.Visible)
         {
-            @* Case 3: Component with RModal wrapper - render directly without double-wrapping *@
-            <div @key="modal.Id" data-modal-id="@modal.Id" data-portal="true">
-                <DynamicComponent Type="@modal.Options.ComponentType" Parameters="@GetComponentParameters(modal)" />
-            </div>
-        }
-        else
-        {
-            @* Case 4: Component without RModal - auto-wrap in RModal *@
-            <RModal @key="modal.Id"
-                    @ref="modalRefs[modal.Id]"
-                    Visible="@modal.Visible"
-                    Title="@modal.Options.Title"
-                    Subtitle="@modal.Options.Subtitle"
-                    Icon="@modal.Options.Icon"
-                    Size="@modal.Options.Size"
-                    Variant="@modal.Options.Variant"
-                    CloseOnBackdrop="@modal.Options.CloseOnBackdrop"
-                    CloseOnEscape="@modal.Options.CloseOnEscape"
-                    ShowCloseButton="@modal.Options.ShowCloseButton"
-                    ShowHeader="@modal.Options.ShowHeader"
-                    ShowFooter="@modal.Options.ShowFooter"
-                    Class="@modal.Options.Class"
-                    data-modal-id="@modal.Id"
-                    data-portal="true"
-                    OnClose="@(() => HandleModalClose(modal))"
-                    OnCancel="@(() => HandleModalCancel(modal))"
-                    OnPrimaryAction="@(() => HandlePrimaryAction(modal))"
-                    FooterContent="@(modal.Options.Buttons.Any() ? CreateModalFooter(modal) : null)">
-                
-                @if (modal.Options.ComponentType != null)
-                {
-                    <DynamicComponent Type="@modal.Options.ComponentType" Parameters="@GetComponentParameters(modal)" />
-                }
-                else if (modal.Options.Data != null)
-                {
-                    @* Display simple content if no component specified *@
-                    <div class="modal-simple-content">
-                        @if (modal.Options.Data is string message)
+            @if (modal.Options.IsRawContent)
+            {
+                @* Raw content - wrap in RModal *@
+                <CascadingValue Value="@(new ModalContext { ModalId = modal.Id, Options = (ModalOptions)modal.Options })">
+                    <RModal @key="modal.Id"
+                            @ref="modalRefs[modal.Id]"
+                            Visible="@modal.Visible"
+                            Title="@modal.Options.Title"
+                            Subtitle="@modal.Options.Subtitle"
+                            Icon="@modal.Options.Icon"
+                            Size="@modal.Options.Size"
+                            Variant="@modal.Options.Variant"
+                            CloseOnBackdrop="@modal.Options.CloseOnBackdrop"
+                            CloseOnEscape="@modal.Options.CloseOnEscape"
+                            ShowCloseButton="@modal.Options.ShowCloseButton"
+                            ShowHeader="@modal.Options.ShowHeader"
+                            ShowFooter="@modal.Options.ShowFooter"
+                            Class="@modal.Options.Class"
+                            ModalId="@modal.Id"
+                            data-modal-id="@modal.Id"
+                            data-portal="true"
+                            OnClose="@(() => HandleModalClose(modal))"
+                            OnCancel="@(() => HandleModalCancel(modal))"
+                            OnPrimaryAction="@(() => HandlePrimaryAction(modal))"
+                            FooterContent="@(modal.Options.Buttons.Any() ? CreateModalFooter(modal) : null)">
+                        
+                        @if (modal.Options.ComponentType != null)
                         {
-                            <p>@message</p>
+                            <DynamicComponent Type="@modal.Options.ComponentType" Parameters="@GetComponentParameters(modal)" />
+                        }
+                        else if (modal.Options.Data != null)
+                        {
+                            <div class="modal-simple-content">
+                                @if (modal.Options.Data is string message)
+                                {
+                                    <p>@message</p>
+                                }
+                                else
+                                {
+                                    <pre>@System.Text.Json.JsonSerializer.Serialize(modal.Options.Data)</pre>
+                                }
+                            </div>
+                        }
+                    </RModal>
+                </CascadingValue>
+            }
+            else
+            {
+                @* Component is expected to contain RModal internally *@
+                <CascadingValue Value="@(new ModalContext { ModalId = modal.Id, Options = (ModalOptions)modal.Options })">
+                    <div @key="modal.Id" data-modal-id="@modal.Id" data-portal="true">
+                        @if (modal.Options.ComponentType != null)
+                        {
+                            <DynamicComponent Type="@modal.Options.ComponentType" Parameters="@GetComponentParameters(modal)" />
                         }
                         else
                         {
-                            <pre>@System.Text.Json.JsonSerializer.Serialize(modal.Options.Data)</pre>
+                            <div class="modal-error">
+                                <p>Error: ComponentType is null for modal @modal.Id</p>
+                            </div>
                         }
                     </div>
-                }
-            </RModal>
+                </CascadingValue>
+            }
         }
     }
 </div>
 
 @code {
-    private readonly List<ModalInstance> _activeModals = new();
-    private readonly Dictionary<string, RModal> modalRefs = new();
+    private readonly List<ModalInstance> _activeModals = [];
+    private readonly Dictionary<string, RModal> modalRefs = [];
+    private DotNetObjectReference<RModalProvider> _dotNetRef;
 
     protected override async Task OnInitializedAsync()
     {
+        _dotNetRef = DotNetObjectReference.Create(this);
         ModalService.OnModalOpened += OnModalOpened;
         ModalService.OnModalClosed += OnModalClosed;
     }
-    
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
-            // Ensure portal container exists at body level
             await JSInterop.TryInvokeVoidAsync("RRBlazor.Portal.ensureContainer");
+            await JSInterop.TryInvokeVoidAsync("RRBlazor.Modal.setProviderRef", _dotNetRef);
         }
     }
 
     private void OnModalOpened(ModalInstance modal)
     {
+        _activeModals.Add(modal);
+        modal.Visible = true;
+
         InvokeAsync(async () =>
         {
-            _activeModals.Add(modal);
-            
-            modal.Visible = true;
             StateHasChanged();
-            
             await Task.Yield();
-            
             await CreateModal(modal);
         });
     }
@@ -104,31 +119,34 @@
     {
         InvokeAsync(async () =>
         {
-            // Let modal.js handle cleanup
-            await DestroyModal(modal);
-            
-            _activeModals.Remove(modal);
-            modalRefs.Remove(modal.Id);
-            
-            StateHasChanged();
+            if (_activeModals.Contains(modal))
+            {
+                await DestroyModal(modal);
+                _activeModals.Remove(modal);
+                modalRefs.Remove(modal.Id);
+                StateHasChanged();
+            }
         });
     }
 
     private Dictionary<string, object> GetComponentParameters(ModalInstance modal)
     {
-        var parameters = new Dictionary<string, object>();
-        
-        foreach (var param in modal.Options.Parameters)
-        {
-            parameters[param.Key] = param.Value;
-        }
-        
+        var parameters = new Dictionary<string, object>(modal.Options.Parameters);
+
         if (modal.Options.Data != null)
-        {
             parameters["Data"] = modal.Options.Data;
+
+        if (!modal.Options.IsRawContent && ComponentSupportsParameter(modal.Options.ComponentType, "OnModalClosed"))
+        {
+            parameters["OnModalClosed"] = EventCallback.Factory.Create(this, async () =>
+            {
+                modal.Visible = false;
+                await CleanupModal(modal);
+                StateHasChanged();
+                await ModalService.CloseAsync(modal.Id, Enums.ModalResult.Cancel);
+            });
         }
 
-        // Only add OnDataChanged if component supports it
         if (ComponentSupportsParameter(modal.Options.ComponentType, "OnDataChanged"))
         {
             parameters["OnDataChanged"] = EventCallback.Factory.Create<object>(this, data =>
@@ -140,29 +158,8 @@
         return parameters;
     }
 
-    private bool ComponentSupportsParameter(Type componentType, string parameterName)
-    {
-        if (componentType == null) return false;
-        
-        return componentType.GetProperties()
-            .Any(p => p.Name == parameterName && 
-                     p.GetCustomAttributes(typeof(ParameterAttribute), false).Any());
-    }
-    
-    /// <summary>
-    /// SOW COMPLIANT: Detection based on ModalContext parameter ONLY
-    /// If component has ModalContext parameter, it has internal RModal wrapper
-    /// If no ModalContext, it needs RModal wrapper from provider
-    /// </summary>
-    private bool ComponentHasInternalModal(Type componentType)
-    {
-        if (componentType == null) return false;
-        
-        // SOW Requirement: Detection via ModalContext ONLY
-        return componentType.GetProperties()
-            .Where(p => p.GetCustomAttributes(typeof(ParameterAttribute), false).Any())
-            .Any(p => p.PropertyType == typeof(ModalContext));
-    }
+    private bool ComponentSupportsParameter(Type componentType, string parameterName) => componentType?.GetProperties()
+        .Any(p => p.Name == parameterName && p.GetCustomAttributes(typeof(ParameterAttribute), false).Any()) ?? false;
 
     private RenderFragment CreateModalFooter(ModalInstance modal)
     {
@@ -174,18 +171,20 @@
             var index = 2;
             foreach (var button in modal.Options.Buttons)
             {
+                var capturedButton = button;
+                var capturedModal = modal;
+
                 builder.OpenComponent(index++, typeof(RButton));
-                builder.AddAttribute(index++, nameof(RButton.Text), button.Text);
-                builder.AddAttribute(index++, nameof(RButton.Variant), button.Variant);
-                builder.AddAttribute(index++, nameof(RButton.Icon), button.Icon);
+                builder.AddAttribute(index++, nameof(RButton.Text), capturedButton.Text);
+                builder.AddAttribute(index++, nameof(RButton.Variant), capturedButton.Variant);
+                builder.AddAttribute(index++, nameof(RButton.Icon), capturedButton.Icon);
                 builder.AddAttribute(index++, nameof(RButton.IconPosition), IconPosition.Start);
-                builder.AddAttribute(index++, nameof(RButton.Class), button.Class);
-                builder.AddAttribute(index++, nameof(RButton.Disabled), button.IsDisabled);
-                builder.AddAttribute(index++, nameof(RButton.Loading), button.IsLoading);
-                builder.AddAttribute(index++, nameof(RButton.OnClick), EventCallback.Factory.Create<MouseEventArgs>(this, async (MouseEventArgs e) =>
-                {
-                    await HandleButtonClick(modal, button);
-                }));
+                builder.AddAttribute(index++, nameof(RButton.Class), capturedButton.Class);
+                builder.AddAttribute(index++, nameof(RButton.Disabled), capturedButton.IsDisabled);
+                builder.AddAttribute(index++, nameof(RButton.Loading), capturedButton.IsLoading);
+                builder.AddAttribute(index++, nameof(RButton.OnClick), 
+                    Microsoft.AspNetCore.Components.EventCallback.Factory.Create<MouseEventArgs>(this, 
+                        CreateButtonClickHandler(capturedModal, capturedButton)));
                 builder.CloseComponent();
             }
 
@@ -193,8 +192,10 @@
         };
     }
 
-    private async Task HandleModalClose(ModalInstance modal) => await CloseModal(modal, Enums.ModalResult.Cancel);
+    private Func<MouseEventArgs, Task> CreateButtonClickHandler(ModalInstance modal, ModalButton button) => 
+        async (MouseEventArgs e) => await HandleButtonClick(modal, button);
 
+    private async Task HandleModalClose(ModalInstance modal) => await CloseModal(modal, Enums.ModalResult.Cancel);
     private async Task HandleModalCancel(ModalInstance modal) => await CloseModal(modal, Enums.ModalResult.Cancel);
 
     private async Task HandlePrimaryAction(ModalInstance modal)
@@ -233,72 +234,72 @@
     private async Task CloseModal(ModalInstance modal, Enums.ModalResult result)
     {
         modal.Visible = false;
-        
+        StateHasChanged();
         await ModalService.CloseAsync(modal.Id, result);
+    }
+
+    [JSInvokable]
+    public async Task HandleBackdropClick(string modalId)
+    {
+        var modal = _activeModals.FirstOrDefault(m => m.Id == modalId);
+        if (modal != null)
+            await CloseModal(modal, Enums.ModalResult.Cancel);
+    }
+
+    [JSInvokable]
+    public async Task OnModalClosedFromJS(string jsModalId)
+    {
+        var modal = _activeModals.FirstOrDefault(m => m.jsModalId == jsModalId);
+        if (modal != null)
+            await ModalService.CloseAsync(modal.Id, Enums.ModalResult.Cancel);
+    }
+
+    [JSInvokable]
+    public async Task OnAllModalsClosed()
+    {
+        var modalsToClose = _activeModals.ToList();
+        foreach (var modal in modalsToClose)
+        {
+            modal.Visible = false;
+            await ModalService.CloseAsync(modal.Id, Enums.ModalResult.Cancel);
+        }
+        _activeModals.Clear();
+        modalRefs.Clear();
+        await InvokeAsync(StateHasChanged);
     }
 
     public void Dispose()
     {
         ModalService.OnModalOpened -= OnModalOpened;
         ModalService.OnModalClosed -= OnModalClosed;
-        
-        // Let modal.js handle cleanup through RR-Blazor proxy
-        try
-        {
-            _ = JSInterop.TryInvokeVoidAsync("RRBlazor.Modal.forceUnlock");
-        }
-        catch
-        {
-            // Ignore cleanup errors on dispose
-        }
+
+        _ = JSInterop.TryInvokeVoidAsync("RRBlazor.Modal.hideAll");
+        _ = JSInterop.TryInvokeVoidAsync("RRBlazor.Modal.setProviderRef", null);
+        _dotNetRef?.Dispose();
     }
-    
+
     private async Task CreateModal(ModalInstance modal)
     {
-        try
+        var contentSelector = $"[data-modal-id='{modal.Id}']";
+        var modalConfig = new
         {
-            // Single JS call - all DOM management delegated to JavaScript
-            var modalConfig = new
-            {
-                id = modal.Id,
-                selector = $"[data-modal-id='{modal.Id}']",
-                useBackdrop = modal.Options.UseBackdrop,
-                closeOnEscape = modal.Options.CloseOnEscape,
-                closeOnBackdropClick = modal.Options.CloseOnBackdrop,
-                trapFocus = true,
-                animationSpeed = modal.Options.AnimationSpeed.ToString().ToLower(),
-                portalConfig = new
-                {
-                    targetSelector = "body",
-                    portalId = $"modal-portal-{modal.Id}",
-                    portalClass = "modal-portal"
-                },
-                retryConfig = new
-                {
-                    maxRetries = 10,
-                    retryDelay = 50
-                }
-            };
-            
-            // JavaScript handles all DOM operations internally
-            await JSInterop.TryInvokeVoidAsync("RRBlazor.Modal.createAndShow", modal.Id, "RModal", null, modalConfig);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Modal creation failed for {modal.Id}: {ex.Message}");
-        }
+            closeOnBackdrop = modal.Options.CloseOnBackdrop,
+            closeOnEscape = modal.Options.CloseOnEscape,
+            backdrop = modal.Options.UseBackdrop,
+            blur = 8,
+            className = "modal-backdrop-dark",
+            modalId = modal.Id
+        };
+
+        var jsModalId = await JSInterop.TryInvokeAsync<string>("RRBlazor.Modal.show", contentSelector, modalConfig);
+        modal.jsModalId = jsModalId;
     }
-    
+
     private async Task DestroyModal(ModalInstance modal)
     {
-        try
-        {
-            // Single call - JavaScript handles both modal and portal cleanup internally
-            await JSInterop.TryInvokeVoidAsync("RRBlazor.Modal.destroy", modal.Id);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Modal destruction failed for {modal.Id}: {ex.Message}");
-        }
+        if (!string.IsNullOrEmpty(modal.jsModalId))
+            await JSInterop.TryInvokeVoidAsync("RRBlazor.Modal.hide", modal.jsModalId);
     }
+
+    private async Task CleanupModal(ModalInstance modal) => await DestroyModal(modal);
 }

@@ -105,7 +105,6 @@ public abstract class RModalBase : RComponentBase
                 {
                     Id = InternalModalId,
                     Visible = true,
-                    CreatedAt = DateTime.UtcNow,
                     Options = GetModalOptions()
                 };
                 

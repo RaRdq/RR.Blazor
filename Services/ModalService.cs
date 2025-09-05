@@ -7,9 +7,9 @@ using RR.Blazor.Models;
 
 namespace RR.Blazor.Services;
 
-public class ModalService() : IModalService, IDisposable
+public sealed class ModalService : IModalService, IDisposable
 {
-    private readonly List<ModalInstance> _activeModals = new();
+    private readonly List<ModalInstance> _activeModals = [];
     private bool _isDisposed;
 
     public event Action<ModalInstance> OnModalOpened;
@@ -24,157 +24,104 @@ public class ModalService() : IModalService, IDisposable
             Visible = true
         };
 
-        var modalInstance = instance as ModalInstance ?? new ModalInstance
-        {
-            Id = instance.Id,
-            Options = new ModalOptions
-            {
-                Title = instance.Options.Title,
-                Subtitle = instance.Options.Subtitle,
-                Icon = instance.Options.Icon,
-                Size = instance.Options.Size,
-                Variant = instance.Options.Variant,
-                CloseOnBackdrop = instance.Options.CloseOnBackdrop,
-                CloseOnEscape = instance.Options.CloseOnEscape,
-                ShowCloseButton = instance.Options.ShowCloseButton,
-                ShowHeader = instance.Options.ShowHeader,
-                ShowFooter = instance.Options.ShowFooter,
-                Class = instance.Options.Class,
-                ComponentType = instance.Options.ComponentType,
-                Parameters = instance.Options.Parameters,
-                Buttons = instance.Options.Buttons,
-                Data = instance.Options.Data,
-                AutoCloseDelay = instance.Options.AutoCloseDelay
-            },
-            Visible = instance.Visible,
-            CreatedAt = instance.CreatedAt
-        };
-
-        _activeModals.Add(modalInstance);
-        OnModalOpened?.Invoke(modalInstance);
+        _activeModals.Add(instance);
+        OnModalOpened?.Invoke(instance);
 
         if (options.AutoCloseDelay.HasValue)
         {
             _ = Task.Delay(options.AutoCloseDelay.Value).ContinueWith(async _ =>
             {
-                if (_activeModals.Contains(modalInstance))
-                {
+                if (_activeModals.Contains(instance))
                     await CloseAsync(instance.Id, Enums.ModalResult.Cancel);
-                }
+            });
+        }
+
+        var result = await instance.TaskSource.Task;
+        return new() { ResultType = result.ResultType, Data = instance.TypedResult };
+    }
+
+    public async Task<Models.ModalResult> ShowAsync(ModalOptions options)
+    {
+        var instance = new ModalInstance
+        {
+            Options = options,
+            Visible = true
+        };
+
+        _activeModals.Add(instance);
+        OnModalOpened?.Invoke(instance);
+
+        if (options.AutoCloseDelay.HasValue)
+        {
+            _ = Task.Delay(options.AutoCloseDelay.Value).ContinueWith(async _ =>
+            {
+                if (_activeModals.Contains(instance))
+                    await CloseAsync(instance.Id, Enums.ModalResult.Cancel);
             });
         }
 
         return await instance.TaskSource.Task;
     }
 
-    public async Task<Models.ModalResult> ShowAsync(ModalOptions options)
-    {
-        var typedOptions = new ModalOptions<object>
-        {
-            Title = options.Title,
-            Subtitle = options.Subtitle,
-            Icon = options.Icon,
-            Size = options.Size,
-            Variant = options.Variant,
-            CloseOnBackdrop = options.CloseOnBackdrop,
-            CloseOnEscape = options.CloseOnEscape,
-            ShowCloseButton = options.ShowCloseButton,
-            ShowHeader = options.ShowHeader,
-            ShowFooter = options.ShowFooter,
-            Class = options.Class,
-            ComponentType = options.ComponentType,
-            Parameters = options.Parameters,
-            Buttons = options.Buttons,
-            Data = options.Data,
-            AutoCloseDelay = options.AutoCloseDelay
-        };
-
-        var result = await ShowAsync(typedOptions);
-        return new Models.ModalResult
-        {
-            ResultType = result.ResultType,
-            Data = result.Data
-        };
-    }
-
     public async Task<ModalResult<T>> ShowAsync<T>(Type componentType, Dictionary<string, object> parameters = null, ModalOptions<T> options = null)
     {
-        options ??= new ModalOptions<T>();
+        options ??= new();
         options.ComponentType = componentType;
-        options.Parameters = parameters ?? new Dictionary<string, object>();
-
+        options.Parameters = parameters ?? [];
         return await ShowAsync(options);
     }
 
+    public async Task<Models.ModalResult> ShowAsync(Type componentType, Dictionary<string, object> parameters = null, ModalOptions options = null)
+    {
+        options ??= new();
+        options.ComponentType = componentType;
+        options.Parameters = parameters ?? [];
+        return await ShowAsync(options);
+    }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+    public async Task<ModalResult<T>> ShowRawAsync<T>(Type componentType, Dictionary<string, object> parameters = null, ModalOptions<T> options = null)
+    {
+        options ??= new();
+        options.ComponentType = componentType;
+        options.Parameters = parameters ?? [];
+        options.IsRawContent = true;
+        return await ShowAsync(options);
+    }
 
     public async Task CloseAsync(string modalId, Enums.ModalResult result = Enums.ModalResult.None)
     {
         var modal = _activeModals.FirstOrDefault(m => m.Id == modalId);
-        if (modal != null)
+        if (modal == null) return;
+
+        modal.Visible = false;
+        _activeModals.Remove(modal);
+
+        if (!modal.TaskSource.Task.IsCompleted)
         {
-            modal.Visible = false;
-            _activeModals.Remove(modal);
-
-            if (modal is ModalInstance<object> typedModal)
-            {
-                if (!typedModal.TaskSource.Task.IsCompleted)
-                {
-                    var modalResult = result != Enums.ModalResult.None ? 
-                        new Models.ModalResult { ResultType = result } : 
-                        new Models.ModalResult { ResultType = Enums.ModalResult.Cancel };
-                    typedModal.TaskSource.TrySetResult(new ModalResult<object>
-                    {
-                        ResultType = modalResult.ResultType,
-                        Data = modalResult.Data
-                    });
-                }
-            }
-
-            OnModalClosed?.Invoke(modal);
-
-            if (!_activeModals.Any())
-            {
-                OnAllModalsClosed?.Invoke();
-            }
+            var modalResult = result != Enums.ModalResult.None
+                ? new Models.ModalResult { ResultType = result, Data = modal.Result }
+                : new Models.ModalResult { ResultType = Enums.ModalResult.Cancel, Data = modal.Result };
+            modal.TaskSource.TrySetResult(modalResult);
         }
+
+        OnModalClosed?.Invoke(modal);
+
+        if (!_activeModals.Any())
+            OnAllModalsClosed?.Invoke();
     }
 
     public async Task CloseAllAsync()
     {
         var modalsToClose = _activeModals.ToList();
         foreach (var modal in modalsToClose)
-        {
             await CloseAsync(modal.Id, Enums.ModalResult.Cancel);
-        }
     }
 
-    public bool IsModalOpen(string modalId = null)
-    {
-        if (string.IsNullOrEmpty(modalId))
-        {
-            return _activeModals.Any(m => m.Visible);
-        }
-        return _activeModals.Any(m => m.Id == modalId && m.Visible);
-    }
+    public bool IsModalOpen(string modalId = null) => string.IsNullOrEmpty(modalId)
+        ? _activeModals.Any(m => m.Visible)
+        : _activeModals.Any(m => m.Id == modalId && m.Visible);
 
-    public IModalBuilder<T> Create<T>()
-    {
-        return new ModalBuilder<T>(this);
-    }
+    public IModalBuilder<T> Create<T>() => new ModalBuilder<T>(this);
 
     public void Dispose()
     {
@@ -186,7 +133,7 @@ public class ModalService() : IModalService, IDisposable
     }
 }
 
-public class ModalBuilder<T>(ModalService modalService) : IModalBuilder<T>
+public sealed class ModalBuilder<T>(ModalService modalService) : IModalBuilder<T>
 {
     private readonly ModalOptions<T> _options = new();
 
@@ -240,10 +187,8 @@ public class ModalBuilder<T>(ModalService modalService) : IModalBuilder<T>
 
     public IModalBuilder<T> WithParameters(Dictionary<string, object> parameters)
     {
-        foreach (var param in parameters)
-        {
-            _options.Parameters[param.Key] = param.Value;
-        }
+        foreach (var (key, value) in parameters)
+            _options.Parameters[key] = value;
         return this;
     }
 
@@ -261,13 +206,12 @@ public class ModalBuilder<T>(ModalService modalService) : IModalBuilder<T>
 
     public IModalBuilder<T> WithButton(string text, VariantType variant, Func<T, Task<bool>> onClick = null)
     {
-        var button = new ModalButton
+        _options.Buttons.Add(new ModalButton
         {
             Text = text,
             Variant = variant,
             OnClick = onClick != null ? data => onClick((T)data) : null
-        };
-        _options.Buttons.Add(button);
+        });
         return this;
     }
 
@@ -301,8 +245,5 @@ public class ModalBuilder<T>(ModalService modalService) : IModalBuilder<T>
         return this;
     }
 
-    public async Task<ModalResult<T>> ShowAsync()
-    {
-        return await modalService.ShowAsync(_options);
-    }
+    public async Task<ModalResult<T>> ShowAsync() => await modalService.ShowAsync(_options);
 }

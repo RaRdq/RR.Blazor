@@ -9,10 +9,6 @@ namespace RR.Blazor.Templates.Configuration;
 /// </summary>
 public class TemplateConfiguration
 {
-    /// <summary>
-    /// Badge template defaults
-    /// </summary>
-    public BadgeTemplateDefaults Badge { get; set; } = new();
     
     /// <summary>
     /// Currency template defaults
@@ -28,49 +24,6 @@ public class TemplateConfiguration
     /// Smart detection settings
     /// </summary>
     public SmartDetectionSettings SmartDetection { get; set; } = new();
-}
-
-/// <summary>
-/// Badge template default configuration
-/// </summary>
-public class BadgeTemplateDefaults
-{
-    /// <summary>
-    /// Default badge variant
-    /// </summary>
-    public VariantType DefaultVariant { get; set; } = VariantType.Primary;
-    
-    /// <summary>
-    /// Default badge size
-    /// </summary>
-    public SizeType DefaultSize { get; set; } = SizeType.Small;
-    
-    /// <summary>
-    /// Default badge density
-    /// </summary>
-    public DensityType DefaultDensity { get; set; } = DensityType.Compact;
-    
-    /// <summary>
-    /// Whether badges are clickable by default
-    /// </summary>
-    public bool DefaultClickable { get; set; } = false;
-    
-    /// <summary>
-    /// Global status-to-variant mapping
-    /// </summary>
-    public Dictionary<string, VariantType> GlobalStatusMapping { get; set; } = new()
-    {
-        { "active", VariantType.Success },
-        { "inactive", VariantType.Secondary },
-        { "pending", VariantType.Warning },
-        { "error", VariantType.Error },
-        { "success", VariantType.Success },
-        { "warning", VariantType.Warning },
-        { "info", VariantType.Info },
-        { "approved", VariantType.Success },
-        { "rejected", VariantType.Error },
-        { "cancelled", VariantType.Secondary }
-    };
 }
 
 /// <summary>

@@ -10,6 +10,8 @@ public interface IModalService
     Task<ModalResult<T>> ShowAsync<T>(ModalOptions<T> options);
     Task<Models.ModalResult> ShowAsync(ModalOptions options);
     Task<ModalResult<T>> ShowAsync<T>(Type componentType, Dictionary<string, object> parameters = null, ModalOptions<T> options = null);
+    Task<Models.ModalResult> ShowAsync(Type componentType, Dictionary<string, object> parameters = null, ModalOptions options = null);
+    Task<ModalResult<T>> ShowRawAsync<T>(Type componentType, Dictionary<string, object> parameters = null, ModalOptions<T> options = null);
     
     // Modal management
     Task CloseAsync(string modalId, Enums.ModalResult result = Enums.ModalResult.None);

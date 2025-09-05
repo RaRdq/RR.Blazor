@@ -11,15 +11,6 @@ public class TemplateConfigurationBuilder
 {
     private readonly TemplateConfiguration _configuration = new();
 
-    /// <summary>
-    /// Configure badge template defaults
-    /// </summary>
-    public TemplateConfigurationBuilder WithBadgeDefaults(Action<BadgeDefaultsBuilder> configure)
-    {
-        var builder = new BadgeDefaultsBuilder(_configuration.Badge);
-        configure(builder);
-        return this;
-    }
 
     /// <summary>
     /// Configure currency template defaults
@@ -57,54 +48,6 @@ public class TemplateConfigurationBuilder
     public TemplateConfiguration Build() => _configuration;
 }
 
-/// <summary>
-/// Builder for badge template defaults
-/// </summary>
-public class BadgeDefaultsBuilder
-{
-    private readonly BadgeTemplateDefaults _defaults;
-
-    public BadgeDefaultsBuilder(BadgeTemplateDefaults defaults)
-    {
-        _defaults = defaults;
-    }
-
-    public BadgeDefaultsBuilder WithVariant(VariantType variant)
-    {
-        _defaults.DefaultVariant = variant;
-        return this;
-    }
-
-    public BadgeDefaultsBuilder WithSize(SizeType size)
-    {
-        _defaults.DefaultSize = size;
-        return this;
-    }
-
-    public BadgeDefaultsBuilder WithDensity(DensityType density)
-    {
-        _defaults.DefaultDensity = density;
-        return this;
-    }
-
-    public BadgeDefaultsBuilder Clickable(bool clickable = true)
-    {
-        _defaults.DefaultClickable = clickable;
-        return this;
-    }
-
-    public BadgeDefaultsBuilder AddStatusMapping(string status, VariantType variant)
-    {
-        _defaults.GlobalStatusMapping[status.ToLowerInvariant()] = variant;
-        return this;
-    }
-
-    public BadgeDefaultsBuilder ClearStatusMappings()
-    {
-        _defaults.GlobalStatusMapping.Clear();
-        return this;
-    }
-}
 
 /// <summary>
 /// Builder for currency template defaults

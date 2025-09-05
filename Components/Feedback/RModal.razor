@@ -1,109 +1,123 @@
 @using RR.Blazor.Enums
-@* RModal - Generic modal component with comprehensive configuration *@
+@using RR.Blazor.Components.Base
+@using RR.Blazor.Models
+@using RR.Blazor.Interfaces
+@inherits RComponentBase
+@inject IJavaScriptInteropService JSInterop
 
-@if (Visible)
-{
-<div class="modal @Class" @onclick="HandleBackdropClick" @attributes="AdditionalAttributes">
-    <div class="modal-backdrop"></div>
-    <div class="modal-content @GetSizeClass()" @onclick:stopPropagation="true">
-        @if (ShowHeader)
-        {
-            <div class="modal-header">
-                <div class="modal-header-content">
-                    @if (!string.IsNullOrEmpty(Icon))
-                    {
-                        <i class="material-symbols-rounded text-primary text-xl">@Icon</i>
-                    }
-                    <h3 class="modal-title">@Title</h3>
-                    @if (!string.IsNullOrEmpty(Subtitle))
-                    {
-                        <p class="modal-subtitle">@Subtitle</p>
-                    }
-                </div>
-                <div class="modal-header-actions">
-                    @HeaderContent
-                    @if (ShowCloseButton)
-                    {
-                        <button type="button" class="modal-close" @onclick="HandleClose" disabled="@Processing">
-                            <i class="material-symbols-rounded">close</i>
-                        </button>
-                    }
-                </div>
-            </div>
-        }
-        
-        <div class="modal-body">
-            @if (Processing && ShowProcessingOverlay)
+@{
+    var contentClass = $"modal-content {GetSizeClass()}";
+    var wrapperClass = $"modal {Class}";
+    var displayStyle = Visible ? "" : "display: none !important;";
+}
+
+    <div class="@wrapperClass" @ref="modalElement" @attributes="AdditionalAttributes" 
+         id="@GetModalId()"
+         data-modal-id="@GetModalId()"
+         data-close-on-backdrop="@CloseOnBackdrop.ToString().ToLower()"
+         data-modal-visible="@Visible.ToString().ToLower()"
+         style="@displayStyle">
+        <div class="@contentClass" @onclick:stopPropagation="true">
+            @if (ShowHeader)
             {
-                <div class="modal-overlay modal-overlay-processing">
-                    <div class="modal-processing">
-                        <div class="spinner"></div>
-                        <p class="modal-processing-text">@ProcessingMessage</p>
+                <div class="modal-header">
+                    <div class="modal-header-content">
+                        @if (!string.IsNullOrEmpty(Icon))
+                        {
+                            <i class="material-symbols-rounded text-primary text-xl">@Icon</i>
+                        }
+                        <h3 class="modal-title">@Title</h3>
+                        @if (!string.IsNullOrEmpty(Subtitle))
+                        {
+                            <p class="modal-subtitle">@Subtitle</p>
+                        }
+                    </div>
+                    <div class="modal-header-actions">
+                        @HeaderContent
+                        @if (ShowCloseButton)
+                        {
+                            <button type="button" class="modal-close" @onclick="HandleClose" disabled="@Processing">
+                                <i class="material-symbols-rounded">close</i>
+                            </button>
+                        }
                     </div>
                 </div>
             }
-            @ChildContent
-        </div>
-        
-        @if (ShowFooter)
-        {
-            <div class="modal-footer">
-                @if (FooterContent != null)
+            
+            <div class="modal-body">
+                @if (Processing && ShowProcessingOverlay)
                 {
-                    @FooterContent
-                }
-                else
-                {
-                    <div class="modal-footer-buttons">
-                        @if (ShowCancelButton)
-                        {
-                            <RButton Variant="VariantType.Secondary" 
-                                    Size="@ButtonSize" 
-                                    Icon="@CancelIcon" IconPosition="IconPosition.Start" 
-                                    Class="@CancelButtonClass" 
-                                    OnClick="HandleCancel" 
-                                    Disabled="@Processing">
-                                @CancelText
-                            </RButton>
-                        }
-                        @if (ShowPrimaryButton)
-                        {
-                            <RButton Variant="VariantType.Primary" 
-                                    Size="@ButtonSize" 
-                                    Icon="@(Processing && ShowPrimaryButtonSpinner ? null : PrimaryIcon)" IconPosition="IconPosition.Start" 
-                                    Class="@PrimaryButtonClass" 
-                                    OnClick="HandlePrimaryAction" 
-                                    Disabled="@(Processing || PrimaryButtonDisabled)"
-                                    Loading="@(Processing && ShowPrimaryButtonSpinner)">
-                                @(Processing && !string.IsNullOrEmpty(ProcessingButtonText) ? ProcessingButtonText : PrimaryText)
-                            </RButton>
-                        }
-                    </div>
-                    @if (ShowUnsavedIndicator && HasUnsavedChanges)
-                    {
-                        <div class="modal-unsaved-indicator">
-                            <i class="material-symbols-rounded">info</i>
-                            <span>You have unsaved changes</span>
+                    <div class="modal-overlay modal-overlay-processing">
+                        <div class="modal-processing">
+                            <div class="spinner"></div>
+                            <p class="modal-processing-text">@ProcessingMessage</p>
                         </div>
-                    }
+                    </div>
                 }
+                @ChildContent
             </div>
-        }
+            
+            @if (ShowFooter)
+            {
+                <div class="modal-footer">
+                    @if (FooterContent != null)
+                    {
+                        @FooterContent
+                    }
+                    else
+                    {
+                        <div class="modal-footer-buttons">
+                            @if (ShowCancelButton)
+                            {
+                                <RButton Variant="VariantType.Secondary" 
+                                        Size="@ButtonSize" 
+                                        Icon="@CancelIcon" IconPosition="IconPosition.Start" 
+                                        Class="@CancelButtonClass" 
+                                        OnClick="HandleCancel" 
+                                        Disabled="@Processing">
+                                    @CancelText
+                                </RButton>
+                            }
+                            @if (ShowPrimaryButton)
+                            {
+                                <RButton Variant="VariantType.Primary" 
+                                        Size="@ButtonSize" 
+                                        Icon="@(Processing && ShowPrimaryButtonSpinner ? null : PrimaryIcon)" IconPosition="IconPosition.Start" 
+                                        Class="@PrimaryButtonClass" 
+                                        OnClick="HandlePrimaryAction" 
+                                        Disabled="@(Processing || PrimaryButtonDisabled)"
+                                        Loading="@(Processing && ShowPrimaryButtonSpinner)">
+                                    @(Processing && !string.IsNullOrEmpty(ProcessingButtonText) ? ProcessingButtonText : PrimaryText)
+                                </RButton>
+                            }
+                        </div>
+                        @if (ShowUnsavedIndicator && HasUnsavedChanges)
+                        {
+                            <div class="modal-unsaved-indicator">
+                                <i class="material-symbols-rounded">info</i>
+                                <span>You have unsaved changes</span>
+                            </div>
+                        }
+                    }
+                </div>
+            }
+        </div>
     </div>
-</div>
-}
 
 @code {
+    private ElementReference modalElement;
+    private DotNetObjectReference<RModal> dotNetRef;
+    private string modalId = $"modal-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}-{Random.Shared.Next(1000, 9999)}";
+    private string _jsModalId;
+    private bool _jsModalRegistered = false;
+    
+    [CascadingParameter] public ModalContext ModalContext { get; set; }
+    [Parameter] public string ModalId { get; set; }
     [Parameter] public bool Visible { get; set; }
     [Parameter] public EventCallback<bool> VisibleChanged { get; set; }
     [Parameter] public SizeType Size { get; set; } = SizeType.Medium;
     [Parameter] public VariantType Variant { get; set; } = VariantType.Default;
-    [Parameter] public string Class { get; set; }
     
-    // Additional attributes for test IDs and other attributes
-    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object> AdditionalAttributes { get; set; }
-    
-    // Header Configuration
     [Parameter] public bool ShowHeader { get; set; } = true;
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public string Subtitle { get; set; }
@@ -111,7 +125,6 @@
     [Parameter] public RenderFragment HeaderContent { get; set; }
     [Parameter] public bool ShowCloseButton { get; set; } = true;
     
-    // Footer Configuration
     [Parameter] public bool ShowFooter { get; set; } = true;
     [Parameter] public RenderFragment FooterContent { get; set; }
     [Parameter] public bool ShowCancelButton { get; set; } = true;
@@ -125,36 +138,51 @@
     [Parameter] public bool PrimaryButtonDisabled { get; set; }
     [Parameter] public SizeType ButtonSize { get; set; } = SizeType.Medium;
     
-    // Processing State
     [Parameter] public bool Processing { get; set; }
     [Parameter] public string ProcessingMessage { get; set; } = "Processing...";
     [Parameter] public string ProcessingButtonText { get; set; }
     [Parameter] public bool ShowProcessingOverlay { get; set; } = true;
     [Parameter] public bool ShowPrimaryButtonSpinner { get; set; } = true;
     
-    // Unsaved Changes
     [Parameter] public bool ShowUnsavedIndicator { get; set; }
     [Parameter] public bool HasUnsavedChanges { get; set; }
     
-    // Behavior Configuration
     [Parameter] public bool CloseOnBackdrop { get; set; } = true;
     [Parameter] public bool CloseOnEscape { get; set; } = true;
+    [Parameter] public bool DisableBackdrop { get; set; } = false;
     
-    // Event Callbacks
     [Parameter] public EventCallback OnClose { get; set; }
     [Parameter] public EventCallback OnCancel { get; set; }
     [Parameter] public EventCallback OnPrimaryAction { get; set; }
-    [Parameter] public RenderFragment ChildContent { get; set; }
     
-    private async Task HandleBackdropClick()
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (CloseOnBackdrop)
-            await HandleClose();
+        if (!IsInsideModalProvider())
+        {
+            if (firstRender)
+            {
+                dotNetRef = DotNetObjectReference.Create(this);
+            }
+            
+            if (Visible && !_jsModalRegistered)
+            {
+                await RegisterWithJS();
+            }
+            else if (!Visible && _jsModalRegistered)
+            {
+                await UnregisterFromJS();
+            }
+        }
     }
     
     private async Task HandleClose()
     {
         Visible = false;
+        if (_jsModalRegistered)
+        {
+            await UnregisterFromJS();
+        }
         await VisibleChanged.InvokeAsync(false);
         await OnClose.InvokeAsync();
     }
@@ -172,12 +200,94 @@
         await OnPrimaryAction.InvokeAsync();
     }
     
+    private async Task HandleBackdropClick()
+    {
+        if (CloseOnBackdrop)
+        {
+            await HandleClose();
+        }
+    }
+    
+    private string GetModalId() => !string.IsNullOrEmpty(ModalId) ? ModalId : modalId;
+    
     private string GetSizeClass() => Size switch
     {
         SizeType.Small => "modal-content-small",
         SizeType.Large => "modal-content-large",
         SizeType.ExtraLarge or SizeType.XLarge => "modal-content-xlarge",
         SizeType.Wide => "modal-content-wide",
-        _ => "" // default size (medium)
+        _ => ""
     };
+    
+    [JSInvokable]
+    public async Task OnModalClosedFromJS()
+    {
+        Visible = false;
+        await VisibleChanged.InvokeAsync(false);
+        StateHasChanged();
+    }
+    
+    private bool IsInsideModalProvider()
+    {
+        return ModalContext != null;
+    }
+    
+    private async Task RegisterWithJS()
+    {
+        var modalId = GetModalId();
+        var contentSelector = $"[data-modal-id='{modalId}']";
+        
+        await Task.Yield();
+        
+        object modalConfig;
+        
+        if (!IsInsideModalProvider())
+        {
+            dotNetRef = DotNetObjectReference.Create(this);
+            modalConfig = new
+            {
+                closeOnBackdrop = CloseOnBackdrop && !DisableBackdrop,
+                closeOnEscape = CloseOnEscape,
+                backdrop = !DisableBackdrop,
+                blur = 8,
+                className = "modal-backdrop-dark",
+                modalId = modalId,
+                dotNetRef = dotNetRef
+            };
+        }
+        else
+        {
+            modalConfig = new
+            {
+                closeOnBackdrop = CloseOnBackdrop && !DisableBackdrop,
+                closeOnEscape = CloseOnEscape,
+                backdrop = !DisableBackdrop,
+                blur = 8,
+                className = "modal-backdrop-dark"
+            };
+        }
+        
+        await JSInterop.TryInvokeVoidAsync("RRBlazor.Modal.show", contentSelector, modalConfig);
+        _jsModalId = modalId; 
+        _jsModalRegistered = true;
+    }
+    
+    private async Task UnregisterFromJS()
+    {
+        if (!string.IsNullOrEmpty(_jsModalId))
+        {
+            await JSInterop.TryInvokeVoidAsync("RRBlazor.Modal.hide", _jsModalId);
+            _jsModalId = null;
+        }
+        _jsModalRegistered = false;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_jsModalRegistered)
+        {
+            await UnregisterFromJS();
+        }
+        dotNetRef?.Dispose();
+    }
 }

@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Components;
 using RR.Blazor.Enums;
 using RR.Blazor.Templates.Avatar;
-using RR.Blazor.Templates.Badge;
+using RR.Blazor.Templates.Chip;
 using RR.Blazor.Templates.Currency;
 using RR.Blazor.Templates.Progress;
 using RR.Blazor.Templates.Rating;
@@ -16,20 +16,34 @@ namespace RR.Blazor.Templates;
 /// </summary>
 public static class RTemplates
 {
-    #region Badge Templates - Delegated to Badge folder structure
+    #region Chip Templates
     
     /// <summary>
-    /// Creates a simple badge template with fluent API
-    /// Delegates to BadgeRenderer for actual rendering
+    /// Creates a chip template with fluent API
+    /// Delegates to ChipRenderer for actual rendering
     /// </summary>
-    public static RenderFragment<T> Badge<T>(
+    public static RenderFragment<T> Chip<T>(
         Func<T, string> textSelector,
         Func<T, VariantType> variantSelector = null,
         Func<T, string> iconSelector = null,
+        ChipStyle style = ChipStyle.Chip,
         bool clickable = false,
-        EventCallback<T> onClick = default) where T : class
+        bool closeable = false,
+        EventCallback<T> onClick = default,
+        EventCallback<T> onClose = default) where T : class
     {
-        return TemplateRegistry.Badge(textSelector, variantSelector, iconSelector, clickable, onClick);
+        return TemplateRegistry.Chip(textSelector, variantSelector, iconSelector, style, clickable, closeable, onClick, onClose);
+    }
+    
+    /// <summary>
+    /// Creates a filter chip template
+    /// </summary>
+    public static RenderFragment<T> FilterChip<T>(
+        Func<T, string> textSelector,
+        Func<T, bool> selectedSelector = null,
+        EventCallback<T> onToggle = default) where T : class
+    {
+        return TemplateRegistry.FilterChip(textSelector, selectedSelector, onToggle);
     }
     
     #endregion
@@ -224,13 +238,6 @@ public static class RTemplates
     
     #region Template Support Methods - for backward compatibility with TemplateModels
     
-    /// <summary>
-    /// Renders a BadgeTemplate instance - used by template models
-    /// </summary>
-    public static RenderFragment BadgeTemplate<T>(BadgeTemplate<T> template, T item) where T : class
-    {
-        return TemplateRegistry.Badge(template)(item);
-    }
     
     /// <summary>
     /// Renders a CurrencyTemplate instance - used by template models
@@ -340,10 +347,11 @@ public static class RTemplates
     {
         return builder =>
         {
-            builder.OpenComponent<RR.Blazor.Components.RBadge>(0);
-            builder.AddAttribute(1, "Text", $"{count} filter{(count != 1 ? "s" : "")}");
-            builder.AddAttribute(2, "Variant", variant);
-            builder.AddAttribute(3, "Size", size);
+            builder.OpenComponent<RR.Blazor.Components.RChip>(0);
+            builder.AddAttribute(1, "StyleVariant", ChipStyle.Badge);
+            builder.AddAttribute(2, "Text", $"{count} filter{(count != 1 ? "s" : "")}");
+            builder.AddAttribute(3, "Variant", variant);
+            builder.AddAttribute(4, "Size", size);
             builder.CloseComponent();
         };
     }

@@ -142,21 +142,6 @@ class ModalEventCoordinator {
 const modalEventCoordinator = new ModalEventCoordinator();
 
 export default modalEventCoordinator;
-export function requestModalPortal(modalId, config) {
-    return modalEventCoordinator.requestPortal(modalId, config);
-}
-
-export function destroyModalPortal(modalId) {
-    return modalEventCoordinator.destroyPortal(modalId);
-}
-
-export function requestModalBackdrop(modalId, config) {
-    return modalEventCoordinator.requestBackdrop(modalId, config);
-}
-
-export function destroyModalBackdrop(modalId) {
-    return modalEventCoordinator.destroyBackdrop(modalId);
-}
 
 export function forceCleanupAllModals() {
     return modalEventCoordinator.forceCleanupAll();

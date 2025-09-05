@@ -2,37 +2,30 @@
 class ScrollLockManager {
     constructor() {
         this.lockCount = 0;
-        this.originalBodyStyles = {};
-        this.isLocked = false;
-        this.scrollbarWidth = null;
-    }
-    
-    getScrollbarWidth() {
-        if (this.scrollbarWidth !== null) return this.scrollbarWidth;
-        
-        this.scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
-        return this.scrollbarWidth;
+        this.scrollPosition = 0;
     }
     
     lock() {
         this.lockCount++;
         
-        if (this.lockCount === 1 && !this.isLocked) {
-            this.performLock();
+        if (this.lockCount === 1) {
+            this.scrollPosition = window.pageYOffset;
+            document.body.style.top = `-${this.scrollPosition}px`;
+            document.body.classList.add('modal-open');
         }
         
         return this.lockCount;
     }
     
     unlock() {
-        if (this.lockCount === 0) {
-            throw new Error('Cannot unlock - no active locks');
-        }
+        if (this.lockCount === 0) return 0;
         
         this.lockCount--;
         
-        if (this.lockCount === 0 && this.isLocked) {
-            this.performUnlock();
+        if (this.lockCount === 0) {
+            document.body.classList.remove('modal-open');
+            document.body.style.top = '';
+            window.scrollTo(0, this.scrollPosition);
         }
         
         return this.lockCount;
@@ -40,50 +33,20 @@ class ScrollLockManager {
     
     forceUnlock() {
         this.lockCount = 0;
-        if (this.isLocked) {
-            this.performUnlock();
-        }
-    }
-    
-    performLock() {
-        this.originalBodyStyles = {
-            overflow: document.body.style.overflow,
-            paddingRight: document.body.style.paddingRight
-        };
-        
-        const scrollbarWidth = this.getScrollbarWidth();
-        
-        document.body.classList.add('modal-open');
-        document.body.style.overflow = 'hidden';
-        
-        if (scrollbarWidth > 0) {
-            document.body.style.setProperty('--scrollbar-width', `${scrollbarWidth}px`);
-            document.body.style.paddingRight = `${scrollbarWidth}px`;
-        }
-        
-        this.isLocked = true;
-    }
-    
-    performUnlock() {
         document.body.classList.remove('modal-open');
-        document.body.style.overflow = this.originalBodyStyles.overflow || '';
-        document.body.style.paddingRight = this.originalBodyStyles.paddingRight || '';
-        document.body.style.removeProperty('--scrollbar-width');
-        
-        this.isLocked = false;
-        this.originalBodyStyles = {};
+        document.body.style.top = '';
+        window.scrollTo(0, this.scrollPosition);
     }
     
     getStatus() {
         return {
-            locked: this.isLocked,
-            lockCount: this.lockCount,
-            scrollbarWidth: this.scrollbarWidth
+            locked: this.lockCount > 0,
+            lockCount: this.lockCount
         };
     }
     
     isScrollLocked() {
-        return this.isLocked;
+        return this.lockCount > 0;
     }
     
     getLockCount() {

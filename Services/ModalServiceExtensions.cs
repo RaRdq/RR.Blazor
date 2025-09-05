@@ -2,10 +2,6 @@ using Microsoft.AspNetCore.Components;
 using RR.Blazor.Components.Feedback;
 using RR.Blazor.Enums;
 using RR.Blazor.Models;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace RR.Blazor.Services;
 
@@ -22,164 +18,69 @@ public static class ModalServiceExtensions
         _ => "help_outline"
     };
     
-    public static async Task<bool> ShowConfirmationAsync<TComponent>(
+    /// <summary>
+    /// Shows a confirmation dialog with customizable buttons and styling.
+    /// Returns true if user confirms, false if cancelled.
+    /// </summary>
+    public static async Task<bool> ShowConfirmationAsync(
         this IModalService modalService,
         string message,
         string title = "Confirm",
-        string confirmText = "Confirm",
-        string cancelText = "Cancel",
-        VariantType variant = VariantType.Default) where TComponent : ComponentBase
-    {
-        var parameters = new Dictionary<string, object>
-        {
-            { "Message", message },
-            { "Variant", variant },
-            { "IsDestructive", variant == VariantType.Error }
-        };
-
-        var options = new ModalOptions<bool>
-        {
-            Title = title,
-            Icon = GetIconForVariant(variant),
-            Size = SizeType.Small,
-            Variant = variant,
-            CloseOnBackdrop = false,
-            CloseOnEscape = true,
-            Buttons = string.IsNullOrEmpty(cancelText) 
-                ? new List<ModalButton>
-                {
-                    variant == VariantType.Error
-                        ? ModalButton.Error(confirmText)
-                        : ModalButton.Primary(confirmText)
-                }
-                : new List<ModalButton>
-                {
-                    ModalButton.Cancel(cancelText),
-                    variant == VariantType.Error
-                        ? ModalButton.Error(confirmText)
-                        : ModalButton.Primary(confirmText)
-                }
-        };
-
-        var result = await modalService.ShowAsync(typeof(TComponent), parameters, options);
-        return result.IsConfirmed;
-    }
-    
-    // Overload for backward compatibility that uses default confirmation modal
-    public static Task<bool> ShowConfirmationAsync(
-        this IModalService modalService,
-        string message,
-        string title = "Confirm",
-        string confirmText = "Confirm",
+        string confirmText = "Yes",
         string cancelText = "Cancel",
         VariantType variant = VariantType.Default)
     {
-        // Use RConfirmationModal as default but via generic compile-time resolution
-        return modalService.ShowConfirmationAsync<RConfirmationModal>(
-            message, title, confirmText, cancelText, variant);
-    }
+        Dictionary<string, object> parameters = new()
+        {
+            ["Message"] = message,
+            ["Title"] = title,
+            ["Variant"] = variant,
+            ["IsDestructive"] = variant == VariantType.Error,
+            ["Icon"] = GetIconForVariant(variant),
+            ["Size"] = SizeType.Small,
+            ["CloseOnBackdrop"] = variant != VariantType.Error,
+            ["CloseOnEscape"] = true,
+            ["ShowCloseButton"] = true,
+            ["ShowHeader"] = true
+        };
 
+        List<ModalButton> buttons = string.IsNullOrEmpty(cancelText)
+            ? [variant == VariantType.Error ? ModalButton.Error(confirmText) : ModalButton.Primary(confirmText)]
+            : [ModalButton.Cancel(cancelText), variant == VariantType.Error ? ModalButton.Error(confirmText) : ModalButton.Primary(confirmText)];
+
+        ModalOptions<bool> options = new()
+        {
+            ComponentType = typeof(RConfirmationModal),
+            Parameters = parameters,
+            Buttons = buttons,
+            CloseOnBackdrop = variant != VariantType.Error,
+            CloseOnEscape = true
+        };
+
+        var result = await modalService.ShowAsync(options);
+        return result.IsConfirmed;
+    }
+    
     public static Task<bool> ShowConfirmationAsync(
         this IModalService modalService,
-        ConfirmationOptions confirmOptions)
-    {
-        return modalService.ShowConfirmationAsync(
+        ConfirmationOptions confirmOptions) => modalService.ShowConfirmationAsync(
             confirmOptions.Message,
             confirmOptions.Title,
             confirmOptions.ConfirmText ?? "Confirm",
             confirmOptions.CancelText ?? "Cancel",
             confirmOptions.IsDestructive ? VariantType.Error : confirmOptions.Variant);
-    }
 
-    public static async Task<bool> ShowInfoAsync(
-        this IModalService modalService,
-        string message,
-        string title = "Information")
-    {
-        var parameters = new Dictionary<string, object>
-        {
-            { "Message", message },
-            { "Variant", VariantType.Info },
-            { "IsDestructive", false }
-        };
+    public static Task<bool> ShowInfoAsync(this IModalService modalService, string message, string title = "Information")
+        => modalService.ShowConfirmationAsync(message, title, "OK", "", VariantType.Info);
 
-        var options = new ModalOptions<bool>
-        {
-            Title = title,
-            Icon = "info", // Set the info icon
-            Size = SizeType.Small,
-            Variant = VariantType.Info,
-            CloseOnBackdrop = true,
-            CloseOnEscape = true,
-            Buttons = new List<ModalButton>
-            {
-                ModalButton.Primary("OK")
-            }
-        };
+    public static Task<bool> ShowWarningAsync(this IModalService modalService, string message, string title = "Warning")
+        => modalService.ShowConfirmationAsync(message, title, "OK", "", VariantType.Warning);
+    
+    public static Task<bool> ShowErrorAsync(this IModalService modalService, string message, string title = "Error")
+        => modalService.ShowConfirmationAsync(message, title, "OK", "", VariantType.Error);
 
-        var result = await modalService.ShowAsync(typeof(RConfirmationModal), parameters, options);
-        return result.IsConfirmed;
-    }
-
-    public static async Task<bool> ShowWarningAsync(
-        this IModalService modalService,
-        string message,
-        string title = "Warning")
-    {
-        var parameters = new Dictionary<string, object>
-        {
-            { "Message", message },
-            { "Variant", VariantType.Warning },
-            { "IsDestructive", false }
-        };
-
-        var options = new ModalOptions<bool>
-        {
-            Title = title,
-            Icon = "warning", // Set the warning icon
-            Size = SizeType.Small,
-            Variant = VariantType.Warning,
-            CloseOnBackdrop = true,
-            CloseOnEscape = true,
-            Buttons = new List<ModalButton>
-            {
-                ModalButton.Primary("OK")
-            }
-        };
-
-        var result = await modalService.ShowAsync(typeof(RConfirmationModal), parameters, options);
-        return result.IsConfirmed;
-    }
-
-    public static Task<bool> ShowErrorAsync(
-        this IModalService modalService,
-        string message,
-        string title = "Error")
-    {
-        return modalService.ShowConfirmationAsync(message, title, "OK", "", VariantType.Error);
-    }
-
-    public static Task<bool> ShowSuccessAsync(
-        this IModalService modalService,
-        string message,
-        string title = "Success")
-    {
-        return modalService.ShowConfirmationAsync(message, title, "OK", "", VariantType.Success);
-    }
-
-    public static Task<bool> ConfirmAsync(
-        this IModalService modalService,
-        string message,
-        string title = "Confirm",
-        bool isDestructive = false)
-    {
-        return modalService.ShowConfirmationAsync(
-            message, 
-            title, 
-            "Confirm", 
-            "Cancel", 
-            isDestructive ? VariantType.Error : VariantType.Default);
-    }
+    public static Task<bool> ShowSuccessAsync(this IModalService modalService, string message, string title = "Success")
+        => modalService.ShowConfirmationAsync(message, title, "OK", "", VariantType.Success);
 
     public static async Task<ModalResult<T>> ShowFormAsync<T, TComponent>(
         this IModalService modalService,
@@ -189,29 +90,24 @@ public static class ModalServiceExtensions
         Func<T, Task<bool>> onValidate = null,
         Func<T, Task<bool>> onSave = null) where TComponent : ComponentBase
     {
-        var parameters = new Dictionary<string, object>
+        Dictionary<string, object> parameters = new()
         {
-            { "InitialData", initialData },
-            { "OnValidate", onValidate },
-            { "OnSave", onSave }
+            ["InitialData"] = initialData,
+            ["OnValidate"] = onValidate,
+            ["OnSave"] = onSave
         };
 
-        var options = new ModalOptions<T>
+        ModalOptions<T> options = new()
         {
             Title = title,
             Size = size,
             Parameters = parameters,
-            Buttons = new List<ModalButton>
-            {
-                ModalButton.Cancel("Cancel"),
-                ModalButton.Primary("Save")
-            }
+            Buttons = [ModalButton.Cancel("Cancel"), ModalButton.Primary("Save")]
         };
 
         return await modalService.ShowAsync(typeof(TComponent), parameters, options);
     }
     
-    // Overload that allows passing any form component type dynamically
     public static async Task<ModalResult<T>> ShowFormAsync<T>(
         this IModalService modalService,
         string title,
@@ -220,30 +116,24 @@ public static class ModalServiceExtensions
         Func<T, Task<bool>> onValidate = null,
         Func<T, Task<bool>> onSave = null)
     {
-        // Just pass parameters - let modal provider handle the content
-        var parameters = new Dictionary<string, object>
+        Dictionary<string, object> parameters = new()
         {
-            { "Data", initialData },
-            { "OnValidate", onValidate },
-            { "OnSave", onSave }
+            ["Data"] = initialData,
+            ["OnValidate"] = onValidate,
+            ["OnSave"] = onSave
         };
 
-        var options = new ModalOptions<T>
+        ModalOptions<T> options = new()
         {
             Title = title,
             Size = size,
             Parameters = parameters,
             Data = initialData,
-            Buttons = new List<ModalButton>
-            {
+            Buttons =
+            [
                 ModalButton.Cancel("Cancel"),
-                ModalButton.Primary("Save", async data =>
-                {
-                    if (onValidate != null)
-                        return await onValidate((T)data);
-                    return true;
-                })
-            }
+                ModalButton.Primary("Save", async data => onValidate != null ? await onValidate((T)data) : true)
+            ]
         };
 
         return await modalService.ShowAsync(options);
@@ -253,37 +143,29 @@ public static class ModalServiceExtensions
         this IModalService modalService,
         FormModalOptions<T> options)
     {
-        var modalOptions = new ModalOptions<T>
+        ModalOptions<T> modalOptions = new()
         {
             Title = options.Title,
             Subtitle = options.Subtitle,
             Size = options.Size,
             ComponentType = options.FormComponentType ?? typeof(RFormModal<>).MakeGenericType(typeof(T)),
-            Parameters = new Dictionary<string, object>
+            Parameters = new()
             {
-                { "InitialData", options.InitialData },
-                { "OnValidate", options.OnValidate },
-                { "OnSave", options.OnSave }
+                ["InitialData"] = options.InitialData,
+                ["OnValidate"] = options.OnValidate,
+                ["OnSave"] = options.OnSave
             },
             Data = options.InitialData,
-            Buttons = new List<ModalButton>
-            {
+            Buttons =
+            [
                 ModalButton.Cancel(options.CancelButtonText ?? "Cancel"),
-                ModalButton.Primary(options.SaveButtonText ?? "Save", async data =>
-                {
-                    if (options.OnValidate != null)
-                    {
-                        return await options.OnValidate((T)data);
-                    }
-                    return true;
-                })
-            }
+                ModalButton.Primary(options.SaveButtonText ?? "Save",
+                    async data => options.OnValidate != null ? await options.OnValidate((T)data) : true)
+            ]
         };
 
-        foreach (var param in options.FormParameters)
-        {
-            modalOptions.Parameters[param.Key] = param.Value;
-        }
+        foreach (var (key, value) in options.FormParameters)
+            modalOptions.Parameters[key] = value;
 
         return await modalService.ShowAsync(modalOptions);
     }
@@ -294,36 +176,32 @@ public static class ModalServiceExtensions
         string title = "",
         SizeType size = SizeType.Large) where TComponent : ComponentBase
     {
-        var parameters = new Dictionary<string, object>
-        {
-            { "Data", data }
-        };
+        Dictionary<string, object> parameters = new() { ["Data"] = data };
 
-        var options = new ModalOptions<T>
+        ModalOptions<T> options = new()
         {
             Title = string.IsNullOrEmpty(title) ? $"{typeof(T).Name} Details" : title,
             Size = size,
             Data = data,
-            Buttons = new List<ModalButton> { ModalButton.Primary("Close") }
+            Buttons = [ModalButton.Primary("Close")]
         };
 
         await modalService.ShowAsync(typeof(TComponent), parameters, options);
     }
     
-    // Overload for displaying data without specific component
     public static async Task ShowDetailAsync<T>(
         this IModalService modalService,
         T data,
         string title = "",
         SizeType size = SizeType.Large)
     {
-        var options = new ModalOptions<T>
+        ModalOptions<T> options = new()
         {
             Title = string.IsNullOrEmpty(title) ? $"{typeof(T).Name} Details" : title,
             Size = size,
             Data = data,
-            Parameters = new Dictionary<string, object> { { "Data", data } },
-            Buttons = new List<ModalButton> { ModalButton.Primary("Close") }
+            Parameters = new() { ["Data"] = data },
+            Buttons = [ModalButton.Primary("Close")]
         };
 
         await modalService.ShowAsync(options);
@@ -335,35 +213,34 @@ public static class ModalServiceExtensions
         string title = "Preview",
         string contentType = "text/plain") where TComponent : ComponentBase
     {
-        var parameters = new Dictionary<string, object>
+        Dictionary<string, object> parameters = new()
         {
-            { "Content", content },
-            { "ContentType", contentType }
+            ["Content"] = content,
+            ["ContentType"] = contentType
         };
 
-        var options = new ModalOptions
+        ModalOptions options = new()
         {
             Title = title,
             Size = SizeType.Large,
-            Buttons = new List<ModalButton> { ModalButton.Primary("Close") }
+            Buttons = [ModalButton.Primary("Close")]
         };
 
         await modalService.ShowAsync(typeof(TComponent), parameters, options);
     }
     
-    // Overload for preview without specific component
     public static async Task ShowPreviewAsync(
         this IModalService modalService,
         string content,
         string title = "Preview",
         string contentType = "text/plain")
     {
-        var options = new ModalOptions
+        ModalOptions options = new()
         {
             Title = title,
             Size = SizeType.Large,
             Data = new { Content = content, ContentType = contentType },
-            Buttons = new List<ModalButton> { ModalButton.Primary("Close") }
+            Buttons = [ModalButton.Primary("Close")]
         };
 
         await modalService.ShowAsync(options);
@@ -375,51 +252,42 @@ public static class ModalServiceExtensions
         string title = "Select Item",
         Func<T, string> displaySelector = null) where TComponent : ComponentBase
     {
-        var parameters = new Dictionary<string, object>
+        Dictionary<string, object> parameters = new()
         {
-            { "Items", items },
-            { "DisplaySelector", displaySelector ?? (item => item?.ToString() ?? "") },
-            { "AllowMultiple", false }
+            ["Items"] = items,
+            ["DisplaySelector"] = displaySelector ?? (item => item?.ToString() ?? ""),
+            ["AllowMultiple"] = false
         };
 
-        var options = new ModalOptions<T>
+        ModalOptions<T> options = new()
         {
             Title = title,
             Size = SizeType.Medium,
-            Buttons = new List<ModalButton>
-            {
-                ModalButton.Cancel(),
-                ModalButton.Primary("Select")
-            }
+            Buttons = [ModalButton.Cancel(), ModalButton.Primary("Select")]
         };
 
         var result = await modalService.ShowAsync<T>(typeof(TComponent), parameters, options);
         return result.IsConfirmed ? result.Data : default;
     }
     
-    // Overload without specific component
     public static async Task<T> ShowSelectAsync<T>(
         this IModalService modalService,
         IEnumerable<T> items,
         string title = "Select Item",
         Func<T, string> displaySelector = null)
     {
-        var options = new ModalOptions<T>
+        ModalOptions<T> options = new()
         {
             Title = title,
             Size = SizeType.Medium,
             Data = items.FirstOrDefault(),
-            Parameters = new Dictionary<string, object>
+            Parameters = new()
             {
-                { "Items", items },
-                { "DisplaySelector", displaySelector ?? (item => item?.ToString() ?? "") },
-                { "AllowMultiple", false }
+                ["Items"] = items,
+                ["DisplaySelector"] = displaySelector ?? (item => item?.ToString() ?? ""),
+                ["AllowMultiple"] = false
             },
-            Buttons = new List<ModalButton>
-            {
-                ModalButton.Cancel(),
-                ModalButton.Primary("Select")
-            }
+            Buttons = [ModalButton.Cancel(), ModalButton.Primary("Select")]
         };
 
         var result = await modalService.ShowAsync(options);
@@ -432,51 +300,42 @@ public static class ModalServiceExtensions
         string title = "Select Items",
         Func<T, string> displaySelector = null) where TComponent : ComponentBase
     {
-        var parameters = new Dictionary<string, object>
+        Dictionary<string, object> parameters = new()
         {
-            { "Items", items },
-            { "DisplaySelector", displaySelector ?? (item => item?.ToString() ?? "") },
-            { "AllowMultiple", true }
+            ["Items"] = items,
+            ["DisplaySelector"] = displaySelector ?? (item => item?.ToString() ?? ""),
+            ["AllowMultiple"] = true
         };
 
-        var options = new ModalOptions<IEnumerable<T>>
+        ModalOptions<IEnumerable<T>> options = new()
         {
             Title = title,
             Size = SizeType.Medium,
-            Buttons = new List<ModalButton>
-            {
-                ModalButton.Cancel(),
-                ModalButton.Primary("Select")
-            }
+            Buttons = [ModalButton.Cancel(), ModalButton.Primary("Select")]
         };
 
         var result = await modalService.ShowAsync<IEnumerable<T>>(typeof(TComponent), parameters, options);
         return result.IsConfirmed ? result.Data : Enumerable.Empty<T>();
     }
     
-    // Overload without specific component
     public static async Task<IEnumerable<T>> ShowMultiSelectAsync<T>(
         this IModalService modalService,
         IEnumerable<T> items,
         string title = "Select Items",
         Func<T, string> displaySelector = null)
     {
-        var options = new ModalOptions<IEnumerable<T>>
+        ModalOptions<IEnumerable<T>> options = new()
         {
             Title = title,
             Size = SizeType.Medium,
             Data = items,
-            Parameters = new Dictionary<string, object>
+            Parameters = new()
             {
-                { "Items", items },
-                { "DisplaySelector", displaySelector ?? (item => item?.ToString() ?? "") },
-                { "AllowMultiple", true }
+                ["Items"] = items,
+                ["DisplaySelector"] = displaySelector ?? (item => item?.ToString() ?? ""),
+                ["AllowMultiple"] = true
             },
-            Buttons = new List<ModalButton>
-            {
-                ModalButton.Cancel(),
-                ModalButton.Primary("Select")
-            }
+            Buttons = [ModalButton.Cancel(), ModalButton.Primary("Select")]
         };
 
         var result = await modalService.ShowAsync(options);
@@ -492,15 +351,13 @@ public static class ModalServiceExtensions
         var paramDict = parameters as Dictionary<string, object>;
         if (paramDict == null && parameters != null)
         {
-            paramDict = new Dictionary<string, object>();
+            paramDict = [];
             var type = parameters.GetType();
             foreach (var prop in type.GetProperties())
-            {
                 paramDict[prop.Name] = prop.GetValue(parameters);
-            }
         }
 
-        var typedOptions = new ModalOptions<T>
+        ModalOptions<T> typedOptions = new()
         {
             Title = options?.Title,
             Subtitle = options?.Subtitle,
@@ -508,10 +365,73 @@ public static class ModalServiceExtensions
             Size = options?.Size ?? SizeType.Medium,
             Variant = options?.Variant ?? VariantType.Default,
             ComponentType = componentType,
-            Parameters = paramDict ?? new Dictionary<string, object>()
+            Parameters = paramDict ?? []
         };
 
         return await modalService.ShowAsync(typedOptions);
     }
+    
+    /// <summary>
+    /// Shows a modal by wrapping raw component content in RModal automatically.
+    /// Use this when your component does NOT contain RModal inside it.
+    /// </summary>
+    /// <typeparam name="T">The type of data returned by the modal</typeparam>
+    /// <typeparam name="TComponent">The component type to display (must NOT contain RModal)</typeparam>
+    /// <param name="modalService">The modal service instance</param>
+    /// <param name="title">Optional title for the modal. If null, uses component type name</param>
+    /// <param name="parameters">Parameters to pass to the component</param>
+    /// <param name="size">Size of the modal (Small, Medium, Large, XLarge, Wide)</param>
+    /// <param name="buttons">Modal buttons. If null, adds a single OK button</param>
+    /// <returns>Modal result containing the data and result type</returns>
+    /// <remarks>
+    /// This method automatically wraps the component in RModal. 
+    /// Use ShowAsync() for components that already contain RModal internally.
+    /// </remarks>
+    public static async Task<ModalResult<T>> ShowRawAsync<T, TComponent>(
+        this IModalService modalService,
+        string title = null,
+        Dictionary<string, object> parameters = null,
+        SizeType size = SizeType.Medium,
+        List<ModalButton> buttons = null) where TComponent : ComponentBase
+    {
+        ModalOptions<T> options = new()
+        {
+            Title = title ?? typeof(TComponent).Name,
+            Size = size,
+            Buttons = buttons ?? [ModalButton.Primary("OK")]
+        };
+
+        return await modalService.ShowRawAsync<T>(typeof(TComponent), parameters, options);
+    }
+    
+    /// <summary>
+    /// Shows a modal without expecting a return value by wrapping raw component content in RModal.
+    /// Use this for simple dialogs that don't return data.
+    /// </summary>
+    /// <typeparam name="TComponent">The component type to display (must NOT contain RModal)</typeparam>
+    /// <param name="modalService">The modal service instance</param>
+    /// <param name="title">Optional title for the modal. If null, uses component type name</param>
+    /// <param name="parameters">Parameters to pass to the component</param>
+    /// <param name="size">Size of the modal (Small, Medium, Large, XLarge, Wide)</param>
+    /// <remarks>
+    /// This method automatically wraps the component in RModal. 
+    /// Use ShowAsync() for components that already contain RModal internally.
+    /// </remarks>
+    public static async Task ShowRawAsync<TComponent>(
+        this IModalService modalService,
+        string title = null,
+        Dictionary<string, object> parameters = null,
+        SizeType size = SizeType.Medium) where TComponent : ComponentBase
+    {
+        ModalOptions<object> options = new()
+        {
+            Title = title ?? typeof(TComponent).Name,
+            Size = size,
+            Buttons = [ModalButton.Primary("Close")]
+        };
+
+        await modalService.ShowRawAsync<object>(typeof(TComponent), parameters, options);
+    }
+    
 
 }

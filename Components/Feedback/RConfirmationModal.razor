@@ -1,44 +1,100 @@
-@* RConfirmationModal - Generic confirmation modal component *@
-@* This component is rendered INSIDE RModal by ModalProvider - do not nest RModal *@
+@* RConfirmationModal - Confirmation modal WITH RModal wrapper built-in *@
+@using RR.Blazor.Components.Base
+@using RR.Blazor.Components.Core
+@using RR.Blazor.Enums
+@inherits RComponentBase
 
-<div class="d-flex flex-column align-center text-center gap-4">
-    <div class="d-flex align-center justify-center square-12 min-w-12 min-h-12 rounded-full flex-shrink-0 @GetIconBackgroundClass()">
-        <i class="material-symbols-rounded @GetIconColorClass()">@Icon</i>
-    </div>
-    <div class="d-flex flex-column gap-2">
-        @if (ChildContent != null)
-        {
-            @ChildContent
-        }
-        else
-        {
-            <p class="text-center text-base">@Message</p>
-        }
-    </div>
-</div>
+<RModal Visible="true"
+        Title="@Title"
+        Icon="@Icon"
+        Size="@Size"
+        Variant="@Variant"
+        CloseOnBackdrop="@CloseOnBackdrop"
+        CloseOnEscape="@CloseOnEscape"
+        ShowCloseButton="@ShowCloseButton"
+        ShowHeader="@ShowHeader"
+        ShowFooter="true"
+        OnClose="@HandleClose">
+    <ChildContent>
+        <div class="d-flex flex-column align-center text-center gap-4">
+            <div class="d-flex align-center justify-center square-12 min-w-12 min-h-12 rounded-full flex-shrink-0 @GetIconBackgroundClass()">
+                <i class="material-symbols-rounded @GetIconColorClass()">@Icon</i>
+            </div>
+            <div class="d-flex flex-column gap-2">
+                @if (ChildContent != null)
+                {
+                    @ChildContent
+                }
+                else
+                {
+                    <p class="text-center text-base">@Message</p>
+                }
+            </div>
+        </div>
+    </ChildContent>
+    <FooterContent>
+        <RActionGroup Alignment="ActionGroupAlignment.End">
+            <RButton Text="@CancelText" 
+                     Variant="VariantType.Secondary" 
+                     @onclick="@HandleCancel"
+                     data-testid="modal-cancel" />
+            <RButton Text="@ConfirmText" 
+                     Variant="@Variant" 
+                     Icon="@GetConfirmIcon()"
+                     @onclick="@HandleConfirm"
+                     data-testid="modal-confirm" />
+        </RActionGroup>
+    </FooterContent>
+</RModal>
 
 @code {
     [Parameter] public string Message { get; set; } = "Are you sure you want to proceed?";
+    [Parameter] public string ConfirmText { get; set; } = "Confirm";
+    [Parameter] public string CancelText { get; set; } = "Cancel";
     [Parameter] public string Icon { get; set; } = "warning";
     [Parameter] public VariantType Variant { get; set; } = VariantType.Warning;
     [Parameter] public bool IsDestructive { get; set; }
-    [Parameter] public RenderFragment ChildContent { get; set; }
     [Parameter] public object Data { get; set; }
     [Parameter] public EventCallback<object> OnDataChanged { get; set; }
-    
-    // Legacy compatibility parameters (ignored but prevent errors)
-    [Parameter] public bool Visible { get; set; }
-    [Parameter] public string Title { get; set; } = "";
-    [Parameter] public string Header { get; set; } = "";
-    [Parameter] public string ConfirmText { get; set; } = "";
-    [Parameter] public string CancelText { get; set; } = "";
-    [Parameter] public bool Processing { get; set; }
     [Parameter] public EventCallback OnConfirm { get; set; }
     [Parameter] public EventCallback OnCancel { get; set; }
-    [Parameter] public SizeType Size { get; set; }
-    [Parameter] public string ConfirmIcon { get; set; } = "";
-    [Parameter] public bool ShowDetails { get; set; }
-    [Parameter] public Dictionary<string, object> DetailsDictionary { get; set; }
+    
+    // Modal parameters
+    [Parameter] public bool Visible { get; set; } = true;
+    [Parameter] public EventCallback<bool> VisibleChanged { get; set; }
+    [Parameter] public string Title { get; set; } = "Confirm";
+    [Parameter] public SizeType Size { get; set; } = SizeType.Small;
+    [Parameter] public bool CloseOnBackdrop { get; set; } = false;
+    [Parameter] public bool CloseOnEscape { get; set; } = true;
+    [Parameter] public bool ShowCloseButton { get; set; } = true;
+    [Parameter] public bool ShowHeader { get; set; } = true;
+    [Parameter] public EventCallback OnModalClosed { get; set; }
+    
+    private async Task HandleClose()
+    {
+        if (OnModalClosed.HasDelegate)
+        {
+            await OnModalClosed.InvokeAsync();
+        }
+    }
+    
+    private async Task HandleConfirm()
+    {
+        if (OnConfirm.HasDelegate)
+        {
+            await OnConfirm.InvokeAsync();
+        }
+        await HandleClose();
+    }
+    
+    private async Task HandleCancel()
+    {
+        if (OnCancel.HasDelegate)
+        {
+            await OnCancel.InvokeAsync();
+        }
+        await HandleClose();
+    }
 
     private string GetConfirmButtonClass() => Variant switch
     {
