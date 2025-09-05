@@ -101,34 +101,48 @@
             <div class="app-header-right">
                 @if (ShowSearch)
                 {
-                    <div class="app-search-container" data-search-container>
-                        <div class="search-icon-container @(searchExpanded ? "search-expanded" : "")">
-                            @if (!searchExpanded && SearchCollapsible)
-                            {
-                                <RButton Icon="search" 
-                                         Variant="VariantType.Primary"
-                                         Mode="ButtonMode.Outline"
-                                         Size="SizeType.Small"
-                                         OnClick="@ExpandSearch"
-                                         AriaLabel="Open search"
-                                         Class="search-toggle-button" />
-                            }
-                            
-                            <div class="search-input-container">
-                                <RAutosuggestClean TItem="AppSearchResult" 
-                                                   SearchFunc="@SearchAppSearchResultsAsync"
-                                                   ItemTextSelector="@((AppSearchResult r) => r.Title)"
-                                                   ItemIconSelector="@((AppSearchResult r) => r.Icon)"
+                    <div class="relative d-flex align-center gap-2 transition-all @(SearchCollapsible && searchExpanded ? "search-expanded" : "")" data-search-container>
+                        @if (!SearchCollapsible || searchExpanded)
+                        {
+                            <div class="transition-all overflow-hidden @(SearchCollapsible ? (searchExpanded ? "w-64 md:w-56 sm:w-48 visible" : "w-0 invisible") : "w-64 md:w-56 sm:w-48")">
+                                <RAutosuggestGeneric TItem="AppSearchResult" 
+                                                   SearchFunc="@HandleSearchAsync"
+                                                   ItemTextSelector="@(result => result.Title)"
+                                                   ItemIconSelector="@(result => result.Icon)"
                                                    Placeholder="Search..."
-                                                   Size="SizeType.Small"
-                                                   Icon="search"
-                                                   ClearOnSelect="false"
-                                                   MinSearchLength="3"
-                                                   DebounceDelay="500"
-                                                   ValueChanged="@HandleSearchItemSelected"
-                                                   Class="search-autosuggest" />
+                                                   StartIcon="search"
+                                                   MinSearchLength="1"
+                                                   DebounceDelay="300"
+                                                   MaxSuggestions="8"
+                                                   ShowLoading="true"
+                                                   ShowDropdownIcon="false"
+                                                   OnItemSelected="@HandleSearchItemSelected"
+                                                   Class="w-full search-autosuggest" 
+                                                   data-search-input />
                             </div>
-                        </div>
+                        }
+                        
+                        @if (SearchCollapsible && !searchExpanded)
+                        {
+                            <RButton Icon="search" 
+                                     Variant="VariantType.Primary"
+                                     Mode="ButtonMode.Outline"
+                                     Size="SizeType.Small"
+                                     OnClick="@ExpandSearch" 
+                                     AriaLabel="Open search" 
+                                     Class="touch-target search-toggle-button" />
+                        }
+                        
+                        @if (SearchCollapsible && searchExpanded)
+                        {
+                            <RButton Icon="close" 
+                                     Variant="VariantType.Secondary"
+                                     Mode="ButtonMode.Outline"
+                                     Size="SizeType.Small"
+                                     OnClick="@CollapseSearch" 
+                                     AriaLabel="Close search" 
+                                     Class="shrink-0 touch-target" />
+                        }
                     </div>
                 }
                 
@@ -396,6 +410,12 @@
     
     /// <summary>User menu clicked callback</summary>
     [Parameter] public EventCallback<AppUser> UserMenuClicked { get; set; }
+    
+    /// <summary>Event triggered when search query changes</summary>
+    [Parameter] public EventCallback<string> SearchChanged { get; set; }
+    
+    /// <summary>Custom search result template</summary>
+    [Parameter] public RenderFragment<AppSearchResult> SearchResultTemplate { get; set; }
 
     private bool IsMobile { get; set; } = false;
     private DotNetObjectReference<RAppShell> dotNetRef;
@@ -530,15 +550,12 @@
     }
     
 
-    private async Task<IEnumerable<AppSearchResult>> SearchAppSearchResultsAsync(string query, CancellationToken cancellationToken)
+    private async Task<IEnumerable<AppSearchResult>> HandleSearchAsync(string query, CancellationToken cancellationToken)
     {
+        if (string.IsNullOrWhiteSpace(query)) return Enumerable.Empty<AppSearchResult>();
+        
         try
         {
-            if (string.IsNullOrWhiteSpace(query) || query.Length < 3) 
-            {
-                return Enumerable.Empty<AppSearchResult>();
-            }
-            
             var results = await SearchService.SearchAsync(query, cancellationToken);
             return results ?? Enumerable.Empty<AppSearchResult>();
         }
@@ -546,49 +563,54 @@
         {
             return Enumerable.Empty<AppSearchResult>();
         }
-        catch
+        catch (Exception ex)
         {
+            Console.Error.WriteLine($"Search error: {ex.Message}");
             return Enumerable.Empty<AppSearchResult>();
         }
     }
 
+
     private async Task HandleSearchItemSelected(AppSearchResult result)
     {
-        if (result != null)
-        {
-            await SearchService.AddToRecentAsync(result);
-            if (!string.IsNullOrEmpty(result.Url))
-            {
-                NavigationManager.NavigateTo(result.Url);
-            }
-        }
-    }
-
-    private async Task ExpandSearch(MouseEventArgs args = null)
-    {
-        searchExpanded = true;
-        await Task.Yield();
+        if (result == null) return;
         
-        if (appShellModule != null)
+        await SearchService.AddToRecentAsync(result);
+        
+        // Close search
+        if (SearchCollapsible)
         {
-            try
-            {
-                await appShellModule.InvokeVoidAsync("expandSearch");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Warning: App shell JS expandSearch failed: {ex.Message}");
-            }
+            searchExpanded = false;
+            StateHasChanged();
+        }
+        
+        // Navigate
+        if (result.OnClick != null)
+        {
+            await result.OnClick();
+        }
+        else if (!string.IsNullOrEmpty(result.Url))
+        {
+            NavigationManager.NavigateTo(result.Url);
         }
     }
 
-    [JSInvokable]
-    public void OnSearchCollapsed()
+
+    private void ExpandSearch()
+    {
+        if (!searchExpanded)
+        {
+            searchExpanded = true;
+            StateHasChanged();
+        }
+    }
+
+    private void CollapseSearch()
     {
         if (searchExpanded)
         {
             searchExpanded = false;
-            // DO NOT call StateHasChanged() - let natural render cycle handle it
+            StateHasChanged();
         }
     }
 
@@ -696,6 +718,12 @@
     }
     
     
+    /// <summary>JavaScript callback for search collapse</summary>
+    [JSInvokable]
+    public void OnSearchCollapsed()
+    {
+        // Removed to prevent circular callbacks
+    }
     
     public async ValueTask DisposeAsync()
     {

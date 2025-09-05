@@ -141,6 +141,28 @@ foreach ($razorFile in $razorFiles) {
     }
 }
 
+# Helper function for Levenshtein distance
+function Get-LevenshteinDistance {
+    param([string]$String1, [string]$String2)
+    
+    if ($String1.Length -eq 0) { return $String2.Length }
+    if ($String2.Length -eq 0) { return $String1.Length }
+    
+    $matrix = New-Object 'int[,]' ($String1.Length + 1), ($String2.Length + 1)
+    
+    for ($i = 0; $i -le $String1.Length; $i++) { $matrix[$i, 0] = $i }
+    for ($j = 0; $j -le $String2.Length; $j++) { $matrix[0, $j] = $j }
+    
+    for ($i = 1; $i -le $String1.Length; $i++) {
+        for ($j = 1; $j -le $String2.Length; $j++) {
+            $cost = if ($String1[$i-1] -eq $String2[$j-1]) { 0 } else { 1 }
+            $matrix[$i, $j] = [Math]::Min([Math]::Min($matrix[$i-1, $j] + 1, $matrix[$i, $j-1] + 1), $matrix[$i-1, $j-1] + $cost)
+        }
+    }
+    
+    return $matrix[$String1.Length, $String2.Length]
+}
+
 Write-Info "🔍 Analyzing variable usage patterns..."
 
 # Find potential mismatches
@@ -199,28 +221,6 @@ $suspiciousPatterns += $scssVariables.Keys | Where-Object {
         Description = "Variable name suggests possible naming confusion with width/value/size variants"
         Severity = "Medium"
     }
-}
-
-# Helper function for Levenshtein distance
-function Get-LevenshteinDistance {
-    param([string]$String1, [string]$String2)
-    
-    if ($String1.Length -eq 0) { return $String2.Length }
-    if ($String2.Length -eq 0) { return $String1.Length }
-    
-    $matrix = New-Object 'int[,]' ($String1.Length + 1), ($String2.Length + 1)
-    
-    for ($i = 0; $i -le $String1.Length; $i++) { $matrix[$i, 0] = $i }
-    for ($j = 0; $j -le $String2.Length; $j++) { $matrix[0, $j] = $j }
-    
-    for ($i = 1; $i -le $String1.Length; $i++) {
-        for ($j = 1; $j -le $String2.Length; $j++) {
-            $cost = if ($String1[$i-1] -eq $String2[$j-1]) { 0 } else { 1 }
-            $matrix[$i, $j] = [Math]::Min([Math]::Min($matrix[$i-1, $j] + 1, $matrix[$i, $j-1] + 1), $matrix[$i-1, $j-1] + $cost)
-        }
-    }
-    
-    return $matrix[$String1.Length, $String2.Length]
 }
 
 # Report results

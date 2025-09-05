@@ -94,12 +94,14 @@ function setupResponsive() {
         const sidebar = document.querySelector('.app-sidebar');
         const mainContent = document.querySelector('.app-main');
         
-        if (isMobile()) {
-            sidebar.classList.add('collapsed');
-            document.documentElement.classList.add('mobile-layout');
-        } else {
-            sidebar.classList.remove('collapsed');
-            document.documentElement.classList.remove('mobile-layout');
+        if (sidebar && mainContent) {
+            if (isMobile()) {
+                sidebar.classList.add('collapsed');
+                document.documentElement.classList.add('mobile-layout');
+            } else {
+                sidebar.classList.remove('collapsed');
+                document.documentElement.classList.remove('mobile-layout');
+            }
         }
     };
     
@@ -161,17 +163,28 @@ export function focusElement(selector) {
 }
 
 export function focusSearchInput(searchId) {
-    const autosuggestContainer = document.querySelector(`[data-autosuggest-id="${searchId}"]`);
-    if (autosuggestContainer) {
-        const input = autosuggestContainer.querySelector('input[type="text"], input[type="search"]');
-        if (input) {
-            input.focus();
-            input.select();
-            return true;
+    let input = document.querySelector('[data-search-input] input');
+    
+    if (!input) {
+        const autosuggestContainer = document.querySelector(`[data-autosuggest-id="${searchId}"]`);
+        if (autosuggestContainer) {
+            input = autosuggestContainer.querySelector('input[type="text"], input[type="search"]');
         }
     }
     
-    return focusElement('input[placeholder*="Search"]');
+    if (!input) {
+        input = document.querySelector('input[placeholder*="Search"], .search-autosuggest input, [data-search-container] input');
+    }
+    
+    if (input) {
+        requestAnimationFrame(() => {
+            input.focus();
+            input.select();
+        });
+        return true;
+    }
+    
+    return false;
 }
 
 function toggleSidebar() {
@@ -185,19 +198,19 @@ function toggleSidebar() {
 
 function closeSearch() {
     const searchContainer = document.querySelector('[data-search-container]');
-    const searchIconContainer = searchContainer?.querySelector('.search-icon-container');
-    if (searchIconContainer && searchIconContainer.classList.contains('search-expanded')) {
-        // Only close search if user explicitly clicked outside - not on every event
+    if (searchContainer && searchContainer.classList.contains('search-expanded')) {
         const activeElement = document.activeElement;
-        const isSearchInput = activeElement?.closest('.search-autosuggest') || 
-                             activeElement?.tagName === 'INPUT' && activeElement?.placeholder?.toLowerCase().includes('search');
+        const isSearchInput = activeElement?.closest('.search-autosuggest, [data-search-container]') || 
+                             (activeElement?.tagName === 'INPUT' && activeElement?.placeholder?.toLowerCase()?.includes('search'));
         
-        // Don't auto-close if user is still typing in search
         if (!isSearchInput && appShellDotNetRef) {
-            // Use throttled approach to prevent rapid calls
             clearTimeout(window._searchCollapseTimeout);
             window._searchCollapseTimeout = setTimeout(() => {
-                appShellDotNetRef.invokeMethodAsync('OnSearchCollapsed');
+                try {
+                    appShellDotNetRef.invokeMethodAsync('OnSearchCollapsed');
+                } catch (ex) {
+                    console.log('[RAppShell] Search collapse callback error:', ex.message);
+                }
             }, 200);
         }
     }

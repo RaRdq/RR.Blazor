@@ -66,39 +66,6 @@ public class TemplateContext<T> where T : class
     }
 }
 
-/// <summary>
-/// Context for badge templates
-/// </summary>
-/// <typeparam name="T">The type of data being rendered</typeparam>
-public class BadgeTemplateContext<T> : TemplateContext<T> where T : class
-{
-    /// <summary>
-    /// Variant for badge styling
-    /// </summary>
-    public VariantType Variant { get; set; } = VariantType.Default;
-    
-    /// <summary>
-    /// Text to display in badge
-    /// </summary>
-    public string Text { get; set; }
-    
-    /// <summary>
-    /// Icon to display in badge
-    /// </summary>
-    public string Icon { get; set; }
-    
-    /// <summary>
-    /// Whether badge is clickable
-    /// </summary>
-    public bool Clickable { get; set; }
-    
-    /// <summary>
-    /// Click event handler
-    /// </summary>
-    public EventCallback<T> OnClick { get; set; }
-
-    public BadgeTemplateContext(T item) : base(item) { }
-}
 
 /// <summary>
 /// Context for currency templates

@@ -48,7 +48,6 @@ public class TemplateSuggestion<T> where T : class
 public enum TemplateType
 {
     None = 0,
-    Badge = 1,
     Currency = 2,
     Stack = 3,
     Group = 4,

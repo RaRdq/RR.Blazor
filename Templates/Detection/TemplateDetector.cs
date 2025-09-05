@@ -1,6 +1,6 @@
 using System.Reflection;
 using System.Text.RegularExpressions;
-using RR.Blazor.Templates.Badge;
+using RR.Blazor.Templates.Chip;
 using RR.Blazor.Templates.Currency;
 using RR.Blazor.Templates.Stack;
 using RR.Blazor.Enums;
@@ -15,13 +15,13 @@ public static class TemplateDetector
 {
     private static readonly Dictionary<string, TemplateType> PropertyNamePatterns = new()
     {
-        // Badge patterns
-        { "status", TemplateType.Badge },
-        { "state", TemplateType.Badge },
-        { "priority", TemplateType.Badge },
-        { "type", TemplateType.Badge },
-        { "category", TemplateType.Badge },
-        { "level", TemplateType.Badge },
+        // Badge patterns (now handled by RChip component)
+        { "status", TemplateType.None },
+        { "state", TemplateType.None },
+        { "priority", TemplateType.None },
+        { "type", TemplateType.None },
+        { "category", TemplateType.None },
+        { "level", TemplateType.None },
         
         // Currency patterns
         { "amount", TemplateType.Currency },
@@ -128,7 +128,7 @@ public static class TemplateDetector
             return TemplateType.Currency;
 
         if (Regex.IsMatch(name, @"(status|state|priority|level|type)"))
-            return TemplateType.Badge;
+            return TemplateType.None; // Use RChip component instead
             
         if (Regex.IsMatch(name, @"(avatar|user|employee|owner|manager)"))
             return TemplateType.Avatar;
@@ -157,7 +157,7 @@ public static class TemplateDetector
 
         // Enum types often work well as badges
         if (propertyType.IsEnum)
-            return TemplateType.Badge;
+            return TemplateType.None; // Use RChip component instead
 
         return TemplateType.None;
     }
@@ -176,7 +176,7 @@ public static class TemplateDetector
 
         // Check if values look like status/category badges
         if (samples.All(v => v is string s && IsLikelyStatus(s)))
-            return TemplateType.Badge;
+            return TemplateType.None; // Use RChip component instead
 
         // Check if values suggest stacked display
         if (samples.All(v => v is string s && s.Length > 30))
@@ -265,7 +265,7 @@ public static class TemplateDetector
 
         return templateType switch
         {
-            TemplateType.Badge => $"Property '{name}' appears to be a status/category field based on name pattern",
+            TemplateType.None => $"Property '{name}' appears to be a status/category field - consider using RChip component",
             TemplateType.Currency => $"Property '{name}' of type '{type}' appears to be a monetary value",
             TemplateType.Stack => $"Property '{name}' appears to contain multi-line or detailed text content",
             TemplateType.Avatar => $"Property '{name}' appears to be a user/profile field suitable for avatar display",
@@ -279,7 +279,7 @@ public static class TemplateDetector
     {
         return templateType switch
         {
-            TemplateType.Badge => "Consider configuring status-to-variant mapping for automatic color coding",
+            TemplateType.None => "Consider using RChip component with status-to-variant mapping for automatic color coding",
             TemplateType.Currency => "Configure currency code and compact formatting based on your data scale",
             TemplateType.Stack => "Consider using primary/secondary text selectors for better information hierarchy",
             TemplateType.Avatar => "Configure image and name selectors, consider adding status indicators",

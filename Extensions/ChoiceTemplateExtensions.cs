@@ -10,34 +10,6 @@ namespace RR.Blazor.Extensions;
 /// </summary>
 public static class ChoiceTemplateExtensions
 {
-    /// <summary>
-    /// Create a group item template using badge rendering
-    /// </summary>
-    public static RenderFragment<IChoiceItem> UseBadgeTemplate<T>(
-        this IChoiceGroup group,
-        Expression<Func<T, object>> propertySelector,
-        VariantType variant = VariantType.Secondary,
-        bool clickable = false) where T : class
-    {
-        var badgeTemplate = new BadgeTemplate<T>
-        {
-            PropertySelector = propertySelector,
-            Variant = variant,
-            Clickable = clickable
-        };
-
-        return item => builder =>
-        {
-            if (item.Value is T typedValue)
-            {
-                builder.AddContent(0, badgeTemplate.Render(typedValue));
-            }
-            else
-            {
-                builder.AddContent(0, item.Label);
-            }
-        };
-    }
 
     /// <summary>
     /// Create a group item template using currency rendering

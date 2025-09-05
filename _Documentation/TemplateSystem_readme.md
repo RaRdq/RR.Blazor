@@ -25,13 +25,17 @@ Display status indicators, counts, and labels with automatic color coding.
     e => "check_circle"
 )(employee)
 
-// With automatic status mapping
-var template = new BadgeTemplate<Employee>
+// Use RChip component directly instead of BadgeTemplate
+<RChip Variant="@GetStatusVariant(employee.Status)">
+    @employee.Status
+</RChip>
+
+// Helper method for status mapping
+private VariantType GetStatusVariant(string status)
 {
-    PropertySelector = e => e.Status,
-    StatusMapping = new Dictionary<string, VariantType>
+    return status.ToLowerInvariant() switch
     {
-        { "active", VariantType.Success },
+        "active" => VariantType.Success,
         { "inactive", VariantType.Danger },
         { "pending", VariantType.Warning }
     }
@@ -157,7 +161,7 @@ var columns = new List<ColumnDefinition<Employee>>
 {
     TemplateExtensions.Column<Employee>("status", "Status")
         .WithProperty(e => e.Status)
-        .UseBadgeTemplate(),
+        // Use RChip in CustomTemplate instead
     
     TemplateExtensions.Column<Employee>("salary", "Salary")
         .WithProperty(e => e.Salary)
@@ -171,7 +175,7 @@ var columns = new List<ColumnDefinition<Employee>>
 var column = new ColumnDefinition<Employee>
 {
     Title = "Performance",
-    BadgeTemplate = new BadgeTemplate<Employee>
+    // Use RChip in CustomTemplate instead of BadgeTemplate
     {
         PropertySelector = e => e.Status,
         Variant = VariantType.Primary
@@ -185,7 +189,7 @@ Templates work with any component that accepts `RenderFragment<T>`:
 
 ```csharp
 <RChoiceGeneric Items="@employees" TValue="Employee"
-                ItemTemplate="@employees.AsBadgeTemplate(e => e.Status)">
+                ItemTemplate="@employees.Select(e => RenderEmployeeChip(e))">
 </RChoiceGeneric>
 
 <RChoiceGeneric Items="@users" TValue="User"
@@ -198,7 +202,7 @@ Templates work with any component that accepts `RenderFragment<T>`:
 Each template uses a strongly-typed context for rendering:
 
 ```csharp
-public class BadgeTemplateContext<T> : TemplateContext<T>
+// BadgeTemplateContext removed - use RChip component directly
 {
     public VariantType Variant { get; set; }
     public string Text { get; set; }
@@ -338,14 +342,14 @@ RTemplates.Stack<Employee>(e => e.Name, e => e.Department)
 - `TemplateBuilder<T>`: Fluent API for template creation
 
 ### Extension Methods
-- `ColumnDefinition<T>.UseBadgeTemplate()`
+- Use `RChip` component in `CustomTemplate` for badge functionality
 - `ColumnDefinition<T>.UseCurrencyTemplate()`
 - `ColumnDefinition<T>.UseStackTemplate()`
 - `ColumnDefinition<T>.UseGroupTemplate()`
 - `ColumnDefinition<T>.UseAvatarTemplate()`
 - `ColumnDefinition<T>.UseProgressTemplate()`
 - `ColumnDefinition<T>.UseRatingTemplate()`
-- `IEnumerable<T>.AsBadgeTemplate()`
+- Use `RChip` component directly in render fragments
 - `IEnumerable<T>.AsCurrencyTemplate()`
 - `IEnumerable<T>.AsStackTemplate()`
 - `IEnumerable<T>.AsGroupTemplate()`

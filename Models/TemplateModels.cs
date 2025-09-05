@@ -90,78 +90,6 @@ public abstract class TemplateDefinition<T> where T : class
     public abstract RenderFragment Render(T item);
 }
 
-/// <summary>
-/// Template for badge rendering
-/// </summary>
-/// <typeparam name="T">Type of data the template handles</typeparam>
-public class BadgeTemplate<T> : TemplateDefinition<T> where T : class
-{
-    /// <summary>
-    /// Variant for badge styling
-    /// </summary>
-    public VariantType Variant { get; set; } = VariantType.Primary;
-    
-    /// <summary>
-    /// Custom text selector (overrides PropertySelector for text)
-    /// </summary>
-    public Expression<Func<T, string>> TextSelector { get; set; }
-    
-    /// <summary>
-    /// Icon selector for badge icon
-    /// </summary>
-    public Expression<Func<T, string>> IconSelector { get; set; }
-    
-    /// <summary>
-    /// Variant selector for dynamic styling
-    /// </summary>
-    public Expression<Func<T, VariantType>> VariantSelector { get; set; }
-    
-    /// <summary>
-    /// Whether badges are clickable
-    /// </summary>
-    public bool Clickable { get; set; }
-    
-    /// <summary>
-    /// Click event handler
-    /// </summary>
-    public EventCallback<T> OnClick { get; set; }
-    
-    /// <summary>
-    /// Status-to-variant mapping for automatic styling
-    /// </summary>
-    public Dictionary<string, VariantType> StatusMapping { get; set; } = new()
-    {
-        { "active", VariantType.Success },
-        { "inactive", VariantType.Secondary },
-        { "pending", VariantType.Warning },
-        { "error", VariantType.Error },
-        { "success", VariantType.Success },
-        { "warning", VariantType.Warning },
-        { "info", VariantType.Info }
-    };
-
-    public override RenderFragment Render(T item)
-    {
-        // Convert Models.BadgeTemplate to Templates.Badge.BadgeTemplate
-        var templateBadge = new RR.Blazor.Templates.Badge.BadgeTemplate<T>
-        {
-            Id = this.Id,
-            Name = this.Name,
-            PropertySelector = this.PropertySelector,
-            CssClass = this.CssClass,
-            Size = this.Size,
-            Density = this.Density,
-            Variant = this.Variant,
-            TextSelector = this.TextSelector,
-            IconSelector = this.IconSelector,
-            VariantSelector = this.VariantSelector,
-            Clickable = this.Clickable,
-            OnClick = this.OnClick,
-            StatusMapping = this.StatusMapping
-        };
-        return RR.Blazor.Templates.RTemplates.BadgeTemplate(templateBadge, item);
-    }
-}
 
 /// <summary>
 /// Template for currency rendering
@@ -502,17 +430,6 @@ public class RatingTemplate<T> : TemplateDefinition<T> where T : class
 /// <typeparam name="T">Type of data the template handles</typeparam>
 public class TemplateBuilder<T> where T : class
 {
-    /// <summary>
-    /// Create a badge template
-    /// </summary>
-    public static BadgeTemplate<T> Badge(Expression<Func<T, object>> propertySelector)
-    {
-        return new BadgeTemplate<T>
-        {
-            PropertySelector = propertySelector,
-            Name = "Badge Template"
-        };
-    }
     
     /// <summary>
     /// Create a currency template

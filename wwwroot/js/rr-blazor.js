@@ -77,10 +77,11 @@ class ModuleManager {
         
         this.moduleConfigs = {
             'eventConstants': { path: './event-constants.js', preload: true },
+            'uiCoordinator': { path: './ui-coordinator.js', preload: true },
+            'zIndexManager': { path: './z-index-manager.js', preload: true },
+            'positioning': { path: './positioning.js', preload: true },
             'portal': { path: './portal.js', preload: true },
             'backdrop': { path: './backdrop.js', preload: true },
-            'positioning': { path: './positioning.js', preload: true },
-            'uiCoordinator': { path: './ui-coordinator.js', preload: true },
             'modal': { path: './modal.js', preload: true },
             'choice': { path: './choice.js', preload: true },
             'clickOutside': { path: './click-outside.js', preload: true },
@@ -229,13 +230,13 @@ class ModuleManager {
             debugLogger.error('Failed to preload eventConstants:', error);
         }
         
-        const essentialModules = ['portal', 'positioning', 'backdrop', 'uiCoordinator', 'clickOutside', 'scrollLock', 'modalEvents', 'keyboardNavigation', 'modal', 'choice', 'filter', 'theme', 'appShell'];
+        const essentialModules = ['zIndexManager', 'portal', 'positioning', 'backdrop', 'uiCoordinator', 'clickOutside', 'scrollLock', 'modalEvents', 'keyboardNavigation', 'modal', 'choice', 'filter', 'theme', 'appShell', 'skeleton'];
         
         for (const moduleName of essentialModules) {
             await this.loadModule(moduleName);
         }
         
-        const modulesToInit = ['filter', 'choice', 'modal'];
+        const modulesToInit = ['filter', 'choice', 'modal', 'skeleton'];
         for (const moduleName of modulesToInit) {
             const module = this.modules.get(moduleName);
             const moduleObject = module?.default || module;
@@ -428,6 +429,7 @@ const RRBlazor = {
     AppShell: createUniversalProxy('appShell'),
     ColumnManagement: createUniversalProxy('columnManagement'),
     IntersectionObserver: createUniversalProxy('intersectionObserver'),
+    Skeleton: createUniversalProxy('skeleton'),
     
     getModule: function(moduleName) {
         return createUniversalProxy(moduleName);

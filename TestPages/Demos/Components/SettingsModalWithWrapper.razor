@@ -1,0 +1,134 @@
+@using RR.Blazor.Components.Feedback
+@using RR.Blazor.Components.Form
+@using RR.Blazor.Components.Core
+@using RR.Blazor.Components.Data
+@using RR.Blazor.Enums
+@using RR.Blazor.Models
+
+<RModal @bind-Visible="Visible"
+        Title="@Title"
+        Subtitle="Application settings with internal modal wrapper"
+        Icon="settings"
+        Size="SizeType.Large"
+        ShowCloseButton
+        ShowFooter
+        OnClose="@HandleClose"
+        OnCancel="@HandleCancel"
+        OnPrimaryAction="@HandleSave">
+    <ChildContent>
+        <div class="space-y-4 pa-4">
+            <RCard Variant="CardVariant.Outlined">
+                <ChildContent>
+                    <div class="text-h6 mb-3">General Settings</div>
+                    
+                    <div class="space-y-3">
+                        <RToggle @bind-Value="Settings.EnableNotifications" 
+                                 Label="Enable Notifications" />
+                        
+                        <RToggle @bind-Value="Settings.AutoSave" 
+                                 Label="Auto-save changes" />
+                        
+                        <RTextInput @bind-Value="Settings.DefaultTimeout" 
+                                    Label="Session Timeout (minutes)" />
+                    </div>
+                </ChildContent>
+            </RCard>
+            
+            <RCard Variant="CardVariant.Outlined">
+                <ChildContent>
+                    <div class="text-h6 mb-3">Display Preferences</div>
+                    
+                    <div class="space-y-3">
+                        <RRadio @bind-Value="Settings.Theme" 
+                                Label="Theme">
+                            <Items>
+                                <RRadioItem Value="light" Label="Light" />
+                                <RRadioItem Value="dark" Label="Dark" />
+                                <RRadioItem Value="auto" Label="Auto" />
+                            </Items>
+                        </RRadio>
+                        
+                        <RTextInput @bind-Value="Settings.ItemsPerPage" 
+                                    Label="Items per page" />
+                    </div>
+                </ChildContent>
+            </RCard>
+            
+            <RDivider Text="Debug Info" Icon="bug_report" />
+            
+            <div class="text-sm space-y-1 text-muted">
+                <div>Component Type: SettingsModalWithWrapper</div>
+                <div>Has Internal RModal: YES ✅</div>
+                <div>Should be double-wrapped by provider: NO ❌</div>
+            </div>
+            
+            <RAlert Variant="VariantType.Success" Icon="check_circle">
+                Build-time analyzer detects the internal RModal automatically.
+                No ModalContext parameter or manual markers needed!
+            </RAlert>
+        </div>
+    </ChildContent>
+    <FooterContent>
+        <RActionGroup Alignment="ActionGroupAlignment.End">
+            <RButton Text="Reset to Defaults" 
+                     Variant="VariantType.Secondary" 
+                     Icon="restart_alt"
+                     @onclick="ResetToDefaults" />
+            <RButton Text="Cancel" 
+                     Variant="VariantType.Secondary" 
+                     @onclick="HandleCancel" />
+            <RButton Text="Save Settings" 
+                     Variant="VariantType.Primary" 
+                     Icon="save"
+                     @onclick="HandleSave" />
+        </RActionGroup>
+    </FooterContent>
+</RModal>
+
+@code {
+    [Parameter] public string Title { get; set; } = "Settings";
+    [Parameter] public bool Visible { get; set; } = true;
+    [Parameter] public EventCallback<bool> VisibleChanged { get; set; }
+    [Parameter] public EventCallback<object> OnDataChanged { get; set; }
+    [Parameter] public EventCallback OnModalClosed { get; set; }
+    
+    public class SettingsData
+    {
+        public bool EnableNotifications { get; set; } = true;
+        public bool AutoSave { get; set; } = false;
+        public string DefaultTimeout { get; set; } = "30";
+        public string Theme { get; set; } = "auto";
+        public string ItemsPerPage { get; set; } = "20";
+    }
+    
+    private SettingsData Settings { get; set; } = new();
+    
+    private async Task HandleClose()
+    {
+        Visible = false;
+        await VisibleChanged.InvokeAsync(false);
+        if (OnModalClosed.HasDelegate)
+        {
+            await OnModalClosed.InvokeAsync();
+        }
+    }
+    
+    private async Task HandleCancel()
+    {
+        await HandleClose();
+    }
+    
+    private async Task HandleSave()
+    {
+        // Settings saved locally - invoke data changed callback
+        await OnDataChanged.InvokeAsync(Settings);
+        await HandleClose();
+    }
+    
+    private void ResetToDefaults()
+    {
+        Settings = new SettingsData();
+        StateHasChanged();
+    }
+    
+}

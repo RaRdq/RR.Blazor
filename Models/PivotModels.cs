@@ -123,7 +123,6 @@ public class PivotField<TItem> where TItem : class
     public RenderFragment<PivotHeaderContext> HeaderTemplate { get; set; }
     
     // Universal Templates
-    public BadgeTemplate<PivotCellContext<TItem>> BadgeTemplate { get; set; }
     public CurrencyTemplate<PivotCellContext<TItem>> CurrencyTemplate { get; set; }
     public ProgressTemplate<PivotCellContext<TItem>> ProgressTemplate { get; set; }
     
@@ -201,7 +200,6 @@ public class PivotField<TItem> where TItem : class
             CellClassFunction = CellClassFunction,
             CellTemplate = CellTemplate,
             HeaderTemplate = HeaderTemplate,
-            BadgeTemplate = BadgeTemplate,
             CurrencyTemplate = CurrencyTemplate,
             ProgressTemplate = ProgressTemplate,
             ShowSubtotals = ShowSubtotals,

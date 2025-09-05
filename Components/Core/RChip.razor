@@ -6,8 +6,8 @@
 @inherits RSizedComponentBase<SizeType>
 
 @attribute [Component("RChip", Category = "Core", Complexity = ComponentComplexity.Simple)]
-@attribute [AIOptimized(Prompt = "Create a chip for badges, status, tags, or filters", 
-                       CommonUse = "status indicators, counts, labels, notifications, tags, filters", 
+@attribute [AIOptimized(Prompt = "Create a chip/badge for status, counts, tags, or filters", 
+                       CommonUse = "status indicators, counts, labels, notifications, tags, filters, badges", 
                        AvoidUsage = "Don't use for navigation - use RButton instead")]
 
 <span class="@GetChipClasses()" 
@@ -48,8 +48,8 @@
 
 @code {
     [Parameter]
-    [AIParameter(Hint = "Badge for counts, Chip for tags/filters, Status for state indicators", 
-                 SuggestedValues = new[] { "Badge", "Chip", "Status" })]
+    [AIParameter(Hint = "Badge for counts, Chip for tags/filters, Status for state indicators, Rounded for circular badges", 
+                 SuggestedValues = new[] { "Badge", "Chip", "Status", "Rounded", "Minimal" })]
     public ChipStyle StyleVariant { get; set; } = ChipStyle.Chip;
     
     [Parameter]
@@ -74,7 +74,15 @@
     
     [Parameter] public EventCallback OnClose { get; set; }
     
+    [Parameter]
+    [AIParameter(Hint = "Visual intensity/prominence level", 
+                 SuggestedValues = new[] { "Normal", "Muted", "Bold", "Subtle" })]
+    public IntensityType Intensity { get; set; } = IntensityType.Normal;
     
+    [Parameter]
+    [AIParameter(Hint = "Visual style aesthetic", 
+                 SuggestedValues = new[] { "Material", "Glass", "Neumorphism", "Elevated", "Flat", "Neon", "Frosted" })]
+    public StyleType StyleEffect { get; set; } = StyleType.Material;
 
     private string GetChipClasses()
     {
@@ -83,13 +91,17 @@
         var baseClass = StyleVariant switch
         {
             ChipStyle.Badge => "chip chip-badge",
-            ChipStyle.Status => "chip chip-status", 
+            ChipStyle.Status => "chip chip-status",
+            ChipStyle.Rounded => "chip chip-rounded",
+            ChipStyle.Minimal => "chip chip-minimal",
             ChipStyle.Chip => "chip",
             _ => "chip"
         };
         classes.Add(baseClass);
         
-        classes.Add($"chip-{Variant.ToString().ToLower()}");
+        var variantName = Variant.ToString().ToLower();
+        var semanticVariant = variantName == "default" ? "primary" : variantName;
+        classes.Add($"chip-{semanticVariant}");
         if (ShouldShowPulse()) classes.Add("chip-pulsing");
         
         var sizeClasses = SizeHelper.GetChipSize(Size, Density);
@@ -99,6 +111,9 @@
         if (Selected) classes.Add("chip-selected");
         if (Closeable) classes.Add("chip-closeable");
         if (Disabled) classes.Add("chip-disabled");
+        
+        classes.Add(GetIntensityClasses());
+        classes.Add(GetStyleEffectClasses());
         
         if (!string.IsNullOrEmpty(Class)) classes.Add(Class);
         
@@ -139,7 +154,7 @@
             nameof(Density), nameof(Clickable), nameof(Closeable), nameof(Selected), 
             nameof(Disabled), nameof(ShowPulse), nameof(OnClick), nameof(OnClose), nameof(ChildContent), 
             nameof(Class), nameof(Title), nameof(Subtitle), nameof(Loading), nameof(LoadingText), 
-            nameof(AriaLabel), nameof(TabIndex)
+            nameof(AriaLabel), nameof(TabIndex), nameof(Intensity), nameof(StyleEffect)
         };
 
         var forwarded = new Dictionary<string, object>();
@@ -171,5 +186,32 @@
     private bool ShouldShowPulse()
     {
         return (StyleVariant == ChipStyle.Status && Variant == VariantType.Warning) || ShowPulse;
+    }
+    
+    private string GetIntensityClasses()
+    {
+        return Intensity switch
+        {
+            IntensityType.Muted => "chip-muted",
+            IntensityType.Bold => "chip-bold",
+            IntensityType.Subtle => "chip-subtle",
+            IntensityType.Normal => "",
+            _ => ""
+        };
+    }
+    
+    private string GetStyleEffectClasses()
+    {
+        return StyleEffect switch
+        {
+            StyleType.Glass => "chip-glass",
+            StyleType.Neumorphism => "chip-neumorphism",
+            StyleType.Elevated => "chip-elevated",
+            StyleType.Flat => "chip-flat",
+            StyleType.Neon => "chip-neon",
+            StyleType.Frosted => "chip-frosted",
+            StyleType.Material => "",
+            _ => ""
+        };
     }
 }

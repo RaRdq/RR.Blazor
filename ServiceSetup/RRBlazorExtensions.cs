@@ -11,6 +11,7 @@ using RR.Blazor.Services.Export.Providers;
 using RR.Blazor.Models;
 using RR.Blazor.Interfaces;
 using Blazored.LocalStorage;
+using System;
 using System.Linq;
 
 namespace RR.Blazor.ServiceSetup
@@ -76,7 +77,6 @@ namespace RR.Blazor.ServiceSetup
                 serviceCollection.AddBlazoredLocalStorage();
             }
 
-            // Register core RR.Blazor services - Universal services work with both Server and WebAssembly
             serviceCollection.AddScoped<IJavaScriptInteropService, JavaScriptInteropService>();
             serviceCollection.AddScoped<IRThemeService, RThemeService>();
             
@@ -87,7 +87,6 @@ namespace RR.Blazor.ServiceSetup
             serviceCollection.AddScoped<IFilterPersistenceService, FilterPersistenceService>();
             serviceCollection.AddScoped<IPivotService, PivotService>();
             
-            // Register export services with default providers (enabled by default - use DisableExport to remove)
             RegisterExportServices(serviceCollection);
             
             // Register default toast configuration
@@ -101,7 +100,6 @@ namespace RR.Blazor.ServiceSetup
                 PreventDuplicates = false
             });
 
-            // Register tree-shaking options - enabled by default, disable what you don't need
             serviceCollection.AddSingleton(new RRBlazorTreeShakingOptions
             {
                 Enabled = true,
@@ -113,21 +111,18 @@ namespace RR.Blazor.ServiceSetup
 
         private static void RegisterDefaultConfiguration(IServiceCollection serviceCollection)
         {
-            // Register default theme configuration - full functionality enabled
-            // Colors default to null to use CSS variables from SCSS
             serviceCollection.AddSingleton(new RRBlazorThemeOptions
             {
                 Mode = ThemeMode.System,
-                PrimaryColor = null,      // Uses --color-primary from SCSS
-                SecondaryColor = null,    // Uses CSS variables from SCSS
-                ErrorColor = null,        // Uses --color-error from SCSS
-                SuccessColor = null,      // Uses --color-success from SCSS
-                WarningColor = null,      // Uses --color-warning from SCSS
-                InfoColor = null,         // Uses --color-info from SCSS
+                PrimaryColor = null,
+                SecondaryColor = null,
+                ErrorColor = null,
+                SuccessColor = null,
+                WarningColor = null,
+                InfoColor = null,
                 AnimationsEnabled = true
             });
 
-            // Register default app shell configuration - all features enabled
             serviceCollection.AddSingleton(new AppConfiguration
             {
                 Title = "Application",
@@ -142,7 +137,6 @@ namespace RR.Blazor.ServiceSetup
                 RememberSidebarState = true
             });
 
-            // Register default animation options - full animations enabled
             serviceCollection.AddSingleton(new RRBlazorAnimationOptions
             {
                 EnableAnimations = true,
@@ -150,7 +144,6 @@ namespace RR.Blazor.ServiceSetup
                 DefaultEasing = "cubic-bezier(0, 0, 0.2, 1)"
             });
 
-            // Register default theme configuration for runtime theme management
             serviceCollection.AddScoped<ThemeConfiguration>(sp =>
             {
                 var options = sp.GetService<RRBlazorThemeOptions>() ?? new RRBlazorThemeOptions();
@@ -294,8 +287,6 @@ namespace RR.Blazor.ServiceSetup
                     var config = new ExportConfiguration();
                     configure(config);
                     
-                    // Apply configuration to registered services
-                    
                     if (config.AdditionalProviders?.Any() == true)
                     {
                         foreach (var providerType in config.AdditionalProviders)
@@ -317,14 +308,13 @@ namespace RR.Blazor.ServiceSetup
         public class RRBlazorThemeOptions
         {
             public ThemeMode Mode { get; set; } = ThemeMode.System;
-            public string PrimaryColor { get; set; } // null = use CSS variable
-            public string SecondaryColor { get; set; } // null = use CSS variable
-            public string ErrorColor { get; set; } // null = use CSS variable
-            public string SuccessColor { get; set; } // null = use CSS variable
-            public string WarningColor { get; set; } // null = use CSS variable
-            public string InfoColor { get; set; } // null = use CSS variable
+            public string PrimaryColor { get; set; }
+            public string SecondaryColor { get; set; }
+            public string ErrorColor { get; set; }
+            public string SuccessColor { get; set; }
+            public string WarningColor { get; set; }
+            public string InfoColor { get; set; }
             public bool AnimationsEnabled { get; set; } = true;
-
         }
 
         public class RRBlazorAnimationOptions
@@ -336,13 +326,11 @@ namespace RR.Blazor.ServiceSetup
         
         private static void RegisterExportServices(IServiceCollection serviceCollection)
         {
-            // Register core export services
             serviceCollection.AddSingleton<ICoreExportService>(provider =>
             {
                 var logger = provider.GetRequiredService<ILogger<CoreExportService>>();
                 var exportService = new CoreExportService(logger);
                 
-                // Auto-register all IExportProvider implementations
                 var providers = provider.GetServices<IExportProvider>();
                 foreach (var exportProvider in providers)
                 {
@@ -354,12 +342,9 @@ namespace RR.Blazor.ServiceSetup
             
             serviceCollection.AddScoped<IExportService, ExportService>();
             
-            // Register default providers (CSV, JSON, XML are always included)
             serviceCollection.AddSingleton<IExportProvider, CsvExportProvider>();
             serviceCollection.AddSingleton<IExportProvider, JsonExportProvider>();
             serviceCollection.AddSingleton<IExportProvider, XmlExportProvider>();
-            
-            // Excel provider removed - not part of UI component library
         }
         
     }

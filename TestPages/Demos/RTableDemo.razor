@@ -3,8 +3,13 @@
 @using RR.Blazor.Components.Data
 @using RR.Blazor.Enums
 @using RR.Blazor.Models
+@using RR.Blazor.Services
+@using RR.Blazor.TestPages.Demos.Components
+@inject IToastService ToastService
 
-<RCard Variant="CardVariant.Outlined" Text="RTable">
+<div class="relative">
+    <GitHubLinkButton FileName="RTableDemo.razor" />
+    <RCard Variant="CardVariant.Outlined" Text="RTable">
     <ChildContent>
         <RDivider Text="Advanced Data Table Component"
                   Subtitle="High-performance table with search, pagination, export, column management, and virtualization"
@@ -65,7 +70,10 @@
                               MultiSelect="true"
                               @bind-SelectedItems="_selectedEmployees"
                               OnRowClicked="@HandleRowClick"
+                              OnEnhancedRowClick="@HandleEnhancedRowClick"
                               RowClickable="true"
+                              EnhancementsEnabled="true"
+                              EnhancementsConfig="@GetEnhancementsConfig()"
                               Density="@GetDensityType()"
                               Striped="@_striped"
                               Hover="@_hoverable"
@@ -227,9 +235,9 @@
                         <CellTemplate Context="employee">
                             <div>
                                 <div class="font-medium">@(((Employee)employee).Position)</div>
-                                <RBadge Text="@(((Employee)employee).Department)" 
+                                <RChip StyleVariant="ChipStyle.Badge" Text="@(((Employee)employee).Department)" 
                                         Variant="@GetDepartmentVariant((Employee)employee)"
-                                        Size="SizeType.Small" />
+                                        Size="SizeType.Small"  />
                             </div>
                         </CellTemplate>
                     </RColumn>
@@ -330,27 +338,36 @@
 
     private async Task HandleRowClick(Employee employee)
     {
-        // Handle row click
+        ToastService.ShowInfo($"Row clicked: {employee.Name}", "Row Click Event");
+        await Task.CompletedTask;
+    }
+    
+    private async Task HandleEnhancedRowClick(RowClickEventArgs<Employee> args)
+    {
+        ToastService.ShowSuccess($"Enhanced row click: {args.Item.Name} (Index: {args.Index}, Selected: {args.IsSelected})", "Enhanced Row Click");
+        await Task.CompletedTask;
     }
 
     private void ClearSelection()
     {
         _selectedEmployees = Enumerable.Empty<Employee>();
+        ToastService.ShowInfo("Selection cleared", "Table Action");
+        StateHasChanged();
     }
 
     private void EditEmployee(Employee employee)
     {
-        // Edit employee logic
+        ToastService.ShowInfo($"Editing employee: {employee.Name}", "Edit Action");
     }
 
     private void ViewEmployee(Employee employee)
     {
-        // View employee logic
+        ToastService.ShowInfo($"Viewing employee: {employee.Name}", "View Action");
     }
 
     private void DeleteEmployee(Employee employee)
     {
-        // Delete employee logic
+        ToastService.ShowWarning($"Delete requested for: {employee.Name}", "Delete Action");
     }
 
     // Helper methods for templates
@@ -396,6 +413,27 @@
             _ => DensityType.Normal
         };
     }
+    
+    private RR.Blazor.Models.TableConfiguration GetEnhancementsConfig()
+    {
+        return new RR.Blazor.Models.TableConfiguration
+        {
+            SelectionConfig = new RR.Blazor.Models.SelectionConfig
+            {
+                Enabled = true,
+                RowClickSelection = true,
+                KeyboardNavigation = true,
+                ShowCheckboxes = true,
+                ShowSelectionCount = true
+            },
+            ResizeConfig = new RR.Blazor.Models.ColumnResizeConfig
+            {
+                Enabled = true,
+                LiveResize = true,
+                ShowHandlesOnHover = true
+            }
+        };
+    }
 
     public class Employee
     {
@@ -409,3 +447,4 @@
         public string Email { get; set; } = string.Empty;
     }
 }
+</div>

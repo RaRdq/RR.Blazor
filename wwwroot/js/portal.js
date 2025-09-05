@@ -49,7 +49,7 @@ class PortalManagerBase {
         portal.dataset.portalId = id;
         portal.dataset.portalLevel = this._portals.size.toString();
         
-        const zIndex = this._calculateZIndex();
+        const zIndex = config.zIndex || window.RRBlazor.ZIndexManager.getNextZIndex('portal');
         portal.style.zIndex = zIndex.toString();
         portal.dataset.zIndex = zIndex.toString();
         
@@ -88,22 +88,21 @@ class PortalManagerBase {
     destroy(id) {
         const portal = this._portals.get(id);
         if (!portal) {
-            debugLogger.warn(`Portal ${id} not found - already destroyed or never created`);
             return false;
         }
         
-        if (window.RRBlazor && window.RRBlazor.EventDispatcher) {
-            window.RRBlazor.EventDispatcher.dispatch(
-                window.RRBlazor.Events.PORTAL_DESTROYING,
-                { portalId: id, portal: portal.element },
-                { cancelable: false }
-            );
-        }
+        window.RRBlazor.EventDispatcher.dispatch(
+            window.RRBlazor.Events.PORTAL_DESTROYING,
+            { portalId: id, portal: portal.element },
+            { cancelable: false }
+        );
         
         const wasMaxZIndex = portal.zIndex === this._maxZIndex;
         
         this._portals.delete(id);
         this._registry.delete(id);
+        
+        window.RRBlazor.ZIndexManager.unregisterElement(id);
         
         if (wasMaxZIndex && this._portals.size > 0) {
             let newMax = PortalManagerBase._baseZIndex;
@@ -115,19 +114,14 @@ class PortalManagerBase {
             this._maxZIndex = PortalManagerBase._baseZIndex;
         }
         
-        if (!portal.element) {
-            throw new Error(`Portal ${id} has no DOM element - corrupted state`);
-        }
         portal.element.remove();
         
         this._reindexPortals();
         
-        if (window.RRBlazor && window.RRBlazor.EventDispatcher) {
-            window.RRBlazor.EventDispatcher.dispatch(
-                window.RRBlazor.Events.PORTAL_DESTROYED,
-                { portalId: id }
-            );
-        }
+        window.RRBlazor.EventDispatcher.dispatch(
+            window.RRBlazor.Events.PORTAL_DESTROYED,
+            { portalId: id }
+        );
     }
     
     destroyAll() {
@@ -137,9 +131,6 @@ class PortalManagerBase {
         this._registry.destroy();
         
         portalsToClean.forEach((portal, id) => {
-            if (!portal.element) {
-                throw new Error(`Portal ${id} has no DOM element during cleanup`);
-            }
             portal.element.remove();
         });
     }
@@ -220,31 +211,14 @@ class PortalManagerBase {
         }
     }
     
-    _calculateZIndex() {
-        let maxZIndex = PortalManagerBase._baseZIndex;
-        this._portals.forEach(portal => {
-            if (portal.zIndex >= maxZIndex) {
-                maxZIndex = portal.zIndex + PortalManagerBase._zIndexIncrement;
-            }
-        });
-        
-        if (maxZIndex > 2147483647) {
-            throw new Error('[PortalManager] Z-index limit exceeded');
-        }
-        
-        return maxZIndex;
-    }
     
     _reindexPortals() {
-        let level = 0;
         this._portals.forEach((portal, id) => {
-            const zIndex = PortalManagerBase._baseZIndex + (level * PortalManagerBase._zIndexIncrement);
+            const zIndex = window.RRBlazor.ZIndexManager.getZIndexForElement(id) || 
+                          window.RRBlazor.ZIndexManager.registerElement(id, 'portal');
             portal.element.style.zIndex = zIndex.toString();
             portal.element.dataset.zIndex = zIndex.toString();
             portal.zIndex = zIndex;
-            portal.level = level;
-            portal.element.dataset.portalLevel = level.toString();
-            level++;
         });
     }
     

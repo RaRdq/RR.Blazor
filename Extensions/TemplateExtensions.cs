@@ -17,26 +17,6 @@ public static class TemplateExtensions
 {
     #region ColumnDefinition Extensions
     
-    /// <summary>
-    /// Configure a badge template for this column
-    /// </summary>
-    public static ColumnDefinition<T> UseBadgeTemplate<T>(
-        this ColumnDefinition<T> column,
-        Action<BadgeTemplate<T>> configure = null) where T : class
-    {
-        var template = new BadgeTemplate<T>
-        {
-            PropertySelector = column.Property,
-            Name = $"{column.Title} Badge Template",
-            Size = SizeType.Small,
-            Density = DensityType.Compact
-        };
-        
-        configure?.Invoke(template);
-        column.BadgeTemplate = template;
-        
-        return column;
-    }
     
     /// <summary>
     /// Configure a currency template for this column
@@ -187,18 +167,6 @@ public static class TemplateExtensions
     
     #region RenderFragment Extensions for Choice Components
     
-    /// <summary>
-    /// Create a badge template for choice items
-    /// </summary>
-    public static RenderFragment<T> AsBadgeTemplate<T>(
-        this IEnumerable<T> source,
-        Func<T, string> textSelector,
-        Func<T, VariantType> variantSelector = null,
-        Func<T, string> iconSelector = null,
-        bool clickable = false) where T : class
-    {
-        return RTemplates.Badge(textSelector, variantSelector, iconSelector, clickable);
-    }
     
     /// <summary>
     /// Create a currency template for choice items

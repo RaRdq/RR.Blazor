@@ -177,13 +177,15 @@
                             <tr>
                                 @if (Selectable)
                                 {
-                                    <th class="table-header-cell table-cell-checkbox">
+                                    <th class="table-header-cell table-cell-checkbox" style="width: 40px; min-width: 40px; max-width: 40px;">
                                         @if (MultiSelect)
                                         {
-                                            <input type="checkbox"
-                                                   checked="@IsAllSelected()"
-                                                   disabled="@Disabled"
-                                                   @onchange="@OnSelectAllChanged" />
+                                            <RCheckbox 
+                                                Checked="@IsAllSelected()"
+                                                Disabled="@Disabled"
+                                                CheckedChanged="@OnSelectAllChangedBool"
+                                                Size="SizeType.ExtraSmall"
+                                                Density="DensityType.Dense" />
                                         }
                                     </th>
                                 }
@@ -248,13 +250,26 @@
                                     @onclick="@(() => HandleEnhancedRowClick(item, index))">
                                     @if (Selectable)
                                     {
-                                        <td class="table-cell table-cell-checkbox">
-                                            <input type="@(MultiSelect ? "checkbox" : "radio")"
-                                                   name="@(MultiSelect ? null : $"table-{TableId}")"
-                                                   checked="@IsSelected(item)"
-                                                   disabled="@Disabled"
-                                                   @onclick:stopPropagation="true"
-                                                   @onchange="@((e) => OnSelectionChanged(item, (bool)e.Value!))" />
+                                        <td class="table-cell table-cell-checkbox" style="width: 40px; min-width: 40px; max-width: 40px;">
+                                            @if (MultiSelect)
+                                            {
+                                                <RCheckbox 
+                                                    Checked="@IsSelected(item)"
+                                                    Disabled="@Disabled"
+                                                    CheckedChanged="@((bool selected) => OnSelectionChanged(item, selected))"
+                                                    Size="SizeType.ExtraSmall"
+                                                    Density="DensityType.Dense"
+                                                    @onclick:stopPropagation="true" />
+                                            }
+                                            else
+                                            {
+                                                <input type="radio"
+                                                       name="@($"table-{TableId}")"
+                                                       checked="@IsSelected(item)"
+                                                       disabled="@Disabled"
+                                                       @onclick:stopPropagation="true"
+                                                       @onchange="@((e) => OnSelectionChanged(item, (bool)e.Value!))" />
+                                            }
                                         </td>
                                     }
                                     @foreach (var column in GetVisibleColumns())
@@ -867,6 +882,11 @@
     private async Task OnSelectAllChanged(ChangeEventArgs e)
     {
         var selected = (bool)e.Value;
+        await OnSelectAllChangedBool(selected);
+    }
+
+    private async Task OnSelectAllChangedBool(bool selected)
+    {
         var pagedItems = GetPagedItems().ToList();
 
         if (selected)
@@ -885,6 +905,7 @@
         }
 
         await SelectedItemsChanged.InvokeAsync(_selectedItems.ToList());
+        StateHasChanged();
     }
 
     #endregion
@@ -1250,9 +1271,7 @@
             };
             
             // Use column's universal template if available
-            if (column.BadgeTemplate != null)
-                column.BadgeTemplate.Render(item)(builder);
-            else if (column.CurrencyTemplate != null)
+            if (column.CurrencyTemplate != null)
                 column.CurrencyTemplate.Render(item)(builder);
             else if (column.StackTemplate != null)
                 column.StackTemplate.Render(item)(builder);

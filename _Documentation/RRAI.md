@@ -211,30 +211,28 @@
                    Class="elevation-2" />
 ```
 
-### Modal Workflow
+### Modal System - 4 Usage Patterns
+
+#### **Case 1: Service confirmations**
 ```razor
-<RModal @bind-Visible="showModal" 
-        Title="User Details"
-        Size="ModalSize.Large">
-    <RForm Model="@selectedUser" OnValidSubmit="SaveUser">
-        <RFormSection Title="Personal Information" Icon="person">
-            <RTextInput @bind-Value="selectedUser.Name" Required />
-            <RTextInput Type="FieldType.Email" @bind-Value="selectedUser.Email" Required />
-        </RFormSection>
-        
-        <RFormSection Title="Settings" Icon="settings">
-            <RCheckbox Text="Active User" @bind-Checked="selectedUser.IsActive" />
-            <RDropdown Items="@departments" @bind-SelectedValue="selectedUser.DepartmentId" />
-        </RFormSection>
-    </RForm>
-    
-    <FooterContent>
-        <RActionGroup Alignment="ActionGroupAlignment.End">
-            <RButton Text="Cancel" Variant="ButtonVariant.Secondary" OnClick="CloseModal" />
-            <RButton Text="Save Changes" Type="ButtonType.Submit" Variant="ButtonVariant.Primary" />
-        </RActionGroup>
-    </FooterContent>
-</RModal>
+await ModalService.ShowConfirmationAsync("Delete?", "Confirm", "Delete", "Cancel", VariantType.Error);
+```
+
+#### **Case 2: Internal RModal components (Auto-detected)**
+```razor
+// Components with internal RModal are automatically detected - no wrapping needed
+await ModalService.ShowAsync(new ModalOptions { ComponentType = typeof(PaymentOrderQuickActionModal), ShowHeader = false, ShowFooter = false });
+```
+
+#### **Case 3: Direct RModal binding**
+```razor
+<RModal @bind-Visible="showModal" Title="Form"><ChildContent>Content</ChildContent></RModal>
+```
+
+#### **Case 4: Pure content components (Auto-wrapped)**
+```razor
+// Pure content components are automatically wrapped with RModal
+await ModalService.ShowAsync(new ModalOptions { ComponentType = typeof(UserFormContent), Title = "Edit User" });
 ```
 
 ## Performance Optimization Patterns
@@ -321,6 +319,9 @@
 
 <!-- Mixed utility frameworks -->
 <div class="p-6 bootstrap-class tailwind-class">
+
+<!-- Double modal: Case 2 with ShowHeader=true -->
+await ModalService.ShowAsync(new ModalOptions { ComponentType = typeof(PaymentOrderQuickActionModal), ShowHeader = true });
 ```
 
 ### ✅ Do This Instead
@@ -334,6 +335,9 @@
 
 <!-- Consistent RR.Blazor utilities -->
 <div class="pa-6 bg-surface elevation-2 rounded">
+
+<!-- Case 2 fix: ShowHeader=false -->
+await ModalService.ShowAsync(new ModalOptions { ComponentType = typeof(PaymentOrderQuickActionModal), ShowHeader = false });
 ```
 
 ## Quick Development Checklist

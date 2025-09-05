@@ -4,5 +4,7 @@ public enum ChipStyle
 {
     Badge,
     Chip,
-    Status
+    Status,
+    Rounded,
+    Minimal
 }

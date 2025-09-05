@@ -4,10 +4,10 @@
 
 ```
 RR.Blazor/Templates/
-├── Badge/
-│   ├── BadgeTemplate.cs
-│   ├── BadgeContext.cs
-│   └── BadgeRenderer.cs
+├── Chip/
+│   ├── ChipTemplate.cs
+│   ├── ChipContext.cs
+│   └── ChipRenderer.cs
 ├── Currency/
 │   ├── CurrencyTemplate.cs
 │   ├── CurrencyContext.cs
@@ -42,7 +42,7 @@ if (suggestion.AutoApply) {
 ```csharp
 services.AddRRBlazor(config => config
     .WithTemplates(templates => templates
-        .WithBadgeDefaults(badge => badge
+        .WithChipDefaults(chip => chip
             .WithVariant(VariantType.Success)
             .AddStatusMapping("active", VariantType.Success)
             .AddStatusMapping("pending", VariantType.Warning))
@@ -62,8 +62,8 @@ services.AddRRBlazor(config => config
 ## Usage
 
 ```csharp
-// Badge
-@RTemplates.Badge<Employee>(e => e.Status, e => GetStatusVariant(e.Status))
+// Chip
+@RTemplates.Chip<Employee>(e => e.Status, e => GetStatusVariant(e.Status))
 
 // Currency
 @RTemplates.Currency<Employee>(e => e.Salary, "USD", compact: true)
@@ -74,16 +74,17 @@ services.AddRRBlazor(config => config
 
 ## Advanced Usage
 ```csharp
-var badgeTemplate = new BadgeTemplate<Employee>
-{
-    TextSelector = e => e.Status,
-    VariantSelector = e => GetDynamicVariant(e),
-    IconSelector = e => GetStatusIcon(e),
-    Clickable = true,
-    OnClick = EventCallback.Factory.Create<Employee>(this, HandleEmployeeClick)
-};
+// Use RChip component directly
+<RChip Variant="@GetDynamicVariant(employee)" 
+       Icon="@GetStatusIcon(employee)"
+       StyleVariant="ChipStyle.Badge"
+       Clickable="true"
+       OnClick="@(() => HandleEmployeeClick(employee))">
+    @employee.Status
+</RChip>
 
-@badgeTemplate.Render(employee)
+// Or use template registry
+@RTemplates.Chip<Employee>(e => e.Status, e => GetStatusVariant(e.Status))
 ```
 
 ## Detection API
@@ -98,11 +99,14 @@ var suggestion = TemplateDetector.CreateSuggestion(property, employees);
 ## Migration
 
 ```csharp
-// Old
-@RTemplates.BadgeTemplate(badgeTemplate, item)
 
-// New
-@RTemplates.Badge<T>(e => e.Status, e => GetVariant(e.Status))
+// RChip template usage
+@RTemplates.Chip<T>(e => e.Status, e => GetVariant(e.Status))
+
+// Or direct RChip component
+<RChip StyleVariant="ChipStyle.Badge" Variant="@GetVariant(item.Status)">
+    @item.Status
+</RChip>
 ```
 
 ## Testing

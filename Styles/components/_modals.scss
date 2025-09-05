@@ -8,24 +8,33 @@
   align-items: center;
   justify-content: center;
   padding: var(--space-4);
-  animation: fadeIn var(--duration-fast) var(--ease-out);
   
   @include responsive-max(sm) {
     padding: var(--space-2);
   }
   
   &-backdrop {
-    position: absolute;
+    position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.5);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
-    animation: fadeIn var(--duration-fast) var(--ease-out);
+    pointer-events: auto;
+    transition: opacity 200ms ease-out;
+    z-index: var(--z-modal-backdrop, 1029);
+    
+    &-dark {
+      background: rgba(0, 0, 0, 0.7);
+    }
+    
+    &-light {
+      background: rgba(255, 255, 255, 0.7);
+    }
   }
   
   &-content {
     position: relative;
-    z-index: 1;
+    z-index: var(--z-base);
     background: var(--color-surface-elevated);
     border-radius: var(--radius-2xl);
     box-shadow: var(--shadow-xl);
@@ -36,7 +45,6 @@
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    animation: scaleIn var(--duration-slow) var(--ease-out-back);
     
     @include responsive-max(sm) {
       max-height: 100vh;
@@ -130,7 +138,7 @@
   &-close {
     @include button-reset;
     position: relative;
-    z-index: 1;
+    z-index: var(--z-base);
     width: var(--space-8);
     height: var(--space-8);
     display: flex;
@@ -209,7 +217,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 10;
+    z-index: var(--z-above);
     
     &-processing {
       animation: fadeIn var(--duration-fast) var(--ease-out);
@@ -234,7 +242,7 @@
     align-items: center;
     gap: var(--space-2);
     padding: var(--space-2) var(--space-3);
-    background: var(--color-warning-bg);
+    background: color-mix(in srgb, var(--color-warning) 8%, transparent);
     color: var(--color-warning);
     border-radius: var(--radius-md);
     font-size: var(--text-sm);
@@ -285,22 +293,22 @@
     }
     
     &-destructive {
-      background: var(--color-error-bg);
+      background: var(--glass-error-bg);
       color: var(--color-error);
     }
     
     &-warning {
-      background: var(--color-warning-bg);
+      background: color-mix(in srgb, var(--color-warning) 8%, transparent);
       color: var(--color-warning);
     }
     
     &-success {
-      background: var(--color-success-bg);
+      background: var(--glass-success-bg);
       color: var(--color-success);
     }
     
     &-info {
-      background: var(--color-info-bg);
+      background: color-mix(in srgb, var(--color-info) 8%, transparent);
       color: var(--color-info);
     }
   }
@@ -336,7 +344,7 @@
   left: 0;
   width: 100vw;
   height: 100vh;
-  z-index: 9999;
+  z-index: var(--z-critical);
   pointer-events: none;
   overflow: hidden;
   
@@ -345,13 +353,22 @@
   }
 }
 
-// Body scroll lock
-body.modal-open {
-  overflow: hidden;
-  padding-right: var(--scrollbar-width, 0);
+#modal-portal-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: var(--z-critical);
+  pointer-events: none;
   
-  @media (hover: none) and (pointer: coarse) {
-    position: fixed;
-    width: 100%;
+  > * {
+    pointer-events: auto;
   }
+}
+
+body.modal-open {
+  position: fixed;
+  width: 100%;
+  overflow: hidden;
 }

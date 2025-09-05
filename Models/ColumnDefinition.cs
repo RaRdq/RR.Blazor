@@ -27,7 +27,6 @@ public class ColumnDefinition<TItem> where TItem : class
     public RenderFragment HeaderTemplate { get; set; }
     
     // Universal Templates
-    public BadgeTemplate<TItem> BadgeTemplate { get; set; }
     public CurrencyTemplate<TItem> CurrencyTemplate { get; set; }
     public StackTemplate<TItem> StackTemplate { get; set; }
     public GroupTemplate<TItem> GroupTemplate { get; set; }
@@ -95,9 +94,6 @@ public class ColumnDefinition<TItem> where TItem : class
         }
         
         // Try universal templates first
-        if (BadgeTemplate != null)
-            return BadgeTemplate.Render(item);
-        
         if (CurrencyTemplate != null)
             return CurrencyTemplate.Render(item);
             

@@ -31,20 +31,35 @@ Modern Blazor component library with 62 components, utility-first styling, and A
 
 ```bash
 git submodule add https://github.com/RaRdq/RR.Blazor.git
-
-# Reference in your .csproj
-<ProjectReference Include="RR.Blazor/RR.Blazor.csproj" />
 ```
 
-### 2. Register services
+### 2. Configure your project
+
+```xml
+<!-- In your .csproj file -->
+<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+  <!-- ... other configuration ... -->
+  
+  <ItemGroup>
+    <ProjectReference Include="..\RR.Blazor\RR.Blazor.csproj" />
+  </ItemGroup>
+  
+  <!-- Enable build-time code generation features -->
+  <!-- This enables: Modal registry auto-discovery, CSS tree-shaking, validation, and more -->
+  <Import Project="..\RR.Blazor\build\RR.Blazor.targets" />
+</Project>
+```
+
+### 3. Register services
 
 ```csharp
-// Program.cs (for Blazor Server projects)
+// Program.cs
 var builder = WebApplication.CreateBuilder(args);
 
-// REQUIRED: Enable static web assets from referenced projects
+// REQUIRED for Blazor Server: Enable static web assets
 builder.WebHost.UseStaticWebAssets();
 
+// Register RR.Blazor services (includes modal system, templates, etc.)
 builder.Services.AddRRBlazor();
 ```
 
@@ -196,25 +211,40 @@ For AI agents (Claude, GPT-4, etc.), add a rule or manually refer to [`@RR.Blazo
 
 ### Modal System
 
+RR.Blazor supports 4 modal usage patterns. Choose the right pattern for your use case:
+
+#### **Case 1: Service-Based Modals** (Recommended)
+Use ModalService for quick confirmations and info dialogs.
 ```razor
 @inject IModalService ModalService
 
-<!-- Simple confirmation -->
-<RButton Text="Delete Item" 
-         OnClick="@(async () => {
-             var confirmed = await ModalService.ConfirmAsync("Are you sure?", "Delete Item", true);
-             if (confirmed) await DeleteItem();
-         })" />
+await ModalService.ShowConfirmationAsync("Are you sure?", "Delete Item", "Delete", "Cancel", VariantType.Error);
+```
 
-<!-- Enterprise confirmation with validation -->
-<RButton Text="Delete Employee" 
-         OnClick="@(async () => {
-             var result = await ModalService.ShowAsync<bool>(typeof(RConfirmationModal), new Dictionary<string, object> {
-                 ["ShowInputField"] = true,
-                 ["InputLabel"] = "Type employee name to confirm",
-                 ["OnInputValidate"] = new Func<string, Task<bool>>(input => Task.FromResult(input == employee.Name))
-             });
-         })" />
+#### **Case 2: Components with Internal RModal**
+Components that have their own `<RModal>` wrapper - use ModalService with `ShowHeader=false`.
+```razor
+await ModalService.ShowAsync(new ModalOptions {
+    ComponentType = typeof(MyModalWithWrapper), 
+    ShowHeader = false, ShowFooter = false
+});
+```
+
+#### **Case 3: Direct RModal Usage**
+Standalone modals with two-way binding, no ModalService needed.
+```razor
+<RModal @bind-Visible="showModal" Title="My Modal">
+    <ChildContent>Modal content here</ChildContent>
+</RModal>
+```
+
+#### **Case 4: Pure Content Components**  
+Content-only components used through ModalService (no internal RModal).
+```razor
+await ModalService.ShowAsync(new ModalOptions {
+    ComponentType = typeof(UserFormContent),
+    Title = "Edit User", Size = SizeType.Large
+});
 ```
 
 ### 🔍 Intelligent Search System

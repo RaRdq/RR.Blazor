@@ -56,8 +56,10 @@ function Get-LevenshteinDistance {
     
     for ($i = 1; $i -le $len1; $i++) {
         for ($j = 1; $j -le $len2; $j++) {
-            $cost = if ($String1[$i-1] -eq $String2[$j-1]) { 0 } else { 1 }
-            $matrix[$i, $j] = [Math]::Min([Math]::Min($matrix[$i-1, $j] + 1, $matrix[$i, $j-1] + 1), $matrix[$i-1, $j-1] + $cost)
+            $prevI = $i - 1
+            $prevJ = $j - 1
+            $cost = if ($String1.Substring($prevI, 1) -eq $String2.Substring($prevJ, 1)) { 0 } else { 1 }
+            $matrix[$i, $j] = [Math]::Min([Math]::Min($matrix[$prevI, $j] + 1, $matrix[$i, $prevJ] + 1), $matrix[$prevI, $prevJ] + $cost)
         }
     }
     
@@ -423,9 +425,12 @@ $csFiles = Get-ChildItem -Path $ComponentsPath -Filter "R*.cs" -Recurse | Where-
     $_.Name -notlike "*Base.cs" -and $_.Name -notlike "*Models.cs" -and $_.Name -notlike "*Enums.cs"
 }
 
-$componentFiles = $razorFiles + $csFiles
+# Use ArrayList to avoid array concatenation issues
+$componentFileList = New-Object System.Collections.ArrayList
+if ($razorFiles) { $componentFileList.AddRange($razorFiles) }
+if ($csFiles) { $componentFileList.AddRange($csFiles) }
 
-foreach ($file in $componentFiles) {
+foreach ($file in $componentFileList) {
     $componentName = [System.IO.Path]::GetFileNameWithoutExtension($file.Name)
     
     try {
@@ -647,42 +652,69 @@ function Test-ComponentConstraints {
 Write-Host "🔍 Scanning solution for R* component usage..." -ForegroundColor Yellow
 
 # Find all files that might contain R* component usage (razor, md, html, etc.)
-$filesToScan = @()
+# Use ArrayLists to avoid array concatenation issues
+$razorFilesList = New-Object System.Collections.ArrayList
+$mdFilesList = New-Object System.Collections.ArrayList  
+$htmlFilesList = New-Object System.Collections.ArrayList
 
 # Get .razor files (primary target)
-$razorFiles = Get-ChildItem -Path $SolutionPath -Filter "*.razor" -Recurse | Where-Object { 
-    $_.FullName -notlike "*RR.Blazor*" -and 
-    $_.FullName -notlike "*_Backup*" -and
-    $_.FullName -notlike "*backup*" -and
-    $_.FullName -notlike "*\.git*" -and
-    $_.FullName -notlike "*\bin\*" -and
-    $_.FullName -notlike "*\obj\*" -and
-    $_.FullName -notlike "*\node_modules\*"
+Write-Host "  Searching for .razor files..." -ForegroundColor Gray
+Get-ChildItem -Path $SolutionPath -Filter "*.razor" -Recurse -ErrorAction SilentlyContinue | ForEach-Object {
+    if ($_.FullName -notlike "*RR.Blazor*" -and 
+        $_.FullName -notlike "*_Backup*" -and
+        $_.FullName -notlike "*backup*" -and
+        $_.FullName -notlike "*\.git*" -and
+        $_.FullName -notlike "*\bin\*" -and
+        $_.FullName -notlike "*\obj\*" -and
+        $_.FullName -notlike "*\node_modules\*") {
+        [void]$razorFilesList.Add($_)
+    }
 }
+Write-Host "  Found $($razorFilesList.Count) .razor files" -ForegroundColor Gray
 
 # Get .md files (documentation files that might have examples)
-$mdFiles = Get-ChildItem -Path $SolutionPath -Filter "*.md" -Recurse | Where-Object { 
-    $_.FullName -notlike "*\.git*" -and
-    $_.FullName -notlike "*\bin\*" -and
-    $_.FullName -notlike "*\obj\*" -and
-    $_.FullName -notlike "*\node_modules\*"
+Write-Host "  Searching for .md files..." -ForegroundColor Gray
+Get-ChildItem -Path $SolutionPath -Filter "*.md" -Recurse -ErrorAction SilentlyContinue | ForEach-Object {
+    if ($_.FullName -notlike "*\.git*" -and
+        $_.FullName -notlike "*\bin\*" -and
+        $_.FullName -notlike "*\obj\*" -and
+        $_.FullName -notlike "*\node_modules\*") {
+        [void]$mdFilesList.Add($_)
+    }
 }
+Write-Host "  Found $($mdFilesList.Count) .md files" -ForegroundColor Gray
 
 # Get .html files (might contain component examples)
-$htmlFiles = Get-ChildItem -Path $SolutionPath -Filter "*.html" -Recurse | Where-Object { 
-    $_.FullName -notlike "*\.git*" -and
-    $_.FullName -notlike "*\bin\*" -and
-    $_.FullName -notlike "*\obj\*" -and
-    $_.FullName -notlike "*\node_modules\*"
+Write-Host "  Searching for .html files..." -ForegroundColor Gray
+Get-ChildItem -Path $SolutionPath -Filter "*.html" -Recurse -ErrorAction SilentlyContinue | ForEach-Object {
+    if ($_.FullName -notlike "*\.git*" -and
+        $_.FullName -notlike "*\bin\*" -and
+        $_.FullName -notlike "*\obj\*" -and
+        $_.FullName -notlike "*\node_modules\*") {
+        [void]$htmlFilesList.Add($_)
+    }
 }
+Write-Host "  Found $($htmlFilesList.Count) .html files" -ForegroundColor Gray
 
-$filesToScan = $razorFiles + $mdFiles + $htmlFiles
+# Combine all files
+$filesToScan = New-Object System.Collections.ArrayList
+$filesToScan.AddRange($razorFilesList)
+$filesToScan.AddRange($mdFilesList)
+$filesToScan.AddRange($htmlFilesList)
 
-$violations = @()
-$structuralViolations = @()
+Write-Host "  Total files to scan: $($filesToScan.Count)" -ForegroundColor Gray
+
+$violations = New-Object System.Collections.ArrayList
+$structuralViolations = New-Object System.Collections.ArrayList
 $totalComponentsFound = 0
 
+$processedFiles = 0
 foreach ($file in $filesToScan) {
+    $processedFiles++
+    if ($processedFiles % 50 -eq 0) {
+        Write-Host "  Processing file $processedFiles of $($filesToScan.Count)..." -ForegroundColor Gray
+    }
+    
     try {
         $content = Get-Content $file.FullName -Raw -Encoding UTF8 -ErrorAction Stop
         
@@ -692,7 +724,8 @@ foreach ($file in $filesToScan) {
             continue
         }
         
-        $relativePath = $file.FullName.Replace($SolutionPath, '').TrimStart('\', '/')
+        $relativePath = $file.FullName.Replace($SolutionPath, '')
+        $relativePath = $relativePath.TrimStart('\').TrimStart('/')
     }
     catch {
         Write-Warning "Failed to read file: $($file.FullName) - $($_.Exception.Message)"
@@ -701,7 +734,9 @@ foreach ($file in $filesToScan) {
     
     # Check structural constraints first
     $constraintViolations = Test-ComponentConstraints -Content $content -FilePath $relativePath
-    $structuralViolations += $constraintViolations
+    if ($constraintViolations) {
+        $structuralViolations.AddRange($constraintViolations)
+    }
     
     # Find all R* component usages (multi-line aware)
     $componentPattern = '(?s)<(R[A-Z]\w*)\s+([^>]*?)/?>'
@@ -849,7 +884,7 @@ foreach ($file in $filesToScan) {
                     SeverityColor = $severityColor
                 }
                 
-                $violations += $violation
+                [void]$violations.Add($violation)
                 
                 $suggestionText = if ($suggestion) { " (Did you mean '$suggestion'?)" } else { "" }
                 Write-Host "  $severityIcon ${relativePath}:${lineNumber} - [$severity] $componentName does not support parameter '$paramName'$suggestionText" -ForegroundColor $severityColor
@@ -874,10 +909,18 @@ if ($structuralViolations.Count -gt 0) {
 Write-Host "`n📊 VALIDATION RESULTS:" -ForegroundColor Cyan
 
 # Count errors vs warnings
-$paramErrors = ($violations | Where-Object { $_.Severity -eq "ERROR" }).Count
-$paramWarnings = ($violations | Where-Object { $_.Severity -eq "WARNING" }).Count
-$structuralErrors = ($structuralViolations | Where-Object { $_.Severity -eq "ERROR" }).Count
-$structuralWarnings = ($structuralViolations | Where-Object { $_.Severity -eq "WARNING" }).Count
+$paramErrors = 0
+$paramWarnings = 0
+foreach ($v in $violations) {
+    if ($v.Severity -eq "ERROR") { $paramErrors++ }
+    else { $paramWarnings++ }
+}
+$structuralErrors = 0
+$structuralWarnings = 0
+foreach ($v in $structuralViolations) {
+    if ($v.Severity -eq "ERROR") { $structuralErrors++ }
+    else { $structuralWarnings++ }
+}
 
 $totalErrors = $paramErrors + $structuralErrors
 $totalWarnings = $paramWarnings + $structuralWarnings
@@ -888,7 +931,7 @@ Write-Host "    ❌ ERRORS: $totalErrors (blocking compilation)" -ForegroundColo
 Write-Host "    ⚠️  WARNINGS: $totalWarnings (documentation issues)" -ForegroundColor $(if ($totalWarnings -eq 0) { 'Green' } else { 'Yellow' })
 Write-Host "  Parameter violations: $($violations.Count) ($paramErrors errors, $paramWarnings warnings)" -ForegroundColor $(if ($violations.Count -eq 0) { 'Green' } else { 'Red' })
 Write-Host "  Structural violations: $($structuralViolations.Count) ($structuralErrors errors, $structuralWarnings warnings)" -ForegroundColor $(if ($structuralViolations.Count -eq 0) { 'Green' } else { 'Red' })
-Write-Host "  Files scanned: $($filesToScan.Count) (Razor: $($razorFiles.Count), MD: $($mdFiles.Count), HTML: $($htmlFiles.Count))" -ForegroundColor White
+Write-Host "  Files scanned: $($filesToScan.Count) (Razor: $($razorFilesList.Count), MD: $($mdFilesList.Count), HTML: $($htmlFilesList.Count))" -ForegroundColor White
 Write-Host "  R* components found: $totalComponentsFound" -ForegroundColor White
 Write-Host "  Component types validated: $($componentParameters.Count)" -ForegroundColor White
 
@@ -898,7 +941,10 @@ if ($totalViolations -eq 0) {
 }
 
 # Group violations by component
-$violationsByComponent = $violations | Group-Object Component | Sort-Object Count -Descending
+$violationsByComponent = @()
+if ($violations.Count -gt 0) {
+    $violationsByComponent = $violations | Group-Object Component | Sort-Object Count -Descending
+}
 
 Write-Host "`n🔴 VIOLATIONS BY COMPONENT:" -ForegroundColor Red
 foreach ($group in $violationsByComponent) {
@@ -918,6 +964,11 @@ if ($Fix) {
     $fixCount = 0
     
     foreach ($violation in $violations) {
+        # Skip warnings in MD and HTML files
+        if ($violation.Severity -ne "ERROR") {
+            continue
+        }
+        
         $filePath = $violation.FullPath
         
         if (-not $fixedFiles.ContainsKey($filePath)) {
@@ -957,8 +1008,8 @@ if ($Fix) {
 
 return @{
     Success = $totalErrors -eq 0  # Success only if no errors (warnings are acceptable)
-    Violations = $violations
-    StructuralViolations = $structuralViolations
+    Violations = @($violations)
+    StructuralViolations = @($structuralViolations)
     ViolationCount = $violations.Count
     StructuralViolationCount = $structuralViolations.Count
     TotalViolationCount = $totalViolations

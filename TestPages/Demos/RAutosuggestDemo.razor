@@ -1,0 +1,319 @@
+@using RR.Blazor.Components
+@using RR.Blazor.Enums
+@using RR.Blazor.Services
+@using System.Collections.Generic
+@using System.Threading
+@using RR.Blazor.TestPages.Demos.Components
+
+<div class="relative">
+    <GitHubLinkButton FileName="RAutosuggestDemo.razor" />
+    <RCard Variant="CardVariant.Outlined" Text="RAutosuggest">
+    <ChildContent>
+        <RDivider Text="RAutosuggest" Subtitle="Smart search with autosuggest functionality" Icon="search" />
+        
+        <div class="space-y-6 pa-4">
+            <!-- Basic String Search -->
+            <div>
+                <h3 class="text-lg font-semibold mb-2">Basic String Search</h3>
+                <RAutosuggestGeneric TItem="string" 
+                                   SearchFunc="@SearchCountries"
+                                   Placeholder="Search countries..."
+                                   Label="Country"
+                                   HelpText="Start typing to search for countries"
+                                   Icon="public"
+                                   MinSearchLength="2"
+                                   DebounceDelay="300"
+                                   ValueChanged="@((string value) => selectedCountry = value)"
+                                   Class="mb-2" />
+                @if (!string.IsNullOrEmpty(selectedCountry))
+                {
+                    <RAlert Type="AlertType.Success" Text="@($"Selected: {selectedCountry}")" />
+                }
+            </div>
+
+            <!-- Complex Object Search -->
+            <div>
+                <h3 class="text-lg font-semibold mb-2">Complex Object Search</h3>
+                <RAutosuggestGeneric TItem="UserSearchResult" 
+                                   SearchFunc="@SearchUsers"
+                                   ItemTextSelector="@(u => u.Name)"
+                                   ItemIconSelector="@(u => u.Icon)"
+                                   Placeholder="Search users..."
+                                   Label="User"
+                                   HelpText="Search by name or email"
+                                   Icon="person_search"
+                                   MinSearchLength="3"
+                                   DebounceDelay="500"
+                                   ShowLoading="true"
+                                   ValueChanged="@((UserSearchResult user) => selectedUser = user)"
+                                   Class="mb-2" />
+                @if (selectedUser != null)
+                {
+                    <RAlert Type="AlertType.Info">
+                        <div>
+                            <strong>Selected User:</strong><br/>
+                            Name: @selectedUser.Name<br/>
+                            Email: @selectedUser.Email<br/>
+                            Department: @selectedUser.Department
+                        </div>
+                    </RAlert>
+                }
+            </div>
+
+            <!-- Custom Item Template -->
+            <div>
+                <h3 class="text-lg font-semibold mb-2">Custom Item Template</h3>
+                <RAutosuggestGeneric TItem="ProductSearchResult"
+                                   SearchFunc="@SearchProducts"
+                                   ItemTextSelector="@(p => p.Name)"
+                                   Placeholder="Search products..."
+                                   Label="Product"
+                                   Icon="inventory"
+                                   MinSearchLength="2"
+                                   ShowLoading="true"
+                                   OpenOnFocus="true"
+                                   ValueChanged="@((ProductSearchResult product) => selectedProduct = product)">
+                    <ItemTemplate Context="product">
+                        <div class="d-flex justify-between align-center w-full">
+                            <div>
+                                <div class="font-semibold">@product.Name</div>
+                                <div class="text-sm text-muted">@product.Category</div>
+                            </div>
+                            <div class="text-right">
+                                <div class="font-bold text-primary">$@product.Price.ToString("F2")</div>
+                                <div class="text-xs text-muted">@product.InStock units</div>
+                            </div>
+                        </div>
+                    </ItemTemplate>
+                    <EmptyTemplate>
+                        <div class="pa-4 text-center">
+                            <i class="icon text-4xl text-muted">inventory_2</i>
+                            <p class="text-muted mt-2">No products found</p>
+                        </div>
+                    </EmptyTemplate>
+                </RAutosuggestGeneric>
+                @if (selectedProduct != null)
+                {
+                    <RAlert Type="AlertType.Success" Class="mt-2">
+                        Selected: @selectedProduct.Name - $@selectedProduct.Price.ToString("F2") (@selectedProduct.InStock in stock)
+                    </RAlert>
+                }
+            </div>
+
+            <!-- Different Sizes -->
+            <div>
+                <h3 class="text-lg font-semibold mb-2">Size Variants</h3>
+                <div class="space-y-2">
+                    <RAutosuggestGeneric TItem="string"
+                                       SearchFunc="@SearchCountries"
+                                       Placeholder="Small size..."
+                                       Size="SizeType.Small"
+                                       Icon="search" />
+                    
+                    <RAutosuggestGeneric TItem="string"
+                                       SearchFunc="@SearchCountries"
+                                       Placeholder="Medium size (default)..."
+                                       Size="SizeType.Medium"
+                                       Icon="search" />
+                    
+                    <RAutosuggestGeneric TItem="string"
+                                       SearchFunc="@SearchCountries"
+                                       Placeholder="Large size..."
+                                       Size="SizeType.Large"
+                                       Icon="search" />
+                </div>
+            </div>
+
+            <!-- Configuration Options -->
+            <div>
+                <h3 class="text-lg font-semibold mb-2">Configuration Examples</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <RAutosuggestGeneric TItem="string"
+                                           SearchFunc="@SearchCountries"
+                                           Placeholder="Clear on select..."
+                                           Label="Clear on Select"
+                                           ClearOnSelect="true"
+                                           Icon="clear" />
+                    </div>
+                    
+                    <div>
+                        <RAutosuggestGeneric TItem="string"
+                                           SearchFunc="@SearchCountries"
+                                           Placeholder="Without dropdown icon..."
+                                           Label="No Dropdown Icon"
+                                           ShowDropdownIcon="false"
+                                           Icon="search" />
+                    </div>
+                    
+                    <div>
+                        <RAutosuggestGeneric TItem="string"
+                                           SearchFunc="@SearchCountries"
+                                           Placeholder="Read-only field..."
+                                           Label="Read Only"
+                                           Value="@("United States")"
+                                           ReadOnly="true"
+                                           Icon="lock" />
+                    </div>
+                    
+                    <div>
+                        <RAutosuggestGeneric TItem="string"
+                                           SearchFunc="@SearchCountries"
+                                           Placeholder="Disabled field..."
+                                           Label="Disabled"
+                                           Disabled="true"
+                                           Icon="block" />
+                    </div>
+                </div>
+            </div>
+
+            <!-- Performance Test -->
+            <div>
+                <h3 class="text-lg font-semibold mb-2">Performance Test (Large Dataset)</h3>
+                <RAutosuggestGeneric TItem="string"
+                                   SearchFunc="@SearchLargeDataset"
+                                   Placeholder="Search from 10,000 items..."
+                                   Label="Large Dataset"
+                                   HelpText="Searches through 10,000 generated items"
+                                   Icon="database"
+                                   MinSearchLength="1"
+                                   DebounceDelay="200"
+                                   MaxSuggestions="20"
+                                   ShowLoading="true" />
+            </div>
+        </div>
+    </ChildContent>
+</RCard>
+
+@code {
+    private string selectedCountry;
+    private UserSearchResult selectedUser;
+    private ProductSearchResult selectedProduct;
+
+    // Sample data
+    private readonly List<string> countries = new()
+    {
+        "United States", "United Kingdom", "Canada", "Australia", "Germany",
+        "France", "Italy", "Spain", "Japan", "China", "India", "Brazil",
+        "Mexico", "Argentina", "South Africa", "Egypt", "Russia", "Netherlands",
+        "Belgium", "Switzerland", "Sweden", "Norway", "Denmark", "Finland"
+    };
+
+    private readonly List<UserSearchResult> users = new()
+    {
+        new() { Id = "1", Name = "John Doe", Email = "john.doe@example.com", Department = "Engineering", Icon = "engineering" },
+        new() { Id = "2", Name = "Jane Smith", Email = "jane.smith@example.com", Department = "Marketing", Icon = "campaign" },
+        new() { Id = "3", Name = "Bob Johnson", Email = "bob.johnson@example.com", Department = "Sales", Icon = "sell" },
+        new() { Id = "4", Name = "Alice Williams", Email = "alice.williams@example.com", Department = "HR", Icon = "groups" },
+        new() { Id = "5", Name = "Charlie Brown", Email = "charlie.brown@example.com", Department = "Finance", Icon = "attach_money" },
+        new() { Id = "6", Name = "Diana Prince", Email = "diana.prince@example.com", Department = "Legal", Icon = "gavel" },
+        new() { Id = "7", Name = "Edward Norton", Email = "edward.norton@example.com", Department = "IT", Icon = "computer" },
+        new() { Id = "8", Name = "Fiona Green", Email = "fiona.green@example.com", Department = "Operations", Icon = "settings" }
+    };
+
+    private readonly List<ProductSearchResult> products = new()
+    {
+        new() { Id = "1", Name = "Laptop Pro", Category = "Electronics", Price = 1299.99m, InStock = 15 },
+        new() { Id = "2", Name = "Wireless Mouse", Category = "Accessories", Price = 29.99m, InStock = 50 },
+        new() { Id = "3", Name = "USB-C Hub", Category = "Accessories", Price = 49.99m, InStock = 30 },
+        new() { Id = "4", Name = "Monitor 27\"", Category = "Electronics", Price = 399.99m, InStock = 8 },
+        new() { Id = "5", Name = "Keyboard Mechanical", Category = "Accessories", Price = 129.99m, InStock = 20 },
+        new() { Id = "6", Name = "Webcam HD", Category = "Electronics", Price = 79.99m, InStock = 25 },
+        new() { Id = "7", Name = "Headphones Wireless", Category = "Audio", Price = 199.99m, InStock = 12 },
+        new() { Id = "8", Name = "Desk Lamp LED", Category = "Office", Price = 39.99m, InStock = 40 }
+    };
+
+    private async Task<IEnumerable<string>> SearchCountries(string query, CancellationToken cancellationToken)
+    {
+        await Task.Delay(100, cancellationToken); // Simulate network delay
+        
+        if (string.IsNullOrWhiteSpace(query))
+            return Enumerable.Empty<string>();
+
+        return countries
+            .Where(c => c.Contains(query, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(c => c.IndexOf(query, StringComparison.OrdinalIgnoreCase))
+            .ThenBy(c => c);
+    }
+
+    private async Task<IEnumerable<UserSearchResult>> SearchUsers(string query, CancellationToken cancellationToken)
+    {
+        await Task.Delay(300, cancellationToken); // Simulate network delay
+        
+        if (string.IsNullOrWhiteSpace(query))
+            return Enumerable.Empty<UserSearchResult>();
+
+        var lowerQuery = query.ToLowerInvariant();
+        return users
+            .Where(u => u.Name.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                       u.Email.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                       u.Department.Contains(query, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(u => u.Name.IndexOf(query, StringComparison.OrdinalIgnoreCase))
+            .ThenBy(u => u.Name);
+    }
+
+    private async Task<IEnumerable<ProductSearchResult>> SearchProducts(string query, CancellationToken cancellationToken)
+    {
+        await Task.Delay(200, cancellationToken); // Simulate network delay
+        
+        if (string.IsNullOrWhiteSpace(query))
+            return products.Take(5); // Return popular products when empty
+
+        return products
+            .Where(p => p.Name.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                       p.Category.Contains(query, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(p => p.Name.IndexOf(query, StringComparison.OrdinalIgnoreCase))
+            .ThenBy(p => p.Name);
+    }
+
+    private async Task<IEnumerable<string>> SearchLargeDataset(string query, CancellationToken cancellationToken)
+    {
+        await Task.Delay(50, cancellationToken); // Simulate fast search
+        
+        if (string.IsNullOrWhiteSpace(query))
+            return Enumerable.Empty<string>();
+
+        // Generate large dataset on the fly
+        var results = new List<string>();
+        var lowerQuery = query.ToLowerInvariant();
+        
+        for (int i = 0; i < 10000; i++)
+        {
+            var item = $"Item {i:D5} - {GetRandomWord(i)}";
+            if (item.ToLowerInvariant().Contains(lowerQuery))
+            {
+                results.Add(item);
+                if (results.Count >= 20) // Limit results for performance
+                    break;
+            }
+        }
+        
+        return results;
+    }
+
+    private string GetRandomWord(int seed)
+    {
+        var words = new[] { "Alpha", "Beta", "Gamma", "Delta", "Epsilon", "Zeta", "Eta", "Theta", "Iota", "Kappa" };
+        return words[seed % words.Length];
+    }
+
+    // Models for demo
+    public class UserSearchResult
+    {
+        public string Id { get; set; }
+        public string Name { get; set; }
+        public string Email { get; set; }
+        public string Department { get; set; }
+        public string Icon { get; set; }
+    }
+
+    public class ProductSearchResult
+    {
+        public string Id { get; set; }
+        public string Name { get; set; }
+        public string Category { get; set; }
+        public decimal Price { get; set; }
+        public int InStock { get; set; }
+    }
+}
+</div>
