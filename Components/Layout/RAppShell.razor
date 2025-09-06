@@ -101,10 +101,23 @@
             <div class="app-header-right">
                 @if (ShowSearch)
                 {
-                    <div class="relative d-flex align-center gap-2 transition-all @(SearchCollapsible && searchExpanded ? "search-expanded" : "")" data-search-container>
+                    <div class="app-search-container @(searchExpanded ? "expanded" : "collapsed")" 
+                         @ref="searchContainerRef"
+                         data-search-container="@(searchExpanded ? "true" : "false")">
+                        @if (SearchCollapsible && !searchExpanded)
+                        {
+                            <RButton Icon="search" 
+                                     Variant="VariantType.Primary"
+                                     Mode="ButtonMode.Outline"
+                                     Size="SizeType.Small"
+                                     OnClick="@ExpandSearch" 
+                                     AriaLabel="Open search"
+                                     Class="search-toggle-btn" />
+                        }
+                        
                         @if (!SearchCollapsible || searchExpanded)
                         {
-                            <div class="transition-all overflow-hidden @(SearchCollapsible ? (searchExpanded ? "w-64 md:w-56 sm:w-48 visible" : "w-0 invisible") : "w-64 md:w-56 sm:w-48")">
+                            <div class="search-input-wrapper">
                                 <RAutosuggestGeneric TItem="AppSearchResult" 
                                                    SearchFunc="@HandleSearchAsync"
                                                    ItemTextSelector="@(result => result.Title)"
@@ -116,32 +129,21 @@
                                                    MaxSuggestions="8"
                                                    ShowLoading="true"
                                                    ShowDropdownIcon="false"
+                                                   Size="SizeType.Small"
                                                    OnItemSelected="@HandleSearchItemSelected"
-                                                   Class="w-full search-autosuggest" 
-                                                   data-search-input />
+                                                   Class="app-search-input" />
+                                
+                                @if (SearchCollapsible && searchExpanded)
+                                {
+                                    <RButton Icon="close" 
+                                             Variant="VariantType.Secondary"
+                                             Mode="ButtonMode.Outline"
+                                             Size="SizeType.Small"
+                                             OnClick="@CollapseSearch" 
+                                             AriaLabel="Close search"
+                                             Class="search-close-btn" />
+                                }
                             </div>
-                        }
-                        
-                        @if (SearchCollapsible && !searchExpanded)
-                        {
-                            <RButton Icon="search" 
-                                     Variant="VariantType.Primary"
-                                     Mode="ButtonMode.Outline"
-                                     Size="SizeType.Small"
-                                     OnClick="@ExpandSearch" 
-                                     AriaLabel="Open search" 
-                                     Class="touch-target search-toggle-button" />
-                        }
-                        
-                        @if (SearchCollapsible && searchExpanded)
-                        {
-                            <RButton Icon="close" 
-                                     Variant="VariantType.Secondary"
-                                     Mode="ButtonMode.Outline"
-                                     Size="SizeType.Small"
-                                     OnClick="@CollapseSearch" 
-                                     AriaLabel="Close search" 
-                                     Class="shrink-0 touch-target" />
                         }
                     </div>
                 }
@@ -424,6 +426,7 @@
     private bool sidebarCollapsed = false;
     private bool sidebarOpen = true;
     private bool searchExpanded = false;
+    private ElementReference searchContainerRef;
     private bool ShowSidebar => Features.HasFlag(AppShellFeatures.Sidebar);
     private bool ShowHeader => Features.HasFlag(AppShellFeatures.Header);
     private bool ShowToasts => Features.HasFlag(AppShellFeatures.Toasts);
@@ -494,6 +497,11 @@
             {
                 Console.WriteLine($"[RAppShell] Initialization error: {ex.Message}");
             }
+        }
+        
+        if (ShowSearch && searchExpanded)
+        {
+            await InitializeSearchClickOutside();
         }
         
     }
@@ -604,22 +612,60 @@
     }
 
 
-    private void ExpandSearch()
+    private async Task ExpandSearch()
     {
         if (!searchExpanded)
         {
             searchExpanded = true;
             StateHasChanged();
+            await InitializeSearchClickOutside();
         }
     }
 
-    private void CollapseSearch()
+    private async Task CollapseSearch()
     {
         if (searchExpanded)
         {
             searchExpanded = false;
             StateHasChanged();
+            await CleanupSearchClickOutside();
         }
+    }
+    
+    private async Task InitializeSearchClickOutside()
+    {
+        if (appShellModule != null)
+        {
+            try
+            {
+                await appShellModule.InvokeVoidAsync("registerSearchClickOutside", searchContainerRef);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[RAppShell] Search click outside initialization error: {ex.Message}");
+            }
+        }
+    }
+    
+    private async Task CleanupSearchClickOutside()
+    {
+        if (appShellModule != null)
+        {
+            try
+            {
+                await appShellModule.InvokeVoidAsync("unregisterSearchClickOutside");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[RAppShell] Search click outside cleanup error: {ex.Message}");
+            }
+        }
+    }
+    
+    [JSInvokable]
+    public async Task HandleSearchClickOutside()
+    {
+        await CollapseSearch();
     }
 
     

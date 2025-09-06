@@ -12,16 +12,6 @@ export function setDotNetRef(dotNetRef) {
     appShellDotNetRef = dotNetRef;
 }
 
-export function expandSearch() {
-    const searchContainer = document.querySelector('[data-search-container]');
-    
-    if (searchContainer) {
-        window.RRBlazor.EventDispatcher.dispatch(
-            'search-expanded',
-            { searchContainer }
-        );
-    }
-}
 
 
 export function isMobile() {
@@ -138,11 +128,8 @@ function setupAccessibility() {
     document.body.appendChild(announcer);
 }
 
-function setupSearchClickOutside() {
-}
-
 function focusSearch() {
-    const searchInput = document.querySelector('input[type="search"], .search-container input');
+    const searchInput = document.querySelector('.app-search-input input, .search-autosuggest input');
     if (searchInput) {
         searchInput.focus();
         searchInput.select();
@@ -162,31 +149,6 @@ export function focusElement(selector) {
     return false;
 }
 
-export function focusSearchInput(searchId) {
-    let input = document.querySelector('[data-search-input] input');
-    
-    if (!input) {
-        const autosuggestContainer = document.querySelector(`[data-autosuggest-id="${searchId}"]`);
-        if (autosuggestContainer) {
-            input = autosuggestContainer.querySelector('input[type="text"], input[type="search"]');
-        }
-    }
-    
-    if (!input) {
-        input = document.querySelector('input[placeholder*="Search"], .search-autosuggest input, [data-search-container] input');
-    }
-    
-    if (input) {
-        requestAnimationFrame(() => {
-            input.focus();
-            input.select();
-        });
-        return true;
-    }
-    
-    return false;
-}
-
 function toggleSidebar() {
     const sidebar = document.querySelector('.sidebar');
     const toggleButton = document.querySelector('.header__toggle, [aria-label="Toggle sidebar"]');
@@ -197,22 +159,10 @@ function toggleSidebar() {
 }
 
 function closeSearch() {
-    const searchContainer = document.querySelector('[data-search-container]');
-    if (searchContainer && searchContainer.classList.contains('search-expanded')) {
-        const activeElement = document.activeElement;
-        const isSearchInput = activeElement?.closest('.search-autosuggest, [data-search-container]') || 
-                             (activeElement?.tagName === 'INPUT' && activeElement?.placeholder?.toLowerCase()?.includes('search'));
-        
-        if (!isSearchInput && appShellDotNetRef) {
-            clearTimeout(window._searchCollapseTimeout);
-            window._searchCollapseTimeout = setTimeout(() => {
-                try {
-                    appShellDotNetRef.invokeMethodAsync('OnSearchCollapsed');
-                } catch (ex) {
-                    console.log('[RAppShell] Search collapse callback error:', ex.message);
-                }
-            }, 200);
-        }
+    // Simple search close - just blur any active search input
+    const searchInput = document.querySelector('.app-search-input input:focus, .search-autosuggest input:focus');
+    if (searchInput) {
+        searchInput.blur();
     }
 }
 
@@ -295,7 +245,50 @@ export function updateUrlWithoutScroll(newUrl) {
     return RRBlazor.updateUrlWithoutScroll(newUrl);
 }
 
+let searchClickOutsideId = null;
+
+function setupSearchClickOutside() {
+    // This initializes the base system but doesn't register any specific elements
+}
+
+export function registerSearchClickOutside(searchContainer) {
+    if (!window.RRBlazor?.ClickOutside) {
+        console.warn('[AppShell] ClickOutside module not available');
+        return;
+    }
+    
+    searchClickOutsideId = `search-container-${Date.now()}`;
+    
+    window.RRBlazor.ClickOutside.register(searchClickOutsideId, searchContainer, {
+        excludeSelectors: [
+            '.autosuggest-dropdown', 
+            '.autosuggest-viewport', 
+            '.portal',
+            '[data-portal-positioned="true"]',
+            '.search-toggle-btn'
+        ]
+    });
+    
+    // Listen for click outside events
+    document.addEventListener(window.RRBlazor.Events.CLICK_OUTSIDE, handleSearchClickOutside);
+}
+
+export function unregisterSearchClickOutside() {
+    if (searchClickOutsideId && window.RRBlazor?.ClickOutside) {
+        window.RRBlazor.ClickOutside.unregister(searchClickOutsideId);
+        document.removeEventListener(window.RRBlazor.Events.CLICK_OUTSIDE, handleSearchClickOutside);
+        searchClickOutsideId = null;
+    }
+}
+
+function handleSearchClickOutside(event) {
+    if (event.detail?.elementId === searchClickOutsideId && appShellDotNetRef) {
+        appShellDotNetRef.invokeMethodAsync('HandleSearchClickOutside');
+    }
+}
+
 export function dispose() {
+    unregisterSearchClickOutside();
 }
 
 window.RRAppShell = {
@@ -312,9 +305,9 @@ window.RRAppShell = {
     focusElement,
     initialize,
     setDotNetRef,
-    expandSearch,
-    focusSearchInput,
     registerSystemThemeListener,
+    registerSearchClickOutside,
+    unregisterSearchClickOutside,
     dispose
 };
 
@@ -332,8 +325,8 @@ export default {
     focusElement,
     initialize,
     setDotNetRef,
-    expandSearch,
-    focusSearchInput,
     registerSystemThemeListener,
+    registerSearchClickOutside,
+    unregisterSearchClickOutside,
     dispose
 };

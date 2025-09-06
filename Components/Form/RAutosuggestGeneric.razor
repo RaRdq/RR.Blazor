@@ -1,43 +1,36 @@
 @** 
 <summary>
-Generic autosuggest component with dropdown suggestions and search functionality.
-Extensible foundation for text search, datepicker autosuggest, and custom implementations.
+Generic autosuggest component using RR.Blazor portal system.
+Clean implementation without custom portal code.
 </summary>
 <category>Form</category>
 <complexity>Complex</complexity>
-<ai-prompt>Create autosuggest input with dropdown suggestions</ai-prompt>
-<ai-common-use>search inputs, autocomplete fields, suggestion dropdowns</ai-common-use>
-<ai-avoid>Don't use for simple inputs without suggestions. Use RTextInput instead.</ai-avoid>
 **@
 
 @namespace RR.Blazor.Components
 @using RR.Blazor.Models
 @using RR.Blazor.Enums
 @using RR.Blazor.Attributes
+@using RR.Blazor.Components.Base
 @using Microsoft.AspNetCore.Components.Web
 @typeparam TItem where TItem : notnull
-@inherits RInputBase
-@implements IAsyncDisposable
+@inherits RComponentBase
 @inject IJSRuntime JS
+@implements IAsyncDisposable
 
 @attribute [Component("RAutosuggestGeneric", Category = "Form", Complexity = ComponentComplexity.Complex)]
-@attribute [AIOptimized(Prompt = "Create autosuggest input with dropdown suggestions", 
-                       CommonUse = "search inputs, autocomplete fields, suggestion dropdowns", 
-                       AvoidUsage = "Don't use for simple inputs without suggestions")]
 
-<div class="@GetAutosuggestClasses()" 
-     tabindex="-1"
-     data-autosuggest-id="@ElementId"
-     @onkeydown="HandleKeyDown">
+<div class="autosuggest @GetAutosuggestClasses()" 
+     data-autosuggest-id="@autosuggestId"
+     @ref="containerRef">
 
-    <!-- Input Field -->
     <RTextInput Value="@SearchQuery"
                ValueChanged="@HandleValueChanged"
                Type="@InputType"
                Placeholder="@Placeholder"
                Label="@Label"
                HelpText="@HelpText" 
-               Size="@GetTextInputSize()"
+               Size="@Size"
                Disabled="@Disabled"
                ReadOnly="@ReadOnly"
                Required="@Required"
@@ -46,86 +39,82 @@ Extensible foundation for text search, datepicker autosuggest, and custom implem
                EndIcon="@GetEndIcon()"
                OnFocus="@HandleInputFocus"
                OnBlur="@HandleInputBlur"
-               AdditionalAttributes="@GetInputAttributes()" />
+               @onkeydown="@HandleKeyDown"
+               @ref="inputRef" />
 
-    <!-- Suggestions Dropdown - Always rendered for portal movement -->
-    <div class="autosuggest-backdrop @(IsOpen ? "visible" : "hidden")" @onclick="CloseDropdown"></div>
-    
-    <div class="autosuggest-viewport @(IsOpen ? "visible" : "hidden")">
+    <!-- Viewport stays in DOM but moves to portal when open -->
+    <div class="autosuggest-viewport @(isDropdownOpen ? "autosuggest-viewport-open" : "autosuggest-viewport-closed")" 
+         @ref="dropdownRef"
+         style="position: absolute; top: -9999px; left: -9999px; visibility: hidden;">
         <div class="autosuggest-dropdown">
-            @if (IsOpen)
+            @if (ShowLoading && IsLoading)
             {
-                @if (ShowLoading && IsLoading)
-                {
-                    <div class="autosuggest-loading">
-                        <div class="search-loading-indicator">
-                            <i class="icon animate-spin">refresh</i>
-                            <span class="text-sm text-muted">Searching...</span>
-                        </div>
-                        <RSkeleton Height="2rem" />
-                        <RSkeleton Height="2rem" />
-                        <RSkeleton Height="2rem" />
+                <div class="autosuggest-loading">
+                    <div class="loading-indicator">
+                        <i class="icon animate-spin">refresh</i>
+                        <span>Searching...</span>
                     </div>
-                }
-                else if (FilteredItems.Any())
+                </div>
+            }
+            else if (FilteredItems.Any())
+            {
+                @foreach (var (item, index) in FilteredItems.Take(MaxSuggestions).Select((item, idx) => (item, idx)))
                 {
-                    @foreach (var (item, index) in FilteredItems.Take(MaxSuggestions).Select((item, idx) => (item, idx)))
-                    {
-                        <div class="autosuggest-item @GetItemClasses(index)"
-                             @onclick="() => HandleItemSelect(item)"
-                             @onmouseenter="() => SetSelectedIndex(index)"
-                             data-item-index="@index"
-                             role="option"
-                             aria-selected="@(SelectedIndex == index)">
-                            @if (ItemTemplate != null)
-                            {
-                                @ItemTemplate(item)
-                            }
-                            else
-                            {
-                                <div class="autosuggest-item-content">
-                                    @if (!string.IsNullOrEmpty(GetItemIcon(item)))
-                                    {
-                                        <i class="icon autosuggest-item-icon">@GetItemIcon(item)</i>
-                                    }
-                                    <span class="autosuggest-item-text">@GetItemText(item)</span>
-                                </div>
-                            }
-                        </div>
-                    }
-                }
-                else if (!string.IsNullOrWhiteSpace(SearchQuery) && SearchQuery.Length >= MinSearchLength)
-                {
-                    <div class="autosuggest-empty">
-                        @if (EmptyTemplate != null)
+                    <div class="autosuggest-item @GetItemClasses(index)"
+                         @onclick="() => HandleItemSelect(item)"
+                         @onmouseenter="() => SetSelectedIndex(index)"
+                         data-item-index="@index">
+                        @if (ItemTemplate != null)
                         {
-                            @EmptyTemplate
+                            @ItemTemplate(item)
                         }
                         else
                         {
-                            <div class="autosuggest-empty-content">
-                                <i class="icon">search_off</i>
-                                <span>No suggestions found</span>
+                            <div class="autosuggest-item-content">
+                                @if (!string.IsNullOrEmpty(GetItemIcon(item)))
+                                {
+                                    <i class="icon">@GetItemIcon(item)</i>
+                                }
+                                <span>@GetItemText(item)</span>
                             </div>
                         }
                     </div>
                 }
+            }
+            else if (!string.IsNullOrWhiteSpace(SearchQuery) && SearchQuery.Length >= MinSearchLength)
+            {
+                <div class="autosuggest-empty">
+                    @if (EmptyTemplate != null)
+                    {
+                        @EmptyTemplate
+                    }
+                    else
+                    {
+                        <div class="empty-content">
+                            <i class="icon">search_off</i>
+                            <span>No results found</span>
+                        </div>
+                    }
+                </div>
             }
         </div>
     </div>
 </div>
 
 @code {
+    private ElementReference containerRef;
+    private ElementReference dropdownRef;
+    private RTextInput inputRef;
     private string searchQuery = string.Empty;
-    private bool isOpen;
     private bool isLoading;
     private int selectedIndex = -1;
     private Timer debounceTimer;
     private CancellationTokenSource cancellationTokenSource;
     private int searchGeneration = 0;
-    private string portalId;
-    private string currentDirection = "down";
-    private bool disposed = false;
+    private bool isDropdownOpen;
+    private string autosuggestId = $"autosuggest-{Guid.NewGuid():N}";
+    private IJSObjectReference? autosuggestModule;
+    private DotNetObjectReference<RAutosuggestGeneric<TItem>>? dotNetRef;
 
     [Parameter] public TItem Value { get; set; }
     [Parameter] public EventCallback<TItem> ValueChanged { get; set; }
@@ -142,20 +131,18 @@ Extensible foundation for text search, datepicker autosuggest, and custom implem
     [Parameter] public bool ClearOnSelect { get; set; }
     [Parameter] public bool OpenOnFocus { get; set; }
     [Parameter] public FieldType InputType { get; set; } = FieldType.Text;
-    [Parameter] public string ElementId { get; set; } = $"autosuggest-{Guid.NewGuid():N}";
-
     [Parameter] public string Icon { get; set; }
     [Parameter] public bool ShowDropdownIcon { get; set; } = true;
-
     [Parameter] public EventCallback<TItem> OnItemSelected { get; set; }
     [Parameter] public EventCallback<string> OnSearchChanged { get; set; }
-    
-    // Universal Portal Interface Parameters
-    [Parameter] public bool UseBackdrop { get; set; } = false;
-    [Parameter] public string BackdropClass { get; set; } = "";
-    [Parameter] public bool CloseOnBackdropClick { get; set; } = true;
-    [Parameter] public bool CloseOnEscape { get; set; } = true;
-    [Parameter] public bool CloseOnClickOutside { get; set; } = true;
+    [Parameter] public SizeType Size { get; set; } = SizeType.Medium;
+    [Parameter] public bool ReadOnly { get; set; }
+    [Parameter] public bool Required { get; set; }
+    [Parameter] public string StartIcon { get; set; }
+    [Parameter] public string EndIcon { get; set; }
+    [Parameter] public string Placeholder { get; set; }
+    [Parameter] public string Label { get; set; }
+    [Parameter] public string HelpText { get; set; }
 
     private string SearchQuery
     {
@@ -163,9 +150,7 @@ Extensible foundation for text search, datepicker autosuggest, and custom implem
         set => searchQuery = value;
     }
 
-    private bool IsOpen => isOpen && !Disabled && !ReadOnly;
     private bool IsLoading => isLoading;
-    private int SelectedIndex => selectedIndex;
     private IEnumerable<TItem> FilteredItems => Items ?? Enumerable.Empty<TItem>();
 
     protected override void OnInitialized()
@@ -175,22 +160,81 @@ Extensible foundation for text search, datepicker autosuggest, and custom implem
         {
             searchQuery = GetItemText(Value);
         }
+        dotNetRef = DotNetObjectReference.Create(this);
     }
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                autosuggestModule = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/RR.Blazor/js/autosuggest.js");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to load autosuggest module: {ex.Message}");
+            }
+        }
+    }
+
+    private async Task OpenDropdown()
+    {
+        if (isDropdownOpen || autosuggestModule == null) return;
+        
+        isDropdownOpen = true;
+        StateHasChanged();
+        
+        try
+        {
+            await autosuggestModule.InvokeAsync<string>("createPortal", autosuggestId, new
+            {
+                placement = "bottom-start",
+                offset = 4,
+                flip = true,
+                constrain = true
+            });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to open dropdown: {ex.Message}");
+            isDropdownOpen = false;
+        }
+    }
+
+    private async Task CloseDropdown()
+    {
+        if (!isDropdownOpen) return;
+        
+        isDropdownOpen = false;
+        
+        if (autosuggestModule != null)
+        {
+            try
+            {
+                await autosuggestModule.InvokeVoidAsync("closeDropdown", autosuggestId);
+            }
+            catch
+            {
+                // Ignore disposal errors
+            }
+        }
+        
+        StateHasChanged();
+    }
 
     private async Task HandleValueChanged(string value)
     {
         if (searchQuery == value) return;
         
         searchQuery = value;
-        
         await OnSearchChanged.InvokeAsync(value);
         await HandleSearch();
     }
 
     private async Task HandleInputFocus()
     {
-        if (OpenOnFocus && !IsOpen && !string.IsNullOrWhiteSpace(SearchQuery))
+        if (OpenOnFocus && !isDropdownOpen && !string.IsNullOrWhiteSpace(SearchQuery))
         {
             await OpenDropdown();
         }
@@ -198,8 +242,9 @@ Extensible foundation for text search, datepicker autosuggest, and custom implem
 
     private async Task HandleInputBlur()
     {
-        await Task.Yield();
-        if (!disposed) 
+        // Delay close to allow item clicks
+        await Task.Delay(150);
+        if (isDropdownOpen) 
         {
             await CloseDropdown();
         }
@@ -219,55 +264,41 @@ Extensible foundation for text search, datepicker autosuggest, and custom implem
         searchGeneration++;
         var currentGeneration = searchGeneration;
         
-        if (!isLoading)
-        {
-            isLoading = true;
-        }
+        // Don't trigger re-render just for loading state
+        isLoading = true;
 
         cancellationTokenSource = new CancellationTokenSource();
         debounceTimer = new Timer(async _ =>
         {
-            if (disposed) return;
-            
             await InvokeAsync(async () =>
             {
-                if (disposed || SearchFunc == null || currentGeneration != searchGeneration) return;
+                if (SearchFunc == null || currentGeneration != searchGeneration) return;
 
-                if (SearchFunc != null)
+                try
                 {
-                    try
+                    var results = await SearchFunc(searchQuery, cancellationTokenSource.Token);
+                    if (currentGeneration == searchGeneration)
                     {
-                        var results = await SearchFunc(searchQuery, cancellationTokenSource.Token);
-                        if (!disposed && currentGeneration == searchGeneration)
+                        Items = results ?? Enumerable.Empty<TItem>();
+                        
+                        if (!isDropdownOpen)
                         {
-                            Items = results ?? Enumerable.Empty<TItem>();
-                            
-                            if (!isOpen)
-                            {
-                                isOpen = true;
-                                selectedIndex = -1;
-                            }
-                        }
-                    }
-                    catch (OperationCanceledException) { }
-                    finally
-                    {
-                        if (!disposed && currentGeneration == searchGeneration)
-                        {
-                            isLoading = false;
-                        }
-                    }
-                }
-                else
-                {
-                    if (!disposed && currentGeneration == searchGeneration)
-                    {
-                        if (!isOpen)
-                        {
-                            isOpen = true;
+                            await OpenDropdown();
                             selectedIndex = -1;
                         }
+                        
                         isLoading = false;
+                        StateHasChanged(); // Only render when we have results
+                    }
+                }
+                catch (OperationCanceledException) { }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Search error: {ex.Message}");
+                    if (currentGeneration == searchGeneration)
+                    {
+                        isLoading = false;
+                        StateHasChanged();
                     }
                 }
             });
@@ -285,29 +316,16 @@ Extensible foundation for text search, datepicker autosuggest, and custom implem
 
     private async Task HandleKeyDown(KeyboardEventArgs e)
     {
-        if (!IsOpen || !FilteredItems.Any() || disposed) return;
-
-        var needsStateChange = false;
-        var newSelectedIndex = selectedIndex;
+        if (!isDropdownOpen || !FilteredItems.Any()) return;
 
         switch (e.Key)
         {
             case "ArrowDown":
-                newSelectedIndex = Math.Min(selectedIndex + 1, FilteredItems.Count() - 1);
-                if (newSelectedIndex != selectedIndex)
-                {
-                    selectedIndex = newSelectedIndex;
-                    needsStateChange = true;
-                }
+                selectedIndex = Math.Min(selectedIndex + 1, FilteredItems.Count() - 1);
                 break;
 
             case "ArrowUp":
-                newSelectedIndex = Math.Max(selectedIndex - 1, -1);
-                if (newSelectedIndex != selectedIndex)
-                {
-                    selectedIndex = newSelectedIndex;
-                    needsStateChange = true;
-                }
+                selectedIndex = Math.Max(selectedIndex - 1, -1);
                 break;
 
             case "Enter":
@@ -318,84 +336,8 @@ Extensible foundation for text search, datepicker autosuggest, and custom implem
                 break;
 
             case "Escape":
-                if (CloseOnEscape)
-                {
-                    await CloseDropdown();
-                }
+                await CloseDropdown();
                 break;
-        }
-
-        // Keyboard navigation changes trigger natural re-renders
-    }
-
-
-    private async Task OpenDropdown()
-    {
-        if (!isOpen)
-        {
-            isOpen = true;
-            selectedIndex = -1;
-            
-            await Task.Yield();
-            await CreatePortal();
-            
-            await Task.Yield();
-            await UpdateCurrentDirection();
-        }
-    }
-
-    private async Task CloseDropdown()
-    {
-        if (isOpen)
-        {
-            isOpen = false;
-            selectedIndex = -1;
-            
-            await DestroyPortal();
-            
-            await Task.Yield();
-        }
-    }
-
-    private async Task CreatePortal()
-    {
-        if (!string.IsNullOrEmpty(portalId)) return;
-        
-        try
-        {
-            var portalConfig = new
-            {
-                useBackdrop = UseBackdrop,
-                backdropClass = BackdropClass,
-                closeOnBackdropClick = CloseOnBackdropClick,
-                closeOnEscape = CloseOnEscape
-            };
-            
-            portalId = await SafeInvokeAsync<string>("RRBlazor.Autosuggest.createPortal", ElementId, portalConfig);
-            
-            if (!string.IsNullOrEmpty(portalId))
-            {
-                await UpdateCurrentDirection();
-            }
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Portal creation failed: {ex.Message}");
-        }
-    }
-
-    private async Task DestroyPortal()
-    {
-        if (string.IsNullOrEmpty(portalId)) return;
-        
-        try
-        {
-            await SafeInvokeAsync("RRBlazor.Autosuggest.destroyPortal", portalId);
-            portalId = null;
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Portal cleanup failed: {ex.Message}");
         }
     }
 
@@ -409,7 +351,6 @@ Extensible foundation for text search, datepicker autosuggest, and custom implem
 
     private string GetEffectiveStartIcon()
     {
-
         return !string.IsNullOrEmpty(StartIcon) ? StartIcon : Icon;
     }
 
@@ -417,124 +358,49 @@ Extensible foundation for text search, datepicker autosuggest, and custom implem
     {
         if (IsLoading) return "refresh";
         if (!string.IsNullOrEmpty(EndIcon)) return EndIcon;
-        
-        if (!ShowDropdownIcon) return string.Empty;
-        
-        if (IsOpen)
-        {
-            return currentDirection == "up" ? "expand_less" : "expand_more";
-        }
-        
-        return "expand_more";
+        return ShowDropdownIcon ? (isDropdownOpen ? "expand_less" : "expand_more") : string.Empty;
     }
-
-    private async Task UpdateCurrentDirection()
-    {
-        if (string.IsNullOrEmpty(ElementId) || disposed) return;
-        
-        try
-        {
-            var newDirection = await SafeInvokeAsync<string>("RRBlazor.Autosuggest.getDirection", ElementId);
-            if (!disposed && !string.IsNullOrEmpty(newDirection) && currentDirection != newDirection)
-            {
-                currentDirection = newDirection;
-                // Direction changes trigger icon updates which naturally re-render
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Warning: Failed to get autosuggest direction: {ex.Message}");
-        }
-    }
-
 
     private string GetAutosuggestClasses()
     {
-        var classes = new List<string> { "autosuggest", "relative" };
+        var classes = new List<string> { GetBaseClasses() };
         
-        if (IsOpen) classes.Add("autosuggest-open");
+        if (isDropdownOpen) classes.Add("autosuggest-open");
         if (IsLoading) classes.Add("autosuggest-loading");
         if (Disabled) classes.Add("autosuggest-disabled");
-        if (!string.IsNullOrEmpty(Class)) classes.Add(Class);
         
         return string.Join(" ", classes);
     }
 
     private string GetInputClasses()
     {
-        var classes = new List<string> { "autosuggest-input" };
-        
-        // Icon padding classes are handled by the underlying RTextInput component
-        // The RTextInput will automatically add input-with-start-icon and input-with-end-icon
-        // based on the StartIcon and EndIcon parameters we pass to it
-        
-        return string.Join(" ", classes);
+        return "autosuggest-input";
     }
 
     private string GetItemClasses(int index)
     {
         var classes = new List<string> { "autosuggest-item" };
-        if (index == selectedIndex) classes.Add("autosuggest-item-selected");
+        if (index == selectedIndex) classes.Add("selected");
         return string.Join(" ", classes);
     }
 
-    private Dictionary<string, object> GetInputAttributes()
-    {
-        var attrs = new Dictionary<string, object>();
-        
-        if (IsOpen)
-        {
-            attrs.Add("aria-expanded", "true");
-            attrs.Add("aria-haspopup", "listbox");
-            attrs.Add("role", "combobox");
-        }
-        
-        return attrs;
-    }
-
-    private SizeType GetTextInputSize() => Size;
-
-    [JSInvokable]
-    public async Task OnClickOutside()
-    {
-        if (IsOpen && CloseOnBackdropClick)
-        {
-            await CloseDropdown();
-        }
-    }
-    
-    [JSInvokable]
-    public async Task HandleBackdropClick()
-    {
-        if (CloseOnBackdropClick)
-        {
-            await CloseDropdown();
-        }
-    }
-    
-    [JSInvokable]
-    public async Task HandleEscapeKey()
-    {
-        if (CloseOnEscape)
-        {
-            await CloseDropdown();
-        }
-    }
 
     public async ValueTask DisposeAsync()
     {
-        if (disposed) return;
-        disposed = true;
-        
-        // Clean up timers and cancellation tokens first
         debounceTimer?.Dispose();
         cancellationTokenSource?.Cancel();
         cancellationTokenSource?.Dispose();
         
-        // Clean up portal
-        await DestroyPortal();
+        if (isDropdownOpen)
+        {
+            await CloseDropdown();
+        }
         
-        debounceTimer = null;
-        cancellationTokenSource = null;
+        if (autosuggestModule != null)
+        {
+            await autosuggestModule.DisposeAsync();
+        }
+        
+        dotNetRef?.Dispose();
     }
 }
