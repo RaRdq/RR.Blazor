@@ -88,6 +88,15 @@ public sealed class ModalService : IModalService, IDisposable
         return await ShowAsync(options);
     }
 
+    public async Task<Models.ModalResult> ShowRawAsync(Type componentType, Dictionary<string, object> parameters = null, ModalOptions options = null)
+    {
+        options ??= new();
+        options.ComponentType = componentType;
+        options.Parameters = parameters ?? [];
+        options.IsRawContent = true;
+        return await ShowAsync(options);
+    }
+
     public async Task CloseAsync(string modalId, Enums.ModalResult result = Enums.ModalResult.None)
     {
         var modal = _activeModals.FirstOrDefault(m => m.Id == modalId);
