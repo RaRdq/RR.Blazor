@@ -109,10 +109,7 @@
         @if (ShowFilters && _filterPanelExpanded)
         {
             <div class="grid-filter-panel pa-4 border-b border-surface-outline bg-surface-elevated">
-                <RFilterGeneric TItem="TItem" 
-                         DataSource="@_allData.AsQueryable()"
-                         OnDataFiltered="@OnFilterApplied"
-                         Config="@(new UniversalFilterConfig { ShowAdvancedPanel = true, ShowSearch = false })" />
+                <p class="text-muted">Advanced filtering will be implemented in a future version.</p>
             </div>
         }
 
@@ -207,7 +204,6 @@
 
     [Parameter] public IEnumerable<TItem> Items { get; set; } = Enumerable.Empty<TItem>();
     [Parameter] public RenderFragment<TItem> ItemTemplate { get; set; }
-    [Parameter] public RenderFragment ChildContent { get; set; }
     
     // Header
     [Parameter] public string Title { get; set; }
@@ -234,10 +230,10 @@
     [Parameter] public int ColumnsXl { get; set; } = 6;
     [Parameter] public string Gap { get; set; } = "var(--space-4)";
     
-    // Pagination - CRITICAL: 1-based pagination to match RPaginationFooter
+    // Pagination
     [Parameter] public bool EnablePagination { get; set; } = true;
     [Parameter] public int PageSize { get; set; } = 24;
-    [Parameter] public int CurrentPage { get; set; } = 1; // 1-based pagination
+    [Parameter] public int CurrentPage { get; set; } = 1;
     [Parameter] public EventCallback<int> CurrentPageChanged { get; set; }
     [Parameter] public EventCallback<int> PageSizeChanged { get; set; }
     [Parameter] public int[] PageSizeOptions { get; set; }
@@ -306,6 +302,8 @@
 
     protected override void OnParametersSet()
     {
+        _detectedMode = Mode == GridMode.Auto ? DetectGridMode() : Mode;
+        
         ProcessItems();
         UpdateSelection();
         UpdatePageSizeOptions();
@@ -377,14 +375,13 @@
 
     #endregion
 
-    #region Pagination - 1-based Implementation
+    #region Pagination
 
     private IEnumerable<TItem> GetPagedItems()
     {
         if (!EnablePagination)
             return _processedItems;
 
-        // CRITICAL: Use 1-based pagination calculation
         return _processedItems
             .Skip((CurrentPage - 1) * PageSize)
             .Take(PageSize);
@@ -567,25 +564,69 @@
             
             // Smart property detection for card content
             var title = GetSmartPropertyValue(item, properties, "Name", "Title", "DisplayName");
-            var subtitle = GetSmartPropertyValue(item, properties, "Description", "Category", "Type");
+            var subtitle = GetSmartPropertyValue(item, properties, "Department", "Position", "Description", "Category", "Type");
             var imageUrl = GetSmartPropertyValue(item, properties, "ImageUrl", "Avatar", "Thumbnail", "Photo");
             
-            // Build content from remaining properties
+            // Build content from remaining properties - only exclude properties that were actually found
             var contentParts = new List<string>();
-            var usedProperties = new HashSet<string> { "Name", "Title", "DisplayName", "Description", "Category", "Type", "ImageUrl", "Avatar", "Thumbnail", "Photo" };
+            var usedPropertyNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             
-            foreach (var prop in properties.Take(3).Where(p => !usedProperties.Contains(p.Name)))
+            // Only add to used if we actually found the property
+            if (!string.IsNullOrWhiteSpace(title))
+            {
+                var titleProp = properties.FirstOrDefault(p => 
+                    p.Name.Equals("Name", StringComparison.OrdinalIgnoreCase) ||
+                    p.Name.Equals("Title", StringComparison.OrdinalIgnoreCase) ||
+                    p.Name.Equals("DisplayName", StringComparison.OrdinalIgnoreCase));
+                if (titleProp != null) usedPropertyNames.Add(titleProp.Name);
+            }
+            
+            if (!string.IsNullOrWhiteSpace(subtitle))
+            {
+                var subtitleProp = properties.FirstOrDefault(p => 
+                    p.Name.Equals("Department", StringComparison.OrdinalIgnoreCase) ||
+                    p.Name.Equals("Position", StringComparison.OrdinalIgnoreCase) ||
+                    p.Name.Equals("Description", StringComparison.OrdinalIgnoreCase) ||
+                    p.Name.Equals("Category", StringComparison.OrdinalIgnoreCase) ||
+                    p.Name.Equals("Type", StringComparison.OrdinalIgnoreCase));
+                if (subtitleProp != null) usedPropertyNames.Add(subtitleProp.Name);
+            }
+            
+            if (!string.IsNullOrWhiteSpace(imageUrl))
+            {
+                var imageProp = properties.FirstOrDefault(p => 
+                    p.Name.Equals("ImageUrl", StringComparison.OrdinalIgnoreCase) ||
+                    p.Name.Equals("Avatar", StringComparison.OrdinalIgnoreCase) ||
+                    p.Name.Equals("Thumbnail", StringComparison.OrdinalIgnoreCase) ||
+                    p.Name.Equals("Photo", StringComparison.OrdinalIgnoreCase));
+                if (imageProp != null) usedPropertyNames.Add(imageProp.Name);
+            }
+            
+            // Add remaining properties to content, up to 5 properties total
+            var remainingProperties = properties
+                .Where(p => !usedPropertyNames.Contains(p.Name))
+                .Take(5);
+            
+            foreach (var prop in remainingProperties)
             {
                 var value = prop.GetValue(item);
                 if (value != null && !string.IsNullOrWhiteSpace(value.ToString()))
                 {
                     var formatted = FormatValue(value);
-                    contentParts.Add($"{prop.Name}: {formatted}");
+                    var displayName = prop.Name;
+                    
+                    // Make property names more readable
+                    if (displayName == "Salary") displayName = "Salary";
+                    else if (displayName == "HireDate") displayName = "Hire Date";
+                    else if (displayName == "IsActive") displayName = "Active";
+                    else if (displayName == "Email") displayName = "Email";
+                    
+                    contentParts.Add($"{displayName}: {formatted}");
                 }
             }
             
             // Set card properties
-            builder.AddAttribute(1, "Text", title ?? _itemType.Name);
+            builder.AddAttribute(1, "Text", title ?? item.ToString());
             
             if (!string.IsNullOrWhiteSpace(subtitle))
                 builder.AddAttribute(2, "Subtitle", subtitle);

@@ -115,6 +115,33 @@ public static class RAttributeForwarder
     }
     
     /// <summary>
+    /// Validates HTML attribute names to prevent JavaScript setAttribute errors
+    /// </summary>
+    private static bool IsValidHtmlAttributeName(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            return false;
+        
+        // Check for characters that cause JavaScript InvalidCharacterError in setAttribute
+        if (name.Contains("\"") || name.Contains("'") || name.Contains("<") || name.Contains(">") || 
+            name.Contains("/") || name.Contains("\\") || name.Contains("=") || name.Trim() != name)
+            return false;
+        
+        // Check for control characters
+        foreach (char c in name)
+        {
+            if (char.IsControl(c) || c == '\0')
+                return false;
+        }
+        
+        // Must start with letter or underscore
+        if (name.Length > 0 && !char.IsLetter(name[0]) && name[0] != '_')
+            return false;
+        
+        return true;
+    }
+    
+    /// <summary>
     /// Forwards all valid HTML attributes from [Parameter] properties to the render tree builder.
     /// Filters out Blazor-specific parameters like EventCallbacks, RenderFragments, etc.
     /// Uses cached compiled expressions for optimal performance.
@@ -185,6 +212,12 @@ public static class RAttributeForwarder
                 {
                     value = intPageSize;
                 }
+            }
+            
+            // Additional validation for attribute names that could cause JavaScript errors
+            if (!IsValidHtmlAttributeName(attr.Key))
+            {
+                continue;
             }
             
             if (ShouldForwardAttribute(attr.Key, value?.GetType() ?? typeof(object)))

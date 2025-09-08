@@ -167,9 +167,9 @@ public class RGrid : RComponentBase
     [Parameter] public int PageSize { get; set; } = 24;
     
     /// <summary>
-    /// Current page index (0-based)
+    /// Current page index (1-based)
     /// </summary>
-    [Parameter] public int CurrentPage { get; set; }
+    [Parameter] public int CurrentPage { get; set; } = 1;
     
     /// <summary>
     /// Callback when page changes
@@ -258,6 +258,58 @@ public class RGrid : RComponentBase
         }
         
         return typeof(object);
+    }
+    
+    #endregion
+    
+    #region Render Implementation
+    
+    protected override void BuildRenderTree(RenderTreeBuilder builder)
+    {
+        if (Items == null) return;
+        
+        // Infer the item type
+        var itemType = InferItemType(Items);
+        if (itemType == null || itemType == typeof(object))
+        {
+            builder.OpenElement(0, "div");
+            builder.AddAttribute(1, "class", "text-error");
+            builder.AddContent(2, "Unable to infer item type for RGrid");
+            builder.CloseElement();
+            return;
+        }
+        
+        // Create RGridForwarder<T> dynamically
+        var forwarderType = typeof(RGridForwarder<>).MakeGenericType(itemType);
+        
+        builder.OpenComponent(0, forwarderType);
+        
+        // Add Items parameter
+        builder.AddAttribute(1, "Items", Items);
+        
+        // Forward all parameters via reflection
+        var parameters = GetType().GetProperties()
+            .Where(p => p.GetCustomAttribute<ParameterAttribute>() != null)
+            .Where(p => p.Name != nameof(Items)); // Items already added
+            
+        int seq = 2;
+        foreach (var param in parameters)
+        {
+            var value = param.GetValue(this);
+            if (value != null)
+            {
+                builder.AddAttribute(seq++, param.Name, value);
+            }
+        }
+        
+        
+        // Add child content
+        if (ChildContent != null)
+        {
+            builder.AddAttribute(seq, "ChildContent", ChildContent);
+        }
+        
+        builder.CloseComponent();
     }
     
     #endregion

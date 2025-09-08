@@ -1,257 +1,196 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
-using RR.Blazor.Models;
-using RR.Blazor.Enums;
 using RR.Blazor.Components.Base;
+using System.Collections;
 using System.Linq;
 
 namespace RR.Blazor.Components.Data;
 
-/// <summary>
-/// Smart table wrapper that enables ultra-simple syntax: <RTable Items="@data" />
-/// Uses RTableForwarder internally for compile-time type optimization
-/// </summary>
-public abstract class RTableBase : RComponentBase
-{
-    public override async Task SetParametersAsync(ParameterView parameters)
-    {
-        // Fix parameter casting errors: intercept and convert parameter values to correct types
-        var parametersDict = new Dictionary<string, object>();
-        
-        foreach (var parameter in parameters)
-        {
-            var value = parameter.Value;
-            
-            // Handle specific parameter type conversions
-            value = parameter.Name switch
-            {
-                nameof(PageSize) => ConvertToInt(value, 50),
-                nameof(Virtualize) => ConvertToBool(value, false),
-                nameof(Striped) => ConvertToBool(value, true),
-                nameof(Hover) => ConvertToBool(value, true),
-                nameof(Bordered) => ConvertToBool(value, false),
-                nameof(Compact) => ConvertToBool(value, false),
-                nameof(FixedHeader) => ConvertToBool(value, false),
-                nameof(StickyHeader) => ConvertToBool(value, false),
-                nameof(AutoGenerateColumns) => ConvertToBool(value, true),
-                nameof(MultiSelection) => ConvertToBool(value, false),
-                nameof(SearchEnabled) => ConvertToBool(value, false),
-                nameof(FilterEnabled) => ConvertToBool(value, false),
-                nameof(ExportEnabled) => ConvertToBool(value, false),
-                nameof(RefreshEnabled) => ConvertToBool(value, false),
-                nameof(BulkOperationsEnabled) => ConvertToBool(value, false),
-                nameof(ShowTitle) => ConvertToBool(value, true),
-                nameof(ShowFooter) => ConvertToBool(value, false),
-                nameof(ShowPagination) => ConvertToBool(value, true),
-                nameof(ShowSearch) => ConvertToBool(value, true),
-                nameof(ShowToolbar) => ConvertToBool(value, true),
-                nameof(ShowChartButton) => ConvertToBool(value, false),
-                nameof(ShowExportButton) => ConvertToBool(value, true),
-                nameof(ShowColumnManager) => ConvertToBool(value, false),
-                nameof(EnableColumnReordering) => ConvertToBool(value, false),
-                nameof(EnableStickyColumns) => ConvertToBool(value, false),
-                nameof(EnableHorizontalScroll) => ConvertToBool(value, false),
-                nameof(EnableSorting) => ConvertToBool(value, false),
-                nameof(EnableFiltering) => ConvertToBool(value, false),
-                nameof(EnableSelection) => ConvertToBool(value, false),
-                nameof(EnableExport) => ConvertToBool(value, false),
-                nameof(EnablePaging) => ConvertToBool(value, true),
-                nameof(Loading) => ConvertToBool(value, false),
-                "ShowFilters" => ConvertToBool(value, false),
-                "EnableColumnFilters" => ConvertToBool(value, false),
-                "RowClickable" => ConvertToBool(value, false),
-                _ => value // Keep original value for all other parameters
-            };
-            
-            parametersDict[parameter.Name] = value;
-        }
-        
-        // Create new ParameterView with corrected parameters
-        var correctedParameters = ParameterView.FromDictionary(parametersDict);
-        await base.SetParametersAsync(correctedParameters);
-    }
-    
-    private static object ConvertToInt(object value, int defaultValue)
-    {
-        if (value == null) return defaultValue;
-        if (value is int) return value;
-        if (value is string strValue && int.TryParse(strValue, out var intValue)) return intValue;
-        
-        try
-        {
-            return Convert.ToInt32(value);
-        }
-        catch
-        {
-            return defaultValue;
-        }
-    }
-    
-    private static object ConvertToBool(object value, bool defaultValue)
-    {
-        if (value == null) return defaultValue;
-        if (value is bool) return value;
-        if (value is string strValue && bool.TryParse(strValue, out var boolValue)) return boolValue;
-        
-        try
-        {
-            return Convert.ToBoolean(value);
-        }
-        catch
-        {
-            return defaultValue;
-        }
-    }
-    [Parameter] public string Title { get; set; }
-    [Parameter] public string Subtitle { get; set; }
-    [Parameter] public bool Loading { get; set; }
-    [Parameter] public string LoadingText { get; set; } = "Loading...";
-    [Parameter] public string EmptyText { get; set; } = "No data available";
-    [Parameter] public bool ShowTitle { get; set; } = true;
-    [Parameter] public bool ShowFooter { get; set; }
-    [Parameter] public bool Striped { get; set; } = true;
-    [Parameter] public bool Hover { get; set; } = true;
-    [Parameter] public bool Bordered { get; set; }
-    [Parameter] public bool Compact { get; set; }
-    [Parameter] public bool FixedHeader { get; set; }
-    [Parameter] public bool Virtualize { get; set; }
-    
-    [Parameter] public int PageSize { get; set; } = 50;
-    [Parameter] public string Height { get; set; }
-    [Parameter] public string MaxHeight { get; set; }
-    [Parameter] public bool StickyHeader { get; set; }
-    [Parameter] public bool AutoGenerateColumns { get; set; } = true;
-    [Parameter] public bool MultiSelection { get; set; }
-    [Parameter] public bool SearchEnabled { get; set; }
-    [Parameter] public bool FilterEnabled { get; set; }
-    [Parameter] public bool ExportEnabled { get; set; }
-    [Parameter] public bool RefreshEnabled { get; set; }
-    [Parameter] public bool BulkOperationsEnabled { get; set; }
-    [Parameter] public string RowHeight { get; set; }
-    [Parameter] public string HeaderHeight { get; set; }
-    [Parameter] public string FooterHeight { get; set; }
-    [Parameter] public string CssClass { get; set; }
-    [Parameter] public RenderFragment ColumnsContent { get; set; }
-    [Parameter] public RenderFragment BulkOperations { get; set; }
-    [Parameter] public RenderFragment TableActions { get; set; }
-    [Parameter] public RenderFragment EmptyContent { get; set; }
-    [Parameter] public RenderFragment LoadingContent { get; set; }
-    [Parameter] public RenderFragment HeaderTemplate { get; set; }
-    [Parameter] public RenderFragment FooterTemplate { get; set; }
-    
-    // Additional parameters for RTableGeneric compatibility
-    [Parameter] public bool ShowPagination { get; set; } = true;
-    [Parameter] public bool ShowSearch { get; set; } = true;
-    [Parameter] public bool ShowToolbar { get; set; } = true;
-    [Parameter] public bool ShowChartButton { get; set; }
-    [Parameter] public bool ShowExportButton { get; set; } = true;
-    [Parameter] public string ChartButtonText { get; set; } = "Show as Chart";
-    [Parameter] public RR.Blazor.Enums.ChartType? DefaultChartType { get; set; }
-    
-    [Parameter] public bool ShowColumnManager { get; set; }
-    [Parameter] public bool EnableColumnReordering { get; set; }
-    [Parameter] public bool EnableStickyColumns { get; set; }
-    [Parameter] public bool EnableHorizontalScroll { get; set; }
-    [Parameter] public bool EnableSorting { get; set; }
-    [Parameter] public bool EnableFiltering { get; set; }
-    [Parameter] public bool EnableSelection { get; set; }
-    [Parameter] public bool EnableExport { get; set; }
-    [Parameter] public bool EnablePaging { get; set; } = true;
-    
-}
-
-/// <summary>
-/// Smart wrapper that detects type from Items and uses RTableForwarder internally
-/// Usage: <RTable Items="@employees" /> - type inferred automatically!
-/// Developer writes: <RTable Items="@data"><RColumn For="@(e => e.Name)" /></RTable>
-/// </summary>
 public class RTable : RTableBase
 {
     [Parameter] public object Items { get; set; }
     
+    private bool _isDisposed = false;
     
     protected override void BuildRenderTree(RenderTreeBuilder builder)
     {
-        if (Items == null)
+        if (_isDisposed || Items == null)
         {
             return;
         }
         
-        var itemsType = Items.GetType();
-        Type itemType = null;
-        
-        // Detect item type from collection
-        if (itemsType.IsGenericType)
+        switch (Items)
         {
-            var genericArgs = itemsType.GetGenericArguments();
-            if (genericArgs.Length > 0)
-            {
-                itemType = genericArgs[0];
-            }
+            case IEnumerable enumerable:
+                var enumerableType = enumerable.GetType();
+                if (enumerableType.IsGenericType)
+                {
+                    var itemType = enumerableType.GetGenericArguments()[0];
+                    BuildGenericTable(builder, enumerable, itemType);
+                }
+                else if (enumerableType.IsArray)
+                {
+                    var elementType = enumerableType.GetElementType();
+                    if (elementType != null)
+                    {
+                        BuildGenericTable(builder, enumerable, elementType);
+                    }
+                }
+                else
+                {
+                    throw new InvalidOperationException($"Cannot determine item type from collection of type {enumerableType.Name}");
+                }
+                break;
+                
+            default:
+                throw new InvalidOperationException($"RTable Items parameter must be an IEnumerable, got {Items.GetType().Name}");
         }
-        else if (itemsType.IsArray)
-        {
-            itemType = itemsType.GetElementType();
-        }
+    }
+    
+    public void Dispose()
+    {
+        _isDisposed = true;
+    }
+    
+    private void BuildGenericTable(RenderTreeBuilder builder, IEnumerable items, Type itemType)
+    {
+        var tableType = typeof(RTableGeneric<>).MakeGenericType(itemType);
         
-        if (itemType == null || !itemType.IsClass)
-        {
-            throw new InvalidOperationException($"Cannot determine item type from Items collection of type {itemsType.Name}");
-        }
+        builder.OpenComponent(0, tableType);
+        builder.AddAttribute(1, "Items", items);
         
-        // Use RTableForwarder internally for compile-time type forwarding
-        var forwarderType = typeof(RTableForwarder<>).MakeGenericType(itemType);
+        var seq = 2;
+        builder.AddAttribute(++seq, "Title", Title);
+        builder.AddAttribute(++seq, "Subtitle", Subtitle);
+        builder.AddAttribute(++seq, "Loading", Loading);
+        builder.AddAttribute(++seq, "LoadingText", LoadingText);
+        builder.AddAttribute(++seq, "EmptyText", EmptyText);
+        builder.AddAttribute(++seq, "ShowTitle", ShowTitle);
+        builder.AddAttribute(++seq, "ShowFooter", ShowFooter);
+        builder.AddAttribute(++seq, "Striped", Striped);
+        builder.AddAttribute(++seq, "Hover", Hover);
+        builder.AddAttribute(++seq, "Bordered", Bordered);
+        builder.AddAttribute(++seq, "Compact", Compact);
+        builder.AddAttribute(++seq, "FixedHeader", FixedHeader);
+        builder.AddAttribute(++seq, "Virtualize", Virtualize);
+        builder.AddAttribute(++seq, "StickyHeader", StickyHeader);
+        builder.AddAttribute(++seq, "Height", Height);
+        builder.AddAttribute(++seq, "MaxHeight", MaxHeight);
+        builder.AddAttribute(++seq, "RowHeight", RowHeight);
+        builder.AddAttribute(++seq, "HeaderHeight", HeaderHeight);
+        builder.AddAttribute(++seq, "FooterHeight", FooterHeight);
+        builder.AddAttribute(++seq, "CssClass", CssClass);
+        builder.AddAttribute(++seq, "AutoGenerateColumns", AutoGenerateColumns);
+        builder.AddAttribute(++seq, "MultiSelection", MultiSelection);
+        builder.AddAttribute(++seq, "SearchEnabled", SearchEnabled);
+        builder.AddAttribute(++seq, "FilterEnabled", FilterEnabled);
+        builder.AddAttribute(++seq, "ExportEnabled", ExportEnabled);
+        builder.AddAttribute(++seq, "RefreshEnabled", RefreshEnabled);
+        builder.AddAttribute(++seq, "BulkOperationsEnabled", BulkOperationsEnabled);
+        builder.AddAttribute(++seq, "ShowPagination", ShowPagination);
+        builder.AddAttribute(++seq, "ShowSearch", ShowSearch);
+        builder.AddAttribute(++seq, "ShowToolbar", ShowToolbar);
+        builder.AddAttribute(++seq, "ShowChartButton", ShowChartButton);
+        builder.AddAttribute(++seq, "ShowExportButton", ShowExportButton);
+        builder.AddAttribute(++seq, "ShowColumnManager", ShowColumnManager);
+        builder.AddAttribute(++seq, "EnableColumnReordering", EnableColumnReordering);
+        builder.AddAttribute(++seq, "EnableStickyColumns", EnableStickyColumns);
+        builder.AddAttribute(++seq, "EnableHorizontalScroll", EnableHorizontalScroll);
+        builder.AddAttribute(++seq, "EnableSorting", EnableSorting);
+        builder.AddAttribute(++seq, "EnableFiltering", EnableFiltering);
+        builder.AddAttribute(++seq, "EnableSelection", EnableSelection);
+        builder.AddAttribute(++seq, "EnableExport", EnableExport);
+        builder.AddAttribute(++seq, "EnablePaging", EnablePaging);
+        builder.AddAttribute(++seq, "ShowFilters", ShowFilters);
+        builder.AddAttribute(++seq, "Selectable", Selectable);
+        builder.AddAttribute(++seq, "MultiSelect", MultiSelect);
+        builder.AddAttribute(++seq, "RowClickable", RowClickable);
+        builder.AddAttribute(++seq, "PageSize", PageSize);
+        builder.AddAttribute(++seq, "CurrentPage", CurrentPage);
+        builder.AddAttribute(++seq, "ChartButtonText", ChartButtonText);
+        builder.AddAttribute(++seq, "DefaultChartType", DefaultChartType);
         
-        builder.OpenComponent(0, forwarderType);
-        builder.AddAttribute(1, "Items", Items);
-        builder.AddAttribute(2, "ChildContent", ColumnsContent ?? ChildContent);
+        builder.AddAttribute(++seq, "ColumnsContent", ColumnsContent);
+        builder.AddAttribute(++seq, "BulkOperations", BulkOperations);
+        builder.AddAttribute(++seq, "TableActions", TableActions);
+        builder.AddAttribute(++seq, "EmptyContent", EmptyContent);
+        builder.AddAttribute(++seq, "LoadingContent", LoadingContent);
+        builder.AddAttribute(++seq, "HeaderTemplate", HeaderTemplate);
+        builder.AddAttribute(++seq, "FooterTemplate", FooterTemplate);
         
-        // Forward Blazor component parameters (not HTML attributes)
-        var seq = 3;
+        builder.AddAttribute(++seq, "PageSizeChanged", PageSizeChanged);
+        builder.AddAttribute(++seq, "CurrentPageChanged", CurrentPageChanged);
+        builder.AddAttribute(++seq, "SortByChanged", SortByChanged);
+        builder.AddAttribute(++seq, "SortDescendingChanged", SortDescendingChanged);
         
-        // Forward PageSize explicitly first to ensure it's handled correctly
-        builder.AddAttribute(++seq, nameof(PageSize), PageSize);
-        
-        // Forward critical table parameters explicitly
-        builder.AddAttribute(++seq, nameof(ShowToolbar), ShowToolbar);
-        builder.AddAttribute(++seq, nameof(ShowColumnManager), ShowColumnManager);
-        builder.AddAttribute(++seq, nameof(ShowSearch), ShowSearch);
-        builder.AddAttribute(++seq, nameof(EnableColumnReordering), EnableColumnReordering);
-        builder.AddAttribute(++seq, nameof(EnableStickyColumns), EnableStickyColumns);
-        builder.AddAttribute(++seq, nameof(EnableHorizontalScroll), EnableHorizontalScroll);
-        builder.AddAttribute(++seq, nameof(Hover), Hover);
-        builder.AddAttribute(++seq, nameof(Bordered), Bordered);
-        builder.AddAttribute(++seq, nameof(AutoGenerateColumns), AutoGenerateColumns);
-        
+        // Forward EventCallbacks and other attributes
         if (AdditionalAttributes != null)
         {
-            // Remove PageSize from additional attributes to avoid duplication
-            var filteredAttributes = AdditionalAttributes
-                .Where(kvp => !string.Equals(kvp.Key, nameof(PageSize), StringComparison.OrdinalIgnoreCase))
-                .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
-                
-            if (filteredAttributes.Any())
+            foreach (var attr in AdditionalAttributes)
             {
-                builder.AddMultipleAttributes(++seq, filteredAttributes);
-                seq += filteredAttributes.Count;
+                // Skip attributes that are already handled as parameters
+                if (attr.Key == "Items" || attr.Key == "TItem") continue;
+                
+                // Forward all attributes including EventCallbacks
+                builder.AddAttribute(++seq, attr.Key, attr.Value);
             }
         }
-        
-        // Forward render fragments
-        if (BulkOperations != null)
-            builder.AddAttribute(++seq, nameof(BulkOperations), BulkOperations);
-        if (TableActions != null)
-            builder.AddAttribute(++seq, nameof(TableActions), TableActions);
-        if (EmptyContent != null)
-            builder.AddAttribute(++seq, nameof(EmptyContent), EmptyContent);
-        if (LoadingContent != null)
-            builder.AddAttribute(++seq, nameof(LoadingContent), LoadingContent);
-        if (HeaderTemplate != null)
-            builder.AddAttribute(++seq, nameof(HeaderTemplate), HeaderTemplate);
-        if (FooterTemplate != null)
-            builder.AddAttribute(++seq, nameof(FooterTemplate), FooterTemplate);
-        
         builder.CloseComponent();
     }
+    
+    private object ConvertParameterValue(string parameterName, object value, Type itemType)
+    {
+        if (value == null)
+            return null;
+            
+        if (value is string stringValue && IsBooleanParameter(parameterName))
+        {
+            return bool.TryParse(stringValue, out var boolResult) ? boolResult : false;
+        }
+        
+        if (value is string intString && IsIntegerParameter(parameterName))
+        {
+            return int.TryParse(intString, out var intResult) ? intResult : 0;
+        }
+        
+        return value;
+    }
+    
+    private static bool IsEventCallbackParameter(string parameterName)
+    {
+        return parameterName switch
+        {
+            "OnRowClicked" or "OnRowSelected" or "OnEdit" or "OnDelete" or "OnView" or 
+            "SelectedItemChanged" or "OnSelectionChanged" or "SelectedItemsChanged" or
+            "OnEnhancedRowClick" or "OnColumnResized" or "PageSizeChanged" or 
+            "CurrentPageChanged" or "SortByChanged" or "SortDescendingChanged" => true,
+            _ => false
+        };
+    }
+    
+    private static bool IsBooleanParameter(string parameterName)
+    {
+        return parameterName switch
+        {
+            "AutoGenerateColumns" or "ShowPagination" or "ShowSearch" or "ShowTitle" or 
+            "ShowFooter" or "Striped" or "Hover" or "Bordered" or "Compact" or 
+            "FixedHeader" or "Virtualize" or "StickyHeader" or "MultiSelection" or
+            "SearchEnabled" or "FilterEnabled" or "ExportEnabled" or "RefreshEnabled" or
+            "BulkOperationsEnabled" or "ShowToolbar" or "ShowChartButton" or 
+            "ShowExportButton" or "ShowColumnManager" or "EnableColumnReordering" or
+            "EnableStickyColumns" or "EnableHorizontalScroll" or "EnableSorting" or
+            "EnableFiltering" or "EnableSelection" or "EnableExport" or "EnablePaging" or
+            "ShowFilters" or "Selectable" or "MultiSelect" or "RowClickable" or "Loading" => true,
+            _ => false
+        };
+    }
+    
+    private static bool IsIntegerParameter(string parameterName)
+    {
+        return parameterName switch
+        {
+            "PageSize" or "CurrentPage" => true,
+            _ => false
+        };
+    }
 }
-

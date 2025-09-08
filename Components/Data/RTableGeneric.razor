@@ -14,6 +14,7 @@
 @using System.Collections.Concurrent
 @using System.Reflection
 @using Microsoft.JSInterop
+@using RR.Blazor.Components.Base
 @typeparam TItem where TItem : class
 @inherits RTableBase
 @implements ITableParent
@@ -21,7 +22,6 @@
 @implements IAsyncDisposable
 @inject IJSRuntime JSRuntime
 
-@* Data table with sorting, filtering, pagination, and row selection *@
 
 <CascadingValue Value="@_tableContext" IsFixed="true">
     <CascadingValue Value="@((ITableParent)this)" IsFixed="true">
@@ -311,7 +311,7 @@
 
             @* Column definitions from child content *@
             <div class="d-none">
-                @ChildContent
+                @ColumnsContent
             </div>
         </div>
     </CascadingValue>
@@ -396,18 +396,10 @@
 }
 
 @code {
-    #region Parameters
-
     [Parameter] public IEnumerable<TItem> Items { get; set; } = Enumerable.Empty<TItem>();
-    // ChildContent inherited from RTableBase
-    
-    // Header - Title, Subtitle, ShowTitle inherited from RTableBase
     [Parameter] public string Icon { get; set; }
     [Parameter] public RenderFragment HeaderContent { get; set; }
-    
-    // Toolbar - ShowToolbar, ShowSearch inherited from RTableBase
     [Parameter] public string SearchPlaceholder { get; set; } = "Search...";
-    [Parameter] public bool ShowFilters { get; set; }
     [Parameter] public RenderFragment ToolbarContent { get; set; }
     
     [Parameter] public Dictionary<string, ColumnPreferences> ColumnPreferences { get; set; } = new();
@@ -416,52 +408,25 @@
     
     [Parameter] public string EmptyMessage { get; set; } = "No data available";
     
-    [Parameter] public bool Selectable { get; set; }
-    [Parameter] public bool MultiSelect { get; set; }
     [Parameter] public IEnumerable<TItem> SelectedItems { get; set; } = Enumerable.Empty<TItem>();
     [Parameter] public EventCallback<IEnumerable<TItem>> SelectedItemsChanged { get; set; }
     [Parameter] public TItem SelectedItem { get; set; }
     [Parameter] public EventCallback<TItem> SelectedItemChanged { get; set; }
-    
-    // Sorting
     [Parameter] public string SortBy { get; set; }
     [Parameter] public bool SortDescending { get; set; }
-    [Parameter] public EventCallback<string> SortByChanged { get; set; }
-    [Parameter] public EventCallback<bool> SortDescendingChanged { get; set; }
-    
-    // Pagination - ShowPagination inherited from RTableBase
-    // PageSize is inherited from RTableBase with default value of 50
-    [Parameter] public EventCallback<int> PageSizeChanged { get; set; }
-    [Parameter] public int CurrentPage { get; set; } = 1;
-    [Parameter] public EventCallback<int> CurrentPageChanged { get; set; }
     [Parameter] public int[] PageSizeOptions { get; set; }
-    
-    // Row customization
     [Parameter] public Func<TItem, string> RowClass { get; set; }
     [Parameter] public EventCallback<TItem> OnRowClicked { get; set; }
-    [Parameter] public bool RowClickable { get; set; }
-    
-    // Styling: Class, Style, Disabled inherited from RForwardingComponentBase
-    
-    // Auto-generation - AutoGenerateColumns inherited from RTableBase
     [Parameter] public List<string> ExcludeColumns { get; set; } = new();
-    
-    // Enhanced Table Features
     [Parameter] public bool EnhancementsEnabled { get; set; } = true;
     [Parameter] public RR.Blazor.Models.TableConfiguration EnhancementsConfig { get; set; } = new();
     [Parameter] public bool ShowEnhancedFilters { get; set; }
     [Parameter] public EventCallback<ColumnResizeEventArgs> OnColumnResized { get; set; }
     [Parameter] public EventCallback<RowClickEventArgs<TItem>> OnEnhancedRowClick { get; set; }
-    
-    // RFilter Integration - SOLID Compliant Inverted Control Pattern
     [Parameter] public IFilterProvider<TItem>? BindFilter { get; set; }
     [Parameter] public bool EnableColumnFilters { get; set; } = false;
     [Parameter] public FilterLogic ColumnFilterLogic { get; set; } = FilterLogic.And;
     [Parameter] public bool ShowFilterBadges { get; set; } = true;
-
-    #endregion
-
-    #region Private Fields
 
     private TableContext _tableContext;
     private readonly List<ColumnDefinition<TItem>> _columns = new();
@@ -514,16 +479,7 @@
     private readonly Dictionary<string, string> _columnFilterOperators = new();
     private readonly Dictionary<string, DateTime?> _columnFilterDates = new();
 
-    #endregion
-
-    #region Public Properties for Chart Integration
-
-    /// <summary>Gets the filtered and sorted data for chart integration</summary>
     public IEnumerable<TItem> FilteredData => _processedItems;
-
-    #endregion
-
-    #region Lifecycle
 
     protected override void OnInitialized()
     {
@@ -533,10 +489,8 @@
 
     protected override void OnParametersSet()
     {
-        // Subscribe to BindFilter changes if bound - SOLID inverted control pattern
         if (BindFilter != null && _lastBindFilter != BindFilter)
         {
-            // Unsubscribe from previous filter
             if (_lastBindFilter != null)
             {
                 _lastBindFilter.OnFilterChanged -= OnBindFilterChanged;
@@ -577,7 +531,6 @@
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Failed to initialize table enhancements: {ex.Message}");
                 }
             }
             
@@ -590,7 +543,6 @@
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Failed to initialize table scroll manager: {ex.Message}");
                 }
             }
             
@@ -625,9 +577,6 @@
         await base.OnAfterRenderAsync(firstRender);
     }
 
-    #endregion
-
-    #region ITableParent Implementation
 
     public Type ItemType => typeof(TItem);
 
@@ -652,16 +601,13 @@
             }
         }
     }
-
-    #endregion
-
-    #region Column Management
     
     private IEnumerable<ColumnDefinition<TItem>> GetVisibleColumns()
     {
         return GetEffectiveColumns().Where(c => 
-            !ColumnPreferences.ContainsKey(c.Key) || 
-            ColumnPreferences[c.Key].Visible != false);
+            c.Visible && 
+            (!ColumnPreferences.ContainsKey(c.Key) || 
+             ColumnPreferences[c.Key].Visible != false));
     }
     
     private async Task OnColumnPreferencesChanged(Dictionary<string, ColumnPreferences> preferences)
@@ -698,10 +644,7 @@
             }
         }
     }
-    
-    #endregion
 
-    #region Data Processing
 
     private void ProcessItems()
     {
@@ -784,9 +727,6 @@
     }
     
 
-    #endregion
-
-    #region Property Access
 
     private static Func<TItem, object> GetPropertyGetter(string propertyName)
     {
@@ -821,9 +761,6 @@
         return propInfo?.PropertyType;
     }
 
-    #endregion
-
-    #region Selection
 
     private void UpdateSelection()
     {
@@ -908,9 +845,6 @@
         StateHasChanged();
     }
 
-    #endregion
-
-    #region Sorting
 
     private async Task OnSort(string columnKey)
     {
@@ -946,9 +880,6 @@
         return SortDescending ? "arrow_drop_down" : "arrow_drop_up";
     }
 
-    #endregion
-
-    #region Pagination
 
     private IEnumerable<TItem> GetPagedItems()
     {
@@ -1002,9 +933,6 @@
         }
     }
 
-    #endregion
-
-    #region Event Handlers
 
     private async Task OnSearchInput(ChangeEventArgs e)
     {
@@ -1041,14 +969,11 @@
     private async Task ShowChartModal()
     {
         _chartModalReady = true;
-        await Task.Delay(50); // Small delay to ensure DOM is ready
+        await Task.Yield();
         _showChartModal = true;
         await InvokeAsync(StateHasChanged);
     }
 
-    #endregion
-
-    #region Styling
 
     private string GetContainerClasses()
     {
@@ -1104,8 +1029,6 @@
         return string.Join(" ", classes);
     }
 
-    // Note: GetColumnStyle and GetScrollContainerStyle removed - use CSS classes instead
-    
     private string GetFooterClass()
     {
         var classes = new List<string>();
@@ -1117,14 +1040,9 @@
             
         return string.Join(" ", classes);
     }
-
-    #endregion
-
-    #region Smart PageSize Options
     
     private void UpdatePageSizeOptions()
     {
-        // If user explicitly provided PageSizeOptions, use them
         if (PageSizeOptions?.Any() == true)
         {
             _effectivePageSizeOptions = PageSizeOptions;
@@ -1136,7 +1054,7 @@
         var breakpoint = TableConstants.SmartPageSizeBreakpoints.FirstOrDefault(b => totalCount <= b.threshold);
         _effectivePageSizeOptions = breakpoint.options ?? TableConstants.DefaultPageSizeOptions;
         
-        if (totalCount > TableConstants.SmartPageSizeBreakpoints[3].threshold) // > 1000 records
+        if (totalCount > TableConstants.SmartPageSizeBreakpoints[3].threshold)
         {
             var options = _effectivePageSizeOptions.ToList();
             
@@ -1146,7 +1064,7 @@
                 options.Add(smartOption);
             }
             
-            if (totalCount > TableConstants.SmartPageSizeBreakpoints[4].threshold) // > 10K records
+            if (totalCount > TableConstants.SmartPageSizeBreakpoints[4].threshold)
             {
                 var log = Math.Log10(totalCount);
                 var factor = (int)Math.Pow(10, Math.Floor(log - 1));
@@ -1173,10 +1091,7 @@
             PageSize = _effectivePageSizeOptions.Length > 0 ? _effectivePageSizeOptions[0] : TableConstants.DefaultPageSize;
         }
     }
-    
-    #endregion
 
-    #region Enhanced Features
 
     private string GetEnhancedTableClasses()
     {
@@ -1255,12 +1170,10 @@
 
     private RenderFragment GetEnhancedCellContent(ColumnDefinition<TItem> column, TItem item)
     {
-        // First try the existing cell content
         var content = column.GetCellContent(item);
         if (content != null)
             return content;
             
-        // If no content and universal templates are enabled, try universal template rendering
         return builder =>
         {
             var context = new UniversalTemplateContext<TItem>
@@ -1270,14 +1183,12 @@
                 IsSelected = IsSelected(item)
             };
             
-            // Use column's universal template if available
             if (column.CurrencyTemplate != null)
                 column.CurrencyTemplate.Render(item)(builder);
             else if (column.StackTemplate != null)
                 column.StackTemplate.Render(item)(builder);
             else
             {
-                // Fall back to standard rendering
                 var value = column.GetValue(item);
                 builder.AddContent(0, value?.ToString() ?? column.EmptyText);
             }
@@ -1286,10 +1197,8 @@
 
     private async Task HandleEnhancedRowClick(TItem item, int index)
     {
-        // First handle the standard row click
         await OnRowClick(item);
         
-        // Then handle enhanced row click if enabled
         if (OnEnhancedRowClick.HasDelegate)
         {
             var args = new RowClickEventArgs<TItem>
@@ -1326,24 +1235,17 @@
 
     private async Task OnDataFiltered(FilterResult<TItem> result)
     {
-        // Update items with filtered data
         _processedItems = result.Data.ToList();
-        
-        // Update filter context
         _filterContext.FilteredCount = _processedItems.Count();
         _filterContext.TotalCount = Items?.Count() ?? 0;
         
-        // Reset to first page if we have items but current page is invalid
         if (TotalPages > 0 && CurrentPage > TotalPages)
-        {
             CurrentPage = 1;
-        }
         StateHasChanged();
     }
 
     private async Task OnFilterPredicateChanged(object predicate)
     {
-        // Handle predicate changes from RFilter
         ProcessItems();
         await InvokeAsync(StateHasChanged);
     }
@@ -1357,11 +1259,7 @@
     private async Task OnFilterCriteriaChanged(UniversalFilterCriteria<TItem> criteria)
     {
         _initialFilterCriteria = criteria;
-        
-        // Update filter context with extracted active filters
         _filterContext.ActiveFilters = ExtractActiveFilters(criteria);
-        
-        // The actual filtering is handled by OnDataFiltered
         await Task.CompletedTask;
     }
     
@@ -1405,19 +1303,12 @@
         return false;
     }
 
-    #endregion
-
-    #region Cleanup
 
     public async ValueTask DisposeAsync()
     {
-        // Unsubscribe from BindFilter if subscribed
         if (_lastBindFilter != null)
-        {
             _lastBindFilter.OnFilterChanged -= OnBindFilterChanged;
-        }
         
-        // Dispose table scroll manager if initialized
         if (EnableHorizontalScroll)
         {
             try
@@ -1443,15 +1334,6 @@
             }
         }
     }
-
-    #endregion
-    
-    #region IFilterable Implementation - SOLID Compliant Inverted Control
-    
-    /// <summary>
-    /// Component applies the provided predicate to its own data
-    /// This implements proper inverted control - filter provides predicate, component applies it
-    /// </summary>
     public async Task ApplyPredicateAsync(Expression<Func<TItem, bool>>? predicate)
     {
         // This method is called when external code wants to apply a predicate
@@ -1459,28 +1341,15 @@
         ProcessItems();
         await InvokeAsync(StateHasChanged);
     }
-    
-    /// <summary>
-    /// Notifies component that bound filter state has changed
-    /// Component reprocesses data using BindFilter.GetPredicate()
-    /// </summary>
     public async Task OnFilterChangedAsync()
     {
         ProcessItems();
         await InvokeAsync(StateHasChanged);
     }
-    
-    /// <summary>
-    /// Handle BindFilter change events - reprocess data when filter changes
-    /// </summary>
     private async void OnBindFilterChanged(FilterStateChangedEventArgs args)
     {
         await OnFilterChangedAsync();
     }
-    
-    /// <summary>
-    /// Non-generic IFilterable implementation
-    /// </summary>
     async Task IFilterable.ApplyPredicateAsync(object predicate)
     {
         if (predicate is Expression<Func<TItem, bool>> typedPredicate)
@@ -1488,15 +1357,7 @@
             await ApplyPredicateAsync(typedPredicate);
         }
     }
-    
-    /// <summary>
-    /// Non-generic filter change handler
-    /// </summary>
     async Task IFilterable.OnFilterChangedAsync() => await OnFilterChangedAsync();
-    
-    /// <summary>
-    /// Apply filter to non-generic data
-    /// </summary>
     async Task IFilterable.ApplyFilterAsync(object filteredData)
     {
         if (filteredData is IEnumerable<TItem> typedData)
@@ -1508,47 +1369,24 @@
             });
         }
     }
-    
-    /// <summary>
-    /// Get filterable data as non-generic enumerable
-    /// </summary>
     IEnumerable<object> IFilterable.GetFilterableData() => Items.Cast<object>();
-    
-    /// <summary>
-    /// Get strongly-typed filterable data
-    /// </summary>
     IEnumerable<TItem> IFilterable<TItem>.GetTypedFilterableData() => Items;
-    
-    /// <summary>
-    /// Get filterable field names
-    /// </summary>
     IEnumerable<string> IFilterable.GetFilterableFields() => 
         typeof(TItem).GetProperties().Where(p => p.CanRead).Select(p => p.Name);
     
-    #endregion
-
-    #region Button Click Handlers
-    
     private void OnSortClick(string columnKey)
     {
-        Console.WriteLine($"SORT CLICK: {columnKey}");
         OnSort(columnKey);
     }
-    
-    #endregion
-    
-    #region Column Filter Methods
+
 
     private async Task OnFilterClick(string columnKey)
     {
-        Console.WriteLine($"FILTER CLICK: {columnKey}");
         await HandleFilterClick(columnKey);
     }
     
     private async Task HandleFilterClick(string columnKey)
     {
-        Console.WriteLine($"HandleFilterClick called with columnKey: {columnKey}");
-        Console.WriteLine($"BEFORE: _openFilterColumn = '{_openFilterColumn}'");
         
         if (_openFilterColumn == columnKey)
         {
@@ -1559,7 +1397,6 @@
             OpenFilterColumn = columnKey;
         }
         
-        Console.WriteLine($"AFTER: _openFilterColumn = '{_openFilterColumn}'");
         await InvokeAsync(StateHasChanged);
     }
     
@@ -1584,19 +1421,14 @@
     {
         if (JSRuntime != null)
         {
-            await JSRuntime.InvokeVoidAsync("eval", $@"
-                (function() {{
-                    const filterIcon = document.querySelector('[data-filter-column=""{columnKey}""]');
-                    const dropdown = document.getElementById('filter-dropdown-{columnKey}');
-                    if (filterIcon && dropdown) {{
-                        const rect = filterIcon.getBoundingClientRect();
-                        dropdown.style.top = (rect.bottom + 4) + 'px';
-                        dropdown.style.left = Math.min(rect.left, window.innerWidth - 280) + 'px';
-                        dropdown.style.position = 'fixed';
-                        dropdown.style.zIndex = '10010';
-                    }}
-                }})();
-            ");
+            try
+            {
+                await JSRuntime.InvokeVoidAsync("RRBlazor.Table.positionFilterDropdown", columnKey);
+            }
+            catch (Exception)
+            {
+                // Fallback - ignore positioning errors
+            }
         }
     }
 
@@ -1799,6 +1631,4 @@
         return Expression.Lambda<Func<TItem, bool>>(combinedExpression, parameter);
     }
 
-    #endregion
-    
 }
