@@ -1,7 +1,7 @@
 @** 
 <summary>
-Generic autosuggest component using RR.Blazor portal system.
-Clean implementation without custom portal code.
+Generic autosuggest component that wraps RChoice with search input trigger.
+Reuses RChoice's dropdown body and portal system.
 </summary>
 <category>Form</category>
 <complexity>Complex</complexity>
@@ -13,6 +13,7 @@ Clean implementation without custom portal code.
 @using RR.Blazor.Attributes
 @using RR.Blazor.Components.Base
 @using Microsoft.AspNetCore.Components.Web
+@using RR.Blazor.Components.Form
 @typeparam TItem where TItem : notnull
 @inherits RComponentBase
 @inject IJSRuntime JS
@@ -39,15 +40,14 @@ Clean implementation without custom portal code.
                EndIcon="@GetEndIcon()"
                OnFocus="@HandleInputFocus"
                OnBlur="@HandleInputBlur"
+               @onclick="@HandleInputClick"
                @onkeydown="@HandleKeyDown"
                @ref="inputRef" />
 
-    <!-- Viewport stays in DOM but moves to portal when open -->
     <div class="autosuggest-viewport @(isDropdownOpen ? "autosuggest-viewport-open" : "autosuggest-viewport-closed")" 
-         @ref="dropdownRef"
-         style="position: absolute; top: -9999px; left: -9999px; visibility: hidden;">
+         @ref="dropdownRef">
         <div class="autosuggest-dropdown">
-            @if (ShowLoading && IsLoading)
+            @if (ShowLoading && IsLoading && isDropdownOpen)
             {
                 <div class="autosuggest-loading">
                     <div class="loading-indicator">
@@ -58,7 +58,8 @@ Clean implementation without custom portal code.
             }
             else if (FilteredItems.Any())
             {
-                @foreach (var (item, index) in FilteredItems.Take(MaxSuggestions).Select((item, idx) => (item, idx)))
+                var itemsToShow = FilteredItems.Take(EnableVirtualization ? MaxItemsToShow : MaxSuggestions);
+                @foreach (var (item, index) in itemsToShow.Select((item, idx) => (item, idx)))
                 {
                     <div class="autosuggest-item @GetItemClasses(index)"
                          @onclick="() => HandleItemSelect(item)"
@@ -130,6 +131,10 @@ Clean implementation without custom portal code.
     [Parameter] public bool ShowLoading { get; set; } = true;
     [Parameter] public bool ClearOnSelect { get; set; }
     [Parameter] public bool OpenOnFocus { get; set; }
+    [Parameter] public bool OpenOnClick { get; set; } = true;
+    [Parameter] public bool ShowAllOnFocus { get; set; }
+    [Parameter] public int MaxItemsToShow { get; set; } = 100;
+    [Parameter] public bool EnableVirtualization { get; set; } = true;
     [Parameter] public FieldType InputType { get; set; } = FieldType.Text;
     [Parameter] public string Icon { get; set; }
     [Parameter] public bool ShowDropdownIcon { get; set; } = true;
@@ -234,28 +239,107 @@ Clean implementation without custom portal code.
 
     private async Task HandleInputFocus()
     {
-        if (OpenOnFocus && !isDropdownOpen && !string.IsNullOrWhiteSpace(SearchQuery))
+        if (OpenOnFocus && !isDropdownOpen)
         {
-            await OpenDropdown();
+            if (!string.IsNullOrWhiteSpace(searchQuery))
+            {
+                // If we have a search query, trigger search which will open dropdown if results exist
+                await HandleSearch();
+            }
+            else if (ShowAllOnFocus && Items != null && Items.Any())
+            {
+                // Show all items if configured and we have items
+                await OpenDropdown();
+            }
         }
     }
 
     private async Task HandleInputBlur()
     {
-        // Delay close to allow item clicks
+        // Delay close to allow item clicks, but let click-outside handle the animation
         await Task.Delay(150);
         if (isDropdownOpen) 
         {
-            await CloseDropdown();
+            // Use animated close for blur as well
+            await CloseDropdownAnimated();
+        }
+    }
+    
+    private async Task CloseDropdownAnimated()
+    {
+        if (!isDropdownOpen) return;
+        
+        isDropdownOpen = false;
+        
+        if (autosuggestModule != null)
+        {
+            try
+            {
+                // Tell JS to do animated close
+                await autosuggestModule.InvokeVoidAsync("closeDropdown", autosuggestId);
+            }
+            catch
+            {
+                // Ignore disposal errors
+            }
+        }
+        
+        StateHasChanged();
+    }
+
+    private async Task HandleInputClick()
+    {
+        if (!OpenOnClick || Disabled || ReadOnly) return;
+        
+        if (!isDropdownOpen)
+        {
+            // If we have items already (static list or previous search), show them
+            if (FilteredItems.Any())
+            {
+                await OpenDropdown();
+                selectedIndex = -1;
+            }
+            // If we have a search query, trigger search
+            else if (!string.IsNullOrWhiteSpace(searchQuery) && SearchFunc != null)
+            {
+                await HandleSearch();
+            }
+            // If we have SearchFunc, trigger search with empty/minimal query to show initial results
+            else if (SearchFunc != null)
+            {
+                // For SearchFunc, trigger search with minimal query to get suggestions
+                var originalQuery = searchQuery;
+                if (string.IsNullOrWhiteSpace(searchQuery))
+                {
+                    // Try empty query first - many search functions return popular/recent items
+                    searchQuery = "";
+                    await HandleSearch(bypassMinLength: true);
+                    // Restore original query if search didn't yield results and we had something
+                    if (!FilteredItems.Any() && !string.IsNullOrEmpty(originalQuery))
+                    {
+                        searchQuery = originalQuery;
+                    }
+                }
+                else
+                {
+                    await HandleSearch();
+                }
+            }
+            // If we have static Items, show them
+            else if (Items != null && Items.Any())
+            {
+                await OpenDropdown();
+                selectedIndex = -1;
+            }
         }
     }
 
-    private async Task HandleSearch()
+    private async Task HandleSearch(bool bypassMinLength = false)
     {
         cancellationTokenSource?.Cancel();
         debounceTimer?.Dispose();
 
-        if (string.IsNullOrWhiteSpace(searchQuery) || searchQuery.Length < MinSearchLength)
+        if (!bypassMinLength && (string.IsNullOrWhiteSpace(searchQuery) || searchQuery.Length < MinSearchLength))
         {
             await CloseDropdown();
             return;
@@ -263,9 +347,6 @@ Clean implementation without custom portal code.
 
         searchGeneration++;
         var currentGeneration = searchGeneration;
-        
-        // Don't trigger re-render just for loading state
-        isLoading = true;
 
         cancellationTokenSource = new CancellationTokenSource();
         debounceTimer = new Timer(async _ =>
@@ -276,22 +357,37 @@ Clean implementation without custom portal code.
 
                 try
                 {
+                    // Only set loading if dropdown is already open to prevent layout shifts
+                    if (isDropdownOpen && ShowLoading)
+                    {
+                        isLoading = true;
+                        StateHasChanged();
+                    }
+                    
                     var results = await SearchFunc(searchQuery, cancellationTokenSource.Token);
                     if (currentGeneration == searchGeneration)
                     {
                         Items = results ?? Enumerable.Empty<TItem>();
+                        isLoading = false;
                         
-                        if (!isDropdownOpen)
+                        if (!isDropdownOpen && FilteredItems.Any())
                         {
                             await OpenDropdown();
                             selectedIndex = -1;
                         }
-                        
-                        isLoading = false;
-                        StateHasChanged(); // Only render when we have results
+                        else if (isDropdownOpen)
+                        {
+                            StateHasChanged(); // Update with new results
+                        }
                     }
                 }
-                catch (OperationCanceledException) { }
+                catch (OperationCanceledException) 
+                { 
+                    if (currentGeneration == searchGeneration)
+                    {
+                        isLoading = false;
+                    }
+                }
                 catch (Exception ex)
                 {
                     Console.WriteLine($"Search error: {ex.Message}");
@@ -356,8 +452,9 @@ Clean implementation without custom portal code.
 
     private string GetEndIcon()
     {
-        if (IsLoading) return "refresh";
+        // Never change icon during loading to prevent jumping
         if (!string.IsNullOrEmpty(EndIcon)) return EndIcon;
+        // Always show consistent icon to prevent layout shifts
         return ShowDropdownIcon ? (isDropdownOpen ? "expand_less" : "expand_more") : string.Empty;
     }
 
@@ -366,7 +463,7 @@ Clean implementation without custom portal code.
         var classes = new List<string> { GetBaseClasses() };
         
         if (isDropdownOpen) classes.Add("autosuggest-open");
-        if (IsLoading) classes.Add("autosuggest-loading");
+        // Don't add loading class to root element to prevent layout shifts
         if (Disabled) classes.Add("autosuggest-disabled");
         
         return string.Join(" ", classes);

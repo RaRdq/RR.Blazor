@@ -1,217 +1,191 @@
-class AutosuggestPortalManager {
+import { PositioningEngine } from './positioning.js';
+import { getInstance as getPortalManager } from './portal.js';
+
+const positioningEngine = new PositioningEngine();
+
+class AutosuggestManager {
     constructor() {
-        this.activePortals = new Map();
-        this.positioningEngine = window.RRBlazor?.Positioning?.getInstance?.() || null;
-        this.viewportLocations = new Map();
+        this.activeDropdowns = new Map();
     }
 
-    async createPortal(autosuggestId, options = {}) {
+    async openDropdown(autosuggestId, options = {}) {
         const autosuggestElement = document.querySelector(`[data-autosuggest-id="${autosuggestId}"]`);
-        if (!autosuggestElement) {
-            console.warn(`Autosuggest element not found: ${autosuggestId}`);
-            return null;
-        }
+        if (!autosuggestElement) return null;
 
         const viewport = autosuggestElement.querySelector('.autosuggest-viewport');
-        if (!viewport) {
-            console.warn(`Viewport not found for autosuggest: ${autosuggestId}`);
-            return null;
+        if (!viewport) return null;
+
+        if (this.activeDropdowns.has(autosuggestId)) {
+            return this.activeDropdowns.get(autosuggestId).portalId;
         }
 
-        if (this.activePortals.has(autosuggestId)) {
-            console.warn(`Portal already exists for: ${autosuggestId}`);
-            return this.activePortals.get(autosuggestId).portalId;
-        }
+        const triggerElement = autosuggestElement.querySelector('.autosuggest-input, input');
+        if (!triggerElement) return null;
 
-        try {
-            const portalId = await new Promise((resolve) => {
-                const requesterId = `autosuggest-${autosuggestId}`;
-                
-                const handlePortalCreated = (event) => {
-                    if (event.detail.requesterId === requesterId) {
-                        document.removeEventListener(window.RRBlazor.Events.PORTAL_CREATED, handlePortalCreated);
-                        resolve(event.detail.portal.id);
-                    }
-                };
-                
-                document.addEventListener(window.RRBlazor.Events.PORTAL_CREATED, handlePortalCreated);
-                
-                window.RRBlazor.EventDispatcher.dispatch(
-                    window.RRBlazor.Events.PORTAL_CREATE_REQUEST,
-                    {
-                        requesterId,
-                        config: {
-                            id: `autosuggest-portal-${autosuggestId}`,
-                            className: 'autosuggest-portal'
-                        }
-                    }
-                );
-                
-                setTimeout(() => resolve(null), 1000);
-            });
+        const portalManager = getPortalManager();
+        const portal = portalManager.create({
+            id: `autosuggest-portal-${autosuggestId}`,
+            className: 'autosuggest-portal'
+        });
 
-            if (!portalId) {
-                console.error('Portal creation timeout');
-                return null;
+        viewport._originalParent = viewport.parentNode;
+        viewport._originalNextSibling = viewport.nextSibling;
+        
+        portal.element.appendChild(viewport);
+        
+        const triggerRect = triggerElement.getBoundingClientRect();
+        const dropdownHeight = Math.min(320, window.innerHeight * 0.4);
+        const targetDimensions = {
+            width: triggerRect.width,
+            height: dropdownHeight
+        };
+
+        const desiredPosition = options.position || PositioningEngine.POSITIONS.BOTTOM_START;
+        
+        const position = positioningEngine.calculatePosition(
+            triggerRect,
+            targetDimensions,
+            {
+                position: desiredPosition,
+                offset: options.offset || 4,
+                flip: options.flip !== false,
+                constrain: options.constrain !== false
             }
+        );
 
-            const portal = document.getElementById(portalId);
-            if (!portal) {
-                console.error('Portal element not found:', portalId);
-                return null;
+        // Position viewport
+        viewport.style.position = 'fixed';
+        viewport.style.left = `${position.x}px`;
+        viewport.style.top = `${position.y}px`;
+        viewport.style.width = `${targetDimensions.width}px`;
+        viewport.style.maxHeight = `${dropdownHeight}px`;
+        viewport.style.zIndex = portal.zIndex.toString();
+        
+        // Start with animating-open state (invisible, positioned)
+        viewport.classList.remove('autosuggest-viewport-closed');
+        viewport.classList.add('autosuggest-viewport-animating-open');
+        viewport.style.visibility = 'visible';
+        
+        // Register dropdown before animation
+        this.activeDropdowns.set(autosuggestId, {
+            portalId: portal.id,
+            viewport,
+            triggerElement,
+            autosuggestElement
+        });
+        
+        this.setupEventHandlers(autosuggestId);
+        
+        // Trigger animation to open state after a micro-task
+        requestAnimationFrame(() => {
+            if (this.activeDropdowns.has(autosuggestId)) {
+                viewport.classList.remove('autosuggest-viewport-animating-open');
+                viewport.classList.add('autosuggest-viewport-open');
             }
-            
-            viewport._originalParent = viewport.parentNode;
-            viewport._originalNextSibling = viewport.nextSibling;
-            
-            viewport.style.position = '';
-            viewport.style.top = '';
-            viewport.style.left = '';
-            viewport.style.visibility = '';
-            
-            portal.appendChild(viewport);
-            this.viewportLocations.set(autosuggestId, portal);
-            
-            const triggerElement = autosuggestElement.querySelector('.autosuggest-input');
-            const triggerRect = triggerElement.getBoundingClientRect();
-            
-            const position = this.calculatePosition(triggerRect, viewport, options);
-            
-            viewport.style.position = 'fixed';
-            viewport.style.left = `${position.x}px`;
-            viewport.style.top = `${position.y}px`;
-            viewport.style.width = `${position.width}px`;
-            viewport.style.maxHeight = `${position.maxHeight}px`;
-            viewport.style.visibility = 'visible';
-            viewport.style.opacity = '1';
-            viewport.style.pointerEvents = 'auto';
-            
-            viewport.classList.remove('autosuggest-viewport-closed');
-            viewport.classList.add('autosuggest-viewport-open');
-            
-            this.activePortals.set(autosuggestId, {
-                portalId,
-                viewport,
-                triggerElement,
-                autosuggestElement,
-                options
-            });
-            
-            this.setupEventHandlers(autosuggestId);
-            
-            return portalId;
-        } catch (error) {
-            console.error('Failed to create autosuggest portal:', error);
-            return null;
-        }
+        });
+        
+        window.RRBlazor.EventDispatcher.dispatch(
+            window.RRBlazor.Events.UI_COMPONENT_OPENED,
+            {
+                componentType: 'autosuggest',
+                componentId: autosuggestId
+            }
+        );
+        
+        return portal.id;
     }
 
-    closeDropdown(autosuggestId) {
-        const portalData = this.activePortals.get(autosuggestId);
-        if (!portalData) return;
+    closeDropdown(autosuggestId, animated = true) {
+        const dropdownData = this.activeDropdowns.get(autosuggestId);
+        if (!dropdownData) return;
 
-        const { portalId, viewport } = portalData;
+        const { portalId, viewport } = dropdownData;
         
         this.cleanupEventHandlers(autosuggestId);
         
+        if (!animated) {
+            // Immediate close (for cleanup/disposal)
+            this._finishClose(autosuggestId, viewport, portalId);
+            return;
+        }
+        
+        // Start animated close
         viewport.classList.remove('autosuggest-viewport-open');
+        viewport.classList.add('autosuggest-viewport-animating-close');
+        
+        // Wait for animation to complete before final cleanup
+        setTimeout(() => {
+            if (this.activeDropdowns.has(autosuggestId)) {
+                this._finishClose(autosuggestId, viewport, portalId);
+            }
+        }, 350); // Match CSS --duration-normal
+    }
+    
+    _finishClose(autosuggestId, viewport, portalId) {
+        viewport.classList.remove('autosuggest-viewport-open', 'autosuggest-viewport-animating-close');
         viewport.classList.add('autosuggest-viewport-closed');
         
-        setTimeout(() => {
-            viewport.style.visibility = 'hidden';
-            viewport.style.position = 'absolute';
-            viewport.style.top = '-9999px';
-            viewport.style.left = '-9999px';
-            
-            if (viewport._originalParent) {
-                if (viewport._originalNextSibling) {
-                    viewport._originalParent.insertBefore(viewport, viewport._originalNextSibling);
-                } else {
-                    viewport._originalParent.appendChild(viewport);
-                }
-                delete viewport._originalParent;
-                delete viewport._originalNextSibling;
+        viewport.style.visibility = 'hidden';
+        viewport.style.position = 'absolute';
+        viewport.style.top = '-9999px';
+        viewport.style.left = '-9999px';
+        
+        if (viewport._originalParent) {
+            if (viewport._originalNextSibling) {
+                viewport._originalParent.insertBefore(viewport, viewport._originalNextSibling);
+            } else {
+                viewport._originalParent.appendChild(viewport);
             }
-            
-            window.RRBlazor.EventDispatcher.dispatch(
-                window.RRBlazor.Events.PORTAL_DESTROY_REQUEST,
-                { 
-                    requesterId: `autosuggest-${autosuggestId}`,
-                    portalId 
-                }
-            );
-            
-            this.viewportLocations.delete(autosuggestId);
-            this.activePortals.delete(autosuggestId);
-        }, 150);
-    }
-
-    calculatePosition(triggerRect, viewport, options = {}) {
-        const viewportHeight = window.innerHeight;
-        const viewportWidth = window.innerWidth;
-        
-        const dropdownHeight = Math.min(options.maxHeight || 320, viewportHeight * 0.4);
-        const dropdownWidth = options.width || triggerRect.width;
-        
-        const spaceBelow = viewportHeight - triggerRect.bottom - 8;
-        const spaceAbove = triggerRect.top - 8;
-        
-        let y, placement;
-        if (spaceBelow >= dropdownHeight || spaceBelow > spaceAbove) {
-            y = triggerRect.bottom + (options.offset || 4);
-            placement = 'bottom';
-        } else {
-            y = triggerRect.top - dropdownHeight - (options.offset || 4);
-            placement = 'top';
+            delete viewport._originalParent;
+            delete viewport._originalNextSibling;
         }
         
-        let x = triggerRect.left;
-        if (x + dropdownWidth > viewportWidth - 8) {
-            x = Math.max(8, viewportWidth - dropdownWidth - 8);
-        }
+        const portalManager = getPortalManager();
+        portalManager.destroy(portalId);
         
-        return {
-            x,
-            y,
-            width: dropdownWidth,
-            maxHeight: dropdownHeight,
-            placement
-        };
+        this.activeDropdowns.delete(autosuggestId);
+        
+        window.RRBlazor.EventDispatcher.dispatch(
+            window.RRBlazor.Events.UI_COMPONENT_CLOSED,
+            {
+                componentType: 'autosuggest',
+                componentId: autosuggestId
+            }
+        );
     }
 
     setupEventHandlers(autosuggestId) {
-        const portalData = this.activePortals.get(autosuggestId);
-        if (!portalData) return;
+        const dropdownData = this.activeDropdowns.get(autosuggestId);
+        if (!dropdownData) return;
 
-        const clickOutsideHandler = (event) => {
-            if (event.detail?.elementId === `autosuggest-clickoutside-${autosuggestId}`) {
-                this.closeDropdown(autosuggestId);
-            }
-        };
+        const scrollHandler = () => this.reposition(autosuggestId);
+        const resizeHandler = () => this.reposition(autosuggestId);
 
-        const scrollHandler = () => {
-            this.reposition(autosuggestId);
-        };
+        dropdownData.scrollHandler = scrollHandler;
+        dropdownData.resizeHandler = resizeHandler;
 
-        const resizeHandler = () => {
-            this.reposition(autosuggestId);
-        };
-
-        portalData.clickOutsideHandler = clickOutsideHandler;
-        portalData.scrollHandler = scrollHandler;
-        portalData.resizeHandler = resizeHandler;
-
-        document.addEventListener(window.RRBlazor.Events.CLICK_OUTSIDE, clickOutsideHandler);
         window.addEventListener('scroll', scrollHandler, { passive: true });
         window.addEventListener('resize', resizeHandler, { passive: true });
 
+        // Create click-outside handler that triggers animated close
+        const clickOutsideHandler = (event) => {
+            // Only handle events for this specific autosuggest instance
+            if (event.detail && event.detail.elementId === `autosuggest-clickoutside-${autosuggestId}`) {
+                this.closeDropdown(autosuggestId, true); // Use animated close
+            }
+        };
+        
+        dropdownData.clickOutsideHandler = clickOutsideHandler;
+        document.addEventListener(window.RRBlazor.Events.CLICK_OUTSIDE, clickOutsideHandler);
+        
         window.RRBlazor.ClickOutside.register(
             `autosuggest-clickoutside-${autosuggestId}`,
-            portalData.autosuggestElement,
+            dropdownData.autosuggestElement,
             {
                 excludeSelectors: [
                     '.autosuggest-viewport',
                     '.autosuggest-dropdown',
+                    '.autosuggest-portal',
                     '.portal',
                     '[data-portal-positioned="true"]'
                 ]
@@ -220,27 +194,27 @@ class AutosuggestPortalManager {
     }
 
     cleanupEventHandlers(autosuggestId) {
-        const portalData = this.activePortals.get(autosuggestId);
-        if (!portalData) return;
+        const dropdownData = this.activeDropdowns.get(autosuggestId);
+        if (!dropdownData) return;
 
-        if (portalData.clickOutsideHandler) {
-            document.removeEventListener(window.RRBlazor.Events.CLICK_OUTSIDE, portalData.clickOutsideHandler);
+        if (dropdownData.scrollHandler) {
+            window.removeEventListener('scroll', dropdownData.scrollHandler);
         }
-        if (portalData.scrollHandler) {
-            window.removeEventListener('scroll', portalData.scrollHandler);
+        if (dropdownData.resizeHandler) {
+            window.removeEventListener('resize', dropdownData.resizeHandler);
         }
-        if (portalData.resizeHandler) {
-            window.removeEventListener('resize', portalData.resizeHandler);
+        if (dropdownData.clickOutsideHandler) {
+            document.removeEventListener(window.RRBlazor.Events.CLICK_OUTSIDE, dropdownData.clickOutsideHandler);
         }
 
         window.RRBlazor.ClickOutside.unregister(`autosuggest-clickoutside-${autosuggestId}`);
     }
 
     reposition(autosuggestId) {
-        const portalData = this.activePortals.get(autosuggestId);
-        if (!portalData) return;
+        const dropdownData = this.activeDropdowns.get(autosuggestId);
+        if (!dropdownData) return;
 
-        const { viewport, triggerElement, options } = portalData;
+        const { viewport, triggerElement } = dropdownData;
         const triggerRect = triggerElement.getBoundingClientRect();
         
         if (triggerRect.width === 0) {
@@ -248,24 +222,38 @@ class AutosuggestPortalManager {
             return;
         }
 
-        const position = this.calculatePosition(triggerRect, viewport, options);
+        const targetDimensions = {
+            width: triggerRect.width,
+            height: parseFloat(viewport.style.maxHeight) || 320
+        };
+
+        const position = positioningEngine.calculatePosition(
+            triggerRect,
+            targetDimensions,
+            {
+                position: PositioningEngine.POSITIONS.BOTTOM_START,
+                offset: 4,
+                flip: true,
+                constrain: true
+            }
+        );
         
         viewport.style.left = `${position.x}px`;
         viewport.style.top = `${position.y}px`;
-        viewport.style.width = `${position.width}px`;
+        viewport.style.width = `${targetDimensions.width}px`;
     }
 
     destroyAll() {
-        for (const autosuggestId of this.activePortals.keys()) {
-            this.closeDropdown(autosuggestId);
+        for (const autosuggestId of this.activeDropdowns.keys()) {
+            this.closeDropdown(autosuggestId, false); // Immediate close for cleanup
         }
     }
 }
 
-const autosuggestManager = new AutosuggestPortalManager();
+const autosuggestManager = new AutosuggestManager();
 
 export function createPortal(autosuggestId, options) {
-    return autosuggestManager.createPortal(autosuggestId, options);
+    return autosuggestManager.openDropdown(autosuggestId, options);
 }
 
 export function closeDropdown(autosuggestId) {
