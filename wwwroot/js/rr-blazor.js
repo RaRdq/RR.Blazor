@@ -88,7 +88,7 @@ class ModuleManager {
             'keyboardNavigation': { path: './keyboard-navigation.js', preload: true },
             'modalEvents': { path: './modal-events.js', preload: true },
             'scrollLock': { path: './scroll-lock.js', preload: true },
-            'tooltip': { path: './tooltip.js' },
+            'tooltip': { path: './tooltip.js', preload: true },
             'focusTrap': { path: './focus-trap.js' },
             'autosuggest': { path: './autosuggest.js' },
             'forms': { path: './forms.js' },

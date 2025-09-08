@@ -248,6 +248,7 @@ This architecture pattern can be applied to:
 - `RDataGrid<T>` → `RDataGrid`
 - `RDropdown<T>` → `RDropdown`  
 - `RAutocomplete<T>` → `RAutocomplete`
+- `RGrid<T>` → `RGrid` (uses forwarder pattern)
 - Any generic component that can infer type from parameters
 
 ### Future Input Components (Phase 2)
