@@ -38,9 +38,13 @@
   @include modifier(dense) { padding-right: var(--space-9); }
   @include modifier(spacious) { padding-right: var(--space-12); }
 
-  &:hover:not(:disabled)::after {
+  &:hover::after {
     opacity: 1;
     transform: translateY(-50%) scale(1.1);
+  }
+
+  &:disabled::after {
+    opacity: 0.5;
   }
 
   &:focus::after {
@@ -51,16 +55,53 @@
 
 .input {
   @extend %input-base-style;
+  display: flex;
+  align-items: center;
+  line-height: var(--leading-none);
   @include interactive-base(input);
-
-  &:hover:not(:focus):not(:disabled) {
-    transform: translateY(-1px);
-    filter: brightness(1.02) saturate(1.05);
-  }
 
   &:focus {
     border-color: var(--color-primary);
     background: var(--color-surface-elevated);
+  }
+
+  // Inputs with hover effects
+  @include modifier(hoverable) {
+    &:hover {
+      transform: translateY(-1px);
+      filter: brightness(1.02) saturate(1.05);
+    }
+
+    &:focus {
+      transform: none;
+      filter: none;
+    }
+
+    &:disabled {
+      transform: none;
+      filter: none;
+    }
+  }
+
+  // Inputs with enhanced interactivity
+  @include modifier(interactive) {
+    &:hover {
+      transform: translateY(-1px) scale(1.01);
+      filter: brightness(1.03) saturate(1.1);
+      box-shadow: 0 2px 4px var(--shadow-overlay-light);
+    }
+
+    &:focus {
+      transform: none;
+      filter: none;
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 15%, transparent);
+    }
+
+    &:disabled {
+      transform: none;
+      filter: none;
+      box-shadow: none;
+    }
   }
 
   @include modifier(clean) {
@@ -92,6 +133,12 @@
 
   @include modifier(loading) {
     @include loading-inline('start', 'sm', 'default');
+    
+    // Disable hover effects during loading to prevent layout shifts
+    &:hover {
+      transform: none !important;
+      box-shadow: none !important;
+    }
   }
 
   // Input-specific semantic states
@@ -142,13 +189,32 @@
   @include modifier(glass) {
     @extend %glass-medium;
 
-    &:hover:not(:focus) {
+    &:hover {
       @extend %glass-heavy;
+    }
+
+    &:focus {
+      @extend %glass-medium;
     }
   }
 
   @include modifier(modern) {
     @include interactive-enhanced(input, ('glow-on-hover': true));
+    
+    &:hover {
+      transform: translateY(-1px);
+      filter: brightness(1.02) saturate(1.05);
+    }
+
+    &:focus {
+      transform: none;
+      filter: none;
+    }
+
+    &:disabled {
+      transform: none;
+      filter: none;
+    }
   }
 }
 
@@ -166,9 +232,12 @@
   @include element(icon) {
     @extend %icon-base;
     position: absolute;
-    top: 50%;
+    top: 0;
     left: var(--space-4);
-    transform: translateY(-50%);
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     pointer-events: none;
     z-index: calc(var(--z-base) + 10);
     transition: all var(--duration-normal) var(--ease-out);
@@ -177,7 +246,7 @@
 
     .input:focus + & {
       color: var(--color-primary);
-      transform: translateY(-50%) scale(1.05);
+      transform: scale(1.05);
       opacity: 1;
     }
     
@@ -209,9 +278,12 @@
   @include element(icon-end) {
     @extend %icon-base;
     position: absolute;
-    top: 50%;
+    top: 0;
     right: var(--space-4);
-    transform: translateY(-50%);
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     z-index: calc(var(--z-base) + 10);
     pointer-events: auto;
 
@@ -331,8 +403,15 @@
     @extend %touch-target;
   }
 
-  @include modifier(interactive) {
-    @include interactive-enhanced(input, ('glow-on-hover': true, 'magnetic-hover': true));
+  // Clean state inputs - minimal effects
+  @include modifier(clean-state) {
+    &:hover {
+      border-color: var(--color-primary-muted);
+    }
+
+    &:disabled {
+      border-color: var(--color-border-light);
+    }
   }
 }
 .input-floating {
@@ -384,14 +463,14 @@
   }
 
   .input-with-start-icon {
-    padding-left: calc(var(--space-6) + var(--space-4) + var(--space-3)) !important;
+    padding-left: calc(var(--space-6) + var(--space-4) + var(--space-3));
 
     ~ .floating-label {
       left: calc(var(--space-6) + var(--space-4) + var(--space-3));
     }
 
     @include modifier(sm) {
-      padding-left: calc(var(--space-5) + var(--space-3) + var(--space-2)) !important;
+      padding-left: calc(var(--space-5) + var(--space-3) + var(--space-2));
 
       ~ .floating-label {
         left: calc(var(--space-5) + var(--space-3) + var(--space-2));
@@ -399,7 +478,7 @@
     }
 
     @include modifier(lg) {
-      padding-left: calc(var(--space-7) + var(--space-5) + var(--space-4)) !important;
+      padding-left: calc(var(--space-7) + var(--space-5) + var(--space-4));
 
       ~ .floating-label {
         left: calc(var(--space-7) + var(--space-5) + var(--space-4));

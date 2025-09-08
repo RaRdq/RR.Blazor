@@ -13,7 +13,7 @@
     var displayStyle = shouldDisplay ? "" : "display: none !important;";
 }
 
-    <div class="@wrapperClass" @ref="modalElement" @attributes="AdditionalAttributes" 
+    <div class="@wrapperClass" @ref="modalElement" @attributes="GetSafeAttributes()" 
          id="@GetModalId()"
          data-modal-id="@GetModalId()"
          data-close-on-backdrop="@CloseOnBackdrop.ToString().ToLower()"
@@ -112,6 +112,11 @@
     private string modalId = $"modal-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}-{Random.Shared.Next(1000, 9999)}";
     private string _jsModalId;
     private bool _jsModalRegistered = false;
+    
+    protected Dictionary<string, object> GetSafeAttributes()
+    {
+        return RAttributeForwarder.GetSafeAttributes(AdditionalAttributes);
+    }
     
     [CascadingParameter] public ModalContext ModalContext { get; set; }
     [Parameter] public string ModalId { get; set; }
@@ -218,6 +223,8 @@
         SizeType.Large => "modal-content-large",
         SizeType.ExtraLarge or SizeType.XLarge => "modal-content-xlarge",
         SizeType.Wide => "modal-content-wide",
+        SizeType.Full => "modal-content-full",
+        SizeType.ExtraLarge2X => "modal-content-full",
         _ => ""
     };
     

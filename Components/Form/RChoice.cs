@@ -432,7 +432,7 @@ public class RChoice : RChoiceBase
         
         // Use RAttributeForwarder for all remaining parameters
         builder.ForwardParameters(ref sequence, this, 
-            "Items", "SelectedValue", "Variant", "Loading",
+            "Items", "SelectedValue", "Variant", "Loading", "LoadingText",
             "ItemLabelSelector", "ItemIconSelector", "ItemTitleSelector", "ItemAriaLabelSelector",
             "ItemDisabledSelector", "ItemLoadingSelector", "ShowLabels", "ShowActiveIndicator",
             "Size", "Type", "ChildContent", "SelectedValueChanged", "HasError", "ErrorMessage");
