@@ -1,0 +1,627 @@
+@using RR.Blazor.Enums
+@using RR.Blazor.Attributes
+@using RR.Blazor.Components.Base
+@using RR.Blazor.Utilities
+@using Microsoft.JSInterop
+@inherits RComponentBase
+
+@attribute [Component("RImage", Category = "Display", Complexity = ComponentComplexity.Intermediate)]
+@attribute [AIOptimized(Prompt = "Create responsive image with lazy loading and fallback", 
+                       CommonUse = "product images, avatars, hero images, galleries, thumbnails", 
+                       AvoidUsage = "Don't use for icons - use icon fonts instead")]
+
+@if (_isVisible || !LazyLoading)
+{
+    <div class="@GetContainerClasses()" @ref="_containerElement">
+        @if (_isLoading && ShowSkeleton)
+        {
+            <div class="@GetSkeletonClasses()">
+                @if (!string.IsNullOrEmpty(SkeletonText))
+                {
+                    <span class="rimage-skeleton-text">@SkeletonText</span>
+                }
+            </div>
+        }
+        
+        <img @ref="_imageElement"
+             src="@GetImageSource()"
+             alt="@GetAltText()"
+             class="@GetImageClasses()"
+             width="@(Width > 0 ? Width.ToString() : null)"
+             height="@(Height > 0 ? Height.ToString() : null)"
+             loading="@(Priority ? "eager" : LazyLoading ? "lazy" : null)"
+             decoding="@(Priority ? "sync" : "async")"
+             crossorigin="@GetCrossOriginValue()"
+             referrerpolicy="@GetReferrerPolicyValue()"
+             srcset="@Srcset"
+             sizes="@Sizes"
+             data-state="@_imageState"
+             data-variant="@Variant.ToString().ToLower()"
+             data-object-fit="@ObjectFit.ToString().ToLower()"
+             @onclick="HandleClick"
+             @onclick:stopPropagation="StopPropagation"
+             @onload="HandleImageLoad"
+             @onerror="HandleImageError"
+             style="@GetImageStyle()"
+             @attributes="GetSafeAttributes()" />
+        
+        @if (_showOverlay)
+        {
+            <div class="rimage-overlay @GetOverlayClasses()">
+                @if (OverlayContent != null)
+                {
+                    @OverlayContent
+                }
+                else if (!string.IsNullOrEmpty(OverlayText))
+                {
+                    <span class="overlay-text">@OverlayText</span>
+                }
+            </div>
+        }
+    </div>
+}
+else
+{
+    <div class="@GetPlaceholderClasses()" @ref="_placeholderElement">
+        @if (!string.IsNullOrEmpty(PlaceholderText))
+        {
+            <span class="placeholder-text">@PlaceholderText</span>
+        }
+    </div>
+}
+
+@code {
+    #region Parameters
+    
+    [Parameter]
+    [AIParameter("Image source URL", IsRequired = true)]
+    public string Src { get; set; }
+    
+    [Parameter]
+    [AIParameter("Alternative text for accessibility", IsRequired = true)]
+    public string Alt { get; set; }
+    
+    [Parameter]
+    [AIParameter("Image width in pixels")]
+    public int Width { get; set; }
+    
+    [Parameter]
+    [AIParameter("Image height in pixels")]
+    public int Height { get; set; }
+    
+    [Parameter]
+    [AIParameter("Aspect ratio (e.g., '16/9', '4/3', '1/1')")]
+    public string AspectRatio { get; set; }
+    
+    [Parameter]
+    [AIParameter("Visual style variant", SuggestedValues = new[] { "Default", "Circle", "Rounded", "Square", "Thumbnail" })]
+    public ImageVariant Variant { get; set; } = ImageVariant.Default;
+    
+    [Parameter]
+    [AIParameter("How image fits container", SuggestedValues = new[] { "Cover", "Contain", "Fill", "ScaleDown", "None" })]
+    public ObjectFit ObjectFit { get; set; } = ObjectFit.Cover;
+    
+    [Parameter]
+    [AIParameter("Enable lazy loading for performance", SuggestedValues = new[] { "true", "false" })]
+    public bool LazyLoading { get; set; } = true;
+    
+    [Parameter]
+    [AIParameter("Placeholder image URL while loading")]
+    public string Placeholder { get; set; }
+    
+    [Parameter]
+    [AIParameter("Fallback image URL on error")]
+    public string ErrorSrc { get; set; }
+    
+    [Parameter]
+    [AIParameter("CORS setting", SuggestedValues = new[] { "anonymous", "use-credentials" })]
+    public string Crossorigin { get; set; }
+    
+    [Parameter]
+    [AIParameter("Referrer policy", SuggestedValues = new[] { "no-referrer", "no-referrer-when-downgrade", "origin", "same-origin", "strict-origin" })]
+    public string ReferrerPolicy { get; set; }
+    
+    [Parameter]
+    [AIParameter("Responsive image sources")]
+    public string Srcset { get; set; }
+    
+    [Parameter]
+    [AIParameter("Responsive image sizes")]
+    public string Sizes { get; set; }
+    
+    [Parameter]
+    [AIParameter("High priority loading - disables lazy loading")]
+    public bool Priority { get; set; }
+    
+    [Parameter]
+    [AIParameter("Base64 blur data URL for progressive loading")]
+    public string BlurDataUrl { get; set; }
+    
+    [Parameter]
+    [AIParameter("Show loading skeleton")]
+    public bool ShowSkeleton { get; set; } = true;
+    
+    [Parameter]
+    [AIParameter("Text to show in skeleton")]
+    public string SkeletonText { get; set; }
+    
+    [Parameter]
+    [AIParameter("Text to show in placeholder")]
+    public string PlaceholderText { get; set; }
+    
+    [Parameter]
+    [AIParameter("Enable hover overlay")]
+    public bool EnableOverlay { get; set; }
+    
+    [Parameter]
+    [AIParameter("Overlay text")]
+    public string OverlayText { get; set; }
+    
+    [Parameter]
+    [AIParameter("Custom overlay content")]
+    public RenderFragment OverlayContent { get; set; }
+    
+    [Parameter]
+    [AIParameter("Overlay position", SuggestedValues = new[] { "center", "top", "bottom" })]
+    public string OverlayPosition { get; set; } = "center";
+    
+    [Parameter]
+    [AIParameter("Generate placeholder image", SuggestedValues = new[] { "true", "false" })]
+    public bool UsePlaceholder { get; set; }
+    
+    [Parameter]
+    [AIParameter("Placeholder seed for consistent images")]
+    public string PlaceholderSeed { get; set; }
+    
+    [Parameter]
+    [AIParameter("Placeholder blur level (0-10)")]
+    public int PlaceholderBlur { get; set; }
+    
+    [Parameter]
+    [AIParameter("Placeholder grayscale mode")]
+    public bool PlaceholderGrayscale { get; set; }
+    
+    [Parameter]
+    [AIParameter("Stop click event propagation")]
+    public bool StopPropagation { get; set; }
+    
+    [Parameter]
+    [AIParameter("Image click handler")]
+    public EventCallback<MouseEventArgs> OnClick { get; set; }
+    
+    [Parameter]
+    [AIParameter("Image loaded successfully")]
+    public EventCallback OnLoad { get; set; }
+    
+    [Parameter]
+    [AIParameter("Image failed to load")]
+    public EventCallback<string> OnError { get; set; }
+    
+    [Parameter]
+    [AIParameter("Visibility changed (for lazy loading)")]
+    public EventCallback<bool> OnVisibilityChanged { get; set; }
+    
+    
+    #endregion
+    
+    #region Private Fields
+    
+    private ElementReference _containerElement;
+    private ElementReference _imageElement;
+    private ElementReference _placeholderElement;
+    private bool _isVisible;
+    private bool _isLoading = true;
+    private bool _hasError;
+    private bool _showOverlay;
+    private bool _intersectionObserverInitialized;
+    private string _imageState = "loading";
+    private string _currentSrc;
+    private DotNetObjectReference<RImage> _dotNetRef;
+    
+    #endregion
+    
+    #region Lifecycle Methods
+    
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        
+        _dotNetRef = DotNetObjectReference.Create(this);
+        
+        if (Priority)
+        {
+            LazyLoading = false;
+            _isVisible = true;
+        }
+        
+        if (!LazyLoading)
+            _isVisible = true;
+        
+        _showOverlay = EnableOverlay;
+        _currentSrc = GetInitialSource();
+    }
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+        
+        if (firstRender)
+        {
+            if (LazyLoading && !Priority && !_intersectionObserverInitialized)
+            {
+                await InitializeLazyLoading();
+            }
+        }
+    }
+    
+    #endregion
+    
+    #region JavaScript Interop
+    
+    protected override async Task InitializeJavaScriptAsync()
+    {
+        await base.InitializeJavaScriptAsync();
+        
+        if (LazyLoading && !Priority)
+        {
+            await InitializeLazyLoading();
+        }
+    }
+    
+    private async Task InitializeLazyLoading()
+    {
+        if (_intersectionObserverInitialized) return;
+        
+        var element = _placeholderElement.Id != null ? _placeholderElement : _containerElement;
+        
+        try
+        {
+            await SafeInvokeAsync(
+                "RRBlazor.IntersectionObserver.observe",
+                element,
+                _dotNetRef,
+                new
+                {
+                    rootMargin = "200px",
+                    threshold = 0.01
+                });
+            
+            _intersectionObserverInitialized = true;
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogWarning(ex, "Failed to initialize lazy loading for image - falling back to immediate visibility");
+            _isVisible = true;
+            StateHasChanged();
+        }
+    }
+    
+    [JSInvokable]
+    public async Task OnIntersectionChanged(bool isIntersecting)
+    {
+        if (isIntersecting && !_isVisible)
+        {
+            _isVisible = true;
+            await InvokeAsync(StateHasChanged);
+            
+            if (OnVisibilityChanged.HasDelegate)
+                await OnVisibilityChanged.InvokeAsync(true);
+            
+            // Disconnect observer after becoming visible
+            await DisconnectObserver();
+        }
+    }
+    
+    private async Task DisconnectObserver()
+    {
+        if (!_intersectionObserverInitialized) return;
+        
+        var element = _placeholderElement.Id != null ? _placeholderElement : _containerElement;
+        
+        await SafeInvokeAsync(
+            "RRBlazor.IntersectionObserver.disconnect",
+            element);
+        
+        _intersectionObserverInitialized = false;
+    }
+    
+    #endregion
+    
+    #region Event Handlers
+    
+    private async Task HandleClick(MouseEventArgs args)
+    {
+        if (OnClick.HasDelegate)
+        {
+            await OnClick.InvokeAsync(args);
+        }
+    }
+    
+    private async Task HandleImageLoad()
+    {
+        _isLoading = false;
+        _hasError = false;
+        _imageState = "loaded";
+        
+        if (OnLoad.HasDelegate)
+        {
+            await OnLoad.InvokeAsync();
+        }
+        
+        StateHasChanged();
+    }
+    
+    private async Task HandleImageError()
+    {
+        _hasError = true;
+        _isLoading = false;
+        _imageState = "error";
+        
+        if (!string.IsNullOrEmpty(ErrorSrc) && _currentSrc != ErrorSrc)
+        {
+            _currentSrc = ErrorSrc;
+            _imageState = "loading";
+            StateHasChanged();
+        }
+        
+        if (OnError.HasDelegate)
+        {
+            await OnError.InvokeAsync(_currentSrc);
+        }
+    }
+    
+    #endregion
+    
+    #region Helper Methods
+    
+    private string GetInitialSource()
+    {
+        if (UsePlaceholder)
+        {
+            return GeneratePlaceholderUrl();
+        }
+        
+        if (!string.IsNullOrEmpty(BlurDataUrl) && LazyLoading)
+        {
+            return BlurDataUrl;
+        }
+        
+        if (!string.IsNullOrEmpty(Placeholder))
+        {
+            return Placeholder;
+        }
+        
+        return Src;
+    }
+    
+    private string GetImageSource()
+    {
+        if (_hasError && !string.IsNullOrEmpty(ErrorSrc))
+        {
+            return ErrorSrc;
+        }
+        
+        if (_isLoading && !string.IsNullOrEmpty(BlurDataUrl))
+        {
+            return BlurDataUrl;
+        }
+        
+        if (UsePlaceholder && string.IsNullOrEmpty(Src))
+        {
+            return GeneratePlaceholderUrl();
+        }
+        
+        return _currentSrc ?? Src;
+    }
+    
+    private string GeneratePlaceholderUrl()
+    {
+        var width = Width > 0 ? Width : 400;
+        var height = Height > 0 ? Height : 300;
+        var url = $"https://picsum.photos/{width}/{height}";
+        
+        var queryParams = new List<string>();
+        
+        if (!string.IsNullOrEmpty(PlaceholderSeed))
+        {
+            url = $"https://picsum.photos/seed/{PlaceholderSeed}/{width}/{height}";
+        }
+        
+        if (PlaceholderBlur > 0)
+        {
+            queryParams.Add($"blur={Math.Min(10, PlaceholderBlur)}");
+        }
+        
+        if (PlaceholderGrayscale)
+        {
+            queryParams.Add("grayscale");
+        }
+        
+        if (queryParams.Any())
+        {
+            url += "?" + string.Join("&", queryParams);
+        }
+        
+        return url;
+    }
+    
+    private string GetAltText()
+    {
+        if (!string.IsNullOrEmpty(Alt))
+        {
+            return Alt;
+        }
+        
+        if (UsePlaceholder)
+        {
+            return "Placeholder image";
+        }
+        
+        return "Image";
+    }
+    
+    private string GetCrossOriginValue()
+    {
+        if (!string.IsNullOrEmpty(Crossorigin))
+        {
+            return Crossorigin.ToLower();
+        }
+        
+        // Default to anonymous for external images
+        if (!string.IsNullOrEmpty(Src) && (Src.StartsWith("http://") || Src.StartsWith("https://") || Src.StartsWith("//")))
+        {
+            return "anonymous";
+        }
+        
+        return null;
+    }
+    
+    private string GetReferrerPolicyValue()
+    {
+        return !string.IsNullOrEmpty(ReferrerPolicy) ? ReferrerPolicy.ToLower() : null;
+    }
+    
+    private string GetContainerClasses()
+    {
+        var classes = new List<string> { "rimage-container" };
+        
+        classes.Add($"rimage-container-variant-{Variant.ToString().ToLower()}");
+        
+        if (_isLoading)
+        {
+            classes.Add("rimage-container-loading");
+        }
+        
+        if (_hasError)
+        {
+            classes.Add("rimage-container-error");
+        }
+        
+        if (OnClick.HasDelegate || Clickable)
+        {
+            classes.Add("rimage-container-clickable");
+        }
+        
+        if (EnableOverlay)
+        {
+            classes.Add("rimage-container-overlay");
+        }
+        
+        if (!string.IsNullOrEmpty(AspectRatio))
+        {
+            classes.Add("has-aspect-ratio");
+        }
+        
+        if (FullWidth)
+        {
+            classes.Add("full-width");
+        }
+        
+        if (!string.IsNullOrEmpty(Class))
+        {
+            classes.Add(Class);
+        }
+        
+        return string.Join(" ", classes);
+    }
+    
+    private string GetImageClasses()
+    {
+        var classes = new List<string> { "rimage" };
+        
+        classes.Add($"rimage-fit-{ObjectFit.ToString().ToLower()}");
+        
+        if (_imageState == "loading")
+        {
+            classes.Add("rimage-loading");
+        }
+        
+        if (_imageState == "loaded")
+        {
+            classes.Add("rimage-loaded");
+        }
+        
+        if (_imageState == "error")
+        {
+            classes.Add("rimage-error");
+        }
+        
+        return string.Join(" ", classes);
+    }
+    
+    private string GetSkeletonClasses()
+    {
+        var classes = new List<string> { "rimage-skeleton" };
+        
+        if (Variant == ImageVariant.Circle)
+        {
+            classes.Add("rimage-skeleton-circle");
+        }
+        else if (Variant == ImageVariant.Rounded)
+        {
+            classes.Add("rimage-skeleton-rounded");
+        }
+        
+        return string.Join(" ", classes);
+    }
+    
+    private string GetPlaceholderClasses()
+    {
+        var classes = new List<string> { "rimage-placeholder" };
+        
+        classes.Add($"rimage-placeholder-variant-{Variant.ToString().ToLower()}");
+        
+        if (!string.IsNullOrEmpty(AspectRatio))
+        {
+            classes.Add("has-aspect-ratio");
+        }
+        
+        if (FullWidth)
+        {
+            classes.Add("full-width");
+        }
+        
+        return string.Join(" ", classes);
+    }
+    
+    private string GetOverlayClasses()
+    {
+        var classes = new List<string>();
+        
+        classes.Add($"rimage-overlay-position-{OverlayPosition}");
+        
+        return string.Join(" ", classes);
+    }
+    
+    private string GetImageStyle()
+    {
+        var styles = new List<string>();
+        
+        if (!string.IsNullOrEmpty(AspectRatio))
+        {
+            styles.Add($"aspect-ratio: {AspectRatio}");
+        }
+        
+        if (!string.IsNullOrEmpty(Style))
+        {
+            styles.Add(Style);
+        }
+        
+        return styles.Any() ? string.Join("; ", styles) : null;
+    }
+    
+    private bool Clickable => OnClick.HasDelegate;
+    
+    #endregion
+    
+    #region Cleanup
+    
+    protected override async ValueTask DisposeAsyncCore()
+    {
+        await DisconnectObserver();
+        _dotNetRef?.Dispose();
+        await base.DisposeAsyncCore();
+    }
+    
+    #endregion
+}

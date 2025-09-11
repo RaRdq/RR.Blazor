@@ -6,7 +6,7 @@
 [![Buy me a coffee 🐾](https://img.shields.io/badge/Support%20Us-Buy%20Me%20A%20Coffee-FF813F?logo=buy-me-a-coffee&logoColor=white)](https://rr-store.lemonsqueezy.com/buy/ef6f32b3-19ae-4d3f-a9d3-bfa83022f594)
 <img src="https://cdn3.emoji.gg/emojis/5963-shrek-cat.png" alt="Shrek Cat" width="24" height="24" style="vertical-align:middle; margin-left:8px;" />
 
-Modern Blazor component library with 62 components, utility-first styling, and AI-optimized documentation.
+Modern Blazor component library with 63 components, utility-first styling, and AI-optimized documentation.
 
 ## 🚀 Live Demo
 
@@ -15,7 +15,7 @@ Modern Blazor component library with 62 components, utility-first styling, and A
 ## Features
 
 - **Zero Configuration** - Works out-of-the-box with sensible defaults
-- **62 Components** - Complete UI toolkit from buttons to data grids
+- **63 Components** - Complete UI toolkit from buttons to data grids
 - **📊 Smart Table-Chart Integration** - Tables as data sources for charts with real-time binding
 - **⚡ Enterprise Virtualization** - Handle 100k+ rows with `RTableVirtualized` and `RVirtualList`
 - **🔍 Intelligent Search System** - Built-in search with collapsible interface and role-based filtering
@@ -209,6 +209,33 @@ For AI agents (Claude, GPT-4, etc.), add a rule or manually refer to [`@RR.Blazo
          OnClick="@(() => ToastService.ShowSuccess("Operation completed!"))" />
 ```
 
+### Responsive Images with Lazy Loading
+
+```razor
+<!-- Basic image with lazy loading and blur placeholder -->
+<RImage Src="/api/products/123/image" 
+        Alt="Product thumbnail"
+        LazyLoading="true"
+        ShowSkeleton="true" />
+
+<!-- Advanced image with responsive sources -->
+<RImage Src="/images/hero.jpg"
+        Alt="Hero banner"
+        Srcset="/images/hero-sm.jpg 640w, /images/hero-md.jpg 1024w, /images/hero-lg.jpg 1920w"
+        Sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+        AspectRatio="16/9"
+        ObjectFit="ObjectFit.Cover"
+        Priority="true" />
+
+<!-- Avatar with fallback -->
+<RImage Src="@user.AvatarUrl"
+        Alt="@user.Name"
+        Variant="ImageVariant.Circle"
+        Width="64"
+        Height="64"
+        ErrorSrc="/images/default-avatar.png" />
+```
+
 ### Modal System
 
 RR.Blazor supports 4 modal usage patterns. Choose the right pattern for your use case:
@@ -300,7 +327,7 @@ public class MySearchProvider : ISearchProvider
 | **Core** | 11 components | RButton, RCard, RBadge, RAvatar, RChip, RDivider, RActionGroup, RHeaderCard |
 | **Forms** | 10 components | RForm, RTextInput, RCheckbox, RDatePicker, RRadio, RSelectField, RFileUpload, RToggle |
 | **Data** | 9 components | RTable, RTableVirtualized, RList, RVirtualList, RFilterBar, RCalendar, RColumn |
-| **Display** | 14 components | RChart, RAccordion, RTimeline, RStatsCard, RProgressBar, RMetric, REmptyState, RSkeleton |
+| **Display** | 15 components | RChart, RAccordion, RTimeline, RStatsCard, RProgressBar, RMetric, REmptyState, RSkeleton, RImage |
 | **Feedback** | 10 components | RModal, RToastContainer, RConfirmationModal, RAlert, RTooltip, RErrorBoundary, RDetailModal |
 | **Navigation** | 4 components | RBreadcrumbs, RNavMenu, RTabs, RTabItem |
 | **Layout** | 4 components | RAppShell, RSection, RGrid, RContent |

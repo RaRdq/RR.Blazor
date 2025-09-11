@@ -1,0 +1,375 @@
+.rimage {
+    $self: &;
+    display: block;
+    max-width: 100%;
+    height: auto;
+    transition: opacity var(--transition-normal), transform var(--transition-normal);
+    
+    &-container {
+        position: relative;
+        display: inline-block;
+        overflow: hidden;
+        height: 100%;  // Allow container to inherit parent height
+        
+        &-density-compact {
+            --rimage-padding: var(--spacing-xs);
+        }
+        
+        &-density-normal {
+            --rimage-padding: var(--spacing-sm);
+        }
+        
+        &-density-comfortable {
+            --rimage-padding: var(--spacing-md);
+        }
+        
+        &.full-width {
+            display: block;
+            width: 100%;
+            
+            #{$self} {
+                width: 100%;
+                height: 100%;
+            }
+        }
+        
+        &.has-aspect-ratio {
+            #{$self} {
+                width: 100%;
+                height: auto;
+                object-fit: var(--rimage-object-fit, cover);
+            }
+        }
+        
+        &-loading {
+            #{$self} {
+                opacity: 0;
+                transition: opacity var(--transition-normal);
+                
+                &.rimage-loaded {
+                    opacity: 1;
+                }
+            }
+        }
+        
+        &-error {
+            #{$self} {
+                filter: grayscale(1) opacity(0.5);
+            }
+        }
+        
+        &-clickable {
+            cursor: pointer;
+            
+            &:hover {
+                #{$self} {
+                    transform: scale(1.02);
+                    transition: transform var(--transition-normal);
+                }
+                
+                #{$self}-overlay {
+                    opacity: 1;
+                }
+            }
+            
+            &:active {
+                #{$self} {
+                    transform: scale(0.98);
+                }
+            }
+        }
+        
+        &-overlay {
+            &:hover {
+                #{$self}-overlay {
+                    opacity: 1;
+                }
+            }
+        }
+    }
+    
+    // Object fit modifiers - compound selectors for higher specificity
+    &.rimage-fit-cover { 
+        object-fit: cover;
+        height: 100%;
+        width: 100%;
+    }
+    &.rimage-fit-contain { 
+        object-fit: contain;
+        height: 100%;
+        width: 100%;
+    }
+    &.rimage-fit-fill { 
+        object-fit: fill;
+        height: 100%;
+        width: 100%;
+    }
+    &.rimage-fit-scaledown { 
+        object-fit: scale-down;
+        height: 100%;
+        width: 100%;
+    }
+    &.rimage-fit-none { 
+        object-fit: none;
+        height: 100%;
+        width: 100%;
+    }
+    &.rimage-fit-inherit { 
+        object-fit: inherit;
+        height: 100%;
+        width: 100%;
+    }
+    
+    &-loading {
+        opacity: 0;
+        filter: blur(5px);
+    }
+    
+    &-loaded {
+        opacity: 1;
+        filter: blur(0);
+        animation: fadeIn 0.3s ease-out;
+    }
+    
+    &-error {
+        opacity: 0.5;
+        filter: grayscale(1);
+    }
+    
+    &-overlay {
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transition: opacity var(--transition-normal);
+        pointer-events: none;
+        z-index: 1;
+        
+        &-position-top {
+            align-items: flex-start;
+            padding-top: var(--spacing-md);
+        }
+        
+        &-position-bottom {
+            align-items: flex-end;
+            padding-bottom: var(--spacing-md);
+        }
+        
+        .overlay-text {
+            color: white;
+            font-size: var(--font-size-lg);
+            font-weight: var(--font-weight-medium);
+            text-align: center;
+            padding: var(--spacing-sm) var(--spacing-md);
+        }
+    }
+
+    &-container-variant {
+        &-circle {
+            border-radius: 50%;
+            overflow: hidden;
+            
+            #{$self} {
+                border-radius: 50%;
+                width: 100%;
+                height: 100%;
+                // Default object-fit for circle, but specific classes override
+                object-fit: cover;
+            }
+            
+            #{$self}-skeleton {
+                border-radius: 50%;
+            }
+        }
+        
+        &-rounded {
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            
+            #{$self} {
+                border-radius: var(--radius-lg);
+                width: 100%;
+                height: 100%;
+            }
+            
+            #{$self}-skeleton {
+                border-radius: var(--radius-lg);
+            }
+        }
+        
+        &-square {
+            border-radius: 0;
+            overflow: hidden;
+            
+            #{$self} {
+                border-radius: 0;
+                width: 100%;
+                height: 100%;
+            }
+        }
+        
+        &-thumbnail {
+            padding: var(--spacing-xs);
+            background: var(--surface-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-sm);
+            overflow: hidden;
+            
+            #{$self} {
+                border-radius: var(--radius-sm);
+                width: 100%;
+                height: 100%;
+            }
+            
+            &:hover {
+                box-shadow: var(--shadow-md);
+            }
+        }
+    }
+
+    &-skeleton {
+        display: block;
+        width: 100%;
+        height: 100%;
+        min-height: 200px;
+        background: linear-gradient(
+            90deg,
+            var(--skeleton-base) 0%,
+            var(--skeleton-highlight) 50%,
+            var(--skeleton-base) 100%
+        );
+        background-size: 200% 100%;
+        animation: skeleton-wave 1.5s ease-in-out infinite;
+        
+        &-circle {
+            border-radius: 50%;
+        }
+        
+        &-rounded {
+            border-radius: var(--radius-lg);
+        }
+        
+        &-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: var(--text-tertiary);
+            font-size: var(--font-size-sm);
+            text-align: center;
+        }
+    }
+
+    &-placeholder {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        min-height: 200px;
+        background: var(--surface-secondary);
+        border: 2px dashed var(--border-color);
+        border-radius: var(--radius-md);
+        
+        &-aspect-ratio {
+            height: auto;
+        }
+        
+        &-full-width {
+            width: 100%;
+        }
+        
+        &-circle {
+            border-radius: 50%;
+        }
+        
+        &-rounded {
+            border-radius: var(--radius-lg);
+        }
+        
+        &-text {
+            color: var(--text-tertiary);
+            font-size: var(--font-size-sm);
+            text-align: center;
+        }
+    }
+}
+
+
+[data-theme="dark"] {
+    .rimage {
+        &-container-error .rimage {
+            filter: grayscale(1) opacity(0.3);
+        }
+        
+        &-overlay {
+            background: rgba(0, 0, 0, 0.7);
+        }
+        
+        &-container-variant-thumbnail {
+            background: var(--surface-secondary);
+            border-color: var(--border-color-dark);
+        }
+        
+        &-skeleton {
+            background: linear-gradient(
+                90deg,
+                var(--skeleton-base-dark) 0%,
+                var(--skeleton-highlight-dark) 50%,
+                var(--skeleton-base-dark) 100%
+            );
+        }
+        
+        &-placeholder {
+            background: var(--surface-tertiary);
+            border-color: var(--border-color-dark);
+        }
+    }
+}
+
+@media (max-width: 768px) {
+    .rimage-container-clickable {
+        &:hover .rimage {
+            transform: none;
+        }
+        
+        &:active .rimage {
+            transform: scale(0.98);
+        }
+    }
+}
+
+@media print {
+    .rimage {
+        filter: none;
+        opacity: 1;
+        
+        &-skeleton,
+        &-placeholder,
+        &-overlay {
+            display: none;
+        }
+    }
+}
+
+// Keyframes
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes skeleton-wave {
+    0% {
+        background-position: -200% 0;
+    }
+    100% {
+        background-position: 200% 0;
+    }
+}
