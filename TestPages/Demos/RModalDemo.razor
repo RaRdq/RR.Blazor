@@ -155,6 +155,9 @@
         Subtitle="Advanced modal content demonstration"
         Icon="article"
         Size="SizeType.Large"
+        Loading="@isModalLoading"
+        LoadingMessage="@modalLoadingMessage"
+        ShowLoadingOverlay="true"
         data-testid="content-rmodal">
     <ChildContent>
         <div class="space-y-6">
@@ -200,6 +203,37 @@
                              @onclick="@(() => ResetModalCounter())"
                              data-testid="modal-reset-button" />
                 </RActionGroup>
+            </div>
+            
+            <div class="space-y-2">
+                <RDivider Text="Test Loading States" Icon="hourglass_empty" />
+                <p class="text-sm mb-3">Test the new enhanced loading system:</p>
+                <div class="grid grid-cols-2 gap-2">
+                    <RButton Text="Full Loading" 
+                             Variant="VariantType.Primary" 
+                             Icon="fullscreen"
+                             @onclick="@(() => TestFullLoading())"
+                             Disabled="@isModalLoading"
+                             data-testid="test-full-loading" />
+                    <RButton Text="Content Loading" 
+                             Variant="VariantType.Secondary" 
+                             Icon="center_focus_weak"
+                             @onclick="@(() => TestContentLoading())"
+                             Disabled="@isModalLoading"
+                             data-testid="test-content-loading" />
+                    <RButton Text="Progress Loading" 
+                             Variant="VariantType.Success" 
+                             Icon="upload_file"
+                             @onclick="@(() => TestProgressLoading())"
+                             Disabled="@isModalLoading"
+                             data-testid="test-progress-loading" />
+                    <RButton Text="Multi-Step" 
+                             Variant="VariantType.Info" 
+                             Icon="format_list_numbered"
+                             @onclick="@(() => TestMultiStepLoading())"
+                             Disabled="@isModalLoading"
+                             data-testid="test-multistep-loading" />
+                </div>
             </div>
             
             <div class="space-y-2">
@@ -255,8 +289,10 @@
     private bool showDirectModal = false;
     private bool showContentModal = false;
     private int modalContentCounter = 0;
-
-    // Modal Service Methods
+    
+    // Modal processing state
+    private bool isModalLoading = false;
+    private string modalLoadingMessage = "Processing...";
     private async Task ShowDestructiveConfirmation()
     {
         try
@@ -264,6 +300,7 @@
             modalTestStatus = "Opening destructive confirmation...";
             StateHasChanged();
             
+            Console.WriteLine("[DEBUG] Calling ShowConfirmationAsync with ConfirmationOptions");
             var result = await ModalService.ShowConfirmationAsync(new ConfirmationOptions
             {
                 Title = "Delete All Records",
@@ -273,8 +310,21 @@
                 Variant = VariantType.Error,
                 IsDestructive = true
             });
+            
+            Console.WriteLine($"[DEBUG] Modal result: {result}");
+            modalTestStatus = result 
+                ? "✅ Destructive confirmed - OnConfirm callback returned TRUE" 
+                : "✅ Destructive cancelled - OnCancel callback returned FALSE";
                 
-            modalTestStatus = result ? "✅ Destructive action confirmed" : "❌ Destructive action cancelled";
+            if (result)
+            {
+                ToastService?.ShowError("Delete confirmed - callback executed");
+            }
+            else
+            {
+                ToastService?.ShowInfo("Delete cancelled - callback executed");
+            }
+            
             StateHasChanged();
             await Task.Delay(3000);
             modalTestStatus = "";
@@ -282,6 +332,7 @@
         }
         catch (Exception ex)
         {
+            Console.WriteLine($"[DEBUG] Exception: {ex}");
             modalTestStatus = $"❌ Error: {ex.Message}";
             StateHasChanged();
             await Task.Delay(3000);
@@ -662,6 +713,81 @@
             modalTestStatus = "";
             StateHasChanged();
         }
+    }
+    
+    // Loading system test methods
+    private async Task TestFullLoading()
+    {
+        isModalLoading = true;
+        modalLoadingMessage = "Testing full modal loading overlay...";
+        StateHasChanged();
+        
+        await Task.Delay(3000);
+        
+        isModalLoading = false;
+        modalLoadingMessage = "Processing...";
+        ToastService?.ShowSuccess("Full loading test completed!");
+        StateHasChanged();
+    }
+    
+    private async Task TestContentLoading()
+    {
+        isModalLoading = true;
+        modalLoadingMessage = "Testing content-only loading overlay...";
+        StateHasChanged();
+        
+        await Task.Delay(3000);
+        
+        isModalLoading = false;
+        modalLoadingMessage = "Processing...";
+        ToastService?.ShowSuccess("Content loading test completed!");
+        StateHasChanged();
+    }
+    
+    private async Task TestProgressLoading()
+    {
+        isModalLoading = true;
+        modalLoadingMessage = "Uploading file... 0%";
+        StateHasChanged();
+        
+        for (int i = 0; i <= 100; i += 20)
+        {
+            modalLoadingMessage = $"Uploading file... {i}% complete";
+            StateHasChanged();
+            await Task.Delay(500);
+        }
+        
+        isModalLoading = false;
+        modalLoadingMessage = "Processing...";
+        ToastService?.ShowSuccess("Progress loading test completed!");
+        StateHasChanged();
+    }
+    
+    private async Task TestMultiStepLoading()
+    {
+        var steps = new List<string> 
+        { 
+            "Validating Data",
+            "Processing Request",
+            "Updating Database",
+            "Sending Notifications",
+            "Finalizing"
+        };
+        
+        isModalLoading = true;
+        StateHasChanged();
+        
+        for (int i = 0; i < steps.Count; i++)
+        {
+            modalLoadingMessage = $"Step {i + 1} of {steps.Count}: {steps[i]}...";
+            StateHasChanged();
+            await Task.Delay(1000);
+        }
+        
+        isModalLoading = false;
+        modalLoadingMessage = "Processing...";
+        ToastService?.ShowSuccess("Multi-step loading test completed!");
+        StateHasChanged();
     }
 }
 </div>

@@ -10,7 +10,7 @@
 ## Essential Files
 
 ### Primary Documentation
-- `RR.Blazor/wwwroot/rr-ai-components.json` - Complete component API reference (64 components)
+- `RR.Blazor/wwwroot/rr-ai-components.json` - Complete component API reference (65 components)
 - `RR.Blazor/wwwroot/rr-ai-styles.json` - All utility classes with bracket notation (3,309 classes)
 - `RR.Blazor/Documentation/CSS-TREE-SHAKING.md` - CSS optimization guide and usage
 - `CLAUDE.md` - Project-specific implementation guidelines
@@ -36,9 +36,9 @@
 **Purpose**: Data display and management
 - RCalendar, RDataTableColumnGeneric, RDataTableGeneric, RFilterBar, RList, RListItem, RVirtualListGeneric
 
-### Display Components (13)
+### Display Components (14)
 **Purpose**: Information presentation and visualization  
-- RAccordion, RAccordionItem, RChart, RColumnChart, REmptyState, RInfoItem, RMetric, RPieChart, RProgressBar, RSkeleton, RStatsCard, RSummaryItem, RTimeline
+- RAccordion, RAccordionItem, RChart, RColumnChart, REmptyState, RImage, RInfoItem, RMetric, RPieChart, RProgressBar, RSkeleton, RStatsCard, RSummaryItem, RTimeline
 
 ### Feedback Components (10)
 **Purpose**: User interaction and notifications
