@@ -30,35 +30,36 @@ public static class ModalServiceExtensions
         string cancelText = "Cancel",
         VariantType variant = VariantType.Default)
     {
+        var tcs = new TaskCompletionSource<bool>();
+        
         Dictionary<string, object> parameters = new()
         {
             ["Message"] = message,
             ["Title"] = title,
+            ["ConfirmText"] = confirmText,
+            ["CancelText"] = cancelText,
             ["Variant"] = variant,
-            ["IsDestructive"] = variant == VariantType.Error,
             ["Icon"] = GetIconForVariant(variant),
             ["Size"] = SizeType.Small,
             ["CloseOnBackdrop"] = variant != VariantType.Error,
             ["CloseOnEscape"] = true,
             ["ShowCloseButton"] = true,
-            ["ShowHeader"] = true
+            ["ShowHeader"] = true,
+            ["Visible"] = true,
+            ["OnConfirm"] = EventCallback.Factory.Create(modalService, () => tcs.TrySetResult(true)),
+            ["OnCancel"] = EventCallback.Factory.Create(modalService, () => tcs.TrySetResult(false))
         };
-
-        List<ModalButton> buttons = string.IsNullOrEmpty(cancelText)
-            ? [variant == VariantType.Error ? ModalButton.Error(confirmText) : ModalButton.Primary(confirmText)]
-            : [ModalButton.Cancel(cancelText), variant == VariantType.Error ? ModalButton.Error(confirmText) : ModalButton.Primary(confirmText)];
 
         ModalOptions<bool> options = new()
         {
             ComponentType = typeof(RConfirmationModal),
             Parameters = parameters,
-            Buttons = buttons,
             CloseOnBackdrop = variant != VariantType.Error,
             CloseOnEscape = true
         };
 
-        var result = await modalService.ShowAsync(options);
-        return result.IsConfirmed;
+        _ = modalService.ShowAsync(options);
+        return await tcs.Task;
     }
     
     public static Task<bool> ShowConfirmationAsync(

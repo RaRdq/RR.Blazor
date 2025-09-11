@@ -1,7 +1,6 @@
 @using RR.Blazor.Models
 @using RR.Blazor.Services
 @using RR.Blazor.Enums
-@using System.Reflection
 @using Microsoft.AspNetCore.Components
 @implements IDisposable
 @inject IModalService ModalService
@@ -136,7 +135,7 @@
         if (modal.Options.Data != null)
             parameters["Data"] = modal.Options.Data;
 
-        if (!modal.Options.IsRawContent && ComponentSupportsParameter(modal.Options.ComponentType, "OnModalClosed"))
+        if (!modal.Options.IsRawContent)
         {
             parameters["OnModalClosed"] = EventCallback.Factory.Create(this, async () =>
             {
@@ -147,19 +146,8 @@
             });
         }
 
-        if (ComponentSupportsParameter(modal.Options.ComponentType, "OnDataChanged"))
-        {
-            parameters["OnDataChanged"] = EventCallback.Factory.Create<object>(this, data =>
-            {
-                modal.Result = data;
-            });
-        }
-
         return parameters;
     }
-
-    private bool ComponentSupportsParameter(Type componentType, string parameterName) => componentType?.GetProperties()
-        .Any(p => p.Name == parameterName && p.GetCustomAttributes(typeof(ParameterAttribute), false).Any()) ?? false;
 
     private RenderFragment CreateModalFooter(ModalInstance modal)
     {
