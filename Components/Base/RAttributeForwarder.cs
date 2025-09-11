@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Components;
+﻿using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
 using System.Linq.Expressions;
 using System.Collections.Concurrent;
@@ -142,6 +142,57 @@ public static class RAttributeForwarder
     }
     
     /// <summary>
+    /// Generic type coercion for HTML attributes based on semantic knowledge.
+    /// Handles common cases where strings need to be converted to appropriate types.
+    /// </summary>
+    private static object CoerceAttributeType(string attributeName, object value)
+    {
+        if (value is not string stringValue || string.IsNullOrEmpty(stringValue))
+            return value;
+
+        // Numeric HTML attributes that should be integers
+        if (IsNumericAttribute(attributeName))
+        {
+            if (int.TryParse(stringValue, out var intValue))
+                return intValue;
+        }
+        
+        // Boolean HTML attributes
+        if (IsBooleanAttribute(attributeName))
+        {
+            if (bool.TryParse(stringValue, out var boolValue))
+                return boolValue;
+            // HTML boolean attributes: presence = true, absence = false
+            return stringValue.Equals("true", StringComparison.OrdinalIgnoreCase) || 
+                   stringValue.Equals(attributeName, StringComparison.OrdinalIgnoreCase);
+        }
+
+        return value;
+    }
+    
+    private static bool IsNumericAttribute(string attributeName)
+    {
+        return attributeName.ToLowerInvariant() switch
+        {
+            "width" or "height" or "size" or "rows" or "cols" or "span" or 
+            "colspan" or "rowspan" or "tabindex" or "maxlength" or "minlength" or
+            "min" or "max" or "step" or "pagesize" => true,
+            _ => false
+        };
+    }
+    
+    private static bool IsBooleanAttribute(string attributeName)
+    {
+        return attributeName.ToLowerInvariant() switch
+        {
+            "disabled" or "readonly" or "checked" or "selected" or "multiple" or
+            "required" or "autofocus" or "autoplay" or "controls" or "defer" or
+            "hidden" or "loop" or "open" or "reversed" => true,
+            _ => false
+        };
+    }
+    
+    /// <summary>
     /// Forwards all valid HTML attributes from [Parameter] properties to the render tree builder.
     /// Filters out Blazor-specific parameters like EventCallbacks, RenderFragments, etc.
     /// Uses cached compiled expressions for optimal performance.
@@ -194,7 +245,7 @@ public static class RAttributeForwarder
     /// <summary>
     /// Gets safe HTML attributes from AdditionalAttributes dictionary, filtering out Blazor-specific attributes.
     /// Use this for @attributes directive in components that use CaptureUnmatchedValues.
-    /// Handles PageSize string-to-int conversion to fix casting errors.
+    /// Applies intelligent type coercion for HTML attributes based on semantic analysis.
     /// </summary>
     public static Dictionary<string, object> GetSafeAttributes(Dictionary<string, object> additionalAttributes)
     {
@@ -206,13 +257,8 @@ public static class RAttributeForwarder
         {
             var value = attr.Value;
             
-            if (attr.Key == "PageSize" && value is string strPageSize)
-            {
-                if (int.TryParse(strPageSize, out var intPageSize))
-                {
-                    value = intPageSize;
-                }
-            }
+            // Generic type coercion for common HTML attributes
+            value = CoerceAttributeType(attr.Key, value);
             
             // Additional validation for attribute names that could cause JavaScript errors
             if (!IsValidHtmlAttributeName(attr.Key))
