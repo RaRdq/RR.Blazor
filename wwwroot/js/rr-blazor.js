@@ -106,6 +106,7 @@ class ModuleManager {
             'appShell': { path: './app-shell.js', preload: true },
             'columnManagement': { path: './column-management.js' },
             'intersectionObserver': { path: './intersection-observer.js' },
+            'image': { path: './image.js' },
             'filter': { path: './filter.js', preload: true },
             'rgrid': { path: './rgrid.js' },
             'skeleton': { path: './skeleton.js', preload: true },
