@@ -67,7 +67,7 @@
                 </div>
             }
 
-            @if (ShowToolbar && (ShowSearch || ShowFilters || ShowChartButton || ShowExportButton || ShowColumnManager || ToolbarContent != null))
+            @if (ShowToolbar && (ShowSearch || ShowFilters || ShowChartButton || ShowExportButton || ShowColumnManager || ToolbarContent != null || TableActions != null))
             {
                 <div class="table-toolbar">
                     <div class="table-toolbar-left">
@@ -129,6 +129,10 @@
                                                EnableReordering="@EnableColumnReordering"
                                                SupportsStickyColumns="@EnableStickyColumns"
                                                TableId="@TableId" />
+                        }
+                        @if (TableActions != null)
+                        {
+                            @TableActions
                         }
                     </div>
                 </div>
@@ -436,6 +440,10 @@
     private bool _filterPanelExpanded = false;
     private IEnumerable<TItem> _processedItems = Enumerable.Empty<TItem>();
     private IEnumerable<TItem> _allData => Items ?? Enumerable.Empty<TItem>();
+    
+    private List<TItem> _cachedPagedItems;
+    private int _lastPagedItemsHash;
+    private IEnumerable<TItem> _lastItems;
     private int _filteredCount = 0;
     private string TableId => $"table-{GetHashCode()}";
     private int[] _effectivePageSizeOptions = TableConstants.DefaultPageSizeOptions;
@@ -501,7 +509,13 @@
             _lastBindFilter = BindFilter;
         }
         
-        ProcessItems();
+        if (!ReferenceEquals(_lastItems, Items))
+        {
+            ProcessItems();
+            _lastItems = Items;
+            _cachedPagedItems = null;
+        }
+        
         UpdateSelection();
         UpdatePageSizeOptions();
         base.OnParametersSet();
@@ -651,6 +665,7 @@
         if (Items == null)
         {
             _processedItems = Enumerable.Empty<TItem>();
+            _cachedPagedItems = null;
             return;
         }
 
@@ -662,7 +677,6 @@
             query = ApplySearch(query, _searchTerm);
         }
 
-        // Apply BindFilter predicate - SOLID compliant: component controls its own filtering
         if (BindFilter != null)
         {
             var filterPredicate = BindFilter.GetPredicate();
@@ -683,16 +697,16 @@
         }
 
         _processedItems = query.ToList();
+        _cachedPagedItems = null;
     }
 
     private IQueryable<TItem> ApplySearch(IQueryable<TItem> query, string searchTerm)
     {
         var searchableColumns = GetEffectiveColumns()
-            .Where(c => c.Searchable && c.Property != null) // Only include columns with actual property bindings
+            .Where(c => c.Searchable && c.Property != null)
             .ToList();
         if (!searchableColumns.Any())
         {
-            // If no columns are marked searchable, search all string properties that have bindings
             searchableColumns = GetEffectiveColumns()
                 .Where(c => c.Property != null && GetPropertyType(c.Key) == typeof(string))
                 .ToList();
@@ -703,8 +717,6 @@
 
         var lowerSearchTerm = searchTerm.ToLower();
         
-        // For better performance with large datasets, we search in memory
-        // This is acceptable for client-side Blazor where data is already loaded
         var items = query.ToList();
         var filteredItems = items.Where(item =>
             searchableColumns.Any(column =>
@@ -742,7 +754,6 @@
             }
             catch (ArgumentException)
             {
-                // Property doesn't exist, return null getter
                 return null;
             }
         });
@@ -883,12 +894,24 @@
 
     private IEnumerable<TItem> GetPagedItems()
     {
-        if (!ShowPagination)
-            return _processedItems;
-
-        return _processedItems
-            .Skip((CurrentPage - 1) * PageSize)
-            .Take(PageSize);
+        var currentHash = (_processedItems, CurrentPage, PageSize, ShowPagination).GetHashCode();
+        if (_cachedPagedItems == null || _lastPagedItemsHash != currentHash)
+        {
+            if (!ShowPagination)
+            {
+                _cachedPagedItems = _processedItems.ToList();
+            }
+            else
+            {
+                _cachedPagedItems = _processedItems
+                    .Skip((CurrentPage - 1) * PageSize)
+                    .Take(PageSize)
+                    .ToList();
+            }
+            _lastPagedItemsHash = currentHash;
+        }
+        
+        return _cachedPagedItems;
     }
 
     private int TotalPages => Math.Max(1, (int)Math.Ceiling(_processedItems.Count() / (double)PageSize));
@@ -910,18 +933,17 @@
     private async Task OnPageSizeChanged(int newSize)
     {
         PageSize = newSize;
-        CurrentPage = 1; // Reset to first page
+        CurrentPage = 1;
         await PageSizeChanged.InvokeAsync(newSize);
         await CurrentPageChanged.InvokeAsync(CurrentPage);
         ProcessItems();
-        StateHasChanged();
     }
 
     private async Task OnPageChanged(int newPage)
     {
         CurrentPage = Math.Max(1, Math.Min(newPage, TotalPages));
         await CurrentPageChanged.InvokeAsync(CurrentPage);
-        StateHasChanged();
+        _cachedPagedItems = null;
     }
 
     private async Task OnPageSizeChangedEvent(ChangeEventArgs e)
@@ -929,7 +951,6 @@
         if (int.TryParse(e.Value?.ToString(), out var newSize))
         {
             await OnPageSizeChanged(newSize);
-            StateHasChanged();
         }
     }
 

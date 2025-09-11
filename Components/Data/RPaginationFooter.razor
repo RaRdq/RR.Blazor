@@ -58,7 +58,7 @@
                     <select class="pagination-footer-page-size-select" value="@PageSize" @onchange="OnPageSizeChangedEvent">
                         @foreach (var size in PageSizeOptions)
                         {
-                            <option value="@size">@size</option>
+                            <option value="@size" selected="@(size == PageSize)">@size</option>
                         }
                     </select>
                 }
@@ -152,7 +152,6 @@
         if (page < 1 || page > TotalPages) return;
         if (page == CurrentPage) return;
         
-        CurrentPage = page;
         await CurrentPageChanged.InvokeAsync(page);
     }
     
@@ -160,13 +159,15 @@
     {
         if (newSize == PageSize) return;
         
+        // Calculate what the new page should be
         var currentFirstItem = GetStartIndex();
-        PageSize = newSize;
+        var newTotalPages = Math.Max(1, (int)Math.Ceiling((double)TotalItems / newSize));
         var newPage = Math.Max(1, (int)Math.Ceiling((double)currentFirstItem / newSize));
-        CurrentPage = Math.Min(newPage, TotalPages);
+        newPage = Math.Min(newPage, newTotalPages);
         
         await PageSizeChanged.InvokeAsync(newSize);
-        await CurrentPageChanged.InvokeAsync(CurrentPage);
+        if (newPage != CurrentPage)
+            await CurrentPageChanged.InvokeAsync(newPage);
     }
     
     private async Task OnPageSizeChangedEvent(ChangeEventArgs e)

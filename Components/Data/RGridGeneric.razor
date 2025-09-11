@@ -391,9 +391,19 @@
 
     private async Task OnPageChanged(int newPage)
     {
-        // RPaginationFooter passes 1-based page numbers
-        CurrentPage = Math.Max(1, Math.Min(newPage, TotalPages));
-        await CurrentPageChanged.InvokeAsync(CurrentPage);
+        // Validate page number
+        var validatedPage = Math.Max(1, Math.Min(newPage, TotalPages));
+        
+        // Always update internal state for self-managed grids
+        CurrentPage = validatedPage;
+        ProcessItems();
+        
+        // Also notify parent if they're listening
+        if (CurrentPageChanged.HasDelegate)
+        {
+            await CurrentPageChanged.InvokeAsync(validatedPage);
+        }
+        
         StateHasChanged();
     }
 
@@ -401,11 +411,21 @@
     {
         if (newSize == PageSize) return;
         
+        // Always update internal state
         PageSize = newSize;
         CurrentPage = 1; // Reset to first page
-        await PageSizeChanged.InvokeAsync(newSize);
-        await CurrentPageChanged.InvokeAsync(CurrentPage);
         ProcessItems();
+        
+        // Notify parent if they're listening
+        if (PageSizeChanged.HasDelegate)
+        {
+            await PageSizeChanged.InvokeAsync(newSize);
+        }
+        if (CurrentPageChanged.HasDelegate && CurrentPage != 1)
+        {
+            await CurrentPageChanged.InvokeAsync(1);
+        }
+        
         StateHasChanged();
     }
 
@@ -540,6 +560,9 @@
                     break;
                 case GridMode.List:
                     BuildAutoListItem(builder, item);
+                    break;
+                case GridMode.Gallery:
+                    BuildAutoGallery(builder, item);
                     break;
                 case GridMode.Tiles:
                     BuildAutoTile(builder, item);
@@ -689,16 +712,87 @@
         var subtitle = GetSmartPropertyValue(item, properties, "Department", "Category");
         var imageUrl = GetSmartPropertyValue(item, properties, "ImageUrl", "Avatar");
         
+        // Generate placeholder image if no URL provided
+        if (string.IsNullOrEmpty(imageUrl))
+        {
+            var seed = Math.Abs(item?.GetHashCode() ?? 0) % 1000;
+            imageUrl = $"https://picsum.photos/seed/{seed}/400/225"; // 16:9 aspect ratio
+        }
+        
         if (!string.IsNullOrEmpty(title))
             builder.AddAttribute(1, "Title", title);
         if (!string.IsNullOrEmpty(subtitle))
             builder.AddAttribute(2, "Subtitle", subtitle);
         if (!string.IsNullOrEmpty(imageUrl))
             builder.AddAttribute(3, "ImageUrl", imageUrl);
+        
+        // Add class for proper sizing in grid
+        builder.AddAttribute(4, "Class", "h-full");
             
         if (OnItemClicked.HasDelegate)
         {
-            builder.AddAttribute(4, "OnClick", EventCallback.Factory.Create(this, () => OnItemClick(item)));
+            builder.AddAttribute(5, "OnClick", EventCallback.Factory.Create(this, () => OnItemClick(item)));
+        }
+        
+        builder.CloseComponent();
+    }
+
+    private void BuildAutoGallery(RenderTreeBuilder builder, TItem item)
+    {
+        // Gallery mode - use RCard with RImage component for proper SRP
+        var cardType = typeof(RCard);
+        builder.OpenComponent(0, cardType);
+        
+        var properties = _itemType.GetProperties().Where(p => p.CanRead).ToList();
+        var title = GetSmartPropertyValue(item, properties, "Name", "Title", "DisplayName");
+        var imageUrl = GetSmartPropertyValue(item, properties, "ImageUrl", "Avatar", "Thumbnail", "Photo", "Image");
+        var subtitle = GetSmartPropertyValue(item, properties, "Department", "Category", "Type");
+        
+        // Set card variant for gallery style
+        builder.AddAttribute(1, "Variant", CardVariant.Elevated);
+        builder.AddAttribute(2, "Class", "gallery-item");
+        
+        // Add title
+        if (!string.IsNullOrEmpty(title))
+        {
+            builder.AddAttribute(3, "Title", title);
+        }
+        
+        // Add subtitle if available
+        if (!string.IsNullOrEmpty(subtitle))
+        {
+            builder.AddAttribute(4, "Text", subtitle);
+        }
+        
+        // Use ChildContent to add RImage component
+        builder.AddAttribute(5, "ChildContent", (RenderFragment)((builder2) =>
+        {
+            // Create RImage component for proper image handling
+            var imageType = typeof(RImage);
+            builder2.OpenComponent(0, imageType);
+            
+            // Generate unique seed for consistent Lorem Picsum images
+            var seed = Math.Abs(item?.GetHashCode() ?? 0) % 1000;
+            
+            // Use Lorem Picsum if no image URL provided
+            var finalImageUrl = !string.IsNullOrEmpty(imageUrl) 
+                ? imageUrl 
+                : $"https://picsum.photos/seed/{seed}/400/300";
+            
+            builder2.AddAttribute(1, "Src", finalImageUrl);
+            builder2.AddAttribute(2, "Alt", title ?? "Gallery image");
+            builder2.AddAttribute(3, "Height", 200);  // Use integer value
+            builder2.AddAttribute(4, "Width", 400);   // Use integer value instead of percentage
+            builder2.AddAttribute(5, "ObjectFit", ObjectFit.Cover);
+            builder2.AddAttribute(6, "Class", "gallery-image w-full");  // Add w-full class for full width
+            builder2.AddAttribute(7, "Priority", true);  // High priority loading for gallery images
+            
+            builder2.CloseComponent();
+        }));
+        
+        if (OnItemClicked.HasDelegate)
+        {
+            builder.AddAttribute(6, "OnClick", EventCallback.Factory.Create(this, () => OnItemClick(item)));
         }
         
         builder.CloseComponent();
@@ -818,6 +912,10 @@
         if (Density != DensityType.Normal)
             classes.Add($"rgrid-{Density.ToString().ToLower()}");
         
+        
+        // Add custom classes from Class parameter
+        if (!string.IsNullOrEmpty(Class))
+            classes.Add(Class);
         return string.Join(" ", classes);
     }
 
