@@ -15,10 +15,8 @@
             @if (modal.Options.IsRawContent)
             {
                 @* Raw content - wrap in RModal *@
-                <CascadingValue Value="@(new ModalContext { ModalId = modal.Id, Options = (ModalOptions)modal.Options })">
+                <CascadingValue Value="@(new ModalContext { ModalId = modal.Id, IsVisible = modal.Visible })">
                     <RModal @key="modal.Id"
-                            @ref="modalRefs[modal.Id]"
-                            Visible="@modal.Visible"
                             Title="@modal.Options.Title"
                             Subtitle="@modal.Options.Subtitle"
                             Icon="@modal.Options.Icon"
@@ -33,8 +31,8 @@
                             ModalId="@modal.Id"
                             data-modal-id="@modal.Id"
                             data-portal="true"
-                            OnClose="@(() => HandleModalClose(modal))"
-                            OnCancel="@(() => HandleModalCancel(modal))"
+                            OnClose="@(() => CloseModal(modal, Enums.ModalResult.Cancel))"
+                            OnCancel="@(() => CloseModal(modal, Enums.ModalResult.Cancel))"
                             OnPrimaryAction="@(() => HandlePrimaryAction(modal))"
                             FooterContent="@(modal.Options.Buttons.Any() ? CreateModalFooter(modal) : null)">
                         
@@ -61,7 +59,7 @@
             else
             {
                 @* Component is expected to contain RModal internally *@
-                <CascadingValue Value="@(new ModalContext { ModalId = modal.Id, Options = (ModalOptions)modal.Options })">
+                <CascadingValue Value="@(new ModalContext { ModalId = modal.Id, IsVisible = modal.Visible })">
                     <div @key="modal.Id" data-modal-id="@modal.Id" data-portal="true">
                         @if (modal.Options.ComponentType != null)
                         {
@@ -82,7 +80,6 @@
 
 @code {
     private readonly List<ModalInstance> _activeModals = [];
-    private readonly Dictionary<string, RModal> modalRefs = [];
     private DotNetObjectReference<RModalProvider> _dotNetRef;
 
     protected override async Task OnInitializedAsync()
@@ -122,7 +119,6 @@
             {
                 await DestroyModal(modal);
                 _activeModals.Remove(modal);
-                modalRefs.Remove(modal.Id);
                 StateHasChanged();
             }
         });
@@ -135,16 +131,6 @@
         if (modal.Options.Data != null)
             parameters["Data"] = modal.Options.Data;
 
-        if (!modal.Options.IsRawContent)
-        {
-            parameters["OnModalClosed"] = EventCallback.Factory.Create(this, async () =>
-            {
-                modal.Visible = false;
-                await CleanupModal(modal);
-                StateHasChanged();
-                await ModalService.CloseAsync(modal.Id, Enums.ModalResult.Cancel);
-            });
-        }
 
         return parameters;
     }
@@ -183,8 +169,6 @@
     private Func<MouseEventArgs, Task> CreateButtonClickHandler(ModalInstance modal, ModalButton button) => 
         async (MouseEventArgs e) => await HandleButtonClick(modal, button);
 
-    private async Task HandleModalClose(ModalInstance modal) => await CloseModal(modal, Enums.ModalResult.Cancel);
-    private async Task HandleModalCancel(ModalInstance modal) => await CloseModal(modal, Enums.ModalResult.Cancel);
 
     private async Task HandlePrimaryAction(ModalInstance modal)
     {
@@ -223,6 +207,10 @@
     {
         modal.Visible = false;
         StateHasChanged();
+        
+        // Let component react to visibility change
+        await Task.Yield();
+        
         await ModalService.CloseAsync(modal.Id, result);
     }
 
@@ -252,7 +240,6 @@
             await ModalService.CloseAsync(modal.Id, Enums.ModalResult.Cancel);
         }
         _activeModals.Clear();
-        modalRefs.Clear();
         await InvokeAsync(StateHasChanged);
     }
 

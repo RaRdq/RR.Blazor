@@ -5,16 +5,18 @@
 @using RR.Blazor.Enums
 @using RR.Blazor.Models
 
-<RModal @bind-Visible="Visible"
+<RModal @ref="modalRef"
         Title="@Title"
         Subtitle="Application settings with internal modal wrapper"
         Icon="settings"
         Size="SizeType.Large"
         ShowCloseButton
         ShowFooter
-        OnClose="@HandleClose"
-        OnCancel="@HandleCancel"
-        OnPrimaryAction="@HandleSave">
+        Loading="@isLoading"
+        LoadingMessage="@loadingMessage"
+        LoadingButtonText="Saving..."
+        ShowLoadingOverlay="true"
+        ShowPrimaryButtonSpinner="true">
     <ChildContent>
         <div class="space-y-4 pa-4">
             <RCard Variant="CardVariant.Outlined">
@@ -80,17 +82,19 @@
             <RButton Text="Save Settings" 
                      Variant="VariantType.Primary" 
                      Icon="save"
-                     @onclick="HandleSave" />
+                     @onclick="HandleSave" 
+                     Disabled="@isLoading" />
         </RActionGroup>
     </FooterContent>
 </RModal>
 
 @code {
+    private RModal modalRef;
+    private bool isLoading = false;
+    private string loadingMessage = "Saving settings...";
+    
     [Parameter] public string Title { get; set; } = "Settings";
-    [Parameter] public bool Visible { get; set; } = true;
-    [Parameter] public EventCallback<bool> VisibleChanged { get; set; }
     [Parameter] public EventCallback<object> OnDataChanged { get; set; }
-    [Parameter] public EventCallback OnModalClosed { get; set; }
     
     public class SettingsData
     {
@@ -103,26 +107,31 @@
     
     private SettingsData Settings { get; set; } = new();
     
-    private async Task HandleClose()
-    {
-        Visible = false;
-        await VisibleChanged.InvokeAsync(false);
-        if (OnModalClosed.HasDelegate)
-        {
-            await OnModalClosed.InvokeAsync();
-        }
-    }
-    
     private async Task HandleCancel()
     {
-        await HandleClose();
+        if (modalRef != null)
+            await modalRef.Close();
     }
     
     private async Task HandleSave()
     {
-        // Settings saved locally - invoke data changed callback
-        await OnDataChanged.InvokeAsync(Settings);
-        await HandleClose();
+        isLoading = true;
+        loadingMessage = "Saving settings...";
+        StateHasChanged();
+        
+        // Simulate save operation
+        await Task.Delay(1500);
+        
+        // Settings saved - invoke callback
+        if (OnDataChanged.HasDelegate)
+            await OnDataChanged.InvokeAsync(Settings);
+        
+        isLoading = false;
+        StateHasChanged();
+        
+        // Close modal after save
+        if (modalRef != null)
+            await modalRef.CloseAsync(Enums.ModalResult.Ok);
     }
     
     private void ResetToDefaults()

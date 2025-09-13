@@ -31,6 +31,7 @@ public static class ModalServiceExtensions
         VariantType variant = VariantType.Default)
     {
         var tcs = new TaskCompletionSource<bool>();
+        var modalId = $"confirmation-{Guid.NewGuid():N}";
         
         Dictionary<string, object> parameters = new()
         {
@@ -45,9 +46,16 @@ public static class ModalServiceExtensions
             ["CloseOnEscape"] = true,
             ["ShowCloseButton"] = true,
             ["ShowHeader"] = true,
-            ["Visible"] = true,
-            ["OnConfirm"] = EventCallback.Factory.Create(modalService, () => tcs.TrySetResult(true)),
-            ["OnCancel"] = EventCallback.Factory.Create(modalService, () => tcs.TrySetResult(false))
+            ["OnConfirm"] = EventCallback.Factory.Create(modalService, async () => 
+            {
+                tcs.TrySetResult(true);
+                await modalService.CloseAsync(modalId, Enums.ModalResult.Ok);
+            }),
+            ["OnCancel"] = EventCallback.Factory.Create(modalService, async () => 
+            {
+                tcs.TrySetResult(false);
+                await modalService.CloseAsync(modalId, Enums.ModalResult.Cancel);
+            })
         };
 
         ModalOptions<bool> options = new()
@@ -55,10 +63,12 @@ public static class ModalServiceExtensions
             ComponentType = typeof(RConfirmationModal),
             Parameters = parameters,
             CloseOnBackdrop = variant != VariantType.Error,
-            CloseOnEscape = true
+            CloseOnEscape = true,
+            ModalId = modalId
         };
 
         _ = modalService.ShowAsync(options);
+        
         return await tcs.Task;
     }
     

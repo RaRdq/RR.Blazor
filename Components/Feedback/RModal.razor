@@ -2,14 +2,16 @@
 @using RR.Blazor.Components.Base
 @using RR.Blazor.Models
 @using RR.Blazor.Interfaces
+@using RR.Blazor.Services
 @inherits RComponentBase
 @inject IJavaScriptInteropService JSInterop
+@inject IModalService ModalService
 
 @{
     var contentClass = $"modal-content {GetSizeClass()}";
     var wrapperClass = $"modal {Class}";
-    // When inside ModalProvider (ModalContext exists), always show since provider controls visibility
-    var shouldDisplay = ModalContext != null ? true : Visible;
+    // When inside ModalProvider (ModalContext exists), use context visibility
+    var shouldDisplay = ModalContext != null ? ModalContext.IsVisible : Visible;
     var displayStyle = shouldDisplay ? "" : "display: none !important;";
 }
 
@@ -38,7 +40,7 @@
                         @HeaderContent
                         @if (ShowCloseButton)
                         {
-                            <button type="button" class="modal-close" @onclick="HandleClose" disabled="@Loading">
+                            <button type="button" class="modal-close" @onclick="Close" disabled="@Loading">
                                 <i class="material-symbols-rounded">close</i>
                             </button>
                         }
@@ -114,9 +116,7 @@
     private bool _jsModalRegistered = false;
     
     protected Dictionary<string, object> GetSafeAttributes()
-    {
-        return RAttributeForwarder.GetSafeAttributes(AdditionalAttributes);
-    }
+        => RAttributeForwarder.GetSafeAttributes(AdditionalAttributes);
     
     [CascadingParameter] public ModalContext ModalContext { get; set; }
     [Parameter] public string ModalId { get; set; }
@@ -165,7 +165,7 @@
     
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (IsInsideModalProvider()) return;
+        if (ModalContext != null) return;
 
         if (firstRender)
             dotNetRef = DotNetObjectReference.Create(this);
@@ -176,15 +176,28 @@
             await UnregisterFromJS();
     }
     
-    private async Task HandleClose()
+    public async Task Close() => await CloseAsync(Enums.ModalResult.None);
+    
+    public async Task CloseAsync(Enums.ModalResult result = Enums.ModalResult.None)
     {
-        Visible = false;
-        if (_jsModalRegistered)
+        // If modal is inside ModalProvider (service-managed)
+        if (ModalContext != null)
         {
-            await UnregisterFromJS();
+            // Close through ModalService for proper cleanup
+            await ModalService.CloseAsync(ModalContext.ModalId, result);
         }
-        await VisibleChanged.InvokeAsync(false);
-        await OnClose.InvokeAsync();
+        else
+        {
+            // Standalone modal (Case 3: direct bind-Visible)
+            Visible = false;
+            if (_jsModalRegistered)
+                await UnregisterFromJS();
+                
+            await VisibleChanged.InvokeAsync(false);
+            await OnClose.InvokeAsync();
+            
+            StateHasChanged();
+        }
     }
     
     private async Task HandleCancel()
@@ -192,7 +205,7 @@
         if (OnCancel.HasDelegate)
             await OnCancel.InvokeAsync();
 
-        await HandleClose();
+        await Close();
     }
     
     private async Task HandlePrimaryAction()
@@ -204,18 +217,23 @@
         }
     
         // If no handler specified, close the modal (for simple Ok/Close scenarios)
-        await HandleClose();
+        await Close();
     }
     
     private async Task HandleBackdropClick()
     {
         if (CloseOnBackdrop)
-        {
-            await HandleClose();
-        }
+            await Close();
     }
     
-    private string GetModalId() => !string.IsNullOrEmpty(ModalId) ? ModalId : modalId;
+    private string GetModalId()
+    {
+        // Priority: ModalContext > ModalId parameter > generated ID
+        if (ModalContext?.ModalId != null)
+            return ModalContext.ModalId;
+        
+        return !string.IsNullOrEmpty(ModalId) ? ModalId : modalId;
+    }
     
     private string GetSizeClass() => Size switch
     {
@@ -236,10 +254,6 @@
         StateHasChanged();
     }
     
-    private bool IsInsideModalProvider()
-    {
-        return ModalContext != null;
-    }
     
     private async Task RegisterWithJS()
     {
@@ -250,7 +264,7 @@
         
         object modalConfig;
         
-        if (!IsInsideModalProvider())
+        if (ModalContext == null)
         {
             dotNetRef = DotNetObjectReference.Create(this);
             modalConfig = new
@@ -288,11 +302,6 @@
         _jsModalId = null;
         _jsModalRegistered = false;
     }
-
-    /// <summary>
-    /// Programmatically close the modal
-    /// </summary>
-    public async Task Close() => await HandleClose();
 
     public async ValueTask DisposeAsync()
     {

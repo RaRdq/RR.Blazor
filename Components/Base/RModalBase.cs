@@ -113,6 +113,7 @@ public abstract class RModalBase : RComponentBase
             }
             catch (Exception ex)
             {
+                throw new InvalidOperationException($"Failed to notify modal service of modal opening: {InternalModalId}", ex);
             }
         }
     }
@@ -127,6 +128,7 @@ public abstract class RModalBase : RComponentBase
             }
             catch (Exception ex)
             {
+                throw new InvalidOperationException($"Failed to close modal via service: {InternalModalId}", ex);
             }
         }
     }

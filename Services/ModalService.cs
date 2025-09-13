@@ -20,6 +20,7 @@ public sealed class ModalService : IModalService, IDisposable
     {
         var instance = new ModalInstance<T>
         {
+            Id = options.ModalId ?? Guid.NewGuid().ToString(),
             Options = options,
             Visible = true
         };
@@ -44,6 +45,7 @@ public sealed class ModalService : IModalService, IDisposable
     {
         var instance = new ModalInstance
         {
+            Id = options.ModalId ?? Guid.NewGuid().ToString(),
             Options = options,
             Visible = true
         };

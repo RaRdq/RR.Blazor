@@ -1,221 +1,264 @@
 export function generateSkeletonHTML(containerElement, animated = true) {
     if (!containerElement) {
-        console.warn('Skeleton: No container element provided');
+        console.error('[Skeleton] No container element provided');
         return '';
     }
 
     const hiddenContainer = containerElement.querySelector('.skeleton-hidden-container');
     if (!hiddenContainer) {
-        console.warn('Skeleton: No hidden container found');
+        console.error('[Skeleton] No hidden container found');
         return '';
     }
     
     const animationClass = animated ? ' skeleton-shimmer' : '';
+    const parentRect = containerElement.getBoundingClientRect();
+    const maxContainerWidth = parentRect.width || 500;
     
-    // Temporarily make container visible to get dimensions
-    const originalStyles = {
-        visibility: hiddenContainer.style.visibility,
-        opacity: hiddenContainer.style.opacity,
-        position: hiddenContainer.style.position,
-        height: hiddenContainer.style.height
-    };
+    function detectElementType(element) {
+        if (!element) return null;
+
+        const tag = element.tagName?.toLowerCase() || '';
+        const className = element.className?.toString() || '';
+        const classList = element.classList || [];
+        const style = element.getAttribute('style') || '';
+
+        // Check for chart bars (vertical bars with specific height styling)
+        if (style.includes('height:') && style.includes('%') &&
+            (className.includes('bg-primary') || className.includes('bg-'))) {
+            return 'chart-bar';
+        }
+
+        if (classList.contains('chip') || classList.contains('badge') ||
+            className.includes('chip') || className.includes('badge')) {
+            return 'chip';
+        }
+
+        if (classList.contains('avatar') || classList.contains('r-avatar') ||
+            className.includes('avatar') || className.includes('rounded-full')) {
+            return 'avatar';
+        }
+
+        if (tag === 'button' || classList.contains('btn') ||
+            className.includes('button') || className.includes('btn')) {
+            return 'button';
+        }
+
+        if (tag === 'i' && className.includes('icon')) {
+            return 'icon';
+        }
+
+        if (/^h[1-6]$/.test(tag)) {
+            return 'title';
+        }
+
+        const hasDirectText = Array.from(element.childNodes || [])
+            .some(node => node.nodeType === Node.TEXT_NODE && node.textContent?.trim());
+
+        if (hasDirectText || tag === 'p' || tag === 'span' ||
+            className.includes('text') || className.includes('caption')) {
+            return 'text';
+        }
+
+        return null;
+    }
     
-    // Make visible but off-screen to measure
-    hiddenContainer.style.visibility = 'visible';
-    hiddenContainer.style.opacity = '0';
-    hiddenContainer.style.position = 'absolute';
-    hiddenContainer.style.height = 'auto';
-    hiddenContainer.style.left = '-9999px';
+    function getElementDimensions(element, type) {
+        const tag = element.tagName?.toLowerCase() || '';
+        const text = element.textContent?.trim() || '';
+        const className = element.className?.toString() || '';
+        const style = element.getAttribute('style') || '';
+
+        const dimensions = {
+            width: 100,
+            height: 16
+        };
+
+        switch(type) {
+            case 'chart-bar':
+                // Extract height from style attribute
+                const heightMatch = style.match(/height:\s*(\d+)/);
+                if (heightMatch) {
+                    dimensions.height = parseInt(heightMatch[1]);
+                } else {
+                    dimensions.height = 50; // Default bar height
+                }
+                dimensions.width = 16; // Fixed width for chart bars
+                break;
+
+            case 'chip':
+            case 'badge':
+                dimensions.width = Math.min(text.length * 7 + 20, 120);
+                dimensions.height = 24;
+                break;
+
+            case 'avatar':
+                // Check for size classes or compute from actual element
+                const rect = element.getBoundingClientRect();
+                if (rect.width > 0 && rect.height > 0) {
+                    dimensions.width = Math.round(rect.width);
+                    dimensions.height = Math.round(rect.height);
+                } else if (element.className?.includes('w-8')) {
+                    dimensions.width = 32;
+                    dimensions.height = 32;
+                } else {
+                    dimensions.width = 40;
+                    dimensions.height = 40;
+                }
+                break;
+
+            case 'button':
+                dimensions.width = Math.min(text.length * 8 + 30, 150);
+                dimensions.height = 36;
+                break;
+
+            case 'icon':
+                dimensions.width = 24;
+                dimensions.height = 24;
+                break;
+
+            case 'title':
+                dimensions.width = Math.min(text.length * 10, maxContainerWidth * 0.8);
+                dimensions.height = tag === 'h1' ? 32 : tag === 'h2' ? 28 : 24;
+                break;
+
+            case 'text':
+                // Check for KPI-like values (short text like "N/A", numbers)
+                if (className.includes('text-h4') || className.includes('font-bold')) {
+                    dimensions.width = Math.min(text.length * 12, maxContainerWidth * 0.5);
+                    dimensions.height = 32;
+                } else if (className.includes('caption')) {
+                    dimensions.width = Math.min(text.length * 6, maxContainerWidth * 0.7);
+                    dimensions.height = 14;
+                } else {
+                    dimensions.width = Math.min(text.length * 7, maxContainerWidth * 0.9);
+                    dimensions.height = 16;
+                }
+                break;
+        }
+
+        return dimensions;
+    }
     
-    // Process elements to create skeleton versions
+    function createSkeletonElement(type, dimensions) {
+        const skeleton = document.createElement('div');
+        skeleton.className = `skeleton skeleton-${type}${animationClass}`;
+
+        const width = type === 'chart-bar' ? dimensions.width : Math.min(dimensions.width, maxContainerWidth * 0.95);
+
+        const styles = {
+            width: `${width}px`,
+            height: `${dimensions.height}px`,
+            display: (type === 'chip' || type === 'badge' || type === 'button') ? 'inline-block' : 'block'
+        };
+
+        if (type === 'chart-bar') {
+            styles.borderRadius = '4px 4px 0 0'; // Rounded top for chart bars
+            styles.alignSelf = 'flex-end'; // Align to bottom for charts
+        } else if (type === 'avatar' || type === 'icon-circle') {
+            styles.borderRadius = '50%';
+        } else if (type === 'chip' || type === 'badge') {
+            styles.borderRadius = '12px';
+        } else if (type === 'button') {
+            styles.borderRadius = '6px';
+        } else {
+            styles.borderRadius = '4px';
+        }
+
+        if (type === 'chip' || type === 'badge') {
+            styles.marginRight = '8px';
+        }
+
+        skeleton.style.cssText = Object.entries(styles)
+            .map(([key, value]) => `${key.replace(/([A-Z])/g, '-$1').toLowerCase()}: ${value}`)
+            .join('; ');
+
+        skeleton.setAttribute('aria-hidden', 'true');
+        return skeleton;
+    }
+    
     function processElement(element, depth = 0) {
-        if (!element || element.nodeType !== Node.ELEMENT_NODE) return null;
-        if (depth > 20) return null; // Prevent infinite recursion
-        
-        // Skip script, style, and other non-visual elements
-        const skipTags = ['SCRIPT', 'STYLE', 'META', 'LINK', 'TITLE', 'BR', 'HR', 'BLAZOR-ERROR-UI'];
-        if (skipTags.includes(element.tagName)) return null;
-        
-        // Check if element is visible
-        const computedStyle = window.getComputedStyle(element);
-        if (computedStyle.display === 'none') return null;
-        
-        // Clone the element (preserving structure)
-        const clone = element.cloneNode(false);
-        
-        // Preserve important classes but remove IDs
-        clone.removeAttribute('id');
-        clone.removeAttribute('_bl');
-        
-        // Get element info for skeleton processing
-        const rect = element.getBoundingClientRect();
-        const className = (element.className || '').toLowerCase();
-        
-        // Handle avatar elements specially - put skeleton inside, keep container
-        if (className.includes('r-avatar') || className.includes('avatar')) {
-            // Keep the avatar container but replace its content with circular skeleton
-            const skeleton = document.createElement('div');
-            skeleton.className = `skeleton skeleton-avatar${animationClass}`;
-            skeleton.setAttribute('aria-hidden', 'true');
-            
-            if (rect.width > 0 && rect.height > 0) {
-                const size = Math.min(rect.width, rect.height);
-                skeleton.style.cssText = `
-                    width: ${size}px;
-                    height: ${size}px;
-                    border-radius: 50%;
-                    display: block;
-                `;
-            } else {
-                // Fallback size
-                skeleton.style.cssText = `
-                    width: 40px;
-                    height: 40px;
-                    border-radius: 50%;
-                    display: block;
-                `;
-            }
-            
-            clone.innerHTML = '';
-            clone.appendChild(skeleton);
-            return clone;
+        if (!element || element.nodeType !== Node.ELEMENT_NODE || depth > 10) {
+            return null;
         }
-        
-        // Handle icon elements - replace with skeleton block
-        if (element.tagName === 'I' && className.includes('icon')) {
-            const skeleton = document.createElement('div');
-            skeleton.className = `skeleton skeleton-icon${animationClass}`;
-            skeleton.setAttribute('aria-hidden', 'true');
-            
-            const size = Math.max(rect.width, rect.height) || 24;
-            skeleton.style.cssText = `
-                width: ${size}px;
-                height: ${size}px;
-                border-radius: 4px;
-                display: inline-block;
-            `;
-            
-            return skeleton;
+
+        const tag = element.tagName;
+        if (['SCRIPT', 'STYLE', 'META', 'LINK', 'BR', 'HR'].includes(tag)) {
+            return null;
         }
-        
-        // Check for direct text content
-        let hasDirectText = false;
-        let directTextContent = '';
-        
-        for (const childNode of element.childNodes) {
-            if (childNode.nodeType === Node.TEXT_NODE) {
-                const text = childNode.textContent.trim();
-                if (text) {
-                    hasDirectText = true;
-                    directTextContent = text;
-                    break;
-                }
-            }
+
+        // First check if this element itself has a detectable type
+        const type = detectElementType(element);
+
+        if (type) {
+            const dimensions = getElementDimensions(element, type);
+            return createSkeletonElement(type, dimensions);
         }
-        
-        // If element has direct text content, replace with text skeleton
-        if (hasDirectText) {
-            const skeleton = document.createElement('span');
-            skeleton.className = `skeleton skeleton-text${animationClass}`;
-            skeleton.setAttribute('aria-hidden', 'true');
-            
-            // Calculate text skeleton dimensions
-            let width = rect.width;
-            const height = rect.height || 16;
-            
-            // Ensure text skeleton doesn't exceed parent container
-            if (element.parentElement) {
-                const parentRect = element.parentElement.getBoundingClientRect();
-                if (parentRect.width > 0) {
-                    width = Math.min(width, parentRect.width * 0.8); // 80% of parent max
-                }
-            }
-            
-            // Use consistent width based on content
-            if (width > 0) {
-                width = Math.floor(width * 0.7); // 70% of original
-            } else {
-                width = Math.min(directTextContent.length * 8, 150);
-            }
-            
-            // Detect heading/title styles
-            const fontSize = parseFloat(computedStyle.fontSize);
-            const fontWeight = computedStyle.fontWeight;
-            const tagName = element.tagName.toLowerCase();
-            
-            if (tagName.match(/^h[1-6]$/) || fontWeight === 'bold' || 
-                parseInt(fontWeight) >= 600 || fontSize >= 20) {
-                skeleton.className = `skeleton skeleton-title${animationClass}`;
-            }
-            
-            skeleton.style.cssText = `
-                width: ${width}px;
-                height: ${height}px;
-                border-radius: 4px;
-                display: inline-block;
-            `;
-            
-            // Replace all content with skeleton
-            clone.innerHTML = '';
-            clone.appendChild(skeleton);
-            return clone;
-        }
-        
-        // Process children recursively
-        let hasProcessedChildren = false;
-        
+
+        // Clone the container to preserve structure
+        const container = element.cloneNode(false);
+        container.removeAttribute('id');
+        container.removeAttribute('_bl');
+
+        let hasContent = false;
+        const processedChildren = [];
+
+        // Process all children first
         for (const child of element.children) {
-            const processedChild = processElement(child, depth + 1);
-            if (processedChild) {
-                clone.appendChild(processedChild);
-                hasProcessedChildren = true;
+            const processed = processElement(child, depth + 1);
+            if (processed) {
+                processedChildren.push(processed);
+                hasContent = true;
             }
         }
-        
-        // Return clone if it has content or should be preserved
-        const shouldPreserve = hasProcessedChildren || 
-            className.includes('card') || 
-            className.includes('container') ||
-            className.includes('wrapper') ||
-            className.includes('glass') ||
-            className.includes('flex') ||
-            className.includes('grid') ||
-            element.tagName === 'DIV';
-            
-        return shouldPreserve ? clone : null;
-    }
-    
-    // Process all root children
-    const results = [];
-    // Processing root children - logging removed for performance
-    
-    for (const child of hiddenContainer.children) {
-        const processed = processElement(child, 0);
-        if (processed) {
-            results.push(processed.outerHTML);
+
+        // If we have processed children, add them
+        if (processedChildren.length > 0) {
+            processedChildren.forEach(child => container.appendChild(child));
+        } else {
+            // No children were processed, check for direct text content
+            const directTextNodes = Array.from(element.childNodes || [])
+                .filter(node => node.nodeType === Node.TEXT_NODE && node.textContent?.trim());
+
+            if (directTextNodes.length > 0) {
+                // This element has direct text content
+                const textContent = element.textContent?.trim() || '';
+                if (textContent) {
+                    const dimensions = getElementDimensions(element, 'text');
+                    const skeleton = createSkeletonElement('text', dimensions);
+                    container.appendChild(skeleton);
+                    hasContent = true;
+                }
+            }
         }
+
+        return hasContent ? container : null;
     }
     
-    // Restore original styles
-    hiddenContainer.style.visibility = originalStyles.visibility || '';
-    hiddenContainer.style.opacity = originalStyles.opacity || '';
-    hiddenContainer.style.position = originalStyles.position || '';
-    hiddenContainer.style.height = originalStyles.height || '';
-    hiddenContainer.style.left = '';
+    const results = [];
+
+    try {
+        for (const child of hiddenContainer.children) {
+            const processed = processElement(child, 0, null);
+            if (processed) {
+                results.push(processed.outerHTML);
+            }
+        }
+    } catch (error) {
+        console.error('[Skeleton] Processing error:', error);
+    }
     
-    const result = results.join('');
-    // HTML generation complete - logging removed for performance
-    
-    return result;
+    const html = results.join('');
+    console.log('[Skeleton] Generated HTML length:', html.length);
+    return html;
 }
 
 export function init() {
-    // Skeleton generator initialized
+    console.log('[Skeleton] Module initialized');
     return true;
 }
 
 export function dispose() {
-    // Skeleton generator disposed
+    console.log('[Skeleton] Module disposed');
 }
 
 export default { generateSkeletonHTML, init, dispose };

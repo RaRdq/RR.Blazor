@@ -5,6 +5,7 @@ namespace RR.Blazor.Models;
 
 public class ModalOptions
 {
+    public string? ModalId { get; set; }
     public string Title { get; set; } = string.Empty;
     public string Subtitle { get; set; } = string.Empty;
     public string Icon { get; set; } = string.Empty;
@@ -109,7 +110,7 @@ public sealed class ModalButton
 
 public class ModalInstance
 {
-    public string Id { get; init; } = Guid.NewGuid().ToString();
+    public string Id { get; set; } = Guid.NewGuid().ToString();
     public ModalOptions Options { get; set; } = new();
     public TaskCompletionSource<ModalResult> TaskSource { get; } = new();
     public DateTime CreatedAt { get; } = DateTime.UtcNow;

@@ -204,6 +204,65 @@
                 </div>
             </div>
 
+            <!-- Text Length Variation Examples -->
+            <div class="space-y-2">
+                <div class="text-h6 font-semibold">Text Length Variation Examples</div>
+                <div class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <p class="text-sm text-muted mb-2">Short Text Examples</p>
+                            <RSkeleton Loading="@_textLengthLoading" SmartMode="true">
+                                <div class="space-y-2 pa-3 glass-light rounded-lg">
+                                    <div class="text-h6">Short</div>
+                                    <div class="text-body-2">A bit longer text here</div>
+                                    <div class="text-caption">Tiny</div>
+                                </div>
+                            </RSkeleton>
+                        </div>
+                        
+                        <div>
+                            <p class="text-sm text-muted mb-2">Long Text Examples</p>
+                            <RSkeleton Loading="@_textLengthLoading" SmartMode="true">
+                                <div class="space-y-2 pa-3 glass-light rounded-lg">
+                                    <div class="text-h6">This is a much longer title that spans more width</div>
+                                    <div class="text-body-2">Lorem ipsum dolor sit amet, consectetur adipiscing elit sed do eiusmod</div>
+                                    <div class="text-caption">Small caption text with moderate length for demonstration</div>
+                                </div>
+                            </RSkeleton>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <p class="text-sm text-muted mb-2">Mixed Content Lengths</p>
+                        <RSkeleton Loading="@_textLengthLoading" SmartMode="true">
+                            <div class="space-y-3">
+                                @foreach (var item in new[] { 
+                                    ("John Doe", "Admin", "2 min ago"),
+                                    ("Alexandra Smith-Johnson", "Senior Developer", "Yesterday at 3:45 PM"),
+                                    ("Bob", "QA", "Now"),
+                                    ("Christopher Montgomery Williams III", "Chief Technology Officer", "Last Tuesday at 10:30 AM")
+                                })
+                                {
+                                    <div class="flex gap-3 pa-3 glass-light rounded-lg">
+                                        <RAvatar Text="@item.Item1.Substring(0, 2)" Size="SizeType.Small" />
+                                        <div class="flex-1">
+                                            <div class="text-body-2 font-semibold">@item.Item1</div>
+                                            <div class="text-caption text-muted">@item.Item2</div>
+                                        </div>
+                                        <div class="text-caption text-muted">@item.Item3</div>
+                                    </div>
+                                }
+                            </div>
+                        </RSkeleton>
+                    </div>
+                    
+                    <RButton Text="@(_textLengthLoading ? "Stop Loading" : "Toggle Loading")" 
+                             @onclick="ToggleTextLengthLoading"
+                             Size="SizeType.Small"
+                             Variant="VariantType.Secondary" />
+                </div>
+            </div>
+
             <!-- Real-world Use Case -->
             <div class="space-y-2">
                 <div class="text-h6 font-semibold">Real-world Use Case: Data Dashboard</div>
@@ -300,7 +359,8 @@
     private bool _activityLoading = false;
     private bool _glassLoading = false;
     private bool _dashboardLoading = false;
-    private System.Threading.Timer _dashboardTimer;
+    private bool _textLengthLoading = false;
+    private CancellationTokenSource _dashboardCts;
     
     // Dashboard data
     private string[] _kpiValues = { "1,234", "98.5%", "$45.2K", "2.3x" };
@@ -327,25 +387,37 @@
         StateHasChanged();
     }
     
-    private void SimulateDashboardLoad()
+    private void ToggleTextLengthLoading()
+    {
+        _textLengthLoading = !_textLengthLoading;
+        StateHasChanged();
+    }
+    
+    private async void SimulateDashboardLoad()
     {
         if (_dashboardLoading) return;
         
-        _dashboardLoading = true;
+        _dashboardCts?.Cancel();
+        _dashboardCts = new CancellationTokenSource();
         
-        // Simulate realistic loading time
-        _dashboardTimer = new System.Threading.Timer(async _ =>
+        _dashboardLoading = true;
+        StateHasChanged();
+        
+        try
         {
-            await Task.Delay(2000); // Simulate data loading
+            await Task.Delay(2000, _dashboardCts.Token);
             _dashboardLoading = false;
-            _dashboardTimer?.Dispose();
-            await InvokeAsync(StateHasChanged);
-        }, null, 0, Timeout.Infinite);
+            StateHasChanged();
+        }
+        catch (TaskCanceledException)
+        {
+            // Operation was cancelled
+        }
     }
     
     private void ResetDashboard()
     {
-        _dashboardTimer?.Dispose();
+        _dashboardCts?.Cancel();
         _dashboardLoading = false;
         
         // Randomize KPI values for demonstration
@@ -373,7 +445,8 @@
     
     public void Dispose()
     {
-        _dashboardTimer?.Dispose();
+        _dashboardCts?.Cancel();
+        _dashboardCts?.Dispose();
     }
 }
 </div>

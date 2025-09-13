@@ -4,7 +4,7 @@
 @using RR.Blazor.Enums
 @inherits RComponentBase
 
-<RModal Visible="@Visible"
+<RModal @ref="modalRef"
         Title="@Title"
         Icon="@Icon"
         Size="@Size"
@@ -13,8 +13,7 @@
         CloseOnEscape="@CloseOnEscape"
         ShowCloseButton="@ShowCloseButton"
         ShowHeader="@ShowHeader"
-        ShowFooter="true"
-        OnClose="@HandleClose">
+        ShowFooter="true">
     <ChildContent>
         <div class="d-flex flex-column align-center text-center gap-4">
             <div class="d-flex align-center justify-center square-12 min-w-12 min-h-12 rounded-full flex-shrink-0 @GetIconBackgroundClass()">
@@ -34,10 +33,13 @@
     </ChildContent>
     <FooterContent>
         <RActionGroup Alignment="ActionGroupAlignment.End">
-            <RButton Text="@CancelText" 
-                     Variant="VariantType.Secondary" 
-                     @onclick="@HandleCancel"
-                     data-testid="modal-cancel" />
+            @if (!string.IsNullOrEmpty(CancelText))
+            {
+                <RButton Text="@CancelText" 
+                         Variant="VariantType.Secondary" 
+                         @onclick="@HandleCancel"
+                         data-testid="modal-cancel" />
+            }
             <RButton Text="@ConfirmText" 
                      Variant="@Variant" 
                      Icon="@GetConfirmIcon()"
@@ -48,13 +50,13 @@
 </RModal>
 
 @code {
+    private RModal modalRef;
+    
     [Parameter] public string Message { get; set; } = "Are you sure you want to proceed?";
     [Parameter] public string ConfirmText { get; set; } = "Confirm";
     [Parameter] public string CancelText { get; set; } = "Cancel";
     [Parameter] public string Icon { get; set; } = "warning";
     [Parameter] public VariantType Variant { get; set; } = VariantType.Warning;
-    [Parameter] public bool Visible { get; set; }
-    [Parameter] public EventCallback<bool> VisibleChanged { get; set; }
     [Parameter] public EventCallback OnConfirm { get; set; }
     [Parameter] public EventCallback OnCancel { get; set; }
     
@@ -65,35 +67,18 @@
     [Parameter] public bool CloseOnEscape { get; set; } = true;
     [Parameter] public bool ShowCloseButton { get; set; } = true;
     [Parameter] public bool ShowHeader { get; set; } = true;
-    [Parameter] public EventCallback OnModalClosed { get; set; }
-    
-    private async Task HandleClose()
-    {
-        await VisibleChanged.InvokeAsync(false);
-        if (OnModalClosed.HasDelegate)
-        {
-            await OnModalClosed.InvokeAsync();
-        }
-    }
     
     private async Task HandleConfirm()
     {
         if (OnConfirm.HasDelegate)
-        {
             await OnConfirm.InvokeAsync();
-        }
-        await HandleClose();
     }
     
     private async Task HandleCancel()
     {
         if (OnCancel.HasDelegate)
-        {
             await OnCancel.InvokeAsync();
-        }
-        await HandleClose();
     }
-
 
     private string GetConfirmIcon() => Variant switch
     {
