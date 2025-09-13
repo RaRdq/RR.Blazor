@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Components.Rendering;
 using RR.Blazor.Components.Base;
 using System.Collections;
 using System.Linq;
+using System.Reflection;
 
 namespace RR.Blazor.Components.Data;
 
@@ -123,7 +124,7 @@ public class RTable : RTableBase
         builder.AddAttribute(++seq, "SortByChanged", SortByChanged);
         builder.AddAttribute(++seq, "SortDescendingChanged", SortDescendingChanged);
         
-        // Forward EventCallbacks and other attributes
+        // Handle EventCallbacks from AdditionalAttributes
         if (AdditionalAttributes != null)
         {
             foreach (var attr in AdditionalAttributes)
@@ -131,8 +132,24 @@ public class RTable : RTableBase
                 // Skip attributes that are already handled as parameters
                 if (attr.Key == "Items" || attr.Key == "TItem") continue;
                 
-                // Forward all attributes including EventCallbacks
-                builder.AddAttribute(++seq, attr.Key, attr.Value);
+                if (attr.Key == "OnRowClicked")
+                {
+                    // Convert delegate to EventCallback<T> at runtime
+                    var eventCallback = CreateEventCallback(attr.Value, itemType);
+                    builder.AddAttribute(++seq, "OnRowClicked", eventCallback);
+                }
+                else if (IsEventCallbackParameter(attr.Key))
+                {
+                    // Convert other event callbacks
+                    var eventCallback = CreateEventCallback(attr.Value, itemType);
+                    builder.AddAttribute(++seq, attr.Key, eventCallback);
+                }
+                else
+                {
+                    // Forward all other attributes with standard conversion
+                    var convertedValue = ConvertParameterValue(attr.Key, attr.Value, itemType);
+                    builder.AddAttribute(++seq, attr.Key, convertedValue);
+                }
             }
         }
         builder.CloseComponent();
@@ -153,6 +170,75 @@ public class RTable : RTableBase
             return int.TryParse(intString, out var intResult) ? intResult : 0;
         }
         
+        return value;
+    }
+    
+    private object CreateEventCallback(object value, Type itemType)
+    {
+        if (value == null)
+            return null;
+            
+        // If it's already an EventCallback, return it as-is
+        var valueType = value.GetType();
+        if (valueType.IsGenericType && valueType.GetGenericTypeDefinition() == typeof(EventCallback<>))
+        {
+            return value;
+        }
+        
+        var eventCallbackType = typeof(EventCallback<>).MakeGenericType(itemType);
+        
+        // EventCallback<T> has a constructor that takes a delegate
+        // We need to create the appropriate delegate type first
+        Type delegateType;
+        
+        // Check if the value is an Action<T> or Func<T, Task>
+        if (valueType.IsGenericType)
+        {
+            var genericDef = valueType.GetGenericTypeDefinition();
+            if (genericDef == typeof(Action<>) || genericDef == typeof(Func<,>) && valueType.GetGenericArguments()[1] == typeof(Task))
+            {
+                // It's already a properly typed delegate
+                delegateType = valueType;
+            }
+            else
+            {
+                // Try to convert to Action<T>
+                delegateType = typeof(Action<>).MakeGenericType(itemType);
+            }
+        }
+        else
+        {
+            // Create Action<T> delegate type
+            delegateType = typeof(Action<>).MakeGenericType(itemType);
+        }
+        
+        // Create EventCallback using EventCallbackFactory
+        var factoryMethod = typeof(EventCallbackFactory)
+            .GetMethods()
+            .Where(m => m.Name == "Create" && m.IsGenericMethodDefinition)
+            .FirstOrDefault(m => 
+            {
+                var parameters = m.GetParameters();
+                return parameters.Length == 2 && 
+                       parameters[0].ParameterType == typeof(object) &&
+                       parameters[1].ParameterType.IsGenericType;
+            });
+            
+        if (factoryMethod != null)
+        {
+            var genericMethod = factoryMethod.MakeGenericMethod(itemType);
+            var factory = new EventCallbackFactory();
+            return genericMethod.Invoke(factory, new[] { this, value });
+        }
+        
+        // Fallback: try to create EventCallback directly
+        var constructor = eventCallbackType.GetConstructor(new[] { typeof(IHandleEvent), typeof(MulticastDelegate) });
+        if (constructor != null)
+        {
+            return constructor.Invoke(new[] { null, value });
+        }
+        
+        // If all else fails, return the original value
         return value;
     }
     
