@@ -9,7 +9,7 @@ export function generateSkeletonHTML(containerElement, animated = true) {
         console.error('[Skeleton] No hidden container found');
         return '';
     }
-    
+
     const animationClass = animated ? ' skeleton-shimmer' : '';
     const parentRect = containerElement.getBoundingClientRect();
     const maxContainerWidth = parentRect.width || 500;
@@ -238,7 +238,7 @@ export function generateSkeletonHTML(containerElement, animated = true) {
 
     try {
         for (const child of hiddenContainer.children) {
-            const processed = processElement(child, 0, null);
+            const processed = processElement(child, 0);
             if (processed) {
                 results.push(processed.outerHTML);
             }

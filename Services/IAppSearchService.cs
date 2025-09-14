@@ -145,7 +145,7 @@ public class AppSearchService : IAppSearchService
 /// <summary>
 /// Navigation search provider - searches through nav items
 /// </summary>
-public class NavigationSearchProvider(List<AppNavItem> navItems) : ISearchProvider
+public class NavigationSearchProvider(List<NavMenuItem> navItems) : ISearchProvider
 {
     public string Name => "Navigation";
     public int Priority => 10;
@@ -175,7 +175,7 @@ public class NavigationSearchProvider(List<AppNavItem> navItems) : ISearchProvid
         return Task.FromResult(results);
     }
     
-    private float CalculateRelevance(AppNavItem item, string searchLower)
+    private float CalculateRelevance(NavMenuItem item, string searchLower)
     {
         var titleLower = item.Text.ToLowerInvariant();
         

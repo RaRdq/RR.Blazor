@@ -102,7 +102,7 @@ class ModuleManager {
             'fileUpload': { path: './file-upload.js' },
             'clipboard': { path: './clipboard.js' },
             'loader': { path: './loader.js' },
-            'toasts': { path: './toasts.js' },
+            'toast': { path: './toast.js', preload: true },
             'appShell': { path: './app-shell.js', preload: true },
             'columnManagement': { path: './column-management.js' },
             'intersectionObserver': { path: './intersection-observer.js' },
@@ -231,7 +231,7 @@ class ModuleManager {
             debugLogger.error('Failed to preload eventConstants:', error);
         }
         
-        const essentialModules = ['zIndexManager', 'portal', 'positioning', 'backdrop', 'uiCoordinator', 'clickOutside', 'scrollLock', 'modalEvents', 'keyboardNavigation', 'modal', 'choice', 'filter', 'theme', 'appShell', 'skeleton'];
+        const essentialModules = ['zIndexManager', 'portal', 'positioning', 'backdrop', 'uiCoordinator', 'clickOutside', 'scrollLock', 'modalEvents', 'keyboardNavigation', 'modal', 'toast', 'choice', 'filter', 'theme', 'appShell', 'skeleton'];
         
         for (const moduleName of essentialModules) {
             await this.loadModule(moduleName);
@@ -422,7 +422,7 @@ const RRBlazor = {
     Grid: createUniversalProxy('grid'),
     Clipboard: createUniversalProxy('clipboard'),
     Loader: createUniversalProxy('loader'),
-    Toasts: createUniversalProxy('toasts'),
+    Toast: createUniversalProxy('toast'),
     Tooltip: createUniversalProxy('tooltip'),
     Autosuggest: createUniversalProxy('autosuggest'),
     FocusTrap: createUniversalProxy('focusTrap'),

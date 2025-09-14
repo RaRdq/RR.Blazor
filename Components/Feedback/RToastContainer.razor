@@ -1,8 +1,9 @@
 @using RR.Blazor.Services
 @inject IToastService ToastService
+@inject IJavaScriptInteropService JSInterop
 @implements IDisposable
 
-<div class="toast-container toast-container-@GetPositionClass()">
+<div @ref="containerRef" class="toast-container toast-container-@GetPositionClass()">
     @foreach (var toast in toasts)
     {
         <div class="toast toast-@(toast.Type.ToString().ToLower()) toast-@(toast.StyleType.ToString().ToLower()) @GetToastState(toast.Id)" @key="toast.Id">
@@ -37,35 +38,43 @@
     private readonly Dictionary<string, Timer> timers = new();
     private readonly Dictionary<string, string> toastStates = new();
     private bool disposed = false;
-    
+    private ElementReference containerRef;
+
     protected override void OnInitialized()
     {
         ToastService.OnShow += ShowToast;
         ToastService.OnRemove += RemoveToast;
         ToastService.OnClearAll += ClearAll;
     }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        await JSInterop.TryInvokeVoidAsync("window.moveToastContainerToPortal", containerRef);
+    }
     
     private async void ShowToast(ToastMessage toast)
     {
         if (disposed) return;
-        
+
+        // Remove oldest toasts without triggering renders
         while (toasts.Count >= ToastService.Options.MaxToasts)
         {
             var oldest = toasts.First();
-            RemoveToast(oldest.Id);
+            RemoveToastInternal(oldest.Id);
         }
-        
+
         toasts.Add(toast);
         toastStates[toast.Id] = "entering";
-        if (!disposed) StateHasChanged();
-        
+        StateHasChanged();
+
         await Task.Yield(); // Let Blazor render cycle complete
         if (toastStates.ContainsKey(toast.Id) && !disposed)
         {
             toastStates[toast.Id] = "visible";
             StateHasChanged();
         }
-        
 
         if (toast.Duration > 0)
         {
@@ -118,7 +127,43 @@
     private void HandleAction(ToastMessage toast)
     {
         toast.OnAction?.Invoke();
-        RemoveToast(toast.Id);
+        RemoveToastSync(toast.Id);
+    }
+
+    private void RemoveToastSync(string id)
+    {
+        if (disposed) return;
+
+        var toast = toasts.FirstOrDefault(t => t.Id == id);
+        if (toast != null)
+        {
+            toasts.Remove(toast);
+            toastStates.Remove(id);
+
+            if (timers.TryGetValue(id, out var timer))
+            {
+                timer.Dispose();
+                timers.Remove(id);
+            }
+
+            StateHasChanged();
+        }
+    }
+
+    private void RemoveToastInternal(string id)
+    {
+        var toast = toasts.FirstOrDefault(t => t.Id == id);
+        if (toast != null)
+        {
+            toasts.Remove(toast);
+            toastStates.Remove(id);
+
+            if (timers.TryGetValue(id, out var timer))
+            {
+                timer.Dispose();
+                timers.Remove(id);
+            }
+        }
     }
     
     private string GetToastState(string toastId) =>

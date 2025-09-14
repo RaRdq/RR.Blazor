@@ -3,7 +3,7 @@ class ZIndexManager {
     constructor() {
         const rootStyles = getComputedStyle(document.documentElement);
         this.modalBase = parseInt(rootStyles.getPropertyValue('--z-modal').trim()) || 1030;
-        this.backdropBase = parseInt(rootStyles.getPropertyValue('--z-modal-backdrop').trim()) || 1040;
+        this.backdropBase = parseInt(rootStyles.getPropertyValue('--z-modal-backdrop').trim()) || 1000;
         this.portalBase = parseInt(rootStyles.getPropertyValue('--z-popup').trim()) || 910;
         this.increment = 10;
         
