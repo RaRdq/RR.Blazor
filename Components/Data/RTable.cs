@@ -177,69 +177,90 @@ public class RTable : RTableBase
     {
         if (value == null)
             return null;
-            
+
         // If it's already an EventCallback, return it as-is
         var valueType = value.GetType();
         if (valueType.IsGenericType && valueType.GetGenericTypeDefinition() == typeof(EventCallback<>))
         {
             return value;
         }
-        
-        var eventCallbackType = typeof(EventCallback<>).MakeGenericType(itemType);
-        
-        // EventCallback<T> has a constructor that takes a delegate
-        // We need to create the appropriate delegate type first
-        Type delegateType;
-        
-        // Check if the value is an Action<T> or Func<T, Task>
-        if (valueType.IsGenericType)
+
+        var factory = new EventCallbackFactory();
+
+        // Check if the value is an Action<T>
+        if (valueType.IsGenericType && valueType.GetGenericTypeDefinition() == typeof(Action<>))
         {
-            var genericDef = valueType.GetGenericTypeDefinition();
-            if (genericDef == typeof(Action<>) || genericDef == typeof(Func<,>) && valueType.GetGenericArguments()[1] == typeof(Task))
+            var actionGenericArg = valueType.GetGenericArguments()[0];
+            if (actionGenericArg == itemType)
             {
-                // It's already a properly typed delegate
-                delegateType = valueType;
+                // Find the generic Create<T> method
+                var createMethod = typeof(EventCallbackFactory)
+                    .GetMethods()
+                    .Where(m => m.Name == "Create" && m.IsGenericMethodDefinition)
+                    .FirstOrDefault(m =>
+                    {
+                        var parameters = m.GetParameters();
+                        if (parameters.Length != 2) return false;
+
+                        var genericArgs = m.GetGenericArguments();
+                        if (genericArgs.Length != 1) return false;
+
+                        // Check if second parameter is Action<T>
+                        var secondParam = parameters[1].ParameterType;
+                        return secondParam.IsGenericType &&
+                               secondParam.GetGenericTypeDefinition() == typeof(Action<>);
+                    });
+
+                if (createMethod != null)
+                {
+                    var genericMethod = createMethod.MakeGenericMethod(itemType);
+                    return genericMethod.Invoke(factory, new[] { this, value });
+                }
             }
-            else
+        }
+
+        // Check if the value is a Func<T, Task>
+        if (valueType.IsGenericType && valueType.GetGenericTypeDefinition() == typeof(Func<,>))
+        {
+            var funcGenericArgs = valueType.GetGenericArguments();
+            if (funcGenericArgs.Length == 2 && funcGenericArgs[0] == itemType && funcGenericArgs[1] == typeof(Task))
             {
-                // Try to convert to Action<T>
-                delegateType = typeof(Action<>).MakeGenericType(itemType);
+                // Find the generic Create<T> method for Func<T, Task>
+                var createMethod = typeof(EventCallbackFactory)
+                    .GetMethods()
+                    .Where(m => m.Name == "Create" && m.IsGenericMethodDefinition)
+                    .FirstOrDefault(m =>
+                    {
+                        var parameters = m.GetParameters();
+                        if (parameters.Length != 2) return false;
+
+                        var genericArgs = m.GetGenericArguments();
+                        if (genericArgs.Length != 1) return false;
+
+                        // Check if second parameter is Func<T, Task>
+                        var secondParam = parameters[1].ParameterType;
+                        return secondParam.IsGenericType &&
+                               secondParam.GetGenericTypeDefinition() == typeof(Func<,>) &&
+                               secondParam.GetGenericArguments().Length == 2 &&
+                               secondParam.GetGenericArguments()[1] == typeof(Task);
+                    });
+
+                if (createMethod != null)
+                {
+                    var genericMethod = createMethod.MakeGenericMethod(itemType);
+                    return genericMethod.Invoke(factory, new[] { this, value });
+                }
             }
         }
-        else
-        {
-            // Create Action<T> delegate type
-            delegateType = typeof(Action<>).MakeGenericType(itemType);
-        }
-        
-        // Create EventCallback using EventCallbackFactory
-        var factoryMethod = typeof(EventCallbackFactory)
-            .GetMethods()
-            .Where(m => m.Name == "Create" && m.IsGenericMethodDefinition)
-            .FirstOrDefault(m => 
-            {
-                var parameters = m.GetParameters();
-                return parameters.Length == 2 && 
-                       parameters[0].ParameterType == typeof(object) &&
-                       parameters[1].ParameterType.IsGenericType;
-            });
-            
-        if (factoryMethod != null)
-        {
-            var genericMethod = factoryMethod.MakeGenericMethod(itemType);
-            var factory = new EventCallbackFactory();
-            return genericMethod.Invoke(factory, new[] { this, value });
-        }
-        
-        // Fallback: try to create EventCallback directly
-        var constructor = eventCallbackType.GetConstructor(new[] { typeof(IHandleEvent), typeof(MulticastDelegate) });
-        if (constructor != null)
-        {
-            return constructor.Invoke(new[] { null, value });
-        }
-        
-        // If all else fails, return the original value
-        return value;
+
+        // non-generic fallback for simple delegates
+        var nonGenericCreate = typeof(EventCallbackFactory)
+            .GetMethod("Create", new[] { typeof(object), typeof(MulticastDelegate) });
+
+        if (nonGenericCreate != null && value is MulticastDelegate)
+            return nonGenericCreate.Invoke(factory, new[] { this, value });
+
+        throw new InvalidOperationException($"Cannot create EventCallback<{itemType.Name}> from {valueType.Name}. Expected Action<{itemType.Name}> or Func<{itemType.Name}, Task>.");
     }
     
     private static bool IsEventCallbackParameter(string parameterName)
