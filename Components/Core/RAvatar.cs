@@ -152,10 +152,9 @@ namespace RR.Blazor.Components.Core
             {
                 SizeType.ExtraSmall => "avatar-xs",
                 SizeType.Small => "avatar-sm",
-                SizeType.Medium => "avatar-md",
+                SizeType.Medium or SizeType.Default => "avatar-md",
                 SizeType.Large => "avatar-lg",
                 SizeType.ExtraLarge => "avatar-xl",
-                SizeType.ExtraLarge2X => "avatar-2xl",
                 _ => "avatar-md"
             };
             classes.Add(sizeClass);
@@ -201,10 +200,9 @@ namespace RR.Blazor.Components.Core
             {
                 SizeType.ExtraSmall => "text-xs",
                 SizeType.Small => "text-sm",
-                SizeType.Medium => "text-lg",
+                SizeType.Medium or SizeType.Default => "text-lg",
                 SizeType.Large => "text-2xl",
                 SizeType.ExtraLarge => "text-3xl",
-                SizeType.ExtraLarge2X => "text-4xl",
                 _ => "text-lg"
             };
             
@@ -217,10 +215,9 @@ namespace RR.Blazor.Components.Core
             {
                 SizeType.ExtraSmall => "text-2xs",
                 SizeType.Small => "text-xs",
-                SizeType.Medium => "text-sm",
+                SizeType.Medium or SizeType.Default => "text-sm",
                 SizeType.Large => "text-base",
                 SizeType.ExtraLarge => "text-lg",
-                SizeType.ExtraLarge2X => "text-xl",
                 _ => "text-sm"
             };
             
@@ -247,10 +244,9 @@ namespace RR.Blazor.Components.Core
             {
                 SizeType.ExtraSmall => "text-2xs min-w-4 h-4",
                 SizeType.Small => "text-xs min-w-5 h-5",
-                SizeType.Medium => "text-xs min-w-6 h-6",
+                SizeType.Medium or SizeType.Default => "text-xs min-w-6 h-6",
                 SizeType.Large => "text-sm min-w-7 h-7",
                 SizeType.ExtraLarge => "text-sm min-w-8 h-8",
-                SizeType.ExtraLarge2X => "text-base min-w-10 h-10",
                 _ => "text-xs min-w-6 h-6"
             };
             

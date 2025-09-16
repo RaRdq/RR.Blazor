@@ -211,8 +211,7 @@ namespace RR.Blazor.Components.Core
                 SizeType.Small => "icon-sm",
                 SizeType.Medium or SizeType.Default => "icon-base",
                 SizeType.Large => "icon-lg",
-                SizeType.ExtraLarge or SizeType.XLarge => "icon-xl",
-                SizeType.ExtraLarge2X => "icon-2xl",
+                SizeType.ExtraLarge => "icon-xl",
                 _ => "icon-base"
             };
             classes.Add(sizeClass);

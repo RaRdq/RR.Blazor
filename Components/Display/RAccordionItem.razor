@@ -44,8 +44,8 @@
         }
     </button>
     
-    <div id="@contentId" 
-         class="accordion-collapse @(isExpanded ? "accordion-collapse-expanded" : "")">
+    <div id="@contentId"
+         class="accordion-collapse @(isExpanded ? "expanded" : "")">
         <div class="accordion-body">
             @ChildContent
         </div>
@@ -85,13 +85,31 @@
         {
             throw new InvalidOperationException("RAccordionItem must be used inside an RAccordion component");
         }
-        
-        isExpanded = Expanded;
+
+        if (Expanded)
+        {
+            Parent?.ExpandItem(Id);
+        }
     }
-    
+
     protected override void OnParametersSet()
     {
-        isExpanded = Parent?.IsExpanded(Id) ?? false;
+        var currentExpanded = Parent?.IsExpanded(Id) ?? false;
+
+        // Only update if the Expanded parameter differs from current state
+        if (Expanded != currentExpanded)
+        {
+            if (Expanded)
+            {
+                Parent?.ExpandItem(Id);
+            }
+            else
+            {
+                Parent?.CollapseItem(Id);
+            }
+        }
+
+        isExpanded = Parent?.IsExpanded(Id) ?? Expanded;
     }
     
     private async Task ToggleExpanded()
