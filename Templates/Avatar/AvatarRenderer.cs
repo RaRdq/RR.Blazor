@@ -277,7 +277,6 @@ public class AvatarRenderer<T> where T : class
                 
                 builder.OpenElement(index * 10 + 3, "div");
                 builder.AddAttribute(index * 10 + 4, "class", avatarClass);
-                builder.AddAttribute(index * 10 + 5, "style", $"z-index: {maxDisplay - index};");
                 builder.AddAttribute(index * 10 + 6, "title", name);
                 
                 if (!string.IsNullOrEmpty(imageUrl))
@@ -306,7 +305,6 @@ public class AvatarRenderer<T> where T : class
                 var sizeClass = GetSizeClass(size);
                 builder.OpenElement(1000, "div");
                 builder.AddAttribute(1001, "class", $"avatar avatar-circle {sizeClass} avatar-secondary avatar-stacked");
-                builder.AddAttribute(1002, "style", "z-index: 0;");
                 builder.OpenElement(1003, "span");
                 builder.AddAttribute(1004, "class", "avatar-initials");
                 builder.AddContent(1005, $"+{overflow}");

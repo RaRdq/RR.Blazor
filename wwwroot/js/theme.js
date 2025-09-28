@@ -2,8 +2,6 @@
 let dotNetHelper = null;
 let systemThemeListener = null;
 
-const debugLogger = window.debugLogger;
-
 export function applyTheme(themeData) {
     const root = document.documentElement;
     

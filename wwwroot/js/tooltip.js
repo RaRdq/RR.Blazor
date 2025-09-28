@@ -1,183 +1,170 @@
 
-export async function createTooltipPortal(popupElement, triggerElement, position, portalId) {
-    const portalManager = await window.RRBlazor.Portal.getInstance();
-        const portalResult = portalManager.create({
-            id: portalId,
-            className: 'tooltip-portal'
+
+import dropdownManager from './dropdown-manager.js';
+import { TIMEOUTS } from './event-constants.js';
+
+const TOOLTIP_CONFIG = {
+    DEFAULT_WIDTH_PX: 200,
+    DEFAULT_HEIGHT_PX: 40,
+    DEFAULT_OFFSET_PX: 8
+};
+
+function validateElement(element, elementName) {
+    if (!element) {
+        throw new Error(`${elementName} is null or undefined`);
+    }
+    if (!(element instanceof Element)) {
+        throw new Error(`${elementName} is not a DOM Element`);
+    }
+    if (!element.parentNode) {
+        throw new Error(`${elementName} is not attached to the DOM`);
+    }
+    return true;
+}
+
+function validateTooltipStructure(tooltipElement, tooltipElementId) {
+    validateElement(tooltipElement, `Tooltip element ${tooltipElementId}`);
+
+    if (!tooltipElement.hasAttribute('data-tooltip-id')) {
+        throw new Error(`Tooltip element ${tooltipElementId} missing required data-tooltip-id attribute`);
+    }
+
+    const content = tooltipElement.querySelector('.tooltip-content');
+    if (!content) {
+        throw new Error(`Tooltip element ${tooltipElementId} missing required .tooltip-content child`);
+    }
+    validateElement(content, `Tooltip content for ${tooltipElementId}`);
+
+    return content;
+}
+
+const Tooltip = {
+    initialize() {
+        document.addEventListener(window.RRBlazor.Events.UI_COMPONENT_CLOSE_REQUEST, (event) => {
+            if (event.detail.componentType === window.RRBlazor.ComponentTypes.TOOLTIP) {
+                this.hideTooltip(event.detail.componentId);
+            }
         });
-        
-        const portalContainer = portalResult.element;
-        
-        if (!popupElement._originalParent) {
-            popupElement._originalParent = popupElement.parentNode;
-            popupElement._originalNextSibling = popupElement.nextSibling;
-        }
-        
-        portalContainer.appendChild(popupElement);
-        const triggerRect = triggerElement.getBoundingClientRect();
-        const finalPosition = getTooltipPosition(triggerElement, popupElement, position || 'top');
-        
-        let x, y;
-        const buffer = 8;
-        const tooltipWidth = popupElement.offsetWidth || 200;
-        const tooltipHeight = popupElement.offsetHeight || 100;
-        
-        switch (finalPosition) {
-            case 'top':
-                x = triggerRect.left + (triggerRect.width / 2) - (tooltipWidth / 2);
-                y = triggerRect.top - tooltipHeight - buffer;
-                break;
-            case 'bottom':
-                x = triggerRect.left + (triggerRect.width / 2) - (tooltipWidth / 2);
-                y = triggerRect.bottom + buffer;
-                break;
-            case 'left':
-                x = triggerRect.left - tooltipWidth - buffer;
-                y = triggerRect.top + (triggerRect.height / 2) - (tooltipHeight / 2);
-                break;
-            case 'right':
-                x = triggerRect.right + buffer;
-                y = triggerRect.top + (triggerRect.height / 2) - (tooltipHeight / 2);
-                break;
-            default:
-                x = triggerRect.left;
-                y = triggerRect.top - tooltipHeight - buffer;
-        }
-        
-        x = Math.max(8, Math.min(x, window.innerWidth - tooltipWidth - 8));
-        y = Math.max(8, Math.min(y, window.innerHeight - tooltipHeight - 8));
-        portalContainer.style.position = 'fixed';
-        portalContainer.style.left = `${x}px`;
-        portalContainer.style.top = `${y}px`;
-        portalContainer.style.zIndex = portalResult.zIndex;
-        portalContainer.style.visibility = 'visible';
-        portalContainer.style.opacity = '1';
-        portalContainer.style.pointerEvents = 'auto';
-        
-        return portalResult.id;
+
+        document.addEventListener(window.RRBlazor.Events.PARENT_CLOSING, (event) => {
+            if (event.detail?.reason === 'modal-closing') {
+                const tooltipElements = event.target.querySelectorAll('[data-tooltip-id]');
+                tooltipElements.forEach(element => {
+                    const tooltipId = element.getAttribute('data-tooltip-id');
+                    if (tooltipId) {
+                        this.hideTooltip(tooltipId);
+                    }
+                });
+            }
+        });
+    },
+
+    async showTooltip(tooltipElementId, options = {}) {
+        const tooltipElement = document.querySelector(`[data-tooltip-id="${tooltipElementId}"]`);
+        const content = validateTooltipStructure(tooltipElement, tooltipElementId);
+
+        const position = options.position || 'top';
+        const targetDimensions = {
+            width: content.offsetWidth || content.scrollWidth || TOOLTIP_CONFIG.DEFAULT_WIDTH_PX,
+            height: content.offsetHeight || content.scrollHeight || TOOLTIP_CONFIG.DEFAULT_HEIGHT_PX
+        };
+
+        return await dropdownManager.positionDropdown(tooltipElement, {
+            contentSelector: '.tooltip-content',
+            triggerSelector: '.tooltip-trigger',
+            componentType: 'tooltip',
+            componentId: tooltipElementId,
+            dimensions: targetDimensions,
+            position: position,
+            offset: TOOLTIP_CONFIG.DEFAULT_OFFSET_PX,
+            allowMultiple: false,
+            excludeSelectors: [
+                '.tooltip-trigger',
+                '.tooltip-content',
+                `[data-tooltip-id="${tooltipElementId}"]`
+            ],
+            onOpen: (element, content) => {
+                this._updateArrowPosition(content, position);
+                content.classList.remove('tooltip-hidden');
+                content.classList.add('tooltip-visible');
+            },
+            onClose: (element, content) => {
+                content.classList.remove('tooltip-visible');
+                content.classList.add('tooltip-hidden');
+            },
+            clickOutsideOptions: {
+                disabled: true
+            },
+            autoCloseOnScroll: false
+        });
+    },
+
+    _updateArrowPosition(content, position) {
+        content.classList.remove('tooltip-top', 'tooltip-bottom', 'tooltip-left', 'tooltip-right');
+        content.classList.add(`tooltip-${position}`);
+    },
+
+    async hideTooltip(tooltipElementId) {
+        if (!tooltipElementId) return false;
+
+        const isOpen = dropdownManager.isOpen(tooltipElementId);
+        if (!isOpen) return false;
+
+        return await dropdownManager.closeDropdown(tooltipElementId);
+    }
+};
+
+Tooltip.initialize();
+
+export async function createTooltipPortal(popupElement, triggerElement, position, portalId, config = {}) {
+    // Business requirement: Blazor must pass valid element references
+    validateElement(popupElement, 'Tooltip popup element');
+    validateElement(triggerElement, 'Tooltip trigger element');
+
+    // Business requirement: Tooltip DOM element must exist before JS interaction
+    const tooltipElement = document.querySelector(`[data-tooltip-id="${portalId}"]`);
+    validateTooltipStructure(tooltipElement, portalId);
+
+    return await Tooltip.showTooltip(portalId, { position, ...config });
 }
 
 export async function destroyTooltipPortal(portalId) {
-    const portalManager = await window.RRBlazor.Portal.getInstance();
-    if (portalManager.isPortalActive(portalId)) {
-        const portal = portalManager.getPortal(portalId);
-        
-        const tooltipElement = portal.element.querySelector('.tooltip, [role="tooltip"]');
-        if (tooltipElement && tooltipElement._originalParent) {
-            if (tooltipElement._originalNextSibling) {
-                tooltipElement._originalParent.insertBefore(tooltipElement, tooltipElement._originalNextSibling);
-            } else {
-                tooltipElement._originalParent.appendChild(tooltipElement);
-            }
-            delete tooltipElement._originalParent;
-            delete tooltipElement._originalNextSibling;
-        }
-        
-        portalManager.destroy(portalId);
-    }
-    return true;
+    return await Tooltip.hideTooltip(portalId);
 }
 
 export async function updateTooltipPosition(portalId, triggerElement, position) {
-    const portalManager = await window.RRBlazor.Portal.getInstance();
-    if (!portalManager.isPortalActive(portalId)) return true;
-    
-    const portal = portalManager.getPortal(portalId);
-    const portalContainer = portal.element;
-    const tooltipElement = portalContainer.querySelector('.tooltip, [role="tooltip"]');
-    
-    if (!tooltipElement || !triggerElement) return true;
-    
-    const triggerRect = triggerElement.getBoundingClientRect();
-    const finalPosition = getTooltipPosition(triggerElement, tooltipElement, position || 'top');
-    
-    let x, y;
-    const buffer = 8;
-    const tooltipWidth = tooltipElement.offsetWidth || 200;
-    const tooltipHeight = tooltipElement.offsetHeight || 100;
-    
-    switch (finalPosition) {
-        case 'top':
-            x = triggerRect.left + (triggerRect.width / 2) - (tooltipWidth / 2);
-            y = triggerRect.top - tooltipHeight - buffer;
-            break;
-        case 'bottom':
-            x = triggerRect.left + (triggerRect.width / 2) - (tooltipWidth / 2);
-            y = triggerRect.bottom + buffer;
-            break;
-        case 'left':
-            x = triggerRect.left - tooltipWidth - buffer;
-            y = triggerRect.top + (triggerRect.height / 2) - (tooltipHeight / 2);
-            break;
-        case 'right':
-            x = triggerRect.right + buffer;
-            y = triggerRect.top + (triggerRect.height / 2) - (tooltipHeight / 2);
-            break;
-        default:
-            x = triggerRect.left;
-            y = triggerRect.top - tooltipHeight - buffer;
+    if (dropdownManager.isOpen(portalId)) {
+        await Tooltip.hideTooltip(portalId);
+        return await Tooltip.showTooltip(portalId, {
+            position: position || 'top'
+        });
     }
-    
-    x = Math.max(8, Math.min(x, window.innerWidth - tooltipWidth - 8));
-    y = Math.max(8, Math.min(y, window.innerHeight - tooltipHeight - 8));
-    
-    portalContainer.style.left = `${x}px`;
-    portalContainer.style.top = `${y}px`;
-    return true;
+    return false;
 }
 
-export function getTooltipPosition(triggerElement, tooltipElement, preferredPosition = 'top') {
-    const triggerRect = triggerElement.getBoundingClientRect();
-    const tooltipWidth = tooltipElement.offsetWidth || 200;
-    const tooltipHeight = tooltipElement.offsetHeight || 100;
-    const buffer = 8;
-    
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
-    
-    const space = {
-        top: triggerRect.top - buffer,
-        bottom: viewportHeight - triggerRect.bottom - buffer,
-        left: triggerRect.left - buffer,
-        right: viewportWidth - triggerRect.right - buffer
-    };
-    
-    let finalPosition = preferredPosition;
-    
-    switch (preferredPosition) {
-        case 'top':
-            if (space.top < tooltipHeight) finalPosition = 'bottom';
-            break;
-        case 'bottom':
-            if (space.bottom < tooltipHeight) finalPosition = 'top';
-            break;
-        case 'left':
-            if (space.left < tooltipWidth) finalPosition = 'right';
-            break;
-        case 'right':
-            if (space.right < tooltipWidth) finalPosition = 'left';
-            break;
-    }
-    
-    return finalPosition;
-}
-
-export function initialize(element, dotNetRef) {
-    return true;
-}
 
 export function cleanup(element) {
     if (element && element.hasAttribute('data-tooltip-id')) {
         const tooltipId = element.getAttribute('data-tooltip-id');
-        destroyTooltipPortal(tooltipId);
+        Tooltip.hideTooltip(tooltipId);
     }
 }
+
+window.RRBlazor = window.RRBlazor || {};
+window.RRBlazor.Tooltip = {
+    create: createTooltipPortal,
+    destroy: destroyTooltipPortal,
+    update: updateTooltipPosition,
+    initialize: Tooltip.initialize.bind(Tooltip),
+    cleanup,
+    showTooltip: Tooltip.showTooltip.bind(Tooltip),
+    hideTooltip: Tooltip.hideTooltip.bind(Tooltip)
+};
 
 export default {
     create: createTooltipPortal,
     destroy: destroyTooltipPortal,
     update: updateTooltipPosition,
-    getPosition: getTooltipPosition,
-    initialize,
+    initialize: Tooltip.initialize.bind(Tooltip),
     cleanup
 };

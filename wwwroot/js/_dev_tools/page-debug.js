@@ -1,5 +1,9 @@
 const RRDebugAPI = (() => {
     const VERSION = '1.0.0';
+
+    function getElementClassName(el) {
+        return typeof el.className === 'string' ? el.className : (el.className?.baseVal || '');
+    }
     
     function sanitizeForJSON(obj) {
         if (obj === null || obj === undefined) return obj;
@@ -155,7 +159,8 @@ const RRDebugAPI = (() => {
         },
         
         blazorError: el => {
-            return el.getAttribute('b-error') || el.className.includes('blazor-error-boundary');
+            const classNameString = getElementClassName(el);
+            return el.getAttribute('b-error') || classNameString.includes('blazor-error-boundary');
         },
         
         duplicateId: el => {
@@ -170,17 +175,18 @@ const RRDebugAPI = (() => {
         
         styleMismatch: el => {
             const s = getComputedStyle(el);
-            const flexClassButNotFlex = (el.className.includes('flex') || el.className.includes('d-flex')) && 
+            const classNameString = getElementClassName(el);
+
+            const flexClassButNotFlex = (classNameString.includes('flex') || classNameString.includes('d-flex')) &&
                                       !s.display.includes('flex') && s.display !== 'none';
-            
-            const hiddenClassButVisible = (el.className.includes('hidden') || el.className.includes('d-none')) && 
+
+            const hiddenClassButVisible = (classNameString.includes('hidden') || classNameString.includes('d-none')) &&
                                         s.display !== 'none' && s.visibility !== 'hidden';
-            
+
             return flexClassButNotFlex || hiddenClassButVisible;
         }
     };
 
-    
     function getBuiltInExpectations() {
         return {
             'input': { padding: '!= 0px', border: '!= none', fontSize: '>= 14px' },
@@ -279,9 +285,9 @@ const RRDebugAPI = (() => {
     }
 
     function findCorruption() {
-        console.log('🔍 Analyzing CSS Corruption and Missing Rules...');
-        
         const allElements = document.querySelectorAll('*');
+        console.log(`Processing ${allElements.length} elements...`);
+
         const corrupted = Array.from(allElements).filter(el => {
             const s = getComputedStyle(el);
             return s.minHeight === '44px' && !['BUTTON', 'INPUT', 'A', 'LABEL', 'SELECT', 'TEXTAREA'].includes(el.tagName);
@@ -335,8 +341,9 @@ const RRDebugAPI = (() => {
     }
 
     function findCSSRuleSource() {
-        console.log('🔎 Searching for corrupting CSS rules...');
-        
+        const allElements = document.querySelectorAll('*');
+        console.log(`Processing ${allElements.length} elements...`);
+
         try {
             for (let i = 0; i < document.styleSheets.length; i++) {
                 const sheet = document.styleSheets[i];
@@ -363,8 +370,9 @@ const RRDebugAPI = (() => {
     }
 
     function verifyCSS() {
-        console.log('🔧 Verifying CSS Compilation...');
-        
+        const allElements = document.querySelectorAll('*');
+        console.log(`Processing ${allElements.length} elements...`);
+
         const verification = {
             cssVariables: {},
             extendsCompiled: false,
@@ -409,10 +417,11 @@ const RRDebugAPI = (() => {
 
     function generateSelector(el) {
         if (el.id) return `#${el.id}`;
-        
+
         let selector = el.tagName.toLowerCase();
-        if (el.className) {
-            const classes = el.className.split(' ').filter(c => c && !c.includes('ng-') && !c.includes('_')).slice(0, 2);
+        const classNameString = getElementClassName(el);
+        if (classNameString) {
+            const classes = classNameString.split(' ').filter(c => c && !c.includes('ng-') && !c.includes('_')).slice(0, 2);
             if (classes.length > 0) selector += '.' + classes.join('.');
         }
         
@@ -582,7 +591,10 @@ const RRDebugAPI = (() => {
         const results = Array.from(elements).slice(0, limit).map(el => {
             const issues = Object.keys(CRITICAL_ISSUES).filter(type => CRITICAL_ISSUES[type](el));
             return {
-                element: `${el.tagName.toLowerCase()}${el.id ? '#' + el.id : ''}${el.className ? '.' + el.className.split(' ')[0] : ''}`,
+                element: `${el.tagName.toLowerCase()}${el.id ? '#' + el.id : ''}${(() => {
+                    const classNameString = getElementClassName(el);
+                    return classNameString ? '.' + classNameString.split(' ')[0] : '';
+                })()}`,
                 issues: issues.length > 0 ? issues.join(', ') : 'none',
                 minHeight: getComputedStyle(el).minHeight,
                 display: getComputedStyle(el).display
@@ -650,7 +662,6 @@ const RRDebugAPI = (() => {
         console.clear();
         return "Console errors cleared";
     }
-    
 
     function getAIReport() {
         const pageAnalysis = analyze();
@@ -920,8 +931,7 @@ const RRDebugAPI = (() => {
                 performanceIssues.push({ type: 'multiple-shadows', element: tag, shadows: styles.boxShadow.split(',').length });
             }
         });
-        
-        
+
         const totalIssues = issues.length + layoutIssues.length + accessibilityIssues.length + performanceIssues.length;
         const severity = totalIssues > 10 ? 'critical' : totalIssues > 5 ? 'high' : totalIssues > 2 ? 'medium' : 'low';
         
@@ -1262,7 +1272,8 @@ const RRDebugAPI = (() => {
     };
 
     const testResponsive = async (options = {}) => {
-        console.log('📱 Testing responsive layout across all screen sizes...');
+        const allElements = document.querySelectorAll('*');
+        console.log(`Processing ${allElements.length} elements...`);
         const results = testResponsiveLayout();
         
         results.breakpointResults.forEach(result => {
@@ -1295,18 +1306,22 @@ const RRDebugAPI = (() => {
         health: checkHealth,
         performance: checkPerformance,
         logs: getLogs,
-        report: getAIReport,
+        report: () => {
+            // Return a JSON string for compatibility with tests that expect string methods
+            const reportData = getAIReport();
+            return safeStringify(reportData);
+        },
         responsive: testResponsive,
         sanitizeForJSON: sanitizeForJSON,
         safeStringify: safeStringify
     };
 })();
 
-
 if (window.location.search.includes('debug=true') || window.location.search.includes('qa=true')) {
     setTimeout(async () => {
-        console.log('🤖 Auto-running streamlined QA analysis...');
-        
+        const allElements = document.querySelectorAll('*');
+        console.log(`Processing ${allElements.length} elements...`);
+
         try {
             const health = window.RRDebug.health();
             const logs = window.RRDebug.logs();
@@ -1331,3 +1346,5 @@ if (window.location.search.includes('debug=true') || window.location.search.incl
 }
 
 window.RRDebug = RRDebugAPI;
+
+

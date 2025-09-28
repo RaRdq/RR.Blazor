@@ -70,9 +70,13 @@
     [AIParameter("Stop event propagation")]
     public bool StopPropagation { get; set; }
     
-    [Parameter] 
+    [Parameter]
     [AIParameter("Prevent default behavior")]
     public bool PreventDefault { get; set; }
+
+    [Parameter]
+    [AIParameter("Enable automatic loading state during click operations")]
+    public bool EnableAutoLoading { get; set; } = false;
     
     protected override string GetSizeClasses()
     {
@@ -263,5 +267,31 @@
         
         return string.Join(" ", classes.Where(c => !string.IsNullOrEmpty(c)));
     }
-    
+
+    protected override async Task HandleClick(MouseEventArgs e)
+    {
+        if (EnableAutoLoading && OnClick.HasDelegate)
+        {
+            if (!Disabled && !Loading)
+            {
+                Loading = true;
+                StateHasChanged();
+
+                try
+                {
+                    await OnClick.InvokeAsync(e);
+                }
+                finally
+                {
+                    Loading = false;
+                    StateHasChanged();
+                }
+            }
+        }
+        else
+        {
+            await base.HandleClick(e);
+        }
+    }
+
 }

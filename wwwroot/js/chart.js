@@ -40,7 +40,8 @@ function initializeTooltip(element, options = {}) {
     tooltip.className = 'chart-tooltip';
     tooltip.style.position = 'absolute';
     tooltip.style.pointerEvents = 'none';
-    tooltip.style.zIndex = 'var(--z-tooltip)';
+    const tooltipZIndex = window.RRBlazor.ZIndexManager.registerElement('chart-tooltip', 'portal');
+    tooltip.style.zIndex = tooltipZIndex.toString();
     document.body.appendChild(tooltip);
     
     const showTooltip = (event, content, targetElement = null) => {
@@ -109,6 +110,7 @@ function initializeTooltip(element, options = {}) {
     
     return {
         dispose: () => {
+            window.RRBlazor.ZIndexManager.unregisterElement('chart-tooltip');
             tooltip.remove();
         }
     };

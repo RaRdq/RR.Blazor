@@ -1,5 +1,3 @@
-const debugLogger = window.debugLogger;
-
 let observers = new Map();
 
 export function observe(element, dotNetRef, options = {}) {

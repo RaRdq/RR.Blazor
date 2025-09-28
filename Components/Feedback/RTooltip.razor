@@ -107,7 +107,6 @@
     [Parameter] [AIParameter("How tooltip is triggered", Example = "TooltipTrigger.Hover")] public TooltipTrigger Trigger { get; set; } = TooltipTrigger.Hover;
     
     /// <summary>Z-index for tooltip positioning</summary>
-    [Parameter] public int ZIndex { get; set; } = 0;
     
     /// <summary>Maximum width of tooltip content</summary>
     [Parameter] public string? MaxWidth { get; set; }
@@ -305,7 +304,7 @@
                 // Small delay to ensure DOM update
                 await Task.Yield();
                 
-                // Create portal and position tooltip
+                // Create portal and position tooltip using enhanced API
                 if (!string.IsNullOrEmpty(portalId))
                 {
                     var portalConfig = new
@@ -313,13 +312,14 @@
                         useBackdrop = UseBackdrop,
                         backdropClass = BackdropClass,
                         closeOnBackdropClick = CloseOnBackdropClick,
-                        closeOnEscape = CloseOnEscape
+                        closeOnEscape = CloseOnEscape,
+                        maxWidth = MaxWidth
                     };
-                    
-                    await SafeInvokeAsync("RRBlazor.Tooltip.create", 
-                        popupElement, 
-                        triggerElement, 
-                        Position.ToString().ToLowerInvariant(), 
+
+                    await SafeInvokeAsync("RRBlazor.Tooltip.create",
+                        popupElement,
+                        triggerElement,
+                        Position.ToString().ToLowerInvariant(),
                         portalId,
                         portalConfig);
                 }
@@ -375,10 +375,6 @@
     private string GetTooltipStyleVariables()
     {
         var styles = new List<string>();
-            
-        // Only override z-index if explicitly set
-        if (ZIndex > 0)
-            styles.Add($"z-index: {ZIndex}");
             
         if (!string.IsNullOrEmpty(MaxWidth))
             styles.Add($"--max-width: {MaxWidth}");

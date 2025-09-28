@@ -1,12 +1,10 @@
 export function generateSkeletonHTML(containerElement, animated = true) {
     if (!containerElement) {
-        console.error('[Skeleton] No container element provided');
         return '';
     }
 
     const hiddenContainer = containerElement.querySelector('.skeleton-hidden-container');
     if (!hiddenContainer) {
-        console.error('[Skeleton] No hidden container found');
         return '';
     }
 
@@ -22,7 +20,6 @@ export function generateSkeletonHTML(containerElement, animated = true) {
         const classList = element.classList || [];
         const style = element.getAttribute('style') || '';
 
-        // Check for chart bars (vertical bars with specific height styling)
         if (style.includes('height:') && style.includes('%') &&
             (className.includes('bg-primary') || className.includes('bg-'))) {
             return 'chart-bar';
@@ -75,14 +72,13 @@ export function generateSkeletonHTML(containerElement, animated = true) {
 
         switch(type) {
             case 'chart-bar':
-                // Extract height from style attribute
                 const heightMatch = style.match(/height:\s*(\d+)/);
                 if (heightMatch) {
                     dimensions.height = parseInt(heightMatch[1]);
                 } else {
-                    dimensions.height = 50; // Default bar height
+                    dimensions.height = 50;
                 }
-                dimensions.width = 16; // Fixed width for chart bars
+                dimensions.width = 16;
                 break;
 
             case 'chip':
@@ -92,7 +88,6 @@ export function generateSkeletonHTML(containerElement, animated = true) {
                 break;
 
             case 'avatar':
-                // Check for size classes or compute from actual element
                 const rect = element.getBoundingClientRect();
                 if (rect.width > 0 && rect.height > 0) {
                     dimensions.width = Math.round(rect.width);
@@ -122,7 +117,6 @@ export function generateSkeletonHTML(containerElement, animated = true) {
                 break;
 
             case 'text':
-                // Check for KPI-like values (short text like "N/A", numbers)
                 if (className.includes('text-h4') || className.includes('font-bold')) {
                     dimensions.width = Math.min(text.length * 12, maxContainerWidth * 0.5);
                     dimensions.height = 32;
@@ -152,8 +146,8 @@ export function generateSkeletonHTML(containerElement, animated = true) {
         };
 
         if (type === 'chart-bar') {
-            styles.borderRadius = '4px 4px 0 0'; // Rounded top for chart bars
-            styles.alignSelf = 'flex-end'; // Align to bottom for charts
+            styles.borderRadius = '4px 4px 0 0';
+            styles.alignSelf = 'flex-end';
         } else if (type === 'avatar' || type === 'icon-circle') {
             styles.borderRadius = '50%';
         } else if (type === 'chip' || type === 'badge') {
@@ -186,7 +180,6 @@ export function generateSkeletonHTML(containerElement, animated = true) {
             return null;
         }
 
-        // First check if this element itself has a detectable type
         const type = detectElementType(element);
 
         if (type) {
@@ -194,7 +187,6 @@ export function generateSkeletonHTML(containerElement, animated = true) {
             return createSkeletonElement(type, dimensions);
         }
 
-        // Clone the container to preserve structure
         const container = element.cloneNode(false);
         container.removeAttribute('id');
         container.removeAttribute('_bl');
@@ -202,7 +194,6 @@ export function generateSkeletonHTML(containerElement, animated = true) {
         let hasContent = false;
         const processedChildren = [];
 
-        // Process all children first
         for (const child of element.children) {
             const processed = processElement(child, depth + 1);
             if (processed) {
@@ -211,16 +202,13 @@ export function generateSkeletonHTML(containerElement, animated = true) {
             }
         }
 
-        // If we have processed children, add them
         if (processedChildren.length > 0) {
             processedChildren.forEach(child => container.appendChild(child));
         } else {
-            // No children were processed, check for direct text content
             const directTextNodes = Array.from(element.childNodes || [])
                 .filter(node => node.nodeType === Node.TEXT_NODE && node.textContent?.trim());
 
             if (directTextNodes.length > 0) {
-                // This element has direct text content
                 const textContent = element.textContent?.trim() || '';
                 if (textContent) {
                     const dimensions = getElementDimensions(element, 'text');
@@ -244,21 +232,17 @@ export function generateSkeletonHTML(containerElement, animated = true) {
             }
         }
     } catch (error) {
-        console.error('[Skeleton] Processing error:', error);
     }
     
     const html = results.join('');
-    console.log('[Skeleton] Generated HTML length:', html.length);
     return html;
 }
 
 export function init() {
-    console.log('[Skeleton] Module initialized');
     return true;
 }
 
 export function dispose() {
-    console.log('[Skeleton] Module disposed');
 }
 
 export default { generateSkeletonHTML, init, dispose };

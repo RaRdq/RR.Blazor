@@ -1,5 +1,4 @@
 export function getTabIndicatorPosition(tabElementId, wrapperElement) {
-    // Handle null or invalid elements
     if (!wrapperElement || !wrapperElement.nodeType) {
         return { left: 0, width: 0 };
     }
@@ -23,7 +22,6 @@ export function getTabIndicatorPosition(tabElementId, wrapperElement) {
 }
 
 export function getTabScrollInfo(wrapperElement, orientation = 'horizontal') {
-    // Handle null or invalid element
     if (!wrapperElement || !wrapperElement.nodeType) {
         return {
             isScrollable: false,
@@ -46,7 +44,6 @@ export function getTabScrollInfo(wrapperElement, orientation = 'horizontal') {
         clientSize = wrapperElement.clientWidth || 0;
     }
     
-    // More lenient tolerance for better detection
     const tolerance = 2;
     isScrollable = scrollSize > clientSize + tolerance;
     canScrollStart = isScrollable && scrollPosition > tolerance;
@@ -243,13 +240,10 @@ function updateScrollState(element, navWrapper, orientation = 'horizontal') {
 }
 
 export function initializeTabs(element, navContainer, navWrapper, orientation = 'horizontal') {
-    // Handle null or invalid elements
     if (!element || !element.nodeType) {
-        // Invalid element provided
         return;
     }
     if (!navWrapper || !navWrapper.nodeType) {
-        // Invalid navWrapper provided
         return;
     }
     
@@ -324,7 +318,6 @@ export function initializeTabs(element, navContainer, navWrapper, orientation = 
             });
         }
         
-        // Initial scroll state update with delay to ensure DOM is ready
         requestAnimationFrame(() => {
             updateScrollState(element, navWrapper, orientation);
         });
@@ -351,7 +344,6 @@ export function cleanup(element) {
     return true;
 }
 
-// Add vertical scrolling functions
 export function scrollTabsUp(wrapperElement) {
     return scrollTabsLeft(wrapperElement, 'vertical');
 }
@@ -366,7 +358,6 @@ if (typeof window !== 'undefined') {
         window.RRBlazor.Tabs = {};
     }
     
-    // Only add functions if they don't already exist to prevent redefinition errors
     if (!window.RRBlazor.Tabs.getTabIndicatorPosition) {
         Object.assign(window.RRBlazor.Tabs, {
             getTabIndicatorPosition,

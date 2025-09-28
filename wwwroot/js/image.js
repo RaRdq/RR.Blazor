@@ -1,14 +1,5 @@
-/**
- * RImage JavaScript module
- * Provides enhanced image loading functionality with progressive enhancement
- */
-
-const debugLogger = window.debugLogger;
-
-// Cache for image loading promises
 const imageLoadingCache = new Map();
 
-// Configuration
 const config = {
     defaultPlaceholderColor: '#f0f0f0',
     errorRetryAttempts: 2,
@@ -17,13 +8,9 @@ const config = {
     blurRadius: 20
 };
 
-/**
- * Preload an image and return a promise
- */
 export function preloadImage(src) {
     if (!src) return Promise.reject('No source provided');
     
-    // Check cache
     if (imageLoadingCache.has(src)) {
         return imageLoadingCache.get(src);
     }
@@ -53,9 +40,6 @@ export function preloadImage(src) {
     return promise;
 }
 
-/**
- * Initialize progressive image loading
- */
 export function initProgressiveImage(element, dotNetRef, options = {}) {
     if (!element) return false;
     
@@ -73,21 +57,17 @@ export function initProgressiveImage(element, dotNetRef, options = {}) {
     
     const loadImage = async () => {
         try {
-            // Load placeholder first if available
             if (placeholderSrc && placeholderSrc !== src) {
                 img.src = placeholderSrc;
                 img.classList.add('placeholder-loaded');
             }
             
-            // Preload the main image
             await preloadImage(src);
             
-            // Switch to main image
             img.src = src;
             img.classList.remove('placeholder-loaded');
             img.classList.add('main-loaded');
             
-            // Notify Blazor
             if (dotNetRef) {
                 dotNetRef.invokeMethodAsync('OnImageLoaded', true);
             }
@@ -95,10 +75,8 @@ export function initProgressiveImage(element, dotNetRef, options = {}) {
             attempts++;
             
             if (attempts < retryAttempts) {
-                // Retry after delay
                 setTimeout(loadImage, config.errorRetryDelay * attempts);
             } else if (errorSrc) {
-                // Use error image
                 img.src = errorSrc;
                 img.classList.add('error-loaded');
                 
@@ -113,9 +91,6 @@ export function initProgressiveImage(element, dotNetRef, options = {}) {
     return true;
 }
 
-/**
- * Create a blur data URL from an image
- */
 export async function createBlurDataUrl(src, width = 40, height = 30) {
     try {
         const img = await preloadImage(src);
@@ -138,14 +113,10 @@ export async function createBlurDataUrl(src, width = 40, height = 30) {
         
         return canvas.toDataURL('image/jpeg', 0.5);
     } catch (error) {
-        debugLogger?.warn('Failed to create blur data URL:', error);
         return null;
     }
 }
 
-/**
- * Apply zoom effect on image
- */
 export function initImageZoom(element, options = {}) {
     if (!element) return false;
     
@@ -154,7 +125,7 @@ export function initImageZoom(element, options = {}) {
     
     const {
         zoomLevel = 2,
-        zoomType = 'hover' // 'hover', 'click', 'magnifier'
+        zoomType = 'hover'
     } = options;
     
     if (zoomType === 'hover') {
@@ -188,12 +159,10 @@ export function initImageZoom(element, options = {}) {
     return true;
 }
 
-/**
- * Create zoom container for hover zoom
- */
 function createZoomContainer(img, zoomLevel) {
     const container = document.createElement('div');
     container.className = 'image-zoom-container';
+    const zIndex = window.RRBlazor.ZIndexManager.registerElement('image-zoom-container', 'portal');
     container.style.cssText = `
         position: absolute;
         top: 0;
@@ -205,18 +174,15 @@ function createZoomContainer(img, zoomLevel) {
         border-radius: var(--radius-md);
         overflow: hidden;
         display: none;
-        z-index: 1000;
+        z-index: ${zIndex};
         background-image: url('${img.src}');
         background-repeat: no-repeat;
         background-size: ${img.naturalWidth * zoomLevel}px ${img.naturalHeight * zoomLevel}px;
     `;
-    
+
     return container;
 }
 
-/**
- * Update zoom position based on mouse movement
- */
 function updateZoomPosition(e, element, img, zoomContainer, zoomLevel) {
     const rect = element.getBoundingClientRect();
     const x = e.clientX - rect.left;
@@ -231,50 +197,37 @@ function updateZoomPosition(e, element, img, zoomContainer, zoomLevel) {
     zoomContainer.style.backgroundPosition = `${bgX}px ${bgY}px`;
 }
 
-/**
- * Open image in modal/lightbox
- */
 function openImageModal(src) {
-    // This would integrate with RModal component
     const event = new CustomEvent('RRBlazor:OpenImageModal', {
         detail: { src }
     });
     window.dispatchEvent(event);
 }
 
-/**
- * Cleanup function
- */
 export function cleanup(element) {
     if (!element) return;
     
-    // Remove event listeners
     const img = element.querySelector('img');
     if (img) {
         img.onload = null;
         img.onerror = null;
     }
     
-    // Clear any zoom containers
     const zoomContainer = element.querySelector('.image-zoom-container');
     if (zoomContainer) {
+        window.RRBlazor.ZIndexManager.unregisterElement('image-zoom-container');
         zoomContainer.remove();
     }
 }
 
-/**
- * Get optimal image format based on browser support
- */
 export function getOptimalFormat() {
     const canvas = document.createElement('canvas');
     canvas.width = canvas.height = 1;
     
-    // Check WebP support
     if (canvas.toDataURL('image/webp').indexOf('image/webp') === 5) {
         return 'webp';
     }
     
-    // Check AVIF support (modern browsers)
     if (canvas.toDataURL('image/avif').indexOf('image/avif') === 5) {
         return 'avif';
     }
@@ -282,9 +235,6 @@ export function getOptimalFormat() {
     return 'jpeg';
 }
 
-/**
- * Generate srcset for responsive images
- */
 export function generateSrcset(baseSrc, sizes = [320, 640, 768, 1024, 1280, 1920]) {
     if (!baseSrc) return '';
     
@@ -296,9 +246,6 @@ export function generateSrcset(baseSrc, sizes = [320, 640, 768, 1024, 1280, 1920
         .join(', ');
 }
 
-/**
- * Calculate sizes attribute for responsive images
- */
 export function calculateSizes(breakpoints = {}) {
     const defaultBreakpoints = {
         '640px': '100vw',
@@ -316,7 +263,6 @@ export function calculateSizes(breakpoints = {}) {
         .join(', ');
 }
 
-// Export for debugging
 if (window.debugLogger?.isDebugMode) {
     window.RRBlazor = window.RRBlazor || {};
     window.RRBlazor.ImageModule = {
