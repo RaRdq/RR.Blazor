@@ -1,8 +1,5 @@
-// RGrid JavaScript Module - Responsive mode switching and advanced functionality
 window.RGridModule = (() => {
     'use strict';
-
-    const debugLogger = window.debugLogger;
 
     const BREAKPOINTS = {
         xs: 0,
@@ -16,12 +13,11 @@ window.RGridModule = (() => {
     let resizeObserver;
     let mediaQueryLists = {};
 
-    // Initialize media query listeners
     function initializeMediaQueries() {
         if (Object.keys(mediaQueryLists).length > 0) return;
 
         Object.entries(BREAKPOINTS).forEach(([breakpoint, minWidth]) => {
-            if (breakpoint === 'xs') return; // xs doesn't need a media query
+            if (breakpoint === 'xs') return;
             
             const mediaQuery = window.matchMedia(`(min-width: ${minWidth}px)`);
             mediaQueryLists[breakpoint] = mediaQuery;
@@ -30,7 +26,6 @@ window.RGridModule = (() => {
         });
     }
 
-    // Get current breakpoint
     function getCurrentBreakpoint() {
         const width = window.innerWidth;
         
@@ -41,7 +36,6 @@ window.RGridModule = (() => {
         return 'xs';
     }
 
-    // Handle breakpoint changes
     function handleBreakpointChange() {
         const currentBreakpoint = getCurrentBreakpoint();
         
@@ -50,41 +44,33 @@ window.RGridModule = (() => {
         });
     }
 
-    // Update grid mode based on breakpoint
     function updateGridMode(elementId, instance, breakpoint) {
         const element = document.getElementById(elementId);
         if (!element) return;
 
-        // Get responsive mode for current breakpoint
         const modeProperty = `mode${breakpoint.charAt(0).toUpperCase()}${breakpoint.slice(1)}`;
         const newMode = instance.responsiveModes[modeProperty] || instance.responsiveModes.mode || 'auto';
         
         if (newMode !== instance.currentMode) {
             instance.currentMode = newMode;
             
-            // Update CSS classes
             updateGridClasses(element, newMode, breakpoint);
             
-            // Notify Blazor component if needed
             if (instance.dotNetRef && instance.dotNetRef.invokeMethodAsync) {
                 instance.dotNetRef.invokeMethodAsync('OnJSModeChanged', newMode, breakpoint);
             }
         }
     }
 
-    // Update grid CSS classes
     function updateGridClasses(element, mode, breakpoint) {
-        // Remove old mode classes
         const oldClasses = Array.from(element.classList).filter(cls => 
             cls.startsWith('rgrid-mode-') || cls.startsWith('rgrid-breakpoint-')
         );
         element.classList.remove(...oldClasses);
         
-        // Add new classes
         element.classList.add(`rgrid-mode-${mode}`);
         element.classList.add(`rgrid-breakpoint-${breakpoint}`);
         
-        // Update CSS custom properties for responsive columns
         const instance = instances.get(element.id);
         if (instance && instance.responsiveColumns) {
             const columnsProperty = `columns${breakpoint.charAt(0).toUpperCase()}${breakpoint.slice(1)}`;
@@ -96,7 +82,6 @@ window.RGridModule = (() => {
         }
     }
 
-    // Initialize virtualization intersection observer
     function initializeVirtualization(elementId, options = {}) {
         const element = document.getElementById(elementId);
         if (!element) return;
@@ -104,12 +89,10 @@ window.RGridModule = (() => {
         const instance = instances.get(elementId);
         if (!instance) return;
 
-        // Create intersection observer for virtualization
         if (!instance.intersectionObserver) {
             instance.intersectionObserver = new IntersectionObserver((entries) => {
                 entries.forEach(entry => {
                     if (entry.isIntersecting) {
-                        // Load more items if needed
                         if (instance.dotNetRef && instance.hasMoreItems) {
                             instance.dotNetRef.invokeMethodAsync('LoadMoreItems');
                         }
@@ -122,14 +105,12 @@ window.RGridModule = (() => {
             });
         }
 
-        // Observe load more trigger
         const loadMoreTrigger = element.querySelector('.rgrid-load-more-trigger');
         if (loadMoreTrigger) {
             instance.intersectionObserver.observe(loadMoreTrigger);
         }
     }
 
-    // Performance optimization: Debounced resize handler
     function debounce(func, wait) {
         let timeout;
         return function executedFunction(...args) {
@@ -142,20 +123,15 @@ window.RGridModule = (() => {
         };
     }
 
-    // Public API
     return {
-        // Initialize RGrid instance
         initialize(elementId, options = {}) {
             const element = document.getElementById(elementId);
             if (!element) {
-                debugLogger.warn(`RGrid: Element with ID '${elementId}' not found`);
                 return;
             }
 
-            // Initialize media queries on first use
             initializeMediaQueries();
 
-            // Store instance configuration
             const instance = {
                 elementId,
                 dotNetRef: options.dotNetRef || null,
@@ -183,27 +159,21 @@ window.RGridModule = (() => {
 
             instances.set(elementId, instance);
 
-            // Set initial mode
             const currentBreakpoint = getCurrentBreakpoint();
             updateGridMode(elementId, instance, currentBreakpoint);
 
-            // Initialize virtualization if enabled
             if (instance.enableVirtualization) {
                 initializeVirtualization(elementId, options);
             }
 
-            debugLogger.log(`RGrid initialized: ${elementId} at breakpoint ${currentBreakpoint}`);
         },
 
-        // Update instance configuration
         update(elementId, options = {}) {
             const instance = instances.get(elementId);
             if (!instance) {
-                debugLogger.warn(`RGrid: Instance '${elementId}' not found for update`);
                 return;
             }
 
-            // Update configuration
             Object.assign(instance.responsiveModes, {
                 mode: options.mode || instance.responsiveModes.mode,
                 modeXs: options.modeXs !== undefined ? options.modeXs : instance.responsiveModes.modeXs,
@@ -222,26 +192,21 @@ window.RGridModule = (() => {
                 columnsXl: options.columnsXl !== undefined ? options.columnsXl : instance.responsiveColumns.columnsXl
             });
 
-            // Trigger update
             const currentBreakpoint = getCurrentBreakpoint();
             updateGridMode(elementId, instance, currentBreakpoint);
         },
 
-        // Dispose instance
         dispose(elementId) {
             const instance = instances.get(elementId);
             if (instance) {
-                // Clean up intersection observer
                 if (instance.intersectionObserver) {
                     instance.intersectionObserver.disconnect();
                 }
                 
                 instances.delete(elementId);
-                debugLogger.log(`RGrid disposed: ${elementId}`);
             }
         },
 
-        // Get current state
         getState(elementId) {
             const instance = instances.get(elementId);
             if (!instance) return null;
@@ -254,7 +219,6 @@ window.RGridModule = (() => {
             };
         },
 
-        // Force refresh
         refresh(elementId) {
             const instance = instances.get(elementId);
             if (instance) {
@@ -263,10 +227,8 @@ window.RGridModule = (() => {
             }
         },
 
-        // Utility functions
         getCurrentBreakpoint,
         
-        // Debug information
         getDebugInfo() {
             return {
                 instances: instances.size,
@@ -277,10 +239,8 @@ window.RGridModule = (() => {
     };
 })();
 
-// Auto-dispose instances when page unloads
 window.addEventListener('beforeunload', () => {
     if (window.RGridModule) {
         const instances = window.RGridModule.getDebugInfo().instances;
-        debugLogger.log(`Auto-disposing ${instances} RGrid instances`);
     }
 });

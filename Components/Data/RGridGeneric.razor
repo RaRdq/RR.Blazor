@@ -16,7 +16,7 @@
 @using System.Reflection
 @using Microsoft.JSInterop
 @typeparam TItem where TItem : class
-@inherits RComponentBase
+@inherits RGridBase
 @implements IAsyncDisposable
 @inject IJSRuntime JSRuntime
 
@@ -200,68 +200,41 @@
 </CascadingValue>
 
 @code {
-    #region Parameters
+    #region Typed Parameters (Only non-inherited parameters)
 
+    /// <summary>The data items to display in the grid</summary>
     [Parameter] public IEnumerable<TItem> Items { get; set; } = Enumerable.Empty<TItem>();
+
+    /// <summary>Custom template for rendering individual items</summary>
     [Parameter] public RenderFragment<TItem> ItemTemplate { get; set; }
-    
-    // Header
-    [Parameter] public string Title { get; set; }
-    [Parameter] public string Subtitle { get; set; }
-    [Parameter] public string Icon { get; set; }
-    [Parameter] public bool ShowTitle { get; set; } = true;
-    [Parameter] public RenderFragment HeaderContent { get; set; }
-    
-    // Toolbar
-    [Parameter] public bool ShowToolbar { get; set; } = true;
-    [Parameter] public bool ShowSearch { get; set; } = true;
-    [Parameter] public string SearchPlaceholder { get; set; } = "Search...";
-    [Parameter] public bool ShowFilters { get; set; }
-    [Parameter] public bool ShowExportButton { get; set; }
-    [Parameter] public RenderFragment ToolbarContent { get; set; }
-    
-    // Grid Layout
-    [Parameter] public GridMode Mode { get; set; } = GridMode.Auto;
-    [Parameter] public int Columns { get; set; } = 4;
-    [Parameter] public int ColumnsXs { get; set; } = 1;
-    [Parameter] public int ColumnsSm { get; set; } = 2;
-    [Parameter] public int ColumnsMd { get; set; } = 3;
-    [Parameter] public int ColumnsLg { get; set; } = 4;
-    [Parameter] public int ColumnsXl { get; set; } = 6;
-    [Parameter] public string Gap { get; set; } = "var(--space-4)";
-    
-    // Pagination
-    [Parameter] public bool EnablePagination { get; set; } = true;
-    [Parameter] public int PageSize { get; set; } = 24;
-    [Parameter] public int CurrentPage { get; set; } = 1;
-    [Parameter] public EventCallback<int> CurrentPageChanged { get; set; }
-    [Parameter] public EventCallback<int> PageSizeChanged { get; set; }
-    [Parameter] public int[] PageSizeOptions { get; set; }
-    
-    // Virtualization
-    [Parameter] public bool EnableVirtualization { get; set; }
-    [Parameter] public int VirtualizationThreshold { get; set; } = 1000;
-    [Parameter] public float VirtualItemHeight { get; set; } = 200f;
-    
-    // Content
-    [Parameter] public string EmptyMessage { get; set; } = "No items to display";
-    [Parameter] public RenderFragment EmptyContent { get; set; }
-    [Parameter] public bool Loading { get; set; }
-    [Parameter] public string LoadingText { get; set; } = "Loading...";
-    [Parameter] public string Height { get; set; }
-    [Parameter] public string MaxHeight { get; set; }
-    
-    // Selection
-    [Parameter] public bool Selectable { get; set; }
-    [Parameter] public bool MultiSelect { get; set; }
+
+    /// <summary>Object-based template for smart wrapper compatibility</summary>
+    [Parameter] public RenderFragment<object> ItemTemplateObject { get; set; }
+
+    /// <summary>Selected items for multi-select</summary>
     [Parameter] public IEnumerable<TItem> SelectedItems { get; set; } = Enumerable.Empty<TItem>();
     [Parameter] public EventCallback<IEnumerable<TItem>> SelectedItemsChanged { get; set; }
+
+    /// <summary>Selected item for single-select</summary>
     [Parameter] public TItem SelectedItem { get; set; }
     [Parameter] public EventCallback<TItem> SelectedItemChanged { get; set; }
-    
-    // Events
+
+    /// <summary>Event fired when item is clicked</summary>
     [Parameter] public EventCallback<TItem> OnItemClicked { get; set; }
-    [Parameter] public EventCallback<GridMode> OnModeChanged { get; set; }
+
+    /// <summary>Gets the effective template, converting object-based template if needed</summary>
+    private RenderFragment<TItem> EffectiveItemTemplate
+    {
+        get
+        {
+            if (ItemTemplateObject != null)
+            {
+                // Convert RenderFragment<object> to RenderFragment<TItem>
+                return (TItem item) => ItemTemplateObject((object)item);
+            }
+            return ItemTemplate;
+        }
+    }
 
     #endregion
 

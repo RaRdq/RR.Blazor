@@ -1,16 +1,9 @@
-/**
- * Unified table functionality for RTableGeneric
- * Provides column resizing, sticky columns, scroll management, and interactions
- */
-
-const debugLogger = window.debugLogger;
 
 export const RTableManager = {
     
     instances: new Map(),
     scrollManagers: new Map(),
     
-    // Configuration
     config: {
         minColumnWidth: 50,
         maxColumnWidth: 500,
@@ -20,9 +13,6 @@ export const RTableManager = {
         animationDuration: 200
     },
 
-    /**
-     * Initialize table with all features
-     */
     initialize(tableId, options = {}) {
         if (this.instances.has(tableId)) {
             this.cleanup(tableId);
@@ -30,14 +20,11 @@ export const RTableManager = {
 
         const table = document.querySelector(`[data-table-id="${tableId}"]`);
         if (!table) {
-            debugLogger.warn(`Table with id ${tableId} not found`);
             return false;
         }
 
-        // Merge configuration
         const tableConfig = { ...this.config, ...options };
         
-        // Create instance
         const instance = {
             tableId,
             element: table,
@@ -48,13 +35,11 @@ export const RTableManager = {
             scrollManager: null
         };
 
-        // Initialize features
         this.initializeColumnResizing(instance);
         this.initializeStickyColumns(instance);
         this.initializeAdvancedSelection(instance);
         this.initializeKeyboardNavigation(instance);
         
-        // Initialize scroll management
         const tableContainer = table.closest('[data-table-id]');
         const scrollContainer = table.querySelector('.table-content.table-content-scroll-container-x');
         if (tableContainer && scrollContainer) {
@@ -63,25 +48,19 @@ export const RTableManager = {
 
         this.instances.set(tableId, instance);
         
-        // Setup cleanup on disconnect
         this.setupCleanup(instance);
         
         return true;
     },
 
-    /**
-     * Column resizing functionality
-     */
     initializeColumnResizing(instance) {
         const headers = instance.element.querySelectorAll('.table-header-cell');
         
         headers.forEach((header, index) => {
-            // Skip if already has resize handle
             if (header.querySelector('.column-resize-handle')) {
                 return;
             }
 
-            // Create resize handle
             const handle = this.createResizeHandle(header, index, instance);
             if (handle) {
                 header.appendChild(handle);
@@ -90,9 +69,6 @@ export const RTableManager = {
         });
     },
 
-    /**
-     * Create resize handle for column
-     */
     createResizeHandle(header, columnIndex, instance) {
         const handle = document.createElement('div');
         handle.className = 'column-resize-handle';
@@ -103,7 +79,6 @@ export const RTableManager = {
         let startWidth = 0;
         let resizeIndicator = null;
 
-        // Mouse events
         handle.addEventListener('mousedown', startResize);
         
         function startResize(e) {
@@ -114,17 +89,14 @@ export const RTableManager = {
             startX = e.clientX;
             startWidth = header.offsetWidth;
             
-            // Create resize indicator
             resizeIndicator = createResizeIndicator(e.clientX);
             document.body.appendChild(resizeIndicator);
             
-            // Add visual feedback
             handle.classList.add('is-resizing');
             header.classList.add('is-resizing');
             document.body.style.cursor = 'col-resize';
             document.body.style.userSelect = 'none';
             
-            // Global mouse events
             document.addEventListener('mousemove', handleResize);
             document.addEventListener('mouseup', endResize);
         }
@@ -138,12 +110,10 @@ export const RTableManager = {
                 Math.min(instance.config.maxColumnWidth, startWidth + deltaX)
             );
             
-            // Update resize indicator position
             if (resizeIndicator) {
                 resizeIndicator.style.left = `${e.clientX}px`;
             }
             
-            // Live resize preview
             if (instance.config.liveResize) {
                 this.updateColumnWidth(header, newWidth, columnIndex, instance);
             }
@@ -160,10 +130,8 @@ export const RTableManager = {
                 Math.min(instance.config.maxColumnWidth, startWidth + deltaX)
             );
             
-            // Apply final width
             this.updateColumnWidth(header, newWidth, columnIndex, instance);
             
-            // Cleanup
             document.removeEventListener('mousemove', handleResize);
             document.removeEventListener('mouseup', endResize);
             
@@ -177,12 +145,10 @@ export const RTableManager = {
             document.body.style.cursor = '';
             document.body.style.userSelect = '';
             
-            // Persist width if enabled
             if (instance.config.persistWidths) {
                 this.persistColumnWidth(instance.tableId, columnIndex, newWidth);
             }
             
-            // Notify Blazor component
             this.notifyColumnResize(instance.tableId, columnIndex, startWidth, newWidth);
         };
 
@@ -196,19 +162,14 @@ export const RTableManager = {
         return handle;
     },
 
-    /**
-     * Update column width across all rows
-     */
     updateColumnWidth(header, width, columnIndex, instance) {
         const table = header.closest('.table');
         if (!table) return;
 
-        // Update header width
         header.style.width = `${width}px`;
         header.style.minWidth = `${width}px`;
         header.style.maxWidth = `${width}px`;
 
-        // Update all cells in this column
         const rows = table.querySelectorAll('tbody tr');
         rows.forEach(row => {
             const cell = row.children[columnIndex];
@@ -220,9 +181,6 @@ export const RTableManager = {
         });
     },
 
-    /**
-     * Sticky columns functionality
-     */
     initializeStickyColumns(instance) {
         const table = instance.element;
         const stickyLeft = table.querySelectorAll('.table-column-sticky-left');
@@ -231,14 +189,11 @@ export const RTableManager = {
         
         if (!scrollContainer) return;
 
-        // Calculate sticky positions
         this.updateStickyPositions(stickyLeft, 'left');
         this.updateStickyPositions(stickyRight, 'right');
         
-        // Setup scroll observer for shadows
         this.setupStickyScrollObserver(scrollContainer, table, instance);
         
-        // Recalculate on resize
         const resizeObserver = new ResizeObserver(() => {
             this.updateStickyPositions(stickyLeft, 'left');
             this.updateStickyPositions(stickyRight, 'right');
@@ -248,9 +203,6 @@ export const RTableManager = {
         instance.observers.set('sticky-resize', resizeObserver);
     },
 
-    /**
-     * Update sticky column positions
-     */
     updateStickyPositions(columns, side) {
         let offset = 0;
         
@@ -258,16 +210,12 @@ export const RTableManager = {
             column.style[side] = `${offset}px`;
             offset += column.offsetWidth;
             
-            // Add visual separation
             if (index === columns.length - 1) {
                 column.classList.add('show-shadow');
             }
         });
     },
 
-    /**
-     * Setup scroll observer for sticky column shadows
-     */
     setupStickyScrollObserver(scrollContainer, table, instance) {
         let isScrolling = false;
         
@@ -282,45 +230,34 @@ export const RTableManager = {
         });
     },
 
-    /**
-     * Update sticky column shadow visibility based on scroll position
-     */
     updateScrollShadows(scrollContainer, table) {
         const { scrollLeft, scrollWidth, clientWidth } = scrollContainer;
         
         const stickyLeft = table.querySelectorAll('.table-column-sticky-left');
         const stickyRight = table.querySelectorAll('.table-column-sticky-right');
         
-        // Left shadows - visible when scrolled right
         const showLeftShadow = scrollLeft > 0;
         stickyLeft.forEach(col => {
             col.classList.toggle('has-scroll-shadow', showLeftShadow);
         });
         
-        // Right shadows - visible when not at right edge
         const showRightShadow = scrollLeft < (scrollWidth - clientWidth - 1);
         stickyRight.forEach(col => {
             col.classList.toggle('has-scroll-shadow', showRightShadow);
         });
     },
 
-    /**
-     * Advanced selection functionality
-     */
     initializeAdvancedSelection(instance) {
         const table = instance.element;
         const checkboxes = table.querySelectorAll('.table-checkbox-advanced input[type="checkbox"]');
         const rows = table.querySelectorAll('tbody tr');
         
-        // Advanced checkbox behavior
         checkboxes.forEach(checkbox => {
-            // Improve visual feedback
             checkbox.addEventListener('change', (e) => {
                 const row = e.target.closest('tr');
                 if (row) {
                     row.classList.toggle('multi-selected', e.target.checked);
                     
-                    // Animate selection
                     if (e.target.checked) {
                         this.animateRowSelection(row, true, instance);
                     } else {
@@ -330,11 +267,9 @@ export const RTableManager = {
             });
         });
         
-        // Row click selection (if enabled)
         if (instance.config.rowClickSelection) {
             rows.forEach(row => {
                 row.addEventListener('click', (e) => {
-                    // Skip if clicking on input elements
                     if (e.target.matches('input, button, a, select, textarea')) {
                         return;
                     }
@@ -351,13 +286,9 @@ export const RTableManager = {
         }
     },
 
-    /**
-     * Animate row selection
-     */
     animateRowSelection(row, selected, instance) {
         if (!row) return;
         
-        // Respect reduced motion preference
         if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
             return;
         }
@@ -369,9 +300,6 @@ export const RTableManager = {
         }, instance.config.animationDuration);
     },
 
-    /**
-     * Keyboard navigation functionality
-     */
     initializeKeyboardNavigation(instance) {
         const table = instance.element;
         const tbody = table.querySelector('tbody');
@@ -380,7 +308,6 @@ export const RTableManager = {
         let currentRow = 0;
         const rows = Array.from(tbody.querySelectorAll('tr'));
         
-        // Make table focusable
         table.setAttribute('tabindex', '0');
         table.classList.add('table-keyboard-navigation');
         
@@ -425,9 +352,6 @@ export const RTableManager = {
         }
     },
 
-    /**
-     * Notify Blazor component of column resize
-     */
     notifyColumnResize(tableId, columnIndex, oldWidth, newWidth) {
         if (window.DotNet && window.DotNetCallbacks) {
             const callback = window.DotNetCallbacks[`${tableId}-resize`];
@@ -442,9 +366,6 @@ export const RTableManager = {
         }
     },
 
-    /**
-     * Persist column width to localStorage
-     */
     persistColumnWidth(tableId, columnIndex, width) {
         try {
             const key = `table-${tableId}-column-widths`;
@@ -452,13 +373,9 @@ export const RTableManager = {
             stored[columnIndex] = width;
             localStorage.setItem(key, JSON.stringify(stored));
         } catch (error) {
-            debugLogger.warn('Failed to persist column width:', error);
         }
     },
 
-    /**
-     * Restore persisted column widths
-     */
     restoreColumnWidths(tableId) {
         try {
             const key = `table-${tableId}-column-widths`;
@@ -474,13 +391,9 @@ export const RTableManager = {
                 }
             });
         } catch (error) {
-            debugLogger.warn('Failed to restore column widths:', error);
         }
     },
 
-    /**
-     * Setup cleanup when table is disconnected
-     */
     setupCleanup(instance) {
         const observer = new MutationObserver((mutations) => {
             mutations.forEach((mutation) => {
@@ -496,35 +409,25 @@ export const RTableManager = {
         instance.observers.set('cleanup', observer);
     },
 
-    /**
-     * Cleanup resources for a table
-     */
     cleanup(tableId) {
         const instance = this.instances.get(tableId);
         if (!instance) return;
 
-        // Clear state
         instance.resizing.clear();
         instance.sticky.clear();
         
-        // Dispose scroll manager
         if (instance.scrollManager) {
             instance.scrollManager.dispose();
         }
         
-        // Disconnect observers
         instance.observers.forEach((observer) => {
             observer.disconnect();
         });
         instance.observers.clear();
             
-        // Remove from instances
         this.instances.delete(tableId);
     },
 
-    /**
-     * Update table configuration
-     */
     updateConfig(tableId, newConfig) {
         const instance = this.instances.get(tableId);
         if (instance) {
@@ -532,9 +435,6 @@ export const RTableManager = {
         }
     },
 
-    /**
-     * Get current column widths
-     */
     getColumnWidths(tableId) {
         const table = document.querySelector(`[data-table-id="${tableId}"]`);
         if (!table) return [];
@@ -543,9 +443,6 @@ export const RTableManager = {
         return Array.from(headers).map(header => header.offsetWidth);
     },
 
-    /**
-     * Set column widths
-     */
     setColumnWidths(tableId, widths) {
         const instance = this.instances.get(tableId);
         if (!instance) return;
@@ -558,7 +455,6 @@ export const RTableManager = {
         });
     },
 
-    // Refresh scroll shadows for a table
     refresh(tableId) {
         const instance = this.instances.get(tableId);
         if (instance && instance.scrollManager) {
@@ -569,9 +465,6 @@ export const RTableManager = {
     }
 };
 
-/**
- * Table scroll management instance
- */
 class TableScrollInstance {
     constructor(tableId, tableContainer, scrollContainer) {
         this.tableId = tableId;
@@ -647,7 +540,6 @@ class TableScrollInstance {
             }
             
         } catch (error) {
-            debugLogger.error('[TableScrollInstance] Update scroll shadows failed:', error);
         }
     }
     
@@ -660,7 +552,6 @@ class TableScrollInstance {
             });
             
         } catch (error) {
-            debugLogger.error('[TableScrollInstance] Header focus setup failed:', error);
         }
     }
     
@@ -682,7 +573,6 @@ class TableScrollInstance {
             }
             
         } catch (error) {
-            debugLogger.error('[TableScrollInstance] Header focus handling failed:', error);
         }
     }
     
@@ -708,15 +598,12 @@ class TableScrollInstance {
             }
             
         } catch (error) {
-            debugLogger.error('[TableScrollInstance] Dispose failed:', error);
         }
     }
 }
 
-// Auto-initialize on DOM ready
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
-        // Auto-detect tables that need advanced features
         document.querySelectorAll('[data-table-id]').forEach(table => {
             const tableId = table.getAttribute('data-table-id');
             if (tableId && table.classList.contains('table-advanced')) {
@@ -725,7 +612,6 @@ if (document.readyState === 'loading') {
         });
     });
 } else {
-    // DOM is already ready
     document.querySelectorAll('[data-table-id]').forEach(table => {
         const tableId = table.getAttribute('data-table-id');
         if (tableId && table.classList.contains('table-advanced')) {
@@ -734,9 +620,5 @@ if (document.readyState === 'loading') {
     });
 }
 
-// Export for use in other modules
 export default RTableManager;
 
-// Legacy compatibility
-window.RTableAdvanced = RTableManager;
-window.RTableScrollManager = RTableManager;

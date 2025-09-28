@@ -248,10 +248,10 @@
                         <tbody>
                             @foreach (var (item, index) in GetPagedItems().Select((item, index) => (item, index)))
                             {
-                                <tr class="table-row @GetEnhancedRowClass(item, index)" 
+                                <tr class="table-row @GetEnhancedRowClass(item, index)"
                                     data-row-index="@index"
                                     tabindex="@(EnhancementsConfig.SelectionConfig.KeyboardNavigation ? "0" : "-1")"
-                                    @onclick="@(() => HandleEnhancedRowClick(item, index))">
+                                    @onclick="@((MouseEventArgs e) => HandleRowClick(item, index))">
                                     @if (Selectable)
                                     {
                                         <td class="table-cell table-cell-checkbox" style="width: 40px; min-width: 40px; max-width: 40px;">
@@ -326,8 +326,8 @@
 {
     <div class="table-column-filter-portal" @onclick:stopPropagation="true">
         <div class="table-column-filter-backdrop" @onclick="@(() => OpenFilterColumn = null)"></div>
-        <div class="table-column-filter-dropdown z-max" id="@($"filter-dropdown-{_openFilterColumn}")" 
-             style="position: fixed !important; top: 200px; left: 200px; width: 300px; z-index: 10000;">
+        <div class="table-column-filter-dropdown z-max" id="@($"filter-dropdown-{_openFilterColumn}")"
+             style="position: fixed !important; top: 200px; left: 200px; width: 300px;">
             <div class="filter-dropdown-header">
                 <div class="filter-dropdown-title">Filter: @_openFilterColumn</div>
                 <button class="filter-dropdown-close" @onclick="@(() => OpenFilterColumn = null)">
@@ -1216,10 +1216,10 @@
         };
     }
 
-    private async Task HandleEnhancedRowClick(TItem item, int index)
+    private async Task HandleRowClick(TItem item, int index)
     {
         await OnRowClick(item);
-        
+
         if (OnEnhancedRowClick.HasDelegate)
         {
             var args = new RowClickEventArgs<TItem>
@@ -1229,10 +1229,10 @@
                 IsSelected = IsSelected(item),
                 Timestamp = DateTime.UtcNow
             };
-            
+
             await OnEnhancedRowClick.InvokeAsync(args);
         }
-        
+
         // Handle row selection if enabled and selectable
         if (Selectable && EnhancementsConfig.SelectionConfig.RowClickSelection && !Disabled)
         {

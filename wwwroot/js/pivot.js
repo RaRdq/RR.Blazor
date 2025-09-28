@@ -23,10 +23,24 @@ class PivotManager {
             document.body.appendChild(eventRoot);
         }
 
-        // Global event delegation for all pivot components
-        document.addEventListener('click', this.handleGlobalClick.bind(this), true);
+        // Use event delegation on pivot containers instead of global document
+        // This prevents conflicts with the singleton ClickOutsideManager
+        this.setupPivotEventDelegation();
         document.addEventListener('mouseenter', this.handleGlobalMouseEnter.bind(this), true);
         document.addEventListener('mouseleave', this.handleGlobalMouseLeave.bind(this), true);
+    }
+
+    setupPivotEventDelegation() {
+        window.RRBlazor.ClickManager.registerDelegate(
+            'pivot-components',
+            '.pivot-container, [data-pivot-id]',
+            (event, pivotElement) => this.handlePivotClick(event, pivotElement),
+            {
+                priority: 5,
+                excludeSelectors: ['input', 'button', '.ignore-pivot-click'],
+                stopPropagation: false
+            }
+        );
     }
 
     setupDragAndDrop() {
@@ -143,10 +157,7 @@ class PivotManager {
         };
     }
 
-    handleGlobalClick(event) {
-        const pivotElement = this.findPivotContainer(event.target);
-        if (!pivotElement) return;
-
+    handlePivotClick(event, pivotElement) {
         const pivotId = pivotElement.id;
         const pivotData = this.activePivots.get(pivotId);
         if (!pivotData) return;
@@ -526,6 +537,13 @@ class PivotManager {
     getPerformanceStats(pivotId) {
         const pivotData = this.activePivots.get(pivotId);
         return pivotData?.performanceMetrics || {};
+    }
+
+    cleanup() {
+        window.RRBlazor.ClickManager.unregisterDelegate('pivot-components');
+
+        // Clear all pivot data
+        this.activePivots.clear();
     }
 }
 

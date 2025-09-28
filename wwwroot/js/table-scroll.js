@@ -23,14 +23,9 @@ export const RTableScrollManager = {
             const manager = new TableScrollInstance(tableId, tableContainer, scrollContainer);
             this.scrollManagers.set(tableId, manager);
             
-            if (window.debugLogger?.isDebugMode) {
-                window.debugLogger.log('[RTableScrollManager] Initialized:', { tableId });
-            }
-            
             return true;
             
         } catch (error) {
-            console.error('[RTableScrollManager] Initialization failed:', error);
             return false;
         }
     },
@@ -42,12 +37,8 @@ export const RTableScrollManager = {
                 manager.dispose();
                 this.scrollManagers.delete(tableId);
                 
-                if (window.debugLogger?.isDebugMode) {
-                    window.debugLogger.log('[RTableScrollManager] Disposed:', tableId);
-                }
             }
         } catch (error) {
-            console.error('[RTableScrollManager] Dispose failed:', error);
         }
     },
     
@@ -60,7 +51,6 @@ export const RTableScrollManager = {
             }
             return false;
         } catch (error) {
-            console.error('[RTableScrollManager] Refresh failed:', error);
             return false;
         }
     }
@@ -141,7 +131,6 @@ class TableScrollInstance {
             }
             
         } catch (error) {
-            console.error('[TableScrollInstance] Update scroll shadows failed:', error);
         }
     }
     
@@ -154,7 +143,6 @@ class TableScrollInstance {
             });
             
         } catch (error) {
-            console.error('[TableScrollInstance] Header focus setup failed:', error);
         }
     }
     
@@ -176,7 +164,6 @@ class TableScrollInstance {
             }
             
         } catch (error) {
-            console.error('[TableScrollInstance] Header focus handling failed:', error);
         }
     }
     
@@ -207,7 +194,6 @@ class TableScrollInstance {
             }
             
         } catch (error) {
-            console.error('[TableScrollInstance] Dispose failed:', error);
         }
     }
 }

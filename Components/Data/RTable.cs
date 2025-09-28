@@ -3,16 +3,15 @@ using Microsoft.AspNetCore.Components.Rendering;
 using RR.Blazor.Components.Base;
 using System.Collections;
 using System.Linq;
-using System.Reflection;
 
 namespace RR.Blazor.Components.Data;
 
 public class RTable : RTableBase
 {
     [Parameter] public object Items { get; set; }
-    
+
     private bool _isDisposed = false;
-    
+
     protected override void BuildRenderTree(RenderTreeBuilder builder)
     {
         if (_isDisposed || Items == null)
@@ -132,24 +131,9 @@ public class RTable : RTableBase
                 // Skip attributes that are already handled as parameters
                 if (attr.Key == "Items" || attr.Key == "TItem") continue;
                 
-                if (attr.Key == "OnRowClicked")
-                {
-                    // Convert delegate to EventCallback<T> at runtime
-                    var eventCallback = CreateEventCallback(attr.Value, itemType);
-                    builder.AddAttribute(++seq, "OnRowClicked", eventCallback);
-                }
-                else if (IsEventCallbackParameter(attr.Key))
-                {
-                    // Convert other event callbacks
-                    var eventCallback = CreateEventCallback(attr.Value, itemType);
-                    builder.AddAttribute(++seq, attr.Key, eventCallback);
-                }
-                else
-                {
-                    // Forward all other attributes with standard conversion
-                    var convertedValue = ConvertParameterValue(attr.Key, attr.Value, itemType);
-                    builder.AddAttribute(++seq, attr.Key, convertedValue);
-                }
+                // Forward all attributes with standard conversion
+                var convertedValue = ConvertParameterValue(attr.Key, attr.Value, itemType);
+                builder.AddAttribute(++seq, attr.Key, convertedValue);
             }
         }
         builder.CloseComponent();
@@ -173,107 +157,6 @@ public class RTable : RTableBase
         return value;
     }
     
-    private object CreateEventCallback(object value, Type itemType)
-    {
-        if (value == null)
-            return null;
-
-        // If it's already an EventCallback, return it as-is
-        var valueType = value.GetType();
-        if (valueType.IsGenericType && valueType.GetGenericTypeDefinition() == typeof(EventCallback<>))
-        {
-            return value;
-        }
-
-        var factory = new EventCallbackFactory();
-
-        // Check if the value is an Action<T>
-        if (valueType.IsGenericType && valueType.GetGenericTypeDefinition() == typeof(Action<>))
-        {
-            var actionGenericArg = valueType.GetGenericArguments()[0];
-            if (actionGenericArg == itemType)
-            {
-                // Find the generic Create<T> method
-                var createMethod = typeof(EventCallbackFactory)
-                    .GetMethods()
-                    .Where(m => m.Name == "Create" && m.IsGenericMethodDefinition)
-                    .FirstOrDefault(m =>
-                    {
-                        var parameters = m.GetParameters();
-                        if (parameters.Length != 2) return false;
-
-                        var genericArgs = m.GetGenericArguments();
-                        if (genericArgs.Length != 1) return false;
-
-                        // Check if second parameter is Action<T>
-                        var secondParam = parameters[1].ParameterType;
-                        return secondParam.IsGenericType &&
-                               secondParam.GetGenericTypeDefinition() == typeof(Action<>);
-                    });
-
-                if (createMethod != null)
-                {
-                    var genericMethod = createMethod.MakeGenericMethod(itemType);
-                    return genericMethod.Invoke(factory, new[] { this, value });
-                }
-            }
-        }
-
-        // Check if the value is a Func<T, Task>
-        if (valueType.IsGenericType && valueType.GetGenericTypeDefinition() == typeof(Func<,>))
-        {
-            var funcGenericArgs = valueType.GetGenericArguments();
-            if (funcGenericArgs.Length == 2 && funcGenericArgs[0] == itemType && funcGenericArgs[1] == typeof(Task))
-            {
-                // Find the generic Create<T> method for Func<T, Task>
-                var createMethod = typeof(EventCallbackFactory)
-                    .GetMethods()
-                    .Where(m => m.Name == "Create" && m.IsGenericMethodDefinition)
-                    .FirstOrDefault(m =>
-                    {
-                        var parameters = m.GetParameters();
-                        if (parameters.Length != 2) return false;
-
-                        var genericArgs = m.GetGenericArguments();
-                        if (genericArgs.Length != 1) return false;
-
-                        // Check if second parameter is Func<T, Task>
-                        var secondParam = parameters[1].ParameterType;
-                        return secondParam.IsGenericType &&
-                               secondParam.GetGenericTypeDefinition() == typeof(Func<,>) &&
-                               secondParam.GetGenericArguments().Length == 2 &&
-                               secondParam.GetGenericArguments()[1] == typeof(Task);
-                    });
-
-                if (createMethod != null)
-                {
-                    var genericMethod = createMethod.MakeGenericMethod(itemType);
-                    return genericMethod.Invoke(factory, new[] { this, value });
-                }
-            }
-        }
-
-        // non-generic fallback for simple delegates
-        var nonGenericCreate = typeof(EventCallbackFactory)
-            .GetMethod("Create", new[] { typeof(object), typeof(MulticastDelegate) });
-
-        if (nonGenericCreate != null && value is MulticastDelegate)
-            return nonGenericCreate.Invoke(factory, new[] { this, value });
-
-        throw new InvalidOperationException($"Cannot create EventCallback<{itemType.Name}> from {valueType.Name}. Expected Action<{itemType.Name}> or Func<{itemType.Name}, Task>.");
-    }
-    
-    private static bool IsEventCallbackParameter(string parameterName)
-    {
-        return parameterName switch
-        {
-            "OnRowClicked" or "OnRowSelected" or "OnEdit" or "OnDelete" or "OnView" or 
-            "SelectedItemChanged" or "OnSelectionChanged" or "SelectedItemsChanged" or
-            "OnEnhancedRowClick" or "OnColumnResized" or "PageSizeChanged" or 
-            "CurrentPageChanged" or "SortByChanged" or "SortDescendingChanged" => true,
-            _ => false
-        };
-    }
     
     private static bool IsBooleanParameter(string parameterName)
     {
