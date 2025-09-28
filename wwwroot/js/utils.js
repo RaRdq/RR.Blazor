@@ -75,30 +75,6 @@ export function downloadFile(url, fileName) {
     link.remove();
 }
 
-export function setupOutsideClickHandler(containerId, callback) {
-    const container = document.querySelector(containerId);
-
-    const outsideClickHandler = function(event) {
-        if (!container.contains(event.target)) {
-            const now = Date.now();
-            if (!outsideClickHandler._lastClick || now - outsideClickHandler._lastClick > 50) {
-                outsideClickHandler._lastClick = now;
-                callback();
-            }
-        }
-    };
-
-    container._outsideClickHandler = outsideClickHandler;
-    document.addEventListener('click', outsideClickHandler, { passive: true });
-}
-
-export function removeOutsideClickHandler(containerId) {
-    const container = document.querySelector(containerId);
-    if (container && container._outsideClickHandler) {
-        document.removeEventListener('click', container._outsideClickHandler);
-        delete container._outsideClickHandler;
-    }
-}
 
 export function addEventListener(elementId, eventName, dotNetRef, methodName, options = {}) {
     const element = document.getElementById(elementId);
@@ -137,6 +113,56 @@ export function addEventListener(elementId, eventName, dotNetRef, methodName, op
 }
 
 window.RRBlazor = window.RRBlazor || {};
+export function createCleanupManager() {
+    const cleanupFunctions = [];
+
+    return {
+        add: (cleanupFn) => cleanupFunctions.push(cleanupFn),
+        addEventListener: (element, eventType, handler, options) => {
+            if (typeof element === 'string') {
+                element = document.getElementById(element) || document.querySelector(element);
+            }
+            if (element) {
+                element.addEventListener(eventType, handler, options);
+                cleanupFunctions.push(() => element.removeEventListener(eventType, handler));
+            }
+        },
+        executeAll: () => {
+            cleanupFunctions.forEach(fn => {
+                try {
+                    fn();
+                } catch (error) {
+                }
+            });
+            cleanupFunctions.length = 0;
+        }
+    };
+}
+export function waitForPortal(componentId, componentType = null, timeout = 2000) {
+    return new Promise((resolve, reject) => {
+        // The requesterId should match what's being dispatched - just the componentId
+        const requesterId = componentId;
+
+        const timeoutId = setTimeout(() => {
+            document.removeEventListener(window.RRBlazor.Events.PORTAL_CREATED, handler);
+            const errorMsg = componentType
+                ? `Portal creation timeout for ${componentType} ${componentId}`
+                : `Portal creation timeout for ${componentId}`;
+            reject(new Error(errorMsg));
+        }, timeout);
+
+        const handler = (event) => {
+            if (event.detail.requesterId === requesterId) {
+                clearTimeout(timeoutId);
+                document.removeEventListener(window.RRBlazor.Events.PORTAL_CREATED, handler);
+                resolve(event.detail);
+            }
+        };
+
+        document.addEventListener(window.RRBlazor.Events.PORTAL_CREATED, handler);
+    });
+}
+
 window.RRBlazor.Utils = {
     scrollIntoView,
     getElementDimensions,
@@ -145,9 +171,9 @@ window.RRBlazor.Utils = {
     downloadContent,
     downloadFileFromStream,
     downloadFile,
-    setupOutsideClickHandler,
-    removeOutsideClickHandler,
-    addEventListener
+    addEventListener,
+    createCleanupManager,
+    waitForPortal
 };
 
 export default {
@@ -158,7 +184,7 @@ export default {
     downloadContent,
     downloadFileFromStream,
     downloadFile,
-    setupOutsideClickHandler,
-    removeOutsideClickHandler,
-    addEventListener
+    addEventListener,
+    createCleanupManager,
+    waitForPortal
 };

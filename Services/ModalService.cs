@@ -7,7 +7,7 @@ using RR.Blazor.Models;
 
 namespace RR.Blazor.Services;
 
-public sealed class ModalService : IModalService, IDisposable
+public sealed class ModalService(IJSRuntime jsRuntime) : IModalService, IDisposable
 {
     private readonly List<ModalInstance> _activeModals = [];
     private bool _isDisposed;
@@ -20,7 +20,7 @@ public sealed class ModalService : IModalService, IDisposable
     {
         var instance = new ModalInstance<T>
         {
-            Id = options.ModalId ?? Guid.NewGuid().ToString(),
+            Id = options.ModalId ?? $"modal-{Guid.NewGuid():N}",
             Options = options,
             Visible = true
         };
@@ -33,7 +33,9 @@ public sealed class ModalService : IModalService, IDisposable
             _ = Task.Delay(options.AutoCloseDelay.Value).ContinueWith(async _ =>
             {
                 if (_activeModals.Contains(instance))
+                {
                     await CloseAsync(instance.Id, Enums.ModalResult.Cancel);
+                }
             });
         }
 
@@ -45,7 +47,7 @@ public sealed class ModalService : IModalService, IDisposable
     {
         var instance = new ModalInstance
         {
-            Id = options.ModalId ?? Guid.NewGuid().ToString(),
+            Id = options.ModalId ?? $"modal-{Guid.NewGuid():N}",
             Options = options,
             Visible = true
         };
@@ -58,7 +60,9 @@ public sealed class ModalService : IModalService, IDisposable
             _ = Task.Delay(options.AutoCloseDelay.Value).ContinueWith(async _ =>
             {
                 if (_activeModals.Contains(instance))
+                {
                     await CloseAsync(instance.Id, Enums.ModalResult.Cancel);
+                }
             });
         }
 
@@ -102,10 +106,20 @@ public sealed class ModalService : IModalService, IDisposable
     public async Task CloseAsync(string modalId, Enums.ModalResult result = Enums.ModalResult.None)
     {
         var modal = _activeModals.FirstOrDefault(m => m.Id == modalId);
-        if (modal == null) return;
+        if (modal == null)
+            return;
 
         modal.Visible = false;
         _activeModals.Remove(modal);
+
+        try
+        {
+            await jsRuntime.InvokeVoidAsync("RRBlazor.Modal.hide", modalId);
+        }
+        catch
+        {
+            // JS hide failed, continue with cleanup
+        }
 
         if (!modal.TaskSource.Task.IsCompleted)
         {
@@ -118,7 +132,9 @@ public sealed class ModalService : IModalService, IDisposable
         OnModalClosed?.Invoke(modal);
 
         if (!_activeModals.Any())
+        {
             OnAllModalsClosed?.Invoke();
+        }
     }
 
     public async Task CloseAllAsync()

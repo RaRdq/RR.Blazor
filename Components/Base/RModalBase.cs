@@ -59,11 +59,6 @@ public abstract class RModalBase : RComponentBase
         await VisibleChanged.InvokeAsync(Visible);
         await OnShow.InvokeAsync();
         
-        if (IsServiceManaged)
-        {
-            await NotifyServiceModalOpened();
-        }
-        
         StateHasChanged();
     }
     
@@ -95,29 +90,6 @@ public abstract class RModalBase : RComponentBase
         await OnCancel.InvokeAsync();
     }
     
-    protected virtual async Task NotifyServiceModalOpened()
-    {
-        if (ModalService != null && IsServiceManaged)
-        {
-            try
-            {
-                var instance = new ModalInstance
-                {
-                    Id = InternalModalId,
-                    Visible = true,
-                    Options = GetModalOptions()
-                };
-                
-                // Notify service of modal opening if needed
-                await Task.CompletedTask;
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidOperationException($"Failed to notify modal service of modal opening: {InternalModalId}", ex);
-            }
-        }
-    }
-    
     protected virtual async Task NotifyServiceModalClosed()
     {
         if (ModalService != null && IsServiceManaged)
@@ -137,7 +109,8 @@ public abstract class RModalBase : RComponentBase
     {
         return new ModalOptions
         {
-            ComponentType = GetType()
+            ComponentType = GetType(),
+            Parameters = []
         };
     }
     

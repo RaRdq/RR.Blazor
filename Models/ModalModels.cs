@@ -27,8 +27,11 @@ public class ModalOptions
     public bool UsePortal { get; set; } = true;
     public bool UseBackdrop { get; set; } = true;
     public bool IsRawContent { get; set; }
+    public int BackdropBlur { get; set; } = 8;
+    public string BackdropClassName { get; set; } = "modal-backdrop-dark";
+    public double BackdropOpacity { get; set; } = 0.6;
     
-    public T? GetData<T>() => Data is T typedData ? typedData : default;
+    public T GetData<T>() => Data is T typedData ? typedData : default;
 }
 
 public class ModalOptions<T> : ModalOptions

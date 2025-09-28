@@ -7,5 +7,4 @@ namespace RR.Blazor.Models;
 public class ModalContext
 {
     public string ModalId { get; set; }
-    public bool IsVisible { get; set; } = true;
 }

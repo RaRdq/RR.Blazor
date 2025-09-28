@@ -17,7 +17,7 @@
 @using System.Globalization
 @implements IAsyncDisposable
 
-<div class="rr-datepicker @GetClasses()" @ref="elementRef">
+<div class="rr-datepicker @GetClasses()" @ref="elementRef" data-datepicker-id="@datepickerId">
     <div class="rr-datepicker-trigger" @onclick="ToggleCalendar">
         <input type="text" 
                class="rr-datepicker-input @GetInputClasses()"
@@ -42,10 +42,8 @@
         </i>
     </div>
     
-    @if (isOpen)
-    {
-        <div class="rr-datepicker-popup" 
-             @onclick:stopPropagation="true">
+    <div class="rr-datepicker-popup"
+         @onclick:stopPropagation="true">
             <div class="rr-datepicker-header">
                 <button type="button" class="rr-datepicker-nav" @onclick="PreviousMonth">
                     <i class="icon">chevron_left</i>
@@ -142,14 +140,12 @@
                 </div>
             }
         </div>
-    }
 </div>
 
 @code {
     private ElementReference elementRef;
-    private bool isOpen;
+    private string datepickerId = Guid.NewGuid().ToString("N");
     private bool showYearPicker;
-    private bool isOpening;
     private DateTime currentViewDate = DateTime.Today;
     private int selectedHour;
     private int selectedMinute;
@@ -157,6 +153,7 @@
     private DateTime? tempStartDate;
     private DateTime? tempEndDate;
     private bool isSelectingEndDate;
+    private bool isOpen;
 
     [Parameter] public DateTime? Value { get; set; }
     [Parameter] public EventCallback<DateTime?> ValueChanged { get; set; }
@@ -253,56 +250,45 @@
 
     private async Task OpenCalendar()
     {
-        if (isOpen || Disabled) return;
-        
+        if (Disabled) return;
+
         if (Range)
         {
             tempStartDate = Value;
             tempEndDate = EndValue;
             isSelectingEndDate = false;
         }
-        
-        // Set open state and render
-        isOpen = true;
-        StateHasChanged();
-        
-        await Task.Yield();
-        
+
         try
         {
-            var portalConfig = new
+            await SafeInvokeAsync("RRBlazor.DatePicker.open", datepickerId, new
             {
                 useBackdrop = UseBackdrop,
                 backdropClass = BackdropClass,
                 closeOnBackdropClick = CloseOnBackdropClick,
                 closeOnEscape = CloseOnEscape
-            };
-            
-            await SafeInvokeAsync("RRBlazor.DatePicker.open", elementRef, portalConfig);
+            });
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[RDatePicker] Failed to position popup: {ex.Message}");
+            Console.WriteLine($"[RDatePicker] Failed to open popup: {ex.Message}");
         }
+        isOpen = true;
     }
 
     private async Task CloseCalendar()
     {
-        if (!isOpen) return;
-        
-        isOpen = false;
         showYearPicker = false;
-        
+
         try
         {
-            await SafeInvokeAsync("RRBlazor.DatePicker.close", elementRef);
+            await SafeInvokeAsync("RRBlazor.DatePicker.close", datepickerId);
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[RDatePicker] Cleanup failed: {ex.Message}");
+            Console.WriteLine($"[RDatePicker] Failed to close popup: {ex.Message}");
         }
-        
-        StateHasChanged();
+        isOpen = false;
     }
     
     [JSInvokable]

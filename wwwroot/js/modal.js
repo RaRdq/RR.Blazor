@@ -7,9 +7,10 @@ class ModalManager {
         this.eventHandlers = new Map();
         this.modalCounter = 0;
         this.closingModals = new Set();
-        
+        this.registrationMutex = new Map();
+
         this.zIndexManager = window.RRBlazor.ZIndexManager;
-        
+
         this._setupEventListeners();
     }
     
@@ -40,54 +41,89 @@ class ModalManager {
     }
     
     async show(contentSelector, options = {}) {
-        const contentElement = typeof contentSelector === 'string' 
-            ? document.querySelector(contentSelector)
-            : contentSelector;
-        
-        if (!contentElement) {
-            throw new Error(`Modal content not found: ${contentSelector}`);
+        const modalId = options.modalId;
+        if (!modalId) {
+            console.error('[ModalManager] Modal ID must be provided');
+            return null;
         }
-        
-        const existingModalId = contentElement.getAttribute('data-modal-id');
-        if (existingModalId && this.activeModals.has(existingModalId)) {
-            const existingModal = this.activeModals.get(existingModalId);
-            if (existingModal.state !== 'closed') {
-                return existingModalId;
+
+        const mutexTimeout = 5000;
+        const mutexStart = Date.now();
+
+        if (this.registrationMutex.has(modalId)) {
+            const mutexAge = mutexStart - this.registrationMutex.get(modalId);
+            if (mutexAge > mutexTimeout) {
+                console.warn(`[ModalManager] Mutex timeout for ${modalId}, clearing stale lock`);
+                this.registrationMutex.delete(modalId);
+            } else {
+                return modalId;
             }
         }
-        
-        const modalId = options.modalId || existingModalId || this._generateModalId();
-        
-        const modal = this._createModalConfig(modalId, contentElement, options);
-        this.activeModals.set(modalId, modal);
-        
-        await this._showModalInstance(modal);
-        
-        return modalId;
+
+        this.registrationMutex.set(modalId, mutexStart);
+
+        try {
+            if (typeof contentSelector === 'string') {
+                const allMatches = document.querySelectorAll(contentSelector);
+                if (allMatches.length > 1) {
+                    console.warn(`[ModalManager] Found ${allMatches.length} duplicate modals for ${contentSelector}, cleaning up`);
+                    for (let i = 1; i < allMatches.length; i++) {
+                        allMatches[i].remove();
+                    }
+                }
+            }
+
+            const contentElement = typeof contentSelector === 'string'
+                ? document.querySelector(contentSelector)
+                : contentSelector;
+
+            if (!contentElement) {
+                console.error(`[ModalManager] Modal content not found: ${contentSelector}`);
+                return null;
+            }
+
+            if (this.activeModals.has(modalId)) {
+                const existingModal = this.activeModals.get(modalId);
+                if (existingModal.state !== 'closed') {
+                    return modalId;
+                }
+            }
+
+            const modal = this._createModalConfig(modalId, contentElement, options);
+            this.activeModals.set(modalId, modal);
+
+            await this._showModalInstance(modal);
+
+            return modalId;
+        } finally {
+            this.registrationMutex.delete(modalId);
+        }
     }
     
     async hide(modalId) {
+        this.registrationMutex.delete(modalId);
+
         if (this.closingModals.has(modalId)) {
             return;
         }
-        
+
         const modal = this.activeModals.get(modalId);
         if (!modal) {
             return;
         }
-        
+
         if (modal.state === 'closed') {
             this.activeModals.delete(modalId);
             return;
         }
-        
+
         if (modal.id !== modalId) {
-            console.error(`Modal ID mismatch: requested ${modalId}, found ${modal.id}`);
+            console.error(`[ModalManager] Modal ID mismatch: requested ${modalId}, found ${modal.id}`);
             return;
         }
-        
+
         this.closingModals.add(modalId);
-        
+
         try {
             await this._hideModalInstance(modal);
         } finally {
@@ -107,9 +143,7 @@ class ModalManager {
         this.eventHandlers.clear();
         window.RRBlazor.ScrollLock.unlock();
         
-        if (window.RRBlazor.BackdropSingleton?.getInstance) {
-            window.RRBlazor.BackdropSingleton.getInstance().destroyAll();
-        }
+        window.RRBlazor.Backdrop.getInstance().destroyAll();
     }
     
     isActive(modalId) {
@@ -124,11 +158,20 @@ class ModalManager {
     setProviderRef(dotNetRef) {
         this.providerRef = dotNetRef;
     }
-    
-    _generateModalId() {
-        return `modal-${++this.modalCounter}-${Date.now()}`;
+
+    dispatchParentClosing(modalId) {
+        const modal = this.activeModals.get(modalId);
+        if (!modal) return;
+
+        if (window.RRBlazor && window.RRBlazor.EventDispatcher) {
+            window.RRBlazor.EventDispatcher.dispatchParentClosing(
+                modal.contentElement,
+                'modal',
+                modalId
+            );
+        }
     }
-    
+
     _createModalConfig(modalId, contentElement, options) {
         return {
             id: modalId,
@@ -152,9 +195,9 @@ class ModalManager {
     }
     
     async _showModalInstance(modal) {
-        const isAlreadyInPortal = !!modal.contentElement.closest('#modal-portal-container');
+        const isAlreadyInPortal = !!modal.contentElement.closest('#portal-root');
         modal.isAlreadyInPortal = isAlreadyInPortal;
-        
+
         modal.zIndex = this.zIndexManager.registerElement(modal.id, 'modal');
         modal.backdropZIndex = this.zIndexManager.registerElement(`${modal.id}-backdrop`, 'backdrop');
         
@@ -183,21 +226,23 @@ class ModalManager {
             await portalPromise;
             modal.portalElement = document.getElementById(modal.id);
             if (modal.portalElement) {
-                modal.portalElement.style.setProperty('z-index', modal.zIndex.toString(), 'important');
+                modal.portalElement.style.zIndex = modal.zIndex.toString();
             }
         } else {
-            modal.portalElement = modal.contentElement.closest('#modal-portal-container');
+            modal.portalElement = modal.contentElement.parentElement;
         }
         
         if (modal.contentElement) {
-            const actualModal = modal.contentElement.classList.contains('modal') 
-                ? modal.contentElement 
+            const actualModal = modal.contentElement.classList.contains('modal')
+                ? modal.contentElement
                 : modal.contentElement.querySelector('.modal');
-            
+
             if (actualModal) {
-                actualModal.style.setProperty('z-index', modal.zIndex.toString(), 'important');
+                actualModal.style.zIndex = modal.zIndex.toString();
+                actualModal.style.removeProperty('display');
             } else {
-                modal.contentElement.style.setProperty('z-index', modal.zIndex.toString(), 'important');
+                modal.contentElement.style.zIndex = modal.zIndex.toString();
+                modal.contentElement.style.removeProperty('display');
             }
         }
         
@@ -217,8 +262,6 @@ class ModalManager {
             );
         }
         
-        window.RRBlazor.UICoordinator.notifyOpening('modal', modal.id, window.RRBlazor.EventPriorities.HIGH);
-        
         if (!modal.isAlreadyInPortal && modal.portalElement && modal.contentElement) {
             window.RRBlazor.Portal.moveToPortal(modal.id, modal.contentElement);
         }
@@ -230,25 +273,19 @@ class ModalManager {
         }
         
         modal.state = 'open';
-        window.RRBlazor.UICoordinator.notifyOpened('modal', modal.id);
     }
     
     async _hideModalInstance(modal) {
         if (modal.state === 'closing' || modal.state === 'closed') {
             return;
         }
-        
+
         modal.state = 'closing';
-        window.RRBlazor.UICoordinator.notifyClosing('modal', modal.id);
-        
+
         this._cleanupModalEventHandlers(modal);
-        
-        if (!modal.isAlreadyInPortal && modal.originalParent && document.body.contains(modal.originalParent)) {
-            if (modal.originalNextSibling) {
-                modal.originalParent.insertBefore(modal.contentElement, modal.originalNextSibling);
-            } else {
-                modal.originalParent.appendChild(modal.contentElement);
-            }
+
+        if (!modal.isAlreadyInPortal && modal.contentElement._portalPositioned) {
+            window.RRBlazor.Portal.restoreFromPortal(modal.id, modal.contentElement);
         }
         
         if (modal.config.backdrop) {
@@ -272,8 +309,7 @@ class ModalManager {
         if (stackIndex > -1) {
             this.modalStack.splice(stackIndex, 1);
         }
-        
-        // Clean up z-index registrations
+
         this.zIndexManager.unregisterElement(modal.id);
         this.zIndexManager.unregisterElement(`${modal.id}-backdrop`);
         
@@ -285,29 +321,18 @@ class ModalManager {
             modal.config.onClose(modal.id);
         }
         
-        if (modal.config.dotNetRef && modal.config.modalId === modal.id) {
-            try {
-                await modal.config.dotNetRef.invokeMethodAsync('OnModalClosedFromJS');
-            } catch (e) {
-                console.warn(`Failed to notify Blazor component for modal ${modal.id}:`, e);
-            }
-        }
-        
-        if (this.providerRef && !modal.config.dotNetRef) {
-            try {
-                await this.providerRef.invokeMethodAsync('OnModalClosedFromJS', modal.id);
-            } catch (e) {
-                console.warn('Failed to notify modal provider:', e);
-            }
+        if (modal.config.isServiceModal && this.providerRef) {
+            await this.providerRef.invokeMethodAsync('OnModalClosedFromJS', modal.id);
+        } else if (modal.config.dotNetRef) {
+            await modal.config.dotNetRef.invokeMethodAsync('OnModalClosedFromJS');
         }
         
         modal.state = 'closed';
-        window.RRBlazor.UICoordinator.notifyClosed('modal', modal.id);
     }
     
     _setupModalEventHandlers(modal) {
         if (modal.config.closeOnBackdrop) {
-            const manager = window.RRBlazor.BackdropSingleton.getInstance();
+            const manager = window.RRBlazor.Backdrop.getInstance();
             const removeHandler = manager.onClick(modal.id, () => {
                 if (this._isTopModal(modal.id)) {
                     this.hide(modal.id);
@@ -345,6 +370,21 @@ class ModalManager {
             document.addEventListener(window.RRBlazor.Events.PORTAL_CREATED, handler);
         });
     }
+
+    getModalContext(element) {
+        for (const [modalId, modal] of this.activeModals) {
+            if (modal.state !== 'closed' &&
+                (modal.contentElement.contains(element) || modal.contentElement === element)) {
+                return {
+                    modalId: modalId,
+                    element: modal.contentElement,
+                    zIndex: modal.zIndex,
+                    portalElement: modal.portalElement
+                };
+            }
+        }
+        return null;
+    }
 }
 
 const modalManager = new ModalManager();
@@ -358,7 +398,9 @@ window.RRBlazor.Modal = {
     hideAll: () => modalManager.hideAll(),
     isActive: (modalId) => modalManager.isActive(modalId),
     getActiveCount: () => modalManager.getActiveCount(),
-    setProviderRef: (dotNetRef) => modalManager.setProviderRef(dotNetRef)
+    setProviderRef: (dotNetRef) => modalManager.setProviderRef(dotNetRef),
+    dispatchParentClosing: (modalId) => modalManager.dispatchParentClosing(modalId),
+    getModalContext: (element) => modalManager.getModalContext(element)
 };
 
 export default modalManager;

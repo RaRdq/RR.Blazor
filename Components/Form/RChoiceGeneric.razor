@@ -1,8 +1,3 @@
-@**
-<summary>Universal choice system - adapts between inline and dropdown modes</summary>
-<category>Form</category>
-**@
-
 @attribute [Component("RChoiceGeneric", Category = "Form")]
 @attribute [AIOptimized(Prompt = "Create adaptive choice component")]
 
@@ -23,7 +18,7 @@
     
     @if (Mode == Dropdown || TriggerContent != null)
     {
-        <div @ref="choiceElement" class="choice choice-dropdown relative @(TriggerContent != null ? "w-auto" : "w-full") @(TriggerContent != null ? "" : GetDropdownDensityClass()) @(Loading ? "choice-loading" : "")" 
+        <div @ref="choiceElement" class="choice choice-dropdown relative @(TriggerContent != null ? "w-auto" : "w-full") @(TriggerContent != null ? "" : GetDropdownDensityClass()) @(Loading ? "choice-loading" : "")"
              data-choice-id="@choiceElementId">
         
             @if (TriggerContent != null)
@@ -40,7 +35,7 @@
                         type="button"
                         tabindex="0"
                         aria-haspopup="true"
-                        aria-expanded="@(isDropdownOpen ? "true" : "false")"
+                        aria-expanded="false"
                         aria-label="@(AriaLabel ?? "Open dropdown")"
                         disabled="@(Disabled || Loading)"
                         @onclick="ToggleDropdown"
@@ -59,9 +54,7 @@
                     </div>
                 </button>
             }
-            
-            @* Viewport as child - hidden but present in DOM *@
-            <div class="choice-viewport choice-viewport-closed" @ref="viewportElement" data-viewport-id="@choiceElementId" style="position: absolute; top: -9999px; left: -9999px; visibility: hidden;">
+            <div class="choice-viewport choice-viewport-closed" @ref="viewportElement" style="display: none;">
             <div class="choice-content">
                 @if (Loading)
                 {
@@ -92,7 +85,6 @@
                             }
                             else
                             {
-                                @* Don't wrap in button if no OnItemClick - let ItemTemplate handle its own clicks *@
                                 @ItemTemplate(item)
                             }
                         }
@@ -186,10 +178,8 @@
     private ElementReference choiceElement;
     private ElementReference viewportElement;
     private ElementReference triggerButtonElement;
-    private string choiceElementId = Guid.NewGuid().ToString("N")[..8];
+    private string choiceElementId = Guid.NewGuid().ToString("N");
     private bool disposed = false;
-    private bool isDropdownOpen = false;
-    private DotNetObjectReference<RChoiceGeneric<TValue>> dotNetRef;
 
     [Parameter] public IEnumerable<TValue> Items { get; set; }
     [Parameter] public TValue SelectedValue { get; set; }
@@ -225,13 +215,14 @@
     {
         switch (args.Key)
         {
-            case " ": // Space
+            case " ":
             case "Enter":
                 await ToggleDropdown();
                 break;
             case "ArrowDown":
             case "ArrowUp":
-                if (!isDropdownOpen)
+                var isOpen = await JS.InvokeAsync<bool>("RRBlazor.Choice.isOpen", choiceElementId);
+                if (!isOpen)
                 {
                     await OpenDropdown();
                 }
@@ -284,23 +275,19 @@
         return string.Join(" ", baseClasses);
     }
 
-    /// <summary>
-    /// Gets the main component wrapper classes using design system patterns
-    /// </summary>
     private string GetComponentClasses()
     {
         var classes = new List<string>();
-        
-        // Use %component-foundation pattern
+
         var needsFormWrapper = !string.IsNullOrEmpty(Label) || !string.IsNullOrEmpty(ErrorMessage) || HasError;
         if (needsFormWrapper) classes.Add("form-wrapper");
-        
+
         classes.Add(GetBaseClasses());
         classes.Add(GetSizeClassesWithDensity());
-        
+
         if (HasError) classes.Add("choice-error form-error");
         if (Disabled) classes.Add("choice-disabled");
-        
+
         return string.Join(" ", classes.Where(c => !string.IsNullOrEmpty(c)));
     }
     
@@ -313,61 +300,36 @@
     private string GetHelpTextClasses() => 
         $"choice-help-text form-help text-muted {GetTextSizeClasses()} mt-1";
     
-    #region New Semantic CSS Class Methods
-    
-    /// <summary>
-    /// Gets trigger content wrapper classes using design system patterns
-    /// </summary>
     private string GetTriggerContentClasses() =>
         $"d-flex align-center justify-between w-full {DensityHelper.GetGap(Density)}";
     
-    /// <summary>
-    /// Gets trigger classes using design system patterns
-    /// </summary>
     private string GetTriggerClasses() =>
         $"d-flex align-center {DensityHelper.GetGap(Density)}";
     
-    /// <summary>
-    /// Gets icon classes using design system patterns  
-    /// </summary>
     private string GetItemIconClasses() =>
         $"material-symbols-rounded choice-icon {GetIconSizeClasses()}";
     
-    /// <summary>
-    /// Gets check icon classes using design system patterns
-    /// </summary>
     private string GetCheckIconClasses() =>
         $"material-symbols-rounded choice-check {GetIconSizeClasses()}";
     
-    /// <summary>
-    /// Gets loading icon classes using design system patterns
-    /// </summary>
     private string GetLoadingIconClasses() =>
         $"material-symbols-rounded animate-spin {GetIconSizeClasses()}";
     
-    /// <summary>
-    /// Gets error icon classes using design system patterns
-    /// </summary>
     private string GetErrorIconClasses() =>
         $"material-symbols-rounded text-error mr-1 {GetIconSizeClasses()}";
     
-    /// <summary>
-    /// Gets trigger button classes including error state
-    /// </summary>
     private string GetTriggerButtonClasses()
     {
         var classes = new List<string> { "choice-trigger", "w-full" };
-        
+
         if (HasError)
         {
             classes.Add("choice-trigger-error");
             classes.Add("form-input-error");
         }
-        
+
         return string.Join(" ", classes);
     }
-    
-    #endregion
 
     private bool IsItemActive(TValue item) => EqualityComparer<TValue>.Default.Equals(item, SelectedValue);
     private bool IsItemDisabled(TValue item) => ItemDisabledSelectorTyped?.Invoke(item) ?? false;
@@ -386,50 +348,41 @@
     private string GetSelectedItemIcon() => 
         SelectedValue != null ? GetItemIcon(SelectedValue) : "";
 
-    private async Task ToggleDropdown() 
+    private async Task ToggleDropdown()
     {
-        if (Disabled) return;
-        
-        try 
-        {
-            var isOpen = await JS.InvokeAsync<bool>("RRBlazor.Choice.isDropdownOpen", choiceElementId);
-            
-            if (isOpen)
-                await CloseDropdown();
-            else
-                await OpenDropdown();
-        }
-        catch 
-        {
-            if (isDropdownOpen)
-                await CloseDropdown();
-            else
-                await OpenDropdown();
-        }
+        if (Disabled || disposed) return;
+
+        var isCurrentlyOpen = await JS.InvokeAsync<bool>("RRBlazor.Choice.isOpen", choiceElementId);
+
+        if (isCurrentlyOpen)
+            await CloseDropdown();
+        else
+            await OpenDropdown();
     }
     
-    private async Task OpenDropdown() 
+    private async Task OpenDropdown()
     {
-        if (Disabled) return;
-        
-        isDropdownOpen = true;
-        StateHasChanged();
-        await Task.Yield();
-        
-        await JS.InvokeAsync<object>("RRBlazor.Choice.openDropdown", choiceElementId, new {
+        if (Disabled || disposed) return;
+
+        await JS.InvokeAsync<object>("RRBlazor.Choice.open", choiceElementId, new {
             direction = DropdownDirection.ToString().ToLowerInvariant(),
             useBackdrop = UseBackdrop,
             backdropClass = BackdropClass,
             closeOnBackdropClick = CloseOnBackdropClick,
-            closeOnEscape = CloseOnEscape
+            closeOnEscape = CloseOnEscape,
+            dropdownClass = DropdownClass
         });
+
+        StateHasChanged();
     }
     
-    private async Task CloseDropdown() 
+    private async Task CloseDropdown()
     {
-        isDropdownOpen = false;
+        if (disposed) return;
+
+        await JS.InvokeAsync<object>("RRBlazor.Choice.close", choiceElementId);
+
         StateHasChanged();
-        await JS.InvokeAsync<object>("RRBlazor.Choice.closeDropdown", choiceElementId);
     }
 
     private async Task OnItemSelected(TValue item)
@@ -450,6 +403,16 @@
     {
         if (disposed) return;
         disposed = true;
-        dotNetRef?.Dispose();
+
+        if (Mode == Dropdown)
+        {
+            try
+            {
+                await JS.InvokeVoidAsync("RRBlazor.Choice.close", choiceElementId);
+            }
+            catch
+            {
+            }
+        }
     }
 }

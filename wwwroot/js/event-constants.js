@@ -25,7 +25,14 @@ const EVENTS = Object.freeze({
     UI_COMPONENT_CLOSING: 'ui-component-closing',
     UI_COMPONENT_CLOSED: 'ui-component-closed',
     UI_COMPONENT_CLOSE_REQUEST: 'ui-component-close-request',
-    
+
+    // Hierarchical Component Events
+    PARENT_CLOSING: 'parent-closing',
+
+    // Context Detection Events
+    CONTEXT_QUERY_REQUEST: 'context-query-request',
+    CONTEXT_QUERY_RESPONSE: 'context-query-response',
+
     // Modal Events
     MODAL_PORTAL_READY: 'modal-portal-ready',
     MODAL_PORTAL_DESTROYED: 'modal-portal-destroyed',
@@ -111,12 +118,28 @@ const COMPONENT_TYPES = Object.freeze({
     MODAL: 'modal',
     CHOICE: 'choice',
     DROPDOWN: 'dropdown',
+    FILTER: 'filter',
     TOOLTIP: 'tooltip',
     DATEPICKER: 'datepicker',
     AUTOSUGGEST: 'autosuggest',
     SIDEBAR: 'sidebar',
     FORM: 'form',
     TABLE: 'table'
+});
+
+const TIMEOUTS = Object.freeze({
+    DEBOUNCE_FAST: 100,
+    DEBOUNCE_NORMAL: 300,
+    DEBOUNCE_SLOW: 500,
+    ANIMATION_FAST: 150,
+    ANIMATION_NORMAL: 250,
+    ANIMATION_SLOW: 400,
+    TOOLTIP_DELAY: 500,
+    AUTOSUGGEST_DELAY: 200,
+    KEYBOARD_REPEAT: 50,
+    FOCUS_DELAY: 100,
+    SCROLL_SETTLE: 150,
+    PORTAL_TIMEOUT: 200
 });
 
 class EventDispatcher {
@@ -147,7 +170,7 @@ class EventDispatcher {
         return new Promise((resolve, reject) => {
             const timeout = options.timeout || 5000;
             const target = options.target || document;
-            
+
             let timeoutId;
             if (timeout > 0) {
                 timeoutId = setTimeout(() => {
@@ -155,19 +178,41 @@ class EventDispatcher {
                     reject(new Error(`Timeout waiting for event: ${eventName}`));
                 }, timeout);
             }
-            
+
             const handler = (event) => {
                 if (options.filter && !options.filter(event)) {
                     return;
                 }
-                
+
                 if (timeoutId) clearTimeout(timeoutId);
                 target.removeEventListener(eventName, handler);
                 resolve(event);
             };
-            
+
             target.addEventListener(eventName, handler);
         });
+    }
+
+    /**
+     * Dispatch PARENT_CLOSING event with standardized format
+     * Consolidates duplicate parent closing patterns across components
+     */
+    static dispatchParentClosing(element, componentType, componentId, reason = `${componentType}-closing`) {
+        if (!element) return false;
+
+        const detail = {
+            reason,
+            componentType,
+            componentId
+        };
+
+        const closeEvent = new CustomEvent(EVENTS.PARENT_CLOSING, {
+            bubbles: true,
+            cancelable: false,
+            detail
+        });
+
+        return element.dispatchEvent(closeEvent);
     }
 }
 
@@ -176,8 +221,9 @@ if (typeof window !== 'undefined') {
     window.RRBlazor.Events = EVENTS;
     window.RRBlazor.EventPriorities = EVENT_PRIORITIES;
     window.RRBlazor.ComponentTypes = COMPONENT_TYPES;
+    window.RRBlazor.Timeouts = TIMEOUTS;
     window.RRBlazor.EventDispatcher = EventDispatcher;
 }
 
-export { EVENTS, EVENT_PRIORITIES, COMPONENT_TYPES, EventDispatcher };
+export { EVENTS, EVENT_PRIORITIES, COMPONENT_TYPES, TIMEOUTS, EventDispatcher };
 export default EVENTS;

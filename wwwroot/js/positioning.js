@@ -28,7 +28,7 @@ export class PositioningEngine {
             offset = 8,
             flip = true,
             constrain = true,
-            container = null, // Container bounds for constrained positioning
+            container = null,
             viewport = {
                 width: window.innerWidth,
                 height: window.innerHeight,
@@ -38,7 +38,7 @@ export class PositioningEngine {
         } = options;
 
         const [placement, alignment] = position.split('_');
-        
+
         let result = this._calculateBasePosition(
             triggerRect,
             targetDimensions,
@@ -49,7 +49,7 @@ export class PositioningEngine {
         );
 
         if (flip) {
-            const collision = this._detectCollision(result, targetDimensions, viewport);
+            const collision = this._detectCollision(result, targetDimensions, viewport, container);
             if (collision) {
                 const flippedPlacement = this._getFlippedPlacement(placement, collision);
                 const flippedResult = this._calculateBasePosition(
@@ -60,8 +60,8 @@ export class PositioningEngine {
                     offset,
                     viewport
                 );
-                
-                const flippedCollision = this._detectCollision(flippedResult, targetDimensions, viewport);
+
+                const flippedCollision = this._detectCollision(flippedResult, targetDimensions, viewport, container);
                 if (!flippedCollision || this._collisionScore(flippedCollision) < this._collisionScore(collision)) {
                     result = { ...flippedResult, flipped: true };
                 }
@@ -76,15 +76,33 @@ export class PositioningEngine {
             result = this._constrainToContainer(result, targetDimensions, container, offset);
         }
 
-        return {
+        const useBottomAnchor = result.placement === 'top';
+        const isRightAligned = alignment === 'end';
+
+        const bottomValue = useBottomAnchor
+            ? `${viewport.height - (Math.round(result.y) + targetDimensions.height)}px`
+            : 'auto';
+
+        const finalResult = {
             x: Math.round(result.x),
             y: Math.round(result.y),
             placement: `${result.placement}_${alignment}`,
-            flipped: result.flipped || false
+            flipped: result.flipped || false,
+            cssStyles: {
+                position: 'fixed',
+                left: `${Math.round(result.x)}px`,
+                top: useBottomAnchor ? 'auto' : `${Math.round(result.y)}px`,
+                bottom: bottomValue,
+                transformOrigin: useBottomAnchor
+                    ? (isRightAligned ? 'bottom right' : 'bottom left')
+                    : (isRightAligned ? 'top right' : 'top left')
+            }
         };
+        return finalResult;
     }
 
-    detectOptimalPosition(triggerRect, targetDimensions, viewport = null) {
+    detectOptimalPosition(triggerRect, targetDimensions, viewport = null, container = null) {
+
         if (!triggerRect) {
             throw new Error('PositioningEngine: triggerRect is required for optimal detection');
         }
@@ -101,13 +119,15 @@ export class PositioningEngine {
 
         const space = {
             top: triggerRect.top,
-            bottom: viewport.height - triggerRect.bottom,
+            bottom: (container ? container.bottom : viewport.height) - triggerRect.bottom,
             left: triggerRect.left,
-            right: viewport.width - triggerRect.right
+            right: (container ? container.right : viewport.width) - triggerRect.right
         };
         
 
         const safetyMargin = 20;
+
+
         let placement;
         if (space.bottom >= targetDimensions.height + safetyMargin) {
             placement = 'bottom';
@@ -121,7 +141,8 @@ export class PositioningEngine {
             placement = Object.keys(space).reduce((a, b) => space[a] > space[b] ? a : b);
         }
 
-        let alignment = 'start'; // Default alignment
+
+        let alignment = 'start';
         if (placement === 'top' || placement === 'bottom') {
             const centerX = triggerRect.left + triggerRect.width / 2;
             if (centerX - targetDimensions.width / 2 >= 0 && 
@@ -149,6 +170,8 @@ export class PositioningEngine {
 
     _calculateBasePosition(triggerRect, targetDimensions, placement, alignment, offset, viewport) {
         let x, y;
+
+
 
         switch (placement) {
             case 'top':
@@ -197,15 +220,28 @@ export class PositioningEngine {
             }
         }
 
-        return { x, y, placement };
+        const result = { x, y, placement };
+        return result;
     }
 
-    _detectCollision(position, targetDimensions, viewport) {
+    _detectCollision(position, targetDimensions, viewport, container = null) {
+        const bounds = container ? {
+            top: container.top,
+            left: container.left,
+            right: container.right,
+            bottom: container.bottom
+        } : {
+            top: 0,
+            left: 0,
+            right: viewport.width,
+            bottom: viewport.height
+        };
+
         const collision = {
-            top: position.y < 0,
-            bottom: position.y + targetDimensions.height > viewport.height,
-            left: position.x < 0,
-            right: position.x + targetDimensions.width > viewport.width
+            top: position.y < bounds.top,
+            bottom: position.y + targetDimensions.height > bounds.bottom,
+            left: position.x < bounds.left,
+            right: position.x + targetDimensions.width > bounds.right
         };
 
         const hasCollision = Object.values(collision).some(v => v);
@@ -279,7 +315,7 @@ export class PositioningEngine {
         }
 
         const [side, alignment] = placement.split('_');
-        const arrowSize = 8; // Standard arrow size
+        const arrowSize = 8;
         let x, y, arrowSide;
 
         switch (side) {
@@ -327,7 +363,7 @@ export class PositioningEngine {
         if (newPosition.x === currentPosition.x && 
             newPosition.y === currentPosition.y &&
             newPosition.placement === currentPosition.placement) {
-            return null; // No change needed
+            return null;
         }
 
         return newPosition;

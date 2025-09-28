@@ -1,14 +1,11 @@
-namespace RR.Blazor.Enums
+namespace RR.Blazor.Enums;
+
+public enum BaseModalGlassVariant
 {
-    /// <summary>
-    /// Glass effect variants for base modal components
-    /// </summary>
-    public enum BaseModalGlassVariant
-    {
-        Light,
-        Medium, 
-        Heavy,
-        Frost,
-        Interactive
-    }
+    None = 0,
+    Light = 1,
+    Medium = 2,
+    Heavy = 3,
+    Frost = 4,
+    Interactive = 5
 }

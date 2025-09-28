@@ -54,13 +54,19 @@ public abstract class RChoiceBase : RSizedComponentBase<SizeType>
     #endregion
     
     #region Choice Styling
-    
+
     /// <summary>
     /// Style variant for the choice component
     /// </summary>
     [Parameter, AIParameter("Style variant for choice component", "ChoiceType.Standard")]
     public ChoiceType Type { get; set; } = Standard;
-    
+
+    /// <summary>
+    /// CSS classes to apply to dropdown body (not trigger)
+    /// </summary>
+    [Parameter, AIParameter("CSS classes for dropdown body styling (width, height, etc.)", "min-w-80")]
+    public string DropdownClass { get; set; } = "";
+
     #endregion
     
     #region RSizedComponentBase Implementation
@@ -271,18 +277,24 @@ public class RChoice : RChoiceBase
         var genericChoiceType = typeof(RChoiceGeneric<>).MakeGenericType(_valueType);
         
         builder.OpenComponent(0, genericChoiceType);
-        
+
+        if (AdditionalAttributes != null)
+            builder.AddMultipleAttributes(1, AdditionalAttributes);
+
         // Forward all base parameters
         ForwardBaseParameters(builder, _valueType);
         
         // Set computed variant and style
-        builder.AddAttribute(1, "Mode", effectiveVariant);
-        
+        builder.AddAttribute(10, "Mode", effectiveVariant);
+
         // Convert items to the correct generic type for RChoiceGeneric
         var convertedItems = ConvertItemsToGenericType(itemsToUse, _valueType);
-        builder.AddAttribute(2, "Items", convertedItems);
-        builder.AddAttribute(3, "SelectedValue", SelectedValue);
-        builder.AddAttribute(4, "Loading", Loading);
+        builder.AddAttribute(11, "Items", convertedItems);
+
+        // Smart SelectedValue conversion - handle type mismatches
+        var convertedSelectedValue = ConvertSelectedValueToItemType(SelectedValue, convertedItems, _valueType);
+        builder.AddAttribute(12, "SelectedValue", convertedSelectedValue);
+        builder.AddAttribute(13, "Loading", Loading);
         
         
         builder.CloseComponent();
@@ -357,6 +369,59 @@ public class RChoice : RChoiceBase
         
         return singleItemList;
     }
+
+    private object ConvertSelectedValueToItemType(object selectedValue, object convertedItems, Type itemType)
+    {
+        // If SelectedValue is null or already the correct type, return as-is
+        if (selectedValue == null || itemType.IsInstanceOfType(selectedValue))
+        {
+            return selectedValue;
+        }
+
+        // Handle ChoiceItem type specifically
+        if (itemType == typeof(ChoiceItem) && convertedItems is IEnumerable<ChoiceItem> choiceItems)
+        {
+            // Find matching ChoiceItem by Value property
+            var selectedString = selectedValue.ToString();
+            var matchingItem = choiceItems.FirstOrDefault(item =>
+                item.Value?.ToString() == selectedString ||
+                item.Label == selectedString ||
+                item.Id == selectedString);
+
+            return matchingItem;
+        }
+
+        // Handle other enumerable types - find matching item by ToString() comparison
+        if (convertedItems is IEnumerable enumerable)
+        {
+            var selectedString = selectedValue.ToString();
+            foreach (var item in enumerable)
+            {
+                if (item?.ToString() == selectedString)
+                {
+                    return item;
+                }
+            }
+        }
+
+        // If no match found, return null (no selection)
+        return null;
+    }
+
+    private object ConvertItemToSelectedValue(object selectedItem, Type itemType)
+    {
+        if (selectedItem == null)
+            return null;
+
+        // If the selected item is a ChoiceItem, extract its Value
+        if (selectedItem is ChoiceItem choiceItem)
+        {
+            return choiceItem.Value ?? choiceItem.Label ?? choiceItem.Id;
+        }
+
+        // For other types, return the item as-is
+        return selectedItem;
+    }
     
     private ChoiceMode GetEffectiveVariant(List<object> items)
     {
@@ -396,12 +461,21 @@ public class RChoice : RChoiceBase
     private void ForwardBaseParameters(RenderTreeBuilder builder, Type itemType)
     {
         var sequence = 100;
-        
+
+
         // Forward events using object-based parameters - only add if they have delegates
         if (SelectedValueChanged.HasDelegate)
-            builder.AddAttribute(sequence++, "SelectedValueChangedObject", SelectedValueChanged);
-        
-        // Smart ItemLabelSelector for dictionaries
+        {
+            // Create a wrapper that converts the selected item back to the original value type
+            EventCallback<object> wrappedCallback = EventCallback.Factory.Create<object>(this, async (object selectedItem) =>
+            {
+                var convertedValue = ConvertItemToSelectedValue(selectedItem, itemType);
+                await SelectedValueChanged.InvokeAsync(convertedValue);
+            });
+            builder.AddAttribute(sequence++, "SelectedValueChangedObject", wrappedCallback);
+        }
+
+        // Smart ItemLabelSelector for dictionaries and ChoiceItem objects
         var labelSelector = ItemLabelSelector;
         if (labelSelector == null && _originalDictionary != null)
         {
@@ -410,6 +484,18 @@ public class RChoice : RChoiceBase
                 if (_originalDictionary.Contains(item))
                 {
                     return _originalDictionary[item]?.ToString() ?? item?.ToString() ?? "";
+                }
+                return item?.ToString() ?? "";
+            };
+        }
+        else if (labelSelector == null && itemType == typeof(ChoiceItem))
+        {
+            // Automatically extract Label property from ChoiceItem objects
+            labelSelector = (item) =>
+            {
+                if (item is ChoiceItem choiceItem)
+                {
+                    return choiceItem.Label ?? choiceItem.Value?.ToString() ?? "";
                 }
                 return item?.ToString() ?? "";
             };
@@ -440,13 +526,7 @@ public class RChoice : RChoiceBase
 
     private Type GetValueType()
     {
-        // Try to infer from SelectedValue first
-        if (SelectedValue != null)
-        {
-            return SelectedValue.GetType();
-        }
-
-        // Try to infer from Items collection
+        // Try to infer from Items collection FIRST - this is the actual item type
         if (Items != null)
         {
             var itemsToUse = Items;

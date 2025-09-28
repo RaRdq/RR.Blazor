@@ -8,18 +8,15 @@
 @inject IModalService ModalService
 
 @{
-    var contentClass = $"modal-content {GetSizeClass()}";
+    var contentClass = $"modal-content {GetSizeClass(Size)}";
     var wrapperClass = $"modal {Class}";
-    // When inside ModalProvider (ModalContext exists), use context visibility
-    var shouldDisplay = ModalContext != null ? ModalContext.IsVisible : Visible;
-    var displayStyle = shouldDisplay ? "" : "display: none !important;";
+    var displayStyle = IsModalVisible ? "" : "display: none !important;";
 }
 
-    <div class="@wrapperClass" @ref="modalElement" @attributes="GetSafeAttributes()" 
-         id="@GetModalId()"
+    <div class="@wrapperClass" @ref="modalElement" @attributes="GetSafeAttributes()"
          data-modal-id="@GetModalId()"
          data-close-on-backdrop="@CloseOnBackdrop.ToString().ToLower()"
-         data-modal-visible="@shouldDisplay.ToString().ToLower()"
+         data-modal-visible="@IsModalVisible.ToString().ToLower()"
          style="@displayStyle">
         <div class="@contentClass" @onclick:stopPropagation="true">
             @if (ShowHeader)
@@ -64,22 +61,22 @@
                         <div class="modal-footer-buttons">
                             @if (ShowCancelButton)
                             {
-                                <RButton Variant="VariantType.Secondary" 
-                                        Size="@ButtonSize" 
-                                        Icon="@CancelIcon" IconPosition="IconPosition.Start" 
-                                        Class="@CancelButtonClass" 
-                                        OnClick="HandleCancel" 
+                                <RButton Variant="VariantType.Secondary"
+                                        Size="@ButtonSize"
+                                        Icon="@CancelIcon" IconPosition="IconPosition.Start"
+                                        Class="@CancelButtonClass"
+                                        OnClick="HandleCancel"
                                         Disabled="@Loading">
                                     @CancelText
                                 </RButton>
                             }
                             @if (ShowPrimaryButton)
                             {
-                                <RButton Variant="VariantType.Primary" 
-                                        Size="@ButtonSize" 
-                                        Icon="@(Loading && ShowPrimaryButtonSpinner ? null : PrimaryIcon)" IconPosition="IconPosition.Start" 
-                                        Class="@PrimaryButtonClass" 
-                                        OnClick="HandlePrimaryAction" 
+                                <RButton Variant="VariantType.Primary"
+                                        Size="@ButtonSize"
+                                        Icon="@(Loading && ShowPrimaryButtonSpinner ? null : PrimaryIcon)" IconPosition="IconPosition.Start"
+                                        Class="@PrimaryButtonClass"
+                                        OnClick="HandlePrimaryAction"
                                         Disabled="@(Loading || PrimaryButtonDisabled)"
                                         Loading="@(Loading && ShowPrimaryButtonSpinner)">
                                     @(Loading && !string.IsNullOrEmpty(LoadingButtonText) ? LoadingButtonText : PrimaryText)
@@ -111,27 +108,31 @@
 @code {
     private ElementReference modalElement;
     private DotNetObjectReference<RModal> dotNetRef;
-    private string modalId = $"modal-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}-{Random.Shared.Next(1000, 9999)}";
-    private string _jsModalId;
+    private string modalId;
     private bool _jsModalRegistered = false;
+    private bool _lastVisibleState = false;
+    private bool _isClosing = false;
+
+    private bool IsModalVisible => Visible || (ModalContext != null);
     
     protected Dictionary<string, object> GetSafeAttributes()
         => RAttributeForwarder.GetSafeAttributes(AdditionalAttributes);
     
     [CascadingParameter] public ModalContext ModalContext { get; set; }
+
     [Parameter] public string ModalId { get; set; }
     [Parameter] public bool Visible { get; set; }
     [Parameter] public EventCallback<bool> VisibleChanged { get; set; }
     [Parameter] public SizeType Size { get; set; } = SizeType.Medium;
     [Parameter] public VariantType Variant { get; set; } = VariantType.Default;
-    
+
     [Parameter] public bool ShowHeader { get; set; } = true;
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public string Subtitle { get; set; }
     [Parameter] public string Icon { get; set; }
     [Parameter] public RenderFragment HeaderContent { get; set; }
     [Parameter] public bool ShowCloseButton { get; set; } = true;
-    
+
     [Parameter] public bool ShowFooter { get; set; } = true;
     [Parameter] public RenderFragment FooterContent { get; set; }
     [Parameter] public bool ShowCancelButton { get; set; } = true;
@@ -144,66 +145,101 @@
     [Parameter] public string PrimaryButtonClass { get; set; }
     [Parameter] public bool PrimaryButtonDisabled { get; set; }
     [Parameter] public SizeType ButtonSize { get; set; } = SizeType.Medium;
-    
+
     [Parameter] public bool Loading { get; set; }
     [Parameter] public string LoadingMessage { get; set; } = "Loading...";
     [Parameter] public string LoadingButtonText { get; set; }
     [Parameter] public bool ShowLoadingOverlay { get; set; } = true;
     [Parameter] public bool ShowPrimaryButtonSpinner { get; set; } = true;
-    
+
     [Parameter] public bool ShowUnsavedIndicator { get; set; }
     [Parameter] public bool HasUnsavedChanges { get; set; }
-    
+
     [Parameter] public bool CloseOnBackdrop { get; set; } = true;
     [Parameter] public bool CloseOnEscape { get; set; } = true;
     [Parameter] public bool DisableBackdrop { get; set; } = false;
-    
+
     [Parameter] public EventCallback OnClose { get; set; }
     [Parameter] public EventCallback OnCancel { get; set; }
     [Parameter] public EventCallback OnPrimaryAction { get; set; }
-    
-    
+
+    protected override void OnInitialized()
+    {
+        modalId = ModalId ?? ModalContext?.ModalId ?? $"modal-{Guid.NewGuid():N}";
+    }
+
+    protected override void OnParametersSet()
+    {
+        // Parameters updated
+    }
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (ModalContext != null) return;
-
         if (firstRender)
+        {
             dotNetRef = DotNetObjectReference.Create(this);
-        
-        if (Visible && !_jsModalRegistered)
-            await RegisterWithJS();
-        else if (!Visible && _jsModalRegistered)
-            await UnregisterFromJS();
+            _lastVisibleState = false;
+        }
+
+        if (IsModalVisible != _lastVisibleState)
+        {
+            _lastVisibleState = IsModalVisible;
+
+            if (IsModalVisible && !_jsModalRegistered && !_isClosing)
+            {
+                await RegisterWithJS();
+            }
+            else if (!IsModalVisible && _jsModalRegistered)
+            {
+                await UnregisterFromJS();
+            }
+        }
     }
     
-    public async Task Close() => await CloseAsync(Enums.ModalResult.None);
+    public async Task Close()
+    {
+        await CloseAsync(Enums.ModalResult.None);
+    }
     
     public async Task CloseAsync(Enums.ModalResult result = Enums.ModalResult.None)
     {
-        // If modal is inside ModalProvider (service-managed)
+        if (_isClosing)
+            return;
+
+        _isClosing = true;
+
+        // If this modal was opened via ModalService (has ModalContext), notify the service to close it
         if (ModalContext != null)
         {
-            // Close through ModalService for proper cleanup
             await ModalService.CloseAsync(ModalContext.ModalId, result);
+            _isClosing = false;
+            return; // The service will handle the rest of the cleanup
         }
-        else
+
+        await DispatchParentClosingEvent();
+        Visible = false;
+
+        if (_jsModalRegistered)
         {
-            // Standalone modal (Case 3: direct bind-Visible)
-            Visible = false;
-            if (_jsModalRegistered)
-                await UnregisterFromJS();
-                
-            await VisibleChanged.InvokeAsync(false);
-            await OnClose.InvokeAsync();
-            
-            StateHasChanged();
+            await UnregisterFromJS();
         }
+
+        if (VisibleChanged.HasDelegate)
+        {
+            await VisibleChanged.InvokeAsync(false);
+        }
+
+        await OnClose.InvokeAsync();
+        StateHasChanged();
+        _isClosing = false;
     }
     
     private async Task HandleCancel()
     {
         if (OnCancel.HasDelegate)
+        {
             await OnCancel.InvokeAsync();
+        }
 
         await Close();
     }
@@ -215,7 +251,7 @@
             await OnPrimaryAction.InvokeAsync();
             return;
         }
-    
+
         // If no handler specified, close the modal (for simple Ok/Close scenarios)
         await Close();
     }
@@ -226,16 +262,9 @@
             await Close();
     }
     
-    private string GetModalId()
-    {
-        // Priority: ModalContext > ModalId parameter > generated ID
-        if (ModalContext?.ModalId != null)
-            return ModalContext.ModalId;
-        
-        return !string.IsNullOrEmpty(ModalId) ? ModalId : modalId;
-    }
+    private string GetModalId() => modalId;
     
-    private string GetSizeClass() => Size switch
+    private string GetSizeClass(SizeType size) => size switch
     {
         SizeType.ExtraSmall => "modal-content-xs",
         SizeType.Small => "modal-content-small",
@@ -247,66 +276,56 @@
     [JSInvokable]
     public async Task OnModalClosedFromJS()
     {
-        Visible = false;
-        await VisibleChanged.InvokeAsync(false);
+        if (VisibleChanged.HasDelegate)
+            await VisibleChanged.InvokeAsync(false);
+
+        await OnClose.InvokeAsync();
         StateHasChanged();
     }
     
     
     private async Task RegisterWithJS()
     {
-        var modalId = GetModalId();
-        var contentSelector = $"[data-modal-id='{modalId}']";
-        
-        await Task.Yield();
-        
-        object modalConfig;
-        
-        if (ModalContext == null)
+        if (_isClosing)
+            return;
+
+        var id = GetModalId();
+        var contentSelector = $"[data-modal-id='{id}']";
+
+        var modalConfig = new
         {
-            dotNetRef = DotNetObjectReference.Create(this);
-            modalConfig = new
-            {
-                closeOnBackdrop = CloseOnBackdrop && !DisableBackdrop,
-                closeOnEscape = CloseOnEscape,
-                backdrop = !DisableBackdrop,
-                blur = 8,
-                className = "modal-backdrop-dark",
-                modalId = modalId,
-                dotNetRef = dotNetRef
-            };
-        }
-        else
-        {
-            modalConfig = new
-            {
-                closeOnBackdrop = CloseOnBackdrop && !DisableBackdrop,
-                closeOnEscape = CloseOnEscape,
-                backdrop = !DisableBackdrop,
-                blur = 8,
-                className = "modal-backdrop-dark"
-            };
-        }
-        
+            closeOnBackdrop = CloseOnBackdrop && !DisableBackdrop,
+            closeOnEscape = CloseOnEscape,
+            backdrop = !DisableBackdrop,
+            blur = 8,
+            className = "modal-backdrop-dark",
+            opacity = 0.6,
+            modalId = id,
+            dotNetRef = dotNetRef,
+            isServiceModal = ModalContext != null
+        };
+
         await JSInterop.TryInvokeVoidAsync("RRBlazor.Modal.show", contentSelector, modalConfig);
-        _jsModalId = modalId; 
         _jsModalRegistered = true;
     }
     
     private async Task UnregisterFromJS()
     {
-        var idToDestroy = !string.IsNullOrEmpty(_jsModalId) ? _jsModalId : modalId;
-        await JSInterop.TryInvokeVoidAsync("RRBlazor.Modal.hide", idToDestroy);
-        _jsModalId = null;
+        await JSInterop.TryInvokeVoidAsync("RRBlazor.Modal.hide", modalId);
         _jsModalRegistered = false;
+    }
+
+    private async Task DispatchParentClosingEvent()
+    {
+        if (ModalContext == null)
+            await JSInterop.TryInvokeVoidAsync("RRBlazor.Modal.dispatchParentClosing", GetModalId());
     }
 
     public async ValueTask DisposeAsync()
     {
         if (_jsModalRegistered)
-        {
             await UnregisterFromJS();
-        }
+
         dotNetRef?.Dispose();
     }
 }

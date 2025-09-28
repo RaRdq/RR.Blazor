@@ -1,469 +1,263 @@
 
-import { PositioningEngine } from './positioning.js';
+import dropdownManager from './dropdown-manager.js';
 
-const positioningEngine = new PositioningEngine();
+const CHOICE_CONFIG = {
+    ITEM_HEIGHT_PX: 40,
+    DROPDOWN_PADDING_PX: 16,
+    MAX_DROPDOWN_HEIGHT_PX: 320,
+    USER_MENU_MIN_WIDTH_PX: 280,
+    DEFAULT_MIN_WIDTH_PX: 200,
+    CLICK_PRIORITY: 10,
+    DEFAULT_OFFSET_PX: 4,
+    HIGHLIGHT_INDEX_RESET: -1,
+    INDEX_INCREMENT: 1,
+    INDEX_DECREMENT: 1,
+    MIN_INDEX: 0,
+    MIN_HIGHLIGHT_INDEX: 0
+};
 
-let activeDropdown = null;
-let keyboardNavigationEnabled = false;
-let currentHighlightedIndex = -1;
-let pendingOperations = new Set();
-let activePortals = new Map();
-let viewportLocations = new Map();
 
-const Choice = {
+function validateElement(element, elementName) {
+    if (!element) {
+        throw new Error(`${elementName} is null or undefined`);
+    }
+    if (!(element instanceof Element)) {
+        throw new Error(`${elementName} is not a DOM Element`);
+    }
+    if (!element.parentNode) {
+        throw new Error(`${elementName} is not attached to the DOM`);
+    }
+    return true;
+}
+
+function validateChoiceStructure(choiceElement, choiceElementId) {
+    validateElement(choiceElement, `Choice element ${choiceElementId}`);
+
+    if (!choiceElement.hasAttribute('data-choice-id')) {
+        throw new Error(`Choice element ${choiceElementId} missing required data-choice-id attribute`);
+    }
+
+    const viewport = choiceElement.querySelector('.choice-viewport');
+    if (!viewport) {
+        throw new Error(`Choice element ${choiceElementId} missing required .choice-viewport child`);
+    }
+    validateElement(viewport, `Choice viewport for ${choiceElementId}`);
+
+    return viewport;
+}
+
+class ChoiceManager {
+    constructor() {
+        this.keyboardNavigationEnabled = false;
+        this.currentHighlightedIndex = CHOICE_CONFIG.HIGHLIGHT_INDEX_RESET;
+        this.setupItemClickHandling();
+    }
     initialize() {
         document.addEventListener(window.RRBlazor.Events.UI_COMPONENT_CLOSE_REQUEST, (event) => {
-            if (event.detail.componentType === window.RRBlazor.ComponentTypes.CHOICE && activeDropdown === event.detail.componentId) {
-                this.closeDropdown(event.detail.componentId);
+            if (event.detail.componentType === window.RRBlazor.ComponentTypes.CHOICE && dropdownManager.isOpen(event.detail.componentId)) {
+                this.close(event.detail.componentId);
             }
         });
-    },
-    
-    /**
-     * Find viewport element for a choice component - always a child
-     */
-    findViewport(choiceElement, choiceElementId) {
-        if (!choiceElement) {
-            return null;
-        }
-        
-        const viewport = choiceElement.querySelector('.choice-viewport');
-        if (!viewport) {
-        }
-        return viewport;
-    },
-    
-    async openDropdown(choiceElementId, options = {}) {
-        if (pendingOperations.has(choiceElementId)) return;
-        
-        pendingOperations.add(choiceElementId);
-        try {
-            const choiceElement = document.querySelector(`[data-choice-id="${choiceElementId}"]`);
-            if (!choiceElement) {
-                    return;
-            }
-            
-            const trigger = choiceElement.querySelector('.choice-trigger') || choiceElement.querySelector('.choice-trigger-wrapper');
-            if (!trigger) {
-                return;
-            }
-            
-            const viewport = this.findViewport(choiceElement, choiceElementId);
-            if (!viewport) {
-                return;
-            }
-            
-            if (activeDropdown && activeDropdown !== choiceElementId) {
-                await this.closeDropdown(activeDropdown);
-            }
-            
-            window.RRBlazor.EventDispatcher.dispatch(
-                window.RRBlazor.Events.UI_COMPONENT_OPENING,
-                {
-                    componentType: window.RRBlazor.ComponentTypes.CHOICE,
-                    componentId: choiceElementId,
-                    priority: window.RRBlazor.EventPriorities.NORMAL
-                }
-            );
 
-            const portalId = `choice-${choiceElementId}`;
-            
-
-            const triggerRect = trigger.getBoundingClientRect();
-            const dropdownMaxHeight = 320;
-            const isUserMenu = choiceElement.closest('[class*="role-switcher"], [class*="user-menu"], .choice-dropdown[data-choice-id*="user"]');
-            const baseMinWidth = isUserMenu ? 280 : 200;
-            const minWidth = Math.max(triggerRect.width, baseMinWidth);
-            
-            const itemCount = viewport.querySelectorAll('.choice-item').length;
-            const estimatedHeight = Math.min(itemCount * 40 + 16, dropdownMaxHeight); // 40px per item + padding
-            const targetDimensions = {
-                width: minWidth,
-                height: estimatedHeight
-            };
-            
-            
-            let desiredPosition;
-            if (!options.direction || options.direction === 'auto') {
-                desiredPosition = positioningEngine.detectOptimalPosition(triggerRect, targetDimensions);
-            } else {
-                const directionMap = {
-                    'bottom': PositioningEngine.POSITIONS.BOTTOM_START,
-                    'bottom-start': PositioningEngine.POSITIONS.BOTTOM_START,
-                    'bottom-center': PositioningEngine.POSITIONS.BOTTOM_CENTER,
-                    'bottom-end': PositioningEngine.POSITIONS.BOTTOM_END,
-                    'top': PositioningEngine.POSITIONS.TOP_START,
-                    'top-start': PositioningEngine.POSITIONS.TOP_START,
-                    'top-center': PositioningEngine.POSITIONS.TOP_CENTER,
-                    'top-end': PositioningEngine.POSITIONS.TOP_END,
-                    'left': PositioningEngine.POSITIONS.LEFT_START,
-                    'left-start': PositioningEngine.POSITIONS.LEFT_START,
-                    'left-center': PositioningEngine.POSITIONS.LEFT_CENTER,
-                    'left-end': PositioningEngine.POSITIONS.LEFT_END,
-                    'right': PositioningEngine.POSITIONS.RIGHT_START,
-                    'right-start': PositioningEngine.POSITIONS.RIGHT_START,
-                    'right-center': PositioningEngine.POSITIONS.RIGHT_CENTER,
-                    'right-end': PositioningEngine.POSITIONS.RIGHT_END
-                };
-                desiredPosition = directionMap[options.direction] || PositioningEngine.POSITIONS.BOTTOM_START;
-            }
-            
-            const containerElement = choiceElement.closest('[data-container], .sidebar, .app-sidebar, .modal, .dialog, [class*="sidebar"], [class*="panel"]');
-            const containerRect = containerElement ? containerElement.getBoundingClientRect() : null;
-            
-            let adaptedDimensions = { ...targetDimensions };
-            if (containerRect) {
-                const maxContainerWidth = containerRect.width - 16; // Leave 16px total margin
-                if (adaptedDimensions.width > maxContainerWidth) {
-                    adaptedDimensions.width = Math.max(maxContainerWidth, triggerRect.width);
-                }
-            }
-            
-            const position = positioningEngine.calculatePosition(
-                triggerRect,
-                adaptedDimensions,
-                {
-                    position: desiredPosition,
-                    offset: 4, // Reduced from 8 to 4 since we removed SCSS transform offset
-                    flip: true,
-                    constrain: true,
-                    container: containerRect
-                }
-            );
-
-            const portalPromise = this._waitForPortal(choiceElementId);
-            
-            window.RRBlazor.EventDispatcher.dispatch(
-                window.RRBlazor.Events.PORTAL_CREATE_REQUEST,
-                {
-                    requesterId: `choice-${choiceElementId}`,
-                    config: {
-                        id: `choice-portal-${choiceElementId}`,
-                        className: 'choice-portal'
+        document.addEventListener(window.RRBlazor.Events.PARENT_CLOSING, (event) => {
+            if (event.detail?.reason === 'modal-closing') {
+                const choiceElements = event.target.querySelectorAll('[data-choice-id]');
+                choiceElements.forEach(element => {
+                    const choiceId = element.getAttribute('data-choice-id');
+                    if (choiceId) {
+                        choiceManager.close(choiceId);
                     }
-                }
-            );
-            
-            const portal = await portalPromise;
-            
-            viewport._originalParent = viewport.parentNode;
-            viewport._originalNextSibling = viewport.nextSibling;
-            
-            viewport.style.position = '';
-            viewport.style.top = '';
-            viewport.style.left = '';
-            viewport.style.transform = '';
-            
-            if (portal && portal.element) {
-                portal.element.appendChild(viewport);
-                viewportLocations.set(choiceElementId, portal.element);
-                
-                viewport.style.position = 'fixed';
-                viewport.style.left = `${position.x}px`;
-                viewport.style.top = `${position.y}px`;
-                viewport.style.width = `${adaptedDimensions.width}px`;
-                viewport.style.maxHeight = `${dropdownMaxHeight}px`;
-            } else {
-                viewport.style.position = 'fixed';
-                viewport.style.left = `${position.x}px`;
-                viewport.style.top = `${position.y}px`;
-                viewport.style.width = `${adaptedDimensions.width}px`;
-                viewport.style.maxHeight = `${dropdownMaxHeight}px`;
-                viewportLocations.set(choiceElementId, viewport.parentElement || document.body);
+                });
             }
+        });
 
-            this.applyDropdownStyles(viewport, adaptedDimensions.width);
-            
-            Object.assign(viewport.style, {
-                visibility: 'visible',
-                display: 'block',
-                opacity: '1',
-                zIndex: '9999',
-                pointerEvents: 'auto'
-            });
-            viewport.style.zIndex = '9999';
-            
-            viewport.classList.remove('choice-viewport-closed');
-            viewport.classList.add('choice-viewport-open');
-            choiceElement.classList.add('choice-open');
+    }
 
-            activeDropdown = choiceElementId;
-            activePortals.set(choiceElementId, portalId);
-            
-            window.RRBlazor.EventDispatcher.dispatch(
-                window.RRBlazor.Events.UI_COMPONENT_OPENED,
-                {
-                    componentType: window.RRBlazor.ComponentTypes.CHOICE,
-                    componentId: choiceElementId
-                }
-            );
-            
-            window.RRBlazor.ClickOutside.register(`choice-${choiceElementId}`, choiceElement, {
-                excludeSelectors: [
-                    '.choice-trigger',
-                    '.choice-viewport', 
-                    '.choice-content',
-                    '.choice-portal',
-                    '.modal-portal',
-                    '.modal-content',
-                    '[data-modal-id]',
-                    `[data-choice-id="${choiceElementId}"]`,
-                    `[data-viewport-id="${choiceElementId}"]`
-                ]
-            });
-
-            // Add click-outside listener - listen for the EventDispatcher's CustomEvent on document
-            const clickOutsideHandler = (event) => {
-                if (event.detail && event.detail.elementId === `choice-${choiceElementId}`) {
-                    this.closeDropdown(choiceElementId);
-                }
-            };
-            document.addEventListener(window.RRBlazor.Events.CLICK_OUTSIDE, clickOutsideHandler);
-            
-            // Store handler for cleanup
-            choiceElement._clickOutsideHandler = clickOutsideHandler;
-
-            // Add scroll and resize handlers to reposition dropdown
-            const repositionHandler = () => {
-                if (!trigger || !viewport) return;
-                
-                const triggerRect = trigger.getBoundingClientRect();
-                const position = positioningEngine.calculatePosition(
-                    triggerRect,
-                    adaptedDimensions,
-                    {
-                        position: desiredPosition,
-                        offset: 4,
-                        flip: true,
-                        constrain: true,
-                        container: containerRect
-                    }
-                );
-                
-                viewport.style.left = `${position.x}px`;
-                viewport.style.top = `${position.y}px`;
-            };
-            
-            // Throttle scroll/resize events
-            let repositionTimer;
-            const throttledReposition = () => {
-                clearTimeout(repositionTimer);
-                repositionTimer = setTimeout(repositionHandler, 10);
-            };
-            
-            window.addEventListener('scroll', throttledReposition, true);
-            window.addEventListener('resize', throttledReposition);
-            
-            // Store handlers for cleanup
-            choiceElement._scrollHandler = throttledReposition;
-            choiceElement._resizeHandler = throttledReposition;
-
-            this.enableKeyboardNavigation(choiceElementId);
-            this.scrollSelectedIntoView(viewport);
-            
-            return portalId;
-        } finally {
-            pendingOperations.delete(choiceElementId);
-        }
-    },
-
-    async closeDropdown(choiceElementId) {
-        if (!choiceElementId || activeDropdown !== choiceElementId) return false;
-        
-        window.RRBlazor.EventDispatcher.dispatch(
-            window.RRBlazor.Events.UI_COMPONENT_CLOSING,
+    setupItemClickHandling() {
+        window.RRBlazor.ClickManager.registerDelegate(
+            'choice-items',
+            '.choice-item',
+            (event, item) => this.handleItemClick(event, item),
             {
-                componentType: window.RRBlazor.ComponentTypes.CHOICE,
-                componentId: choiceElementId
+                priority: CHOICE_CONFIG.CLICK_PRIORITY,
+                excludeSelectors: ['[data-column-manager]', 'input', 'button', '.choice-trigger-wrapper'],
+                stopPropagation: true
             }
         );
+    }
 
-        const choiceElement = document.querySelector(`[data-choice-id="${choiceElementId}"]`);
-        if (!choiceElement) {
-            activeDropdown = null;
-            return false;
-        }
+    handleItemClick(event, item) {
+        if (!item || item.disabled) return;
 
-        let viewport = null;
-        
-        if (viewportLocations.has(choiceElementId)) {
-            const location = viewportLocations.get(choiceElementId);
-            if (location) {
-                viewport = location.querySelector('.choice-viewport');
-            }
-        }
-        
-        if (!viewport) {
-            viewport = this.findViewport(choiceElement, choiceElementId);
-        }
-        
-        if (!viewport) {
-            activeDropdown = null;
-            return false;
-        }
+        event.preventDefault();
+        const choiceElement = item.closest('[data-choice-id]');
+        if (!choiceElement) return;
 
-        viewport.classList.remove('choice-viewport-open');
-        viewport.classList.add('choice-viewport-closed');
-        choiceElement.classList.remove('choice-open');
+        const choiceId = choiceElement.dataset.choiceId;
+        this.selectItem(choiceId, item);
 
-        if (viewport._originalParent) {
-            if (viewport._originalNextSibling) {
-                viewport._originalParent.insertBefore(viewport, viewport._originalNextSibling);
-            } else {
-                viewport._originalParent.appendChild(viewport);
-            }
-            
-            viewport.style.position = 'absolute';
-            viewport.style.top = '-9999px';
-            viewport.style.left = '-9999px';
-            viewport.style.visibility = 'hidden';
-            
-            delete viewport._originalParent;
-            delete viewport._originalNextSibling;
-        }
-
-        // Request portal cleanup via events (Dependency Inversion)
-        window.RRBlazor.EventDispatcher.dispatch(
-            window.RRBlazor.Events.PORTAL_DESTROY_REQUEST,
-            { requesterId: `choice-${choiceElementId}`, portalId: `choice-portal-${choiceElementId}` }
-        );
-
-        this.disableKeyboardNavigation();
-        window.RRBlazor.ClickOutside.unregister(`choice-${choiceElementId}`);
-        
-        // Clean up click-outside handler if it exists
-        if (choiceElement && choiceElement._clickOutsideHandler) {
-            document.removeEventListener(window.RRBlazor.Events.CLICK_OUTSIDE, choiceElement._clickOutsideHandler);
-            delete choiceElement._clickOutsideHandler;
-        }
-        
-        // Clean up scroll and resize handlers
-        if (choiceElement && choiceElement._scrollHandler) {
-            window.removeEventListener('scroll', choiceElement._scrollHandler, true);
-            delete choiceElement._scrollHandler;
-        }
-        if (choiceElement && choiceElement._resizeHandler) {
-            window.removeEventListener('resize', choiceElement._resizeHandler);
-            delete choiceElement._resizeHandler;
-        }
-        
-        activeDropdown = null;
-        activePortals.delete(choiceElementId);
-        viewportLocations.delete(choiceElementId);
-        
-        window.RRBlazor.EventDispatcher.dispatch(
-            window.RRBlazor.Events.UI_COMPONENT_CLOSED,
-            {
-                componentType: window.RRBlazor.ComponentTypes.CHOICE,
-                componentId: choiceElementId
-            }
-        );
-        
         return true;
-    },
+    }
 
+    cleanup() {
+        window.RRBlazor.ClickManager.unregisterDelegate('choice-items');
+    }
+    
+    findViewport(choiceElement, choiceElementId) {
+        const viewport = validateChoiceStructure(choiceElement, choiceElementId);
+        return viewport;
+    }
 
-    applyDropdownStyles(viewport, triggerWidth) {
-        const minWidth = Math.max(triggerWidth, 200); // From plan
-        
-        viewport.style.minWidth = `${minWidth}px`;
-        viewport.style.maxHeight = '320px'; // From plan
-        viewport.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)'; // From plan
-        viewport.style.borderRadius = '8px';
-        viewport.style.overflow = 'hidden';
-        viewport.style.background = 'var(--color-surface-elevated)';
-        viewport.style.border = '1px solid var(--color-border)';
+    async open(choiceElementId, options = {}) {
+        const choiceElement = document.querySelector(`[data-choice-id="${choiceElementId}"]`);
+        validateChoiceStructure(choiceElement, choiceElementId);
 
-        const content = viewport.querySelector('.choice-content');
-        if (content) {
-            content.style.maxHeight = '320px';
-            content.style.overflowY = 'auto';
+        const trigger = choiceElement.querySelector('.choice-trigger') || choiceElement.querySelector('.choice-trigger-wrapper');
+        const viewport = this.findViewport(choiceElement, choiceElementId);
+
+        if (!trigger || !viewport) {
+            throw new Error(`Cannot open dropdown - trigger or viewport not found in: ${choiceElementId}`);
         }
-    },
+
+        const triggerRect = trigger.getBoundingClientRect();
+        const minWidth = Math.max(triggerRect.width, CHOICE_CONFIG.DEFAULT_MIN_WIDTH_PX);
+
+        const itemCount = viewport.querySelectorAll('.choice-item').length;
+        const estimatedHeight = Math.min(itemCount * CHOICE_CONFIG.ITEM_HEIGHT_PX + CHOICE_CONFIG.DROPDOWN_PADDING_PX, CHOICE_CONFIG.MAX_DROPDOWN_HEIGHT_PX);
+        const targetDimensions = {
+            width: minWidth,
+            height: estimatedHeight
+        };
+
+        return await dropdownManager.positionDropdown(choiceElement, {
+            contentSelector: '.choice-viewport',
+            triggerSelector: '.choice-trigger, .choice-trigger-wrapper',
+            componentType: 'choice',
+            componentId: choiceElementId,
+            dimensions: targetDimensions,
+            position: options.direction || 'auto',
+            offset: CHOICE_CONFIG.DEFAULT_OFFSET_PX,
+            allowMultiple: false,
+            customTriggerBounds: triggerRect,
+            excludeSelectors: [
+                '.choice-trigger',
+                '.choice-trigger-wrapper',
+                '.choice-viewport',
+                '.choice-content',
+                `[data-choice-id="${choiceElementId}"]`
+            ],
+            onOpen: (element, viewport) => {
+                if (!element?.classList) {
+                    throw new Error(`Choice onOpen: Invalid element passed for ${choiceElementId}`);
+                }
+                if (!element.hasAttribute('data-choice-id')) {
+                    throw new Error(`Choice onOpen: Element missing required data-choice-id attribute for ${choiceElementId}`);
+                }
+                if (!viewport?.classList) {
+                    throw new Error(`Choice onOpen: Invalid viewport passed for ${choiceElementId}`);
+                }
+
+                element.classList.add('choice-open');
+                viewport.classList.remove('choice-viewport-hidden');
+                viewport.classList.add('choice-viewport-positioned');
+
+                if (options.dropdownClass) {
+                    const customClasses = options.dropdownClass.split(' ').filter(cls => cls.trim());
+                    customClasses.forEach(cls => viewport.classList.add(cls));
+                }
+
+                this.enableKeyboardNavigation(choiceElementId);
+                this.scrollSelectedIntoView(viewport);
+            },
+            onClose: (element, viewport) => {
+                element.classList.remove('choice-open');
+                viewport.classList.remove('choice-viewport-positioned');
+                viewport.classList.add('choice-viewport-hidden');
+
+                if (options.dropdownClass) {
+                    const customClasses = options.dropdownClass.split(' ').filter(cls => cls.trim());
+                    customClasses.forEach(cls => viewport.classList.remove(cls));
+                }
+
+                this.disableKeyboardNavigation();
+            },
+            clickOutsideOptions: {
+                callback: () => this.close(choiceElementId)
+            }
+        });
+    }
+
+    async close(choiceElementId) {
+        return await dropdownManager.closeDropdown(choiceElementId);
+    }
+
+    getOpenChoiceId() {
+        const allChoices = document.querySelectorAll('[data-choice-id]');
+        for (const choiceElement of allChoices) {
+            const choiceId = choiceElement.getAttribute('data-choice-id');
+            if (dropdownManager.isOpen(choiceId)) {
+                return choiceId;
+            }
+        }
+        return null;
+    }
+
 
     enableKeyboardNavigation(choiceElementId) {
-        const choiceElement = document.querySelector(`[data-choice-id="${choiceElementId}"]`);
-        if (!choiceElement) return;
-        
-        let viewport = null;
-        if (viewportLocations.has(choiceElementId)) {
-            const location = viewportLocations.get(choiceElementId);
-            if (location) {
-                viewport = location.querySelector('.choice-viewport');
-            }
-        }
-        
-        if (!viewport) {
-            viewport = this.findViewport(choiceElement, choiceElementId);
-        }
-        
-        if (viewport) {
-            window.RRBlazor.EventDispatcher.dispatch(
-                window.RRBlazor.Events.CHOICE_KEYBOARD_ENABLE,
-                { choiceId: choiceElementId, viewport }
-            );
-        }
-        
-        keyboardNavigationEnabled = true;
-        currentHighlightedIndex = -1;
-    },
+        const viewport = dropdownManager.getViewport(choiceElementId);
+        if (!viewport) return;
+
+        window.RRBlazor.EventDispatcher.dispatch(
+            window.RRBlazor.Events.CHOICE_KEYBOARD_ENABLE,
+            { choiceId: choiceElementId, viewport }
+        );
+
+        this.keyboardNavigationEnabled = true;
+        this.currentHighlightedIndex = -1;
+    }
 
     disableKeyboardNavigation() {
         window.RRBlazor.EventDispatcher.dispatch(
             window.RRBlazor.Events.CHOICE_KEYBOARD_DISABLE
         );
-        keyboardNavigationEnabled = false;
-        currentHighlightedIndex = -1;
-    },
+        this.keyboardNavigationEnabled = false;
+        this.currentHighlightedIndex = CHOICE_CONFIG.HIGHLIGHT_INDEX_RESET;
+    }
 
     handleKeyDown(event) {
-        if (!keyboardNavigationEnabled || !activeDropdown) return;
+        if (!this.keyboardNavigationEnabled) return;
 
-        const choiceElement = document.querySelector(`[data-choice-id="${activeDropdown}"]`);
-        if (!choiceElement) return;
+        const openChoiceId = this.getOpenChoiceId();
+        if (!openChoiceId) return;
 
-        let viewport = null;
-        
-        // First check if viewport is in a portal (when dropdown is open)
-        if (viewportLocations.has(activeDropdown)) {
-            const location = viewportLocations.get(activeDropdown);
-            if (location) {
-                viewport = location.querySelector('.choice-viewport');
-            }
-        }
-        
-        // If not in portal, use standard lookup
-        if (!viewport) {
-            viewport = this.findViewport(choiceElement, activeDropdown);
-        }
-        
+        const viewport = dropdownManager.getViewport(openChoiceId);
         if (!viewport) return;
-        
+
         const items = Array.from(viewport.querySelectorAll('.choice-item:not([disabled])'));
 
         switch (event.key) {
             case 'ArrowDown':
                 event.preventDefault();
-                currentHighlightedIndex = Math.min(currentHighlightedIndex + 1, items.length - 1);
-                Choice.highlightItem(items, currentHighlightedIndex);
+                this.currentHighlightedIndex = Math.min(this.currentHighlightedIndex + 1, items.length - 1);
+                this.highlightItem(items, this.currentHighlightedIndex);
                 break;
             case 'ArrowUp':
                 event.preventDefault();
-                currentHighlightedIndex = Math.max(currentHighlightedIndex - 1, 0);
-                Choice.highlightItem(items, currentHighlightedIndex);
+                this.currentHighlightedIndex = Math.max(this.currentHighlightedIndex - 1, 0);
+                this.highlightItem(items, this.currentHighlightedIndex);
                 break;
             case 'Enter':
                 event.preventDefault();
-                if (currentHighlightedIndex >= 0 && items[currentHighlightedIndex]) {
-                    items[currentHighlightedIndex].click();
+                if (this.currentHighlightedIndex >= 0 && items[this.currentHighlightedIndex]) {
+                    items[this.currentHighlightedIndex].click();
                 }
                 break;
             case 'Escape':
                 event.preventDefault();
-                Choice.closeDropdown(activeDropdown);
+                this.close(openChoiceId);
                 break;
         }
-    },
+    }
 
     highlightItem(items, index) {
         items.forEach(item => item.classList.remove('choice-item-highlighted'));
@@ -473,14 +267,14 @@ const Choice = {
             item.classList.add('choice-item-highlighted');
             item.scrollIntoView({ block: 'nearest' });
         }
-    },
+    }
 
     scrollSelectedIntoView(viewport) {
         const selectedItem = viewport.querySelector('.choice-item-active');
         if (selectedItem) {
             selectedItem.scrollIntoView({ block: 'nearest' });
         }
-    },
+    }
 
 
     selectItem(choiceElementId, item) {
@@ -491,88 +285,52 @@ const Choice = {
         items.forEach(i => i.classList.remove('choice-item-active'));
         item.classList.add('choice-item-active');
 
-        const trigger = choiceElement.querySelector('.choice-trigger');
+        const trigger = choiceElement.querySelector('.choice-trigger-wrapper');
         const triggerText = trigger.querySelector('.choice-text');
         if (triggerText) {
             triggerText.textContent = item.textContent.trim();
         }
 
-        this.closeDropdown(choiceElementId);
-    },
-    
+        this.close(choiceElementId);
+    }
 
-    async _waitForPortal(choiceElementId, timeout = 1000) {
-        return new Promise((resolve, reject) => {
-            const requesterId = `choice-${choiceElementId}`;
-            const timeoutId = setTimeout(() => {
-                document.removeEventListener(window.RRBlazor.Events.PORTAL_CREATED, handler);
-                reject(new Error(`Portal creation timeout for choice ${choiceElementId}`));
-            }, timeout);
-            
-            const handler = (event) => {
-                if (event.detail.requesterId === requesterId) {
-                    clearTimeout(timeoutId);
-                    document.removeEventListener(window.RRBlazor.Events.PORTAL_CREATED, handler);
-                    resolve(event.detail.portal);
-                }
-            };
-            
-            document.addEventListener(window.RRBlazor.Events.PORTAL_CREATED, handler);
-        });
+    async closeAll() {
+        const allChoices = document.querySelectorAll('[data-choice-id]');
+        const closePromises = [];
+
+        for (const choiceElement of allChoices) {
+            const choiceId = choiceElement.getAttribute('data-choice-id');
+            if (dropdownManager.isOpen(choiceId)) {
+                closePromises.push(dropdownManager.closeDropdown(choiceId));
+            }
+        }
+
+        await Promise.all(closePromises);
+        return true;
+    }
+}
+
+const choiceManager = new ChoiceManager();
+
+const choiceAPI = {
+    open: (choiceElementId, options) => choiceManager.open(choiceElementId, options),
+    close: (choiceElementId) => choiceManager.close(choiceElementId),
+    isOpen: (choiceElementId) => dropdownManager.isOpen(choiceElementId),
+    closeAll: () => choiceManager.closeAll(),
+    initialize: () => choiceManager.initialize(),
+    cleanup: () => choiceManager.cleanup(),
+    getViewportElement: (choiceElementId) => {
+        const choiceElement = document.querySelector(`[data-choice-id="${choiceElementId}"]`);
+        if (!choiceElement) return null;
+        return choiceManager.findViewport(choiceElement, choiceElementId);
     }
 };
 
-document.addEventListener('click', (event) => {
-    // Skip if inside any interactive element
-    if (event.target.closest('[data-column-manager]')) return;
-    if (event.target.matches('input, button')) return;
-    
-    const item = event.target.closest('.choice-item');
-    if (!item || item.disabled) return;
-    
-    // Skip if item contains interactive content
-    if (item.querySelector('[data-column-manager], input, button')) return;
-    
-    event.preventDefault();
-    const choiceElement = item.closest('[data-choice-id]');
-    if (!choiceElement) return;
-    
-    const choiceId = choiceElement.dataset.choiceId;
-    Choice.selectItem(choiceId, item);
-});
+choiceManager.initialize();
 
-Choice.initialize();
-
-// Register with RRBlazor global
 if (typeof window !== 'undefined') {
     window.RRBlazor = window.RRBlazor || {};
-    window.RRBlazor.Choice = {
-        openDropdown: (choiceElementId, options) => Choice.openDropdown(choiceElementId, options),
-        closeDropdown: (choiceElementId) => Choice.closeDropdown(choiceElementId),
-        isDropdownOpen: (choiceElementId) => activeDropdown === choiceElementId,
-        closeAllDropdowns: () => {
-            if (activeDropdown) {
-                return Choice.closeDropdown(activeDropdown);
-            }
-            activePortals.clear();
-            viewportLocations.clear();
-            return Promise.resolve(true);
-        },
-        initialize: () => Choice.initialize()
-    };
+    window.RRBlazor.Choice = choiceAPI;
 }
 
-export default {
-    openDropdown: (choiceElementId, options) => Choice.openDropdown(choiceElementId, options),
-    closeDropdown: (choiceElementId) => Choice.closeDropdown(choiceElementId),
-    isDropdownOpen: (choiceElementId) => activeDropdown === choiceElementId,
-    closeAllDropdowns: () => {
-        if (activeDropdown) {
-            return Choice.closeDropdown(activeDropdown);
-        }
-        activePortals.clear();
-        viewportLocations.clear();
-        return Promise.resolve(true);
-    },
-    initialize: () => Choice.initialize()
-};
+export default choiceAPI;

@@ -1,0 +1,317 @@
+@using RR.Blazor.Components.Core
+@using RR.Blazor.Components.Feedback
+@using RR.Blazor.Components.Form
+@using RR.Blazor.Enums
+@using RR.Blazor.TestPages.Demos.Components
+
+<div class="relative">
+    <GitHubLinkButton FileName="RDatePickerDemo.razor" />
+    <RCard Variant="CardVariant.Outlined" Text="RDatePicker">
+    <ChildContent>
+        <RDivider Text="RDatePicker Component System"
+                  Subtitle="Comprehensive date and time picker with various configurations"
+                  Icon="calendar_month" />
+
+        <div class="space-y-6">
+
+            <!-- 1. Basic Date Picker -->
+            <div>
+                <p class="text-sm font-medium mb-2">1. Basic Date Selection</p>
+                <RDatePicker @bind-Value="@basicDate"
+                             Placeholder="Select a date"
+                             Label="Basic Date" />
+                @if (basicDate.HasValue)
+                {
+                    <RChip Text="@($"Selected: {basicDate.Value:MMM dd, yyyy}")"
+                           Icon="event"
+                           Variant="VariantType.Success" />
+                }
+            </div>
+
+            <!-- 2. Date with Time -->
+            <div>
+                <p class="text-sm font-medium mb-2">2. Date and Time Selection</p>
+                <RDatePicker @bind-Value="@dateWithTime"
+                             Placeholder="Select date and time"
+                             Label="Date & Time"
+                             ShowTime="true" />
+                @if (dateWithTime.HasValue)
+                {
+                    <RChip Text="@($"Selected: {dateWithTime.Value:MMM dd, yyyy HH:mm}")"
+                           Icon="schedule"
+                           Variant="VariantType.Info" />
+                }
+            </div>
+
+            <!-- 3. Date Range Selection -->
+            <div>
+                <p class="text-sm font-medium mb-2">3. Date Range Selection</p>
+                <RDatePicker @bind-Value="@rangeStartDate"
+                             @bind-EndValue="@rangeEndDate"
+                             Range="true"
+                             Placeholder="Select date range"
+                             Label="Date Range" />
+                <div class="mt-2 text-xs text-muted">
+                    <i class="material-symbols-rounded text-xs">date_range</i>
+                    Select a start and end date by clicking two dates in the calendar
+                </div>
+                @if (rangeStartDate.HasValue && rangeEndDate.HasValue)
+                {
+                    <div class="mt-2 space-y-2">
+                        <RChip Text="@($"From: {rangeStartDate.Value:MMM dd, yyyy}")"
+                               Icon="event"
+                               Variant="VariantType.Info" />
+                        <RChip Text="@($"To: {rangeEndDate.Value:MMM dd, yyyy}")"
+                               Icon="event"
+                               Variant="VariantType.Info" />
+                        <RChip Text="@($"Duration: {(rangeEndDate.Value - rangeStartDate.Value).Days + 1} days")"
+                               Icon="schedule"
+                               Variant="VariantType.Success" />
+                    </div>
+                }
+            </div>
+
+            <!-- 4. Multiple DatePickers - Auto-close Test -->
+            <div class="w-full">
+                <p class="text-sm font-medium mb-2">4. Multiple DatePickers (Auto-Close Test)</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <RDatePicker @bind-Value="@startDate"
+                                     Placeholder="Start date"
+                                     Label="Start Date" />
+                    </div>
+                    <div>
+                        <RDatePicker @bind-Value="@endDate"
+                                     Placeholder="End date"
+                                     Label="End Date"
+                                     MinDate="@startDate" />
+                    </div>
+                </div>
+                <div class="mt-2">
+                    <RDatePicker @bind-Value="@meetingDate"
+                                 Placeholder="Meeting date"
+                                 Label="Meeting Date"
+                                 ShowTime="true" />
+                </div>
+                <div class="mt-2 text-xs text-muted">
+                    <i class="material-symbols-rounded text-xs">info</i>
+                    Test: Opening one datepicker should auto-close others
+                </div>
+            </div>
+
+            <!-- 5. Different Formats -->
+            <div>
+                <p class="text-sm font-medium mb-2">5. Custom Format Examples</p>
+                <div class="space-y-3">
+                    <RDatePicker @bind-Value="@usDate"
+                                 Placeholder="MM/dd/yyyy"
+                                 Label="US Format"
+                                 Format="MM/dd/yyyy" />
+
+                    <RDatePicker @bind-Value="@euroDate"
+                                 Placeholder="dd/MM/yyyy"
+                                 Label="European Format"
+                                 Format="dd/MM/yyyy" />
+
+                    <RDatePicker @bind-Value="@isoDate"
+                                 Placeholder="yyyy-MM-dd"
+                                 Label="ISO Format"
+                                 Format="yyyy-MM-dd" />
+                </div>
+            </div>
+
+            <!-- 6. Disabled State -->
+            <div>
+                <p class="text-sm font-medium mb-2">6. Disabled DatePicker</p>
+                <RDatePicker @bind-Value="@disabledDate"
+                             Placeholder="Cannot select"
+                             Label="Disabled State"
+                             Disabled="true" />
+                <div class="mt-2 text-xs text-muted">
+                    <i class="material-symbols-rounded text-xs">block</i>
+                    Disabled state for read-only scenarios
+                </div>
+            </div>
+
+            <!-- 7. Required Validation -->
+            <div>
+                <p class="text-sm font-medium mb-2">7. Required Validation Demo</p>
+                <RDatePicker @bind-Value="@requiredDate"
+                             Placeholder="Required field"
+                             Label="Required Date*"
+                             Required="true"
+                             Class="@(validationState == ValidationState.Error ? "border-error" : validationState == ValidationState.Success ? "border-success" : "")" />
+
+                @if (validationState == ValidationState.Error)
+                {
+                    <div class="mt-2">
+                        <RAlert Variant="VariantType.Error" Icon="error" ShowCloseButton="true">
+                            <strong>Validation Failed!</strong> Date selection is required for this form.
+                        </RAlert>
+                    </div>
+                    <div class="mt-1 text-xs text-error">
+                        <i class="material-symbols-rounded text-xs">warning</i>
+                        Please select a date to continue
+                    </div>
+                }
+                else if (validationState == ValidationState.Success)
+                {
+                    <div class="mt-2">
+                        <RAlert Variant="VariantType.Success" Icon="check_circle" ShowCloseButton="true">
+                            <strong>Validation Passed!</strong> Date has been successfully validated.
+                        </RAlert>
+                    </div>
+                    <div class="mt-1 text-xs text-success">
+                        <i class="material-symbols-rounded text-xs">verified</i>
+                        Selected date: @requiredDate?.ToString("MMM dd, yyyy")
+                    </div>
+                }
+
+                <div class="mt-4 flex gap-2">
+                    <RButton Text="@(isValidating ? "Validating..." : "Validate Form")"
+                             Icon="@GetValidationButtonIcon()"
+                             OnClick="@ValidateForm"
+                             Variant="@GetValidationButtonVariant()"
+                             Disabled="@isValidating"
+                             Loading="@isValidating" />
+
+                    @if (validationState != ValidationState.None)
+                    {
+                        <RButton Text="Reset"
+                                 Icon="refresh"
+                                 OnClick="@ResetValidation"
+                                 Variant="VariantType.Secondary" />
+                    }
+                </div>
+
+                @if (validationAttempts > 0)
+                {
+                    <div class="mt-2 text-xs text-muted">
+                        <i class="material-symbols-rounded text-xs">analytics</i>
+                        Validation attempts: @validationAttempts | Last attempt: @lastValidationTime?.ToString("HH:mm:ss")
+                    </div>
+                }
+            </div>
+
+            <!-- 8. Positioning Test -->
+            <div class="mt-12">
+                <p class="text-sm font-medium mb-2">8. Positioning Tests</p>
+                <div class="text-xs text-muted mb-4">
+                    <i class="material-symbols-rounded text-xs">open_in_new</i>
+                    Test datepickers in different positions to verify positioning
+                </div>
+
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <RDatePicker @bind-Value="@topLeft"
+                                 Placeholder="Top Left"
+                                 Label="Top Left" />
+
+                    <RDatePicker @bind-Value="@topRight"
+                                 Placeholder="Top Right"
+                                 Label="Top Right" />
+
+                    <RDatePicker @bind-Value="@bottomLeft"
+                                 Placeholder="Bottom Left"
+                                 Label="Bottom Left" />
+
+                    <RDatePicker @bind-Value="@bottomRight"
+                                 Placeholder="Bottom Right"
+                                 Label="Bottom Right" />
+                </div>
+            </div>
+        </div>
+    </ChildContent>
+</RCard>
+</div>
+
+@code {
+    // Basic date selections
+    private DateTime? basicDate;
+    private DateTime? dateWithTime;
+    private DateTime? rangeStartDate;
+    private DateTime? rangeEndDate;
+
+    // Range selections
+    private DateTime? startDate;
+    private DateTime? endDate;
+    private DateTime? meetingDate;
+
+    // Format examples
+    private DateTime? usDate;
+    private DateTime? euroDate;
+    private DateTime? isoDate;
+
+    // States
+    private DateTime? disabledDate = DateTime.Today;
+    private DateTime? requiredDate;
+
+    // Validation state management
+    private enum ValidationState
+    {
+        None,
+        Error,
+        Success
+    }
+
+    private ValidationState validationState = ValidationState.None;
+    private bool isValidating = false;
+    private int validationAttempts = 0;
+    private DateTime? lastValidationTime;
+
+    // Positioning tests
+    private DateTime? topLeft;
+    private DateTime? topRight;
+    private DateTime? bottomLeft;
+    private DateTime? bottomRight;
+
+    // Validation methods
+    private async Task ValidateForm()
+    {
+        isValidating = true;
+        validationAttempts++;
+        lastValidationTime = DateTime.Now;
+        StateHasChanged();
+
+        // Simulate async validation process
+        await Task.Delay(1500);
+
+        if (requiredDate.HasValue)
+        {
+            validationState = ValidationState.Success;
+        }
+        else
+        {
+            validationState = ValidationState.Error;
+        }
+
+        isValidating = false;
+        StateHasChanged();
+    }
+
+    private void ResetValidation()
+    {
+        validationState = ValidationState.None;
+        requiredDate = null;
+        StateHasChanged();
+    }
+
+    private string GetValidationButtonIcon()
+    {
+        return validationState switch
+        {
+            ValidationState.Success => "check_circle",
+            ValidationState.Error => "error",
+            _ => isValidating ? "hourglass_empty" : "task_alt"
+        };
+    }
+
+    private VariantType GetValidationButtonVariant()
+    {
+        return validationState switch
+        {
+            ValidationState.Success => VariantType.Success,
+            ValidationState.Error => VariantType.Error,
+            _ => VariantType.Primary
+        };
+    }
+}
