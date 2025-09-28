@@ -4,7 +4,7 @@
 
 The RR.Blazor Smart Table System provides a modern, type-safe, and efficient table implementation with multiple approaches to suit every developer's preference and use case.
 
-## 🚀 Quick Start - Choose Your Style
+##  Quick Start - Choose Your Style
 
 ### 1. Zero Configuration (Auto-Generated Columns)
 ```razor
@@ -20,7 +20,7 @@ The RR.Blazor Smart Table System provides a modern, type-safe, and efficient tab
     <RColumn Property="@nameof(Employee.Salary)" Format="C" />
 </RTable>
 ```
-**✅ Refactoring-safe, IntelliSense, no type parameters needed**
+** Refactoring-safe, IntelliSense, no type parameters needed**
 
 ### 3. Lambda with Explicit Types (FOR COMPUTED PROPERTIES)
 ```razor
@@ -30,7 +30,7 @@ The RR.Blazor Smart Table System provides a modern, type-safe, and efficient tab
     <RColumn For="@((Employee e) => e.Salary)" Format="C" />
 </RTable>
 ```
-**✅ Type-safe, supports methods and computed values**
+** Type-safe, supports methods and computed values**
 
 ### 4. Custom Templates (FOR COMPLEX RENDERING)
 ```razor
@@ -56,7 +56,7 @@ The RR.Blazor Smart Table System provides a modern, type-safe, and efficient tab
 </RTable>
 ```
 
-## 🎯 Smart Features
+##  Smart Features
 
 ### Column Management & Visibility
 Built-in column manager for dynamic table control:
@@ -104,7 +104,7 @@ For massive datasets, use `RTableVirtualized`:
 - Minimal DOM nodes (only visible rows rendered)
 - Full column management support
 
-## 📋 The Magic: Auto-Generated Columns
+##  The Magic: Auto-Generated Columns
 
 ### Zero Configuration = Full Featured Table
 
@@ -115,13 +115,13 @@ Just pass your data and the table figures out everything:
 <RTable Items="@employees" />
 
 @* Results in: *@
-- ✅ All columns auto-generated from properties
-- ✅ Smart formatting (dates, currency, booleans)
-- ✅ Sortable columns (automatic for primitives)
-- ✅ Searchable text fields
-- ✅ Responsive pagination
-- ✅ Loading states
-- ✅ Empty state handling
+-  All columns auto-generated from properties
+-  Smart formatting (dates, currency, booleans)
+-  Sortable columns (automatic for primitives)
+-  Searchable text fields
+-  Responsive pagination
+-  Loading states
+-  Empty state handling
 ```
 
 ### Control Auto-Generation with Attributes
@@ -153,7 +153,7 @@ public class Employee
 }
 ```
 
-## 🛠️ Advanced Usage Patterns
+##  Advanced Usage Patterns
 
 ### Helper Methods for Complex Logic
 ```csharp
@@ -184,7 +184,7 @@ public class Employee
 |------|-------------|---------|
 | `DateTime` | MMM dd, yyyy | Jan 15, 2024 |
 | `decimal` | Currency | $1,299.99 |
-| `bool` | Checkmarks | ✓ / ✗ |
+| `bool` | Checkmarks |  /  |
 | `enum` | Spaced words | Active Status |
 | Email properties | Mailto links | `<a href="mailto:...">` |
 | Phone properties | Formatted | (555) 123-4567 |
@@ -193,16 +193,16 @@ public class Employee
 
 | Property Type | Auto-Detection | Default Format | Example Output |
 |--------------|----------------|----------------|----------------|
-| `string` with "Email" | ✅ Email link | `mailto:` link | 📧 john@company.com |
-| `string` with "Phone" | ✅ Phone format | (XXX) XXX-XXXX | 📞 (555) 123-4567 |
-| `string` with "Url" | ✅ Hyperlink | Clickable link | 🔗 Visit Site |
-| `DateTime` | ✅ Date format | MMM dd, yyyy | Jan 15, 2024 |
-| `decimal`/`double` with "Price", "Cost", "Salary" | ✅ Currency | $X,XXX.XX | $1,299.99 |
-| `bool` | ✅ Check/Cross | ✓ / ✗ | ✓ Active |
-| `enum` | ✅ Spaced words | Pascal → Title | Active Status |
-| Percentage properties | ✅ Percent | XX.X% | 85.5% |
+| `string` with "Email" |  Email link | `mailto:` link |  john@company.com |
+| `string` with "Phone" |  Phone format | (XXX) XXX-XXXX |  (555) 123-4567 |
+| `string` with "Url" |  Hyperlink | Clickable link |  Visit Site |
+| `DateTime` |  Date format | MMM dd, yyyy | Jan 15, 2024 |
+| `decimal`/`double` with "Price", "Cost", "Salary" |  Currency | $X,XXX.XX | $1,299.99 |
+| `bool` |  Check/Cross |  /  |  Active |
+| `enum` |  Spaced words | Pascal → Title | Active Status |
+| Percentage properties |  Percent | XX.X% | 85.5% |
 
-## 🎨 Custom Templates Without Complexity
+##  Custom Templates Without Complexity
 
 ### Using Template Context (No Casting Required)
 ```razor
@@ -234,7 +234,7 @@ public class Employee
 </RColumn>
 ```
 
-## 🚀 Enterprise Features
+##  Enterprise Features
 
 ### Bulk Operations
 ```razor
@@ -273,7 +273,7 @@ public class Employee
 </RTable>
 ```
 
-## 📊 Performance & Optimization
+##  Performance & Optimization
 
 ### Choose the Right Component
 
@@ -295,7 +295,7 @@ public class Employee
 // ❌ Avoid
 For="@((Employee e) => e.FirstName + " " + e.LastName + " (" + e.Department + ")")"
 
-// ✅ Better
+// Better
 For="@((Employee e) => GetEmployeeDisplay(e))"
 ```
 
@@ -306,7 +306,7 @@ var stats = PropertyColumnGenerator.GetCacheStats();
 Console.WriteLine($"Cached: {stats.Item1} columns, {stats.Item2} accessors");
 ```
 
-## 🔄 Migration Guide
+##  Migration Guide
 
 ### From Old RDataTable
 ```razor
@@ -337,7 +337,7 @@ CustomTemplate="@(context => @<div>@(((Employee)context).Name)</div>)"
 </Template>
 ```
 
-## ⚡ Real-World Examples
+##  Real-World Examples
 
 ### Employee Directory with Everything
 ```razor
@@ -409,7 +409,7 @@ else
 }
 ```
 
-## 📋 Component Reference
+##  Component Reference
 
 ### RTable Parameters
 | Parameter | Type | Default | Description |
@@ -444,9 +444,9 @@ else
 | `Width` | `string` | Auto | Column width |
 | `Template` | `RenderFragment` | - | Custom cell template |
 
-## 🎯 Best Practices
+##  Best Practices
 
-### DO ✅
+### DO 
 - Use `nameof()` for refactoring-safe property references
 - Use helper methods for complex display logic
 - Enable virtualization for 1000+ rows
@@ -461,7 +461,7 @@ else
 - Don't use RenderTreeBuilder - use Razor syntax
 - Don't load 10K+ records without virtualization
 
-## 🔧 Troubleshooting
+##  Troubleshooting
 
 ### Common Issues & Solutions
 
@@ -474,7 +474,7 @@ else
 | **Custom template not typed** | Use `<Template Context="item">` for strong typing |
 | **Search not working** | Ensure `ShowSearch="true"` and columns have `Searchable="true"` |
 
-## 🚢 Architecture & Performance
+##  Architecture & Performance
 
 ### Type Inference Magic
 The table automatically detects your data type from the `Items` collection:
@@ -501,7 +501,7 @@ public class RTable : RTableBase
 - **Lazy Loading**: Data fetched as needed
 - **Intelligent Pagination**: Automatic page size optimization
 
-## 📚 Additional Resources
+##  Additional Resources
 
 ### Related Documentation
 - [SMART_COMPONENTS_ARCHITECTURE.md](./SMART_COMPONENTS_ARCHITECTURE.md) - Component architecture patterns
@@ -513,7 +513,7 @@ public class RTable : RTableBase
 - `/test/virtualization` - Performance testing with large datasets
 - `/test/table-features` - Interactive feature demonstrations
 
-## 🎉 Summary
+##  Summary
 
 The RR.Blazor Smart Table System delivers:
 - **Zero to Hero**: From zero config to full customization
@@ -556,3 +556,5 @@ var (columnCount, accessorCount, formatterCount) = PropertyColumnGenerator.GetCa
 - **URL Validation**: Only HTTP/HTTPS URLs are allowed for auto-generated links
 - **Email Validation**: RFC-compliant email validation with length limits
 - **Input Sanitization**: Phone numbers and other inputs are sanitized before display
+
+

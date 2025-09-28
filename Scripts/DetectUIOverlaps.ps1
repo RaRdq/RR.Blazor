@@ -62,7 +62,7 @@ $findings = @{
     Recommendations = @()
 }
 
-Write-Info "🔍 RR.Blazor Comprehensive Architecture & UI Analysis"
+Write-Host "Processing..." -ForegroundColor Gray
 Write-Info "=" * 60
 
 # Get all relevant files
@@ -72,10 +72,10 @@ $cssFiles = Get-ChildItem -Path $Path -Recurse -Filter "*.css" -ErrorAction Sile
 $razorFiles = Get-ChildItem -Path $Path -Recurse -Filter "*.razor" -ErrorAction SilentlyContinue
 
 $totalFiles = $scssFiles.Count + $cssFiles.Count + $razorFiles.Count
-Write-Info "📊 Found $totalFiles files ($($scssFiles.Count) SCSS, $($cssFiles.Count) CSS, $($razorFiles.Count) Razor)"
+Write-Info " Found $totalFiles files ($($scssFiles.Count) SCSS, $($cssFiles.Count) CSS, $($razorFiles.Count) Razor)"
 
 # Z-Index Analysis
-Write-Info "`n🎯 Analyzing Z-Index Conflicts..."
+Write-Info "`n Analyzing Z-Index Conflicts..."
 $zIndexMap = @{}
 
 foreach ($file in $scssFiles + $cssFiles) {
@@ -101,7 +101,7 @@ foreach ($file in $scssFiles + $cssFiles) {
             }
         }
     } catch {
-        Write-Warning "⚠️ Could not process $($file.Name): $_"
+        Write-Warning " Could not process $($file.Name): $_"
     }
 }
 
@@ -127,7 +127,7 @@ foreach ($zIndex in $zIndexMap.Keys) {
 }
 
 # Position Overlap Analysis
-Write-Info "📍 Analyzing Position Overlaps..."
+Write-Info " Analyzing Position Overlaps..."
 $positionPatterns = @(
     @{ Pattern = 'position:\s*absolute.*?top:\s*0.*?left:\s*0'; Description = "Full overlay pattern" }
     @{ Pattern = 'position:\s*fixed.*?top:\s*0.*?left:\s*0'; Description = "Fixed full screen overlay" }
@@ -188,7 +188,7 @@ foreach ($file in $scssFiles + $cssFiles) {
 }
 
 # Flexbox Gap Issues
-Write-Info "📦 Analyzing Flexbox Overlap Issues..."
+Write-Info " Analyzing Flexbox Overlap Issues..."
 $flexboxIssues = @(
     @{ Pattern = 'display:\s*flex.*?gap:\s*0'; Description = "Flex with zero gap - potential overlap" }
     @{ Pattern = 'flex-shrink:\s*0.*?flex-grow:\s*1.*?flex-shrink:\s*0'; Description = "Conflicting flex-shrink values" }
@@ -217,7 +217,7 @@ foreach ($file in $scssFiles + $cssFiles) {
 }
 
 # Undefined Mixins/Extends Analysis
-Write-Info "🔧 Analyzing Undefined Mixins and Extends..."
+Write-Info " Analyzing Undefined Mixins and Extends..."
 $definedMixins = @()
 $definedExtends = @()
 
@@ -297,7 +297,7 @@ foreach ($file in $scssFiles) {
 }
 
 # Duplicated Styling Blocks Analysis
-Write-Info "📋 Analyzing Duplicated Styling Blocks..."
+Write-Info " Analyzing Duplicated Styling Blocks..."
 $stylingBlocks = @{}
 
 foreach ($file in $scssFiles) {
@@ -415,7 +415,7 @@ foreach ($file in $scssFiles) {
 }
 
 # Modal Overlap Analysis
-Write-Info "🗂️ Analyzing Modal Overlaps..."
+Write-Info " Analyzing Modal Overlaps..."
 foreach ($file in $scssFiles + $cssFiles) {
     try {
         $content = Get-Content $file.FullName -Raw -ErrorAction Continue
@@ -439,12 +439,12 @@ foreach ($file in $scssFiles + $cssFiles) {
 }
 
 # Generate Report
-Write-Info "`n📊 COMPREHENSIVE ARCHITECTURE ANALYSIS RESULTS"
+Write-Host "Processing..." -ForegroundColor Gray
 Write-Info "=" * 60
 
 # Z-Index Conflicts
 if ($findings.ZIndexConflicts.Count -gt 0) {
-    Write-Error "❌ Z-INDEX CONFLICTS ($($findings.ZIndexConflicts.Count)):"
+    Write-Error " Z-INDEX CONFLICTS ($($findings.ZIndexConflicts.Count)):"
     foreach ($conflict in $findings.ZIndexConflicts) {
         Write-Output "   • z-index: $($conflict.ZIndex) used in $($conflict.Count) different contexts"
         Write-Output "     Files: $($conflict.Files)"
@@ -456,12 +456,12 @@ if ($findings.ZIndexConflicts.Count -gt 0) {
         }
     }
 } else {
-    Write-Success "✅ No z-index conflicts found"
+    Write-Success " No z-index conflicts found"
 }
 
 # Position Overlaps
 if ($findings.PositionOverlaps.Count -gt 0) {
-    Write-Warning "⚠️ POSITION OVERLAPS ($($findings.PositionOverlaps.Count)):"
+    Write-Warning " POSITION OVERLAPS ($($findings.PositionOverlaps.Count)):"
     $findings.PositionOverlaps | Group-Object Pattern | ForEach-Object {
         Write-Output "   • $($_.Name): $($_.Count) occurrences"
         $_.Group | Select-Object -First 3 | ForEach-Object {
@@ -470,7 +470,7 @@ if ($findings.PositionOverlaps.Count -gt 0) {
         Write-Output ""
     }
 } else {
-    Write-Success "✅ No position overlaps detected"
+    Write-Success " No position overlaps detected"
 }
 
 # Button Icon Overlaps
@@ -482,12 +482,12 @@ if ($findings.ButtonIconOverlaps.Count -gt 0) {
     }
     Write-Output ""
 } else {
-    Write-Success "✅ No button icon overlaps detected"
+    Write-Success " No button icon overlaps detected"
 }
 
 # Flexbox Issues
 if ($findings.FlexboxIssues.Count -gt 0) {
-    Write-Warning "📦 FLEXBOX ISSUES ($($findings.FlexboxIssues.Count)):"
+    Write-Warning " FLEXBOX ISSUES ($($findings.FlexboxIssues.Count)):"
     $findings.FlexboxIssues | Group-Object Issue | ForEach-Object {
         Write-Output "   • $($_.Name): $($_.Count) occurrences"
         $_.Group | Select-Object -First 2 | ForEach-Object {
@@ -499,7 +499,7 @@ if ($findings.FlexboxIssues.Count -gt 0) {
 
 # Modal Overlaps
 if ($findings.ModalOverlaps.Count -gt 0) {
-    Write-Warning "🗂️ MODAL OVERLAPS ($($findings.ModalOverlaps.Count)):"
+    Write-Warning " MODAL OVERLAPS ($($findings.ModalOverlaps.Count)):"
     foreach ($overlap in $findings.ModalOverlaps) {
         Write-Output "   • $($overlap.File): $($overlap.Count) modal z-index definitions"
         Write-Output "     Z-indexes: $($overlap.ZIndexValues)"
@@ -509,12 +509,12 @@ if ($findings.ModalOverlaps.Count -gt 0) {
 
 # Undefined Mixins/Extends
 if ($findings.UndefinedMixins.Count -gt 0 -or $findings.UndefinedExtends.Count -gt 0) {
-    Write-Error "🔧 UNDEFINED MIXINS & EXTENDS:"
+    Write-Error " UNDEFINED MIXINS & EXTENDS:"
     
     if ($findings.UndefinedMixins.Count -gt 0) {
-        Write-Output "   📦 Undefined Mixins ($($findings.UndefinedMixins.Count)):"
+        Write-Output "    Undefined Mixins ($($findings.UndefinedMixins.Count)):"
         $findings.UndefinedMixins | ForEach-Object {
-            $icon = if ($_.HasOptional) { "⚠️" } else { "❌" }
+            $icon = if ($_.HasOptional) { "" } else { "" }
             Write-Output "   $icon $($_.File): @include $($_.Mixin) $(if ($_.HasOptional) { "(has !optional)" } else { "(NO !optional)" })"
             if (-not $_.HasOptional) {
                 $findings.CriticalIssues += "Undefined mixin: $($_.Mixin) in $($_.File)"
@@ -524,9 +524,9 @@ if ($findings.UndefinedMixins.Count -gt 0 -or $findings.UndefinedExtends.Count -
     }
     
     if ($findings.UndefinedExtends.Count -gt 0) {
-        Write-Output "   📐 Undefined Extends ($($findings.UndefinedExtends.Count)):"
+        Write-Output "    Undefined Extends ($($findings.UndefinedExtends.Count)):"
         $findings.UndefinedExtends | ForEach-Object {
-            $icon = if ($_.HasOptional) { "⚠️" } else { "❌" }
+            $icon = if ($_.HasOptional) { "" } else { "" }
             Write-Output "   $icon $($_.File): @extend %$($_.Extend) $(if ($_.HasOptional) { "(has !optional)" } else { "(NO !optional)" })"
             if (-not $_.HasOptional) {
                 $findings.CriticalIssues += "Undefined extend: %$($_.Extend) in $($_.File)"
@@ -535,12 +535,12 @@ if ($findings.UndefinedMixins.Count -gt 0 -or $findings.UndefinedExtends.Count -
         Write-Output ""
     }
 } else {
-    Write-Success "✅ All mixins and extends properly defined"
+    Write-Success " All mixins and extends properly defined"
 }
 
 # Duplicated Styling Blocks
 if ($findings.DuplicatedBlocks.Count -gt 0) {
-    Write-Warning "📋 DUPLICATED STYLING BLOCKS ($($findings.DuplicatedBlocks.Count)):"
+    Write-Warning " DUPLICATED STYLING BLOCKS ($($findings.DuplicatedBlocks.Count)):"
     $findings.DuplicatedBlocks | Sort-Object Count -Descending | Select-Object -First 10 | ForEach-Object {
         Write-Output "   • $($_.Count) duplicates: $($_.Signature)..."
         Write-Output "     Files: $($_.Files)"
@@ -551,7 +551,7 @@ if ($findings.DuplicatedBlocks.Count -gt 0) {
         Write-Output ""
     }
 } else {
-    Write-Success "✅ No significant duplicated styling blocks found"
+    Write-Success " No significant duplicated styling blocks found"
 }
 
 # Onion Architecture Violations
@@ -567,35 +567,35 @@ if ($findings.OnionViolations.Count -gt 0) {
         Write-Output ""
     }
 } else {
-    Write-Success "✅ Good onion architecture compliance - classes use mixins/extends properly"
+    Write-Success " Good onion architecture compliance - classes use mixins/extends properly"
 }
 
 # Recommendations
-Write-Info "`n💡 RECOMMENDATIONS:"
+Write-Info "`n RECOMMENDATIONS:"
 if ($findings.CriticalIssues.Count -gt 0) {
-    Write-Output "🔥 CRITICAL FIXES NEEDED:"
+    Write-Output " CRITICAL FIXES NEEDED:"
     $findings.CriticalIssues | ForEach-Object {
         Write-Output "   • $_"
     }
     Write-Output ""
 }
 
-Write-Output "📋 General Recommendations:"
-Write-Output "   🎯 UI & Layout:"
+Write-Output " General Recommendations:"
+Write-Output "    UI & Layout:"
 Write-Output "      • Use CSS Grid for complex layouts instead of absolute positioning"
 Write-Output "      • Implement consistent z-index scale (1-10, 100-110, 1000-1010, etc.)"
 Write-Output "      • Use flexbox gap instead of margins for button icon spacing"
 Write-Output "      • Consider CSS container queries for responsive overlaps"
 Write-Output "      • Implement proper focus management for overlapping elements"
 Write-Output ""
-Write-Output "   🏗️ Architecture & Code Quality:"
+Write-Output "    Architecture & Code Quality:"
 Write-Output "      • Always use !optional flag when including potentially undefined mixins"
 Write-Output "      • Extract duplicate styling blocks into reusable mixins or extends"
 Write-Output "      • Move heavy styling from classes to mixins/extends (onion architecture)"
 Write-Output "      • Use placeholder selectors (%) for extends to avoid CSS bloat"
 Write-Output "      • Implement consistent naming conventions for mixins and extends"
 Write-Output ""
-Write-Output "   🔧 Best Practices:"
+Write-Output "    Best Practices:"
 Write-Output "      • Group related mixins in dedicated files (_mixins folder)"
 Write-Output "      • Use semantic naming for extends (%button-base, %card-elevated)"
 Write-Output "      • Document complex mixins with @param annotations"
@@ -636,19 +636,20 @@ $($findings.ButtonIconOverlaps | ForEach-Object { "- $($_.File): $($_.Count) pot
 "@
 
     $reportContent | Out-File -FilePath $reportPath -Encoding UTF8
-    Write-Success "📄 Report exported to: $reportPath"
+    Write-Success " Report exported to: $reportPath"
 }
 
 # Summary
-Write-Info "`n📈 ANALYSIS SUMMARY:"
+Write-Host "Processing..." -ForegroundColor Gray
 $totalIssues = $findings.ZIndexConflicts.Count + $findings.PositionOverlaps.Count + $findings.ButtonIconOverlaps.Count + $findings.FlexboxIssues.Count + $findings.ModalOverlaps.Count
 
 if ($totalIssues -eq 0) {
-    Write-Success "🎉 No critical UI overlap issues detected!"
+    Write-Host "Completed" -ForegroundColor Gray
 } elseif ($findings.CriticalIssues.Count -eq 0) {
-    Write-Warning "⚠️ $totalIssues minor UI overlap issues found - recommend review"
+    Write-Warning " $totalIssues minor UI overlap issues found - recommend review"
 } else {
-    Write-Error "❌ $totalIssues UI overlap issues found, including $($findings.CriticalIssues.Count) critical issues"
+    Write-Error " $totalIssues UI overlap issues found, including $($findings.CriticalIssues.Count) critical issues"
 }
 
-Write-Info "🔍 Analysis complete. Use -Detailed for more information."
+Write-Host "Processing..." -ForegroundColor Gray
+

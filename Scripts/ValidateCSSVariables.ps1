@@ -35,11 +35,8 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-Write-Host "🔍 CSS Variable Validation Script" -ForegroundColor Cyan
-Write-Host "=================================" -ForegroundColor Cyan
-
 # Step 1: Extract all DEFINED CSS variables from the design system
-Write-Host "`n📚 Step 1: Extracting defined CSS variables..." -ForegroundColor Yellow
+Write-Host "Scanning CSS variable definitions..." -ForegroundColor Gray
 
 $definedVariables = @{}
 
@@ -131,10 +128,10 @@ if (Test-Path $compiledCSSFullPath) {
     Write-Host "  Found additional variables in compiled CSS" -ForegroundColor Gray
 }
 
-Write-Host "`n✅ Total defined variables: $($definedVariables.Count)" -ForegroundColor Green
+Write-Host "`nTotal defined variables: $($definedVariables.Count)" -ForegroundColor Green
 
 # Step 2: Find all USED CSS variables in SCSS files
-Write-Host "`n📝 Step 2: Finding CSS variable usage in SCSS files..." -ForegroundColor Yellow
+Write-Host "Analyzing SCSS var() usage patterns..." -ForegroundColor Gray
 
 $issues = @()
 $scssFiles = Get-ChildItem -Path (Join-Path $SolutionPath $StylesPath) -Recurse -Filter "*.scss"
@@ -204,7 +201,7 @@ foreach ($file in $scssFiles) {
 }
 
 # Step 3: Check for hardcoded color values that should use variables
-Write-Host "`n🎨 Step 3: Checking for hardcoded values..." -ForegroundColor Yellow
+Write-Host "Detecting hardcoded color/spacing values..." -ForegroundColor Gray
 
 foreach ($file in $scssFiles) {
     $content = Get-Content $file.FullName -Raw -ErrorAction SilentlyContinue
@@ -266,13 +263,9 @@ foreach ($file in $scssFiles) {
 }
 
 # Step 4: Report findings
-Write-Host "`n📊 Step 4: Analysis Results" -ForegroundColor Yellow
-Write-Host "============================" -ForegroundColor Yellow
+Write-Host "Validation complete: $($issues.Count) issues found" -ForegroundColor Gray
 
 $issuesByType = $issues | Group-Object Type
-
-Write-Host "`n📈 Summary:" -ForegroundColor Cyan
-Write-Host "  Total issues found: $($issues.Count)" -ForegroundColor White
 foreach ($group in $issuesByType) {
     $color = switch ($group.Name) {
         "UndefinedVariable" { "Red" }
@@ -283,20 +276,19 @@ foreach ($group in $issuesByType) {
 }
 
 if ($ShowDetails -and $issues.Count -gt 0) {
-    Write-Host "`n🔍 Detailed Issues:" -ForegroundColor Red
     
     # Group by file for better readability
     $issuesByFile = $issues | Group-Object File | Sort-Object Name
     
     foreach ($fileGroup in $issuesByFile) {
-        Write-Host "`n📄 $($fileGroup.Name):" -ForegroundColor Cyan
+        Write-Host "`n$($fileGroup.Name):" -ForegroundColor Cyan
         
         $sortedIssues = $fileGroup.Group | Sort-Object Line
         foreach ($issue in $sortedIssues) {
             $typeIcon = switch ($issue.Type) {
-                "UndefinedVariable" { "❌" }
-                "HardcodedColor" { "⚠️" }
-                default { "❓" }
+                "UndefinedVariable" { "[ERROR]" }
+                "HardcodedColor" { "[WARNING]" }
+                default { "[INFO]" }
             }
             
             Write-Host "  $typeIcon Line $($issue.Line): $($issue.Variable)" -ForegroundColor White
@@ -304,7 +296,7 @@ if ($ShowDetails -and $issues.Count -gt 0) {
                 Write-Host "     Context: $($issue.Context)" -ForegroundColor Gray
             }
             if ($issue.Suggestion) {
-                Write-Host "     💡 $($issue.Suggestion)" -ForegroundColor Green
+                Write-Host "     SUGGESTION: $($issue.Suggestion)" -ForegroundColor Green
             }
         }
     }
@@ -321,14 +313,13 @@ $report = @{
 
 $reportPath = "css-variables-validation-report.json"
 $report | ConvertTo-Json -Depth 10 | Set-Content $reportPath
-Write-Host "`n📄 JSON report saved to: $reportPath" -ForegroundColor Cyan
+Write-Host "`nJSON report saved to: $reportPath" -ForegroundColor Cyan
 
 # Exit code for CI/CD integration
 if ($issues.Count -gt 0) {
-    Write-Host "`n⚠️ CSS variable validation completed with issues." -ForegroundColor Yellow
-    Write-Host "Please fix the undefined variables and hardcoded colors listed above." -ForegroundColor Yellow
+    Write-Host "`nValidation failed: $($issues.Count) issues" -ForegroundColor Red
     exit 1
 } else {
-    Write-Host "`n✅ All CSS variables are properly defined!" -ForegroundColor Green
+    Write-Host "CSS variables: 0 undefined references" -ForegroundColor Gray
     exit 0
 }

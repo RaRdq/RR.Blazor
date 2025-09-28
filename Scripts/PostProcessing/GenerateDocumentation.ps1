@@ -35,22 +35,22 @@ param(
 function Ensure-PowerShell7 {
     $currentVersion = $PSVersionTable.PSVersion
     if ($currentVersion.Major -lt 7) {
-        Write-Host "⚠️  PowerShell 7+ required. Current: $currentVersion" -ForegroundColor Yellow
+        Write-Host "  PowerShell 7+ required. Current: $currentVersion" -ForegroundColor Yellow
         
         if ($IsWindows -or $env:OS -eq "Windows_NT") {
-            Write-Host "🔧 Installing PowerShell 7 via winget..." -ForegroundColor Cyan
+            Write-Host " Installing PowerShell 7 via winget..." -ForegroundColor Cyan
             try {
                 winget install Microsoft.PowerShell --silent --accept-package-agreements --accept-source-agreements
-                Write-Host "✅ PowerShell 7 installed. Restart terminal and re-run script." -ForegroundColor Green
+                Write-Host " PowerShell 7 installed. Restart terminal and re-run script." -ForegroundColor Green
                 exit 0
             }
             catch {
-                Write-Host "❌ Winget failed. Manual install: https://aka.ms/powershell-release" -ForegroundColor Red
+                Write-Host " Winget failed. Manual install: https://aka.ms/powershell-release" -ForegroundColor Red
                 exit 1
             }
         }
         else {
-            Write-Host "❌ Install PowerShell 7+: https://aka.ms/powershell-release" -ForegroundColor Red
+            Write-Host " Install PowerShell 7+: https://aka.ms/powershell-release" -ForegroundColor Red
             exit 1
         }
     }
@@ -60,7 +60,7 @@ Ensure-PowerShell7
 
 $ErrorActionPreference = "Stop"
 
-Write-Host "🚀 Generating AI-First Documentation (GENERIC approach)..." -ForegroundColor Cyan
+Write-Host " Generating AI-First Documentation (GENERIC approach)..." -ForegroundColor Cyan
 
 # Normalize paths
 $ProjectPath = Resolve-Path $ProjectPath
@@ -88,7 +88,7 @@ $ComponentsOutputDir = Split-Path $ComponentsOutputPath -Parent
 # ===============================
 # GENERIC CSS EXTRACTION
 # ===============================
-Write-Host "🎨 Extracting ALL utilities from compiled CSS..." -ForegroundColor Yellow
+Write-Host " Extracting ALL utilities from compiled CSS..." -ForegroundColor Yellow
 
 function Extract-AllFromCompiledCSS {
     param([string]$CssFilePath)
@@ -144,7 +144,7 @@ $extracted = Extract-AllFromCompiledCSS -CssFilePath $cssPath
 # ===============================
 # GENERIC PATTERN RECOGNITION
 # ===============================
-Write-Host "🔍 Auto-discovering utility patterns..." -ForegroundColor Yellow
+Write-Host " Auto-discovering utility patterns..." -ForegroundColor Yellow
 
 function Auto-DiscoverPatterns {
     param([hashtable]$Classes)
@@ -161,13 +161,13 @@ function Auto-DiscoverPatterns {
         # Rule 1: Prevent double-prefixed patterns (e.g., border-warning-border)
         $doublePrefix = $Values | Where-Object { $_ -eq $Prefix }
         if ($doublePrefix) {
-            Write-Host "    ⚠️  Skipped redundant pattern: ${Prefix}-[$($Values -join ', ')] (double prefix detected)" -ForegroundColor Yellow
+            Write-Host "      Skipped redundant pattern: ${Prefix}-[$($Values -join ', ')] (double prefix detected)" -ForegroundColor Yellow
             return $false
         }
         
         # Rule 2: If only one value, don't use bracket notation
         if ($Values.Count -eq 1) {
-            Write-Host "    ✅ Simplified single-value pattern: ${Prefix} -> ${Prefix}-$($Values[0])" -ForegroundColor Green
+            Write-Host "     Simplified single-value pattern: ${Prefix} -> ${Prefix}-$($Values[0])" -ForegroundColor Green
             return @{ IsSingle = $true; Pattern = "$Prefix-$($Values[0])" }
         }
         
@@ -179,10 +179,10 @@ function Auto-DiscoverPatterns {
         if ($redundantSuffixes) {
             $filteredValues = $Values | Where-Object { $_ -notin $redundantSuffixes }
             if ($filteredValues.Count -gt 0) {
-                Write-Host "    🔧 Filtered redundant suffixes from ${Prefix}: [$($redundantSuffixes -join ', ')] -> [$($filteredValues -join ', ')]" -ForegroundColor Cyan
+                Write-Host "     Filtered redundant suffixes from ${Prefix}: [$($redundantSuffixes -join ', ')] -> [$($filteredValues -join ', ')]" -ForegroundColor Cyan
                 return @{ IsFiltered = $true; Values = $filteredValues }
             } else {
-                Write-Host "    ⚠️  Skipped completely redundant pattern: ${Prefix}-[$($Values -join ', ')]" -ForegroundColor Yellow
+                Write-Host "      Skipped completely redundant pattern: ${Prefix}-[$($Values -join ', ')]" -ForegroundColor Yellow
                 return $false
             }
         }
@@ -198,7 +198,7 @@ function Auto-DiscoverPatterns {
                 $relatedPatterns = $consolidationMap[$base]
                 foreach ($related in $relatedPatterns) {
                     if ($patterns.ContainsKey($related)) {
-                        Write-Host "    🔗 Consolidating ${related} into ${base} pattern" -ForegroundColor Cyan
+                        Write-Host "     Consolidating ${related} into ${base} pattern" -ForegroundColor Cyan
                         $Values += $patterns[$related]
                         $patterns.Remove($related)
                     }
@@ -392,12 +392,12 @@ $stylesJson = $stylesDoc | ConvertTo-Json -Depth 10 -Compress:$false
 $stylesJson = $stylesJson -replace '\\u003c', '<' -replace '\\u003e', '>'
 $stylesJson | Out-File -FilePath $StylesOutputPath -Encoding UTF8 -Force
 
-Write-Host "✅ Styles documentation generated: $StylesOutputPath" -ForegroundColor Green
+Write-Host " Styles documentation generated: $StylesOutputPath" -ForegroundColor Green
 
 # ===============================
 # COMPONENTS DOCUMENTATION (unchanged)
 # ===============================
-Write-Host "📂 Generating components documentation..." -ForegroundColor Yellow
+Write-Host " Generating components documentation..." -ForegroundColor Yellow
 
 # [Component extraction code remains the same as it's already generic]
 function Extract-ComponentParameters {
@@ -698,14 +698,14 @@ $componentsJson = $componentsDoc | ConvertTo-Json -Depth 10 -Compress:$false
 $componentsJson = $componentsJson -replace '\\u003c', '<' -replace '\\u003e', '>'
 $componentsJson | Out-File -FilePath $ComponentsOutputPath -Encoding UTF8 -Force
 
-Write-Host "✅ Components documentation generated: $ComponentsOutputPath" -ForegroundColor Green
+Write-Host " Components documentation generated: $ComponentsOutputPath" -ForegroundColor Green
 
 # Final summary
 $componentCount = $components.Count
 $totalParameters = ($components.Values | ForEach-Object { $_.parameters.Count } | Measure-Object -Sum).Sum
 
-Write-Host "🎉 GENERIC Documentation generation completed!" -ForegroundColor Cyan
-Write-Host "📊 Statistics:" -ForegroundColor White
+Write-Host "Generated docs: $($componentsCount) components, $($utilityCount) utilities" -ForegroundColor Gray
+Write-Host " Statistics:" -ForegroundColor White
 Write-Host "   R* Components: $componentCount" -ForegroundColor White
 Write-Host "   Essential Parameters: $totalParameters" -ForegroundColor White
 Write-Host "   Discovered Patterns: $($utilityPatterns.Count)" -ForegroundColor White
@@ -723,3 +723,4 @@ return @{
     ExtractedClasses = $extracted.classes.Count
     ExtractedVariables = $extracted.variables.Count
 }
+

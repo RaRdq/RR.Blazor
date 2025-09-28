@@ -6,25 +6,25 @@ RFileUpload is a comprehensive, zero-configuration file upload component designe
 
 ## Key Features
 
-### 🚀 Zero Configuration
+###  Zero Configuration
 ```html
 <!-- This works immediately -->
 <RFileUpload />
 ```
 
-### 🎯 AI-Optimized Design
+###  AI-Optimized Design
 - **Smart Defaults**: Works perfectly without any configuration
 - **Intelligent Validation**: Built-in file type, size, and count validation
 - **Professional UI**: Uses existing SCSS classes from `_uploads.scss`
 - **Accessibility**: Full keyboard navigation and screen reader support
 
-### 🎨 Multiple Display Modes
+###  Multiple Display Modes
 1. **DropZone** (default) - Large drag/drop area with visual feedback
 2. **Button** - Simple button for file selection
 3. **Minimal** - Basic file input with custom styling
 4. **Inline** - Compact attachment button for forms
 
-### 📊 Advanced Features
+###  Advanced Features
 - **Drag & Drop**: Visual feedback with dragover states
 - **Image Thumbnails**: Automatic preview generation for images
 - **Progress Tracking**: Real-time upload progress with events

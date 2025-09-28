@@ -1,4 +1,4 @@
-# 🌳 CSS Tree Shaking
+#  CSS Tree Shaking
 
 RR.Blazor includes advanced CSS tree-shaking capabilities that can reduce your CSS bundle size by 87%+ while preserving all component functionality.
 
@@ -8,11 +8,11 @@ The CSS tree-shaking system analyzes your entire Blazor project to identify whic
 
 ### Key Benefits
 
-- **🚀 87%+ size reduction** - From 727KB down to 92KB in typical projects
-- **⚡ Faster page loads** - Smaller CSS bundles mean faster initial page rendering
-- **🎯 Zero waste** - Only includes styles that are actually used in your project
-- **🔄 Automatic analysis** - Scans your entire codebase to detect component usage
-- **📊 Detailed reporting** - Comprehensive optimization reports with metrics
+- ** 87%+ size reduction** - From 727KB down to 92KB in typical projects
+- ** Faster page loads** - Smaller CSS bundles mean faster initial page rendering
+- ** Zero waste** - Only includes styles that are actually used in your project
+- ** Automatic analysis** - Scans your entire codebase to detect component usage
+- ** Detailed reporting** - Comprehensive optimization reports with metrics
 
 ## Quick Start
 
@@ -281,13 +281,13 @@ The generated `optimization-report.json` provides detailed insights:
 ### Safe Usage Patterns
 
 ```csharp
-// ✅ Good - Will be detected and preserved
+//  Good - Will be detected and preserved
 <RButton Text="Save" Class="pa-4" />
 
-// ✅ Good - Dynamic classes work if base classes are used
+//  Good - Dynamic classes work if base classes are used
 <div class="@($"text-{color}")">
 
-// ⚠️ Be careful - Highly dynamic classes might be optimized out
+//  Be careful - Highly dynamic classes might be optimized out
 <div class="@(GetCompletelyDynamicClassName())">
 ```
 

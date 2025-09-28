@@ -1,10 +1,10 @@
 # RR.Blazor AI for AI Agent
 
-## 🎯 Framework Vision & Philosophy
+##  Framework Vision & Philosophy
 
 **RR.Blazor** is a **lightweight, project-agnostic, generic Blazor component framework** designed to serve as the foundation for modern web applications. The framework prioritizes **minimal bundle size**, **maximum customizability**, and **utility-first composition** to deliver exceptional developer experience and performance.
 
-### 🌳 CSS Tree-Shaking Optimization
+###  CSS Tree-Shaking Optimization
 **RR.Blazor** includes advanced CSS tree-shaking that automatically removes unused styles from production builds
 
 ## Essential Files
@@ -211,29 +211,60 @@
                    Class="elevation-2" />
 ```
 
-### Modal System - 4 Usage Patterns
+### Modal System - Enterprise Portal Architecture
 
-#### **Case 1: Service confirmations**
+#### **AI Capabilities**
+• **Service Methods**: `ShowConfirmationAsync()`, `ShowFormAsync<T>()`, `ShowDetailAsync<T>()`, `ShowSelectAsync<T>()`
+• **Specialized Types**: Confirmation, Form, Detail, Selection, Export, Message, Preview modals
+• **Portal Rendering**: DOM portals for optimal z-index, animation, memory management
+• **Auto-Detection**: Components with internal RModal (set `ShowHeader=false`)
+• **Fluent Builder**: Chain `.WithSize()`, `.WithVariant()`, `.WithButtons()`, `.WithAutoClose()`
+• **Data Binding**: Generic `ModalResult<T>` returns, parameter passing, validation integration
+• **Animations**: Scale, Slide, Fade, Bounce, Zoom with speed control
+• **Glass Effects**: Light, Medium, Heavy, Frost, Interactive variants
+• **Multi-Modal**: Stack modals, manage hierarchy, close all functionality
+
+#### **Real-World Patterns**
 ```razor
-await ModalService.ShowConfirmationAsync("Delete?", "Confirm", "Delete", "Cancel", VariantType.Error);
+// Pattern 1: Bulk Action Confirmation (PayrollAI)
+var confirmed = await ModalService.ShowConfirmationAsync(
+    $"This will approve all {recordCount} pending payment orders. Continue?",
+    "Bulk Approval", "Approve All", "Cancel", VariantType.Warning);
+
+// Pattern 2: Complex Form Integration (Employee Management)
+var result = await ModalService.ShowAsync<EmployeeModel>(typeof(EmployeeEditModal),
+    new() { ["Employee"] = employee }, new() { Size = SizeType.ExtraLarge, CloseOnBackdrop = false });
+
+// Pattern 3: Quick Data Selection (Dropdown Alternative)
+var selectedItem = await ModalService.ShowSelectAsync(items, "Choose Cost Center",
+    item => item.Name, searchable: true);
+
+// Pattern 4: Self-Contained Component (Internal RModal)
+await ModalService.ShowAsync(new ModalOptions {
+    ComponentType = typeof(PaymentOrderQuickActionModal), ShowHeader = false });
 ```
 
-#### **Case 2: Internal RModal components (Auto-detected)**
+#### **Closing Patterns**
 ```razor
-// Components with internal RModal are automatically detected - no wrapping needed
-await ModalService.ShowAsync(new ModalOptions { ComponentType = typeof(PaymentOrderQuickActionModal), ShowHeader = false, ShowFooter = false });
+// Service modals - get reference
+var modalRef = await ModalService.ShowAsync(options);
+await modalRef.CloseAsync();
+
+// Component @ref - direct reference
+<RModal @ref="modalRef" @bind-Visible="showModal">
+RModal modalRef;
+await modalRef.CloseAsync();
+
+// Bound property toggle
+showModal = false;
 ```
 
-#### **Case 3: Direct RModal binding**
-```razor
-<RModal @bind-Visible="showModal" Title="Form"><ChildContent>Content</ChildContent></RModal>
-```
-
-#### **Case 4: Pure content components (Auto-wrapped)**
-```razor
-// Pure content components are automatically wrapped with RModal
-await ModalService.ShowAsync(new ModalOptions { ComponentType = typeof(UserFormContent), Title = "Edit User" });
-```
+#### **Modal Options**
+• `Size`: ExtraSmall, Small, Medium, Large, ExtraLarge, FullScreen
+• `Variant`: Default, Primary, Info, Success, Warning, Error
+• `Animation`: Scale, SlideDown, Fade, Bounce, Zoom (+ speed control)
+• `Behavior`: CloseOnBackdrop, CloseOnEscape, AutoCloseDelay
+• `Glass`: BackdropBlur, BackdropOpacity, Glass variants
 
 ## Performance Optimization Patterns
 
@@ -320,11 +351,9 @@ await ModalService.ShowAsync(new ModalOptions { ComponentType = typeof(UserFormC
 <!-- Mixed utility frameworks -->
 <div class="p-6 bootstrap-class tailwind-class">
 
-<!-- Double modal: Case 2 with ShowHeader=true -->
-await ModalService.ShowAsync(new ModalOptions { ComponentType = typeof(PaymentOrderQuickActionModal), ShowHeader = true });
 ```
 
-### ✅ Do This Instead
+### Do This
 ```razor
 <!-- Smart type detection (new pattern) -->
 <RDropdown Items="users" />
@@ -410,7 +439,7 @@ pwsh ./RR.Blazor/Scripts/ValidateClassUsage.ps1
     <RCard>Content</RCard>
 </div>
 
-<!-- ✅ Correct: Container handles layout, component stays pure -->
+<!-- Correct: Container handles layout, component stays pure -->
 <div class="main-content-with-sidebar">
     <RCard>Content</RCard>
 </div>

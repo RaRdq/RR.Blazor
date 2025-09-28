@@ -97,7 +97,6 @@ private async Task ExportPivot()
 - **CSV** - Always included, no dependencies ✓
 - **JSON** - Always included with Newtonsoft.Json ✓
 - **XML** - Always included, built-in serialization ✓
-- **Excel** - Auto-detected (included if ClosedXML available) ✓
 - **PDF** - Add custom provider (see examples below)
 
 ## Creating Custom Export Providers

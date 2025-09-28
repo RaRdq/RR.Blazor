@@ -64,7 +64,7 @@ function Update-CustomThemeImports {
     # Write the file
     $content | Out-File -FilePath $customThemePath -Encoding UTF8
     
-    Write-Host "`nCustom theme imports updated successfully!" -ForegroundColor Green
+    Write-Host "Operation completed" -ForegroundColor Gray
 }
 
 # Example theme config file format:

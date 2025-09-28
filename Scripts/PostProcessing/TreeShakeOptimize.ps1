@@ -12,8 +12,7 @@
     
 .PARAMETER OutputPath  
     Path where optimized CSS files will be generated
-    
-    
+
 .PARAMETER ComponentRegistry
     Path to component registry JSON file
     
@@ -31,8 +30,7 @@ param(
     
     [Parameter(Position = 1)]
     [string]$OutputPath = "./wwwroot/css/optimized",
-    
-    
+
     [string]$ComponentRegistry = "./wwwroot/rr-ai-components.json",
     
     [switch]$VerboseLogging = $false
@@ -87,7 +85,7 @@ function Write-Log {
     }
 }
 
-Write-Log "🚀 Starting RR.Blazor Tree-Shaking Optimization" "SUCCESS"
+Write-Log "Tree-shake: analyzing $($fileCount) files" "INFO"
 
 # Resolve paths
 $ResolvedProjectPath = Resolve-Path $ProjectPath -ErrorAction SilentlyContinue
@@ -150,7 +148,7 @@ foreach ($file in $BlazorFiles) {
 
 Write-Progress -Activity "Analyzing Files" -Completed
 
-Write-Log "📊 Analysis Results:"
+Write-Log "Found: $($componentsUsed) components, $($classesUsed) classes"
 Write-Log "   • Components found: $($ComponentUsage.Keys.Count)"
 Write-Log "   • Utilities found: $($UtilityUsage.Keys.Count)"
 
@@ -164,7 +162,7 @@ if (Test-Path $registryPath) {
         $componentCount = if ($registry -and $registry.PSObject.Properties.Name -contains 'components' -and $registry.components) { 
             ($registry.components.PSObject.Properties | Measure-Object).Count 
         } else { 0 }
-        Write-Log "📋 Loaded component registry with $componentCount components"
+        Write-Log " Loaded component registry with $componentCount components"
     }
     catch {
         Write-Log "Warning: Could not load component registry: $($_.Exception.Message)" "WARN"
@@ -197,8 +195,7 @@ if ($registry -and $registry.PSObject.Properties.Name -contains 'components' -an
     }
 }
 
-
-Write-Log "🔧 Generating optimized CSS bundle..."
+Write-Log "Building optimized CSS: $($originalSize)kb -> $($optimizedSize)kb"
 
 # Read source CSS files
 $sourceCSS = ""
@@ -254,7 +251,6 @@ foreach ($utilityClass in $UtilityUsage.Keys) {
         $usedSelectors += $match.Value
     }
 }
-
 
 # Always include CSS custom properties and base styles
 $basePatterns = @(
@@ -337,7 +333,7 @@ $report = @{
 
 $report | ConvertTo-Json -Depth 10 | Set-Content -Path $reportPath -Encoding UTF8
 
-Write-Log "📊 Optimization Complete!" "SUCCESS"
+Write-Log "Optimization: ${reductionPercent}% size reduction, ${duration}ms" "INFO"
 Write-Log "   • Original size: $originalKB KB"
 Write-Log "   • Optimized size: $optimizedKB KB"
 Write-Log "   • Minified size: $minifiedKB KB"
@@ -348,3 +344,4 @@ Write-Log "   • Report: optimization-report.json"
 
 # Return success code
 exit 0
+

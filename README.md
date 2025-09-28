@@ -3,12 +3,12 @@
 [![.NET](https://img.shields.io/badge/.NET-9-512BD4?logo=.net&logoColor=white)](https://dotnet.microsoft.com/en-us/download/dotnet/9.0)
 [![Blazor](https://img.shields.io/badge/Blazor-WebAssembly%20%7C%20Server-512BD4?logo=blazor&logoColor=white)](https://blazor.net)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Buy me a coffee 🐾](https://img.shields.io/badge/Support%20Us-Buy%20Me%20A%20Coffee-FF813F?logo=buy-me-a-coffee&logoColor=white)](https://rr-store.lemonsqueezy.com/buy/ef6f32b3-19ae-4d3f-a9d3-bfa83022f594)
+[![Buy me a coffee](https://img.shields.io/badge/Support%20Us-Buy%20Me%20A%20Coffee-FF813F?logo=buy-me-a-coffee&logoColor=white)](https://rr-store.lemonsqueezy.com/buy/ef6f32b3-19ae-4d3f-a9d3-bfa83022f594)
 <img src="https://cdn3.emoji.gg/emojis/5963-shrek-cat.png" alt="Shrek Cat" width="24" height="24" style="vertical-align:middle; margin-left:8px;" />
 
 Modern Blazor component library with 63 components, utility-first styling, and AI-optimized documentation.
 
-## 🚀 Live Demo
+## Live Demo
 
 **[View Components Demo →](https://rrblazor.dev)**
 
@@ -16,12 +16,12 @@ Modern Blazor component library with 63 components, utility-first styling, and A
 
 - **Zero Configuration** - Works out-of-the-box with sensible defaults
 - **63 Components** - Complete UI toolkit from buttons to data grids
-- **📊 Smart Table-Chart Integration** - Tables as data sources for charts with real-time binding
-- **⚡ Enterprise Virtualization** - Handle 100k+ rows with `RTableVirtualized` and `RVirtualList`
-- **🔍 Intelligent Search System** - Built-in search with collapsible interface and role-based filtering
+- **Smart Table-Chart Integration** - Tables as data sources for charts with real-time binding
+- **Enterprise Virtualization** - Handle 100k+ rows with `RTableVirtualized` and `RVirtualList`
+- **Intelligent Search System** - Built-in search with collapsible interface and role-based filtering
 - **Smart Type Detection** - Auto-detects generics, eliminating boilerplate
 - **3,300+ Utilities** - Comprehensive CSS utility classes
-- **🌳 Tree-Shakeable CSS** - Advanced optimization reduces bundle size by 87%+ (727KB→92KB)
+- **Tree-Shakeable CSS** - Advanced optimization reduces bundle size by 87%+ (727KB→92KB)
 - **Theme System** - Light/dark modes with CSS variables
 - **AI-Optimized** - Machine-readable documentation for AI coding
 
@@ -149,7 +149,7 @@ For AI agents (Claude, GPT-4, etc.), add a rule or manually refer to [`@RR.Blazo
 <RForm Model="user" OnValidSubmit="SaveUser" />
 ```
 
-### 📊 Smart Data Tables & Chart Integration
+### Smart Data Tables & Chart Integration
 
 **Zero-Config Tables with Built-in Chart Integration:**
 
@@ -238,43 +238,78 @@ For AI agents (Claude, GPT-4, etc.), add a rule or manually refer to [`@RR.Blazo
 
 ### Modal System
 
-RR.Blazor supports 4 modal usage patterns. Choose the right pattern for your use case:
+RR.Blazor provides a unified modal system with 4 distinct usage patterns. All patterns use the same portal-based rendering, backdrop management, and z-index stacking.
 
-#### **Case 1: Service-Based Modals** (Recommended)
-Use ModalService for quick confirmations and info dialogs.
+#### **Case 1: Raw Content Components** (WITHOUT internal RModal)
+Components without RModal wrapper - Provider auto-wraps them. Use `ShowRawAsync<T>()` for strongly-typed results.
 ```razor
-@inject IModalService ModalService
-
-await ModalService.ShowConfirmationAsync("Are you sure?", "Delete Item", "Delete", "Cancel", VariantType.Error);
+// Component without internal RModal - gets wrapped automatically
+var result = await ModalService.ShowRawAsync<UserData>(
+    typeof(UserFormContent),
+    parameters: new() { { "UserId", userId } },
+    options: new() { Title = "Edit User", Size = SizeType.Large }
+);
+if (result.ResultType == ModalResult.Ok)
+{
+    var userData = result.Data; // Strongly typed!
+}
 ```
 
-#### **Case 2: Components with Internal RModal**
-Components that have their own `<RModal>` wrapper - use ModalService with `ShowHeader=false`.
+#### **Case 2: Self-Contained Components** (WITH internal RModal)
+Components with their own `<RModal>` wrapper - Provider renders directly without double-wrapping.
 ```razor
+// Component has <RModal> inside - no double wrap
 await ModalService.ShowAsync(new ModalOptions {
-    ComponentType = typeof(MyModalWithWrapper), 
-    ShowHeader = false, ShowFooter = false
+    ComponentType = typeof(SettingsModalWithWrapper),
+    Parameters = new() { { "Settings", currentSettings } }
 });
 ```
 
-#### **Case 3: Direct RModal Usage**
-Standalone modals with two-way binding, no ModalService needed.
+#### **Case 3: Direct RModal Usage** (@bind-Visible)
+Standalone modals with two-way binding - integrates with JS modal system for portals/backdrops.
 ```razor
-<RModal @bind-Visible="showModal" Title="My Modal">
-    <ChildContent>Modal content here</ChildContent>
+<RModal @bind-Visible="showModal"
+        Title="My Modal"
+        CloseOnBackdrop="true"
+        Size="SizeType.Large">
+    <ChildContent>
+        Your content here
+    </ChildContent>
+    <FooterContent>
+        <RButton @onclick="() => showModal = false">Close</RButton>
+    </FooterContent>
 </RModal>
 ```
 
-#### **Case 4: Pure Content Components**  
-Content-only components used through ModalService (no internal RModal).
+#### **Case 4: Service-Based Utility Modals**
+Quick confirmations and info dialogs via ModalService convenience methods.
 ```razor
-await ModalService.ShowAsync(new ModalOptions {
-    ComponentType = typeof(UserFormContent),
-    Title = "Edit User", Size = SizeType.Large
-});
+// Confirmation dialog
+bool confirmed = await ModalService.ShowConfirmationAsync(
+    "Are you sure you want to delete?",
+    "Delete Item",
+    "Delete", "Cancel",
+    VariantType.Error
+);
+
+// Info dialog
+await ModalService.ShowInfoAsync(
+    "Operation completed successfully",
+    "Success"
+);
 ```
 
-### 🔍 Intelligent Search System
+#### Modal Features
+- ✅ Unified portal-based rendering for all 4 cases
+- ✅ Automatic z-index stacking for nested modals
+- ✅ Individual backdrop per modal with proper click handling
+- ✅ Escape key closes topmost modal only
+- ✅ Parent closing cascades to child modals/dropdowns
+- ✅ Strongly-typed results with `ShowRawAsync<T>()`
+- ✅ Loading states, progress indicators, multi-step support
+- ✅ Memory-safe cleanup with proper disposal
+
+### Intelligent Search System
 
 RAppShell includes a built-in, role-aware search system with collapsible interface:
 
@@ -287,11 +322,11 @@ RAppShell includes a built-in, role-aware search system with collapsible interfa
 ```
 
 **Search Features:**
-- **🎯 Universal Search**: Searches across all registered data providers
-- **🛡️ Role-Based Filtering**: Results filtered by user permissions
-- **⚡ Lightning Fast**: Sub-2-second response times with intelligent caching
-- **📱 Collapsible Interface**: Expands on click, auto-collapses when empty
-- **🧠 Smart Suggestions**: Contextual results with relevance scoring
+- **Universal Search**: Searches across all registered data providers
+- **Role-Based Filtering**: Results filtered by user permissions
+- **Lightning Fast**: Sub-2-second response times with intelligent caching
+- **Collapsible Interface**: Expands on click, auto-collapses when empty
+- **Smart Suggestions**: Contextual results with relevance scoring
 
 **Search Provider Registration:**
 
@@ -331,7 +366,7 @@ public class MySearchProvider : ISearchProvider
 | **Feedback** | 10 components | RModal, RToastContainer, RConfirmationModal, RAlert, RTooltip, RErrorBoundary, RDetailModal |
 | **Navigation** | 4 components | RBreadcrumbs, RNavMenu, RTabs, RTabItem |
 | **Layout** | 4 components | RAppShell, RSection, RGrid, RContent |
-| **🔍 Search** | Built-in system | Global search, role-based filtering, collapsible interface |
+| **Search** | Built-in system | Global search, role-based filtering, collapsible interface |
 
 ## Styling System
 
@@ -450,7 +485,7 @@ Compatible with all modern browsers.
 - [Modal System](_Documentation/MODAL_SYSTEM.md) - Portal-based modal system guide
 - [Contributing Guide](CONTRIBUTING.md) - Development guidelines
 
-## 🎨 Custom Theming
+## Custom Theming
 
 RR.Blazor includes a powerful theming system that allows complete visual customization through SCSS variables.
 
@@ -561,11 +596,9 @@ builder.WebHost.UseStaticWebAssets();
 
 ## License
 
-**Dual License:**
-- **MIT License** - Free for individuals and organizations <$5M revenue
-- **Commercial License** - $4,999 lifetime for enterprises ≥$5M revenue
+MIT License - Free for all use, commercial and non-commercial.
 
-See [LICENSE](LICENSE) for details.
+See [LICENSE](LICENSE.md) for details.
 
 ---
 

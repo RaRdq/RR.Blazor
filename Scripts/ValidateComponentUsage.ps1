@@ -185,12 +185,12 @@ function Extract-ActualParameters {
             # Try to find the base class in our dictionary
             if ($BaseClassParameters.ContainsKey($baseClassName)) {
                 $inheritedParameters += $BaseClassParameters[$baseClassName]
-                Write-Host "    📎 Inherited $($BaseClassParameters[$baseClassName].Count) parameters from $baseClassName (including full inheritance chain)" -ForegroundColor DarkCyan
+                Write-Host "     Inherited $($BaseClassParameters[$baseClassName].Count) parameters from $baseClassName (including full inheritance chain)" -ForegroundColor DarkCyan
             }
             # Also check for base classes that might have "Base" suffix
             elseif ($BaseClassParameters.ContainsKey("${baseClassName}Base")) {
                 $inheritedParameters += $BaseClassParameters["${baseClassName}Base"]
-                Write-Host "    📎 Inherited $($BaseClassParameters["${baseClassName}Base"].Count) parameters from ${baseClassName}Base (including full inheritance chain)" -ForegroundColor DarkCyan
+                Write-Host "     Inherited $($BaseClassParameters["${baseClassName}Base"].Count) parameters from ${baseClassName}Base (including full inheritance chain)" -ForegroundColor DarkCyan
             }
         }
     }
@@ -309,9 +309,6 @@ function Extract-RequiredParameters {
     return $requiredParameters | Sort-Object -Unique
 }
 
-Write-Host "🔍 BULLETPROOF R* Component Parameter Validation" -ForegroundColor Cyan
-Write-Host "Using SOURCE CODE as truth (.razor + .cs inheritance)" -ForegroundColor Yellow
-
 # Function to resolve inheritance chain recursively
 function Resolve-InheritanceChain {
     param(
@@ -347,7 +344,7 @@ function Resolve-InheritanceChain {
 }
 
 # Build BASE CLASS parameter dictionary and inheritance chain from .cs files first
-Write-Host "📂 Building base class parameter dictionary with inheritance..." -ForegroundColor Yellow
+Write-Host "Building inheritance tree..." -ForegroundColor Gray
 
 $baseClassParameters = @{}
 $baseClassInheritance = @{}
@@ -374,11 +371,11 @@ if ($baseClassFiles) {
                     # Skip Microsoft base classes
                     if ($parentClass -notmatch "^(ComponentBase|Object|Enum)$") {
                         $baseClassInheritance[$className] = $parentClass
-                        Write-Host "  🔗 $className -> $parentClass" -ForegroundColor DarkBlue
+                        Write-Host "   $className -> $parentClass" -ForegroundColor DarkBlue
                     }
                 }
                 
-                Write-Host "  📄 Base class ${className}: $($parameters.Count) parameters" -ForegroundColor DarkCyan
+                Write-Host "   Base class ${className}: $($parameters.Count) parameters" -ForegroundColor DarkCyan
                 if ($parameters.Count -gt 0) {
                     Write-Host "     Parameters: $($parameters -join ', ')" -ForegroundColor DarkGray
                 } elseif ($className -match "Text|Sized|Variant") {
@@ -393,13 +390,13 @@ if ($baseClassFiles) {
     }
     
     # Second pass: resolve full inheritance chains
-    Write-Host "📊 Resolving inheritance chains..." -ForegroundColor Yellow
+    Write-Host " Resolving inheritance chains..." -ForegroundColor Yellow
     $resolvedBaseClassParameters = @{}
     foreach ($className in $baseClassParameters.Keys) {
         $allParams = Resolve-InheritanceChain -ClassName $className -BaseClassParameters $baseClassParameters -BaseClassInheritance $baseClassInheritance
         $resolvedBaseClassParameters[$className] = $allParams
         if ($allParams.Count -gt 0) {
-            Write-Host "  ✅ $className total: $($allParams.Count) parameters (including inherited)" -ForegroundColor Green
+            Write-Host "   $className total: $($allParams.Count) parameters (including inherited)" -ForegroundColor Green
             if ($allParams.Count -gt 5) {
                 # Show first 5 parameters for readability
                 $preview = ($allParams | Select-Object -First 5) -join ', '
@@ -414,7 +411,7 @@ if ($baseClassFiles) {
 }
 
 # Build SOURCE OF TRUTH parameter dictionary from actual .razor files with inheritance
-Write-Host "📂 Building component parameter dictionary with inheritance..." -ForegroundColor Yellow
+Write-Host "Parsing component parameters..." -ForegroundColor Gray
 
 $componentParameters = @{}
 $componentRequiredParams = @{}
@@ -436,7 +433,7 @@ foreach ($file in $componentFileList) {
     try {
         $content = Get-Content $file.FullName -Raw -Encoding UTF8 -ErrorAction Stop
         
-        Write-Host "  📄 Parsing $componentName..." -ForegroundColor DarkGray
+        Write-Host "   Parsing $componentName..." -ForegroundColor DarkGray
         
         # Debug mode for RChoice specifically
         $debugComponent = ($componentName -eq "RChoice")
@@ -457,7 +454,7 @@ foreach ($file in $componentFileList) {
                         $inheritedParams = $baseClassParameters[$parentClass]
                         if ($inheritedParams -and $inheritedParams.Count -gt 0) {
                             $parameters += $inheritedParams
-                            Write-Host "    📎 Inherited $($inheritedParams.Count) parameters from $parentClass (including full inheritance chain)" -ForegroundColor DarkCyan
+                            Write-Host "     Inherited $($inheritedParams.Count) parameters from $parentClass (including full inheritance chain)" -ForegroundColor DarkCyan
                         }
                     }
                 }
@@ -485,7 +482,7 @@ foreach ($file in $componentFileList) {
             $mergedReqParams = $combinedReqParams | Sort-Object -Unique
             $componentRequiredParams[$componentName] = $mergedReqParams
             
-            Write-Host "    🔄 Merged with existing $componentName ($($existingParams.Count) + $($parameters.Count) = $($mergedParams.Count) parameters)" -ForegroundColor Cyan
+            Write-Host "     Merged with existing $componentName ($($existingParams.Count) + $($parameters.Count) = $($mergedParams.Count) parameters)" -ForegroundColor Cyan
         } else {
             $componentParameters[$componentName] = $parameters
             $componentRequiredParams[$componentName] = $requiredParams
@@ -497,7 +494,7 @@ foreach ($file in $componentFileList) {
                 Write-Host "    Required: $($requiredParams -join ', ')" -ForegroundColor Yellow
             }
         } else {
-            Write-Host "    ✅ Found $($parameters.Count) parameters ($($requiredParams.Count) required)" -ForegroundColor DarkGreen
+            Write-Host "     Found $($parameters.Count) parameters ($($requiredParams.Count) required)" -ForegroundColor DarkGreen
         }
     }
     catch {
@@ -505,8 +502,7 @@ foreach ($file in $componentFileList) {
     }
 }
 
-Write-Host "📊 Parameter dictionary built: $($componentParameters.Count) components, $($componentParameters.Values | ForEach-Object { $_.Count } | Measure-Object -Sum | Select-Object -ExpandProperty Sum) total parameters" -ForegroundColor Green
-
+Write-Host "Parameter dictionary: $($componentParameters.Count) components, $($componentParameters.Values | ForEach-Object { $_.Count } | Measure-Object -Sum | Select-Object -ExpandProperty Sum) total parameters" -ForegroundColor Gray
 
 # Standard parameters to IGNORE (not false positives)
 $ignoredParameters = @(
@@ -617,16 +613,16 @@ function Test-ComponentConstraints {
                 
                 # Determine severity for structural violations
                 $structuralSeverity = "ERROR"
-                $structuralSeverityIcon = "❌"
+                $structuralSeverityIcon = "[ERROR]"
                 $structuralSeverityColor = "Red"
                 
                 if ($FilePath -like "*.md") {
                     $structuralSeverity = "WARNING"
-                    $structuralSeverityIcon = "⚠️"
+                    $structuralSeverityIcon = "[WARNING]"
                     $structuralSeverityColor = "Yellow"
                 } elseif ($FilePath -like "*.html") {
                     $structuralSeverity = "WARNING"
-                    $structuralSeverityIcon = "⚠️"
+                    $structuralSeverityIcon = "[WARNING]"
                     $structuralSeverityColor = "Yellow"
                 }
                 
@@ -649,16 +645,13 @@ function Test-ComponentConstraints {
     return $constraintViolations
 }
 
-Write-Host "🔍 Scanning solution for R* component usage..." -ForegroundColor Yellow
-
 # Find all files that might contain R* component usage (razor, md, html, etc.)
 # Use ArrayLists to avoid array concatenation issues
 $razorFilesList = New-Object System.Collections.ArrayList
-$mdFilesList = New-Object System.Collections.ArrayList  
+$mdFilesList = New-Object System.Collections.ArrayList
 $htmlFilesList = New-Object System.Collections.ArrayList
 
 # Get .razor files (primary target)
-Write-Host "  Searching for .razor files..." -ForegroundColor Gray
 Get-ChildItem -Path $SolutionPath -Filter "*.razor" -Recurse -ErrorAction SilentlyContinue | ForEach-Object {
     if ($_.FullName -notlike "*RR.Blazor*" -and 
         $_.FullName -notlike "*_Backup*" -and
@@ -758,8 +751,7 @@ foreach ($file in $filesToScan) {
         # Match actual parameter assignments: ParamName="value" or ParamName={expr} or @bind-ParamName
         $parameterPattern = '(?:^|\s)((?:@bind-)?[A-Z]\w*)(?=\s*=)'
         $paramMatches = [regex]::Matches(" $attributesSection ", $parameterPattern)
-        
-        
+
         foreach ($paramMatch in $paramMatches) {
             $paramName = $paramMatch.Groups[1].Value
             
@@ -857,16 +849,16 @@ foreach ($file in $filesToScan) {
                 
                 # Determine severity based on file type
                 $severity = "ERROR"
-                $severityIcon = "❌"
+                $severityIcon = "[ERROR]"
                 $severityColor = "Red"
                 
                 if ($file.Extension -eq ".md") {
                     $severity = "WARNING"
-                    $severityIcon = "⚠️"
+                    $severityIcon = "[WARNING]"
                     $severityColor = "Yellow"
                 } elseif ($file.Extension -eq ".html") {
                     $severity = "WARNING" 
-                    $severityIcon = "⚠️"
+                    $severityIcon = "[WARNING]"
                     $severityColor = "Yellow"
                 }
                 
@@ -898,7 +890,7 @@ foreach ($file in $filesToScan) {
 
 # Report structural constraint violations first
 if ($structuralViolations.Count -gt 0) {
-    Write-Host "`n🏗️ STRUCTURAL CONSTRAINT VIOLATIONS:" -ForegroundColor Red
+    Write-Host "`n STRUCTURAL CONSTRAINT VIOLATIONS:" -ForegroundColor Red
     foreach ($violation in $structuralViolations) {
         Write-Host "  $($violation.SeverityIcon) $($violation.File):$($violation.LineNumber) - [$($violation.Severity)] $($violation.Component) used outside required parent" -ForegroundColor $violation.SeverityColor
         Write-Host "     Required: $($violation.Description)" -ForegroundColor Gray
@@ -906,7 +898,7 @@ if ($structuralViolations.Count -gt 0) {
 }
 
 # Report Results
-Write-Host "`n📊 VALIDATION RESULTS:" -ForegroundColor Cyan
+Write-Host "`n VALIDATION RESULTS:" -ForegroundColor Cyan
 
 # Count errors vs warnings
 $paramErrors = 0
@@ -927,8 +919,8 @@ $totalWarnings = $paramWarnings + $structuralWarnings
 $totalViolations = $violations.Count + $structuralViolations.Count
 
 Write-Host "  Total violations found: $totalViolations" -ForegroundColor $(if ($totalViolations -eq 0) { 'Green' } else { 'Red' })
-Write-Host "    ❌ ERRORS: $totalErrors (blocking compilation)" -ForegroundColor $(if ($totalErrors -eq 0) { 'Green' } else { 'Red' })
-Write-Host "    ⚠️  WARNINGS: $totalWarnings (documentation issues)" -ForegroundColor $(if ($totalWarnings -eq 0) { 'Green' } else { 'Yellow' })
+Write-Host "    [ERROR] ERRORS: $totalErrors (blocking compilation)" -ForegroundColor $(if ($totalErrors -eq 0) { 'Green' } else { 'Red' })
+Write-Host "    [WARNING]  WARNINGS: $totalWarnings (documentation issues)" -ForegroundColor $(if ($totalWarnings -eq 0) { 'Green' } else { 'Yellow' })
 Write-Host "  Parameter violations: $($violations.Count) ($paramErrors errors, $paramWarnings warnings)" -ForegroundColor $(if ($violations.Count -eq 0) { 'Green' } else { 'Red' })
 Write-Host "  Structural violations: $($structuralViolations.Count) ($structuralErrors errors, $structuralWarnings warnings)" -ForegroundColor $(if ($structuralViolations.Count -eq 0) { 'Green' } else { 'Red' })
 Write-Host "  Files scanned: $($filesToScan.Count) (Razor: $($razorFilesList.Count), MD: $($mdFilesList.Count), HTML: $($htmlFilesList.Count))" -ForegroundColor White
@@ -936,7 +928,7 @@ Write-Host "  R* components found: $totalComponentsFound" -ForegroundColor White
 Write-Host "  Component types validated: $($componentParameters.Count)" -ForegroundColor White
 
 if ($totalViolations -eq 0) {
-    Write-Host "  ✅ No violations found!" -ForegroundColor Green
+    Write-Host "Component parameters: 0 violations in $($componentsScanned) components" -ForegroundColor Gray
     return @{ Success = $true; Violations = @(); StructuralViolations = @(); ErrorCount = 0; WarningCount = 0 }
 }
 
@@ -946,7 +938,7 @@ if ($violations.Count -gt 0) {
     $violationsByComponent = $violations | Group-Object Component | Sort-Object Count -Descending
 }
 
-Write-Host "`n🔴 VIOLATIONS BY COMPONENT:" -ForegroundColor Red
+Write-Host "`n VIOLATIONS BY COMPONENT:" -ForegroundColor Red
 foreach ($group in $violationsByComponent) {
     $componentName = $group.Name
     $count = $group.Count
@@ -958,7 +950,7 @@ foreach ($group in $violationsByComponent) {
 
 # Auto-fix if requested
 if ($Fix) {
-    Write-Host "`n🔧 AUTO-FIXING violations..." -ForegroundColor Yellow
+    Write-Host "`n AUTO-FIXING violations..." -ForegroundColor Yellow
     
     $fixedFiles = @{}
     $fixCount = 0
@@ -995,7 +987,7 @@ if ($Fix) {
         }
         
         $fixedFiles[$filePath] = $content
-        Write-Host "  ✏️ Removed '$paramToRemove' from $($violation.Component) in $($violation.File)" -ForegroundColor Green
+        Write-Host "   Removed '$paramToRemove' from $($violation.Component) in $($violation.File)" -ForegroundColor Green
     }
     
     # Write fixed files
@@ -1003,7 +995,7 @@ if ($Fix) {
         Set-Content -Path $filePath -Value $fixedFiles[$filePath] -Encoding UTF8 -NoNewline
     }
     
-    Write-Host "  ✅ Fixed $fixCount invalid parameters in $($fixedFiles.Count) files" -ForegroundColor Green
+    Write-Host "   Fixed $fixCount invalid parameters in $($fixedFiles.Count) files" -ForegroundColor Green
 }
 
 return @{
@@ -1022,3 +1014,5 @@ return @{
     ComponentsScanned = $componentParameters.Count
     FilesScanned = $filesToScan.Count
 }
+
+

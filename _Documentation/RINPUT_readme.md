@@ -268,21 +268,21 @@ var hasOverlap = workHours.Overlaps(otherRange);
 
 ### 1. Use Smart Detection
 ```razor
-@* ✅ GOOD: Let RInput detect type automatically *@
+@*  GOOD: Let RInput detect type automatically *@
 <RInput @bind-value="model.Email" />
 
-@* ❌ AVOID: Explicit type unless necessary *@
+@*  AVOID: Explicit type unless necessary *@
 <RInput @bind-value="model.Email" InputType="FieldType.Email" />
 ```
 
 ### 2. Leverage Auto-Conversion
 ```razor
-@* ✅ GOOD: Auto-convert between formats *@
+@*  GOOD: Auto-convert between formats *@
 <RInput @bind-value="unixTimestamp" 
         AutoConvert="true" 
         DateFormat="yyyy-MM-dd" />
 
-@* ❌ AVOID: Manual conversion *@
+@*  AVOID: Manual conversion *@
 <RInput @bind-value="dateString" 
         AutoConvert="false" 
         ValueChanged="ManuallyConvertDate" />
@@ -290,13 +290,13 @@ var hasOverlap = workHours.Overlaps(otherRange);
 
 ### 3. Use Appropriate Constraints
 ```razor
-@* ✅ GOOD: Meaningful constraints *@
+@*  GOOD: Meaningful constraints *@
 <RInput @bind-value="age" 
         Min="0" 
         Max="150" 
         Required="true" />
 
-@* ❌ AVOID: Overly restrictive constraints *@
+@*  AVOID: Overly restrictive constraints *@
 <RInput @bind-value="age" 
         Min="18" 
         Max="65" 
@@ -305,7 +305,7 @@ var hasOverlap = workHours.Overlaps(otherRange);
 
 ### 4. Provide Clear Labels and Help Text
 ```razor
-@* ✅ GOOD: Clear guidance *@
+@*  GOOD: Clear guidance *@
 <RInput @bind-value="workingHours" 
         Placeholder="09:00-17:00" />
 ```

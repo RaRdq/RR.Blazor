@@ -1,6 +1,6 @@
 # RR.Blazor Framework: Lightweight, Customizable, Generic Design System
 
-## 🎯 Framework Vision & Philosophy
+##  Framework Vision & Philosophy
 
 **RR.Blazor** is a **lightweight, project-agnostic, generic Blazor component framework** designed to serve as the foundation for modern web applications. The framework prioritizes **minimal bundle size**, **maximum customizability**, and **utility-first composition** to deliver exceptional developer experience and performance.
 
@@ -24,21 +24,21 @@
 - **Universal Patterns**: Works for e-commerce, dashboards, marketing, enterprise
 - **Customizable**: Projects customize through utility composition, not modification
 
-## 🏗️ Architecture & Design Patterns
+##  Architecture & Design Patterns
 
 ### **R* Component Architecture**
 
 R* components are **semantic building blocks** that provide structure and accessibility while delegating styling to utility classes:
 
 ```razor
-@* ✅ CORRECT: Utility-first composition *@
+@*  CORRECT: Utility-first composition *@
 <RCard Class="pa-6 shadow-lg glass-medium rounded-xl border-light">
   <RButton Class="bg-primary text-white pa-3 rounded-lg shadow-sm hover:shadow-md">
     Primary Action
   </RButton>
 </RCard>
 
-@* ❌ WRONG: Custom component styling *@
+@* [ERROR] WRONG: Custom component styling *@
 <PayrollCard Theme="executive-style">
   <PayrollButton Variant="submit-payroll">
     Submit Payroll
@@ -51,13 +51,13 @@ R* components are **semantic building blocks** that provide structure and access
 Project-specific components combine R* components with business logic:
 
 ```razor
-@* ✅ CORRECT: Business logic + utility composition *@
+@*  CORRECT: Business logic + utility composition *@
 <PayrollSubmitButton PayrollId="@id" 
                      Class="bg-success text-white pa-3 rounded-lg shadow-sm hover:shadow-lg">
   Submit Payroll
 </PayrollSubmitButton>
 
-@* ❌ WRONG: Custom styling overrides *@
+@* [ERROR] WRONG: Custom styling overrides *@
 <PayrollSubmitButton PayrollId="@id" 
                      CustomTheme="payroll-executive-green">
   Submit Payroll  
@@ -69,7 +69,7 @@ Project-specific components combine R* components with business logic:
 Projects achieve custom styling through utility composition and CSS custom properties:
 
 ```scss
-// ✅ CORRECT: Using RR.Blazor extends and mixins
+//  CORRECT: Using RR.Blazor extends and mixins
 .dashboard-metric {
   @extend %card-base-enhanced;
   @extend %touch-target;
@@ -88,7 +88,7 @@ Projects achieve custom styling through utility composition and CSS custom prope
   border: 2px solid var(--color-success);
 }
 
-// ❌ WRONG: Modifying framework components
+// [ERROR] WRONG: Modifying framework components
 .r-button-custom {
   background: linear-gradient(45deg, #custom, #colors);
   padding: 20px 40px;
@@ -96,7 +96,7 @@ Projects achieve custom styling through utility composition and CSS custom prope
 }
 ```
 
-## 📋 Development Guidelines
+##  Development Guidelines
 
 ### **Before Adding New Components or Styles**
 
@@ -144,23 +144,23 @@ Projects achieve custom styling through utility composition and CSS custom prope
 - **Live Validation**: Automatically validates documentation completeness
 
 ```scss
-// ✅ STEP 1: Research existing patterns
+//  STEP 1: Research existing patterns
 @use 'RR.Blazor/Styles/abstracts' as *;
 
-// ✅ STEP 2: Use existing extends
+//  STEP 2: Use existing extends
 .my-component {
   @extend %card-base-enhanced;
   @extend %touch-target;
 }
 
-// ✅ STEP 3: Use existing mixins
+//  STEP 3: Use existing mixins
 .my-responsive-component {
   @include responsive-min(md) {
     @include glass-effect();
   }
 }
 
-// ❌ WRONG: Creating from scratch
+// [ERROR] WRONG: Creating from scratch
 .my-component {
   padding: 16px;
   border-radius: 8px;
@@ -172,7 +172,7 @@ Projects achieve custom styling through utility composition and CSS custom prope
 
 ### **Good vs Bad Examples**
 
-#### **✅ GOOD: Lightweight, Generic, Reusable**
+#### ** GOOD: Lightweight, Generic, Reusable**
 
 ```razor
 @* Generic, utility-first button *@
@@ -248,7 +248,7 @@ Projects achieve custom styling through utility composition and CSS custom prope
 ### **Utility-First Implementation Strategy**
 
 ```scss
-// ✅ CORRECT: Using RR.Blazor extends and mixins
+//  CORRECT: Using RR.Blazor extends and mixins
 .component {
   @extend %card-base-enhanced;
   @extend %touch-target;
@@ -260,7 +260,7 @@ Projects achieve custom styling through utility composition and CSS custom prope
   }
 }
 
-// ✅ CORRECT: Minimal custom CSS with RR.Blazor patterns
+//  CORRECT: Minimal custom CSS with RR.Blazor patterns
 .component {
   @extend %card-base-enhanced;
   
@@ -282,7 +282,7 @@ Projects achieve custom styling through utility composition and CSS custom prope
 }
 ```
 
-## 🎨 Design System Guidelines
+##  Design System Guidelines
 
 ### **Theme System Architecture**
 
@@ -304,7 +304,7 @@ The framework uses a **3-layer theme system** that must be preserved:
 
 ### **Naming Conventions**
 
-#### **✅ CORRECT: Generic, Semantic Names**
+#### ** CORRECT: Generic, Semantic Names**
 - `--color-text-primary` (semantic role)
 - `--color-success` (semantic meaning)
 - `--shadow-md` (semantic scale)
@@ -326,7 +326,7 @@ The framework uses a **3-layer theme system** that must be preserved:
 Components should have **generic variants** that work across all projects:
 
 ```csharp
-// ✅ CORRECT: Generic, semantic variants
+//  CORRECT: Generic, semantic variants
 public enum ButtonVariant
 {
     Primary,    // Main action
@@ -348,7 +348,7 @@ public enum ButtonVariant
 }
 ```
 
-## 🔧 Technical Implementation
+##  Technical Implementation
 
 ### **Smart Component Architecture with RAttributeForwarder**
 
@@ -435,14 +435,14 @@ builder.ForwardAllParameters(ref sequence, this);
 Always use existing extends before creating new patterns:
 
 ```scss
-// ✅ CORRECT: Using existing extends
+//  CORRECT: Using existing extends
 .my-card {
   @extend %card-base-enhanced;
   @extend %touch-target;
   @extend %responsive-grid;
 }
 
-// ✅ CORRECT: Creating generic extends
+//  CORRECT: Creating generic extends
 %modal-base {
   @extend %card-base-enhanced;
   position: fixed;
@@ -468,7 +468,7 @@ Always use existing extends before creating new patterns:
 Use existing mixins from `_mixins.scss`:
 
 ```scss
-// ✅ CORRECT: Using existing mixins
+//  CORRECT: Using existing mixins
 .responsive-component {
   @include responsive-min(md) {
     @include glass-effect();
@@ -492,7 +492,7 @@ Use existing mixins from `_mixins.scss`:
 Use semantic CSS custom properties for component customization:
 
 ```scss
-// ✅ CORRECT: Semantic custom properties
+//  CORRECT: Semantic custom properties
 .component {
   background: var(--component-bg, var(--color-background-elevated));
   color: var(--component-text, var(--color-text-primary));
@@ -507,16 +507,16 @@ Use semantic CSS custom properties for component customization:
 }
 ```
 
-## 📊 Performance Targets
+##  Performance Targets
 
 ### **Bundle Size Limits**
 | Category | Target | Current | Status |
 |----------|---------|---------|---------|
-| Core Utilities | <80kb | ~75kb | ✅ |
-| Components (64) | <60kb | ~55kb | ✅ |
-| Theme System | <40kb | ~35kb | ✅ |
-| CSS Variables (336) | <20kb | ~25kb | ⚠️ |
-| **Total** | **<100kb** | **~92kb** | ✅ |
+| Core Utilities | <80kb | ~75kb |  |
+| Components (64) | <60kb | ~55kb |  |
+| Theme System | <40kb | ~35kb |  |
+| CSS Variables (336) | <20kb | ~25kb | [WARNING] |
+| **Total** | **<100kb** | **~92kb** |  |
 
 ### **Performance Requirements**
 - **Mobile Load Time**: <3s on slow 3G
@@ -524,7 +524,7 @@ Use semantic CSS custom properties for component customization:
 - **Tree Shaking**: Unused code eliminated
 - **Compression**: Gzip/Brotli optimized
 
-## 🚀 Usage Examples
+##  Usage Examples
 
 ### **Building a Custom Dashboard**
 
@@ -589,7 +589,7 @@ Use semantic CSS custom properties for component customization:
 }
 ```
 
-## 🎯 Success Metrics
+##  Success Metrics
 
 ### **Framework Quality**
 - **Bundle Size**: <100kb total (with tree-shaking)
@@ -609,7 +609,7 @@ Use semantic CSS custom properties for component customization:
 - **Theme Switching**: <50ms
 - **Memory Usage**: <10MB CSS parsing
 
-## 🔄 Continuous Improvement
+##  Continuous Improvement
 
 ### **Regular Framework Audits**
 1. **Monthly Bundle Analysis** - Monitor size growth
@@ -630,3 +630,4 @@ Use semantic CSS custom properties for component customization:
 **Key Principle**: RR.Blazor provides the tools, projects create the experience.
 
 **Success Measure**: Developers can build any UI using only utility classes and minimal custom CSS.
+

@@ -1,6 +1,6 @@
 # RAppShell Component: Enterprise Application Shell & Layout System
 
-## 🎯 Component Vision & Philosophy
+##  Component Vision & Philosophy
 
 **RAppShell** is a **lightweight, customizable, plug-and-play application shell** designed to serve as the foundation for modern enterprise web applications. The component prioritizes **zero-config setup**, **maximum customizability**, and **utility-first composition** to deliver exceptional developer experience and professional layouts.
 
@@ -24,14 +24,14 @@
 - **Utility-First Styling**: Extend appearance through utility class composition
 - **Context-Aware Layout**: Adapts to different application types and requirements
 
-## 🏗️ Architecture & Component Structure
+##  Architecture & Component Structure
 
 ### **Core Shell Architecture**
 
 RAppShell follows a **layered architecture** that provides structure while maintaining flexibility:
 
 ```razor
-@* ✅ CORRECT: Zero-config professional setup *@
+@*  CORRECT: Zero-config professional setup *@
 <RAppShell Title="Enterprise Dashboard"
            CurrentUser="@user"
            NavigationItems="@navItems">
@@ -39,7 +39,7 @@ RAppShell follows a **layered architecture** that provides structure while maint
     <MyDashboardContent />
 </RAppShell>
 
-@* ✅ ADVANCED: Full customization with RenderFragments *@
+@*  ADVANCED: Full customization with RenderFragments *@
 <RAppShell Title="Custom Application"
            Features="AppShellFeatures.All"
            Logo="/assets/logo.svg"
@@ -68,7 +68,7 @@ RAppShell follows a **layered architecture** that provides structure while maint
 Control shell features through the `AppShellFeatures` enumeration:
 
 ```csharp
-// ✅ CORRECT: Granular feature control
+//  CORRECT: Granular feature control
 [Flags]
 public enum AppShellFeatures
 {
@@ -96,7 +96,7 @@ Features="AppShellFeatures.All"           // Everything enabled
 Features="AppShellFeatures.Header | AppShellFeatures.Search"  // Custom combination
 ```
 
-## 🎨 Topbar Customization System
+##  Topbar Customization System
 
 ### **Header Layout Architecture**
 
@@ -129,11 +129,11 @@ The topbar follows a **three-zone layout** with maximum flexibility:
 
 #### **1. Custom Logo Integration**
 ```razor
-@* ✅ String logo with automatic sizing *@
+@*  String logo with automatic sizing *@
 <RAppShell Logo="/assets/company-logo.svg" 
            Title="Enterprise Suite" />
 
-@* ✅ Custom logo component with full control *@
+@*  Custom logo component with full control *@
 <RAppShell Title="My Application">
     <LogoContent>
         <div class="d-flex align-center gap-3">
@@ -149,12 +149,12 @@ The topbar follows a **three-zone layout** with maximum flexibility:
 
 #### **2. Breadcrumb System**
 ```razor
-@* ✅ Automatic breadcrumb generation *@
+@*  Automatic breadcrumb generation *@
 <RAppShell Breadcrumbs="@breadcrumbItems" 
            PageTitle="User Management"
            PageSubtitle="Manage system users and permissions" />
 
-@* ✅ Custom header content *@
+@*  Custom header content *@
 <RAppShell>
     <HeaderLeft>
         <div class="d-flex flex-column gap-1">
@@ -177,24 +177,24 @@ The topbar follows a **three-zone layout** with maximum flexibility:
 }
 ```
 
-#### **3. Intelligent Global Search System** 🔍
+#### **3. Intelligent Global Search System** 
 
 RAppShell includes a sophisticated, role-aware search system that transforms user interaction with application data:
 
 ```razor
-@* ✅ Built-in intelligent search with role-based filtering *@
+@*  Built-in intelligent search with role-based filtering *@
 <RAppShell SearchCollapsible="true"
            Features="AppShellFeatures.Search">
     <!-- Search automatically integrates with registered providers -->
 </RAppShell>
 ```
 
-**🚀 Search Features:**
-- **🎯 Universal Search**: Searches across all registered data providers
-- **🛡️ Role-Based Filtering**: Results automatically filtered by user permissions  
-- **⚡ Lightning Fast**: Sub-2-second response times with intelligent caching
-- **📱 Collapsible Interface**: Expands on click, auto-collapses when empty and unfocused
-- **🧠 Smart Suggestions**: Contextual results with relevance scoring and categorization
+** Search Features:**
+- ** Universal Search**: Searches across all registered data providers
+- ** Role-Based Filtering**: Results automatically filtered by user permissions  
+- ** Lightning Fast**: Sub-2-second response times with intelligent caching
+- ** Collapsible Interface**: Expands on click, auto-collapses when empty and unfocused
+- ** Smart Suggestions**: Contextual results with relevance scoring and categorization
 
 **Search Provider Registration:**
 
@@ -257,7 +257,7 @@ RAppShell includes a sophisticated, role-aware search system that transforms use
 The topbar automatically adapts to different screen sizes:
 
 ```scss
-// ✅ CORRECT: Responsive header patterns in _app-shell.scss
+//  CORRECT: Responsive header patterns in _app-shell.scss
 
 // Desktop (>1024px): Full header with all elements
 .app-header {
@@ -451,14 +451,14 @@ The sidebar automatically handles responsive behavior and user preferences:
 }
 ```
 
-## 🎨 Theme & Styling Integration
+##  Theme & Styling Integration
 
 ### **CSS Custom Properties System**
 
 RAppShell uses semantic CSS variables for complete customization:
 
 ```scss
-// ✅ CORRECT: Shell customization through CSS variables
+//  CORRECT: Shell customization through CSS variables
 
 :root {
   // Header customization
@@ -497,7 +497,7 @@ RAppShell uses semantic CSS variables for complete customization:
 ### **Utility-First Shell Styling**
 
 ```razor
-@* ✅ CORRECT: Style through utility classes *@
+@*  CORRECT: Style through utility classes *@
 <RAppShell Class="enterprise-shell"
            HeaderClass="glass-heavy backdrop-blur-xl"
            SidebarClass="glass-light border-r-2 border-primary"
@@ -509,11 +509,11 @@ RAppShell uses semantic CSS variables for complete customization:
     </ChildContent>
 </RAppShell>
 
-@* ❌ WRONG: Hardcoded inline styles *@
+@*  WRONG: Hardcoded inline styles *@
 <RAppShell Style="background: linear-gradient(45deg, #custom, #colors);">
 ```
 
-## 🚀 Implementation Examples
+##  Implementation Examples
 
 ### **1. Enterprise Dashboard Shell**
 ```razor
@@ -664,7 +664,7 @@ RAppShell uses semantic CSS variables for complete customization:
 }
 ```
 
-## 🎯 Best Practices & Guidelines
+##  Best Practices & Guidelines
 
 ### **Shell Configuration Strategy**
 1. **Start Simple**: Begin with minimal features, add as needed
@@ -687,7 +687,7 @@ RAppShell uses semantic CSS variables for complete customization:
 4. **Component Injection**: Add functionality through component parameters
 5. **State Management**: Use shell callbacks for application state sync
 
-## 📊 Performance Considerations
+##  Performance Considerations
 
 ### **Rendering Optimization**
 - **Conditional Rendering**: Only render enabled features
@@ -700,7 +700,7 @@ RAppShell uses semantic CSS variables for complete customization:
 - **Search Debouncing**: Prevents excessive API calls
 - **State Persistence**: User preferences cached in local storage
 
-## 🔧 Technical Integration
+##  Technical Integration
 
 ### **Service Integration Requirements**
 ```csharp

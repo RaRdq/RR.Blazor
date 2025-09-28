@@ -8,7 +8,7 @@ param(
     [switch]$Fix
 )
 
-Write-Host "🔍 SCANNING FOR DUPLICATE PARAMETERS AND INHERITANCE ISSUES" -ForegroundColor Cyan
+Write-Host " SCANNING FOR DUPLICATE PARAMETERS AND INHERITANCE ISSUES" -ForegroundColor Cyan
 Write-Host "=============================================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -27,7 +27,7 @@ $baseClassParams = @{
 # Get all .razor files
 $razorFiles = Get-ChildItem -Path $ComponentsPath -Filter "R*.razor" -Recurse
 
-Write-Host "📂 Analyzing $($razorFiles.Count) R* components..." -ForegroundColor DarkGray
+Write-Host " Analyzing $($razorFiles.Count) R* components..." -ForegroundColor DarkGray
 Write-Host ""
 
 foreach ($file in $razorFiles) {
@@ -123,27 +123,27 @@ foreach ($file in $razorFiles) {
 }
 
 # Report findings
-Write-Host "🚨 DUPLICATE PARAMETER CONFLICTS:" -ForegroundColor Red
+Write-Host " DUPLICATE PARAMETER CONFLICTS:" -ForegroundColor Red
 Write-Host "====================================" -ForegroundColor Red
 
 if ($duplicates.Count -eq 0) {
-    Write-Host "✅ No duplicate parameter conflicts found" -ForegroundColor Green
+    Write-Host " No duplicate parameter conflicts found" -ForegroundColor Green
 } else {
     $duplicates | Sort-Object Component, Parameter | ForEach-Object {
-        Write-Host "  ❌ $($_.Component) ($($_.File))" -ForegroundColor Red
+        Write-Host "   $($_.Component) ($($_.File))" -ForegroundColor Red
         Write-Host "     Parameter: '$($_.Parameter)' conflicts with $($_.BaseClass)" -ForegroundColor Gray
     }
 }
 
 Write-Host ""
-Write-Host "⚠️  MISSING INHERITANCE:" -ForegroundColor Yellow
+Write-Host "  MISSING INHERITANCE:" -ForegroundColor Yellow
 Write-Host "=========================" -ForegroundColor Yellow
 
 if ($missingInheritance.Count -eq 0) {
-    Write-Host "✅ No missing inheritance issues found" -ForegroundColor Green
+    Write-Host " No missing inheritance issues found" -ForegroundColor Green
 } else {
     $missingInheritance | Sort-Object Component | ForEach-Object {
-        Write-Host "  ⚠️  $($_.Component) ($($_.File))" -ForegroundColor Yellow
+        Write-Host "    $($_.Component) ($($_.File))" -ForegroundColor Yellow
         Write-Host "     Should inherit from: $($_.MissingBase)" -ForegroundColor Gray
         Write-Host "     Declaring: $($_.Parameters)" -ForegroundColor Gray
     }
@@ -154,7 +154,7 @@ Write-Host "🤔 LOGIC AMBIGUITY:" -ForegroundColor Magenta
 Write-Host "===================" -ForegroundColor Magenta
 
 if ($logicAmbiguity.Count -eq 0) {
-    Write-Host "✅ No logic ambiguity issues found" -ForegroundColor Green
+    Write-Host " No logic ambiguity issues found" -ForegroundColor Green
 } else {
     $logicAmbiguity | Sort-Object Component | ForEach-Object {
         Write-Host "  🤔 $($_.Component) ($($_.File))" -ForegroundColor Magenta
@@ -163,7 +163,7 @@ if ($logicAmbiguity.Count -eq 0) {
 }
 
 Write-Host ""
-Write-Host "📊 SUMMARY:" -ForegroundColor Cyan
+Write-Host " SUMMARY:" -ForegroundColor Cyan
 Write-Host "===========" -ForegroundColor Cyan
 Write-Host "  Duplicate Parameters: $($duplicates.Count)" -ForegroundColor $(if ($duplicates.Count -eq 0) { 'Green' } else { 'Red' })
 Write-Host "  Missing Inheritance: $($missingInheritance.Count)" -ForegroundColor $(if ($missingInheritance.Count -eq 0) { 'Green' } else { 'Yellow' })
@@ -174,11 +174,11 @@ Write-Host "  Total Issues: $totalIssues" -ForegroundColor $(if ($totalIssues -e
 
 if ($Fix -and $totalIssues -gt 0) {
     Write-Host ""
-    Write-Host "🔧 FIXING ISSUES..." -ForegroundColor Blue
+    Write-Host " FIXING ISSUES..." -ForegroundColor Blue
     Write-Host "===================" -ForegroundColor Blue
     
     # TODO: Implement fixes
-    Write-Host "⚠️  Fix functionality not implemented yet - manual fixes required" -ForegroundColor Yellow
+    Write-Host "  Fix functionality not implemented yet - manual fixes required" -ForegroundColor Yellow
 }
 
 Write-Host ""

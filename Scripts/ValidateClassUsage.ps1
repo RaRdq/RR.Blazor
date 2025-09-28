@@ -54,8 +54,8 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-Write-Host "🎯 Project Paths: $(if ($ProjectPaths.Count -gt 0) { $ProjectPaths -join ', ' } else { 'Auto-detect client projects' })" -ForegroundColor Yellow
-Write-Host "📄 Styles Doc: $StylesDocPath" -ForegroundColor Yellow
+Write-Host " Project Paths: $(if ($ProjectPaths.Count -gt 0) { $ProjectPaths -join ', ' } else { 'Auto-detect client projects' })" -ForegroundColor Yellow
+Write-Host " Styles Doc: $StylesDocPath" -ForegroundColor Yellow
 
 # Load available classes from AI documentation
 $availableClasses = @{}
@@ -96,7 +96,7 @@ if (Test-Path $StylesDocPath) {
         }
     }
     
-    Write-Host "📚 Loaded $($availableClasses.Count) utility classes from AI documentation (single source of truth)" -ForegroundColor Green
+    Write-Host " Loaded $($availableClasses.Count) utility classes from AI documentation (single source of truth)" -ForegroundColor Green
     
     if ($Verbose) {
         Write-Host "Sample classes loaded:" -ForegroundColor Gray
@@ -105,7 +105,7 @@ if (Test-Path $StylesDocPath) {
         }
     }
 } else {
-    Write-Host "❌ ERROR: Styles documentation not found at $StylesDocPath" -ForegroundColor Red
+    Write-Host " ERROR: Styles documentation not found at $StylesDocPath" -ForegroundColor Red
     Write-Host "   This file is the single source of truth for all CSS classes" -ForegroundColor Red
     Write-Host "   Run: pwsh ./RR.Blazor/Scripts/GenerateDocumentation.ps1 -ProjectPath ./RR.Blazor" -ForegroundColor Yellow
 }
@@ -140,7 +140,7 @@ if ($ProjectPaths.Count -gt 0) {
             $razorFiles += $projectCodeFiles
             Write-Host "  Found $($projectCodeFiles.Count) code files in: $projectPath" -ForegroundColor Gray
         } else {
-            Write-Host "  ⚠️ Project path not found: $projectPath" -ForegroundColor Yellow
+            Write-Host "   Project path not found: $projectPath" -ForegroundColor Yellow
         }
     }
 } else {
@@ -164,7 +164,7 @@ if ($ProjectPaths.Count -gt 0) {
     }
 }
 
-Write-Host "🔍 Found $($razorFiles.Count) code files to analyze" -ForegroundColor Green
+Write-Host " Found $($razorFiles.Count) code files to analyze" -ForegroundColor Green
 
 $issues = @()
 $inlineStyleCount = 0
@@ -227,11 +227,11 @@ function ExtractClasses($classString) {
 }
 
 foreach ($file in $razorFiles) {
-    if ($Verbose) { Write-Host "📄 Analyzing: $($file.Name)" -ForegroundColor Gray }
+    if ($Verbose) { Write-Host " Analyzing: $($file.Name)" -ForegroundColor Gray }
     
     $content = Get-Content $file.FullName -Raw -ErrorAction SilentlyContinue
     if ([string]::IsNullOrEmpty($content)) {
-        if ($Verbose) { Write-Host "  ⚠️ Skipping empty or inaccessible file: $($file.Name)" -ForegroundColor Yellow }
+        if ($Verbose) { Write-Host "   Skipping empty or inaccessible file: $($file.Name)" -ForegroundColor Yellow }
         continue
     }
     
@@ -469,7 +469,7 @@ foreach ($group in $issuesByType) {
 
 # Show detailed issues (limit to 50 for readability)
 if ($issues.Count -gt 0) {
-    Write-Host "`n🔍 Detailed Issues (first 50):" -ForegroundColor Red
+    Write-Host "`n Detailed Issues (first 50):" -ForegroundColor Red
     
     $displayIssues = $issues | Sort-Object Type, File, Line | Select-Object -First 50
     foreach ($issue in $displayIssues) {
@@ -507,13 +507,14 @@ $report = @{
 
 $reportPath = "class-validation-report.json"
 $report | ConvertTo-Json -Depth 10 | Set-Content $reportPath
-Write-Host "📄 JSON report saved to: $reportPath" -ForegroundColor Cyan
+Write-Host " JSON report saved to: $reportPath" -ForegroundColor Cyan
 
 # Exit with appropriate code for build integration
 if ($issues.Count -gt 0) {
-    Write-Host "⚠️ Validation completed with issues. Review the report above." -ForegroundColor Yellow
+    Write-Host " Validation completed with issues. Review the report above." -ForegroundColor Yellow
     exit 1
 } else {
-    Write-Host "✅ All class usages are valid!" -ForegroundColor Green
+    Write-Host "CSS classes: 0 invalid references in $($filesScanned) files" -ForegroundColor Gray
     exit 0
 }
+

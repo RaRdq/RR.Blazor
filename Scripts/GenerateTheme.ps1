@@ -271,7 +271,7 @@ function New-RRBlazorTheme {
         throw "Failed to write theme file: $_"
     }
     
-    Write-Host "`nTheme created successfully!" -ForegroundColor Green
+    Write-Host "Theme: $themeName.scss created with $variableCount variables" -ForegroundColor Gray
     Write-Host "Theme file: $themePath" -ForegroundColor Gray
     Write-Host "`nTo use this theme:" -ForegroundColor Cyan
     Write-Host "1. Place the theme file in your project" -ForegroundColor White
@@ -281,7 +281,7 @@ function New-RRBlazorTheme {
     Write-Host "       options.WithCustomTheme(`"$sanitizedThemeName`", `"path/to/$sanitizedThemeName.scss`");" -ForegroundColor Yellow
     Write-Host "   });" -ForegroundColor Yellow
     Write-Host "`n3. The theme will be compiled into your CSS at build time" -ForegroundColor White
-    Write-Host "`nTip: Customize the CSS variables in the generated file to match your brand!" -ForegroundColor Gray
+    Write-Host "Theme file: $($variableCount) variables generated" -ForegroundColor Gray
     Write-Host "`nSecurity: Theme name was sanitized to: $sanitizedThemeName" -ForegroundColor Magenta
 }
 
@@ -292,3 +292,4 @@ catch {
     Write-Host "Error creating theme: $_" -ForegroundColor Red
     exit 1
 }
+

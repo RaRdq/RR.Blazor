@@ -342,7 +342,7 @@ console.log('Responsive Issues:', responsive.summary?.totalIssues || 0)
 
 // 4. Generate final report
 const report = window.RRDebug.report()
-console.log('📋 Complete Report:', report)
+console.log('Complete Report:', report)
 ```
 
 ## Documentation Standards
@@ -455,3 +455,4 @@ dotnet run --project Tools/CLI -- generate component --name RNewComponent
 ---
 
 **Remember**: RR.Blazor's goal is to make Blazor development faster and more consistent, especially when working with AI coding assistants. Every contribution should enhance this goal.
+

@@ -24,8 +24,7 @@ function Write-Warning { param($Message) Write-Host $Message -ForegroundColor Ye
 function Write-Error { param($Message) Write-Host $Message -ForegroundColor Red }
 function Write-Info { param($Message) Write-Host $Message -ForegroundColor Cyan }
 
-Write-Info "🔍 CSS Variable Mismatch Detective Starting..."
-Write-Info "═══════════════════════════════════════════════"
+Write-Info " CSS Variable Mismatch Detective Starting..."
 
 # Initialize collections
 $scssVariables = @{}
@@ -36,7 +35,7 @@ $suspiciousPatterns = @()
 # Find all SCSS files
 $scssFiles = Get-ChildItem -Path $ProjectPath -Recurse -Include "*.scss" -ErrorAction SilentlyContinue
 
-Write-Info "📋 Analyzing $($scssFiles.Count) SCSS files..."
+Write-Info " Analyzing $($scssFiles.Count) SCSS files..."
 
 foreach ($scssFile in $scssFiles) {
     try {
@@ -62,14 +61,14 @@ foreach ($scssFile in $scssFiles) {
         }
     }
     catch {
-        Write-Warning "⚠️  Could not process $($scssFile.Name): $($_.Exception.Message)"
+        Write-Warning "[WARNING]  Could not process $($scssFile.Name): $($_.Exception.Message)"
     }
 }
 
 # Find all Razor files
 $razorFiles = Get-ChildItem -Path $ProjectPath -Recurse -Include "*.razor" -ErrorAction SilentlyContinue
 
-Write-Info "📋 Analyzing $($razorFiles.Count) Razor files..."
+Write-Info " Analyzing $($razorFiles.Count) Razor files..."
 
 foreach ($razorFile in $razorFiles) {
     try {
@@ -137,7 +136,7 @@ foreach ($razorFile in $razorFiles) {
         
     }
     catch {
-        Write-Warning "⚠️  Could not process $($razorFile.Name): $($_.Exception.Message)"
+        Write-Warning "[WARNING]  Could not process $($razorFile.Name): $($_.Exception.Message)"
     }
 }
 
@@ -163,7 +162,7 @@ function Get-LevenshteinDistance {
     return $matrix[$String1.Length, $String2.Length]
 }
 
-Write-Info "🔍 Analyzing variable usage patterns..."
+Write-Info " Analyzing variable usage patterns..."
 
 # Find potential mismatches
 foreach ($scssVar in $scssVariables.Keys) {
@@ -224,18 +223,17 @@ $suspiciousPatterns += $scssVariables.Keys | Where-Object {
 }
 
 # Report results
-Write-Info "════════════════════════════════════════════════"
-Write-Info "📊 ANALYSIS COMPLETE"
-Write-Info "════════════════════════════════════════════════"
 
-Write-Success "✅ Found $($scssVariables.Keys.Count) unique CSS variables in SCSS files"
-Write-Success "✅ Found $($razorVariables.Keys.Count) unique CSS variables in Razor files"
+Write-Host "Processing $($itemCount) items..." -ForegroundColor Gray
+
+Write-Host "SCSS: $($scssVariables.Keys.Count) variables" -ForegroundColor Gray
+Write-Host "Razor: $($razorVariables.Keys.Count) variables" -ForegroundColor Gray
 
 $highSeverityIssues = $potentialMismatches | Where-Object { $_.Severity -eq "High" }
 $mediumSeverityIssues = $potentialMismatches | Where-Object { $_.Severity -eq "Medium" }
 
 if ($highSeverityIssues) {
-    Write-Error "🚨 HIGH SEVERITY MISMATCHES ($($highSeverityIssues.Count)):"
+    Write-Error " HIGH SEVERITY MISMATCHES ($($highSeverityIssues.Count)):"
     foreach ($issue in $highSeverityIssues) {
         Write-Error "   • $($issue.Description)"
         if ($issue.SimilarRazorVars) {
@@ -248,7 +246,7 @@ if ($highSeverityIssues) {
 }
 
 if ($mediumSeverityIssues) {
-    Write-Warning "⚠️  MEDIUM SEVERITY ISSUES ($($mediumSeverityIssues.Count)):"
+    Write-Warning "[WARNING]  MEDIUM SEVERITY ISSUES ($($mediumSeverityIssues.Count)):"
     foreach ($issue in $mediumSeverityIssues | Select-Object -First 5) {
         Write-Warning "   • $($issue.Description)"
     }
@@ -258,16 +256,15 @@ if ($mediumSeverityIssues) {
 }
 
 if ($suspiciousPatterns) {
-    Write-Warning "🔍 SUSPICIOUS PATTERNS ($($suspiciousPatterns.Count)):"
+    Write-Warning " SUSPICIOUS PATTERNS ($($suspiciousPatterns.Count)):"
     foreach ($pattern in $suspiciousPatterns | Select-Object -First 3) {
         Write-Warning "   • --$($pattern.Variable): $($pattern.Description)"
     }
 }
 
 if ($DetailedReport) {
-    Write-Info "`n📋 DETAILED FINDINGS:"
-    Write-Info "═══════════════════════"
-    
+    if ($DetailedReport -and $issues.Count -gt 0) { Write-Host "Detailed findings:" -ForegroundColor Gray }
+
     foreach ($mismatch in $potentialMismatches | Where-Object { $_.Severity -eq "High" }) {
         Write-Info "`nIssue: $($mismatch.Description)"
         Write-Info "Severity: $($mismatch.Severity)"
@@ -306,10 +303,10 @@ if ($ExportJson) {
     
     $jsonPath = Join-Path $ProjectPath "css-variable-analysis.json"
     $results | ConvertTo-Json -Depth 10 | Out-File $jsonPath
-    Write-Success "📄 Results exported to: $jsonPath"
+    Write-Success " Results exported to: $jsonPath"
 }
 
-Write-Info "`n🎯 RECOMMENDATIONS:"
+Write-Host "Recommendations:" -ForegroundColor Gray
 Write-Info "• Focus on HIGH severity mismatches first"
 Write-Info "• Check components with dynamic styling (progress bars, sliders, etc.)"
 Write-Info "• Verify variable names match between SCSS var() and C# property setting"
@@ -320,3 +317,5 @@ return @{
     MediumSeverityIssues = $mediumSeverityIssues.Count
     TotalIssues = $potentialMismatches.Count
 }
+
+

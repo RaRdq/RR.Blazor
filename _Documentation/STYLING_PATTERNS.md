@@ -26,7 +26,7 @@ Use utility classes for all static styling:
 Use inline CSS custom properties for values calculated in C#:
 
 ```razor
-<!-- ✅ CORRECT: Hybrid approach -->
+<!--  CORRECT: Hybrid approach -->
 <div class="progress-dynamic bg-surface-secondary rounded-full" 
      style="--progress-width: @(Progress)%">
     <div class="h-2 bg-primary rounded-full transition-all" 
@@ -69,7 +69,7 @@ Define component-specific classes in SCSS for complex patterns:
 Some modern CSS features must be inline:
 
 ```razor
-<!-- ✅ CORRECT: Container queries need inline declaration -->
+<!--  CORRECT: Container queries need inline declaration -->
 <div class="nav-menu responsive-nav" style="container-type: inline-size;">
     @* Content adapts to container size *@
 </div>
@@ -109,7 +109,7 @@ Some modern CSS features must be inline:
 
 The CSS validation script analyzes 246 Razor files with 14,569 utility class usages and will flag these patterns:
 
-### ✅ Acceptable "Violations"
+###  Acceptable "Violations"
 - CSS custom properties: `style="--variable: @(value)"`
 - Container queries: `style="container-type: inline-size"`
 - Computed colors: `style="--color: var(--color-@theme)"`
@@ -174,10 +174,10 @@ RR.Blazor provides these utility classes for dynamic properties (part of 3,309 t
 ```
 
 This approach provides:
-- ✅ Utility-first static styling
-- ✅ Theme-aware colors and spacing with WCAG 2.1 AA compliance
-- ✅ Cross-device responsive design (mobile, PC, laptop, iPad portrait/landscape)
-- ✅ Dynamic values where needed
-- ✅ Full accessibility compliance (ARIA attributes, keyboard navigation)
-- ✅ Touch-friendly 44px minimum targets
-- ✅ Performance optimization
+-  Utility-first static styling
+-  Theme-aware colors and spacing with WCAG 2.1 AA compliance
+-  Cross-device responsive design (mobile, PC, laptop, iPad portrait/landscape)
+-  Dynamic values where needed
+-  Full accessibility compliance (ARIA attributes, keyboard navigation)
+-  Touch-friendly 44px minimum targets
+-  Performance optimization

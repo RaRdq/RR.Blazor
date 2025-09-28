@@ -6,12 +6,12 @@ RGrid is an intelligent layout component that automatically detects the best dis
 
 ## Key Features
 
-✅ **Smart Mode Detection** - Automatically chooses the best layout based on your data  
-✅ **Component Delegation** - Routes to existing R components (RCard, RList, RTable)  
-✅ **Responsive Design** - Configurable columns per breakpoint  
-✅ **Filter Integration** - Works seamlessly with RFilter  
-✅ **Custom Templates** - Override auto-generated layouts  
-✅ **Performance Optimized** - CSS Grid with GPU acceleration  
+ **Smart Mode Detection** - Automatically chooses the best layout based on your data  
+ **Component Delegation** - Routes to existing R components (RCard, RList, RTable)  
+ **Responsive Design** - Configurable columns per breakpoint  
+ **Filter Integration** - Works seamlessly with RFilter  
+ **Custom Templates** - Override auto-generated layouts  
+ **Performance Optimized** - CSS Grid with GPU acceleration  
 
 ## Quick Start
 
@@ -206,10 +206,10 @@ RGrid automatically delegates to appropriate components:
 
 ## Accessibility
 
-✅ **Keyboard Navigation** - Full keyboard support  
-✅ **Screen Readers** - Proper ARIA labels  
-✅ **Focus Management** - Visible focus indicators  
-✅ **Responsive Design** - Mobile-first approach  
+ **Keyboard Navigation** - Full keyboard support  
+ **Screen Readers** - Proper ARIA labels  
+ **Focus Management** - Visible focus indicators  
+ **Responsive Design** - Mobile-first approach  
 
 ## Examples
 
@@ -277,9 +277,9 @@ The old RGrid incorrectly rendered HTML tables. The new RGrid uses CSS Grid and 
 
 ## Browser Support
 
-- ✅ Modern browsers (Chrome 57+, Firefox 52+, Safari 10.1+)
-- ✅ CSS Grid support required
-- ✅ Graceful fallback for older browsers
+-  Modern browsers (Chrome 57+, Firefox 52+, Safari 10.1+)
+-  CSS Grid support required
+-  Graceful fallback for older browsers
 
 ## Related Components
 

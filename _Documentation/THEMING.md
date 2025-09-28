@@ -281,11 +281,11 @@ builder.Services.AddRRBlazor(options =>
 
 RR.Blazor theming includes enterprise-grade security:
 
-- **🔒 Path Traversal Protection**: Prevents `../` attacks and directory escape attempts
-- **🛡️ Input Sanitization**: Theme names validated against reserved system names  
-- **⚡ Build-Time Validation**: SCSS syntax validation and compilation errors caught early
-- **🎯 Atomic Operations**: Theme files written atomically with automatic backup
-- **📦 Dependency Injection**: Clean architecture with proper service interfaces
+- ** Path Traversal Protection**: Prevents `../` attacks and directory escape attempts
+- ** Input Sanitization**: Theme names validated against reserved system names  
+- ** Build-Time Validation**: SCSS syntax validation and compilation errors caught early
+- ** Atomic Operations**: Theme files written atomically with automatic backup
+- ** Dependency Injection**: Clean architecture with proper service interfaces
 
 ## VS Code Integration
 

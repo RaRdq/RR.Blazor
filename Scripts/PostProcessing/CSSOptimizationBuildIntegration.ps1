@@ -42,22 +42,22 @@ param(
 function Ensure-PowerShell7 {
     $currentVersion = $PSVersionTable.PSVersion
     if ($currentVersion.Major -lt 7) {
-        Write-Host "⚠️  PowerShell 7+ required. Current: $currentVersion" -ForegroundColor Yellow
+        Write-Host "  PowerShell 7+ required. Current: $currentVersion" -ForegroundColor Yellow
         
         if ($IsWindows -or $env:OS -eq "Windows_NT") {
-            Write-Host "🔧 Installing PowerShell 7 via winget..." -ForegroundColor Cyan
+            Write-Host " Installing PowerShell 7 via winget..." -ForegroundColor Cyan
             try {
                 winget install Microsoft.PowerShell --silent --accept-package-agreements --accept-source-agreements
-                Write-Host "✅ PowerShell 7 installed. Restart terminal and re-run script." -ForegroundColor Green
+                Write-Host " PowerShell 7 installed. Restart terminal and re-run script." -ForegroundColor Green
                 exit 0
             }
             catch {
-                Write-Host "❌ Winget failed. Manual install: https://aka.ms/powershell-release" -ForegroundColor Red
+                Write-Host " Winget failed. Manual install: https://aka.ms/powershell-release" -ForegroundColor Red
                 exit 1
             }
         }
         else {
-            Write-Host "❌ Install PowerShell 7+: https://aka.ms/powershell-release" -ForegroundColor Red
+            Write-Host " Install PowerShell 7+: https://aka.ms/powershell-release" -ForegroundColor Red
             exit 1
         }
     }
@@ -88,7 +88,7 @@ function Write-BuildLog {
     Write-Host "$prefix[$timestamp] $Message"
 }
 
-Write-BuildLog "🔧 RR.Blazor Build Integration Started" "INFO"
+Write-BuildLog " RR.Blazor Build Integration Started" "INFO"
 Write-BuildLog "   Configuration: $BuildConfiguration" "INFO"
 Write-BuildLog "   Project Path: $ProjectPath" "INFO"
 
@@ -164,7 +164,7 @@ $paramString = ($treeShakeParams.GetEnumerator() | ForEach-Object {
     }
 }) -join " "
 
-Write-BuildLog "🚀 Starting CSS optimization..." "INFO"
+Write-BuildLog " Starting CSS optimization..." "INFO"
 
 try {
     # Execute tree-shaking optimization
@@ -195,7 +195,7 @@ try {
     }
     
     if ($process.ExitCode -eq 0) {
-        Write-BuildLog "✅ CSS optimization completed successfully in $([math]::Round($duration, 1))s" "INFO"
+        Write-BuildLog " CSS optimization completed successfully in $([math]::Round($duration, 1))s" "INFO"
         
         # Read and display optimization results
         $reportPath = Join-Path $ProjectPath "wwwroot/css/optimized/optimization-report.json"
@@ -206,7 +206,7 @@ try {
                 $originalKB = [math]::Round($report.originalSize.kb, 1)
                 $optimizedKB = [math]::Round($report.optimizedSize.kb, 1)
                 
-                Write-BuildLog "📊 Optimization Results:" "INFO"
+                Write-BuildLog " Optimization Results:" "INFO"
                 Write-BuildLog "   • Original size: $originalKB KB" "INFO"
                 Write-BuildLog "   • Optimized size: $optimizedKB KB" "INFO"
                 Write-BuildLog "   • Space saved: $savings% ($($originalKB - $optimizedKB) KB)" "INFO"
@@ -234,12 +234,12 @@ try {
         $cacheData | ConvertTo-Json | Set-Content -Path (Join-Path $cacheDir "build-cache.json")
         
     } else {
-        Write-BuildLog "❌ CSS optimization failed with exit code $($process.ExitCode)" "ERROR"
+        Write-BuildLog " CSS optimization failed with exit code $($process.ExitCode)" "ERROR"
         exit $process.ExitCode
     }
 }
 catch {
-    Write-BuildLog "❌ CSS optimization failed: $($_.Exception.Message)" "ERROR"
+    Write-BuildLog " CSS optimization failed: $($_.Exception.Message)" "ERROR"
     exit 1
 }
 finally {

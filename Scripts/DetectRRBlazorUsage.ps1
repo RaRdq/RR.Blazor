@@ -37,12 +37,12 @@ try {
                 
                 if ($content -match 'AddRRBlazor\s*\(') {
                     $hasAddRRBlazor = $true
-                    Write-Output-Message "✅ Found AddRRBlazor() call in: $file"
+                    Write-Output-Message " Found AddRRBlazor() call in: $file"
                     
                     # Check if DisableValidation() is called
                     if ($content -match '\.DisableValidation\s*\(') {
                         $hasDisableValidation = $true
-                        Write-Output-Message "🚫 Found DisableValidation() - validation will be disabled"
+                        Write-Output-Message " Found DisableValidation() - validation will be disabled"
                     }
                 }
             }

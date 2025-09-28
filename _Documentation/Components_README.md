@@ -80,7 +80,7 @@ Components that work together as integrated systems:
 - **RDataTable** - ⚠️ Legacy table component (use RTable instead)
 - **PropertyColumnGenerator** - Auto-generates columns from model properties
 
-**✅ Confirmed Working Scenarios**:
+** Confirmed Working Scenarios**:
 1. **Auto-Generation**: `<RTable Items="@data" />` generates all columns automatically
 2. **Partial Override**: Auto-generate most columns, customize specific ones
 3. **Full Manual**: Complete control over all column definitions
@@ -127,7 +127,7 @@ Components that work together as integrated systems:
 <RTableVirtualized Items="@millionRecords" Height="600px" ShowPerformanceMetrics="true" />
 ```
 
-📖 **[See detailed documentation](../_Documentation/SMART_TABLE_SYSTEM.md)**
+ **[See detailed documentation](../_Documentation/SMART_TABLE_SYSTEM.md)**
 
 #### Lists (`/Data`)
 **Primary Component**: `RList` or `RVirtualList`

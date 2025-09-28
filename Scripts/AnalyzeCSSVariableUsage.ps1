@@ -27,8 +27,7 @@ function Write-Warning { param($Message) Write-Host $Message -ForegroundColor Ye
 function Write-Error { param($Message) Write-Host $Message -ForegroundColor Red }
 function Write-Info { param($Message) Write-Host $Message -ForegroundColor Cyan }
 
-Write-Info "🎯 CSS Variable Usage Analyzer for RR.Blazor"
-Write-Info "═══════════════════════════════════════════════"
+Write-Host "CSS analyzer: scanning $($scssFileCount) files" -ForegroundColor Gray
 
 # Collections for analysis
 $variableDefinitions = @{}     # Variables defined with values
@@ -93,11 +92,11 @@ foreach ($scssFile in $scssFiles) {
         
     }
     catch {
-        Write-Warning "⚠️  Could not process $($scssFile.Name): $($_.Exception.Message)"
+        Write-Warning "[WARNING]  Could not process $($scssFile.Name): $($_.Exception.Message)"
     }
 }
 
-Write-Info "🔍 Analyzing patterns and inconsistencies..."
+Write-Info " Analyzing patterns and inconsistencies..."
 
 # Find duplicate definitions (same variable name defined multiple times)
 foreach ($varName in $variableDefinitions.Keys) {
@@ -279,11 +278,10 @@ foreach ($varName in $variableDefinitions.Keys) {
 
 # Report results
 Write-Info "`n════════════════════════════════════════════════"
-Write-Info "📊 ANALYSIS RESULTS"
-Write-Info "════════════════════════════════════════════════"
+Write-Host "Processing $($itemCount) items..." -ForegroundColor Gray
 
-Write-Success "✅ Found $($variableDefinitions.Keys.Count) unique CSS variable definitions"
-Write-Success "✅ Found $($variableUsages.Keys.Count) unique CSS variables in use"
+Write-Host "CSS variables: $($variableDefinitions.Keys.Count) definitions" -ForegroundColor Gray
+Write-Host "CSS variables: $($variableUsages.Keys.Count) in use" -ForegroundColor Gray
 
 # High severity issues
 $highSeverityIssues = @()
@@ -292,12 +290,12 @@ $highSeverityIssues += $incorrectUsage | Where-Object { $_.Severity -eq "High" }
 $highSeverityIssues += $missingDefinitions
 
 if ($highSeverityIssues.Count -gt 0) {
-    Write-Error "`n🚨 HIGH SEVERITY ISSUES ($($highSeverityIssues.Count)):"
+    Write-Error "`n HIGH SEVERITY ISSUES ($($highSeverityIssues.Count)):"
     
     foreach ($issue in $highSeverityIssues | Select-Object -First 10) {
         Write-Error "   • --$($issue.Variable): $($issue.Issue)"
         if ($issue.SuggestedFix) {
-            Write-Warning "     💡 Suggested fix: Use --$($issue.SuggestedFix)"
+            Write-Warning "      Suggested fix: Use --$($issue.SuggestedFix)"
         }
     }
     if ($highSeverityIssues.Count -gt 10) {
@@ -312,7 +310,7 @@ $mediumSeverityIssues += $logicalDuplicates | Where-Object { $_.Severity -eq "Me
 $mediumSeverityIssues += $incorrectUsage | Where-Object { $_.Severity -eq "Medium" }
 
 if ($mediumSeverityIssues.Count -gt 0) {
-    Write-Warning "`n⚠️  MEDIUM SEVERITY ISSUES ($($mediumSeverityIssues.Count)):"
+    Write-Warning "`n[WARNING]  MEDIUM SEVERITY ISSUES ($($mediumSeverityIssues.Count)):"
     
     foreach ($issue in $mediumSeverityIssues | Select-Object -First 5) {
         if ($issue.Variables) {
@@ -330,19 +328,18 @@ if ($mediumSeverityIssues.Count -gt 0) {
 $lowSeverityIssues = $unusedDefinitions + ($incorrectUsage | Where-Object { $_.Severity -eq "Low" })
 
 if ($lowSeverityIssues.Count -gt 0) {
-    Write-Info "`n📝 LOW SEVERITY ISSUES ($($lowSeverityIssues.Count)):"
+    Write-Host "Issues:" -ForegroundColor Red
     Write-Info "   • $($unusedDefinitions.Count) unused variable definitions"
     Write-Info "   • $(($incorrectUsage | Where-Object { $_.Severity -eq 'Low' }).Count) deprecated variable usages"
 }
 
 # Detailed report
 if ($DetailedReport) {
-    Write-Info "`n📋 DETAILED FINDINGS:"
-    Write-Info "═══════════════════════"
-    
+    if ($DetailedReport -and $issues.Count -gt 0) { Write-Host "Detailed findings:" -ForegroundColor Gray }
+
     # Show most critical issues first
     foreach ($issue in $highSeverityIssues | Select-Object -First 5) {
-        Write-Info "`n🔴 HIGH: --$($issue.Variable)"
+        Write-Info "`n HIGH: --$($issue.Variable)"
         Write-Info "   Issue: $($issue.Issue)"
         
         if ($issue.Definitions) {
@@ -403,14 +400,14 @@ $(if ($issue.SuggestedFix) { "**Suggested Fix**: Use --$($issue.SuggestedFix)" }
     
     $reportPath = "css-variable-analysis-report.md"
     $markdown | Out-File $reportPath -Encoding UTF8
-    Write-Success "`n📄 Detailed report exported to: $reportPath"
+    Write-Success "`n Detailed report exported to: $reportPath"
 }
 
-Write-Info "`n🎯 PRIORITY RECOMMENDATIONS:"
-Write-Info "1. Fix HIGH severity variable mismatches immediately (these break functionality)"
-Write-Info "2. Resolve duplicate definitions with different values"  
-Write-Info "3. Standardize variable naming conventions"
-Write-Info "4. Remove unused variable definitions to reduce CSS size"
+Write-Host "Recommendations:" -ForegroundColor Gray
+Write-Host "1. Fix HIGH severity mismatches (break functionality)" -ForegroundColor Gray
+Write-Host "2. Resolve duplicate definitions" -ForegroundColor Gray  
+Write-Host "3. Standardize naming conventions" -ForegroundColor Gray
+Write-Host "4. Remove unused definitions" -ForegroundColor Gray
 
 return @{
     HighSeverityIssues = $highSeverityIssues.Count
@@ -418,3 +415,4 @@ return @{
     LowSeverityIssues = $lowSeverityIssues.Count
     TotalIssues = $highSeverityIssues.Count + $mediumSeverityIssues.Count + $lowSeverityIssues.Count
 }
+
