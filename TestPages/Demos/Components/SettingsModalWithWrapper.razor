@@ -1,3 +1,4 @@
+@using RR.Blazor.Components
 @using RR.Blazor.Components.Feedback
 @using RR.Blazor.Components.Form
 @using RR.Blazor.Components.Core
@@ -12,6 +13,8 @@
         Size="SizeType.Large"
         ShowCloseButton
         ShowFooter
+        CloseOnBackdrop="true"
+        CloseOnEscape="true"
         Loading="@isLoading"
         LoadingMessage="@loadingMessage"
         LoadingButtonText="Saving..."
@@ -24,38 +27,171 @@
                     <div class="text-h6 mb-3">General Settings</div>
                     
                     <div class="space-y-3">
-                        <RToggle @bind-Value="Settings.EnableNotifications" 
+                        <RToggle @bind-Value="Settings.EnableNotifications"
                                  Label="Enable Notifications" />
-                        
-                        <RToggle @bind-Value="Settings.AutoSave" 
+
+                        <RToggle @bind-Value="Settings.AutoSave"
                                  Label="Auto-save changes" />
-                        
-                        <RTextInput @bind-Value="Settings.DefaultTimeout" 
-                                    Label="Session Timeout (minutes)" />
                     </div>
                 </ChildContent>
             </RCard>
             
             <RCard Variant="CardVariant.Outlined">
                 <ChildContent>
-                    <div class="text-h6 mb-3">Display Preferences</div>
-                    
+                    <div class="text-h6 mb-3">RChoice Examples</div>
+
                     <div class="space-y-3">
-                        <RRadio @bind-Value="Settings.Theme" 
-                                Label="Theme">
-                            <Items>
-                                <RRadioItem Value="light" Label="Light" />
-                                <RRadioItem Value="dark" Label="Dark" />
-                                <RRadioItem Value="auto" Label="Auto" />
-                            </Items>
-                        </RRadio>
-                        
-                        <RTextInput @bind-Value="Settings.ItemsPerPage" 
-                                    Label="Items per page" />
+                        <div class="space-y-2">
+                            <label class="text-sm font-medium">Country (RChoice):</label>
+                            <RChoice Items="@GetCountryItems()"
+                                     SelectedValue="@Settings.Country"
+                                     SelectedValueChanged="@((object value) => Settings.Country = value?.ToString())"
+                                     Mode="ChoiceMode.Dropdown"
+                                     Size="SizeType.Small"
+                                     Placeholder="Select country"
+                                     Class="w-full" />
+                        </div>
+
+                        <div class="space-y-2">
+                            <label class="text-sm font-medium">State (RChoiceGeneric):</label>
+                            <RChoiceGeneric TValue="StateOption"
+                                            @key="@($"demo-state")"
+                                            Mode="ChoiceMode.Dropdown"
+                                            Items="@GetStateOptions()"
+                                            SelectedValue="@GetSelectedState()"
+                                            SelectedValueChangedTyped="@((StateOption value) => OnStateChanged(value))"
+                                            ItemLabelSelectorTyped="@((StateOption item) => item.Label)"
+                                            Size="SizeType.Small"
+                                            Placeholder="Select state"
+                                            Class="w-full"
+                                            @onclick:stopPropagation="true" />
+                        </div>
+
+                        <div class="space-y-2">
+                            <label class="text-sm font-medium">Date Format (RChoiceGeneric):</label>
+                            <RChoiceGeneric TValue="DateFormatOption"
+                                            @key="@($"demo-dateformat")"
+                                            Mode="ChoiceMode.Dropdown"
+                                            Items="@GetDateFormatOptions()"
+                                            SelectedValue="@GetSelectedDateFormat()"
+                                            SelectedValueChangedTyped="@((DateFormatOption value) => OnDateFormatChanged(value))"
+                                            ItemLabelSelectorTyped="@((DateFormatOption item) => item.Label)"
+                                            Size="SizeType.Small"
+                                            Placeholder="Select date format"
+                                            Class="w-full"
+                                            @onclick:stopPropagation="true" />
+                        </div>
                     </div>
                 </ChildContent>
             </RCard>
-            
+
+            <RCard Variant="CardVariant.Outlined">
+                <ChildContent>
+                    <div class="text-h6 mb-3">Portal System Comprehensive Test</div>
+
+                    <div class="space-y-4">
+                        <!-- Tooltip Tests -->
+                        <div class="space-y-3">
+                            <div class="text-sm font-medium text-primary">Tooltip Portal Tests:</div>
+                            <div class="d-flex gap-3 flex-wrap">
+                                <RTooltip Content="Top tooltip in modal - should appear above modal backdrop"
+                                         Position="TooltipPosition.Top">
+                                    <RButton Text="Top Tooltip" Size="SizeType.Small" />
+                                </RTooltip>
+
+                                <RTooltip Content="Bottom tooltip in modal - should appear above modal backdrop"
+                                         Position="TooltipPosition.Bottom">
+                                    <RButton Text="Bottom Tooltip" Size="SizeType.Small" />
+                                </RTooltip>
+
+                                <RTooltip Content="Left tooltip in modal - should appear above modal backdrop"
+                                         Position="TooltipPosition.Left">
+                                    <RButton Text="Left Tooltip" Size="SizeType.Small" />
+                                </RTooltip>
+
+                                <RTooltip Content="Right tooltip in modal - should appear above modal backdrop"
+                                         Position="TooltipPosition.Right">
+                                    <RButton Text="Right Tooltip" Size="SizeType.Small" />
+                                </RTooltip>
+                            </div>
+                        </div>
+
+                        <!-- Additional Choice Tests -->
+                        <div class="space-y-3">
+                            <div class="text-sm font-medium text-primary">Additional Portal Choice Tests:</div>
+                            <div class="d-flex gap-3">
+                                <RChoice Items="@GetAdditionalChoiceItems()"
+                                        SelectedValue="@Settings.PortalTest1"
+                                        SelectedValueChanged="@((object value) => Settings.PortalTest1 = value?.ToString())"
+                                        Mode="ChoiceMode.Dropdown"
+                                        Size="SizeType.Small"
+                                        Placeholder="Portal test 1"
+                                        Class="w-48" />
+
+                                <RChoice Items="@GetAdditionalChoiceItems()"
+                                        SelectedValue="@Settings.PortalTest2"
+                                        SelectedValueChanged="@((object value) => Settings.PortalTest2 = value?.ToString())"
+                                        Mode="ChoiceMode.Dropdown"
+                                        Size="SizeType.Small"
+                                        Placeholder="Portal test 2"
+                                        Class="w-48" />
+                            </div>
+                        </div>
+
+                        <!-- DatePicker Portal Tests -->
+                        <div class="space-y-3">
+                            <div class="text-sm font-medium text-primary">DatePicker Portal Tests:</div>
+                            <div class="d-flex gap-3">
+                                <RDatePicker @bind-Value="Settings.StartDate"
+                                           Label="Start Date (Event System)"
+                                           Size="SizeType.Small"
+                                           Class="w-48" />
+
+                                <RDatePicker @bind-Value="Settings.EndDate"
+                                           Label="End Date (Event System)"
+                                           Size="SizeType.Small"
+                                           ShowTime="true"
+                                           Class="w-48" />
+                            </div>
+                        </div>
+
+                        <!-- Complex Interaction Tests -->
+                        <div class="space-y-3">
+                            <div class="text-sm font-medium text-primary">Complex Portal Interactions:</div>
+                            <div class="d-flex gap-3 align-center flex-wrap">
+                                <RTooltip Content="Choice with tooltip - both should appear above modal">
+                                    <RChoice Items="@GetTooltipChoiceItems()"
+                                            SelectedValue="@Settings.TooltipChoice"
+                                            SelectedValueChanged="@((object value) => Settings.TooltipChoice = value?.ToString())"
+                                            Mode="ChoiceMode.Dropdown"
+                                            Size="SizeType.Small"
+                                            Placeholder="Tooltipped choice"
+                                            Class="w-48" />
+                                </RTooltip>
+
+                                <RTooltip Content="DatePicker with tooltip test">
+                                    <RDatePicker @bind-Value="Settings.TestDate"
+                                               Label="Tooltipped DatePicker"
+                                               Size="SizeType.Small"
+                                               Class="w-48" />
+                                </RTooltip>
+                            </div>
+                        </div>
+
+                        <!-- Portal Status Display -->
+                        <div class="space-y-3">
+                            <div class="text-sm font-medium text-primary">Portal System Status:</div>
+                            <div class="text-xs space-y-1 pa-3 bg-surface rounded border">
+                                <div><strong>Modal Context:</strong> Active (z-index should be 1040+)</div>
+                                <div><strong>Portal Root:</strong> Should exist at document.body level</div>
+                                <div><strong>Expected Behavior:</strong> All dropdowns/tooltips above modal</div>
+                                <div><strong>Test Instructions:</strong> Hover tooltips, open dropdowns, check layering</div>
+                            </div>
+                        </div>
+                    </div>
+                </ChildContent>
+            </RCard>
+
             <RDivider Text="Debug Info" Icon="bug_report" />
             
             <div class="text-sm space-y-1 text-muted">
@@ -100,17 +236,29 @@
     {
         public bool EnableNotifications { get; set; } = true;
         public bool AutoSave { get; set; } = false;
-        public string DefaultTimeout { get; set; } = "30";
-        public string Theme { get; set; } = "auto";
-        public string ItemsPerPage { get; set; } = "20";
+        public string Country { get; set; } = "us";
+        public string State { get; set; } = "ca";
+        public string DateFormat { get; set; } = "mm/dd/yyyy";
+        public DateTime? StartDate { get; set; } = DateTime.Today;
+        public DateTime? EndDate { get; set; } = DateTime.Today.AddDays(30);
+        public DateTime? TestDate { get; set; } = DateTime.Today;
+        public string PortalTest1 { get; set; } = "portal1";
+        public string PortalTest2 { get; set; } = "portal2";
+        public string TooltipChoice { get; set; } = "test1";
     }
+
+    // RChoiceGeneric option records
+    private record StateOption(string Value, string Label);
+    private record DateFormatOption(string Value, string Label);
     
     private SettingsData Settings { get; set; } = new();
     
     private async Task HandleCancel()
     {
         if (modalRef != null)
+        {
             await modalRef.Close();
+        }
     }
     
     private async Task HandleSave()
@@ -122,14 +270,11 @@
         // Simulate save operation
         await Task.Delay(1500);
         
-        // Settings saved - invoke callback
         if (OnDataChanged.HasDelegate)
             await OnDataChanged.InvokeAsync(Settings);
-        
+
         isLoading = false;
-        StateHasChanged();
-        
-        // Close modal after save
+
         if (modalRef != null)
             await modalRef.CloseAsync(Enums.ModalResult.Ok);
     }
@@ -137,7 +282,93 @@
     private void ResetToDefaults()
     {
         Settings = new SettingsData();
-        StateHasChanged();
     }
-    
+
+    // RChoice methods
+    private List<ChoiceItem> GetCountryItems()
+    {
+        return new List<ChoiceItem>
+        {
+            ChoiceFactory.CreateItem("United States", "us"),
+            ChoiceFactory.CreateItem("Canada", "ca"),
+            ChoiceFactory.CreateItem("United Kingdom", "uk"),
+            ChoiceFactory.CreateItem("Germany", "de"),
+            ChoiceFactory.CreateItem("France", "fr"),
+            ChoiceFactory.CreateItem("Japan", "jp"),
+            ChoiceFactory.CreateItem("Australia", "au")
+        };
+    }
+
+    private List<StateOption> GetStateOptions()
+    {
+        return new List<StateOption>
+        {
+            new("ca", "California"),
+            new("ny", "New York"),
+            new("tx", "Texas"),
+            new("fl", "Florida"),
+            new("il", "Illinois"),
+            new("pa", "Pennsylvania"),
+            new("oh", "Ohio"),
+            new("mi", "Michigan")
+        };
+    }
+
+    private List<DateFormatOption> GetDateFormatOptions()
+    {
+        return new List<DateFormatOption>
+        {
+            new("mm/dd/yyyy", "MM/DD/YYYY (US)"),
+            new("dd/mm/yyyy", "DD/MM/YYYY (European)"),
+            new("yyyy-mm-dd", "YYYY-MM-DD (ISO)"),
+            new("dd-mmm-yyyy", "DD-MMM-YYYY"),
+            new("mmm dd, yyyy", "MMM DD, YYYY")
+        };
+    }
+
+    private StateOption GetSelectedState()
+    {
+        var options = GetStateOptions();
+        return options.FirstOrDefault(o => o.Value == Settings.State) ?? options.First();
+    }
+
+    private DateFormatOption GetSelectedDateFormat()
+    {
+        var options = GetDateFormatOptions();
+        return options.FirstOrDefault(o => o.Value == Settings.DateFormat) ?? options.First();
+    }
+
+    private void OnStateChanged(StateOption value)
+    {
+        Settings.State = value.Value;
+    }
+
+    private void OnDateFormatChanged(DateFormatOption value)
+    {
+        Settings.DateFormat = value.Value;
+    }
+
+    // Portal component test methods
+    private List<ChoiceItem> GetAdditionalChoiceItems()
+    {
+        return new List<ChoiceItem>
+        {
+            ChoiceFactory.CreateItem("Portal System Test 1", "portal1"),
+            ChoiceFactory.CreateItem("Portal System Test 2", "portal2"),
+            ChoiceFactory.CreateItem("Portal System Test 3", "portal3"),
+            ChoiceFactory.CreateItem("Modal Context Test", "modal1"),
+            ChoiceFactory.CreateItem("Z-Index Test", "zindex1")
+        };
+    }
+
+    private List<ChoiceItem> GetTooltipChoiceItems()
+    {
+        return new List<ChoiceItem>
+        {
+            ChoiceFactory.CreateItem("Portal Test 1", "test1"),
+            ChoiceFactory.CreateItem("Portal Test 2", "test2"),
+            ChoiceFactory.CreateItem("Portal Test 3", "test3")
+        };
+    }
+
 }

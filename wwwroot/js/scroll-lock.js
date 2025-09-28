@@ -82,9 +82,6 @@ export function getScrollLockStatus() {
     return scrollLockManager.getStatus();
 }
 
-export function initialize() {
-    return true;
-}
 
 export function cleanup() {
     forceUnlockScroll();

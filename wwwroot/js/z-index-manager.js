@@ -6,11 +6,11 @@ class ZIndexManager {
         this.backdropBase = parseInt(rootStyles.getPropertyValue('--z-modal-backdrop').trim()) || 1000;
         this.portalBase = parseInt(rootStyles.getPropertyValue('--z-popup').trim()) || 910;
         this.increment = 10;
-        
+
         this.currentLevel = 0;
         this.activeElements = new Map();
     }
-    
+
     registerElement(id, type = 'modal') {
         if (!this.activeElements.has(id)) {
             const level = this.currentLevel++;
@@ -21,14 +21,9 @@ class ZIndexManager {
     }
     
     unregisterElement(id) {
-        if (this.activeElements.has(id)) {
-            this.activeElements.delete(id);
-            if (this.activeElements.size === 0) {
-                this.currentLevel = 0;
-            }
-        }
+        this.activeElements.delete(id);
     }
-    
+
     getZIndexForElement(id) {
         const element = this.activeElements.get(id);
         if (element) {
@@ -36,7 +31,7 @@ class ZIndexManager {
         }
         return null;
     }
-    
+
     getZIndexForLevel(type, level) {
         const base = this.getBaseForType(type);
         return base + (level * this.increment);

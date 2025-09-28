@@ -1,5 +1,3 @@
-const debugLogger = window.debugLogger;
-
 class ModalManager {
     constructor() {
         this.activeModals = new Map();
@@ -43,7 +41,7 @@ class ModalManager {
     async show(contentSelector, options = {}) {
         const modalId = options.modalId;
         if (!modalId) {
-            console.error('[ModalManager] Modal ID must be provided');
+            throw new Error('Modal ID must be provided');
             return null;
         }
 
@@ -53,7 +51,6 @@ class ModalManager {
         if (this.registrationMutex.has(modalId)) {
             const mutexAge = mutexStart - this.registrationMutex.get(modalId);
             if (mutexAge > mutexTimeout) {
-                console.warn(`[ModalManager] Mutex timeout for ${modalId}, clearing stale lock`);
                 this.registrationMutex.delete(modalId);
             } else {
                 return modalId;
@@ -66,7 +63,6 @@ class ModalManager {
             if (typeof contentSelector === 'string') {
                 const allMatches = document.querySelectorAll(contentSelector);
                 if (allMatches.length > 1) {
-                    console.warn(`[ModalManager] Found ${allMatches.length} duplicate modals for ${contentSelector}, cleaning up`);
                     for (let i = 1; i < allMatches.length; i++) {
                         allMatches[i].remove();
                     }
@@ -78,7 +74,7 @@ class ModalManager {
                 : contentSelector;
 
             if (!contentElement) {
-                console.error(`[ModalManager] Modal content not found: ${contentSelector}`);
+                throw new Error(`Modal content not found: ${contentSelector}`);
                 return null;
             }
 
@@ -118,7 +114,7 @@ class ModalManager {
         }
 
         if (modal.id !== modalId) {
-            console.error(`[ModalManager] Modal ID mismatch: requested ${modalId}, found ${modal.id}`);
+            throw new Error(`Modal ID mismatch: requested ${modalId}, found ${modal.id}`);
             return;
         }
 

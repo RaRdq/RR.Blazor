@@ -1,10 +1,6 @@
 import { createSingleton, WeakRegistry } from './utils/singleton-factory.js';
 
-const debugLogger = window.debugLogger;
-
 class PortalManagerBase {
-    static _baseZIndex = 1000;
-    static _zIndexIncrement = 10;
     
     constructor() {
         this._portals = new Map();
@@ -20,13 +16,14 @@ class PortalManagerBase {
         container.className = 'portal-root';
         container.setAttribute('data-rr-blazor-portal', 'true');
         
+        const containerZIndex = window.RRBlazor.ZIndexManager.registerElement('portal-container', 'portal');
         container.style.cssText = `
             position: fixed;
             top: 0;
             left: 0;
             width: 100vw;
             height: 100vh;
-            z-index: 9999;
+            z-index: ${containerZIndex};
             pointer-events: none;
             overflow: hidden;
         `;
@@ -38,9 +35,9 @@ class PortalManagerBase {
     
     create(config = {}) {
         const id = config.id || `portal-${this._nextId++}`;
-        
+
         if (this._portals.has(id)) {
-            throw new Error(`Portal ${id} already exists - this is a programming error`);
+            throw new Error(`Portal ${id} already exists - fix the duplicate creation`);
         }
         
         const portal = document.createElement('div');
@@ -49,7 +46,10 @@ class PortalManagerBase {
         portal.dataset.portalId = id;
         portal.dataset.portalLevel = this._portals.size.toString();
         
-        const zIndex = config.zIndex || window.RRBlazor.ZIndexManager.getNextZIndex('portal');
+        if (!config.zIndex) {
+            throw new Error(`Portal ${id} requires zIndex to be provided in config - use ZIndexManager.registerElement()`);
+        }
+        const zIndex = config.zIndex;
         portal.style.zIndex = zIndex.toString();
         portal.dataset.zIndex = zIndex.toString();
         
@@ -97,22 +97,10 @@ class PortalManagerBase {
             { cancelable: false }
         );
         
-        const wasMaxZIndex = portal.zIndex === this._maxZIndex;
-        
         this._portals.delete(id);
         this._registry.delete(id);
-        
+
         window.RRBlazor.ZIndexManager.unregisterElement(id);
-        
-        if (wasMaxZIndex && this._portals.size > 0) {
-            let newMax = PortalManagerBase._baseZIndex;
-            this._portals.forEach(p => {
-                if (p.zIndex > newMax) newMax = p.zIndex;
-            });
-            this._maxZIndex = newMax;
-        } else if (this._portals.size === 0) {
-            this._maxZIndex = PortalManagerBase._baseZIndex;
-        }
         
         portal.element.remove();
         
@@ -183,7 +171,17 @@ class PortalManagerBase {
     }
     
     isPortalActive(id) {
-        return this._portals.has(id);
+        const exists = this._portals.has(id);
+        const portal = this._portals.get(id);
+
+        // Fix Map corruption: if key exists but value is undefined, clean it up
+        if (exists && !portal) {
+            this._portals.delete(id);
+            this._registry.delete(id);
+            return false;
+        }
+
+        return exists && portal;
     }
     
     getActivePortalCount() {
@@ -249,7 +247,7 @@ class PortalManagerBase {
         if (!element._portalPositioned) {
             return false;
         }
-        
+
         if (element._originalParent) {
             if (element._originalNextSibling) {
                 element._originalParent.insertBefore(element, element._originalNextSibling);
@@ -259,39 +257,46 @@ class PortalManagerBase {
             delete element._originalParent;
             delete element._originalNextSibling;
         }
-        
+
         element.removeAttribute('data-portal-positioned');
         delete element._portalPositioned;
-        
+
         if (window.RRBlazor && window.RRBlazor.EventDispatcher) {
             window.RRBlazor.EventDispatcher.dispatch(
                 window.RRBlazor.Events.PORTAL_ELEMENT_RESTORED,
                 { portalId: id, element }
             );
         }
-        
-        this.destroy(id);
-        
+
         return true;
     }
 }
 
 export const PortalManager = createSingleton(PortalManagerBase, 'PortalManager');
 
-// Defer event listener registration until RRBlazor.Events is available
+// Setup portal event listeners - fail fast if dependencies missing
 function setupPortalEventListeners() {
-    if (!window.RRBlazor || !window.RRBlazor.Events) {
-        setTimeout(setupPortalEventListeners, 10);
-        return;
+    if (!window.RRBlazor?.Events) {
+        throw new Error('RRBlazor.Events not available - fix initialization order');
     }
     
     document.addEventListener(window.RRBlazor.Events.PORTAL_CREATE_REQUEST, (event) => {
-        const { requesterId, config } = event.detail;
+        const { requesterId, element, config } = event.detail;
         const portal = PortalManager.getInstance().create(config);
-        
+
+        let elementMoved = false;
+        if (element) {
+            try {
+                PortalManager.getInstance().moveToPortal(config.id, element);
+                elementMoved = true;
+            } catch (error) {
+                throw error;
+            }
+        }
+
         window.RRBlazor.EventDispatcher.dispatch(
             window.RRBlazor.Events.PORTAL_CREATED,
-            { requesterId, portal }
+            { requesterId, portal, elementMoved, element: portal.element }
         );
     });
     
@@ -363,4 +368,12 @@ export function moveToPortal(id, element) {
 
 export function restoreFromPortal(id, element) {
     return PortalManager.getInstance().restoreFromPortal(id, element);
+}
+
+export function ensureContainer() {
+    return PortalManager.getInstance().getContainer() || PortalManager.getInstance()._createContainer();
+}
+
+export function getContainer() {
+    return PortalManager.getInstance().getContainer();
 }

@@ -55,7 +55,7 @@ class BackdropManagerBase {
     destroy(portalId) {
         const backdrop = this.#backdrops.get(portalId);
         if (!backdrop) {
-            throw new Error(`Backdrop for portal ${portalId} not found`);
+            return;
         }
         
         this.#backdrops.delete(portalId);
@@ -105,7 +105,7 @@ class BackdropManagerBase {
     updateOpacity(portalId, opacity) {
         const backdrop = this.#backdrops.get(portalId);
         if (!backdrop) {
-            throw new Error(`[BackdropManager] Backdrop for portal ${portalId} not found`);
+            return false;
         }
         
         backdrop.element.style.setProperty('--backdrop-opacity', opacity);
@@ -114,7 +114,7 @@ class BackdropManagerBase {
     onClick(portalId, handler) {
         const backdrop = this.#backdrops.get(portalId);
         if (!backdrop) {
-            throw new Error(`[BackdropManager] Backdrop for portal ${portalId} not found`);
+            return () => {};
         }
         
         const clickHandler = (event) => {
@@ -139,24 +139,20 @@ class BackdropManagerBase {
     getBackdrop(portalId) {
         const backdrop = this.#backdrops.get(portalId);
         if (!backdrop) {
-            throw new Error(`[BackdropManager] Backdrop for portal ${portalId} not found`);
+            return null;
         }
         return backdrop;
     }
     
-    
+
     #getAnimationDuration() {
-        try {
-            const rootStyles = getComputedStyle(document.documentElement);
-            const durationValue = rootStyles.getPropertyValue('--duration-normal').trim();
-            
-            if (durationValue.endsWith('ms')) {
-                return parseInt(durationValue, 10);
-            } else if (durationValue.endsWith('s')) {
-                return parseFloat(durationValue) * 1000;
-            }
-        } catch (error) {
-            throw error;
+        const rootStyles = getComputedStyle(document.documentElement);
+        const durationValue = rootStyles.getPropertyValue('--duration-normal').trim();
+
+        if (durationValue.endsWith('ms')) {
+            return parseInt(durationValue, 10);
+        } else if (durationValue.endsWith('s')) {
+            return parseFloat(durationValue) * 1000;
         }
         return 200;
     }
@@ -170,8 +166,8 @@ class BackdropManagerBase {
         const opacity = this.#calculateOpacity(level);
         backdrop.style.setProperty('--backdrop-opacity', opacity);
         backdrop.style.opacity = '0';
-        
-        const backdropZIndex = config.zIndex || window.RRBlazor.ZIndexManager.registerElement(`${portalId}-backdrop`, 'backdrop');
+
+        const backdropZIndex = config.zIndex;
         backdrop.style.zIndex = backdropZIndex.toString();
         
         if (config.blur) {
@@ -244,17 +240,13 @@ function setupBackdropEventListeners() {
     
     document.addEventListener(window.RRBlazor.Events.BACKDROP_CREATE_REQUEST, (event) => {
         const { requesterId, config } = event.detail;
-        
-        try {
-            const backdrop = BackdropManager.getInstance().create(requesterId, config);
-            
-            window.RRBlazor.EventDispatcher.dispatch(
-                window.RRBlazor.Events.BACKDROP_CREATED,
-                { requesterId, backdrop }
-            );
-        } catch (error) {
-            console.error('Backdrop creation failed:', error);
-        }
+
+        const backdrop = BackdropManager.getInstance().create(requesterId, config);
+
+        window.RRBlazor.EventDispatcher.dispatch(
+            window.RRBlazor.Events.BACKDROP_CREATED,
+            { requesterId, backdrop }
+        );
     });
     
     document.addEventListener(window.RRBlazor.Events.BACKDROP_DESTROY_REQUEST, (event) => {
@@ -289,10 +281,6 @@ window.addEventListener('beforeunload', () => {
         BackdropManager.destroyInstance();
     }
 });
-
-if (window.RRBlazor) {
-    window.RRBlazor.BackdropSingleton = BackdropManager;
-}
 
 export default BackdropManager;
 export function createBackdrop(portalId, config) {

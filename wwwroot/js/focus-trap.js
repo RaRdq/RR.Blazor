@@ -1,4 +1,9 @@
 
+const FOCUS_TRAP_CONFIG = {
+    MODAL_SELECTORS: '[role="dialog"], .modal, .popup',
+    FOCUSABLE_SELECTORS: 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+};
+
 export class FocusTrap {
     constructor() {
         this.activeTraps = new Map();
@@ -45,7 +50,6 @@ export class FocusTrap {
                     currentLast.focus();
                 }
             } else {
-  
                 if (!isWithinModal || document.activeElement === currentLast) {
                     event.preventDefault();
                     currentFirst.focus();
@@ -73,10 +77,10 @@ export class FocusTrap {
     }
 
     findPortaledModal(originalElement, trapId) {
-        let modal = document.querySelector(`#portal-${trapId} [role="dialog"]`);
+        let modal = document.querySelector(`#${trapId} [role="dialog"]`);
         
         if (!modal) {
-            const modals = document.querySelectorAll('[role="dialog"]');
+            const modals = document.querySelectorAll(FOCUS_TRAP_CONFIG.MODAL_SELECTORS);
             modal = Array.from(modals).find(m => {
                 if (!m) return false;
                 
@@ -97,13 +101,11 @@ export class FocusTrap {
         
         this.activeTraps.delete(trapId);
 
-        // Find and restore focus from stack
         const focusIndex = this.focusStack.findIndex(f => f.trapId === trapId);
         if (focusIndex !== -1) {
             const focusInfo = this.focusStack[focusIndex];
             this.focusStack.splice(focusIndex, 1);
             
-            // Only restore focus if this was the last trap or topmost
             if (this.activeTraps.size === 0 || focusIndex === this.focusStack.length) {
                 if (focusInfo.previousFocus && focusInfo.previousFocus.focus) {
                     try {
@@ -112,8 +114,6 @@ export class FocusTrap {
                         document.body.focus();
                     }
                 }
-                
-                // Update legacy previousFocus
                 if (this.focusStack.length > 0) {
                     this.previousFocus = this.focusStack[this.focusStack.length - 1].previousFocus;
                 } else {
@@ -121,7 +121,6 @@ export class FocusTrap {
                 }
             }
         } else if (this.activeTraps.size === 0 && this.previousFocus) {
-            // Fallback to legacy behavior if not in stack
             try {
                 this.previousFocus.focus();
             } catch (e) {
@@ -144,7 +143,7 @@ export class FocusTrap {
             '[contenteditable="true"]',
             'summary',
             'details[open] summary',
-            '[role="button"]:not([disabled])',  // RCard with Clickable=true
+            '[role="button"]:not([disabled])'
             '[role="tab"]:not([disabled])',
             '[role="menuitem"]:not([disabled])'
         ].join(',');
@@ -220,9 +219,6 @@ export function destroyAllTraps() {
     return globalFocusTrap.destroyAllTraps();
 }
 
-export function initialize(element, dotNetRef) {
-    return true;
-}
 
 export function cleanup(element) {
     if (element && element.hasAttribute('data-trap-id')) {
