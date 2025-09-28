@@ -1,14 +1,23 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using RR.Blazor.Attributes;
+using System.Threading;
 
 namespace RR.Blazor.Components.Base
 {
     /// <summary>
     /// Base class for interactive components that can be clicked and have loading states
     /// </summary>
-    public abstract class RInteractiveComponentBase : RComponentBase
+    public abstract class RInteractiveComponentBase : RComponentBase, IDisposable
     {
+        #region Private Fields
+
+        private Timer _debounceTimer;
+        private MouseEventArgs _pendingClickEvent;
+        private bool _hasPendingClick = false;
+
+        #endregion
+
         #region Interactive Properties
         
         /// <summary>
@@ -21,16 +30,30 @@ namespace RR.Blazor.Components.Base
         /// <summary>
         /// Whether the component is in a loading state
         /// </summary>
-        [Parameter] 
+        [Parameter]
         [AIParameter("Loading state")]
         public bool Loading { get; set; }
-        
+
         /// <summary>
         /// Text to display when component is in loading state
         /// </summary>
         [Parameter]
         [AIParameter("Loading text to display")]
         public string LoadingText { get; set; } = "Loading...";
+
+        /// <summary>
+        /// Enable automatic debounce and loading state management to prevent duplicate clicks
+        /// </summary>
+        [Parameter]
+        [AIParameter("Enable debounce and auto-loading")]
+        public bool EnableDebounce { get; set; } = false;
+
+        /// <summary>
+        /// Debounce timeout in milliseconds
+        /// </summary>
+        [Parameter]
+        [AIParameter("Debounce timeout in milliseconds")]
+        public int DebounceTimeoutMs { get; set; } = 300;
         
         /// <summary>
         /// ARIA label for accessibility
@@ -49,7 +72,7 @@ namespace RR.Blazor.Components.Base
         #endregion
         
         #region Event Handling
-        
+
         /// <summary>
         /// Handles click events with disabled and loading state checks
         /// </summary>
@@ -57,7 +80,28 @@ namespace RR.Blazor.Components.Base
         {
             if (!Disabled && !Loading && OnClick.HasDelegate)
             {
-                await OnClick.InvokeAsync(e);
+                if (EnableDebounce)
+                {
+                    _pendingClickEvent = e;
+                    _hasPendingClick = true;
+
+                    _debounceTimer?.Dispose();
+                    _debounceTimer = new Timer(async _ =>
+                    {
+                        if (_hasPendingClick)
+                        {
+                            _hasPendingClick = false;
+                            await InvokeAsync(async () =>
+                            {
+                                await OnClick.InvokeAsync(_pendingClickEvent);
+                            });
+                        }
+                    }, null, DebounceTimeoutMs, Timeout.Infinite);
+                }
+                else
+                {
+                    await OnClick.InvokeAsync(e);
+                }
             }
         }
         
@@ -122,7 +166,20 @@ namespace RR.Blazor.Components.Base
                 
             return attributes;
         }
-        
+
+        #endregion
+
+        #region IDisposable
+
+        /// <summary>
+        /// Disposes the debounce timer
+        /// </summary>
+        public virtual void Dispose()
+        {
+            _debounceTimer?.Dispose();
+            _debounceTimer = null;
+        }
+
         #endregion
     }
 }

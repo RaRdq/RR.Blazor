@@ -2,10 +2,8 @@ let appShellDotNetRef = null;
 
 export function initialize() {
     setupKeyboardShortcuts();
-    setupClickOutside();
     setupResponsive();
     setupAccessibility();
-    setupSearchClickOutside();
 }
 
 export function setDotNetRef(dotNetRef) {
@@ -54,24 +52,6 @@ function setupKeyboardShortcuts() {
     });
 }
 
-function setupClickOutside() {
-    document.addEventListener('click', (e) => {
-        // More specific targeting for search elements
-        const searchContainer = e.target.closest('[data-search-container], .search-autosuggest, .autosuggest-viewport, .autosuggest-dropdown');
-        const searchButton = e.target.closest('.search-toggle-button, [aria-label="Open search"]');
-        
-        // Only close search if clicked completely outside search area AND search results
-        if (!searchContainer && !searchButton) {
-            // Add delay to prevent interference with search result selection
-            setTimeout(() => closeSearch(), 100);
-        }
-        
-        const dropdown = e.target.closest('.dropdown');
-        if (!dropdown) {
-            closeAllDropdowns();
-        }
-    });
-}
 
 function setupResponsive() {
     let resizeTimeout;
@@ -167,7 +147,7 @@ function closeSearch() {
 }
 
 function closeAllDropdowns() {
-    window.RRBlazor.Choice.closeAllDropdowns();
+    window.RRBlazor.Choice.closeAll();
 }
 
 
@@ -247,45 +227,45 @@ export function updateUrlWithoutScroll(newUrl) {
 
 let searchClickOutsideId = null;
 
-function setupSearchClickOutside() {
-    // This initializes the base system but doesn't register any specific elements
-}
 
 export function registerSearchClickOutside(searchContainer) {
-    if (!window.RRBlazor?.ClickOutside) {
-        console.warn('[AppShell] ClickOutside module not available');
-        return;
+    if (!window.RRBlazor.ClickOutside) {
+        throw new Error('[AppShell] ClickOutside module not available');
     }
-    
+
     searchClickOutsideId = `search-container-${Date.now()}`;
-    
+
+    // Register with the singleton ClickOutsideManager
     window.RRBlazor.ClickOutside.register(searchClickOutsideId, searchContainer, {
         excludeSelectors: [
-            '.autosuggest-dropdown', 
-            '.autosuggest-viewport', 
+            '.autosuggest-dropdown',
+            '.autosuggest-viewport',
             '.portal',
             '[data-portal-positioned="true"]',
-            '.search-toggle-btn'
-        ]
+            '.search-toggle-btn',
+            '.search-toggle-button',
+            '[aria-label="Open search"]'
+        ],
+        callback: (event) => {
+            // Handle search-specific click-outside
+            if (appShellDotNetRef) {
+                // Add delay to prevent interference with search result selection
+                setTimeout(() => {
+                    appShellDotNetRef.invokeMethodAsync('HandleSearchClickOutside');
+                }, 100);
+            }
+        }
     });
-    
-    // Listen for click outside events
-    document.addEventListener(window.RRBlazor.Events.CLICK_OUTSIDE, handleSearchClickOutside);
 }
 
 export function unregisterSearchClickOutside() {
-    if (searchClickOutsideId && window.RRBlazor?.ClickOutside) {
+    if (searchClickOutsideId && window.RRBlazor.ClickOutside) {
         window.RRBlazor.ClickOutside.unregister(searchClickOutsideId);
-        document.removeEventListener(window.RRBlazor.Events.CLICK_OUTSIDE, handleSearchClickOutside);
         searchClickOutsideId = null;
     }
 }
 
-function handleSearchClickOutside(event) {
-    if (event.detail?.elementId === searchClickOutsideId && appShellDotNetRef) {
-        appShellDotNetRef.invokeMethodAsync('HandleSearchClickOutside');
-    }
-}
+// Search click-outside is now handled via callback in registerSearchClickOutside
 
 export function dispose() {
     unregisterSearchClickOutside();

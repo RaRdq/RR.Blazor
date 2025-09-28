@@ -10,6 +10,7 @@ using RR.Blazor.Services.Export;
 using RR.Blazor.Services.Export.Providers;
 using RR.Blazor.Models;
 using RR.Blazor.Interfaces;
+using RR.Blazor.Components.Data;
 using Blazored.LocalStorage;
 using System;
 using System.Linq;
@@ -86,7 +87,8 @@ namespace RR.Blazor.ServiceSetup
             serviceCollection.AddScoped<IAppConfigurationService, AppConfigurationService>();
             serviceCollection.AddScoped<IFilterPersistenceService, FilterPersistenceService>();
             serviceCollection.AddScoped<IPivotService, PivotService>();
-            
+
+
             RegisterExportServices(serviceCollection);
             
             // Register default toast configuration
