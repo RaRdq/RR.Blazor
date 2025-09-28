@@ -5,7 +5,7 @@ namespace RR.Blazor.Models;
 
 public class RFileInfo
 {
-    public string Id { get; set; } = Guid.NewGuid().ToString("N")[..8];
+    public string Id { get; set; } = Guid.NewGuid().ToString("N");
     public string Name { get; set; } = string.Empty;
     public string Extension { get; set; } = string.Empty;
     public long Size { get; set; }

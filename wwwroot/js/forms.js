@@ -23,8 +23,9 @@ export function autoResizeTextarea(element) {
 
 export function initializeFormField(element, options) {
     const input = element.querySelector('input, textarea, select');
-    
-    const cleanupFunctions = [];
+
+    // Use standardized cleanup manager from utils
+    const cleanup = window.RRBlazor.Utils.createCleanupManager();
     
     if (input.tagName === 'TEXTAREA' && options.autoResize) {
         let resizeScheduled = false;
@@ -38,12 +39,8 @@ export function initializeFormField(element, options) {
             }
         };
         
-        input.addEventListener('input', scheduleResize, { passive: true });
+        cleanup.addEventListener(input, 'input', scheduleResize, { passive: true });
         autoResizeTextarea(input);
-        
-        cleanupFunctions.push(() => {
-            input.removeEventListener('input', scheduleResize);
-        });
     }
     
     if (options.showCharacterCount && options.maxLength) {
@@ -67,17 +64,12 @@ export function initializeFormField(element, options) {
             });
         };
         
-        input.addEventListener('input', updateCount, { passive: true });
+        cleanup.addEventListener(input, 'input', updateCount, { passive: true });
         updateCount();
-        
-        cleanupFunctions.push(() => {
-            input.removeEventListener('input', updateCount);
-        });
     }
-    
-    element._rrCleanup = () => {
-        cleanupFunctions.forEach(cleanup => cleanup());
-    };
+
+    // Assign standardized cleanup function
+    element._rrCleanup = cleanup.executeAll;
 }
 
 export function focusElement(elementId) {
