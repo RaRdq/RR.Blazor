@@ -4,7 +4,7 @@ import dropdownManager from './dropdown-manager.js';
 const CHOICE_CONFIG = {
     ITEM_HEIGHT_PX: 40,
     DROPDOWN_PADDING_PX: 16,
-    MAX_DROPDOWN_HEIGHT_PX: 320,
+    MAX_DROPDOWN_HEIGHT_PX: 480,
     USER_MENU_MIN_WIDTH_PX: 280,
     DEFAULT_MIN_WIDTH_PX: 200,
     CLICK_PRIORITY: 10,
@@ -122,11 +122,9 @@ class ChoiceManager {
         const triggerRect = trigger.getBoundingClientRect();
         const minWidth = Math.max(triggerRect.width, CHOICE_CONFIG.DEFAULT_MIN_WIDTH_PX);
 
-        const itemCount = viewport.querySelectorAll('.choice-item').length;
-        const estimatedHeight = Math.min(itemCount * CHOICE_CONFIG.ITEM_HEIGHT_PX + CHOICE_CONFIG.DROPDOWN_PADDING_PX, CHOICE_CONFIG.MAX_DROPDOWN_HEIGHT_PX);
         const targetDimensions = {
             width: minWidth,
-            height: estimatedHeight
+            height: CHOICE_CONFIG.MAX_DROPDOWN_HEIGHT_PX
         };
 
         return await dropdownManager.positionDropdown(choiceElement, {

@@ -2,7 +2,10 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
 using RR.Blazor.Components.Base;
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Linq;
+using System.Linq.Expressions;
+using System.Threading.Tasks;
 
 namespace RR.Blazor.Components.Data;
 
@@ -11,6 +14,12 @@ public class RTable : RTableBase
     [Parameter] public object Items { get; set; }
 
     private bool _isDisposed = false;
+
+    // Static cache for compiled EventCallback wrappers - compiled once at startup/first use
+    private static readonly ConcurrentDictionary<string, object> _compiledWrapperCache = new();
+
+    // Cache for reflection method lookups to avoid repeated reflection
+    private static readonly ConcurrentDictionary<Type, System.Reflection.MethodInfo> _invokeAsyncMethodCache = new();
 
     protected override void BuildRenderTree(RenderTreeBuilder builder)
     {
@@ -122,7 +131,7 @@ public class RTable : RTableBase
         builder.AddAttribute(++seq, "CurrentPageChanged", CurrentPageChanged);
         builder.AddAttribute(++seq, "SortByChanged", SortByChanged);
         builder.AddAttribute(++seq, "SortDescendingChanged", SortDescendingChanged);
-        
+
         // Handle EventCallbacks from AdditionalAttributes
         if (AdditionalAttributes != null)
         {
@@ -130,57 +139,99 @@ public class RTable : RTableBase
             {
                 // Skip attributes that are already handled as parameters
                 if (attr.Key == "Items" || attr.Key == "TItem") continue;
-                
-                // Forward all attributes with standard conversion
-                var convertedValue = ConvertParameterValue(attr.Key, attr.Value, itemType);
-                builder.AddAttribute(++seq, attr.Key, convertedValue);
+
+                // Special handling for OnRowClicked EventCallback
+                if (attr.Key == "OnRowClicked" && attr.Value != null)
+                {
+                    var valueType = attr.Value.GetType();
+
+                    // Check if it's EventCallback<T> where T matches itemType
+                    if (valueType.IsGenericType &&
+                        valueType.GetGenericTypeDefinition() == typeof(EventCallback<>) &&
+                        valueType.GetGenericArguments()[0] == itemType)
+                    {
+                        // The types match exactly, pass through as-is
+                        builder.AddAttribute(++seq, attr.Key, attr.Value);
+                        continue;
+                    }
+
+                    // Create a wrapper EventCallback that invokes the original
+                    if (valueType.IsGenericType &&
+                        valueType.GetGenericTypeDefinition() == typeof(EventCallback<>))
+                    {
+                        // Get the InvokeAsync method from the original EventCallback (cached)
+                        var invokeAsyncMethod = GetCachedInvokeAsyncMethod(valueType);
+                        if (invokeAsyncMethod != null)
+                        {
+                            var originalCallback = attr.Value;
+
+                            // Create a factory for the correctly typed EventCallback
+                            var factory = new EventCallbackFactory();
+
+                            // Create wrapper action that calls the original callback (cached)
+                            var wrapperAction = GetCachedDynamicWrapper(itemType, valueType, originalCallback, invokeAsyncMethod);
+
+                            // Use the factory to create EventCallback<TItem>
+                            var createMethod = typeof(EventCallbackFactory)
+                                .GetMethods()
+                                .FirstOrDefault(m => m.Name == "Create" &&
+                                                    m.IsGenericMethodDefinition &&
+                                                    m.GetGenericArguments().Length == 1 &&
+                                                    m.GetParameters().Length == 2 &&
+                                                    m.GetParameters()[1].ParameterType.Name.StartsWith("Func"));
+
+                            if (createMethod != null)
+                            {
+                                var genericMethod = createMethod.MakeGenericMethod(itemType);
+                                var eventCallback = genericMethod.Invoke(factory, new[] { this, wrapperAction });
+                                builder.AddAttribute(++seq, attr.Key, eventCallback);
+                                continue;
+                            }
+                        }
+                    }
+                }
+
+                // Default: pass through as-is
+                builder.AddAttribute(++seq, attr.Key, attr.Value);
             }
         }
         builder.CloseComponent();
     }
-    
-    private object ConvertParameterValue(string parameterName, object value, Type itemType)
+
+    // Cached method lookup to avoid repeated reflection
+    private static System.Reflection.MethodInfo GetCachedInvokeAsyncMethod(Type eventCallbackType)
     {
-        if (value == null)
-            return null;
-            
-        if (value is string stringValue && IsBooleanParameter(parameterName))
-        {
-            return bool.TryParse(stringValue, out var boolResult) ? boolResult : false;
-        }
-        
-        if (value is string intString && IsIntegerParameter(parameterName))
-        {
-            return int.TryParse(intString, out var intResult) ? intResult : 0;
-        }
-        
-        return value;
+        return _invokeAsyncMethodCache.GetOrAdd(eventCallbackType, type => type.GetMethod("InvokeAsync"));
     }
-    
-    
-    private static bool IsBooleanParameter(string parameterName)
+
+    // Cached dynamic wrapper creation - compiles expression only once per type combination
+    private static object GetCachedDynamicWrapper(Type itemType, Type callbackType, object originalCallback, System.Reflection.MethodInfo invokeAsyncMethod)
     {
-        return parameterName switch
+        var cacheKey = $"{itemType.FullName}_{callbackType.FullName}";
+
+        // Get or create the compiled wrapper factory for this type combination
+        var wrapperFactory = (Func<object, object>)_compiledWrapperCache.GetOrAdd(cacheKey, _ =>
+            CreateCompiledWrapperFactory(itemType, invokeAsyncMethod));
+
+        // Use the factory to create a wrapper for this specific callback instance
+        return wrapperFactory(originalCallback);
+
+        // Inner method to create the wrapper factory
+        static Func<object, object> CreateCompiledWrapperFactory(Type itemType, System.Reflection.MethodInfo invokeAsyncMethod)
         {
-            "AutoGenerateColumns" or "ShowPagination" or "ShowSearch" or "ShowTitle" or 
-            "ShowFooter" or "Striped" or "Hover" or "Bordered" or "Compact" or 
-            "FixedHeader" or "Virtualize" or "StickyHeader" or "MultiSelection" or
-            "SearchEnabled" or "FilterEnabled" or "ExportEnabled" or "RefreshEnabled" or
-            "BulkOperationsEnabled" or "ShowToolbar" or "ShowChartButton" or 
-            "ShowExportButton" or "ShowColumnManager" or "EnableColumnReordering" or
-            "EnableStickyColumns" or "EnableHorizontalScroll" or "EnableSorting" or
-            "EnableFiltering" or "EnableSelection" or "EnableExport" or "EnablePaging" or
-            "ShowFilters" or "Selectable" or "MultiSelect" or "RowClickable" or "Loading" => true,
-            _ => false
-        };
-    }
-    
-    private static bool IsIntegerParameter(string parameterName)
-    {
-        return parameterName switch
-        {
-            "PageSize" or "CurrentPage" => true,
-            _ => false
-        };
+            var funcType = typeof(Func<,>).MakeGenericType(itemType, typeof(Task));
+            var callbackParam = Expression.Parameter(typeof(object), "callback");
+            var itemParam = Expression.Parameter(itemType, "item");
+
+            var callExpr = Expression.Call(
+                callbackParam,
+                invokeAsyncMethod,
+                itemParam);
+
+            var innerLambda = Expression.Lambda(funcType, callExpr, itemParam);
+            var factoryLambda = Expression.Lambda<Func<object, object>>(innerLambda, callbackParam);
+
+            return factoryLambda.Compile();
+        }
     }
 }

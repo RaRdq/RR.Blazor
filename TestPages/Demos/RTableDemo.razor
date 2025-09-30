@@ -18,10 +18,12 @@
         <div class="space-y-6">
             <!-- Basic Table -->
             <div class="space-y-2">
-                <div class="text-h6 font-semibold">Basic Table</div>
-                <RTableGeneric TItem="Employee" 
+                <div class="text-h6 font-semibold">Basic Table (Using RTableGeneric directly)</div>
+                <RTableGeneric TItem="Employee"
                               Items="@_employees.Take(8)"
                               ShowPagination="false"
+                              OnRowClicked="@HandleBasicTableRowClick"
+                              RowClickable="true"
                               Class="basic-table">
                     <RColumn Property="Id" Title="ID" Width="80px" Sortable="true" />
                     <RColumn Property="Name" Title="Employee Name" Sortable="true" />
@@ -29,6 +31,23 @@
                     <RColumn Property="Position" Title="Position" />
                     <RColumn Property="Salary" Title="Salary" Format="C" Alignment="ColumnAlignment.Right" />
                 </RTableGeneric>
+            </div>
+
+            <!-- Test Table with Non-Generic RTable wrapper -->
+            <div class="space-y-2">
+                <div class="text-h6 font-semibold">Test Table (Using RTable wrapper)</div>
+                <RTable Items="@_employees.Take(5)"
+                        ShowPagination="false"
+                        OnRowClicked="@((Employee emp) => HandleRTableRowClick(emp))"
+                        RowClickable="true"
+                        Hover="true"
+                        Class="test-table">
+                    <ColumnsContent>
+                        <RColumn Property="Name" Header="Name" Sortable="true" />
+                        <RColumn Property="Department" Header="Dept" Sortable="true" />
+                        <RColumn Property="Salary" Header="Salary" Format="C" />
+                    </ColumnsContent>
+                </RTable>
             </div>
 
             <!-- Advanced Table with All Features -->
@@ -341,11 +360,22 @@
         ToastService.ShowInfo($"Row clicked: {employee.Name}", "Row Click Event");
         await Task.CompletedTask;
     }
-    
+
     private async Task HandleEnhancedRowClick(RowClickEventArgs<Employee> args)
     {
         ToastService.ShowSuccess($"Enhanced row click: {args.Item.Name} (Index: {args.Index}, Selected: {args.IsSelected})", "Enhanced Row Click");
         await Task.CompletedTask;
+    }
+
+    private async Task HandleBasicTableRowClick(Employee employee)
+    {
+        ToastService.ShowInfo($"Basic table row clicked: {employee.Name} (ID: {employee.Id})", "RTableGeneric Direct");
+        await Task.CompletedTask;
+    }
+
+    private void HandleRTableRowClick(Employee employee)
+    {
+        ToastService.ShowSuccess($"RTable wrapper row clicked: {employee.Name} - Dept: {employee.Department}", "RTable Wrapper Event");
     }
 
     private void ClearSelection()

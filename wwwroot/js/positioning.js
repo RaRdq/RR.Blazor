@@ -118,27 +118,42 @@ export class PositioningEngine {
         };
 
         const space = {
-            top: triggerRect.top,
+            top: container ? triggerRect.top - container.top : triggerRect.top,
             bottom: (container ? container.bottom : viewport.height) - triggerRect.bottom,
-            left: triggerRect.left,
+            left: container ? triggerRect.left - container.left : triggerRect.left,
             right: (container ? container.right : viewport.width) - triggerRect.right
         };
-        
 
         const safetyMargin = 20;
 
-
         let placement;
-        if (space.bottom >= targetDimensions.height + safetyMargin) {
-            placement = 'bottom';
-        } else if (space.top >= targetDimensions.height + safetyMargin) {
-            placement = 'top';
-        } else if (space.right >= targetDimensions.width) {
-            placement = 'right';
-        } else if (space.left >= targetDimensions.width) {
-            placement = 'left';
+
+        if (container) {
+            const containerHeight = container.bottom - container.top;
+            const triggerMidpoint = triggerRect.top + (triggerRect.height / 2);
+            const triggerRelativePosition = (triggerMidpoint - container.top) / containerHeight;
+
+            if (triggerRelativePosition > 0.6) {
+                placement = 'bottom';
+            } else if (space.bottom >= targetDimensions.height + safetyMargin) {
+                placement = 'bottom';
+            } else if (space.top >= targetDimensions.height + safetyMargin) {
+                placement = 'top';
+            } else {
+                placement = triggerRelativePosition > 0.4 ? 'bottom' : 'top';
+            }
         } else {
-            placement = Object.keys(space).reduce((a, b) => space[a] > space[b] ? a : b);
+            if (space.bottom >= targetDimensions.height + safetyMargin) {
+                placement = 'bottom';
+            } else if (space.top >= targetDimensions.height + safetyMargin) {
+                placement = 'top';
+            } else if (space.right >= targetDimensions.width) {
+                placement = 'right';
+            } else if (space.left >= targetDimensions.width) {
+                placement = 'left';
+            } else {
+                placement = Object.keys(space).reduce((a, b) => space[a] > space[b] ? a : b);
+            }
         }
 
 
@@ -168,10 +183,11 @@ export class PositioningEngine {
         return `${placement}_${alignment}`;
     }
 
-    _calculateBasePosition(triggerRect, targetDimensions, placement, alignment, offset, viewport) {
+    _calculateBasePosition(triggerRect, targetDimensions, placement, alignment, offset, viewport, container = null) {
         let x, y;
 
-
+        const containerTop = container ? container.top : 0;
+        const containerLeft = container ? container.left : 0;
 
         switch (placement) {
             case 'top':

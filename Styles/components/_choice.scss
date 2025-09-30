@@ -5,7 +5,7 @@
 @mixin choice-compact-style() {
   width: auto;
   min-width: auto;
-  
+
   .choice-trigger {
     padding: var(--space-2);
     min-width: var(--touch-target-min);
@@ -13,13 +13,13 @@
     border-radius: var(--radius-full);
     gap: 0;
     position: relative;
-    
+
     // Hide text content in compact mode
     .choice-text,
     .choice-label {
       display: none;
     }
-    
+
     .choice-avatar,
     .choice-icon {
       display: flex;
@@ -27,23 +27,130 @@
       position: relative;
       z-index: var(--z-base);
     }
-    
+
     @include icon-context-action;
-    
+
     &::after {
       display: none;
     }
   }
-  
+
   .choice-viewport {
     width: auto;
   }
-  
+
   .choice-content .choice-item {
     .choice-text,
     .choice-label {
       display: block;
     }
+  }
+}
+
+// ================================================
+// CONTAINER-AGNOSTIC VIEWPORT STYLING
+// Direct class selector - works in ANY context (modal, navbar, table, form)
+// ================================================
+.choice-viewport {
+  // Display and positioning
+  display: none;
+  position: fixed;
+  z-index: var(--dropdown-z-index, 1050);
+
+  // 480px accommodates ~12 standard items or 4-6 rich items with avatars
+  width: var(--choice-width, auto);
+  max-height: var(--choice-max-height, 480px);
+
+  // Visual styling - SOLID background for maximum readability
+  background: var(--color-surface-elevated);
+  border: var(--border-1) solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xl);
+  padding: var(--space-2);
+
+  overflow-y: auto;
+  overflow-x: hidden;
+  transition: opacity 0.15s ease-out;
+
+  scrollbar-width: auto;
+  scrollbar-color: var(--color-primary) rgba(0, 0, 0, 0.05);
+
+  &::-webkit-scrollbar {
+    width: 16px;
+    background: rgba(0, 0, 0, 0.03);
+  }
+
+  &::-webkit-scrollbar-track {
+    background: linear-gradient(90deg,
+      rgba(0, 0, 0, 0.05) 0%,
+      rgba(0, 0, 0, 0.08) 50%,
+      rgba(0, 0, 0, 0.05) 100%);
+    border-left: 1px solid rgba(0, 0, 0, 0.1);
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg,
+      var(--color-primary) 0%,
+      color-mix(in srgb, var(--color-primary) 85%, black) 100%);
+    border: 3px solid var(--color-surface-elevated);
+    border-radius: var(--radius-md);
+    background-clip: padding-box;
+    min-height: 60px;
+    box-shadow:
+      0 2px 8px rgba(0, 0, 0, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.3);
+
+    &:hover {
+      background: linear-gradient(180deg,
+        var(--color-primary-hover) 0%,
+        color-mix(in srgb, var(--color-primary-hover) 85%, black) 100%);
+      box-shadow:
+        0 4px 12px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.4);
+    }
+
+    &:active {
+      background: var(--color-primary-active);
+      box-shadow:
+        0 1px 4px rgba(0, 0, 0, 0.4),
+        inset 0 1px 2px rgba(0, 0, 0, 0.2);
+    }
+  }
+
+  // Scroll indicator - shows when content overflows
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 48px;
+    background: linear-gradient(
+      to top,
+      var(--color-surface-elevated) 0%,
+      var(--color-surface-elevated) 20%,
+      rgba(244, 245, 247, 0.95) 40%,
+      rgba(244, 245, 247, 0.8) 60%,
+      transparent 100%
+    );
+    pointer-events: none;
+    z-index: 100;
+    opacity: 1;
+  }
+
+  // Responsive sizing
+  @media (max-width: 768px) {
+    min-width: var(--space-48);
+  }
+
+  @media (max-width: 480px) {
+    min-width: var(--space-40);
+  }
+
+  // State: opened
+  &-opened,
+  &-positioned {
+    display: block;
   }
 }
 
@@ -496,56 +603,17 @@
 
   &-dropdown {
     position: relative;
-    
+
     @include semantic-variants((primary, success, warning, error, info), (ghost));
-    
-    .choice-viewport {
-      display: none;
-      z-index: var(--dropdown-z-index);
+  }
 
-      // Positioning is handled directly by JavaScript via cssStyles
-      // width and height are still controlled by CSS variables
-      width: var(--choice-width, auto);
-      max-height: var(--choice-max-height, 320px);
-
-      transition: opacity 0.15s ease-out;
-
-      @extend %glass-medium;
-      background: var(--glass-bg-medium);
-      border-radius: var(--radius-lg);
-      box-shadow: var(--shadow-xl);
-      padding: var(--space-2);
-      max-height: 80vh;
-      overflow-y: auto;
-      
-      // Use scrollbar mixin
-      @include choice-scrollbar(4px);
-      
-      @media (max-width: 768px) {
-        min-width: var(--space-48);
-        right: -var(--space-2);
-      }
-      
-      @media (max-width: 480px) {
-        min-width: var(--space-40);
-        right: -var(--space-1);
-      }
-    }
-    
-    .choice-content {
-      @extend %choice-content-base;
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12),
-                  0 2px 8px rgba(0, 0, 0, 0.08);
-      backdrop-filter: blur(var(--blur-md));
-      min-width: 200px;
-      max-height: 320px;
-      overflow-y: auto;
-      overflow-x: hidden;
+  .choice-content {
+      // Plain layout wrapper - NO decorative styles
+      width: 100%;
+      max-height: 100%;
+      overflow: visible;
       padding: var(--space-1) 0;
       box-sizing: border-box;
-      
-      // Use scrollbar mixin with 8px width
-      @include choice-scrollbar(8px);
       
       .choice-item {
         border: none;
@@ -594,13 +662,15 @@
           background: var(--color-primary);
           color: var(--color-text-inverse);
           font-weight: var(--font-semibold);
-          
+          position: relative;
+          z-index: 101;
+
           .icon,
           i {
             color: var(--color-text-inverse);
             opacity: 1;
           }
-          
+
           &:hover {
             background: var(--color-primary-hover);
             color: var(--color-text-inverse);
@@ -646,7 +716,6 @@
         animation: dropdownSlideIn var(--duration-normal) var(--ease-out);
       }
     }
-  }
 
   &-switcher {
     display: flex;

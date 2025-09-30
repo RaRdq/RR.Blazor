@@ -17,7 +17,7 @@ const DROPDOWN_CONFIG = {
     GPU_ACCELERATION_TRANSFORM: 'translateZ(0)',
     VISIBILITY_BOUNDARY: 0,
     MODAL_SELECTORS: '.modal, .dialog, [role="dialog"]',
-    SCROLLABLE_SELECTORS: '.rr-scrollable, .main-content, .page-content, .overflow-auto, .overflow-y-auto'
+    SCROLLABLE_SELECTORS: '.modal-body, .rr-scrollable, .main-content, .page-content, .overflow-auto, .overflow-y-auto'
 };
 
 const positioningEngine = new PositioningEngine();
@@ -131,8 +131,8 @@ class DropdownManagerBase {
             let containerRect = null;
             let containerElement = null;
             if (modalContext) {
-                containerElement = modalContext.element;
-                containerRect = modalContext.element ? modalContext.element.getBoundingClientRect() : null;
+                containerElement = modalContext.element.querySelector('.modal-body') || modalContext.element;
+                containerRect = containerElement.getBoundingClientRect();
             }
 
 
@@ -140,14 +140,6 @@ class DropdownManagerBase {
                 width: dimensions.width || viewport.offsetWidth || DROPDOWN_CONFIG.DEFAULT_WIDTH_PX,
                 height: dimensions.height || DROPDOWN_CONFIG.DEFAULT_HEIGHT_PX
             };
-
-
-            let desiredPosition;
-            if (position === 'auto') {
-                desiredPosition = positioningEngine.detectOptimalPosition(triggerRect, targetDimensions, undefined, containerRect);
-            } else {
-                desiredPosition = this._normalizePosition(position);
-            }
 
             const portalId = this._generatePortalId(componentType, componentId);
             const elementType = modalContext ? 'modal' : 'portal';
@@ -162,13 +154,39 @@ class DropdownManagerBase {
                 }
             }
 
+            let desiredPosition;
+            if (position === 'auto') {
+                desiredPosition = positioningEngine.detectOptimalPosition(triggerRect, adaptedDimensions, undefined, containerRect);
+            } else {
+                desiredPosition = this._normalizePosition(position);
+            }
+
+            if (containerRect) {
+                const availableSpaceBelow = containerRect.bottom - triggerRect.bottom - offset - DROPDOWN_CONFIG.CONTAINER_PADDING_PX;
+                const availableSpaceAbove = triggerRect.top - containerRect.top - offset - DROPDOWN_CONFIG.CONTAINER_PADDING_PX;
+
+                const placement = desiredPosition.split('_')[0];
+                const availableHeight = placement === 'top' ? availableSpaceAbove : availableSpaceBelow;
+
+                const MIN_DROPDOWN_HEIGHT = 200;
+                const IDEAL_DROPDOWN_HEIGHT = 320;
+
+                if (adaptedDimensions.height > availableHeight) {
+                    // Available space is limited - use what we have but with reasonable minimum
+                    adaptedDimensions.height = Math.max(availableHeight, MIN_DROPDOWN_HEIGHT);
+                } else if (adaptedDimensions.height < IDEAL_DROPDOWN_HEIGHT && availableHeight >= IDEAL_DROPDOWN_HEIGHT) {
+                    // We have plenty of space - use ideal height
+                    adaptedDimensions.height = IDEAL_DROPDOWN_HEIGHT;
+                }
+            }
+
             const calculatedPosition = positioningEngine.calculatePosition(
                 triggerRect,
                 adaptedDimensions,
                 {
                     position: desiredPosition,
                     offset: offset,
-                    flip: true,
+                    flip: !containerRect,
                     constrain: true,
                     container: containerRect
                 }
@@ -224,6 +242,7 @@ class DropdownManagerBase {
 
             viewport.style.width = `${adaptedDimensions.width}px`;
             viewport.style.maxHeight = `${adaptedDimensions.height}px`;
+            viewport.style.overflow = ''; // Clear to let CSS overflow-y: auto take over
             viewport.style.display = 'block';
             viewport.style.opacity = DROPDOWN_CONFIG.VISIBLE_OPACITY;
             viewport.style.pointerEvents = 'auto';
