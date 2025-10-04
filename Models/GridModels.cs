@@ -104,7 +104,6 @@ public class GridColumnDefinition<TItem> : ColumnDefinition<TItem> where TItem :
     public bool CanGroup { get; set; } = true;
     public int GroupOrder { get; set; } = 0;
     public Func<TItem, object> GroupSelector { get; set; }
-    public RenderFragment<IGrouping<object, TItem>> GroupTemplate { get; set; }
     
     // Master-Detail
     public bool IsMasterColumn { get; set; } = false;

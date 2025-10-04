@@ -90,34 +90,29 @@
         {
             Parent?.ExpandItem(Id);
         }
+
+        isExpanded = Parent.IsExpanded(Id);
     }
 
     protected override void OnParametersSet()
     {
-        var currentExpanded = Parent?.IsExpanded(Id) ?? false;
-
-        // Only update if the Expanded parameter differs from current state
-        if (Expanded != currentExpanded)
-        {
-            if (Expanded)
-            {
-                Parent?.ExpandItem(Id);
-            }
-            else
-            {
-                Parent?.CollapseItem(Id);
-            }
-        }
-
+        // ONLY read parent state - do NOT write back to parent during parameter updates
+        // Expanded parameter controls INITIAL state only, not runtime state
+        // Parent's expandedItems HashSet is the single source of truth for runtime
         isExpanded = Parent?.IsExpanded(Id) ?? Expanded;
     }
     
     private async Task ToggleExpanded()
     {
         if (Disabled) return;
-        
+
         await Parent.ToggleItem(Id);
-        isExpanded = Parent.IsExpanded(Id);
+
+        await InvokeAsync(() =>
+        {
+            isExpanded = Parent.IsExpanded(Id);
+            StateHasChanged();
+        });
     }
     
     private string GetItemClasses()

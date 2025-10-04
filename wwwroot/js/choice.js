@@ -166,10 +166,17 @@ class ChoiceManager {
 
                 this.enableKeyboardNavigation(choiceElementId);
                 this.scrollSelectedIntoView(viewport);
+
+                setTimeout(() => {
+                    if (viewport.scrollHeight > viewport.clientHeight) {
+                        viewport.classList.add('has-scroll');
+                    }
+                }, 50);
             },
             onClose: (element, viewport) => {
                 element.classList.remove('choice-open');
                 viewport.classList.remove('choice-viewport-positioned');
+                viewport.classList.remove('has-scroll');
                 viewport.classList.add('choice-viewport-hidden');
 
                 if (options.dropdownClass) {

@@ -42,7 +42,7 @@ public interface IChoiceItem
     /// <summary>
     /// Custom CSS classes for the item
     /// </summary>
-    string CssClass { get; set; }
+    string Class { get; set; }
     
     /// <summary>
     /// Tooltip or help text
@@ -81,7 +81,7 @@ public class ChoiceItem : IChoiceItem
     public string Icon { get; set; } = "";
     public bool Disabled { get; set; }
     public bool Loading { get; set; }
-    public string CssClass { get; set; } = "";
+    public string Class { get; set; } = "";
     public string Tooltip { get; set; } = "";
     public Dictionary<string, object> Data { get; set; } = new();
     

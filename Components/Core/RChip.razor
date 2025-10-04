@@ -10,10 +10,13 @@
                        CommonUse = "status indicators, counts, labels, notifications, tags, filters, badges", 
                        AvoidUsage = "Don't use for navigation - use RButton instead")]
 
-<span class="@GetChipClasses()" 
-      @onclick="HandleClick"
-      @onclick:stopPropagation="true" 
-      @attributes="GetForwardedAttributes()">
+<span class="@GetChipClasses()"
+      role="@(IsClickable ? "button" : null)"
+      tabindex="@(IsClickable && !Disabled ? "0" : "-1")"
+      @onclick="@HandleClick"
+      @onkeydown="@HandleKeyDown"
+      @onclick:stopPropagation="@IsClickable"
+      @attributes="AdditionalAttributes">
     
     @if (!string.IsNullOrEmpty(Icon))
     {
@@ -48,19 +51,16 @@
 
 @code {
     [Parameter]
-    [AIParameter(Hint = "Badge for counts, Chip for tags/filters, Status for state indicators, Rounded for circular badges", 
+    [AIParameter(Hint = "Badge for counts, Chip for tags/filters, Status for state indicators, Rounded for circular badges",
                  SuggestedValues = new[] { "Badge", "Chip", "Status", "Rounded", "Minimal" })]
     public ChipStyle StyleVariant { get; set; } = ChipStyle.Chip;
-    
+
     [Parameter]
-    [AIParameter(Hint = "Primary for emphasis, Success for positive, Warning for attention, Error for problems", 
+    [AIParameter(Hint = "Primary for emphasis, Success for positive, Warning for attention, Error for problems",
                  SuggestedValues = new[] { "Primary", "Secondary", "Success", "Warning", "Error", "Info" })]
     public VariantType Variant { get; set; } = VariantType.Secondary;
-    
-    
-    [Parameter]
-    [AIParameter(Hint = "Set to true for interactive chips that perform actions")]
-    public bool Clickable { get; set; }
+
+    private bool IsClickable => OnClick.HasDelegate;
     
     [Parameter]
     [AIParameter(Hint = "Set to true for removable tags and filter chips")]
@@ -73,21 +73,21 @@
     public bool ShowPulse { get; set; }
     
     [Parameter] public EventCallback OnClose { get; set; }
-    
+
     [Parameter]
     [AIParameter(Hint = "Visual intensity/prominence level", 
                  SuggestedValues = new[] { "Normal", "Muted", "Bold", "Subtle" })]
     public IntensityType Intensity { get; set; } = IntensityType.Normal;
     
     [Parameter]
-    [AIParameter(Hint = "Visual style aesthetic", 
+    [AIParameter(Hint = "Visual style aesthetic",
                  SuggestedValues = new[] { "Material", "Glass", "Neumorphism", "Elevated", "Flat", "Neon", "Frosted" })]
     public StyleType StyleEffect { get; set; } = StyleType.Material;
 
     private string GetChipClasses()
     {
         var classes = new List<string>();
-        
+
         var baseClass = StyleVariant switch
         {
             ChipStyle.Badge => "chip chip-badge",
@@ -98,25 +98,25 @@
             _ => "chip"
         };
         classes.Add(baseClass);
-        
+
         var variantName = Variant.ToString().ToLower();
         var semanticVariant = variantName == "default" ? "primary" : variantName;
         classes.Add($"chip-{semanticVariant}");
         if (ShouldShowPulse()) classes.Add("chip-pulsing");
-        
+
         var sizeClasses = SizeHelper.GetChipSize(Size, Density);
         classes.Add(sizeClasses);
-        
-        if (Clickable && !Disabled) classes.Add("chip-clickable");
+
+        if (IsClickable && !Disabled) classes.Add("chip-clickable");
         if (Selected) classes.Add("chip-selected");
         if (Closeable) classes.Add("chip-closeable");
         if (Disabled) classes.Add("chip-disabled");
-        
+
         classes.Add(GetIntensityClasses());
         classes.Add(GetStyleEffectClasses());
-        
+
         if (!string.IsNullOrEmpty(Class)) classes.Add(Class);
-        
+
         return string.Join(" ", classes);
     }
     
@@ -134,53 +134,10 @@
     }
     
     protected override SizeType GetDefaultSize() => SizeType.Medium;
-    
-
-    private void HandleClick(MouseEventArgs args)
-    {
-        // Click is handled by parent via @onclick binding when Clickable is true
-    }
 
     private async Task HandleClose()
     {
         if (!Disabled && OnClose.HasDelegate) await OnClose.InvokeAsync();
-    }
-
-    private Dictionary<string, object> GetForwardedAttributes()
-    {
-        var excludeProperties = new HashSet<string>(StringComparer.OrdinalIgnoreCase) 
-        { 
-            nameof(StyleVariant), nameof(Variant), nameof(Text), nameof(Icon), nameof(Size), 
-            nameof(Density), nameof(Clickable), nameof(Closeable), nameof(Selected), 
-            nameof(Disabled), nameof(ShowPulse), nameof(OnClick), nameof(OnClose), nameof(ChildContent), 
-            nameof(Class), nameof(Title), nameof(Subtitle), nameof(Loading), nameof(LoadingText), 
-            nameof(AriaLabel), nameof(TabIndex), nameof(Intensity), nameof(StyleEffect)
-        };
-
-        var forwarded = new Dictionary<string, object>();
-        var componentType = GetType();
-        var properties = componentType.GetProperties()
-            .Where(p => p.GetCustomAttributes(typeof(ParameterAttribute), true).Any() 
-                       && !excludeProperties.Contains(p.Name)
-                       && p.CanRead);
-
-        foreach (var property in properties)
-        {
-            try
-            {
-                var value = property.GetValue(this);
-                if (value != null || property.PropertyType.IsValueType)
-                {
-                    forwarded[property.Name] = value;
-                }
-            }
-            catch
-            {
-                // Skip properties that can't be accessed
-            }
-        }
-        
-        return forwarded;
     }
 
     private bool ShouldShowPulse()

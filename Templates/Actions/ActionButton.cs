@@ -71,7 +71,7 @@ public class ActionButton<T> where T : class
     /// <summary>
     /// CSS class for the button
     /// </summary>
-    public string CssClass { get; set; }
+    public string Class { get; set; }
 }
 
 /// <summary>

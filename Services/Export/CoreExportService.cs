@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -171,7 +172,7 @@ public class CoreExportService : ICoreExportService
         return CombineResults(results, request);
     }
     
-    public async IAsyncEnumerable<byte[]> ExportStreamAsync<T>(IAsyncEnumerable<T> data, ExportOptions options, CancellationToken cancellationToken = default)
+    public async IAsyncEnumerable<byte[]> ExportStreamAsync<T>(IAsyncEnumerable<T> data, ExportOptions options, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         var streamingProvider = providers.OfType<IStreamingExportProvider>()
             .Where(p => p.SupportsStreaming && p.CanExport(Enumerable.Empty<T>(), options.Format))

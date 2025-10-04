@@ -24,7 +24,7 @@ public class StackRenderer<T> where T : class
                 : "d-flex align-center gap-2";
             
             builder.OpenElement(0, "div");
-            builder.AddAttribute(1, "class", $"{containerClass} {context.CssClass}".Trim());
+            builder.AddAttribute(1, "class", $"{containerClass} {context.Class}".Trim());
             builder.AddAttribute(2, "data-template", "stack");
             builder.AddAttribute(3, "data-orientation", context.Orientation.ToString().ToLowerInvariant());
             

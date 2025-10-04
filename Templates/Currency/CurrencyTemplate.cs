@@ -28,7 +28,7 @@ public class CurrencyTemplate<T> where T : class
     /// <summary>
     /// CSS classes to apply to the rendered template
     /// </summary>
-    public string CssClass { get; set; }
+    public string Class { get; set; }
     
     /// <summary>
     /// Size variant
@@ -96,7 +96,7 @@ public class CurrencyTemplate<T> where T : class
             ShowValueColors = ShowValueColors,
             Size = Size,
             Density = Density,
-            CssClass = CssClass
+            Class = Class
         };
         
         // Get value

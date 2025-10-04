@@ -27,12 +27,11 @@ public static class RTemplates
         Func<T, VariantType> variantSelector = null,
         Func<T, string> iconSelector = null,
         ChipStyle style = ChipStyle.Chip,
-        bool clickable = false,
         bool closeable = false,
         EventCallback<T> onClick = default,
         EventCallback<T> onClose = default) where T : class
     {
-        return TemplateRegistry.Chip(textSelector, variantSelector, iconSelector, style, clickable, closeable, onClick, onClose);
+        return TemplateRegistry.Chip(textSelector, variantSelector, iconSelector, style, closeable, onClick, onClose);
     }
     
     /// <summary>

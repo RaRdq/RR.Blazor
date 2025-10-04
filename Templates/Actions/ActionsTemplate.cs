@@ -47,7 +47,7 @@ public class ActionsTemplate<T> where T : class
     /// <summary>
     /// CSS class for the actions container
     /// </summary>
-    public string CssClass { get; set; }
+    public string Class { get; set; }
     
     /// <summary>
     /// Alignment of actions within the cell
@@ -88,7 +88,7 @@ public class ActionsTemplate<T> where T : class
             MaxVisibleActions = MaxVisibleActions,
             Size = Size,
             Density = Density,
-            CssClass = CssClass,
+            Class = Class,
             Alignment = Alignment,
             ShowTooltips = ShowTooltips,
             DropdownIcon = DropdownIcon,

@@ -88,7 +88,7 @@ public class RTable : RTableBase
         builder.AddAttribute(++seq, "RowHeight", RowHeight);
         builder.AddAttribute(++seq, "HeaderHeight", HeaderHeight);
         builder.AddAttribute(++seq, "FooterHeight", FooterHeight);
-        builder.AddAttribute(++seq, "CssClass", CssClass);
+        builder.AddAttribute(++seq, "Class", Class);
         builder.AddAttribute(++seq, "AutoGenerateColumns", AutoGenerateColumns);
         builder.AddAttribute(++seq, "MultiSelection", MultiSelection);
         builder.AddAttribute(++seq, "SearchEnabled", SearchEnabled);

@@ -81,7 +81,8 @@ class DropdownManagerBase {
             enableKeyboard = false,
             autoCloseOnScroll = true,
             clickOutsideOptions = {},
-            customTriggerBounds = null
+            customTriggerBounds = null,
+            minHeight = null  // Component-specific minimum height
         } = config;
 
         if (!contentSelector || !componentId) {
@@ -156,28 +157,9 @@ class DropdownManagerBase {
 
             let desiredPosition;
             if (position === 'auto') {
-                desiredPosition = positioningEngine.detectOptimalPosition(triggerRect, adaptedDimensions, undefined, containerRect);
+                desiredPosition = positioningEngine.detectOptimalPosition(triggerRect, adaptedDimensions, undefined, containerRect, minHeight);
             } else {
                 desiredPosition = this._normalizePosition(position);
-            }
-
-            if (containerRect) {
-                const availableSpaceBelow = containerRect.bottom - triggerRect.bottom - offset - DROPDOWN_CONFIG.CONTAINER_PADDING_PX;
-                const availableSpaceAbove = triggerRect.top - containerRect.top - offset - DROPDOWN_CONFIG.CONTAINER_PADDING_PX;
-
-                const placement = desiredPosition.split('_')[0];
-                const availableHeight = placement === 'top' ? availableSpaceAbove : availableSpaceBelow;
-
-                const MIN_DROPDOWN_HEIGHT = 200;
-                const IDEAL_DROPDOWN_HEIGHT = 320;
-
-                if (adaptedDimensions.height > availableHeight) {
-                    // Available space is limited - use what we have but with reasonable minimum
-                    adaptedDimensions.height = Math.max(availableHeight, MIN_DROPDOWN_HEIGHT);
-                } else if (adaptedDimensions.height < IDEAL_DROPDOWN_HEIGHT && availableHeight >= IDEAL_DROPDOWN_HEIGHT) {
-                    // We have plenty of space - use ideal height
-                    adaptedDimensions.height = IDEAL_DROPDOWN_HEIGHT;
-                }
             }
 
             const calculatedPosition = positioningEngine.calculatePosition(
@@ -186,7 +168,8 @@ class DropdownManagerBase {
                 {
                     position: desiredPosition,
                     offset: offset,
-                    flip: !containerRect,
+                    flip: true,
+                    minHeight: minHeight,
                     constrain: true,
                     container: containerRect
                 }

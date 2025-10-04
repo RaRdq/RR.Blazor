@@ -11,7 +11,6 @@ public static class ChipRenderer<T> where T : class
         Func<T, VariantType> variantSelector = null,
         Func<T, string> iconSelector = null,
         ChipStyle style = ChipStyle.Chip,
-        bool clickable = false,
         bool closeable = false,
         EventCallback<T> onClick = default,
         EventCallback<T> onClose = default)
@@ -28,14 +27,13 @@ public static class ChipRenderer<T> where T : class
                 builder.AddAttribute(3, nameof(RChip.Icon), iconSelector(item));
                 
             builder.AddAttribute(4, nameof(RChip.StyleVariant), style);
-            builder.AddAttribute(5, nameof(RChip.Clickable), clickable);
-            builder.AddAttribute(6, nameof(RChip.Closeable), closeable);
-            
+            builder.AddAttribute(5, nameof(RChip.Closeable), closeable);
+
             if (onClick.HasDelegate)
-                builder.AddAttribute(7, nameof(RChip.OnClick), EventCallback.Factory.Create(item, () => onClick.InvokeAsync(item)));
-                
+                builder.AddAttribute(6, nameof(RChip.OnClick), EventCallback.Factory.Create(item, () => onClick.InvokeAsync(item)));
+
             if (onClose.HasDelegate)
-                builder.AddAttribute(8, nameof(RChip.OnClose), EventCallback.Factory.Create(item, () => onClose.InvokeAsync(item)));
+                builder.AddAttribute(7, nameof(RChip.OnClose), EventCallback.Factory.Create(item, () => onClose.InvokeAsync(item)));
                 
             builder.CloseComponent();
         };

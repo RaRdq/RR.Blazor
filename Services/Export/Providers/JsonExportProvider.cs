@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -87,7 +88,7 @@ public class JsonExportProvider : IStreamingExportProvider
         }
     }
     
-    public async IAsyncEnumerable<byte[]> ExportStreamAsync<T>(IAsyncEnumerable<T> data, ExportOptions options, CancellationToken cancellationToken = default)
+    public async IAsyncEnumerable<byte[]> ExportStreamAsync<T>(IAsyncEnumerable<T> data, ExportOptions options, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         var settings = GetJsonSettings(options);
         var isFirst = true;

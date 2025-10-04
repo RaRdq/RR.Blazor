@@ -38,7 +38,6 @@ public class RAutosuggest : RComponentBase
     [Parameter] public bool Required { get; set; }
     [Parameter] public EventCallback<object> OnItemSelected { get; set; }
     [Parameter] public EventCallback<string> OnSearchChanged { get; set; }
-    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object> AdditionalAttributes { get; set; }
 
     protected override void BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder)
     {

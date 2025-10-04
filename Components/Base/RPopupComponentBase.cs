@@ -9,7 +9,6 @@ namespace RR.Blazor.Components.Base;
 /// </summary>
 public abstract class RPopupComponentBase : RComponentBase, IAsyncDisposable
 {
-    [Inject] protected IJSRuntime JSRuntime { get; set; } = default!;
     
     [Parameter] public bool DisableClickOutside { get; set; }
     [Parameter] public bool DisableEscapeKey { get; set; }
@@ -98,7 +97,7 @@ public abstract class RPopupComponentBase : RComponentBase, IAsyncDisposable
             await ClosePopup();
     }
     
-    public virtual async ValueTask DisposeAsync()
+    protected override async ValueTask DisposeAsyncCore()
     {
         try
         {

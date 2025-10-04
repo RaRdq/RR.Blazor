@@ -27,7 +27,7 @@ public class RatingContext<T> where T : class
     /// <summary>
     /// Additional CSS classes to apply
     /// </summary>
-    public string CssClass { get; set; }
+    public string Class { get; set; }
     
     /// <summary>
     /// Whether the item is in a disabled state

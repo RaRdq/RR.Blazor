@@ -238,7 +238,7 @@ namespace RR.Blazor.Components.Base
             var classes = GetBaseCssClasses().Where(c => !string.IsNullOrEmpty(c));
             return string.Join(" ", classes);
         }
-        
+
         /// <summary>
         /// Override this method to provide component-specific CSS classes
         /// </summary>

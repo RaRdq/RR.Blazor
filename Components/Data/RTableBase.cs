@@ -25,7 +25,6 @@ public abstract class RTableBase : RComponentBase
     [Parameter] public string RowHeight { get; set; }
     [Parameter] public string HeaderHeight { get; set; }
     [Parameter] public string FooterHeight { get; set; }
-    [Parameter] public string CssClass { get; set; }
     [Parameter] public bool AutoGenerateColumns { get; set; } = true;
     [Parameter] public bool MultiSelection { get; set; }
     [Parameter] public bool SearchEnabled { get; set; }

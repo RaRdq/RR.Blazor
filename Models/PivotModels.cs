@@ -365,7 +365,7 @@ public class ConditionalFormatRule
     public string Name { get; set; } = string.Empty;
     public Expression<Func<object, bool>> Condition { get; set; }
     public Func<object, bool> CompiledCondition { get; set; }
-    public string CssClass { get; set; } = string.Empty;
+    public string Class { get; set; } = string.Empty;
     public string BackgroundColor { get; set; } = string.Empty;
     public string TextColor { get; set; } = string.Empty;
     public string Icon { get; set; } = string.Empty;

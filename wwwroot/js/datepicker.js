@@ -4,7 +4,8 @@ import { TIMEOUTS } from './event-constants.js';
 
 const DATEPICKER_CONFIG = {
     DEFAULT_WIDTH_PX: 320,
-    DEFAULT_HEIGHT_PX: 400,
+    DEFAULT_HEIGHT_PX: 380,
+    MIN_HEIGHT_PX: 280,
     DEFAULT_OFFSET_PX: 4,
     CLICK_PRIORITY: 10
 };
@@ -90,6 +91,7 @@ class DatepickerManager {
             dimensions: targetDimensions,
             position: options.direction || 'auto',
             offset: DATEPICKER_CONFIG.DEFAULT_OFFSET_PX,
+            minHeight: DATEPICKER_CONFIG.MIN_HEIGHT_PX,
             allowMultiple: false,
             excludeSelectors: [
                 '.rr-datepicker-trigger',

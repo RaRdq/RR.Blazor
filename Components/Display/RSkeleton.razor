@@ -98,7 +98,7 @@ else
         </text>;
         
     private RenderFragment RenderSkeletonElement(SkeletonElement element) =>
-        @<div class="@GetSkeletonClasses() @element.CssClass" 
+        @<div class="@GetSkeletonClasses() @element.Class" 
               style="@element.Style">
             @if (element.Children?.Any() == true)
             {
@@ -225,14 +225,14 @@ else
     private async Task AnalyzeContent()
     {
         if (_isAnalyzed) return;
-        
+
         try
         {
             _isAnalyzed = true;
-            
+
             // Use JavaScript interop to analyze the actual hidden content via RR.Blazor proxy
             var skeletonHTML = await JS.InvokeAsync<string>("RRBlazor.Skeleton.generateSkeletonHTML", skeletonContainer, Animated);
-            
+
             if (!string.IsNullOrEmpty(skeletonHTML))
             {
                 await ParseSkeletonHTML(skeletonHTML);
@@ -242,13 +242,16 @@ else
                 _generatedSkeletonHTML = string.Empty;
                 detectedElements.Clear();
             }
-            
+
+            // Trigger re-render with skeleton content (needed when called from OnAfterRenderAsync)
             await InvokeAsync(StateHasChanged);
         }
-        catch
+        catch (Exception ex)
         {
+            Console.WriteLine($"RSkeleton AnalyzeContent error: {ex.Message}");
             // Fallback to simple skeleton on error
             await GenerateSmartSkeleton();
+            await InvokeAsync(StateHasChanged);
         }
     }
     
@@ -272,11 +275,11 @@ else
         var shimmerClass = Animated ? " skeleton-shimmer" : "";
         detectedElements = new List<SkeletonElement>
         {
-            new() { Type = "text", CssClass = $"skeleton skeleton-title mb-3{shimmerClass}", Style = "width: 40%; height: 1.5rem;" },
-            new() { Type = "text", CssClass = $"skeleton skeleton-text mb-2{shimmerClass}", Style = "width: 100%; height: 1rem;" },
-            new() { Type = "text", CssClass = $"skeleton skeleton-text mb-2{shimmerClass}", Style = "width: 85%; height: 1rem;" },
-            new() { Type = "text", CssClass = $"skeleton skeleton-text mb-4{shimmerClass}", Style = "width: 70%; height: 1rem;" },
-            new() { Type = "badge", CssClass = $"skeleton skeleton-badge{shimmerClass}", Style = "width: 4rem; height: 1.5rem; border-radius: 0.75rem;" }
+            new() { Type = "text", Class = $"skeleton skeleton-title mb-3{shimmerClass}", Style = "width: 40%; height: 1.5rem;" },
+            new() { Type = "text", Class = $"skeleton skeleton-text mb-2{shimmerClass}", Style = "width: 100%; height: 1rem;" },
+            new() { Type = "text", Class = $"skeleton skeleton-text mb-2{shimmerClass}", Style = "width: 85%; height: 1rem;" },
+            new() { Type = "text", Class = $"skeleton skeleton-text mb-4{shimmerClass}", Style = "width: 70%; height: 1rem;" },
+            new() { Type = "badge", Class = $"skeleton skeleton-badge{shimmerClass}", Style = "width: 4rem; height: 1.5rem; border-radius: 0.75rem;" }
         };
         _generatedSkeletonHTML = string.Empty;
     }
@@ -284,7 +287,7 @@ else
     public class SkeletonElement
     {
         public string Type { get; set; } = "text";
-        public string CssClass { get; set; } = "skeleton-text";
+        public string Class { get; set; } = "skeleton-text";
         public string Style { get; set; } = "";
         public List<SkeletonElement> Children { get; set; } = new();
     }

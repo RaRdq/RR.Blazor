@@ -216,7 +216,7 @@ Common properties available in all contexts:
 - `Item`: The data item being rendered
 - `Size`: Size variant (Small, Medium, Large, etc.)
 - `Density`: Layout density (Compact, Dense, Normal, Spacious)
-- `CssClass`: Additional CSS classes
+- `Class`: Additional CSS classes
 - `Disabled`: Whether the item is disabled
 - `Loading`: Whether the item is in loading state
 - `Selected`: Whether the item is selected/active

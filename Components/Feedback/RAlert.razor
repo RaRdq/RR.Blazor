@@ -44,15 +44,15 @@ Supports info, success, warning, and error states with consistent styling.
             </button>
         }
         
-        <div class="d-flex @GetMainFlexAlignmentClasses() flex-1 gap-3">
+        <div class="d-flex @GetMainFlexAlignmentClasses() @GetMainWidthClass() flex-1 @GetGapClass()">
             @if (ShowIcon)
             {
                 <div class="alert-icon shrink-0">
                     <i class="icon @GetIconClasses()">@GetIcon()</i>
                 </div>
             }
-            
-            <div class="alert-content flex-1 @GetContentAlignmentClasses()">
+
+            <div class="alert-content @GetContentFlexClass() @GetContentAlignmentClasses()">
                 @if (!string.IsNullOrEmpty(Title))
                 {
                     <div class="alert-title font-semibold @GetTitleClasses()">@Title</div>
@@ -311,7 +311,7 @@ Supports info, success, warning, and error states with consistent styling.
     {
         return ContentAlignment switch
         {
-            AlertContentAlignment.Center => "items-center justify-center",
+            AlertContentAlignment.Center => "flex-col items-center justify-center",
             AlertContentAlignment.End => "items-center justify-end",
             _ => "items-center"
         };
@@ -326,8 +326,28 @@ Supports info, success, warning, and error states with consistent styling.
             _ => ""
         };
     }
-    
-    
+
+    private string GetGapClass()
+    {
+        return ContentAlignment switch
+        {
+            AlertContentAlignment.Center => "gap-2",
+            _ => "gap-3"
+        };
+    }
+
+    private string GetContentFlexClass()
+    {
+        return ContentAlignment == AlertContentAlignment.Center ? "" : "flex-1";
+    }
+
+    private string GetMainWidthClass()
+    {
+        // When FullWidth is true and content is centered, ensure the main wrapper takes full width
+        return (FullWidth && ContentAlignment == AlertContentAlignment.Center) ? "w-full" : "";
+    }
+
+
     private async Task Dismiss()
     {
         if (disposed) return;

@@ -38,7 +38,7 @@ public class ActionsRenderer<T> where T : class
         
         // Container
         builder.OpenElement(sequence++, "div");
-        builder.AddAttribute(sequence++, "class", $"d-flex align-items-center {alignmentClass} {densityClass} {context.CssClass}");
+        builder.AddAttribute(sequence++, "class", $"d-flex align-items-center {alignmentClass} {densityClass} {context.Class}");
         
         // Render inline actions
         foreach (var action in visibleActions)
@@ -74,7 +74,7 @@ public class ActionsRenderer<T> where T : class
     {
         builder.OpenElement(baseSequence++, "button");
         builder.AddAttribute(baseSequence++, "type", "button");
-        builder.AddAttribute(baseSequence++, "class", $"btn {buttonStyle} {variantClass} {sizeClass} {action.CssClass}");
+        builder.AddAttribute(baseSequence++, "class", $"btn {buttonStyle} {variantClass} {sizeClass} {action.Class}");
         builder.AddAttribute(baseSequence++, "disabled", !isEnabled);
         
         // Add tooltip as title attribute

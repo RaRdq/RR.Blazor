@@ -21,7 +21,7 @@ public class ProgressRenderer<T> where T : class
             if (context?.Item == null) return;
             
             builder.OpenElement(0, "div");
-            builder.AddAttribute(1, "class", $"progress-container {context.CssClass}".Trim());
+            builder.AddAttribute(1, "class", $"progress-container {context.Class}".Trim());
             builder.AddAttribute(2, "data-template", "progress");
             builder.AddAttribute(3, "data-type", context.Type.ToString().ToLower());
             

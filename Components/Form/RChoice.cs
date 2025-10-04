@@ -579,7 +579,7 @@ public class RChoice : RChoiceBase
         
         // Forward common parameters
         builder.AddAttribute(sequence++, "Disabled", Disabled);
-        builder.AddAttribute(sequence++, "CssClass", Class);
+        builder.AddAttribute(sequence++, "Class", Class);
         
         // Forward events
         if (SelectedValueChanged.HasDelegate)
@@ -623,7 +623,7 @@ public class RChoice : RChoiceBase
         
         // Forward common parameters
         builder.AddAttribute(sequence++, "Disabled", Disabled);
-        builder.AddAttribute(sequence++, "CssClass", Class);
+        builder.AddAttribute(sequence++, "Class", Class);
         
         // Forward events
         if (SelectedValueChanged.HasDelegate)

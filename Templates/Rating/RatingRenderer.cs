@@ -22,7 +22,7 @@ public class RatingRenderer<T> where T : class
             if (context?.Item == null) return;
             
             builder.OpenElement(0, "div");
-            builder.AddAttribute(1, "class", $"rating-container d-flex align-center gap-1 {context.CssClass}".Trim());
+            builder.AddAttribute(1, "class", $"rating-container d-flex align-center gap-1 {context.Class}".Trim());
             builder.AddAttribute(2, "data-template", "rating");
             builder.AddAttribute(3, "data-type", context.Type.ToString().ToLower());
             

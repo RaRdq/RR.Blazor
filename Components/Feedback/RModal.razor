@@ -21,7 +21,7 @@
         <div class="@contentClass" @onclick:stopPropagation="true">
             @if (ShowHeader)
             {
-                <div class="modal-header">
+                <div class="modal-header @GetHeaderDensityClass()">
                     <div class="modal-header-content">
                         @if (!string.IsNullOrEmpty(Icon))
                         {
@@ -51,7 +51,7 @@
             
             @if (ShowFooter)
             {
-                <div class="modal-footer">
+                <div class="modal-footer @GetFooterDensityClass()">
                     @if (FooterContent != null)
                     {
                         @FooterContent
@@ -61,7 +61,7 @@
                         <div class="modal-footer-buttons">
                             @if (ShowCancelButton)
                             {
-                                <RButton Variant="VariantType.Secondary"
+                                <RButton Variant="@CancelButtonVariant"
                                         Size="@ButtonSize"
                                         Icon="@CancelIcon" IconPosition="IconPosition.Start"
                                         Class="@CancelButtonClass"
@@ -72,7 +72,7 @@
                             }
                             @if (ShowPrimaryButton)
                             {
-                                <RButton Variant="VariantType.Primary"
+                                <RButton Variant="@PrimaryButtonVariant"
                                         Size="@ButtonSize"
                                         Icon="@(Loading && ShowPrimaryButtonSpinner ? null : PrimaryIcon)" IconPosition="IconPosition.Start"
                                         Class="@PrimaryButtonClass"
@@ -115,9 +115,6 @@
 
     private bool IsModalVisible => Visible || (ModalContext != null);
     
-    protected Dictionary<string, object> GetSafeAttributes()
-        => RAttributeForwarder.GetSafeAttributes(AdditionalAttributes);
-    
     [CascadingParameter] public ModalContext ModalContext { get; set; }
 
     [Parameter] public string ModalId { get; set; }
@@ -125,6 +122,8 @@
     [Parameter] public EventCallback<bool> VisibleChanged { get; set; }
     [Parameter] public SizeType Size { get; set; } = SizeType.Medium;
     [Parameter] public VariantType Variant { get; set; } = VariantType.Default;
+    [Parameter] public SizeType HeaderSize { get; set; } = SizeType.Medium;
+    [Parameter] public SizeType FooterSize { get; set; } = SizeType.Medium;
 
     [Parameter] public bool ShowHeader { get; set; } = true;
     [Parameter] public string Title { get; set; } = "";
@@ -139,11 +138,13 @@
     [Parameter] public string CancelText { get; set; } = "Cancel";
     [Parameter] public string CancelIcon { get; set; }
     [Parameter] public string CancelButtonClass { get; set; }
+    [Parameter] public VariantType CancelButtonVariant { get; set; } = VariantType.Secondary;
     [Parameter] public bool ShowPrimaryButton { get; set; } = true;
     [Parameter] public string PrimaryText { get; set; } = "Save";
     [Parameter] public string PrimaryIcon { get; set; }
     [Parameter] public string PrimaryButtonClass { get; set; }
     [Parameter] public bool PrimaryButtonDisabled { get; set; }
+    [Parameter] public VariantType PrimaryButtonVariant { get; set; } = VariantType.Primary;
     [Parameter] public SizeType ButtonSize { get; set; } = SizeType.Medium;
 
     [Parameter] public bool Loading { get; set; }
@@ -239,6 +240,7 @@
         if (OnCancel.HasDelegate)
         {
             await OnCancel.InvokeAsync();
+            return;
         }
 
         await Close();
@@ -271,6 +273,24 @@
         SizeType.Large => "modal-content-large",
         SizeType.ExtraLarge => "modal-content-xlarge",
         _ => "" // Default size (Medium) - no class needed
+    };
+
+    private string GetHeaderDensityClass() => HeaderSize switch
+    {
+        SizeType.ExtraSmall => "modal-header-xs",
+        SizeType.Small => "modal-header-sm",
+        SizeType.Large => "modal-header-lg",
+        SizeType.ExtraLarge => "modal-header-xl",
+        _ => ""
+    };
+
+    private string GetFooterDensityClass() => FooterSize switch
+    {
+        SizeType.ExtraSmall => "modal-footer-xs",
+        SizeType.Small => "modal-footer-sm",
+        SizeType.Large => "modal-footer-lg",
+        SizeType.ExtraLarge => "modal-footer-xl",
+        _ => ""
     };
     
     [JSInvokable]
@@ -321,7 +341,7 @@
             await JSInterop.TryInvokeVoidAsync("RRBlazor.Modal.dispatchParentClosing", GetModalId());
     }
 
-    public async ValueTask DisposeAsync()
+    protected override async ValueTask DisposeAsyncCore()
     {
         if (_jsModalRegistered)
             await UnregisterFromJS();

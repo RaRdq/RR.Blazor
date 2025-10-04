@@ -11,7 +11,6 @@ namespace RR.Blazor.Components.Base;
 public abstract class RModalBase : RComponentBase
 {
     [Inject] protected IModalService ModalService { get; set; }
-    [Inject] protected IJSRuntime JSRuntime { get; set; }
     
     [Parameter] public string ModalId { get; set; }
     [Parameter] public bool Visible { get; set; }

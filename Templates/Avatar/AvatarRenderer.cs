@@ -23,7 +23,7 @@ public class AvatarRenderer<T> where T : class
             var sizeClass = GetSizeClass(context.Size);
             var shapeClass = GetShapeClass(context.Shape);
             var colorClass = GetColorClass(context.ColorVariant);
-            var avatarClass = $"avatar {sizeClass} {shapeClass} {colorClass} {context.CssClass}".Trim();
+            var avatarClass = $"avatar {sizeClass} {shapeClass} {colorClass} {context.Class}".Trim();
             
             // Main avatar container
             builder.OpenElement(0, "div");

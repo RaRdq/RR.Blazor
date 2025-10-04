@@ -351,8 +351,8 @@ public static class RAttributeForwarder
 
 public abstract class RForwardingComponentBase : RComponentBase
 {
-    
-    protected virtual Dictionary<string, object> GetSafeAttributes()
+
+    protected new virtual Dictionary<string, object> GetSafeAttributes()
     {
         return RAttributeForwarder.GetSafeAttributes(AdditionalAttributes);
     }

@@ -33,7 +33,7 @@ public class TemplateContext<T> where T : class
     /// <summary>
     /// Additional CSS classes to apply
     /// </summary>
-    public string CssClass { get; set; }
+    public string Class { get; set; }
     
     /// <summary>
     /// Custom attributes for the rendered element

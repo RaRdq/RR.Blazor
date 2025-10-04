@@ -24,7 +24,7 @@ public class CurrencyRenderer<T> where T : class
             var cssClass = context.ShowValueColors ? GetCurrencyColorClass(context.Value) : string.Empty;
             
             builder.OpenElement(0, "span");
-            builder.AddAttribute(1, "class", $"currency-value {cssClass} {context.CssClass}".Trim());
+            builder.AddAttribute(1, "class", $"currency-value {cssClass} {context.Class}".Trim());
             builder.AddAttribute(2, "data-template", "currency");
             builder.AddAttribute(3, "data-value", context.Value.ToString(CultureInfo.InvariantCulture));
             builder.AddAttribute(4, "data-currency", context.CurrencyCode);

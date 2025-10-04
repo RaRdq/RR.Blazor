@@ -40,7 +40,6 @@ public static class TemplateRegistry
         Func<T, VariantType> variantSelector = null,
         Func<T, string> iconSelector = null,
         ChipStyle style = ChipStyle.Chip,
-        bool clickable = false,
         bool closeable = false,
         EventCallback<T> onClick = default,
         EventCallback<T> onClose = default) where T : class
@@ -50,7 +49,6 @@ public static class TemplateRegistry
             variantSelector,
             iconSelector,
             style,
-            clickable,
             closeable,
             onClick,
             onClose);
@@ -67,11 +65,10 @@ public static class TemplateRegistry
             builder.OpenComponent<RChip>(0);
             builder.AddAttribute(1, nameof(RChip.Text), textSelector(item));
             builder.AddAttribute(2, nameof(RChip.Selected), isSelected);
-            builder.AddAttribute(3, nameof(RChip.Clickable), true);
-            builder.AddAttribute(4, nameof(RChip.StyleVariant), ChipStyle.Chip);
+            builder.AddAttribute(3, nameof(RChip.StyleVariant), ChipStyle.Chip);
             
             if (onToggle.HasDelegate)
-                builder.AddAttribute(5, nameof(RChip.OnClick), EventCallback.Factory.Create(item, () => onToggle.InvokeAsync(item)));
+                builder.AddAttribute(4, nameof(RChip.OnClick), EventCallback.Factory.Create(item, () => onToggle.InvokeAsync(item)));
                 
             builder.CloseComponent();
         };

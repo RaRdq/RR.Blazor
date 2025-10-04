@@ -3,7 +3,12 @@
 @using RR.Blazor.Enums
 @inherits RComponentBase
 
-<div class="@GetClasses()" @attributes="@AdditionalAttributes">
+<div class="@GetClasses()"
+     @onclick="@(OnClick.HasDelegate ? HandleClick : null)"
+     role="@(OnClick.HasDelegate && !Disabled ? "button" : null)"
+     tabindex="@(OnClick.HasDelegate && !Disabled ? 0 : null)"
+     aria-disabled="@(Disabled ? "true" : null)"
+     @attributes="@AdditionalAttributes">
     @if (!string.IsNullOrEmpty(ImageUrl))
     {
         <div class="rtile-media">
@@ -45,24 +50,29 @@
     [Parameter] public string Badge { get; set; }
     [Parameter] public RenderFragment Actions { get; set; }
     [Parameter] public TileVariant Variant { get; set; } = TileVariant.Default;
-    [Parameter] public bool Clickable { get; set; }
     [Parameter] public EventCallback OnClick { get; set; }
 
     private string GetClasses()
     {
         var classes = new List<string> { "rtile" };
-        
+
         classes.Add($"rtile-{Variant.ToString().ToLower()}");
-        
-        if (Clickable || OnClick.HasDelegate)
+
+        if (OnClick.HasDelegate && !Disabled)
             classes.Add("rtile-clickable");
-            
+
         if (Density != DensityType.Normal)
             classes.Add($"rtile-{Density.ToString().ToLower()}");
-            
+
         if (!string.IsNullOrEmpty(Class))
             classes.Add(Class);
-            
+
         return string.Join(" ", classes);
+    }
+
+    private async Task HandleClick(MouseEventArgs e)
+    {
+        if (!Disabled && OnClick.HasDelegate)
+            await OnClick.InvokeAsync(e);
     }
 }

@@ -40,7 +40,9 @@ export function generateSkeletonHTML(containerElement, animated = true) {
             return 'button';
         }
 
-        if (tag === 'i' && className.includes('icon')) {
+        if ((tag === 'i' || tag === 'svg' || tag === 'span') &&
+            (className.includes('icon') || className.includes('material-icons') ||
+             className.includes('fa-') || className.includes('bi-'))) {
             return 'icon';
         }
 
@@ -83,7 +85,12 @@ export function generateSkeletonHTML(containerElement, animated = true) {
 
             case 'chip':
             case 'badge':
-                dimensions.width = Math.min(text.length * 7 + 20, 120);
+                const badgeRect = element.getBoundingClientRect();
+                if (badgeRect.width > 0) {
+                    dimensions.width = Math.min(Math.round(badgeRect.width), maxContainerWidth * 0.9);
+                } else {
+                    dimensions.width = Math.min(text.length * 7 + 20, 120, maxContainerWidth * 0.9);
+                }
                 dimensions.height = 24;
                 break;
 
@@ -148,7 +155,7 @@ export function generateSkeletonHTML(containerElement, animated = true) {
         if (type === 'chart-bar') {
             styles.borderRadius = '4px 4px 0 0';
             styles.alignSelf = 'flex-end';
-        } else if (type === 'avatar' || type === 'icon-circle') {
+        } else if (type === 'avatar' || type === 'avatar-inner' || type === 'icon-circle') {
             styles.borderRadius = '50%';
         } else if (type === 'chip' || type === 'badge') {
             styles.borderRadius = '12px';
@@ -171,7 +178,10 @@ export function generateSkeletonHTML(containerElement, animated = true) {
     }
     
     function processElement(element, depth = 0) {
-        if (!element || element.nodeType !== Node.ELEMENT_NODE || depth > 10) {
+        if (!element || element.nodeType !== Node.ELEMENT_NODE || depth > 15) {
+            if (depth > 15) {
+                console.warn('RSkeleton: Max depth (15) exceeded, skipping nested content');
+            }
             return null;
         }
 
@@ -181,8 +191,28 @@ export function generateSkeletonHTML(containerElement, animated = true) {
         }
 
         const type = detectElementType(element);
+        const hasStructuralChildren = element.children && element.children.length > 0;
 
-        if (type) {
+        // Special handling for avatars - preserve container, replace inner content
+        if (type === 'avatar') {
+            const avatarContainer = element.cloneNode(false);
+            avatarContainer.removeAttribute('id');
+            avatarContainer.removeAttribute('_bl');
+
+            const dimensions = getElementDimensions(element, type);
+            const skeleton = createSkeletonElement('avatar-inner', dimensions);
+            avatarContainer.appendChild(skeleton);
+            return avatarContainer;
+        }
+
+        // Badges, chips, buttons - always replace entirely (even with children)
+        if (type === 'chip' || type === 'badge' || type === 'button' || type === 'icon') {
+            const dimensions = getElementDimensions(element, type);
+            return createSkeletonElement(type, dimensions);
+        }
+
+        // Other typed elements - only replace if no structural children
+        if (type && !hasStructuralChildren) {
             const dimensions = getElementDimensions(element, type);
             return createSkeletonElement(type, dimensions);
         }

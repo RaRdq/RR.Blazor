@@ -43,7 +43,7 @@ public abstract class TemplateDefinition<T> where T : class
     /// <summary>
     /// CSS classes to apply to the rendered template
     /// </summary>
-    public string CssClass { get; set; }
+    public string Class { get; set; }
     
     /// <summary>
     /// Size variant
@@ -130,7 +130,7 @@ public class CurrencyTemplate<T> : TemplateDefinition<T> where T : class
             Id = this.Id,
             Name = this.Name,
             PropertySelector = this.PropertySelector,
-            CssClass = this.CssClass,
+            Class = this.Class,
             Size = this.Size,
             Density = this.Density,
             CurrencyCode = this.CurrencyCode,
@@ -191,7 +191,7 @@ public class StackTemplate<T> : TemplateDefinition<T> where T : class
         {
             Id = this.Id,
             Name = this.Name,
-            CssClass = this.CssClass,
+            Class = this.Class,
             Size = this.Size,
             Density = this.Density,
             PrimaryTextSelector = this.PrimaryTextSelector,
@@ -309,7 +309,7 @@ public class AvatarTemplate<T> : TemplateDefinition<T> where T : class
         var template = new RR.Blazor.Templates.Avatar.AvatarTemplate<T>
         {
             PropertySelector = NameSelector != null ? (t => (object)NameSelector.Compile()(t)) : (t => (object)t.ToString()),
-            CssClass = CssClass
+            Class = Class
         };
         return RR.Blazor.Templates.RTemplates.AvatarTemplate(template, item);
     }
@@ -366,7 +366,7 @@ public class ProgressTemplate<T> : TemplateDefinition<T> where T : class
         var template = new RR.Blazor.Templates.Progress.ProgressTemplate<T>
         {
             PropertySelector = ValueSelector != null ? (t => (object)ValueSelector.Compile()(t)) : (t => (object)0),
-            CssClass = CssClass
+            Class = Class
         };
         return RR.Blazor.Templates.RTemplates.ProgressTemplate(template, item);
     }
@@ -418,7 +418,7 @@ public class RatingTemplate<T> : TemplateDefinition<T> where T : class
         var template = new RR.Blazor.Templates.Rating.RatingTemplate<T>
         {
             PropertySelector = ValueSelector != null ? (t => (object)ValueSelector.Compile()(t)) : (t => (object)0),
-            CssClass = CssClass
+            Class = Class
         };
         return RR.Blazor.Templates.RTemplates.RatingTemplate(template, item);
     }

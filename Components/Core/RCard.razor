@@ -9,14 +9,15 @@
                        CommonUse = "dashboards, data display, content organization", 
                        AvoidUsage = "Don't use for navigation - use RLink instead")]
 
-<div class="@GetCardClasses()" 
-     @onclick="@(Clickable || OnClick.HasDelegate ? HandleClick : null)"
+<div class="@GetCardClasses()"
+     @onclick="@(OnClick.HasDelegate ? HandleClick : null)"
      @onclick:stopPropagation="StopPropagation"
      @onmouseenter="@(OnMouseEnter.HasDelegate ? HandleMouseEnter : null)"
      @onmouseleave="@(OnMouseLeave.HasDelegate ? HandleMouseLeave : null)"
-     role="@(Clickable ? "button" : null)"
-     tabindex="@(Clickable ? 0 : null)"
-     aria-label="@AriaLabel">
+     role="@(OnClick.HasDelegate && !Disabled ? "button" : null)"
+     tabindex="@(OnClick.HasDelegate && !Disabled ? 0 : null)"
+     aria-label="@AriaLabel"
+     aria-disabled="@(Disabled ? "true" : null)">
     
     @if (HasHeader)
     {
@@ -122,13 +123,9 @@
     [Parameter]
     [AIParameter(Hint = "Use for hero images, thumbnails, or visual content", IsRequired = false)]
     public string ImageSrc { get; set; }
-    
+
     [Parameter] public string ImageAlt { get; set; }
-    
-    [Parameter]
-    [AIParameter(Hint = "Set to true for interactive cards that perform actions")]
-    public bool Clickable { get; set; }
-    
+
     [Parameter]
     [AIParameter(Hint = "Use during async operations to show processing state")]
     public bool Loading { get; set; }
@@ -169,13 +166,7 @@
     [Parameter] public bool StopPropagation { get; set; }
     
     [Parameter] public string AriaLabel { get; set; }
-    
-    
-    
-    
-    
-    
-    
+
     private bool HasHeader => !string.IsNullOrEmpty(Text) || HeaderContent != null;
     
     private string GetCardClasses()
@@ -198,8 +189,8 @@
         
         // Always add density class to ensure proper spacing
         classes.Add($"card-density-{Density.ToString().ToLower()}");
-        
-        if (Clickable && !Disabled) classes.Add("card-clickable");
+
+        if (OnClick.HasDelegate && !Disabled) classes.Add("card-clickable");
         if (Selected) classes.Add("card-primary");
         if (Disabled) classes.Add("state-disabled");
         if (Loading) classes.Add("loading-state");
@@ -332,12 +323,12 @@
         return SizeHelper.GetIconSize(SizeType.Medium, Density);
     }
     
-    
+
     private async Task HandleClick(MouseEventArgs e)
     {
-        if (Clickable && !Disabled && !Loading) await OnClick.InvokeAsync(e);
+        if (!Disabled && !Loading) await OnClick.InvokeAsync(e);
     }
-    
+
     private async Task HandleMouseEnter(MouseEventArgs e)
     {
         await OnMouseEnter.InvokeAsync(e);
