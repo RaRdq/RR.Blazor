@@ -1,0 +1,231 @@
+@using RR.Blazor.Components.Core
+@using RR.Blazor.Components.Display
+@using RR.Blazor.TestPages.Demos.Components
+@using RR.Blazor.Enums
+@using RR.Blazor.Models
+
+<div class="relative">
+    <GitHubLinkButton FileName="RChartDemo.razor" />
+
+    <RCard Variant="CardVariant.Outlined" Text="RChart & RChartGeneric">
+        <ChildContent>
+            <RDivider Text="Adaptive Charts"
+                      Subtitle="Responsive shell + strongly typed data mapping"
+                      Icon="analytics" />
+
+            <div class="space-y-6">
+                <!-- Auto-detected chart -->
+                <div class="space-y-2">
+                    <div class="text-h6 font-semibold">Auto Mode (RChartGeneric)</div>
+                    <div class="text-sm text-muted">
+                        Data only specifies label and value selectors. `RChartGeneric` infers a column chart and splits legend by region.
+                    </div>
+                    <RChartGeneric Data="@monthlyRevenue"
+                                   Title="Monthly Revenue"
+                                   Subtitle="Regional breakdown"
+                                   LabelSelector="@(item => item.Month)"
+                                   ValueSelector="@(item => item.Amount)"
+                                   SeriesSelector="@(item => item.Region)"
+                                   ShowLegendPercentages="true"
+                                   Height="360px" />
+                </div>
+
+                <!-- Type toggle -->
+                <div class="space-y-2">
+                    <div class="d-flex justify-between align-center">
+                        <div class="text-h6 font-semibold">Column vs Bar</div>
+                        <div class="flex gap-2">
+                            <RButton Text="Column"
+                                     Size="SizeType.Small"
+                                     Variant="@(_chartType == ChartType.Column ? VariantType.Primary : VariantType.Secondary)"
+                                     OnClick="@(() => _chartType = ChartType.Column)" />
+                            <RButton Text="Bar"
+                                     Size="SizeType.Small"
+                                     Variant="@(_chartType == ChartType.Bar ? VariantType.Primary : VariantType.Secondary)"
+                                     OnClick="@(() => _chartType = ChartType.Bar)" />
+                            <RButton Text="Pie"
+                                     Size="SizeType.Small"
+                                     Variant="@(_chartType == ChartType.Pie ? VariantType.Primary : VariantType.Secondary)"
+                                     OnClick="@(() => _chartType = ChartType.Pie)" />
+                        </div>
+                    </div>
+                    <RChartGeneric Data="@departmentUtilization"
+                                   Title="Team Utilization"
+                                   Type="@_chartType"
+                                   LabelSelector="@(item => item.Department)"
+                                   ValueSelector="@(item => item.Utilization)"
+                                   ShowLegendValues="true"
+                                   ShowLegendPercentages="@(_chartType == ChartType.Pie)"
+                                   ShowBarValues="@(_chartType != ChartType.Pie)"
+                                   Height="320px" />
+                </div>
+
+                <!-- Stacked columns -->
+                <div class="space-y-2">
+                    <div class="text-h6 font-semibold">Stacked Column Breakdown</div>
+                    <div class="text-sm text-muted">Enable `StackMode="ChartStackMode.Stacked"` to layer multiple series within a single category.</div>
+                    <RChartGeneric Data="@quarterlyRevenueMix"
+                                   Title="Quarterly Revenue Mix"
+                                   Subtitle="Stacked contributions by channel"
+                                   Type="ChartType.Column"
+                                   StackMode="ChartStackMode.Stacked"
+                                   LabelSelector="@(item => item.Quarter)"
+                                   ValueSelector="@(item => item.Value)"
+                                   SeriesSelector="@(item => item.Channel)"
+                                   ShowLegendValues="true"
+                                   Height="340px" />
+                </div>
+
+                <!-- Multi series line -->
+                <div class="space-y-2">
+                    <div class="text-h6 font-semibold">Multi-Series Velocity Trend</div>
+                    <div class="text-sm text-muted">`SeriesBuilder` groups by team and emits aligned series for a line chart.</div>
+                    <RChartGeneric Data="@velocitySamples"
+                                   Title="Weekly Story Points"
+                                   Type="ChartType.Line"
+                                   SeriesBuilder="@BuildVelocitySeries"
+                                   ShowLegendValues="false"
+                                   ShowLinePoints="true"
+                                   GridLineCount="5"
+                                   ValueFormat="N1"
+                                   Height="340px" />
+                </div>
+
+                <!-- Doughnut -->
+                <div class="space-y-2">
+                    <div class="text-h6 font-semibold">Cost Allocation Doughnut</div>
+                    <RChartGeneric Data="@costAllocation"
+                                   Title="Cloud Cost Share"
+                                   Type="ChartType.Doughnut"
+                                   LabelSelector="@(item => item.Category)"
+                                   ValueSelector="@(item => item.Value)"
+                                   ShowLegendValues="true"
+                                   ShowLegendPercentages="true"
+                                   CenterLabel="Ops Budget"
+                                   ValueFormat="C0"
+                                   DoughnutInnerRatio="0.58"
+                                   Height="360px" />
+                </div>
+
+                <!-- Raw RChart usage -->
+                <div class="space-y-2">
+                    <div class="text-h6 font-semibold">Custom Canvas With RChart Shell</div>
+                    <div class="text-sm text-muted">
+                        Demonstrates using `RChart` directly when you need bespoke rendering (here, a simple KPI grid).
+                    </div>
+                    <RChart Title="Realtime KPI Snapshot"
+                            Subtitle="Values refresh every deploy cycle"
+                            Icon="monitoring"
+                            Variant="ChartVariant.Elevated"
+                            LegendPosition="ChartLegendPosition.None"
+                            Height="260px">
+                        <ChildContent>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
+                                @foreach (var metric in kpiSnapshot)
+                                {
+                                    <div class="rounded-xl border border-dashed border-muted pa-4 text-center">
+                                        <div class="text-sm text-muted mb-1">@metric.Label</div>
+                                        <div class="text-h5 font-semibold">@metric.Value</div>
+                                        <div class="text-xs text-secondary">@metric.Context</div>
+                                    </div>
+                                }
+                            </div>
+                        </ChildContent>
+                    </RChart>
+                </div>
+            </div>
+        </ChildContent>
+    </RCard>
+</div>
+
+@code {
+    private ChartType _chartType = ChartType.Column;
+
+    private List<RevenuePoint> monthlyRevenue = new()
+    {
+        new("Jan", 182_000, "North America"),
+        new("Feb", 167_500, "North America"),
+        new("Mar", 190_200, "North America"),
+        new("Jan", 158_400, "EMEA"),
+        new("Feb", 151_600, "EMEA"),
+        new("Mar", 163_900, "EMEA"),
+        new("Jan", 94_300, "APAC"),
+        new("Feb", 101_200, "APAC"),
+        new("Mar", 109_500, "APAC")
+    };
+
+    private List<RevenueChannelPoint> quarterlyRevenueMix = new()
+    {
+        new("Q1", "Direct", 185_000),
+        new("Q1", "Partners", 92_000),
+        new("Q1", "Self-Service", 64_000),
+        new("Q2", "Direct", 198_500),
+        new("Q2", "Partners", 104_200),
+        new("Q2", "Self-Service", 71_600),
+        new("Q3", "Direct", 210_400),
+        new("Q3", "Partners", 115_900),
+        new("Q3", "Self-Service", 79_300)
+    };
+
+    private List<UtilizationPoint> departmentUtilization = new()
+    {
+        new("Engineering", 87.5),
+        new("Product", 78.2),
+        new("Design", 72.1),
+        new("QA", 81.9),
+        new("Support", 69.4)
+    };
+
+    private List<VelocityPoint> velocitySamples = new()
+    {
+        new("Sprint 1", "Team A", 24),
+        new("Sprint 2", "Team A", 26),
+        new("Sprint 3", "Team A", 28),
+        new("Sprint 1", "Team B", 21),
+        new("Sprint 2", "Team B", 23),
+        new("Sprint 3", "Team B", 27),
+        new("Sprint 1", "Team C", 18),
+        new("Sprint 2", "Team C", 20),
+        new("Sprint 3", "Team C", 22)
+    };
+
+    private List<CostPoint> costAllocation = new()
+    {
+        new("Compute", 215_000),
+        new("Storage", 128_400),
+        new("Networking", 84_600),
+        new("Data Services", 61_900),
+        new("Security", 44_300)
+    };
+
+    private List<KpiSnapshot> kpiSnapshot = new()
+    {
+        new("Active Payrolls", "1,248", "last 30 days"),
+        new("Processing Time", "3.2 min", "avg per batch"),
+        new("Anomaly Rate", "0.34%", "flagged runs")
+    };
+
+    private IEnumerable<ChartSeries> BuildVelocitySeries(IEnumerable<VelocityPoint> source)
+    {
+        return source
+            .GroupBy(point => point.Team)
+            .Select(group => new ChartSeries
+            {
+                Name = group.Key,
+                Color = string.Empty,
+                Type = ChartType.Line,
+                Data = group.Select(point => new ChartDataPoint
+                {
+                    Label = point.Sprint,
+                    Value = point.Value
+                }).ToList()
+            });
+    }
+
+    private record RevenuePoint(string Month, double Amount, string Region);
+    private record RevenueChannelPoint(string Quarter, string Channel, double Value);
+    private record UtilizationPoint(string Department, double Utilization);
+    private record VelocityPoint(string Sprint, string Team, double Value);
+    private record CostPoint(string Category, double Value);
+    private record KpiSnapshot(string Label, string Value, string Context);
+}

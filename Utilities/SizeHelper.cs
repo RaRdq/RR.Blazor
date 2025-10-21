@@ -85,12 +85,12 @@ namespace RR.Blazor.Utilities
         {
             var baseSize = size switch
             {
-                SizeType.ExtraSmall => "text-sm",
-                SizeType.Small => "text-base",
-                SizeType.Medium => "text-lg",
-                SizeType.Large => "text-xl",
-                SizeType.ExtraLarge => "text-2xl",
-                _ => "text-lg"
+                SizeType.ExtraSmall => "text-xs",
+                SizeType.Small => "text-sm",
+                SizeType.Medium => "text-base",
+                SizeType.Large => "text-lg",
+                SizeType.ExtraLarge => "text-xl",
+                _ => "text-base"
             };
             
             return ApplyDensityToTextSize(baseSize, density);

@@ -12,6 +12,12 @@ namespace RR.Blazor.Enums
         Mixed
     }
 
+    public enum ChartStackMode
+    {
+        None,
+        Stacked
+    }
+
     public enum ChartVariant
     {
         Default,

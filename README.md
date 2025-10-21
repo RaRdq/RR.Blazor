@@ -149,7 +149,7 @@ For AI agents (Claude, GPT-4, etc.), add a rule or manually refer to [`@RR.Blazo
 <RForm Model="user" OnValidSubmit="SaveUser" />
 ```
 
-### Smart Data Tables & Chart Integration
+### Data Tables & Chart Integration
 
 **Zero-Config Tables with Built-in Chart Integration:**
 
@@ -166,16 +166,16 @@ For AI agents (Claude, GPT-4, etc.), add a rule or manually refer to [`@RR.Blazo
                    ShowChartButton="true"
                    ExportEnabled="true" />
 
-<!-- Smart chart that auto-detects best visualization -->
-<RChart Data="@tableRef.FilteredData" 
-        Title="Dynamic Analytics" />
+<!-- Generic chart that auto-detects best visualization -->
+<RChartGeneric Data="@tableRef.FilteredData" 
+               Title="Dynamic Analytics" />
 ```
 
 **Table-Chart Data Binding:**
 - Tables automatically expose `FilteredData` property for chart binding
 - Real-time chart updates as table data changes
 - Built-in chart modal with one-click visualization
-- Smart chart type detection based on data structure
+- Automatic chart type detection based on data structure
 
 ### Professional UI Components
 

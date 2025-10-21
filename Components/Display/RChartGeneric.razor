@@ -1,0 +1,1615 @@
+@* RChartGeneric - strongly typed adaptive chart component *@
+@using System
+@using System.Collections.Generic
+@using System.Globalization
+@using System.Linq
+@using System.Text
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.JSInterop
+@using RR.Blazor.Components.Base
+@using RR.Blazor.Enums
+@using RR.Blazor.Models
+@typeparam T
+@inherits RComponentBase
+@inject IJSRuntime JSRuntime
+
+<RChart @attributes="GetSafeAttributes()"
+        Title="@Title"
+        Subtitle="@Subtitle"
+        Description="@Description"
+        Icon="@Icon"
+        Type="@_resolvedType"
+        Variant="@Variant"
+        Size="@Size"
+        Theme="@Theme"
+        ResponsiveMode="@ResponsiveMode"
+        Configuration="@Configuration"
+        Height="@Height"
+        Width="@Width"
+        Loading="@Loading"
+        LoadingText="@LoadingText"
+        HasError="@HasError"
+        ErrorTitle="@ErrorTitle"
+        ErrorMessage="@ErrorMessage"
+        RetryText="@RetryText"
+        IsEmpty="@(!_hasData)"
+        EmptyTitle="@EmptyTitle"
+        EmptyMessage="@EmptyMessage"
+        ShowLegend="@ShowLegend"
+        LegendPosition="@LegendPosition"
+        ShowAccessibilityTable="@ShowAccessibilityTable"
+        OnRetry="@OnRetry"
+        OnClick="@OnClick"
+        OnChartInit="@HandleChartInit"
+        HeaderContent="@HeaderContent"
+        FooterContent="@FooterContent"
+        LegendContent="@ResolvedLegendContent"
+        AccessibilityContent="@ResolvedAccessibilityContent">
+
+    <ChildContent>
+        @if (_hasData)
+        {
+            @switch (_resolvedType)
+            {
+                case ChartType.Column:
+                {
+                    <div class="chart-generic chart-generic-bars chart-generic-bars-vertical">
+                        <div class="chart-generic-bars-grid">
+                            @foreach (var group in _groups)
+                            {
+                                <div class="chart-generic-bars-group">
+                                    <div class="@GetVerticalTrackClasses()" style="@GetVerticalTrackStyle()">
+                                        @foreach (var point in group.Points)
+                                        {
+                                            var fillClass = GetBarFillClass(point.Value);
+                                            <div class="chart-generic-bar" title="@GetDataPointTooltip(point)">
+                                                <div class="@fillClass"
+                                                     style="@BuildVerticalBarStyle(point, group.Label)"></div>
+                                                @if (ShouldRenderBarValues)
+                                                {
+                                                    <span class="@GetBarValueClass(point.Value, false)">@FormatValue(point.Value)</span>
+                                                }
+                                            </div>
+                                        }
+                                    </div>
+                                    <div class="chart-generic-bar-label">@group.Label</div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                    break;
+                }
+                case ChartType.Bar:
+                {
+                    <div class="chart-generic chart-generic-bars chart-generic-bars-horizontal">
+                        <div class="chart-generic-bars-grid">
+                            @foreach (var group in _groups)
+                            {
+                                <div class="chart-generic-bars-group">
+                                    <div class="chart-generic-bar-label">@group.Label</div>
+                                    <div class="@GetHorizontalTrackClasses()" style="@GetHorizontalTrackStyle()">
+                                        @foreach (var point in group.Points)
+                                        {
+                                            var fillClass = GetBarFillClass(point.Value);
+                                            <div class="chart-generic-bar" title="@GetDataPointTooltip(point)">
+                                                <div class="@fillClass"
+                                                     style="@BuildHorizontalBarStyle(point, group.Label)"></div>
+                                                @if (ShouldRenderBarValues)
+                                                {
+                                                    <span class="@GetBarValueClass(point.Value, true)">@FormatValue(point.Value)</span>
+                                                }
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                    break;
+                }
+                case ChartType.Line:
+                case ChartType.Area:
+                {
+                    <div class="chart-generic chart-generic-line">
+                        <svg viewBox="0 0 100 100"
+                             preserveAspectRatio="none"
+                             class="chart-generic-line-svg">
+                            @if (ShowGridLines && _lineGridLines.Count > 0)
+                            {
+                                @foreach (var line in _lineGridLines)
+                                {
+                                    <line x1="0" y1="@line"
+                                          x2="100" y2="@line"
+                                          class="chart-generic-line-grid-line"></line>
+                                }
+                            }
+
+                            @foreach (var series in _lineSeries)
+                            {
+                                @if (_resolvedType == ChartType.Area && !string.IsNullOrWhiteSpace(series.AreaPath))
+                                {
+                                    <path d="@series.AreaPath"
+                                          class="chart-generic-line-area"
+                                          style="fill: @series.Color;">
+                                    </path>
+                                }
+
+                                <path d="@series.Path"
+                                      class="chart-generic-line-path"
+                                      style="stroke: @series.Color;">
+                                </path>
+
+                                @if (ShowLinePoints)
+                                {
+                                    foreach (var point in series.Points)
+                                    {
+                                        <circle cx="@point.X.ToString("F2", CultureInfo.InvariantCulture)"
+                                                cy="@point.Y.ToString("F2", CultureInfo.InvariantCulture)"
+                                                r="@LinePointRadius.ToString("F2", CultureInfo.InvariantCulture)"
+                                                style="fill: @series.Color;"
+                                                title="@GetDataPointTooltip(point.DataPoint)">
+                                        </circle>
+                                    }
+                                }
+                            }
+                        </svg>
+                    </div>
+                    break;
+                }
+                case ChartType.Pie:
+                case ChartType.Doughnut:
+                {
+                    var isDoughnut = _resolvedType == ChartType.Doughnut;
+                    <div class="chart-generic chart-generic-pie @(isDoughnut ? "chart-generic-pie-doughnut" : string.Empty)">
+                        <svg viewBox="0 0 100 100"
+                             preserveAspectRatio="xMidYMid meet"
+                             class="chart-generic-pie-svg">
+                            @foreach (var slice in _pieSlices)
+                            {
+                                <path d="@slice.Path"
+                                      class="chart-generic-pie-slice"
+                                      style="fill: @slice.Point.Color;"
+                                      title="@GetPieSliceTooltip(slice)">
+                                </path>
+                            }
+                        </svg>
+
+                        @if (isDoughnut && ShowPieCenterValue)
+                        {
+                            <div class="chart-generic-pie-center">
+                                <div class="chart-generic-pie-center-value">@FormatValue(_points.Sum(p => p.Value))</div>
+                                @if (!string.IsNullOrWhiteSpace(ResolvedCenterLabel))
+                                {
+                                    <div class="chart-generic-pie-center-label">@ResolvedCenterLabel</div>
+                                }
+                            </div>
+                        }
+                    </div>
+                    break;
+                }
+                default:
+                {
+                    <div class="chart-generic chart-generic-bars chart-generic-bars-vertical">
+                        <div class="chart-generic-bars-grid">
+                            @foreach (var group in _groups)
+                            {
+                                <div class="chart-generic-bars-group">
+                                    <div class="@GetVerticalTrackClasses()" style="@GetVerticalTrackStyle()">
+                                        @foreach (var point in group.Points)
+                                        {
+                                            var fillClass = GetBarFillClass(point.Value);
+                                            <div class="chart-generic-bar" title="@GetDataPointTooltip(point)">
+                                                <div class="@fillClass"
+                                                     style="@BuildVerticalBarStyle(point, group.Label)"></div>
+                                                @if (ShouldRenderBarValues)
+                                                {
+                                                    <span class="@GetBarValueClass(point.Value, false)">@FormatValue(point.Value)</span>
+                                                }
+                                            </div>
+                                        }
+                                    </div>
+                                    <div class="chart-generic-bar-label">@group.Label</div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                    break;
+                }
+            }
+        }
+    </ChildContent>
+</RChart>
+
+@code {
+    /// <summary>Chart click handler</summary>
+    [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
+
+    /// <summary>Loading state toggle</summary>
+    [Parameter] public bool Loading { get; set; }
+
+    /// <summary>Loading text displayed in spinner state</summary>
+    [Parameter] public string LoadingText { get; set; } = "Loading...";
+
+    /// <summary>Source data</summary>
+    [Parameter] public IEnumerable<T>? Data { get; set; }
+
+    /// <summary>Pre-shaped points</summary>
+    [Parameter] public IEnumerable<ChartDataPoint>? DataPoints { get; set; }
+
+    /// <summary>Pre-shaped series</summary>
+    [Parameter] public IEnumerable<ChartSeries>? Series { get; set; }
+
+    /// <summary>Custom point builder</summary>
+    [Parameter] public Func<IEnumerable<T>, IEnumerable<ChartDataPoint>>? DataBuilder { get; set; }
+
+    /// <summary>Custom series builder</summary>
+    [Parameter] public Func<IEnumerable<T>, IEnumerable<ChartSeries>>? SeriesBuilder { get; set; }
+
+    /// <summary>Label selector</summary>
+    [Parameter] public Func<T, string>? LabelSelector { get; set; }
+
+    /// <summary>Value selector</summary>
+    [Parameter] public Func<T, double>? ValueSelector { get; set; }
+
+    /// <summary>Series selector</summary>
+    [Parameter] public Func<T, string>? SeriesSelector { get; set; }
+
+    /// <summary>Category selector</summary>
+    [Parameter] public Func<T, string>? CategorySelector { get; set; }
+
+    /// <summary>Color selector</summary>
+    [Parameter] public Func<T, string>? ColorSelector { get; set; }
+
+    /// <summary>Metadata selector</summary>
+    [Parameter] public Func<T, Dictionary<string, object>>? MetadataSelector { get; set; }
+
+    /// <summary>Legend renderer override</summary>
+    [Parameter] public RenderFragment? LegendContent { get; set; }
+
+    /// <summary>Accessibility renderer override</summary>
+    [Parameter] public RenderFragment? AccessibilityContent { get; set; }
+
+    /// <summary>Header content</summary>
+    [Parameter] public RenderFragment? HeaderContent { get; set; }
+
+    /// <summary>Footer content</summary>
+    [Parameter] public RenderFragment? FooterContent { get; set; }
+
+    /// <summary>Retry handler</summary>
+    [Parameter] public EventCallback OnRetry { get; set; }
+
+    /// <summary>Initialization handler</summary>
+    [Parameter] public EventCallback<ElementReference> OnChartInit { get; set; }
+
+    /// <summary>Chart title</summary>
+    [Parameter] public string Title { get; set; } = "";
+
+    /// <summary>Chart subtitle</summary>
+    [Parameter] public string Subtitle { get; set; } = "";
+
+    /// <summary>Chart description</summary>
+    [Parameter] public string Description { get; set; } = "";
+
+    /// <summary>Chart icon</summary>
+    [Parameter] public string Icon { get; set; } = "analytics";
+
+    /// <summary>Optional chart type override</summary>
+    [Parameter] public ChartType? Type { get; set; }
+
+    /// <summary>Chart variant</summary>
+    [Parameter] public ChartVariant Variant { get; set; } = ChartVariant.Default;
+
+    /// <summary>Chart size</summary>
+    [Parameter] public SizeType Size { get; set; } = SizeType.Medium;
+
+    /// <summary>Theme</summary>
+    [Parameter] public ChartTheme Theme { get; set; } = ChartTheme.Auto;
+
+    /// <summary>Responsive mode</summary>
+    [Parameter] public ChartResponsiveMode ResponsiveMode { get; set; } = ChartResponsiveMode.Auto;
+
+    /// <summary>Chart configuration</summary>
+    [Parameter] public ChartConfiguration Configuration { get; set; } = new();
+
+    /// <summary>Legend position</summary>
+    [Parameter] public ChartLegendPosition LegendPosition { get; set; } = ChartLegendPosition.Bottom;
+
+    /// <summary>Stacking behavior for bar/column charts</summary>
+    [Parameter] public ChartStackMode StackMode { get; set; } = ChartStackMode.None;
+
+    /// <summary>Show legend values</summary>
+    [Parameter] public bool ShowLegendValues { get; set; } = true;
+
+    /// <summary>Show legend percentages</summary>
+    [Parameter] public bool ShowLegendPercentages { get; set; }
+
+    /// <summary>Display value labels on bars</summary>
+    [Parameter] public bool ShowBarValues { get; set; } = true;
+
+    /// <summary>Show grid lines (line charts)</summary>
+    [Parameter] public bool ShowGridLines { get; set; } = true;
+
+    /// <summary>Show line chart points</summary>
+    [Parameter] public bool ShowLinePoints { get; set; } = true;
+
+    /// <summary>Line chart grid lines count</summary>
+    [Parameter] public int GridLineCount { get; set; } = 4;
+
+    /// <summary>Line point radius</summary>
+    [Parameter] public double LinePointRadius { get; set; } = 2.5;
+
+    /// <summary>Doughnut inner ratio</summary>
+    [Parameter] public double DoughnutInnerRatio { get; set; } = 0.55;
+
+    /// <summary>Show center value for doughnut</summary>
+    [Parameter] public bool ShowPieCenterValue { get; set; } = true;
+
+    /// <summary>Center label override</summary>
+    [Parameter] public string CenterLabel { get; set; } = "";
+
+    /// <summary>Value format string</summary>
+    [Parameter] public string ValueFormat { get; set; } = "N0";
+
+    /// <summary>Tooltip formatter</summary>
+    [Parameter] public Func<ChartDataPoint, string>? TooltipFormatter { get; set; }
+
+    /// <summary>Chart height</summary>
+    [Parameter] public string Height { get; set; } = "";
+
+    /// <summary>Chart width</summary>
+    [Parameter] public string Width { get; set; } = "";
+
+    /// <summary>Error indicator</summary>
+    [Parameter] public bool HasError { get; set; }
+
+    /// <summary>Error title</summary>
+    [Parameter] public string ErrorTitle { get; set; } = "Unable to render chart";
+
+    /// <summary>Error message</summary>
+    [Parameter] public string ErrorMessage { get; set; } = "An error occurred while preparing chart data.";
+
+    /// <summary>Retry text</summary>
+    [Parameter] public string RetryText { get; set; } = "Retry";
+
+    /// <summary>Empty state title</summary>
+    [Parameter] public string EmptyTitle { get; set; } = "No Data Available";
+
+    /// <summary>Empty state message</summary>
+    [Parameter] public string EmptyMessage { get; set; } = "Provide data or selectors to visualize content.";
+
+    /// <summary>Show legend toggled</summary>
+    [Parameter] public bool ShowLegend { get; set; } = true;
+
+    /// <summary>Accessibility toggle</summary>
+    [Parameter] public bool ShowAccessibilityTable { get; set; }
+
+    /// <summary>Resolved legend content</summary>
+    private RenderFragment? ResolvedLegendContent => LegendContent ?? BuildLegendContent();
+
+    /// <summary>Resolved accessibility content</summary>
+    private RenderFragment? ResolvedAccessibilityContent => AccessibilityContent ?? BuildAccessibilityContent();
+
+    private readonly ChartDataAnalyzer analyzer = new();
+    private readonly Dictionary<string, string> _seriesColorMap = new(StringComparer.OrdinalIgnoreCase);
+    private readonly List<ChartDataPoint> _points = new();
+    private readonly List<ChartSeries> _series = new();
+    private readonly List<ChartCategoryGroup> _groups = new();
+    private readonly List<LegendItem> _legend = new();
+    private readonly List<LineSeriesGeometry> _lineSeries = new();
+    private readonly List<string> _lineGridLines = new();
+    private readonly List<PieSliceGeometry> _pieSlices = new();
+    private readonly Dictionary<string, Dictionary<string, StackExtent>> _stackExtents = new(StringComparer.OrdinalIgnoreCase);
+
+    private ChartType _resolvedType = ChartType.Column;
+    private bool _hasData;
+    private double _minValue;
+    private double _maxValue;
+    private double _sumValue;
+    private double _positiveExtent;
+    private double _negativeExtent;
+    private double _totalRange;
+    private double _zeroNormalizedBottom;
+    private double _zeroNormalizedLeft;
+    private double _zeroLineTopPercent;
+    private double _zeroLineLeftPercent;
+    private bool ShouldRenderBarValues => StackMode == ChartStackMode.None && ShowBarValues;
+
+    private static readonly string[] DefaultColorPalette =
+    {
+        "var(--chart-series-1)",
+        "var(--chart-series-2)",
+        "var(--chart-series-3)",
+        "var(--chart-series-4)",
+        "var(--chart-series-5)",
+        "var(--chart-series-6)",
+        "var(--chart-series-7)",
+        "var(--chart-series-8)"
+    };
+
+    private IReadOnlyList<string> ResolveColorPalette()
+    {
+        if (Configuration?.SeriesColors?.Count > 0)
+        {
+            return Configuration.SeriesColors;
+        }
+
+        return DefaultColorPalette;
+    }
+
+    private string ResolvedCenterLabel =>
+        string.IsNullOrWhiteSpace(CenterLabel) ? Title : CenterLabel;
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+
+        if (string.Equals(LoadingText, "Loading...", StringComparison.Ordinal))
+        {
+            LoadingText = "Loading chart...";
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+        BuildData();
+    }
+
+    private void BuildData()
+    {
+        _groups.Clear();
+        _legend.Clear();
+        _lineSeries.Clear();
+        _lineGridLines.Clear();
+        _pieSlices.Clear();
+        _seriesColorMap.Clear();
+        _points.Clear();
+
+        var sourceList = Data?.ToList();
+        var hasSourceData = sourceList?.Any() == true;
+
+        if (Series != null && Series.Any())
+        {
+            _series.AddRange(NormalizeSeries(Series));
+        }
+        else if (SeriesBuilder != null && hasSourceData)
+        {
+            var builtSeries = SeriesBuilder.Invoke(sourceList!);
+            _series.AddRange(NormalizeSeries(builtSeries));
+        }
+
+        if (!_series.Any())
+        {
+            IEnumerable<ChartDataPoint>? pointSource = null;
+
+            if (DataPoints != null && DataPoints.Any())
+            {
+                pointSource = DataPoints;
+            }
+            else if (DataBuilder != null && hasSourceData)
+            {
+                pointSource = DataBuilder.Invoke(sourceList!);
+            }
+            else if (hasSourceData && ValueSelector != null)
+            {
+                pointSource = sourceList!.Select((item, index) => BuildPointFromSelectors(item, index));
+            }
+            else if (hasSourceData)
+            {
+                pointSource = analyzer.ConvertToChartData(sourceList!);
+            }
+
+            if (pointSource != null)
+            {
+                _points.AddRange(NormalizePoints(pointSource));
+                _series.AddRange(ConvertPointsToSeries(_points));
+            }
+        }
+        else
+        {
+            _points.AddRange(FlattenSeries(_series));
+        }
+
+        _hasData = _points.Any();
+
+        if (!_hasData)
+        {
+            _resolvedType = this.Type ?? ChartType.Column;
+            _minValue = 0;
+            _maxValue = 0;
+            _sumValue = 0;
+            _stackExtents.Clear();
+            UpdateScaleMetadata();
+            return;
+        }
+
+        UpdateScaleMetadata();
+
+        AssignSeriesColors();
+
+        _groups.AddRange(BuildCategoryGroups(_points));
+        _minValue = _points.Min(p => p.Value);
+        _maxValue = _points.Max(p => p.Value);
+        if (Math.Abs(_maxValue - _minValue) < double.Epsilon)
+        {
+            _maxValue = _minValue + 1;
+        }
+
+        _sumValue = _points.Sum(p => Math.Abs(p.Value));
+        _resolvedType = ResolveChartType(sourceList);
+
+        if (StackMode != ChartStackMode.None && _resolvedType is ChartType.Column or ChartType.Bar)
+        {
+            BuildStackExtents();
+        }
+        else
+        {
+            _stackExtents.Clear();
+        }
+
+        if (_resolvedType is ChartType.Line or ChartType.Area)
+        {
+            BuildLineSeriesGeometry();
+        }
+        else if (_resolvedType is ChartType.Pie or ChartType.Doughnut)
+        {
+            BuildPieSlices();
+        }
+
+        _legend.AddRange(BuildLegendItems());
+    }
+
+    private ChartType ResolveChartType(IReadOnlyList<T>? sourceList)
+    {
+        if (this.Type.HasValue)
+        {
+            return this.Type.Value;
+        }
+
+        var explicitTypes = _series
+            .Select(series => series.Type)
+            .Where(type => type != ChartType.Mixed)
+            .Distinct()
+            .ToList();
+
+        if (explicitTypes.Count == 1)
+        {
+            return explicitTypes[0];
+        }
+
+        if (sourceList?.Any() == true)
+        {
+            return analyzer.AnalyzeAndRecommend(sourceList);
+        }
+
+        if (_series.Count > 1)
+        {
+            return ChartType.Line;
+        }
+
+        if (_points.All(point => point.Value >= 0) && _points.Count <= 6)
+        {
+            return ChartType.Pie;
+        }
+
+        return ChartType.Column;
+    }
+
+    private IEnumerable<ChartSeries> NormalizeSeries(IEnumerable<ChartSeries> series)
+    {
+        var index = 0;
+        foreach (var item in series)
+        {
+            var name = string.IsNullOrWhiteSpace(item.Name) ? $"Series {index + 1}" : item.Name;
+            var normalized = new ChartSeries
+            {
+                Name = name,
+                Color = item.Color,
+                Type = item.Type,
+                IsVisible = item.IsVisible,
+                Metadata = item.Metadata != null ? new Dictionary<string, object>(item.Metadata) : new(),
+                Data = NormalizePoints(item.Data ?? Enumerable.Empty<ChartDataPoint>())
+            };
+
+            foreach (var dataPoint in normalized.Data)
+            {
+                if (string.IsNullOrWhiteSpace(dataPoint.Series))
+                {
+                    dataPoint.Series = name;
+                }
+            }
+
+            index++;
+            yield return normalized;
+        }
+    }
+
+    private List<ChartDataPoint> NormalizePoints(IEnumerable<ChartDataPoint> source)
+    {
+        var normalized = new List<ChartDataPoint>();
+        if (source == null)
+        {
+            return normalized;
+        }
+
+        var index = 0;
+        foreach (var point in source)
+        {
+            if (point == null)
+            {
+                continue;
+            }
+
+            var cloned = new ChartDataPoint
+            {
+                Id = string.IsNullOrWhiteSpace(point.Id) ? Guid.NewGuid().ToString("N") : point.Id,
+                Label = string.IsNullOrWhiteSpace(point.Label) ? $"Item {index + 1}" : point.Label,
+                Value = point.Value,
+                Category = point.Category ?? "",
+                Series = point.Series ?? "",
+                Color = point.Color ?? "",
+                Description = point.Description ?? "",
+                Metadata = point.Metadata != null ? new Dictionary<string, object>(point.Metadata) : new(),
+                AccessibilityText = point.AccessibilityText ?? "",
+                IsVisible = point.IsVisible
+            };
+
+            normalized.Add(cloned);
+            index++;
+        }
+
+        return normalized;
+    }
+
+    private List<ChartSeries> ConvertPointsToSeries(IEnumerable<ChartDataPoint> points)
+    {
+        var grouped = points
+            .GroupBy(point => string.IsNullOrWhiteSpace(point.Series) ? string.Empty : point.Series, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (!grouped.Any())
+        {
+            return new List<ChartSeries>();
+        }
+
+        var result = new List<ChartSeries>();
+        var index = 0;
+
+        foreach (var grouping in grouped)
+        {
+            var name = string.IsNullOrWhiteSpace(grouping.Key) ? $"Series {index + 1}" : grouping.Key;
+            var series = new ChartSeries
+            {
+                Name = name,
+                Color = grouping.First().Color,
+                Type = ChartType.Column,
+                Data = grouping.Select(ClonePoint).ToList()
+            };
+
+            foreach (var point in series.Data)
+            {
+                if (string.IsNullOrWhiteSpace(point.Series))
+                {
+                    point.Series = name;
+                }
+            }
+
+            result.Add(series);
+            index++;
+        }
+
+        return result;
+    }
+
+    private List<ChartDataPoint> FlattenSeries(IEnumerable<ChartSeries> series)
+    {
+        var flattened = new List<ChartDataPoint>();
+        foreach (var chartSeries in series)
+        {
+            foreach (var point in chartSeries.Data)
+            {
+                if (string.IsNullOrWhiteSpace(point.Series))
+                {
+                    point.Series = chartSeries.Name;
+                }
+
+                flattened.Add(point);
+            }
+        }
+
+        return flattened;
+    }
+
+    private void AssignSeriesColors()
+    {
+        var palette = ResolveColorPalette();
+        var paletteCount = palette.Count;
+
+        if (paletteCount == 0 && DefaultColorPalette.Length > 0)
+        {
+            palette = DefaultColorPalette;
+            paletteCount = palette.Count;
+        }
+
+        if (_series.Any())
+        {
+            var index = 0;
+            foreach (var series in _series)
+            {
+                var key = series.Name;
+                var color = !string.IsNullOrWhiteSpace(series.Color)
+                    ? series.Color
+                    : (paletteCount > 0 ? palette[index % paletteCount] : string.Empty);
+
+                if (!string.IsNullOrWhiteSpace(color))
+                {
+                    _seriesColorMap[key] = color;
+                }
+
+                series.Color = color;
+
+                foreach (var point in series.Data)
+                {
+                    if (string.IsNullOrWhiteSpace(point.Color))
+                    {
+                        point.Color = color;
+                    }
+                }
+
+                index++;
+            }
+        }
+        else
+        {
+            var index = 0;
+            foreach (var point in _points)
+            {
+                if (string.IsNullOrWhiteSpace(point.Color))
+                {
+                    point.Color = paletteCount > 0 ? palette[index % paletteCount] : string.Empty;
+                }
+
+                index++;
+            }
+        }
+    }
+
+    private void BuildStackExtents()
+    {
+        _stackExtents.Clear();
+
+        foreach (var group in _groups)
+        {
+            if (!group.Points.Any())
+            {
+                continue;
+            }
+
+            var map = new Dictionary<string, StackExtent>(StringComparer.OrdinalIgnoreCase);
+            var positiveRunning = 0d;
+            var negativeRunning = 0d;
+
+            foreach (var point in group.Points)
+            {
+                if (string.IsNullOrWhiteSpace(point.Id))
+                {
+                    point.Id = Guid.NewGuid().ToString();
+                }
+
+                if (point.Value >= 0)
+                {
+                    var start = positiveRunning;
+                    positiveRunning += point.Value;
+                    map[point.Id] = new StackExtent(start, positiveRunning, true);
+                }
+                else
+                {
+                    var start = negativeRunning;
+                    negativeRunning += point.Value;
+                    map[point.Id] = new StackExtent(start, negativeRunning, false);
+                }
+            }
+
+            _stackExtents[group.Label] = map;
+        }
+    }
+
+    private void UpdateScaleMetadata()
+    {
+        if (!_points.Any())
+        {
+            _positiveExtent = 0;
+            _negativeExtent = 0;
+            _totalRange = 0;
+            _zeroNormalizedBottom = 0;
+            _zeroNormalizedLeft = 0;
+            _zeroLineTopPercent = 100;
+            _zeroLineLeftPercent = 0;
+            return;
+        }
+
+        _positiveExtent = Math.Max(_points.Max(p => p.Value), 0);
+        _negativeExtent = Math.Min(_points.Min(p => p.Value), 0);
+        _totalRange = _positiveExtent - _negativeExtent;
+
+        if (_totalRange <= 0)
+        {
+            _totalRange = Math.Abs(_positiveExtent) + Math.Abs(_negativeExtent);
+        }
+
+        if (_totalRange <= 0)
+        {
+            _zeroNormalizedBottom = 0;
+        }
+        else
+        {
+            _zeroNormalizedBottom = Math.Abs(_negativeExtent) / _totalRange;
+        }
+
+        if (!double.IsFinite(_zeroNormalizedBottom))
+        {
+            _zeroNormalizedBottom = 0;
+        }
+
+        _zeroNormalizedBottom = Math.Clamp(_zeroNormalizedBottom, 0, 1);
+        _zeroNormalizedLeft = _zeroNormalizedBottom;
+
+        _zeroLineTopPercent = (1 - _zeroNormalizedBottom) * 100;
+        _zeroLineLeftPercent = _zeroNormalizedLeft * 100;
+    }
+
+    private List<ChartCategoryGroup> BuildCategoryGroups(IEnumerable<ChartDataPoint> points)
+    {
+        var groups = new List<ChartCategoryGroup>();
+        var map = new Dictionary<string, ChartCategoryGroup>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var point in points)
+        {
+            var key = string.IsNullOrWhiteSpace(point.Label) ? "Item" : point.Label;
+
+            if (!map.TryGetValue(key, out var group))
+            {
+                group = new ChartCategoryGroup(key);
+                map[key] = group;
+                groups.Add(group);
+            }
+
+            group.Points.Add(point);
+        }
+
+        return groups;
+    }
+
+    private List<LegendItem> BuildLegendItems()
+    {
+        if (!_points.Any())
+        {
+            return new List<LegendItem>();
+        }
+
+        if (_resolvedType is ChartType.Pie or ChartType.Doughnut)
+        {
+            if (_pieSlices.Any())
+            {
+                var palette = ResolveColorPalette();
+                var paletteCount = palette.Count;
+                if (paletteCount == 0 && DefaultColorPalette.Length > 0)
+                {
+                    palette = DefaultColorPalette;
+                    paletteCount = DefaultColorPalette.Length;
+                }
+
+                return _pieSlices.Select((slice, index) =>
+                {
+                    var color = string.IsNullOrWhiteSpace(slice.Point.Color)
+                        ? (paletteCount > 0 ? palette[index % paletteCount] : string.Empty)
+                        : slice.Point.Color;
+
+                    var label = string.IsNullOrWhiteSpace(slice.Point.Label)
+                        ? $"Slice {index + 1}"
+                        : slice.Point.Label;
+
+                    return new LegendItem(label, slice.Point.Value, color, slice.Percentage);
+                }).ToList();
+            }
+
+            var fallbackPalette = ResolveColorPalette();
+            var fallbackPaletteCount = fallbackPalette.Count;
+            if (fallbackPaletteCount == 0 && DefaultColorPalette.Length > 0)
+            {
+                fallbackPalette = DefaultColorPalette;
+                fallbackPaletteCount = DefaultColorPalette.Length;
+            }
+
+            var totalSlices = _groups.Sum(group => Math.Abs(group.Points.Sum(point => point.Value)));
+            if (Math.Abs(totalSlices) < double.Epsilon)
+            {
+                totalSlices = 1;
+            }
+
+            return _groups.Select((group, index) =>
+            {
+                var value = group.Points.Sum(point => point.Value);
+                var templateColor = group.Points.FirstOrDefault()?.Color;
+                var color = string.IsNullOrWhiteSpace(templateColor)
+                    ? (fallbackPaletteCount > 0 ? fallbackPalette[index % fallbackPaletteCount] : string.Empty)
+                    : templateColor;
+
+                return new LegendItem(group.Label, value, color, Math.Abs(value) / totalSlices);
+            }).ToList();
+        }
+
+        var total = _points.Sum(point => Math.Abs(point.Value));
+        if (Math.Abs(total) < double.Epsilon)
+        {
+            total = 1;
+        }
+
+        if (_series.Count > 1 || _series.Any(series => !string.IsNullOrWhiteSpace(series.Name)))
+        {
+            var palette = ResolveColorPalette();
+            var paletteCount = palette.Count;
+            if (paletteCount == 0 && DefaultColorPalette.Length > 0)
+            {
+                palette = DefaultColorPalette;
+                paletteCount = DefaultColorPalette.Length;
+            }
+
+            return _series.Select((series, index) =>
+            {
+                var sum = series.Data.Sum(point => point.Value);
+                var color = !string.IsNullOrWhiteSpace(series.Color)
+                    ? series.Color
+                    : (paletteCount > 0 ? palette[index % paletteCount] : string.Empty);
+                return new LegendItem(series.Name, sum, color, Math.Abs(sum) / total);
+            }).ToList();
+        }
+
+        var pointPalette = ResolveColorPalette();
+        var pointPaletteCount = pointPalette.Count;
+        if (pointPaletteCount == 0 && DefaultColorPalette.Length > 0)
+        {
+            pointPalette = DefaultColorPalette;
+            pointPaletteCount = DefaultColorPalette.Length;
+        }
+
+        return _points.Select((point, index) =>
+            new LegendItem(point.Label,
+                           point.Value,
+                           string.IsNullOrWhiteSpace(point.Color)
+                               ? (pointPaletteCount > 0 ? pointPalette[index % pointPaletteCount] : string.Empty)
+                               : point.Color,
+                           Math.Abs(point.Value) / total)).ToList();
+    }
+
+    private void BuildLineSeriesGeometry()
+    {
+        _lineSeries.Clear();
+        _lineGridLines.Clear();
+
+        var categories = _groups.Select(group => group.Label).ToList();
+        if (!categories.Any())
+        {
+            categories = _points.Select(point => point.Label).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        }
+
+        if (!categories.Any())
+        {
+            categories = Enumerable.Range(1, _points.Count).Select(i => $"Item {i}").ToList();
+        }
+
+        var step = categories.Count > 1 ? 100d / (categories.Count - 1) : 0d;
+
+        foreach (var series in _series)
+        {
+            var color = series.Color;
+            var pathBuilder = new StringBuilder();
+            var areaBuilder = new StringBuilder();
+            var points = new List<LineSeriesPoint>();
+
+            for (var index = 0; index < categories.Count; index++)
+            {
+                var category = categories[index];
+                var dataPoint = series.Data.FirstOrDefault(point =>
+                                    string.Equals(point.Label, category, StringComparison.OrdinalIgnoreCase))
+                                ?? series.Data.ElementAtOrDefault(index)
+                                ?? new ChartDataPoint
+                                {
+                                    Label = category,
+                                    Value = 0,
+                                    Color = color,
+                                    Series = series.Name
+                                };
+
+                var normalized = Clamp01(NormalizeValue(dataPoint.Value));
+                var x = step * index;
+                var y = 100 - (normalized * 100);
+
+                points.Add(new LineSeriesPoint(x, y, dataPoint));
+
+                var xText = x.ToString("F2", CultureInfo.InvariantCulture);
+                var yText = y.ToString("F2", CultureInfo.InvariantCulture);
+
+                if (index == 0)
+                {
+                    pathBuilder.Append($"M {xText} {yText}");
+                    if (_resolvedType == ChartType.Area)
+                    {
+                        areaBuilder.Append($"M {xText} 100 L {xText} {yText}");
+                    }
+                }
+                else
+                {
+                    pathBuilder.Append($" L {xText} {yText}");
+                    if (_resolvedType == ChartType.Area)
+                    {
+                        areaBuilder.Append($" L {xText} {yText}");
+                    }
+                }
+            }
+
+            if (_resolvedType == ChartType.Area && categories.Count > 1)
+            {
+                var lastX = (step * (categories.Count - 1)).ToString("F2", CultureInfo.InvariantCulture);
+                var firstX = 0d.ToString("F2", CultureInfo.InvariantCulture);
+                areaBuilder.Append($" L {lastX} 100 L {firstX} 100 Z");
+            }
+
+            _lineSeries.Add(new LineSeriesGeometry(series.Name, color, pathBuilder.ToString(), areaBuilder.ToString(), points));
+        }
+
+        if (ShowGridLines && GridLineCount > 0)
+        {
+            var interval = 100d / GridLineCount;
+            for (var i = 0; i <= GridLineCount; i++)
+            {
+                var y = 100 - (i * interval);
+                _lineGridLines.Add(y.ToString("F2", CultureInfo.InvariantCulture));
+            }
+        }
+    }
+
+    private void BuildPieSlices()
+    {
+        _pieSlices.Clear();
+
+        if (!_groups.Any())
+        {
+            return;
+        }
+
+        var slices = _groups.Select(group => new
+        {
+            Group = group,
+            group.Label,
+            Value = group.Points.Sum(point => point.Value),
+            Point = group.Points.First()
+        }).ToList();
+
+        var total = slices.Sum(item => Math.Abs(item.Value));
+        if (Math.Abs(total) < double.Epsilon)
+        {
+            total = slices.Count;
+        }
+
+        var palette = ResolveColorPalette();
+        var paletteCount = palette.Count;
+        if (paletteCount == 0 && DefaultColorPalette.Length > 0)
+        {
+            palette = DefaultColorPalette;
+            paletteCount = DefaultColorPalette.Length;
+        }
+
+        var startAngle = 0d;
+
+        foreach (var item in slices)
+        {
+            var percentage = total == 0 ? 0 : Math.Abs(item.Value) / total;
+            var endAngle = startAngle + (percentage * 360d);
+            var paletteColor = paletteCount > 0 ? palette[_pieSlices.Count % paletteCount] : string.Empty;
+            var color = string.IsNullOrWhiteSpace(item.Point.Color)
+                ? paletteColor
+                : item.Point.Color;
+
+            if (string.IsNullOrWhiteSpace(item.Point.Color))
+            {
+                foreach (var groupPoint in item.Group.Points)
+                {
+                    if (string.IsNullOrWhiteSpace(groupPoint.Color))
+                    {
+                        groupPoint.Color = color;
+                    }
+                }
+            }
+
+            var path = BuildArcPath(startAngle, endAngle, _resolvedType == ChartType.Doughnut ? DoughnutInnerRatio : 0);
+            var point = ClonePoint(item.Point);
+            point.Value = item.Value;
+            point.Label = item.Label;
+            point.Color = color;
+
+            _pieSlices.Add(new PieSliceGeometry(point, path, percentage));
+            startAngle = endAngle;
+        }
+    }
+
+    private static string BuildArcPath(double startAngle, double endAngle, double innerRatio)
+    {
+        const double center = 50;
+        const double radius = 50;
+
+        var startRad = DegreesToRadians(startAngle);
+        var endRad = DegreesToRadians(endAngle);
+
+        var largeArc = endAngle - startAngle > 180 ? 1 : 0;
+
+        var outerStartX = center + radius * Math.Cos(startRad);
+        var outerStartY = center + radius * Math.Sin(startRad);
+        var outerEndX = center + radius * Math.Cos(endRad);
+        var outerEndY = center + radius * Math.Sin(endRad);
+
+        if (innerRatio <= 0)
+        {
+            return $"M {center} {center} L {outerStartX.ToString("F2", CultureInfo.InvariantCulture)} {outerStartY.ToString("F2", CultureInfo.InvariantCulture)} " +
+                   $"A {radius} {radius} 0 {largeArc} 1 {outerEndX.ToString("F2", CultureInfo.InvariantCulture)} {outerEndY.ToString("F2", CultureInfo.InvariantCulture)} Z";
+        }
+
+        var innerRadius = radius * innerRatio;
+        var innerEndX = center + innerRadius * Math.Cos(endRad);
+        var innerEndY = center + innerRadius * Math.Sin(endRad);
+        var innerStartX = center + innerRadius * Math.Cos(startRad);
+        var innerStartY = center + innerRadius * Math.Sin(startRad);
+
+        return $"M {outerStartX.ToString("F2", CultureInfo.InvariantCulture)} {outerStartY.ToString("F2", CultureInfo.InvariantCulture)} " +
+               $"A {radius} {radius} 0 {largeArc} 1 {outerEndX.ToString("F2", CultureInfo.InvariantCulture)} {outerEndY.ToString("F2", CultureInfo.InvariantCulture)} " +
+               $"L {innerEndX.ToString("F2", CultureInfo.InvariantCulture)} {innerEndY.ToString("F2", CultureInfo.InvariantCulture)} " +
+               $"A {innerRadius.ToString("F2", CultureInfo.InvariantCulture)} {innerRadius.ToString("F2", CultureInfo.InvariantCulture)} 0 {largeArc} 0 {innerStartX.ToString("F2", CultureInfo.InvariantCulture)} {innerStartY.ToString("F2", CultureInfo.InvariantCulture)} Z";
+    }
+
+    private ChartDataPoint BuildPointFromSelectors(T item, int index)
+    {
+        var metadata = MetadataSelector?.Invoke(item) ?? new Dictionary<string, object>();
+        var value = ValueSelector != null ? ValueSelector.Invoke(item) : 0;
+        var label = LabelSelector != null ? LabelSelector.Invoke(item) : $"Item {index + 1}";
+
+        var point = new ChartDataPoint
+        {
+            Label = label,
+            Value = value,
+            Series = SeriesSelector != null ? SeriesSelector.Invoke(item) ?? "" : "",
+            Category = CategorySelector != null ? CategorySelector.Invoke(item) ?? "" : "",
+            Color = ColorSelector != null ? ColorSelector.Invoke(item) ?? "" : "",
+            Metadata = metadata
+        };
+
+        if (string.IsNullOrWhiteSpace(point.Series) && metadata.TryGetValue("Series", out var seriesObject))
+        {
+            point.Series = seriesObject?.ToString() ?? "";
+        }
+
+        return point;
+    }
+
+    private RenderFragment? BuildLegendContent()
+    {
+        if (!_legend.Any())
+        {
+            return null;
+        }
+
+        return builder =>
+        {
+            var sequence = 0;
+            foreach (var item in _legend)
+            {
+                builder.OpenElement(sequence++, "div");
+                builder.AddAttribute(sequence++, "class", "chart-legend-item");
+
+                builder.OpenElement(sequence++, "div");
+                builder.AddAttribute(sequence++, "class", "chart-legend-indicator");
+                builder.AddAttribute(sequence++, "style", $"background: {item.Color};");
+                builder.CloseElement();
+
+                builder.OpenElement(sequence++, "span");
+                builder.AddAttribute(sequence++, "class", "chart-legend-label");
+                builder.AddContent(sequence++, item.Label);
+                builder.CloseElement();
+
+                var hasMetrics = ShowLegendValues || ShowLegendPercentages;
+                if (hasMetrics)
+                {
+                    builder.OpenElement(sequence++, "div");
+                    builder.AddAttribute(sequence++, "class", "chart-legend-metrics");
+
+                    if (ShowLegendValues)
+                    {
+                        builder.OpenElement(sequence++, "span");
+                        builder.AddAttribute(sequence++, "class", "chart-legend-value");
+                        builder.AddContent(sequence++, FormatValue(item.Value));
+                        builder.CloseElement();
+                    }
+
+                    if (ShowLegendPercentages)
+                    {
+                        builder.OpenElement(sequence++, "span");
+                        builder.AddAttribute(sequence++, "class", "chart-legend-percentage");
+                        builder.AddContent(sequence++, FormatPercentage(item.Percentage));
+                        builder.CloseElement();
+                    }
+
+                    builder.CloseElement();
+                }
+
+                builder.CloseElement();
+            }
+        };
+    }
+
+    private RenderFragment? BuildAccessibilityContent()
+    {
+        if (!_legend.Any())
+        {
+            return null;
+        }
+
+        return builder =>
+        {
+            var sequence = 0;
+            builder.OpenElement(sequence++, "table");
+            builder.AddAttribute(sequence++, "class", "chart-accessibility-table-inner");
+
+            builder.OpenElement(sequence++, "thead");
+            builder.OpenElement(sequence++, "tr");
+            builder.OpenElement(sequence++, "th");
+            builder.AddContent(sequence++, "Label");
+            builder.CloseElement();
+            builder.OpenElement(sequence++, "th");
+            builder.AddContent(sequence++, "Value");
+            builder.CloseElement();
+            builder.OpenElement(sequence++, "th");
+            builder.AddContent(sequence++, "Share");
+            builder.CloseElement();
+            builder.CloseElement();
+            builder.CloseElement();
+
+            builder.OpenElement(sequence++, "tbody");
+            foreach (var item in _legend)
+            {
+                builder.OpenElement(sequence++, "tr");
+
+                builder.OpenElement(sequence++, "td");
+                builder.AddContent(sequence++, item.Label);
+                builder.CloseElement();
+
+                builder.OpenElement(sequence++, "td");
+                builder.AddContent(sequence++, FormatValue(item.Value));
+                builder.CloseElement();
+
+                builder.OpenElement(sequence++, "td");
+                builder.AddContent(sequence++, FormatPercentage(item.Percentage));
+                builder.CloseElement();
+
+                builder.CloseElement();
+            }
+            builder.CloseElement();
+
+            builder.CloseElement();
+        };
+    }
+
+    private string GetDataPointTooltip(ChartDataPoint point)
+    {
+        if (TooltipFormatter != null)
+        {
+            return TooltipFormatter.Invoke(point);
+        }
+
+        if (!string.IsNullOrWhiteSpace(point.AccessibilityText))
+        {
+            return point.AccessibilityText;
+        }
+
+        if (!string.IsNullOrWhiteSpace(point.Series))
+        {
+            return $"{point.Series}: {point.Label} {FormatValue(point.Value)}";
+        }
+
+        return $"{point.Label}: {FormatValue(point.Value)}";
+    }
+
+    private string GetPieSliceTooltip(PieSliceGeometry slice) =>
+        $"{GetDataPointTooltip(slice.Point)} ({FormatPercentage(slice.Percentage)})";
+
+    private string GetVerticalTrackStyle() =>
+        $"--chart-zero-from-top: {_zeroLineTopPercent.ToString("F2", CultureInfo.InvariantCulture)}%;";
+
+    private string GetHorizontalTrackStyle() =>
+        $"--chart-zero-from-left: {_zeroLineLeftPercent.ToString("F2", CultureInfo.InvariantCulture)}%;";
+
+    private string GetVerticalTrackClasses()
+    {
+        var classes = new List<string> { "chart-generic-bars-track" };
+        if (StackMode != ChartStackMode.None)
+        {
+            classes.Add("chart-generic-bars-track-stacked");
+        }
+        return string.Join(" ", classes);
+    }
+
+    private string GetHorizontalTrackClasses()
+    {
+        var classes = new List<string> { "chart-generic-bars-track" };
+        if (StackMode != ChartStackMode.None)
+        {
+            classes.Add("chart-generic-bars-track-stacked-horizontal");
+        }
+        return string.Join(" ", classes);
+    }
+
+    private string GetBarFillClass(double value) =>
+        value >= 0
+            ? "chart-generic-bar-fill chart-generic-bar-fill-positive"
+            : "chart-generic-bar-fill chart-generic-bar-fill-negative";
+
+    private string BuildVerticalBarStyle(ChartDataPoint point, string groupLabel)
+    {
+        var (bottomPercent, heightPercent) = GetVerticalBarBounds(point, groupLabel);
+
+        if (Math.Abs(point.Value) > double.Epsilon && heightPercent < 0.8)
+        {
+            heightPercent = 0.8;
+        }
+
+        var builder = new StringBuilder();
+        builder.Append($"bottom: {bottomPercent.ToString("F2", CultureInfo.InvariantCulture)}%;");
+        builder.Append($" height: {heightPercent.ToString("F2", CultureInfo.InvariantCulture)}%;");
+
+        if (!string.IsNullOrWhiteSpace(point.Color))
+        {
+            builder.Append($" background: {point.Color};");
+        }
+
+        return builder.ToString();
+    }
+
+    private string BuildHorizontalBarStyle(ChartDataPoint point, string groupLabel)
+    {
+        var (leftPercent, widthPercent) = GetHorizontalBarBounds(point, groupLabel);
+
+        if (Math.Abs(point.Value) > double.Epsilon && widthPercent < 0.8)
+        {
+            widthPercent = 0.8;
+        }
+
+        var builder = new StringBuilder();
+        builder.Append($"left: {leftPercent.ToString("F2", CultureInfo.InvariantCulture)}%;");
+        builder.Append($" width: {widthPercent.ToString("F2", CultureInfo.InvariantCulture)}%;");
+
+        if (!string.IsNullOrWhiteSpace(point.Color))
+        {
+            builder.Append($" background: {point.Color};");
+        }
+
+        return builder.ToString();
+    }
+
+    private (double BottomPercent, double HeightPercent) GetVerticalBarBounds(ChartDataPoint point, string groupLabel)
+    {
+        if (StackMode != ChartStackMode.None &&
+            _stackExtents.TryGetValue(groupLabel, out var groupStacks) &&
+            groupStacks.TryGetValue(point.Id, out var extent))
+        {
+            if (extent.IsPositive)
+            {
+                if (_positiveExtent <= 0 || PositiveAreaFraction <= 0)
+                {
+                    return (_zeroNormalizedBottom * 100, 0);
+                }
+
+                var startNormalized = extent.Start / _positiveExtent;
+                var endNormalized = extent.End / _positiveExtent;
+                var positiveBottom = _zeroNormalizedBottom + (PositiveAreaFraction * startNormalized);
+                var positiveHeight = PositiveAreaFraction * (endNormalized - startNormalized);
+                return (Math.Clamp(positiveBottom * 100, 0, 100), Math.Clamp(positiveHeight * 100, 0, 100));
+            }
+
+            if (_negativeExtent >= 0 || NegativeAreaFraction <= 0)
+            {
+                return (_zeroNormalizedBottom * 100, 0);
+            }
+
+            var negativeStartNormalized = Math.Abs(extent.Start) / Math.Abs(_negativeExtent);
+            var negativeEndNormalized = Math.Abs(extent.End) / Math.Abs(_negativeExtent);
+            var topOffset = NegativeAreaFraction * negativeEndNormalized;
+            var negativeHeight = NegativeAreaFraction * (negativeEndNormalized - negativeStartNormalized);
+            var negativeBottom = _zeroNormalizedBottom - topOffset;
+            return (Math.Clamp(negativeBottom * 100, 0, 100), Math.Clamp(negativeHeight * 100, 0, 100));
+        }
+
+        var offsets = GetVerticalBarOffsets(point.Value);
+        var defaultBottom = Math.Clamp(offsets.Bottom * 100, 0, 100);
+        var defaultHeight = Math.Clamp(offsets.Height * 100, 0, 100);
+        return (defaultBottom, defaultHeight);
+    }
+
+    private (double LeftPercent, double WidthPercent) GetHorizontalBarBounds(ChartDataPoint point, string groupLabel)
+    {
+        if (StackMode != ChartStackMode.None &&
+            _stackExtents.TryGetValue(groupLabel, out var groupStacks) &&
+            groupStacks.TryGetValue(point.Id, out var extent))
+        {
+            if (extent.IsPositive)
+            {
+                if (_positiveExtent <= 0 || PositiveWidthFraction <= 0)
+                {
+                    return (_zeroNormalizedLeft * 100, 0);
+                }
+
+                var startNormalized = extent.Start / _positiveExtent;
+                var endNormalized = extent.End / _positiveExtent;
+                var positiveLeft = _zeroNormalizedLeft + (PositiveWidthFraction * startNormalized);
+                var positiveWidth = PositiveWidthFraction * (endNormalized - startNormalized);
+                return (Math.Clamp(positiveLeft * 100, 0, 100), Math.Clamp(positiveWidth * 100, 0, 100));
+            }
+
+            if (_negativeExtent >= 0 || NegativeWidthFraction <= 0)
+            {
+                return (_zeroNormalizedLeft * 100, 0);
+            }
+
+            var negativeStartNormalized = Math.Abs(extent.Start) / Math.Abs(_negativeExtent);
+            var negativeEndNormalized = Math.Abs(extent.End) / Math.Abs(_negativeExtent);
+            var negativeLeft = _zeroNormalizedLeft - (NegativeWidthFraction * negativeEndNormalized);
+            var negativeWidth = NegativeWidthFraction * (negativeEndNormalized - negativeStartNormalized);
+            return (Math.Clamp(negativeLeft * 100, 0, 100), Math.Clamp(negativeWidth * 100, 0, 100));
+        }
+
+        var offsets = GetHorizontalBarOffsets(point.Value);
+        var defaultLeft = Math.Clamp(offsets.Left * 100, 0, 100);
+        var defaultWidth = Math.Clamp(offsets.Width * 100, 0, 100);
+        return (defaultLeft, defaultWidth);
+    }
+
+    private string GetBarValueClass(double value, bool isHorizontal)
+    {
+        if (isHorizontal)
+        {
+            return value >= 0
+                ? "chart-generic-bar-value chart-generic-bar-value-horizontal-positive"
+                : "chart-generic-bar-value chart-generic-bar-value-horizontal-negative";
+        }
+
+        return value >= 0
+            ? "chart-generic-bar-value chart-generic-bar-value-positive"
+            : "chart-generic-bar-value chart-generic-bar-value-negative";
+    }
+
+    private (double Bottom, double Height) GetVerticalBarOffsets(double value)
+    {
+        if (_totalRange <= 0)
+        {
+            return (_zeroNormalizedBottom, 0);
+        }
+
+        if (value >= 0)
+        {
+            if (_positiveExtent <= 0 || PositiveAreaFraction <= 0)
+            {
+                return (_zeroNormalizedBottom, 0);
+            }
+
+            var relative = value / _positiveExtent;
+            var height = Math.Max(relative * PositiveAreaFraction, 0);
+            return (_zeroNormalizedBottom, height);
+        }
+
+        if (_negativeExtent >= 0 || NegativeAreaFraction <= 0)
+        {
+            return (_zeroNormalizedBottom, 0);
+        }
+
+        var relativeNegative = Math.Abs(value) / Math.Abs(_negativeExtent);
+        var heightNegative = Math.Max(relativeNegative * NegativeAreaFraction, 0);
+        var bottom = _zeroNormalizedBottom - heightNegative;
+        return (Math.Clamp(bottom, 0, 1), heightNegative);
+    }
+
+    private (double Left, double Width) GetHorizontalBarOffsets(double value)
+    {
+        if (_totalRange <= 0)
+        {
+            return (_zeroNormalizedLeft, 0);
+        }
+
+        if (value >= 0)
+        {
+            if (_positiveExtent <= 0 || PositiveWidthFraction <= 0)
+            {
+                return (_zeroNormalizedLeft, 0);
+            }
+
+            var relative = value / _positiveExtent;
+            var width = Math.Max(relative * PositiveWidthFraction, 0);
+            return (_zeroNormalizedLeft, width);
+        }
+
+        if (_negativeExtent >= 0 || NegativeWidthFraction <= 0)
+        {
+            return (_zeroNormalizedLeft, 0);
+        }
+
+        var relativeNegative = Math.Abs(value) / Math.Abs(_negativeExtent);
+        var widthNegative = Math.Max(relativeNegative * NegativeWidthFraction, 0);
+        var start = _zeroNormalizedLeft - widthNegative;
+        return (Math.Clamp(start, 0, 1), widthNegative);
+    }
+
+    private double PositiveAreaFraction => 1 - _zeroNormalizedBottom;
+    private double NegativeAreaFraction => _zeroNormalizedBottom;
+    private double PositiveWidthFraction => 1 - _zeroNormalizedLeft;
+    private double NegativeWidthFraction => _zeroNormalizedLeft;
+
+    private string FormatValue(double value) =>
+        value.ToString(ValueFormat, CultureInfo.InvariantCulture);
+
+    private static string FormatPercentage(double value) =>
+        $"{(value * 100).ToString("F1", CultureInfo.InvariantCulture)}%";
+
+    private double NormalizeValue(double value)
+    {
+        if (Math.Abs(_maxValue - _minValue) < double.Epsilon)
+        {
+            return 1d;
+        }
+
+        return (value - _minValue) / (_maxValue - _minValue);
+    }
+
+    private static double Clamp01(double value) =>
+        Math.Clamp(value, 0d, 1d);
+
+    private static double DegreesToRadians(double angle) =>
+        Math.PI * angle / 180d;
+
+    private static ChartDataPoint ClonePoint(ChartDataPoint point)
+    {
+        return new ChartDataPoint
+        {
+            Id = point.Id,
+            Label = point.Label,
+            Value = point.Value,
+            Category = point.Category,
+            Series = point.Series,
+            Color = point.Color,
+            Description = point.Description,
+            Metadata = point.Metadata != null ? new Dictionary<string, object>(point.Metadata) : new(),
+            AccessibilityText = point.AccessibilityText,
+            IsVisible = point.IsVisible
+        };
+    }
+
+    private async Task HandleChartInit(ElementReference element)
+    {
+        if (OnChartInit.HasDelegate)
+        {
+            await OnChartInit.InvokeAsync(element);
+        }
+    }
+
+    private sealed record LegendItem(string Label, double Value, string Color, double Percentage);
+
+    private sealed record LineSeriesPoint(double X, double Y, ChartDataPoint DataPoint);
+
+    private sealed record LineSeriesGeometry(string Name, string Color, string Path, string AreaPath, List<LineSeriesPoint> Points);
+
+    private sealed record PieSliceGeometry(ChartDataPoint Point, string Path, double Percentage);
+
+    private sealed record StackExtent(double Start, double End, bool IsPositive);
+
+    private sealed class ChartCategoryGroup
+    {
+        public ChartCategoryGroup(string label) => Label = label;
+        public string Label { get; }
+        public List<ChartDataPoint> Points { get; } = new();
+    }
+}

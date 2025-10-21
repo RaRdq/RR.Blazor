@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Components;
+using System.Collections.Generic;
 using RR.Blazor.Enums;
 using System.Reflection;
 
@@ -123,6 +124,7 @@ namespace RR.Blazor.Models
         public ChartResponsiveMode ResponsiveMode { get; set; } = ChartResponsiveMode.Auto;
         public bool ShowLegend { get; set; } = true;
         public ChartLegendPosition LegendPosition { get; set; } = ChartLegendPosition.Bottom;
+        public List<string> SeriesColors { get; set; } = new();
         public bool ShowTooltip { get; set; } = true;
         public ChartTooltipTrigger TooltipTrigger { get; set; } = ChartTooltipTrigger.Hover;
         public bool EnableAnimation { get; set; } = true;

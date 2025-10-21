@@ -39,6 +39,8 @@ function validateTooltipStructure(tooltipElement, tooltipElementId) {
 }
 
 const Tooltip = {
+    dimensionsCache: new Map(),
+
     initialize() {
         document.addEventListener(window.RRBlazor.Events.UI_COMPONENT_CLOSE_REQUEST, (event) => {
             if (event.detail.componentType === window.RRBlazor.ComponentTypes.TOOLTIP) {
@@ -64,10 +66,36 @@ const Tooltip = {
         const content = validateTooltipStructure(tooltipElement, tooltipElementId);
 
         const position = options.position || 'top';
-        const targetDimensions = {
-            width: content.offsetWidth || content.scrollWidth || TOOLTIP_CONFIG.DEFAULT_WIDTH_PX,
-            height: content.offsetHeight || content.scrollHeight || TOOLTIP_CONFIG.DEFAULT_HEIGHT_PX
-        };
+
+        let targetDimensions = this.dimensionsCache.get(tooltipElementId);
+
+        if (!targetDimensions) {
+            const wasVisible = content.classList.contains('tooltip-visible');
+            const originalDisplay = content.style.display;
+            const originalVisibility = content.style.visibility;
+            const originalPosition = content.style.position;
+
+            content.style.visibility = 'hidden';
+            content.style.position = 'absolute';
+            content.style.display = 'block';
+            content.classList.remove('tooltip-hidden');
+            content.classList.add('tooltip-visible');
+
+            targetDimensions = {
+                width: content.offsetWidth || content.scrollWidth || TOOLTIP_CONFIG.DEFAULT_WIDTH_PX,
+                height: content.offsetHeight || content.scrollHeight || TOOLTIP_CONFIG.DEFAULT_HEIGHT_PX
+            };
+
+            if (!wasVisible) {
+                content.classList.remove('tooltip-visible');
+                content.classList.add('tooltip-hidden');
+            }
+            content.style.display = originalDisplay;
+            content.style.visibility = originalVisibility;
+            content.style.position = originalPosition;
+
+            this.dimensionsCache.set(tooltipElementId, targetDimensions);
+        }
 
         return await dropdownManager.positionDropdown(tooltipElement, {
             contentSelector: '.tooltip-content',
@@ -129,6 +157,7 @@ export async function createTooltipPortal(popupElement, triggerElement, position
 }
 
 export async function destroyTooltipPortal(portalId) {
+    Tooltip.dimensionsCache.delete(portalId);
     return await Tooltip.hideTooltip(portalId);
 }
 
@@ -146,6 +175,7 @@ export async function updateTooltipPosition(portalId, triggerElement, position) 
 export function cleanup(element) {
     if (element && element.hasAttribute('data-tooltip-id')) {
         const tooltipId = element.getAttribute('data-tooltip-id');
+        Tooltip.dimensionsCache.delete(tooltipId);
         Tooltip.hideTooltip(tooltipId);
     }
 }
