@@ -1,0 +1,245 @@
+@using System.Collections.Generic
+@using RR.Blazor.Models
+@typeparam TItem where TItem : class
+@using RR.Blazor.Components.Base
+@inherits RComponentBase
+
+@if (PivotResult == null || PivotResult.DataCells == null || !PivotResult.DataCells.Any())
+{
+    <div class="text-sm text-muted pa-4 @Class">Pivot table has no data to display.</div>
+}
+else
+{
+    var rowHeaders = GetDisplayHeaders(PivotResult.RowHeaders);
+    var columnHeaders = GetDisplayHeaders(PivotResult.ColumnHeaders);
+    var dataFields = Configuration?.DataFields?.Any() == true
+        ? Configuration.DataFields
+        : PivotResult.Configuration?.DataFields?.Any() == true
+            ? PivotResult.Configuration.DataFields
+            : new List<PivotField<TItem>>();
+
+    <div class="overflow-auto border border-light rounded-lg @Class">
+        <table class="w-full text-sm">
+            <thead class="bg-surface">
+                <tr class="text-left">
+                    <th class="px-3 py-2 font-semibold text-muted">Rows</th>
+                    @foreach (var columnHeader in columnHeaders)
+                    {
+                        var display = columnHeader.FormattedValue ?? columnHeader.Value?.ToString() ?? "(Empty)";
+                        var span = Math.Max(dataFields.Count, 1);
+                        <th class="px-3 py-2 font-semibold text-muted text-center" colspan="@span" @onclick="() => HandleHeaderClick(columnHeader)">
+                            @display
+                        </th>
+                    }
+                </tr>
+                @if (dataFields.Count > 1)
+                {
+                    <tr class="text-left">
+                        <th></th>
+                        @foreach (var columnHeader in columnHeaders)
+                        {
+                            foreach (var field in dataFields)
+                            {
+                                <th class="px-3 py-2 text-muted font-semibold text-right">
+                                    @field.DisplayName
+                                </th>
+                            }
+                        }
+                    </tr>
+                }
+            </thead>
+            <tbody>
+                @foreach (var rowHeader in rowHeaders)
+                {
+                    <tr class="border-t border-light">
+                        <td class="px-3 py-2">
+                            <div class="flex items-center gap-2">
+                                @if (rowHeader.Children?.Any() ?? false)
+                                {
+                                    <button type="button"
+                                            class="px-2 py-1 rounded-md bg-surface-elevated text-xs text-muted"
+                                            @onclick="() => HandleRowToggle(rowHeader)">
+                                        @((rowHeader.IsExpanded) ? "−" : "+")
+                                    </button>
+                                }
+                                <span class="font-semibold text-on-surface" style="padding-left:@(rowHeader.Level * 12)px">
+                                    @(rowHeader.FormattedValue ?? rowHeader.Value?.ToString() ?? "(Empty)")
+                                </span>
+                            </div>
+                        </td>
+                        @foreach (var columnHeader in columnHeaders)
+                        {
+                            if (dataFields.Count == 0)
+                            {
+                                var cell = FindCell(rowHeader, columnHeader, null);
+                                <td class="px-3 py-2 text-right font-monospace"
+                                    @onclick="() => HandleCellClick(cell)"
+                                    @ondblclick="() => HandleCellDoubleClick(cell)">
+                                    @FormatCell(cell)
+                                </td>
+                            }
+                            else
+                            {
+                                foreach (var field in dataFields)
+                                {
+                                    var cell = FindCell(rowHeader, columnHeader, field);
+                                    <td class="px-3 py-2 text-right font-monospace"
+                                        @onclick="() => HandleCellClick(cell)"
+                                        @ondblclick="() => HandleCellDoubleClick(cell)">
+                                        @FormatCell(cell)
+                                    </td>
+                                }
+                            }
+                        }
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    [Parameter] public PivotResult<TItem> PivotResult { get; set; }
+    [Parameter] public PivotConfiguration<TItem> Configuration { get; set; }
+    [Parameter] public EventCallback<PivotDataCell<TItem>> OnCellClick { get; set; }
+    [Parameter] public EventCallback<PivotDataCell<TItem>> OnCellDoubleClick { get; set; }
+    [Parameter] public EventCallback<PivotDataCell<TItem>> OnDrillThrough { get; set; }
+    [Parameter] public EventCallback<PivotHeader<TItem>> OnHeaderClick { get; set; }
+    [Parameter] public EventCallback<PivotHeader<TItem>> OnRowToggle { get; set; }
+
+    private static IReadOnlyList<PivotHeader<TItem>> GetDisplayHeaders(IEnumerable<PivotHeader<TItem>> headers)
+    {
+        if (headers == null)
+        {
+            return Array.Empty<PivotHeader<TItem>>();
+        }
+
+        return headers
+            .Where(h => h != null)
+            .Where(h => !(h.Children?.Any() ?? false) || h.IsSubtotal || h.IsTotal)
+            .ToList();
+    }
+
+    private PivotDataCell<TItem> FindCell(PivotHeader<TItem> rowHeader, PivotHeader<TItem> columnHeader, PivotField<TItem> dataField)
+    {
+        if (PivotResult?.DataCells == null || rowHeader == null || columnHeader == null)
+        {
+            return null;
+        }
+
+        IEnumerable<PivotField<TItem>> fields;
+        if (dataField != null)
+        {
+            fields = new[] { dataField };
+        }
+        else if (Configuration?.DataFields?.Any() == true)
+        {
+            fields = Configuration.DataFields;
+        }
+        else if (PivotResult.Configuration?.DataFields?.Any() == true)
+        {
+            fields = PivotResult.Configuration.DataFields;
+        }
+        else
+        {
+            fields = System.Array.Empty<PivotField<TItem>>();
+        }
+
+        foreach (var field in fields)
+        {
+            var key = BuildCellKey(rowHeader, columnHeader, field);
+            if (PivotResult.DataCells.TryGetValue(key, out var existingCell))
+            {
+                return existingCell;
+            }
+        }
+
+        return null;
+    }
+
+    private string BuildCellKey(PivotHeader<TItem> rowHeader, PivotHeader<TItem> columnHeader, PivotField<TItem> dataField)
+    {
+        var rowPath = GetHeaderPath(rowHeader);
+        var columnPath = GetHeaderPath(columnHeader);
+        var fieldKey = dataField?.Key ?? (Configuration?.DataFields?.FirstOrDefault()?.Key ?? "value");
+        return $"{rowPath}|{columnPath}|{fieldKey}";
+    }
+
+    private static string GetHeaderPath(PivotHeader<TItem> header)
+    {
+        var segments = new List<string>();
+        var current = header;
+        while (current != null)
+        {
+            segments.Insert(0, current.Value?.ToString() ?? "null");
+            current = current.Parent;
+        }
+        return string.Join("/", segments);
+    }
+
+    private string FormatCell(PivotDataCell<TItem> cell)
+    {
+        if (cell == null)
+        {
+            return "-";
+        }
+
+        if (!string.IsNullOrEmpty(cell.FormattedValue))
+        {
+            return cell.FormattedValue;
+        }
+
+        return cell.Value?.ToString() ?? "-";
+    }
+
+    private async Task HandleCellClick(PivotDataCell<TItem> cell)
+    {
+        if (cell == null)
+        {
+            return;
+        }
+
+        if (OnCellClick.HasDelegate)
+        {
+            await OnCellClick.InvokeAsync(cell);
+        }
+    }
+
+    private async Task HandleCellDoubleClick(PivotDataCell<TItem> cell)
+    {
+        if (cell == null)
+        {
+            return;
+        }
+
+        if (OnCellDoubleClick.HasDelegate)
+        {
+            await OnCellDoubleClick.InvokeAsync(cell);
+        }
+
+        if (OnDrillThrough.HasDelegate)
+        {
+            await OnDrillThrough.InvokeAsync(cell);
+        }
+    }
+
+    private async Task HandleHeaderClick(PivotHeader<TItem> header)
+    {
+        if (header == null || !OnHeaderClick.HasDelegate)
+        {
+            return;
+        }
+
+        await OnHeaderClick.InvokeAsync(header);
+    }
+
+    private async Task HandleRowToggle(PivotHeader<TItem> header)
+    {
+        if (header == null || !OnRowToggle.HasDelegate)
+        {
+            return;
+        }
+
+        await OnRowToggle.InvokeAsync(header);
+    }
+}

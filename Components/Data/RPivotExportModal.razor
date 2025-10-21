@@ -1,0 +1,118 @@
+@using RR.Blazor.Models
+@using RR.Blazor.Enums
+@using RR.Blazor.Services.Export
+@using RR.Blazor.Components.Base
+@inherits RComponentBase
+
+<RModal Visible="true"
+        Size="SizeType.Medium"
+        Title="Export Pivot Data"
+        OnClose="HandleCancel">
+    <ChildContent>
+        <div class="flex flex-col gap-4">
+            <RTextInput @bind-Value="_configuration.FileName"
+                        Label="File Name"
+                        Placeholder="PivotTable_Export" />
+
+            <RSelectField @bind-Value="FormatString"
+                          Label="Format">
+                @foreach (var format in Enum.GetValues<ExportFormat>())
+                {
+                    <option value="@((int)format)">@format</option>
+                }
+            </RSelectField>
+
+            <RCheckbox @bind-Value="_configuration.PreservePivotStructure"
+                       Text="Preserve pivot structure" />
+            <RCheckbox @bind-Value="_configuration.IncludeHeaders"
+                       Text="Include headers" />
+            <RCheckbox @bind-Value="_configuration.IncludeSubtotals"
+                       Text="Include subtotals" />
+            <RCheckbox @bind-Value="_configuration.IncludeGrandTotals"
+                       Text="Include grand totals" />
+        </div>
+    </ChildContent>
+    <FooterContent>
+        <div class="flex justify-end gap-2">
+            <RButton Variant="VariantType.Secondary"
+                     OnClick="HandleCancel">
+                Cancel
+            </RButton>
+            <RButton Variant="VariantType.Primary"
+                     Icon="download"
+                     OnClick="HandleExport">
+                Export
+            </RButton>
+        </div>
+    </FooterContent>
+</RModal>
+
+@code {
+    [Parameter] public PivotExportConfiguration Configuration { get; set; } = new();
+    [Parameter] public EventCallback<PivotExportConfiguration> OnExport { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    private PivotExportConfiguration _configuration = new();
+
+    private string FormatString
+    {
+        get => ((int)_configuration.Format).ToString();
+        set
+        {
+            if (int.TryParse(value, out var enumValue) &&
+                Enum.IsDefined(typeof(ExportFormat), enumValue))
+            {
+                _configuration.Format = (ExportFormat)enumValue;
+            }
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        _configuration = Configuration != null
+            ? new PivotExportConfiguration
+            {
+                FileName = Configuration.FileName,
+                Format = Configuration.Format,
+                Structure = Configuration.Structure,
+                PreservePivotStructure = Configuration.PreservePivotStructure,
+                ExpandAllGroups = Configuration.ExpandAllGroups,
+                IncludeHeaders = Configuration.IncludeHeaders,
+                IncludeSubtotals = Configuration.IncludeSubtotals,
+                IncludeGrandTotals = Configuration.IncludeGrandTotals,
+                IncludeFilters = Configuration.IncludeFilters,
+                IncludeFieldList = Configuration.IncludeFieldList,
+                IncludeGrouping = Configuration.IncludeGrouping,
+                ApplyNumberFormat = Configuration.ApplyNumberFormat,
+                UseCurrencyFormat = Configuration.UseCurrencyFormat,
+                HighlightSubtotals = Configuration.HighlightSubtotals,
+                ColorCodeGroups = Configuration.ColorCodeGroups
+            }
+            : new PivotExportConfiguration();
+    }
+
+    private async Task HandleExport()
+    {
+        if (OnExport.HasDelegate)
+        {
+            await OnExport.InvokeAsync(_configuration);
+        }
+
+        await CloseModalAsync();
+    }
+
+    private async Task HandleCancel()
+    {
+        if (OnCancel.HasDelegate)
+        {
+            await OnCancel.InvokeAsync();
+        }
+
+        await CloseModalAsync();
+    }
+
+    private async Task CloseModalAsync()
+    {
+        // Parent controls visibility by toggling component rendering.
+    }
+}

@@ -1,0 +1,153 @@
+@using RR.Blazor.Models
+@using RR.Blazor.Enums
+@typeparam TItem where TItem : class
+@using RR.Blazor.Components.Base
+@inherits RComponentBase
+
+<div class="pivot-field-panel flex flex-col gap-4 p-3 bg-surface rounded-lg border border-light @Class">
+    @if (Configuration == null)
+    {
+        <div class="text-sm text-muted">
+            Pivot configuration is not available. Define row, column, data, and filter fields to begin.
+        </div>
+    }
+    else
+    {
+        <div class="flex flex-col gap-2">
+            <h4 class="text-sm font-semibold text-primary uppercase tracking-wide">Rows</h4>
+            @if (Configuration.RowFields.Any())
+            {
+                <div class="flex flex-wrap gap-2">
+                    @foreach (var field in Configuration.RowFields)
+                    {
+                        <RChip StyleVariant="ChipStyle.Badge"
+                               Text="@field.DisplayName"
+                               Variant="VariantType.Secondary"
+                               Size="SizeType.Small"
+                               Icon="view_column"
+                               OnClick="@(() => HandleFieldClicked(field))" />
+                    }
+                </div>
+            }
+            else
+            {
+                <span class="text-xs text-muted">No row fields configured</span>
+            }
+        </div>
+
+        <div class="flex flex-col gap-2">
+            <h4 class="text-sm font-semibold text-primary uppercase tracking-wide">Columns</h4>
+            @if (Configuration.ColumnFields.Any())
+            {
+                <div class="flex flex-wrap gap-2">
+                    @foreach (var field in Configuration.ColumnFields)
+                    {
+                        <RChip StyleVariant="ChipStyle.Badge"
+                               Text="@field.DisplayName"
+                               Variant="VariantType.Secondary"
+                               Size="SizeType.Small"
+                               Icon="view_stream"
+                               OnClick="@(() => HandleFieldClicked(field))" />
+                    }
+                </div>
+            }
+            else
+            {
+                <span class="text-xs text-muted">No column fields configured</span>
+            }
+        </div>
+
+        <div class="flex flex-col gap-2">
+            <h4 class="text-sm font-semibold text-primary uppercase tracking-wide">Values</h4>
+            @if (Configuration.DataFields.Any())
+            {
+                <div class="flex flex-wrap gap-2">
+                    @foreach (var field in Configuration.DataFields)
+                    {
+                        <RChip StyleVariant="ChipStyle.Badge"
+                               Text="@field.DisplayName"
+                               Variant="VariantType.Success"
+                               Size="SizeType.Small"
+                               Icon="functions"
+                               OnClick="@(() => HandleFieldClicked(field))" />
+                    }
+                </div>
+            }
+            else
+            {
+                <span class="text-xs text-muted">No value fields configured</span>
+            }
+        </div>
+
+        <div class="flex flex-col gap-2">
+            <h4 class="text-sm font-semibold text-primary uppercase tracking-wide">Filters</h4>
+            @if (Configuration.FilterFields.Any())
+            {
+                <div class="flex flex-wrap gap-2">
+                    @foreach (var field in Configuration.FilterFields)
+                    {
+                        <RChip StyleVariant="ChipStyle.Badge"
+                               Text="@field.DisplayName"
+                               Variant="VariantType.Info"
+                               Size="SizeType.Small"
+                               Icon="filter_alt"
+                               OnClick="@(() => HandleFieldClicked(field))" />
+                    }
+                </div>
+            }
+            else
+            {
+                <span class="text-xs text-muted">No filters applied</span>
+            }
+        </div>
+
+        @if (Configuration.AvailableFields.Any())
+        {
+            <div class="flex flex-col gap-2">
+                <h4 class="text-sm font-semibold text-primary uppercase tracking-wide">Available Fields</h4>
+                <div class="flex flex-wrap gap-2">
+                    @foreach (var field in Configuration.AvailableFields)
+                    {
+                        <RChip StyleVariant="ChipStyle.Badge"
+                               Text="@field.DisplayName"
+                               Variant="VariantType.Secondary"
+                               Size="SizeType.Small"
+                               Icon="add"
+                               OnClick="@(() => HandleFieldClicked(field))" />
+                    }
+                </div>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    [Parameter] public PivotConfiguration<TItem> Configuration { get; set; }
+    [Parameter] public EventCallback<PivotFieldEventArgs<TItem>> OnFieldChanged { get; set; }
+    [Parameter] public EventCallback<PivotField<TItem>> OnFieldConfigRequested { get; set; }
+
+    private async Task HandleFieldClicked(PivotField<TItem> field)
+    {
+        if (field == null)
+        {
+            return;
+        }
+
+        if (OnFieldConfigRequested.HasDelegate)
+        {
+            await OnFieldConfigRequested.InvokeAsync(field);
+            return;
+        }
+
+        if (OnFieldChanged.HasDelegate)
+        {
+            var args = new PivotFieldEventArgs<TItem>
+            {
+                Field = field,
+                Operation = PivotFieldOperation.Configure
+            };
+
+            await OnFieldChanged.InvokeAsync(args);
+        }
+    }
+}

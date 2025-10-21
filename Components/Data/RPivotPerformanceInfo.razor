@@ -1,0 +1,46 @@
+@using RR.Blazor.Models
+@using RR.Blazor.Enums
+@typeparam TItem where TItem : class
+@using RR.Blazor.Components.Base
+@inherits RComponentBase
+
+@if (PivotResult?.Performance is null)
+{
+    <div class="text-sm text-muted pa-4 @Class">Performance metrics unavailable.</div>
+}
+else
+{
+    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 pa-4 bg-surface rounded-lg border border-light @Class">
+        <div class="flex flex-col gap-1">
+            <span class="text-xs text-muted uppercase tracking-wide">Total Time</span>
+            <span class="text-sm font-semibold text-primary">@PivotResult.Performance.TotalTime.TotalMilliseconds:F0 ms</span>
+        </div>
+        <div class="flex flex-col gap-1">
+            <span class="text-xs text-muted uppercase tracking-wide">Data Processed</span>
+            <span class="text-sm font-semibold text-on-surface">@PivotResult.Performance.SourceDataCount:N0 rows</span>
+        </div>
+        <div class="flex flex-col gap-1">
+            <span class="text-xs text-muted uppercase tracking-wide">Cells Rendered</span>
+            <span class="text-sm font-semibold text-on-surface">@PivotResult.Performance.RenderedCells:N0</span>
+        </div>
+        <div class="flex flex-col gap-1">
+            <span class="text-xs text-muted uppercase tracking-wide">Memory Usage</span>
+            <span class="text-sm font-semibold text-on-surface">@FormatBytes(PivotResult.Performance.MemoryUsageBytes)</span>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public PivotResult<TItem> PivotResult { get; set; }
+
+    private static string FormatBytes(long bytes)
+    {
+        if (bytes <= 0) return "0 B";
+
+        string[] sizes = { "B", "KB", "MB", "GB", "TB" };
+        var order = (int)Math.Floor(Math.Log(bytes, 1024));
+        order = Math.Min(order, sizes.Length - 1);
+        var adjustedSize = bytes / Math.Pow(1024, order);
+        return $"{adjustedSize:0.##} {sizes[order]}";
+    }
+}
