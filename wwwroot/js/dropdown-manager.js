@@ -20,6 +20,9 @@ const DROPDOWN_CONFIG = {
     SCROLLABLE_SELECTORS: '.modal-body, .rr-scrollable, .main-content, .page-content, .overflow-auto, .overflow-y-auto'
 };
 
+const MIN_TRIGGER_WIDTH_PX = 48;
+const LAYOUT_STABILITY_TOLERANCE_PX = 1;
+
 const positioningEngine = new PositioningEngine();
 const domStateManager = createDOMStateManager();
 const eventHandlerManager = createEventHandlerManager();
@@ -440,12 +443,58 @@ class DropdownManagerBase {
     }
 
     _setupEventHandlers(componentId, trigger, viewport, options) {
-        const { componentType, element, adaptedDimensions, desiredPosition, containerRect, offset, onReposition, autoCloseOnScroll, customTriggerBounds } = options;
+        const {
+            componentType,
+            element,
+            adaptedDimensions,
+            desiredPosition,
+            containerRect,
+            offset,
+            onReposition,
+            autoCloseOnScroll,
+            customTriggerBounds
+        } = options;
+
+        let lastKnownBounds = customTriggerBounds || null;
+
+        const resolveTriggerRect = () => {
+            if (!trigger) {
+                return lastKnownBounds;
+            }
+
+            const rect = trigger.getBoundingClientRect();
+
+            if (!lastKnownBounds) {
+                if (rect.width >= MIN_TRIGGER_WIDTH_PX) {
+                    lastKnownBounds = rect;
+                }
+                return lastKnownBounds ?? rect;
+            }
+
+            if (rect.width < MIN_TRIGGER_WIDTH_PX) {
+                return lastKnownBounds;
+            }
+
+            const widthDelta = rect.width - lastKnownBounds.width;
+            const leftDelta = Math.abs(rect.left - lastKnownBounds.left);
+
+            if (widthDelta < -LAYOUT_STABILITY_TOLERANCE_PX) {
+                return lastKnownBounds;
+            }
+
+            if (leftDelta > LAYOUT_STABILITY_TOLERANCE_PX && widthDelta < LAYOUT_STABILITY_TOLERANCE_PX) {
+                return lastKnownBounds;
+            }
+
+            lastKnownBounds = rect;
+            return rect;
+        };
 
         const repositionHandler = () => {
             if (!trigger || !viewport) return;
 
-            const triggerRect = trigger.getBoundingClientRect();
+            const triggerRect = resolveTriggerRect();
+            if (!triggerRect) return;
 
             if (autoCloseOnScroll) {
                 const isVisible = triggerRect.bottom > DROPDOWN_CONFIG.VISIBILITY_BOUNDARY &&

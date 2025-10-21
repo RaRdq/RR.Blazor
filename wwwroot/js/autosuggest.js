@@ -1,6 +1,4 @@
 import dropdownManager from './dropdown-manager.js';
-import { TIMEOUTS } from './event-constants.js';
-
 
 const AUTOSUGGEST_CONFIG = {
     DEFAULT_HEIGHT_PX: 320,
@@ -8,6 +6,9 @@ const AUTOSUGGEST_CONFIG = {
     DEFAULT_OFFSET_PX: 4,
     CLICK_PRIORITY: 10
 };
+
+const LAYOUT_STABILITY_TOLERANCE_PX = 1;
+const LAYOUT_STABILIZATION_FRAMES = 45;
 
 function validateElement(element, elementName) {
     if (!element) {
@@ -42,6 +43,24 @@ function validateAutosuggestStructure(autosuggestElement, autosuggestId) {
     validateElement(trigger, `Autosuggest trigger for ${autosuggestId}`);
 
     return { viewport, trigger };
+}
+
+function nextAnimationFrame() {
+    return new Promise(resolve => requestAnimationFrame(() => resolve()));
+}
+
+async function waitForTriggerExpansion(trigger) {
+    if (!trigger) return;
+
+    let previousWidth = trigger.getBoundingClientRect().width;
+    for (let attempt = 0; attempt < LAYOUT_STABILIZATION_FRAMES; attempt++) {
+        await nextAnimationFrame();
+        const currentWidth = trigger.getBoundingClientRect().width;
+        if (Math.abs(currentWidth - previousWidth) <= LAYOUT_STABILITY_TOLERANCE_PX) {
+            return;
+        }
+        previousWidth = currentWidth;
+    }
 }
 
 class AutosuggestManager {
@@ -97,8 +116,23 @@ class AutosuggestManager {
         const autosuggestElement = document.querySelector(`[data-autosuggest-id="${autosuggestId}"]`);
         const { viewport, trigger } = validateAutosuggestStructure(autosuggestElement, autosuggestId);
 
+        await waitForTriggerExpansion(trigger);
         const triggerRect = trigger.getBoundingClientRect();
         const dropdownHeight = Math.min(AUTOSUGGEST_CONFIG.DEFAULT_HEIGHT_PX, window.innerHeight * AUTOSUGGEST_CONFIG.MAX_VIEWPORT_HEIGHT_RATIO);
+
+        const {
+            position = 'bottom-start',
+            offset = AUTOSUGGEST_CONFIG.DEFAULT_OFFSET_PX,
+            allowMultiple = false,
+            excludeSelectors = [],
+            autoCloseOnScroll = true,
+            clickOutsideOptions
+        } = options;
+
+        const wrapperElement = autosuggestElement.closest('.search-input-wrapper');
+        const wrapperRect = wrapperElement ? wrapperElement.getBoundingClientRect() : null;
+        const targetWidth = wrapperRect ? Math.max(wrapperRect.width, triggerRect.width) : triggerRect.width;
+        const triggerBounds = wrapperRect ?? triggerRect;
 
         return await dropdownManager.positionDropdown(autosuggestElement, {
             contentSelector: '.autosuggest-viewport',
@@ -106,36 +140,33 @@ class AutosuggestManager {
             componentType: 'autosuggest',
             componentId: autosuggestId,
             dimensions: {
-                width: triggerRect.width,
+                width: targetWidth,
                 height: dropdownHeight
             },
-            position: options.position || 'auto',
-            offset: options.offset || AUTOSUGGEST_CONFIG.DEFAULT_OFFSET_PX,
-            allowMultiple: options.allowMultiple || false,
+            position,
+            offset,
+            allowMultiple,
             excludeSelectors: [
                 '.autosuggest-viewport',
                 '.autosuggest-dropdown',
-                `[data-autosuggest-id="${autosuggestId}"]`
+                `[data-autosuggest-id="${autosuggestId}"]`,
+                ...excludeSelectors
             ],
+            customTriggerBounds: triggerBounds,
             onOpen: (element, viewport) => {
                 viewport.classList.remove('autosuggest-viewport-closed');
-                viewport.classList.add('autosuggest-viewport-animating-open');
-
-                setTimeout(() => {
-                    viewport.classList.remove('autosuggest-viewport-animating-open');
-                    viewport.classList.add('autosuggest-viewport-open');
-                }, TIMEOUTS.ANIMATION_FAST);
+                viewport.classList.remove('autosuggest-viewport-animating-close');
+                viewport.classList.remove('autosuggest-viewport-animating-open');
+                viewport.classList.add('autosuggest-viewport-open');
             },
             onClose: (element, viewport) => {
+                viewport.classList.remove('autosuggest-viewport-animating-open');
                 viewport.classList.remove('autosuggest-viewport-open');
-                viewport.classList.add('autosuggest-viewport-animating-close');
-
-                setTimeout(() => {
-                    viewport.classList.remove('autosuggest-viewport-animating-close');
-                    viewport.classList.add('autosuggest-viewport-closed');
-                }, TIMEOUTS.ANIMATION_NORMAL);
+                viewport.classList.remove('autosuggest-viewport-animating-close');
+                viewport.classList.add('autosuggest-viewport-closed');
             },
-            clickOutsideOptions: {
+            autoCloseOnScroll,
+            clickOutsideOptions: clickOutsideOptions || {
                 callback: () => dropdownManager.closeDropdown(autosuggestId)
             }
         });
@@ -180,9 +211,39 @@ class AutosuggestManager {
 
 const autosuggestManager = new AutosuggestManager();
 
+function normalizeOptions(options = {}) {
+    return {
+        position: options.placement || options.position || 'bottom-start',
+        offset: typeof options.offset === 'number' ? options.offset : AUTOSUGGEST_CONFIG.DEFAULT_OFFSET_PX,
+        allowMultiple: options.allowMultiple ?? false,
+        excludeSelectors: Array.isArray(options.excludeSelectors) ? options.excludeSelectors : [],
+        autoCloseOnScroll: options.autoCloseOnScroll ?? true,
+        clickOutsideOptions: options.clickOutsideOptions
+    };
+}
+
+export async function open(autosuggestId, options = {}) {
+    const normalizedOptions = normalizeOptions(options);
+    await autosuggestManager.open(autosuggestId, normalizedOptions);
+}
+
+export async function createPortal(autosuggestId, options = {}) {
+    await open(autosuggestId, options);
+}
+
+export async function close(autosuggestId) {
+    await autosuggestManager.close(autosuggestId);
+}
+
+export async function closeDropdown(autosuggestId) {
+    await close(autosuggestId);
+}
+
 const autosuggestAPI = {
-    open: (autosuggestId, options) => autosuggestManager.open(autosuggestId, options),
-    close: (autosuggestId) => autosuggestManager.close(autosuggestId),
+    open: (autosuggestId, options) => open(autosuggestId, options),
+    close: (autosuggestId) => close(autosuggestId),
+    createPortal: (autosuggestId, options) => createPortal(autosuggestId, options),
+    closeDropdown: (autosuggestId) => closeDropdown(autosuggestId),
     isOpen: (autosuggestId) => dropdownManager.isOpen(autosuggestId),
     closeAll: () => autosuggestManager.closeAll(),
     initialize: () => autosuggestManager.initialize(),
@@ -193,7 +254,9 @@ autosuggestManager.initialize();
 
 if (typeof window !== 'undefined') {
     window.RRBlazor = window.RRBlazor || {};
-    window.RRBlazor.Autosuggest = autosuggestAPI;
+    window.RRBlazor.Autosuggest = {
+        ...autosuggestAPI
+    };
 }
 
 export default autosuggestAPI;

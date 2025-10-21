@@ -51,6 +51,7 @@
                       data-has-value="@(HasValue().ToString().ToLower())"
                       @onfocus="@(async (e) => await HandleFocus(e))"
                       @onblur="@(async (e) => await HandleBlur(e))"
+                      @onclick="HandleClick"
                       @onkeypress="@OnKeyPress"
                       @onkeydown="@OnKeyDown"
                       @attributes="GetSafeAttributes()">@Value</textarea>
@@ -74,6 +75,7 @@
                    data-has-value="@(HasValue().ToString().ToLower())"
                    @onfocus="@(async (e) => await HandleFocus(e))"
                    @onblur="@(async (e) => await HandleBlur(e))"
+                   @onclick="HandleClick"
                    @onkeypress="@OnKeyPress"
                    @onkeydown="@OnKeyDown"
                    @attributes="GetSafeAttributes()" />
@@ -174,6 +176,10 @@
     [Parameter]
     [AIParameter("Show character count indicator for textareas")]
     public bool ShowCharacterCount { get; set; }
+
+    [Parameter]
+    [AIParameter("Disable hover-driven visual effects for the input", Example = "true")]
+    public bool DisableHoverEffects { get; set; }
     
     [Parameter]
     [AIParameter("Textarea resize behavior", SuggestedValues = new[] { "none", "vertical", "horizontal", "both", "auto" })]
@@ -186,6 +192,10 @@
     [Parameter]
     [AIParameter("Field name for form submission")]
     public string? Name { get; set; }
+
+    [Parameter]
+    [AIParameter("Additional CSS classes applied to the rendered input element")]
+    public string InputClass { get; set; } = string.Empty;
     
     #endregion
     
@@ -230,6 +240,12 @@
     private bool HasUserInteracted { get; set; }
     private bool IsFocused { get; set; }
     
+    private async Task HandleClick(MouseEventArgs e)
+    {
+        if (OnClick.HasDelegate)
+            await OnClick.InvokeAsync(e);
+    }
+    
     protected override async Task HandleFocus(FocusEventArgs e)
     {
         IsFocused = true;
@@ -257,6 +273,9 @@
         
         if (!string.IsNullOrEmpty(Class))
             classes.Add(Class);
+
+        if (FullWidth)
+            classes.Add("w-full");
             
         return string.Join(" ", classes);
     }
@@ -264,6 +283,9 @@
     private string GetWrapperClasses()
     {
         var classes = new List<string> { "relative" };
+
+        if (FullWidth)
+            classes.Add("w-full");
         
         if (IsFloatingLabel())
         {
@@ -344,10 +366,15 @@
         }
         
         // Hover effects - disabled during loading to prevent layout shifts
-        if (!Disabled && !ReadOnly && !Loading)
+        if (!Disabled && !ReadOnly && !Loading && !DisableHoverEffects)
         {
             classes.Add("hover:shadow-sm");
             classes.Add("hover:-translate-y-px");
+        }
+
+        if (!string.IsNullOrWhiteSpace(InputClass))
+        {
+            classes.Add(InputClass);
         }
         
         return string.Join(" ", classes.Where(c => !string.IsNullOrEmpty(c)));

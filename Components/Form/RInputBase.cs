@@ -115,6 +115,7 @@ namespace RR.Blazor.Components.Form
         [Parameter] public EventCallback<FocusEventArgs> OnBlur { get; set; }
         [Parameter] public EventCallback<KeyboardEventArgs> OnKeyPress { get; set; }
         [Parameter] public EventCallback<KeyboardEventArgs> OnKeyDown { get; set; }
+        [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
         [Parameter] public EventCallback<MouseEventArgs> OnStartIconClick { get; set; }
         [Parameter] public EventCallback<MouseEventArgs> OnEndIconClick { get; set; }
         

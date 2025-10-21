@@ -14,6 +14,7 @@ Reuses RChoice's dropdown body and portal system.
 @using RR.Blazor.Components.Base
 @using Microsoft.AspNetCore.Components.Web
 @using RR.Blazor.Components.Form
+@using Microsoft.JSInterop
 @typeparam TItem where TItem : notnull
 @inherits RComponentBase
 @inject IJSRuntime JS
@@ -35,13 +36,17 @@ Reuses RChoice's dropdown body and portal system.
                Disabled="@Disabled"
                ReadOnly="@ReadOnly"
                Required="@Required"
-               Class="@GetInputClasses()"
+               Class="@GetTriggerContainerClasses()"
+               InputClass="@GetTriggerInputClasses()"
+               FullWidth="true"
+               DisableHoverEffects="true"
                StartIcon="@GetEffectiveStartIcon()"
                EndIcon="@GetEndIcon()"
                OnFocus="@HandleInputFocus"
                OnBlur="@HandleInputBlur"
-               @onclick="@HandleInputClick"
+               OnClick="HandleInputClick"
                @onkeydown="@HandleKeyDown"
+               AdditionalAttributes="@GetTriggerAttributes()"
                @ref="inputRef" />
 
     <div class="autosuggest-viewport @(isDropdownOpen ? "autosuggest-viewport-open" : "autosuggest-viewport-closed")" 
@@ -188,17 +193,29 @@ Reuses RChoice's dropdown body and portal system.
         if (isDropdownOpen || autosuggestModule == null) return;
         
         isDropdownOpen = true;
-        StateHasChanged();
+        await InvokeAsync(StateHasChanged);
+        await Task.Yield();
         
+        var options = new
+        {
+            placement = "bottom-start",
+            offset = 4,
+            flip = true,
+            constrain = true
+        };
+
         try
         {
-            await autosuggestModule.InvokeAsync<string>("createPortal", autosuggestId, new
+            await autosuggestModule.InvokeVoidAsync("open", autosuggestId, options);
+        }
+        catch (JSException jsEx)
+        {
+            var opened = await TryFallbackOpenAsync(options);
+            if (!opened)
             {
-                placement = "bottom-start",
-                offset = 4,
-                flip = true,
-                constrain = true
-            });
+                Console.WriteLine($"Failed to open dropdown: {jsEx.Message}");
+                isDropdownOpen = false;
+            }
         }
         catch (Exception ex)
         {
@@ -212,20 +229,80 @@ Reuses RChoice's dropdown body and portal system.
         if (!isDropdownOpen) return;
         
         isDropdownOpen = false;
-        
+        await TryCloseModuleAsync();
+        StateHasChanged();
+    }
+
+    private async Task<bool> TryFallbackOpenAsync(object options)
+    {
+        if (autosuggestModule != null)
+        {
+            try
+            {
+                await autosuggestModule.InvokeVoidAsync("createPortal", autosuggestId, options);
+                return true;
+            }
+            catch (Exception moduleFallbackEx)
+            {
+                Console.WriteLine($"Module fallback createPortal failed: {moduleFallbackEx.Message}");
+            }
+        }
+
+        try
+        {
+            await JS.InvokeVoidAsync("RRBlazor.Autosuggest.open", autosuggestId, options);
+            return true;
+        }
+        catch (Exception globalFallbackEx)
+        {
+            Console.WriteLine($"Global autosuggest open failed: {globalFallbackEx.Message}");
+            return false;
+        }
+    }
+
+    private async Task TryCloseModuleAsync()
+    {
+        if (autosuggestModule != null)
+        {
+            try
+            {
+                await autosuggestModule.InvokeVoidAsync("close", autosuggestId);
+                return;
+            }
+            catch (Exception moduleCloseEx)
+            {
+                Console.WriteLine($"Module close failed: {moduleCloseEx.Message}");
+            }
+        }
+
+        await TryFallbackCloseAsync();
+    }
+
+    private async Task<bool> TryFallbackCloseAsync()
+    {
         if (autosuggestModule != null)
         {
             try
             {
                 await autosuggestModule.InvokeVoidAsync("closeDropdown", autosuggestId);
+                return true;
             }
-            catch
+            catch (Exception moduleFallbackEx)
             {
-                // Ignore disposal errors
+                Console.WriteLine($"Module fallback closeDropdown failed: {moduleFallbackEx.Message}");
             }
         }
-        
-        StateHasChanged();
+
+        try
+        {
+            await JS.InvokeVoidAsync("RRBlazor.Autosuggest.close", autosuggestId);
+            return true;
+        }
+        catch (Exception globalFallbackEx)
+        {
+            Console.WriteLine($"Global autosuggest close failed: {globalFallbackEx.Message}");
+            return false;
+        }
     }
 
     private async Task HandleValueChanged(string value)
@@ -271,23 +348,12 @@ Reuses RChoice's dropdown body and portal system.
         
         isDropdownOpen = false;
         
-        if (autosuggestModule != null)
-        {
-            try
-            {
-                // Tell JS to do animated close
-                await autosuggestModule.InvokeVoidAsync("closeDropdown", autosuggestId);
-            }
-            catch
-            {
-                // Ignore disposal errors
-            }
-        }
+        await TryFallbackCloseAsync();
         
         StateHasChanged();
     }
 
-    private async Task HandleInputClick()
+    private async Task HandleInputClick(MouseEventArgs _)
     {
         if (!OpenOnClick || Disabled || ReadOnly) return;
         
@@ -357,11 +423,22 @@ Reuses RChoice's dropdown body and portal system.
 
                 try
                 {
-                    // Only set loading if dropdown is already open to prevent layout shifts
-                    if (isDropdownOpen && ShowLoading)
+                    var openedForSearch = false;
+
+                    if (!isDropdownOpen)
+                    {
+                        selectedIndex = -1;
+                        await OpenDropdown();
+                        openedForSearch = true;
+                    }
+
+                    if (ShowLoading)
                     {
                         isLoading = true;
-                        StateHasChanged();
+                        if (!openedForSearch)
+                        {
+                            StateHasChanged();
+                        }
                     }
                     
                     var results = await SearchFunc(searchQuery, cancellationTokenSource.Token);
@@ -369,16 +446,14 @@ Reuses RChoice's dropdown body and portal system.
                     {
                         Items = results ?? Enumerable.Empty<TItem>();
                         isLoading = false;
-                        
-                        if (!isDropdownOpen && FilteredItems.Any())
+                        selectedIndex = -1;
+
+                        if (!isDropdownOpen)
                         {
                             await OpenDropdown();
-                            selectedIndex = -1;
                         }
-                        else if (isDropdownOpen)
-                        {
-                            StateHasChanged(); // Update with new results
-                        }
+
+                        StateHasChanged();
                     }
                 }
                 catch (OperationCanceledException) 
@@ -386,6 +461,10 @@ Reuses RChoice's dropdown body and portal system.
                     if (currentGeneration == searchGeneration)
                     {
                         isLoading = false;
+                        if (isDropdownOpen && ShowLoading)
+                        {
+                            StateHasChanged();
+                        }
                     }
                 }
                 catch (Exception ex)
@@ -394,7 +473,10 @@ Reuses RChoice's dropdown body and portal system.
                     if (currentGeneration == searchGeneration)
                     {
                         isLoading = false;
-                        StateHasChanged();
+                        if (isDropdownOpen)
+                        {
+                            StateHasChanged();
+                        }
                     }
                 }
             });
@@ -469,9 +551,19 @@ Reuses RChoice's dropdown body and portal system.
         return string.Join(" ", classes);
     }
 
-    private string GetInputClasses()
+    private string GetTriggerContainerClasses() => "autosuggest-input";
+
+    private string GetTriggerInputClasses() => "autosuggest-trigger";
+
+    private Dictionary<string, object> GetTriggerAttributes()
     {
-        return "autosuggest-input";
+        return new Dictionary<string, object>
+        {
+            ["data-autosuggest-trigger"] = "true",
+            ["role"] = "combobox",
+            ["aria-autocomplete"] = "list",
+            ["aria-expanded"] = isDropdownOpen ? "true" : "false"
+        };
     }
 
     private string GetItemClasses(int index)

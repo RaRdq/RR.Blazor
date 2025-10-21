@@ -101,50 +101,54 @@
             <div class="app-header-right">
                 @if (ShowSearch)
                 {
-                    <div class="app-search-container @(searchExpanded ? "expanded" : "collapsed")" 
-                         @ref="searchContainerRef"
-                         data-search-container="@(searchExpanded ? "true" : "false")">
-                        @if (SearchCollapsible && !searchExpanded)
-                        {
-                            <RButton Icon="search" 
-                                     Variant="VariantType.Primary"
-                                     Mode="ButtonMode.Outline"
-                                     Size="SizeType.Small"
-                                     OnClick="@ExpandSearch" 
-                                     AriaLabel="Open search"
-                                     Class="search-toggle-btn" />
-                        }
-                        
-                        @if (!SearchCollapsible || searchExpanded)
-                        {
-                            <div class="search-input-wrapper">
+                    <div class="app-search">
+                        <div class="@GetSearchContainerClasses()" 
+                             @ref="searchContainerRef"
+                             data-search-container="@(searchExpanded ? "true" : "false")">
+                            @if (SearchCollapsible)
+                            {
+                                <RButton Icon="search" 
+                                         Variant="VariantType.Primary"
+                                         Mode="ButtonMode.Outline"
+                                         Size="SizeType.Medium"
+                                         OnClick="@ExpandSearch" 
+                                         Disabled="@(searchExpanded)"
+                                         AriaLabel="Open search"
+                                         Class="search-toggle-btn" />
+                            }
+                            
+                            <div class="@GetSearchInputWrapperClasses()"
+                                 aria-hidden="@(SearchCollapsible && !searchExpanded ? "true" : "false")">
                                 <RAutosuggestGeneric TItem="AppSearchResult" 
-                                                   SearchFunc="@HandleSearchAsync"
-                                                   ItemTextSelector="@(result => result.Title)"
-                                                   ItemIconSelector="@(result => result.Icon)"
-                                                   Placeholder="Search..."
-                                                   StartIcon="search"
-                                                   MinSearchLength="1"
-                                                   DebounceDelay="300"
-                                                   MaxSuggestions="8"
-                                                   ShowLoading="true"
-                                                   ShowDropdownIcon="false"
-                                                   Size="SizeType.Small"
-                                                   OnItemSelected="@HandleSearchItemSelected"
-                                                   Class="app-search-input" />
+                                                     SearchFunc="@HandleSearchAsync"
+                                                     ItemTextSelector="@(result => result.Title)"
+                                                     ItemIconSelector="@(result => result.Icon)"
+                                                     Placeholder="Search..."
+                                                     StartIcon="search"
+                                                     MinSearchLength="1"
+                                                     DebounceDelay="300"
+                                                     MaxSuggestions="8"
+                                                     ShowLoading="true"
+                                                     ShowDropdownIcon="false"
+                                                     Size="SizeType.Medium"
+                                                     Disabled="@(SearchCollapsible && !searchExpanded)"
+                                                     OnItemSelected="@HandleSearchItemSelected"
+                                                     FullWidth="true"
+                                                     Class="app-search-input" />
                                 
-                                @if (SearchCollapsible && searchExpanded)
+                                @if (SearchCollapsible)
                                 {
                                     <RButton Icon="close" 
                                              Variant="VariantType.Secondary"
                                              Mode="ButtonMode.Outline"
-                                             Size="SizeType.Small"
+                                             Size="SizeType.Medium"
+                                             Disabled="@(!searchExpanded)"
                                              OnClick="@CollapseSearch" 
                                              AriaLabel="Close search"
                                              Class="search-close-btn" />
                                 }
                             </div>
-                        }
+                        </div>
                     </div>
                 }
                 
@@ -614,12 +618,13 @@
 
     private async Task ExpandSearch()
     {
-        if (!searchExpanded)
-        {
-            searchExpanded = true;
-            StateHasChanged();
-            await InitializeSearchClickOutside();
-        }
+        if (searchExpanded) return;
+
+        searchExpanded = true;
+        StateHasChanged();
+        await InitializeSearchClickOutside();
+        await Task.Yield();
+        await FocusSearchInputAsync();
     }
 
     private async Task CollapseSearch()
@@ -632,6 +637,20 @@
         }
     }
     
+    private async Task FocusSearchInputAsync()
+    {
+        if (appShellModule == null) return;
+
+        try
+        {
+            await appShellModule.InvokeVoidAsync("focusSearch");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[RAppShell] Search focus error: {ex.Message}");
+        }
+    }
+
     private async Task InitializeSearchClickOutside()
     {
         if (appShellModule != null)
@@ -707,8 +726,38 @@
     {
         return "app-logo";
     }
-    
-    
+
+    private string GetSearchContainerClasses()
+    {
+        var classes = new List<string>
+        {
+            "app-search-container",
+            "search-container"
+        };
+
+        if (SearchCollapsible)
+        {
+            classes.Add("collapsible");
+            classes.Add(searchExpanded ? "expanded" : "collapsed");
+        }
+        else
+        {
+            classes.Add("static");
+        }
+
+        return string.Join(" ", classes);
+    }
+
+    private string GetSearchInputWrapperClasses()
+    {
+        if (!SearchCollapsible)
+        {
+            return "search-input-wrapper static";
+        }
+
+        return $"search-input-wrapper {(searchExpanded ? "expanded" : "collapsed")}";
+    }
+
     private string GetSidebarClasses()
     {
         var classes = new List<string> { "app-sidebar" };
