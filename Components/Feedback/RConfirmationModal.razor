@@ -1,4 +1,5 @@
 @* RConfirmationModal - Confirmation modal WITH RModal wrapper built-in *@
+@using System.Collections.Generic
 @using RR.Blazor.Components.Base
 @using RR.Blazor.Components.Core
 @using RR.Blazor.Enums
@@ -16,18 +17,31 @@
         ShowHeader="@ShowHeader"
         ShowFooter="true">
     <ChildContent>
-        <div class="d-flex flex-column align-center text-center gap-4">
+        <div class="r-confirmation-modal-content d-flex flex-column align-center gap-4 text-center">
             <div class="d-flex align-center justify-center square-12 min-w-12 min-h-12 rounded-full flex-shrink-0 @GetIconBackgroundClass()">
                 <i class="material-symbols-rounded @GetIconColorClass()">@Icon</i>
             </div>
-            <div class="d-flex flex-column gap-2">
+            <div class="d-flex flex-column gap-3 w-100">
                 @if (ChildContent != null)
                 {
                     @ChildContent
                 }
                 else
                 {
-                    <p class="text-center text-base">@Message</p>
+                    @foreach (var intro in introLines)
+                    {
+                        <p class="r-confirmation-modal-message text-base @(shouldLeftAlignContent ? "text-left" : "text-center")">@intro</p>
+                    }
+
+                    @if (bulletLines.Count > 0)
+                    {
+                        <ul class="r-confirmation-modal-message-list text-left">
+                            @foreach (var bullet in bulletLines)
+                            {
+                                <li>@bullet</li>
+                            }
+                        </ul>
+                    }
                 }
             </div>
         </div>
@@ -52,7 +66,7 @@
 
 @code {
     private RModal modalRef;
-    
+
     [Parameter] public string Message { get; set; } = "Are you sure you want to proceed?";
     [Parameter] public string ConfirmText { get; set; } = "Confirm";
     [Parameter] public string CancelText { get; set; } = "Cancel";
@@ -63,7 +77,7 @@
     [Parameter] public EventCallback<bool> VisibleChanged { get; set; }
     [Parameter] public EventCallback OnConfirm { get; set; }
     [Parameter] public EventCallback OnCancel { get; set; }
-    
+
     // Modal parameters
     [Parameter] public string Title { get; set; } = "Confirm";
     [Parameter] public SizeType Size { get; set; } = SizeType.Small;
@@ -71,13 +85,42 @@
     [Parameter] public bool CloseOnEscape { get; set; } = true;
     [Parameter] public bool ShowCloseButton { get; set; } = true;
     [Parameter] public bool ShowHeader { get; set; } = true;
-    
+
+    private List<string> introLines = new();
+    private List<string> bulletLines = new();
+    private bool shouldLeftAlignContent;
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+
+        var segments = Message.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        var intros = new List<string>(segments.Length);
+        var bullets = new List<string>();
+
+        foreach (var segment in segments)
+        {
+            if (segment.StartsWith("•", System.StringComparison.Ordinal))
+            {
+                bullets.Add(segment.TrimStart('•').TrimStart());
+                continue;
+            }
+
+            intros.Add(segment);
+        }
+
+        introLines = intros;
+        bulletLines = bullets;
+        shouldLeftAlignContent = bulletLines.Count > 0 || introLines.Count > 1;
+    }
+
     private async Task HandleConfirm()
     {
         if (OnConfirm.HasDelegate)
             await OnConfirm.InvokeAsync();
     }
-    
+
     private async Task HandleCancel()
     {
         if (OnCancel.HasDelegate)
