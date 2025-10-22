@@ -30,7 +30,7 @@
                 {
                     @foreach (var intro in introLines)
                     {
-                        <p class="r-confirmation-modal-message text-base @(shouldLeftAlignContent ? "text-left" : "text-center")">@intro</p>
+                        <p class="r-confirmation-modal-message text-base @messageAlignmentClass">@intro</p>
                     }
 
                     @if (bulletLines.Count > 0)
@@ -85,10 +85,11 @@
     [Parameter] public bool CloseOnEscape { get; set; } = true;
     [Parameter] public bool ShowCloseButton { get; set; } = true;
     [Parameter] public bool ShowHeader { get; set; } = true;
+    [Parameter] public TextAlignment MessageAlignment { get; set; } = TextAlignment.Auto;
 
     private List<string> introLines = new();
     private List<string> bulletLines = new();
-    private bool shouldLeftAlignContent;
+    private string messageAlignmentClass = "text-center";
 
     protected override void OnParametersSet()
     {
@@ -112,7 +113,17 @@
 
         introLines = intros;
         bulletLines = bullets;
-        shouldLeftAlignContent = bulletLines.Count > 0 || introLines.Count > 1;
+
+        var requiresLeftAlignment = bulletLines.Count > 0 || introLines.Count > 1;
+
+        messageAlignmentClass = MessageAlignment switch
+        {
+            TextAlignment.Left => "text-left",
+            TextAlignment.Center => "text-center",
+            TextAlignment.Right => "text-right",
+            TextAlignment.Justify => "text-justify",
+            _ => requiresLeftAlignment ? "text-left" : "text-center"
+        };
     }
 
     private async Task HandleConfirm()
