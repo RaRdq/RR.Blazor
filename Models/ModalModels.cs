@@ -153,6 +153,7 @@ public record ConfirmationOptions
     public string? CancelText { get; init; }
     public VariantType Variant { get; init; } = VariantType.Default;
     public bool IsDestructive { get; init; }
+    public TextAlignment MessageAlignment { get; init; } = TextAlignment.Auto;
 }
 
 public record FormModalOptions<T>

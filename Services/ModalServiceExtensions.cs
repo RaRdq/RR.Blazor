@@ -28,7 +28,8 @@ public static class ModalServiceExtensions
         string title = "Confirm",
         string confirmText = "Yes",
         string cancelText = "Cancel",
-        VariantType variant = VariantType.Default)
+        VariantType variant = VariantType.Default,
+        TextAlignment messageAlignment = TextAlignment.Auto)
     {
         var tcs = new TaskCompletionSource<bool>();
         var modalId = $"confirmation-{Guid.NewGuid():N}";
@@ -47,6 +48,7 @@ public static class ModalServiceExtensions
             ["CloseOnEscape"] = true,
             ["ShowCloseButton"] = true,
             ["ShowHeader"] = true,
+            ["MessageAlignment"] = messageAlignment,
             ["OnConfirm"] = EventCallback.Factory.Create(modalService, async () =>
             {
                 tcs.TrySetResult(true);
@@ -81,7 +83,8 @@ public static class ModalServiceExtensions
             confirmOptions.Title,
             confirmOptions.ConfirmText ?? "Confirm",
             confirmOptions.CancelText ?? "Cancel",
-            confirmOptions.IsDestructive ? VariantType.Error : confirmOptions.Variant);
+            confirmOptions.IsDestructive ? VariantType.Error : confirmOptions.Variant,
+            confirmOptions.MessageAlignment);
 
     public static Task<bool> ShowInfoAsync(this IModalService modalService, string message, string title = "Information")
         => modalService.ShowConfirmationAsync(message, title, "OK", "", VariantType.Info);

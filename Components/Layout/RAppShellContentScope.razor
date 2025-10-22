@@ -1,0 +1,39 @@
+@using RR.Blazor.Components.Layout
+@implements IDisposable
+
+@if (ChildContent != null)
+{
+    @ChildContent
+}
+
+@code {
+    [CascadingParameter] internal AppShellContentState AppShellContentState { get; set; }
+
+    [Parameter] public AppShellContentMode Mode { get; set; } = AppShellContentMode.Standard;
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private bool modeApplied;
+
+    protected override void OnInitialized()
+    {
+        if (AppShellContentState == null)
+        {
+            throw new InvalidOperationException("RAppShellContentScope requires an RAppShell ancestor to provide layout context.");
+        }
+
+        AppShellContentState.Push(Mode);
+        modeApplied = true;
+    }
+
+    public void Dispose()
+    {
+        if (!modeApplied || AppShellContentState == null)
+        {
+            return;
+        }
+
+        AppShellContentState.Pop();
+        modeApplied = false;
+    }
+}
