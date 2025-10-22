@@ -8,6 +8,7 @@
 @using RR.Blazor.Enums
 @using RR.Blazor.Attributes
 @using RR.Blazor.Components.Form
+@using RR.Blazor.Components.Layout
 @using Microsoft.AspNetCore.Components.Routing
 @using Microsoft.AspNetCore.Components.Web
 
@@ -246,22 +247,24 @@
         </aside>
     }
     @* Main content area *@
-    <main class="@GetMainClasses()">
-        @if (AutoWrapContent)
-        {
-            <RContent MaxWidth="@DefaultContentMaxWidth" 
-                      Density="@DefaultContentDensity"
-                      FullWidth="@DefaultContentFullWidth"
-                      Centered="@DefaultContentCentered"
-                      Class="@DefaultContentClass">
+    <CascadingValue Value="@_contentState">
+        <main class="@GetMainClasses()">
+            @if (AutoWrapContent)
+            {
+                <RContent MaxWidth="@GetEffectiveContentMaxWidth()" 
+                          Density="@DefaultContentDensity"
+                          FullWidth="@IsContentFullWidth()"
+                          Centered="@IsContentCentered()"
+                          Class="@DefaultContentClass">
+                    @ChildContent
+                </RContent>
+            }
+            else
+            {
                 @ChildContent
-            </RContent>
-        }
-        else
-        {
-            @ChildContent
-        }
-    </main>
+            }
+        </main>
+    </CascadingValue>
     
     @if (ShowSidebar && sidebarOpen && IsMobile)
     {
@@ -427,6 +430,7 @@
     private DotNetObjectReference<RAppShell> dotNetRef;
     private IJSObjectReference appShellModule;
     private bool disposed = false;
+    private readonly AppShellContentState _contentState = new();
     private bool sidebarCollapsed = false;
     private bool sidebarOpen = true;
     private bool searchExpanded = false;
@@ -444,6 +448,7 @@
     protected override async Task OnInitializedAsync()
     {
         sidebarCollapsed = SidebarCollapsedDefault;
+        _contentState.StateChanged += OnContentStateChanged;
 
         try
         {
@@ -778,13 +783,33 @@
         if (AutoWrapContent)
             classes.Add("auto-wrap-content");
             
-        if (DefaultContentFullWidth)
+        if (IsContentFullWidth())
             classes.Add("full-width-content");
         
         if (!string.IsNullOrEmpty(MainClass))
             classes.Add(MainClass);
         
         return string.Join(" ", classes);
+    }
+
+    private bool IsContentFullWidth()
+    {
+        if (DefaultContentFullWidth)
+        {
+            return true;
+        }
+
+        return _contentState.CurrentMode == AppShellContentMode.FullWidth;
+    }
+
+    private string GetEffectiveContentMaxWidth()
+    {
+        return IsContentFullWidth() ? "none" : DefaultContentMaxWidth;
+    }
+
+    private bool IsContentCentered()
+    {
+        return !IsContentFullWidth() && DefaultContentCentered;
     }
     
     private string GetBackdropClasses()
@@ -808,6 +833,16 @@
         }
         
         return string.Join(" ", classes);
+    }
+
+    private void OnContentStateChanged()
+    {
+        if (disposed)
+        {
+            return;
+        }
+
+        _ = InvokeAsync(StateHasChanged);
     }
     
     private static List<NavMenuItem> GetDefaultNavigation()
@@ -833,6 +868,8 @@
         if (!disposed)
         {
             disposed = true;
+
+            _contentState.StateChanged -= OnContentStateChanged;
             
             if (appShellModule != null)
             {
