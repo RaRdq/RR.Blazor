@@ -77,6 +77,7 @@
     [CascadingParameter] private RAccordion Parent { get; set; }
     
     private bool isExpanded;
+    private bool? lastExpandedParameter;
     private string contentId => $"accordion-content-{Id}";
     
     protected override void OnInitialized()
@@ -91,15 +92,33 @@
             Parent?.ExpandItem(Id);
         }
 
+        lastExpandedParameter = Expanded;
         isExpanded = Parent.IsExpanded(Id);
     }
 
     protected override void OnParametersSet()
     {
-        // ONLY read parent state - do NOT write back to parent during parameter updates
-        // Expanded parameter controls INITIAL state only, not runtime state
-        // Parent's expandedItems HashSet is the single source of truth for runtime
-        isExpanded = Parent?.IsExpanded(Id) ?? Expanded;
+        if (Parent == null)
+        {
+            isExpanded = Expanded;
+            return;
+        }
+
+        if (lastExpandedParameter != Expanded)
+        {
+            if (Expanded)
+            {
+                Parent.ExpandItem(Id);
+            }
+            else
+            {
+                Parent.CollapseItem(Id);
+            }
+
+            lastExpandedParameter = Expanded;
+        }
+
+        isExpanded = Parent.IsExpanded(Id);
     }
     
     private async Task ToggleExpanded()
