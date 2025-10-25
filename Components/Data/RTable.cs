@@ -14,6 +14,7 @@ public class RTable : RTableBase
     [Parameter] public object Items { get; set; }
 
     private bool _isDisposed = false;
+    private readonly EventCallbackFactory _eventCallbackFactory = new();
 
     // Static cache for compiled EventCallback wrappers - compiled once at startup/first use
     private static readonly ConcurrentDictionary<string, object> _compiledWrapperCache = new();
@@ -61,6 +62,46 @@ public class RTable : RTableBase
         _isDisposed = true;
     }
     
+    private async Task HandlePageSizeChangedAsync(int newSize)
+    {
+        if (_isDisposed)
+        {
+            return;
+        }
+
+        if (PageSize != newSize)
+        {
+            PageSize = newSize;
+        }
+
+        if (PageSizeChanged.HasDelegate)
+        {
+            await PageSizeChanged.InvokeAsync(newSize);
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task HandleCurrentPageChangedAsync(int newPage)
+    {
+        if (_isDisposed)
+        {
+            return;
+        }
+
+        if (CurrentPage != newPage)
+        {
+            CurrentPage = newPage;
+        }
+
+        if (CurrentPageChanged.HasDelegate)
+        {
+            await CurrentPageChanged.InvokeAsync(newPage);
+        }
+
+        StateHasChanged();
+    }
+
     private void BuildGenericTable(RenderTreeBuilder builder, IEnumerable items, Type itemType)
     {
         var tableType = typeof(RTableGeneric<>).MakeGenericType(itemType);
@@ -127,8 +168,8 @@ public class RTable : RTableBase
         builder.AddAttribute(++seq, "HeaderTemplate", HeaderTemplate);
         builder.AddAttribute(++seq, "FooterTemplate", FooterTemplate);
         
-        builder.AddAttribute(++seq, "PageSizeChanged", PageSizeChanged);
-        builder.AddAttribute(++seq, "CurrentPageChanged", CurrentPageChanged);
+        builder.AddAttribute(++seq, "PageSizeChanged", _eventCallbackFactory.Create<int>(this, HandlePageSizeChangedAsync));
+        builder.AddAttribute(++seq, "CurrentPageChanged", _eventCallbackFactory.Create<int>(this, HandleCurrentPageChangedAsync));
         builder.AddAttribute(++seq, "SortByChanged", SortByChanged);
         builder.AddAttribute(++seq, "SortDescendingChanged", SortDescendingChanged);
 
