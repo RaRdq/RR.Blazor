@@ -13,20 +13,22 @@ namespace RR.Blazor.Tests.Components;
 /// </summary>
 public class RAppShellThemeTests : TestContext
 {
-    private Mock<IThemeService> mockThemeService;
+    private Mock<IRThemeService> mockThemeService;
     private Mock<IJSRuntime> mockJSRuntime;
     private Mock<IToastService> mockToastService;
     private Mock<IAppSearchService> mockAppSearchService;
     private Mock<IAppConfigurationService> mockAppConfigService;
+    private Mock<IJavaScriptInteropService> mockJsInterop;
 
     public RAppShellThemeTests()
     {
         // Setup all required mocks for RAppShell
-        mockThemeService = new Mock<IThemeService>();
+        mockThemeService = new Mock<IRThemeService>();
         mockJSRuntime = new Mock<IJSRuntime>();
         mockToastService = new Mock<IToastService>();
         mockAppSearchService = new Mock<IAppSearchService>();
         mockAppConfigService = new Mock<IAppConfigurationService>();
+        mockJsInterop = new Mock<IJavaScriptInteropService>();
 
         // Register services
         Services.AddSingleton(mockThemeService.Object);
@@ -34,11 +36,13 @@ public class RAppShellThemeTests : TestContext
         Services.AddSingleton(mockToastService.Object);
         Services.AddSingleton(mockAppSearchService.Object);
         Services.AddSingleton(mockAppConfigService.Object);
+        Services.AddSingleton(mockJsInterop.Object);
 
         // Setup default app configuration
         var defaultConfig = new AppConfiguration { Title = "Test App" };
         mockAppConfigService.Setup(x => x.LoadAsync()).Returns(Task.CompletedTask);
         mockAppConfigService.Setup(x => x.Current).Returns(defaultConfig);
+        mockJsInterop.Setup(x => x.IsInteractiveAsync()).ReturnsAsync(true);
     }
 
     [Fact]

@@ -107,6 +107,7 @@ class ModuleManager {
             'image': { path: './image.js' },
             'filter': { path: './filter.js', preload: true },
             'rgrid': { path: './rgrid.js' },
+            'rkanboard': { path: './rkanboard.js' },
             'skeleton': { path: './skeleton.js', preload: true },
             'domStateManager': { path: './dom-state-manager.js', preload: true },
             'eventHandlerManager': { path: './event-handler-manager.js', preload: true },
@@ -406,7 +407,110 @@ const RRBlazor = {
     Chart: createUniversalProxy('chart'),
     Table: createUniversalProxy('table'),
     TableScroll: createUniversalProxy('tableScroll'),
-    Grid: createUniversalProxy('grid'),
+    RGrid: {
+        async initialize(gridId, options) {
+            if (!gridId) {
+                return false;
+            }
+
+            const module = await moduleManager.loadModule('rgrid');
+            let api = module && (module.default || module);
+            if (!api || typeof api.initialize !== 'function') {
+                api = window.RGridModule;
+            }
+            if (api && typeof api.initialize === 'function') {
+                api.initialize(gridId, options || {});
+                return true;
+            }
+
+            return false;
+        },
+        async dispose(gridId) {
+            if (!gridId) {
+                return false;
+            }
+
+            const module = await moduleManager.loadModule('rgrid');
+            let api = module && (module.default || module);
+            if (!api || typeof api.dispose !== 'function') {
+                api = window.RGridModule;
+            }
+            if (api && typeof api.dispose === 'function') {
+                api.dispose(gridId);
+                return true;
+            }
+
+            return false;
+        },
+        async refresh(gridId) {
+            const module = await moduleManager.loadModule('rgrid');
+            let api = module && (module.default || module);
+            if (!api || typeof api.refresh !== 'function') {
+                api = window.RGridModule;
+            }
+            if (api && typeof api.refresh === 'function') {
+                api.refresh(gridId);
+                return true;
+            }
+
+            return false;
+        }
+    },
+    RKanboard: {
+        async initialize(boardId, options) {
+            if (!boardId) {
+                return false;
+            }
+
+            const module = await moduleManager.loadModule('rkanboard');
+            let api = module && (module.default || module);
+            if (!api || typeof api.initialize !== 'function') {
+                api = window.RKanboardModule;
+            }
+            if (api && typeof api.initialize === 'function') {
+                api.initialize(boardId, options || {});
+                return true;
+            }
+
+            return false;
+        },
+        async refresh(boardId, options) {
+            if (!boardId) {
+                return false;
+            }
+
+            const module = await moduleManager.loadModule('rkanboard');
+            let api = module && (module.default || module);
+            if (!api || typeof api.refresh !== 'function') {
+                api = window.RKanboardModule;
+            }
+            if (api && typeof api.refresh === 'function') {
+                api.refresh(boardId, options || {});
+                return true;
+            }
+
+            return false;
+        },
+        async dispose(boardId) {
+            if (!boardId) {
+                return false;
+            }
+
+            const module = await moduleManager.loadModule('rkanboard');
+            let api = module && (module.default || module);
+            if (!api || typeof api.dispose !== 'function') {
+                api = window.RKanboardModule;
+            }
+            if (api && typeof api.dispose === 'function') {
+                api.dispose(boardId);
+                return true;
+            }
+
+            return false;
+        }
+    },
+    Grid: createUniversalProxy('rgrid'),
+    Kanboard: createUniversalProxy('rkanboard'),
     Clipboard: createUniversalProxy('clipboard'),
     Loader: createUniversalProxy('loader'),
     Toast: createUniversalProxy('toast'),
@@ -471,6 +575,8 @@ const RRBlazor = {
 };
 
 window.RRBlazor = RRBlazor;
+window.RR = window.RR || {};
+window.RR.Blazor = RRBlazor;
 window.moduleManager = moduleManager;
 
 window.RRBlazor.isSafeForInterop = function() {
@@ -520,6 +626,7 @@ window.RRBlazor.safeInvoke = function(method, ...args) {
     }
 };
 window.RRFileUpload = createUniversalProxy('fileUpload');
+window.RRKanboard = RRBlazor.RKanboard;
 window.RRDebugLogger = DebugLogger;
 window.debugLogger = debugLogger;
 

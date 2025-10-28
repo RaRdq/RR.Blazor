@@ -74,6 +74,7 @@ namespace RR.Blazor.Components.Base
         private readonly List<CancellationTokenSource> _cancellationTokenSources = new();
         private bool _disposed;
         private bool _jsInitialized;
+        private bool _jsInitPending;
         private bool? _isWebAssembly;
 
         /// <summary>
@@ -120,6 +121,7 @@ namespace RR.Blazor.Components.Base
         protected async Task<T> SafeInvokeAsync<T>(string identifier, params object[] args)
         {
             if (_disposed) return default(T);
+            if (JSInterop == null) return default(T);
             
             try
             {
@@ -148,6 +150,7 @@ namespace RR.Blazor.Components.Base
         protected async Task SafeInvokeAsync(string identifier, params object[] args)
         {
             if (_disposed) return;
+            if (JSInterop == null) return;
             
             try
             {
@@ -175,17 +178,25 @@ namespace RR.Blazor.Components.Base
         /// </summary>
         protected override async Task OnAfterRenderAsync(bool firstRender)
         {
-            if (firstRender && !_jsInitialized && !_disposed)
+            if (!_jsInitialized && !_disposed)
             {
-                if (!IsWebAssembly)
+                if (!await EnsureJsReadyAsync())
                 {
-                    await Task.Yield();
+                    if (!_jsInitPending && !IsWebAssembly)
+                    {
+                        _jsInitPending = true;
+                        await Task.Yield();
+                        await InvokeAsync(StateHasChanged);
+                        _jsInitPending = false;
+                    }
                 }
-                
-                await InitializeJavaScriptAsync();
-                _jsInitialized = true;
-                Logger?.LogDebug("Component {ComponentType} JavaScript initialized (Mode: {Mode})", 
-                    GetType().Name, IsWebAssembly ? "WebAssembly" : "Server");
+                else
+                {
+                    await InitializeJavaScriptAsync();
+                    _jsInitialized = true;
+                    Logger?.LogDebug("Component {ComponentType} JavaScript initialized (Mode: {Mode})", 
+                        GetType().Name, IsWebAssembly ? "WebAssembly" : "Server");
+                }
             }
             
             await base.OnAfterRenderAsync(firstRender);
@@ -308,5 +319,67 @@ namespace RR.Blazor.Components.Base
         }
         
         #endregion
+
+        protected async Task<bool> EnsureJsReadyAsync()
+        {
+            if (_disposed) return false;
+            if (IsWebAssembly) return true;
+            if (JSInterop == null) return true;
+            
+            try
+            {
+                return await JSInterop.IsInteractiveAsync();
+            }
+            catch (Exception ex)
+            {
+                Logger?.LogDebug(ex, "JS readiness check failed for {ComponentType}", GetType().Name);
+                return false;
+            }
+        }
+        
+        protected async Task<T> InvokeRuntimeAsync<T>(string identifier, params object[] args)
+        {
+            if (_disposed || JSRuntime == null) return default(T);
+            
+            if (!await EnsureJsReadyAsync())
+            {
+                return default(T);
+            }
+            
+            try
+            {
+                return await JSRuntime.InvokeAsync<T>(identifier, args);
+            }
+            catch (InvalidOperationException ex)
+            {
+                Logger?.LogDebug(ex, "Runtime invoke failed for {Identifier}", identifier);
+                return default(T);
+            }
+        }
+        
+        protected Task InvokeRuntimeVoidAsync(string identifier, params object[] args)
+        {
+            return InvokeRuntimeAsync<object>(identifier, args);
+        }
+        
+        protected async Task<IJSObjectReference?> ImportModuleAsync(string modulePath)
+        {
+            if (_disposed || JSRuntime == null) return null;
+            
+            if (!await EnsureJsReadyAsync())
+            {
+                return null;
+            }
+            
+            try
+            {
+                return await JSRuntime.InvokeAsync<IJSObjectReference>("import", modulePath);
+            }
+            catch (InvalidOperationException ex)
+            {
+                Logger?.LogDebug(ex, "Module import deferred for path {ModulePath}", modulePath);
+                return null;
+            }
+        }
     }
 }

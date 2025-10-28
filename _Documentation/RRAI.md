@@ -52,6 +52,10 @@
 **Purpose**: Page structure and organization
 - RAppShell, RContent, RGrid, RSection
 
+### Workflow Components (1)
+**Purpose**: Kanban orchestration and process management
+- RKanboard
+
 ## Key Architecture Patterns
 
 ### Unified Smart Components

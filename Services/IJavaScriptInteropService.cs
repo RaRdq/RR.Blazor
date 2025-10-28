@@ -28,6 +28,12 @@ public class JavaScriptInteropService(IJSRuntime jsRuntime) : IJavaScriptInterop
             _lastCheck = DateTime.UtcNow;
             return isSafe;
         }
+        catch (InvalidOperationException)
+        {
+            _isInteractiveCache = false;
+            _lastCheck = DateTime.UtcNow;
+            return false;
+        }
         catch
         {
             _isInteractiveCache = false;
@@ -38,6 +44,11 @@ public class JavaScriptInteropService(IJSRuntime jsRuntime) : IJavaScriptInterop
     
     public async Task<bool> TryInvokeVoidAsync(string identifier, params object[] args)
     {
+        if (!await IsInteractiveAsync())
+        {
+            return false;
+        }
+        
         try
         {
             var allParams = new object[args.Length + 1];
@@ -45,6 +56,12 @@ public class JavaScriptInteropService(IJSRuntime jsRuntime) : IJavaScriptInterop
             Array.Copy(args, 0, allParams, 1, args.Length);
             
             return await jsRuntime.InvokeAsync<bool>("RRBlazor.safeInvoke", allParams);
+        }
+        catch (InvalidOperationException)
+        {
+            _isInteractiveCache = false;
+            _lastCheck = DateTime.UtcNow;
+            return false;
         }
         catch (JSException)
         {
@@ -54,6 +71,11 @@ public class JavaScriptInteropService(IJSRuntime jsRuntime) : IJavaScriptInterop
     
     public async Task<T> TryInvokeAsync<T>(string identifier, params object[] args)
     {
+        if (!await IsInteractiveAsync())
+        {
+            return default(T);
+        }
+        
         try
         {
             var allParams = new object[args.Length + 1];
@@ -61,6 +83,12 @@ public class JavaScriptInteropService(IJSRuntime jsRuntime) : IJavaScriptInterop
             Array.Copy(args, 0, allParams, 1, args.Length);
             
             return await jsRuntime.InvokeAsync<T>("RRBlazor.safeInvoke", allParams);
+        }
+        catch (InvalidOperationException)
+        {
+            _isInteractiveCache = false;
+            _lastCheck = DateTime.UtcNow;
+            return default(T);
         }
         catch (JSException)
         {

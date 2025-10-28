@@ -12,7 +12,6 @@ Reuses RChoice's dropdown body and portal system.
 @using RR.Blazor.Enums
 @using RR.Blazor.Attributes
 @using RR.Blazor.Components.Base
-@using Microsoft.AspNetCore.Components.Web
 @using RR.Blazor.Components.Form
 @using Microsoft.JSInterop
 @typeparam TItem where TItem : notnull
@@ -173,13 +172,15 @@ Reuses RChoice's dropdown body and portal system.
         dotNetRef = DotNetObjectReference.Create(this);
     }
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected override async Task InitializeJavaScriptAsync()
     {
-        if (firstRender)
+        await base.InitializeJavaScriptAsync();
+
+        if (autosuggestModule == null)
         {
             try
             {
-                autosuggestModule = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/RR.Blazor/js/autosuggest.js");
+                autosuggestModule = await ImportModuleAsync("./_content/RR.Blazor/js/autosuggest.js");
             }
             catch (Exception ex)
             {
@@ -250,7 +251,7 @@ Reuses RChoice's dropdown body and portal system.
 
         try
         {
-            await JS.InvokeVoidAsync("RRBlazor.Autosuggest.open", autosuggestId, options);
+            await SafeInvokeAsync("RRBlazor.Autosuggest.open", autosuggestId, options);
             return true;
         }
         catch (Exception globalFallbackEx)
@@ -295,7 +296,7 @@ Reuses RChoice's dropdown body and portal system.
 
         try
         {
-            await JS.InvokeVoidAsync("RRBlazor.Autosuggest.close", autosuggestId);
+            await SafeInvokeAsync("RRBlazor.Autosuggest.close", autosuggestId);
             return true;
         }
         catch (Exception globalFallbackEx)

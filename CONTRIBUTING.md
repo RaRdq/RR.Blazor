@@ -455,4 +455,3 @@ dotnet run --project Tools/CLI -- generate component --name RNewComponent
 ---
 
 **Remember**: RR.Blazor's goal is to make Blazor development faster and more consistent, especially when working with AI coding assistants. Every contribution should enhance this goal.
-

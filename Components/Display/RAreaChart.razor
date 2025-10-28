@@ -2,7 +2,6 @@
 @using RR.Blazor.Enums
 @using RR.Blazor.Models
 @using RR.Blazor.Components.Base
-@using Microsoft.AspNetCore.Components.Web
 @using Microsoft.JSInterop
 @inherits RInteractiveComponentBase
 @inject IJSRuntime JSRuntime
@@ -130,7 +129,7 @@
                 color = !string.IsNullOrEmpty(s.Color) ? s.Color : GetSeriesColor(s, 0)
             })).ToArray();
 
-            await SafeInvokeAsync("RRBlazor.Chart.createAreaChart", 
+            canvasChart = await SafeInvokeAsync<IJSObjectReference>("RRBlazor.Chart.createAreaChart", 
                 canvasContainer,
                 new
                 {
@@ -142,7 +141,10 @@
                     animationDuration = Configuration.AnimationDuration
                 });
 
-            await canvasChart.InvokeVoidAsync("setData", flatData);
+            if (canvasChart != null)
+            {
+                await canvasChart.InvokeVoidAsync("setData", flatData);
+            }
         }
         catch (Exception ex)
         {

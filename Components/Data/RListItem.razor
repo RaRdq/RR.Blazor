@@ -3,7 +3,7 @@
 @inherits RForwardingComponentBase
 @* RListItem - Professional list item component *@
 
-@if (OnClick.HasDelegate)
+@if (HasClickHandler)
 {
     <button class="@GetItemClasses()"
             type="button"
@@ -226,6 +226,8 @@ else
     
     /// <summary>Parent list variant (cascaded)</summary>
     [CascadingParameter(Name = "ParentListVariant")] private ListVariant? ParentListVariant { get; set; }
+
+    private bool HasClickHandler => !Disabled && OnClick.HasDelegate;
     
     private string GetItemClasses()
     {
@@ -257,7 +259,7 @@ else
             classes.Add(ParentListVariant == ListVariant.Menu ? "menu-list-item-active" : "list-item-active");
         }
 
-        if (OnClick.HasDelegate && !Disabled)
+        if (HasClickHandler)
         {
             classes.Add("list-item-clickable");
         }
@@ -329,7 +331,12 @@ else
     
     private async Task HandleClick(MouseEventArgs e)
     {
-        if (!Disabled && OnClick.HasDelegate)
+        if (!HasClickHandler)
+        {
+            return;
+        }
+
+        if (OnClick.HasDelegate)
         {
             await OnClick.InvokeAsync(e);
         }

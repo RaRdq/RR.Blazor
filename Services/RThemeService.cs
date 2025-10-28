@@ -17,6 +17,7 @@ public interface IRThemeService
     ThemeConfiguration CurrentTheme { get; }
     bool IsSystemDark { get; }
     bool IsHighContrastActive { get; }
+    bool IsInitialized { get; }
     
     Task InitializeAsync();
     Task SetThemeAsync(ThemeConfiguration theme);
@@ -57,6 +58,7 @@ public class RThemeService : IRThemeService, IAsyncDisposable
     public ThemeConfiguration CurrentTheme => currentTheme;
     public bool IsSystemDark => isSystemDark;
     public bool IsHighContrastActive => isHighContrast;
+    public bool IsInitialized => isInitialized;
     
     public RThemeService(
         ILocalStorageService localStorage,
@@ -72,6 +74,13 @@ public class RThemeService : IRThemeService, IAsyncDisposable
     
     public async Task InitializeAsync()
     {
+        if (isInitialized) return;
+        
+        if (!await jsInterop.IsInteractiveAsync())
+        {
+            return;
+        }
+        
         if (isInitialized) return;
         isInitialized = true;
         
@@ -114,24 +123,27 @@ public class RThemeService : IRThemeService, IAsyncDisposable
     
     public async Task ApplyThemeAsync(ThemeConfiguration theme)
     {
-        try
+        if (!await jsInterop.IsInteractiveAsync())
         {
-            var effectiveMode = theme.GetEffectiveMode(isSystemDark);
-            var themeData = new
-            {
-                mode = effectiveMode.ToString().ToLower(),
-                colors = GetThemeColors(theme),
-                customVariables = new Dictionary<string, string>(),
-                animations = theme.AnimationsEnabled,
-                accessibility = theme.AccessibilityMode,
-                highContrast = theme.HighContrastMode || isHighContrast
-            };
-            
-            await jsInterop.TryInvokeVoidAsync("window.RRBlazor.Theme.apply", themeData);
+            return;
         }
-        catch (Exception ex)
+        
+        var effectiveMode = theme.GetEffectiveMode(isSystemDark);
+        var themeData = new
         {
-            logger.LogError(ex, "Failed to apply theme");
+            mode = effectiveMode.ToString().ToLower(),
+            colors = GetThemeColors(theme),
+            customVariables = new Dictionary<string, string>(),
+            animations = theme.AnimationsEnabled,
+            accessibility = theme.AccessibilityMode,
+            highContrast = theme.HighContrastMode || isHighContrast
+        };
+        
+        var applied = await jsInterop.TryInvokeVoidAsync("window.RRBlazor.Theme.apply", themeData);
+        
+        if (!applied)
+        {
+            logger.LogDebug("Theme apply deferred - JavaScript interop not available yet");
         }
     }
     

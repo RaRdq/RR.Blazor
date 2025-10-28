@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Web;
 using System.Linq.Expressions;
 
 namespace RR.Blazor.Services;
@@ -68,7 +67,7 @@ public static class ColumnTemplateBuilder
                 builder.AddAttribute(seq++, "type", "button");
                 builder.AddAttribute(seq++, "class", "btn btn-ghost btn-sm");
                 builder.AddAttribute(seq++, "title", title);
-                builder.AddAttribute(seq++, "onclick", EventCallback.Factory.Create<MouseEventArgs>(null, () => onClick(item)));
+                builder.AddAttribute(seq++, "onclick", EventCallback.Factory.Create(null, () => onClick(item)));
                 
                 builder.OpenElement(seq++, "i");
                 builder.AddAttribute(seq++, "class", "icon text-base");

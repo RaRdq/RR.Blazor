@@ -19,17 +19,25 @@ public class ThemeSystemIntegrationTests : TestContext
 {
     private Mock<IJSRuntime> mockJSRuntime;
     private Mock<ILocalStorageService> mockLocalStorage;
-    private IThemeService themeService;
+    private IRThemeService themeService;
+    private Mock<IJavaScriptInteropService> mockJsInterop;
 
     public ThemeSystemIntegrationTests()
     {
         // Setup mocks
         mockJSRuntime = new Mock<IJSRuntime>();
         mockLocalStorage = new Mock<ILocalStorageService>();
+        mockJsInterop = new Mock<IJavaScriptInteropService>();
         
         // Register services
         Services.AddSingleton(mockJSRuntime.Object);
         Services.AddSingleton(mockLocalStorage.Object);
+        mockJsInterop.Setup(x => x.IsInteractiveAsync()).ReturnsAsync(true);
+        mockJsInterop.Setup(x => x.TryInvokeAsync<dynamic>(It.IsAny<string>(), It.IsAny<object[]>()))
+                     .ReturnsAsync(default(object));
+        mockJsInterop.Setup(x => x.TryInvokeVoidAsync(It.IsAny<string>(), It.IsAny<object[]>()))
+                     .ReturnsAsync(true);
+        Services.AddSingleton(mockJsInterop.Object);
         Services.AddLogging();
         Services.AddRRBlazor();
         

@@ -25,7 +25,6 @@ public enum GridMode
 /// Uses RAttributeForwarder for efficient parameter passing.
 ///
 /// </summary>
-[Obsolete("RGrid is deprecated. Use semantic HTML + responsive-grid CSS classes instead. See RGRID_MIGRATION.md", false)]
 public class RGrid : RGridBase
 {
     /// <summary>

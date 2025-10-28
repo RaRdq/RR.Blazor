@@ -10,12 +10,12 @@
                        AvoidUsage = "Don't use for navigation - use RLink instead")]
 
 <div class="@GetCardClasses()"
-     @onclick="@(OnClick.HasDelegate ? HandleClick : null)"
+     @onclick="@(HasAnyClickHandler ? HandleClick : null)"
      @onclick:stopPropagation="StopPropagation"
      @onmouseenter="@(OnMouseEnter.HasDelegate ? HandleMouseEnter : null)"
      @onmouseleave="@(OnMouseLeave.HasDelegate ? HandleMouseLeave : null)"
-     role="@(OnClick.HasDelegate && !Disabled ? "button" : null)"
-     tabindex="@(OnClick.HasDelegate && !Disabled ? 0 : null)"
+     role="@(HasAnyClickHandler ? "button" : null)"
+     tabindex="@(HasAnyClickHandler ? 0 : null)"
      aria-label="@AriaLabel"
      aria-disabled="@(Disabled ? "true" : null)">
     
@@ -156,7 +156,6 @@
     
     [Parameter] public RenderFragment FooterContent { get; set; }
     
-    
     [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
     
     [Parameter] public EventCallback<MouseEventArgs> OnMouseEnter { get; set; }
@@ -190,7 +189,7 @@
         // Always add density class to ensure proper spacing
         classes.Add($"card-density-{Density.ToString().ToLower()}");
 
-        if (OnClick.HasDelegate && !Disabled) classes.Add("card-clickable");
+        if (HasAnyClickHandler) classes.Add("card-clickable");
         if (Selected) classes.Add("card-primary");
         if (Disabled) classes.Add("state-disabled");
         if (Loading) classes.Add("loading-state");
@@ -324,9 +323,15 @@
     }
     
 
+    private bool HasAnyClickHandler => !Disabled && OnClick.HasDelegate;
+
     private async Task HandleClick(MouseEventArgs e)
     {
-        if (!Disabled && !Loading) await OnClick.InvokeAsync(e);
+        if (Disabled || Loading)
+            return;
+
+        if (OnClick.HasDelegate)
+            await OnClick.InvokeAsync(e);
     }
 
     private async Task HandleMouseEnter(MouseEventArgs e)

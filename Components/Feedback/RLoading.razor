@@ -4,24 +4,11 @@
 @inherits RComponentBase
 
 <div class="@GetClasses()">
-    <div class="loading-spinner">
-        @if (Type == LoadingType.Spinner)
-        {
-            <div class="spinner"></div>
-        }
-        else if (Type == LoadingType.Dots)
-        {
-            <div class="dots">
-                <span></span>
-                <span></span>
-                <span></span>
-            </div>
-        }
-    </div>
-    
+    <span class="@GetSpinnerClasses()" aria-hidden="true"></span>
+
     @if (!string.IsNullOrEmpty(Text))
     {
-        <div class="loading-text">@Text</div>
+        <span class="loading-text">@Text</span>
     }
 </div>
 
@@ -40,26 +27,45 @@
     
     private string GetClasses()
     {
-        var classes = new List<string> { "loading" };
-        
-        classes.Add($"loading-{Type.ToString().ToLower()}");
-        classes.Add($"loading-{Size.ToString().ToLower()}");
-        
+        var classes = new List<string> { "loading", "loading-no-spinner" };
+
         if (Overlay)
         {
             classes.Add("loading-overlay");
         }
-        
+        else
+        {
+            classes.Add("loading-container");
+        }
+
+        classes.Add($"loading-{Size.ToString().ToLower()}");
+
         if (Center)
         {
             classes.Add("loading-center");
         }
-        
+
         if (!string.IsNullOrEmpty(Class))
         {
             classes.Add(Class);
         }
-        
+
         return string.Join(" ", classes);
     }
+
+    private string GetSpinnerClasses()
+    {
+        var classes = new List<string> { "loading-spinner", $"loading-spinner-{MapSize(Size)}", "loading-spinner-primary" };
+
+        return string.Join(" ", classes);
+    }
+
+    private static string MapSize(SizeType size) => size switch
+    {
+        SizeType.ExtraSmall => "xs",
+        SizeType.Small => "sm",
+        SizeType.Large => "lg",
+        SizeType.ExtraLarge => "xl",
+        _ => "md"
+    };
 }

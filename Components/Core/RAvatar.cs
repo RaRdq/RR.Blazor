@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
-using Microsoft.AspNetCore.Components.Web;
 using RR.Blazor.Attributes;
 using RR.Blazor.Components.Base;
 using RR.Blazor.Enums;
@@ -82,10 +81,10 @@ namespace RR.Blazor.Components.Core
                 nameof(ShowBadge), nameof(BadgeCount), nameof(IsClickable), 
                 nameof(Class), nameof(OnClick));
 
-            if (IsClickable)
+            if (IsClickable && OnClick.HasDelegate)
             {
                 builder.AddAttribute(++sequence, "role", "button");
-                builder.AddAttribute(++sequence, "onclick", EventCallback.Factory.Create<MouseEventArgs>(this, HandleClick));
+                builder.AddAttribute(++sequence, "onclick", EventCallback.Factory.Create(this, HandleClick));
             }
             
             // Avatar content
@@ -255,10 +254,11 @@ namespace RR.Blazor.Components.Core
         
         private async Task HandleClick(MouseEventArgs e)
         {
-            if (IsClickable)
-            {
+            if (!IsClickable)
+                return;
+
+            if (OnClick.HasDelegate)
                 await OnClick.InvokeAsync(e);
-            }
         }
     }
 }

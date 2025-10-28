@@ -87,6 +87,8 @@ namespace RR.Blazor.ServiceSetup
             serviceCollection.AddScoped<IAppConfigurationService, AppConfigurationService>();
             serviceCollection.AddScoped<IFilterPersistenceService, FilterPersistenceService>();
             serviceCollection.AddScoped<IPivotService, PivotService>();
+            serviceCollection.AddScoped<IRKanboardPreferenceStore, RKanboardPreferenceStore>();
+            serviceCollection.AddScoped<RKanboardAdapterOrchestrator>();
 
 
             RegisterExportServices(serviceCollection);

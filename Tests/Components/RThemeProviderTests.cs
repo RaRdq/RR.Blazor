@@ -13,12 +13,19 @@ namespace RR.Blazor.Tests.Components;
 /// </summary>
 public class RThemeProviderTests : TestContext
 {
-    private Mock<IThemeService> mockThemeService;
+    private Mock<IRThemeService> mockThemeService;
+    private Mock<IJavaScriptInteropService> mockJsInterop;
 
     public RThemeProviderTests()
     {
-        mockThemeService = new Mock<IThemeService>();
+        mockThemeService = new Mock<IRThemeService>();
+        mockThemeService.SetupGet(x => x.IsInitialized).Returns(true);
+        mockThemeService.Setup(x => x.InitializeAsync()).Returns(Task.CompletedTask);
         Services.AddSingleton(mockThemeService.Object);
+        
+        mockJsInterop = new Mock<IJavaScriptInteropService>();
+        mockJsInterop.Setup(x => x.IsInteractiveAsync()).ReturnsAsync(true);
+        Services.AddSingleton(mockJsInterop.Object);
     }
 
     [Fact]
@@ -74,29 +81,27 @@ public class RThemeProviderTests : TestContext
     }
 
     [Fact]
-    public async Task RThemeProvider_ShouldInitializeThemeService()
+    public void RThemeProvider_ShouldInitializeThemeService()
     {
         // Arrange
-        mockThemeService.Setup(x => x.InitializeAsync()).Returns(Task.CompletedTask);
         var testTheme = new ThemeConfiguration { Mode = ThemeMode.System };
         mockThemeService.Setup(x => x.CurrentTheme).Returns(testTheme);
 
         // Act
         var component = RenderComponent<RThemeProvider>();
 
-        // Wait for initialization
-        await Task.Delay(100);
-
         // Assert
-        mockThemeService.Verify(x => x.InitializeAsync(), Times.Once);
+        component.WaitForAssertion(() =>
+        {
+            mockThemeService.Verify(x => x.InitializeAsync(), Times.Once);
+        });
     }
 
     [Fact]
-    public async Task RThemeProvider_ShouldSetInitialTheme()
+    public void RThemeProvider_ShouldSetInitialTheme()
     {
         // Arrange
         var initialTheme = new ThemeConfiguration { Mode = ThemeMode.Dark, Name = "Initial Dark" };
-        mockThemeService.Setup(x => x.InitializeAsync()).Returns(Task.CompletedTask);
         mockThemeService.Setup(x => x.SetThemeAsync(It.IsAny<ThemeConfiguration>())).Returns(Task.CompletedTask);
         mockThemeService.Setup(x => x.CurrentTheme).Returns(initialTheme);
 
@@ -104,11 +109,11 @@ public class RThemeProviderTests : TestContext
         var component = RenderComponent<RThemeProvider>(parameters => parameters
             .Add(p => p.InitialTheme, initialTheme));
 
-        // Wait for initialization
-        await Task.Delay(100);
-
         // Assert
-        mockThemeService.Verify(x => x.SetThemeAsync(initialTheme), Times.Once);
+        component.WaitForAssertion(() =>
+        {
+            mockThemeService.Verify(x => x.SetThemeAsync(initialTheme), Times.Once);
+        });
     }
 
     [Fact]
@@ -147,15 +152,16 @@ public class RThemeProviderTests : TestContext
     }
 
     [Fact]
-    public async Task RThemeProvider_ShouldDisposeThemeServiceEventHandler()
+    public void RThemeProvider_ShouldDisposeThemeServiceEventHandler()
     {
         // Arrange
         var testTheme = new ThemeConfiguration { Mode = ThemeMode.Light };
         mockThemeService.Setup(x => x.CurrentTheme).Returns(testTheme);
-        mockThemeService.Setup(x => x.InitializeAsync()).Returns(Task.CompletedTask);
-
         var component = RenderComponent<RThemeProvider>();
-        await Task.Delay(50); // Allow initialization
+        component.WaitForAssertion(() =>
+        {
+            mockThemeService.Verify(x => x.InitializeAsync(), Times.Once);
+        });
 
         // Act - Dispose the component
         component.Dispose();
@@ -170,6 +176,7 @@ public class RThemeProviderTests : TestContext
     {
         // Arrange
         mockThemeService.Setup(x => x.InitializeAsync()).ThrowsAsync(new Exception("Initialization failed"));
+        mockThemeService.SetupGet(x => x.IsInitialized).Returns(false);
         var fallbackTheme = ThemeConfiguration.Default;
         mockThemeService.Setup(x => x.CurrentTheme).Returns(fallbackTheme);
 
@@ -187,7 +194,7 @@ public class RThemeProviderTests : TestContext
 public class TestChildComponent : ComponentBase
 {
     [CascadingParameter(Name = "ThemeService")] 
-    public IThemeService ThemeService { get; set; }
+    public IRThemeService ThemeService { get; set; }
     
     [CascadingParameter(Name = "CurrentTheme")] 
     public ThemeConfiguration CurrentTheme { get; set; }

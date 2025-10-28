@@ -1,0 +1,3028 @@
+@using System
+@using System.Collections.Generic
+@using System.Linq
+@using System.Threading
+@using System.Threading.Tasks
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Rendering
+@using RR.Blazor.Attributes
+@using RR.Blazor.Components
+@using RR.Blazor.Components.Base
+@using RR.Blazor.Components.Core
+@using RR.Blazor.Components.Form
+@using RR.Blazor.Enums
+@using RR.Blazor.Models
+@using RR.Blazor.Services
+@namespace RR.Blazor.Components.Workflow
+
+@attribute [Component("RKanboard", Category = "Workflow", Complexity = ComponentComplexity.Complex)]
+@inherits RDesignableComponentBase<SizeType, VariantType>
+
+<div id="@_boardId"
+     class="@BuildRootClasses()"
+     style="@Style"
+     tabindex="@(Disabled ? -1 : 0)"
+     @onkeydown="HandleBoardKeyDownAsync"
+     @onkeydown:stopPropagation="false"
+     @attributes="AdditionalAttributes">
+    @if (ShouldRenderToolbar())
+    {
+        <div class="rkanboard-toolbar d-flex flex-wrap gap-2 justify-between align-center">
+            <div class="d-flex flex-wrap gap-2 align-center">
+                @if (BoardToolbar is not null)
+                {
+                    <div class="d-flex flex-wrap gap-2 align-center">
+                        @BoardToolbar
+                    </div>
+                }
+            </div>
+            <div class="d-flex gap-1 align-center flex-wrap">
+                @if (AllowColumnCreation)
+                {
+                    <RButton Text="Add Column"
+                             Icon="add"
+                             Size="SizeType.Small"
+                             Variant="VariantType.Primary"
+                             OnClick="@(async () => await ToggleAddColumnForm())" />
+                }
+                @if (AllowOrientationToggle && AllowHorizontal)
+                {
+                    <RButton Icon="@GetOrientationIcon()"
+                             Text="@GetOrientationLabel()"
+                             Variant="VariantType.Secondary"
+                             Size="SizeType.Small"
+                             OnClick="@(async () => await ToggleOrientationAsync())" />
+                }
+            </div>
+        </div>
+    }
+
+    @if (AllowColumnCreation && showAddColumnForm)
+    {
+        <div class="rkanboard-add-column glass-light pa-3 rounded-lg border border-light mb-3">
+            <div class="d-flex flex-column gap-2">
+                @if (ShowColumnTemplates && ColumnTemplates is { Count: > 0 })
+                {
+                    <div class="rkanboard-template-bar d-flex flex-wrap gap-2">
+                        @foreach (var template in ColumnTemplates)
+                        {
+                            <div class="rkanboard-template-item d-inline-flex align-center gap-1">
+                                <RButton Text="@template.Title"
+                                         Icon="@template.Config.Icon"
+                                         Size="SizeType.ExtraSmall"
+                                         Variant="VariantType.Secondary"
+                                         Title="@template.Description"
+                                         OnClick="@(async () => await ApplyColumnTemplateAsync(template))" />
+                                @if (!string.IsNullOrWhiteSpace(template.BadgeText))
+                                {
+                                    <span class="rkanboard-template-badge @template.BadgeClass">@template.BadgeText</span>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+
+                <RTextInput Label="Column title"
+                            Required="true"
+                            Value="@newColumnTitle"
+                            ValueChanged="@(value => newColumnTitle = value)"
+                            Placeholder="Enter column name"
+                            FullWidth="true"
+                            Size="SizeType.Small" />
+                <RTextInput Label="Description (optional)"
+                            Value="@newColumnDescription"
+                            ValueChanged="@(value => newColumnDescription = value)"
+                            Placeholder="Short summary for this column"
+                            FullWidth="true"
+                            Size="SizeType.Small" />
+                <div class="d-flex gap-2 justify-end">
+                    <RButton Text="Cancel"
+                             Variant="VariantType.Secondary"
+                             Size="SizeType.Small"
+                             OnClick="@(async () => await CancelAddColumnForm())" />
+                    <RButton Text="Create"
+                             Variant="VariantType.Primary"
+                             Size="SizeType.Small"
+                             Disabled="@string.IsNullOrWhiteSpace(newColumnTitle)"
+                             OnClick="@(async () => await CreateColumnAsync())" />
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (!GetRenderableColumns().Any())
+    {
+        <div class="rkanboard-empty glass-light border border-dashed border-light rounded-lg pa-6 text-center">
+            @if (EmptyState is not null)
+            {
+                @EmptyState
+            }
+            else
+            {
+                <div class="d-flex flex-column gap-2 align-center justify-center">
+                    <i class="icon text-muted text-2xl">view_kanban</i>
+                    <span class="text-sm text-muted">No columns available. Add a column to get started.</span>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        @if (AllowColumnHide && GetHiddenColumns().Any())
+        {
+            <div class="rkanboard-hidden-columns d-flex flex-wrap gap-1 align-center mb-2">
+                <span class="text-2xs text-muted uppercase tracking-wide">Hidden columns:</span>
+                @foreach (var hiddenColumn in GetHiddenColumns())
+                {
+                    <RButton Text="@hiddenColumn.Title"
+                             Icon="visibility"
+                             Size="SizeType.ExtraSmall"
+                             Variant="VariantType.Secondary"
+                             OnClick="@(async () => await ToggleColumnVisibilityAsync(hiddenColumn, false))" />
+                }
+            </div>
+        }
+
+        @if (EnableSwimlanes)
+        {
+            foreach (var swimlane in GetSwimlanes())
+            {
+                <section class="@GetSwimlaneWrapperClasses(swimlane)">
+                    @if (SwimlaneHeaderTemplate is not null)
+                    {
+                        <header class="rkanboard-swimlane-header">
+                            @SwimlaneHeaderTemplate(swimlane)
+                        </header>
+                    }
+                    else if (!string.IsNullOrWhiteSpace(swimlane.Title))
+                    {
+                        <header class="rkanboard-swimlane-header">
+                            <div class="d-flex align-center gap-2">
+                                <i class="icon text-sm text-muted">route</i>
+                                <span class="text-2xs text-muted text-uppercase tracking-wide">@swimlane.Title</span>
+                            </div>
+                        </header>
+                    }
+                    <div class="@GetBoardBodyClasses(true)">
+                        @foreach (var column in swimlane.Columns)
+                        {
+                            var isHidden = IsColumnHidden(column);
+                            var cards = GetCardsForColumn(column);
+                            @if (EnableColumnReorder)
+                            {
+                                <div class="@GetColumnPlaceholderClasses(column.Id, false)"
+                                     role="presentation"
+                                     @ondragover="@(e => HandleColumnPlaceholderDragOver(e, column.Id, false))"
+                                     @ondragover:preventDefault="true"
+                                     @ondrop="@(async e => await HandleColumnPlaceholderDropAsync(e, column.Id, false))"
+                                     @ondrop:preventDefault="true"></div>
+                            }
+                            <section class="@GetColumnClasses(column, isHidden)"
+                                     data-column-id="@column.Id"
+                                     draggable="@GetColumnDraggable(isHidden)"
+                                     @ondragstart="@(e => HandleColumnDragStart(e, column.Id))"
+                                     @ondragend="HandleColumnDragEnd"
+                                     role="region"
+                                     aria-label="@column.Title">
+                                <header class="rkanboard-column-header d-flex justify-between align-start gap-2">
+                                    <div class="d-flex flex-column gap-1 min-w-0">
+                                        <div class="d-flex align-center gap-2">
+                                            @if (!string.IsNullOrWhiteSpace(column.Config.Icon))
+                                            {
+                                                <i class="icon rkanboard-column-icon @column.Config.ColorClass">@column.Config.Icon</i>
+                                            }
+                                            <span class="rkanboard-column-title text-sm font-semibold truncate">@column.Title</span>
+                                        </div>
+                                        @if (!string.IsNullOrWhiteSpace(column.Description))
+                                        {
+                                            <span class="text-2xs text-muted truncate">@column.Description</span>
+                                        }
+                                        @if (column.Config.WorkInProgressLimit.HasValue)
+                                        {
+                                            <span class="text-2xs text-muted">
+                                                WIP @cards.Count / @column.Config.WorkInProgressLimit.Value
+                                            </span>
+                                        }
+                                        @if (ColumnHeaderTemplate is not null)
+                                        {
+                                            <div class="mt-1">
+                                                @ColumnHeaderTemplate(new RKanboardColumnRenderContext(column, cards, isHidden))
+                                            </div>
+                                        }
+                                    </div>
+                                    <div class="d-flex gap-1 align-center">
+                                        @if (AllowColumnHide)
+                                        {
+                                            <RButton Icon="@(isHidden ? "visibility" : "visibility_off")"
+                                                     Variant="VariantType.Secondary"
+                                                     Size="SizeType.ExtraSmall"
+                                                     Mode="ButtonMode.Ghost"
+                                                     OnClick="@(async () => await ToggleColumnVisibilityAsync(column, !isHidden))" />
+                                        }
+                                    </div>
+                                </header>
+
+                                @if (isHidden)
+                                {
+                                    <div class="rkanboard-column-collapsed text-2xs text-muted d-flex gap-1 align-center">
+                                        <i class="icon text-base">visibility_off</i>
+                                        Column hidden. Use the visibility toggle to restore.
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="rkanboard-column-body d-flex flex-column gap-2"
+                                         data-drop-target="@column.Id"
+                                         @ondragover="@(e => HandleColumnDragOver(e, column))"
+                                         @ondragover:preventDefault="true"
+                                         @ondragenter="@(e => HandleColumnDragEnter(e, column))"
+                                         @ondragenter:preventDefault="true"
+                                         @ondrop="@(async e => await HandleColumnDropAsync(e, column, cards.Count))"
+                                         @ondrop:preventDefault="true">
+                                        @if (!cards.Any())
+                                        {
+                                            <div class="rkanboard-column-empty text-2xs text-muted d-flex align-center gap-1">
+                                                <i class="icon text-base">inbox</i>
+                                                No cards yet.
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            @if (ShouldVirtualize(cards.Count))
+                                            {
+                                                <Virtualize Items="@cards"
+                                                            TItem="RKanboardCardModel"
+                                                            Context="card"
+                                                            ItemSize="VirtualizationItemSize"
+                                                            OverscanCount="VirtualizationOverscanCount">
+                                                    @{
+                                                        var index = ResolveCardIndex(column, card);
+                                                        var dropBefore = IsDropTarget(column.Id, index);
+                                                    }
+                                                    @RenderCard(column, card, index, dropBefore)
+                                                </Virtualize>
+                                            }
+                                            else
+                                            {
+                                                @foreach (var cardContext in cards.Select((cardItem, index) => (cardItem, index)))
+                                                {
+                                                    var card = cardContext.cardItem;
+                                                    var index = cardContext.index;
+                                                    var dropBefore = IsDropTarget(column.Id, index);
+                                                    @RenderCard(column, card, index, dropBefore)
+                                                }
+                                            }
+                                        }
+
+                                        <div class="@GetColumnDropZoneClasses(column.Id)"
+                                             data-drop-zone="@column.Id"
+                                             @ondragover="@(e => HandleColumnDragOver(e, column))"
+                                             @ondragover:preventDefault="true"
+                                             @ondrop="@(async e => await HandleColumnDropAsync(e, column, cards.Count))"
+                                             @ondrop:preventDefault="true">
+                                            <span class="text-3xs text-muted">Drop cards here</span>
+                                        </div>
+
+                                        @if (ColumnFooterTemplate is not null)
+                                        {
+                                            <div class="mt-2">
+                                                @ColumnFooterTemplate(new RKanboardColumnRenderContext(column, cards, false))
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                            </section>
+                            @if (EnableColumnReorder)
+                            {
+                                            <div class="@GetColumnPlaceholderClasses(column.Id, true)"
+                                                 role="presentation"
+                                                 @ondragover="@(e => HandleColumnPlaceholderDragOver(e, column.Id, true))"
+                                                 @ondragover:preventDefault="true"
+                                                 @ondrop="@(async e => await HandleColumnPlaceholderDropAsync(e, column.Id, true))"
+                                                 @ondrop:preventDefault="true"></div>
+                            }
+                        }
+                    </div>
+                </section>
+            }
+        }
+        else
+        {
+            <div class="@GetBoardBodyClasses()">
+                @foreach (var column in GetRenderableColumns())
+                {
+                    var isHidden = IsColumnHidden(column);
+                    var cards = GetCardsForColumn(column);
+                    @if (EnableColumnReorder)
+                    {
+                        <div class="@GetColumnPlaceholderClasses(column.Id, false)"
+                             role="presentation"
+                             @ondragover="@(e => HandleColumnPlaceholderDragOver(e, column.Id, false))"
+                             @ondragover:preventDefault="true"
+                             @ondrop="@(async e => await HandleColumnPlaceholderDropAsync(e, column.Id, false))"
+                             @ondrop:preventDefault="true"></div>
+                    }
+                    <section class="@GetColumnClasses(column, isHidden)"
+                             data-column-id="@column.Id"
+                             draggable="@GetColumnDraggable(isHidden)"
+                             @ondragstart="@(e => HandleColumnDragStart(e, column.Id))"
+                             @ondragend="HandleColumnDragEnd"
+                             role="region"
+                             aria-label="@column.Title">
+                        <header class="rkanboard-column-header d-flex justify-between align-start gap-2">
+                            <div class="d-flex flex-column gap-1 min-w-0">
+                                <div class="d-flex align-center gap-2">
+                                    @if (!string.IsNullOrWhiteSpace(column.Config.Icon))
+                                    {
+                                        <i class="icon rkanboard-column-icon @column.Config.ColorClass">@column.Config.Icon</i>
+                                    }
+                                    <span class="rkanboard-column-title text-sm font-semibold truncate">@column.Title</span>
+                                </div>
+                                @if (!string.IsNullOrWhiteSpace(column.Description))
+                                {
+                                    <span class="text-2xs text-muted truncate">@column.Description</span>
+                                }
+                                @if (column.Config.WorkInProgressLimit.HasValue)
+                                {
+                                    <span class="text-2xs text-muted">
+                                        WIP @cards.Count / @column.Config.WorkInProgressLimit.Value
+                                    </span>
+                                }
+                                @if (ColumnHeaderTemplate is not null)
+                                {
+                                    <div class="mt-1">
+                                        @ColumnHeaderTemplate(new RKanboardColumnRenderContext(column, cards, isHidden))
+                                    </div>
+                                }
+                            </div>
+                            <div class="d-flex gap-1 align-center">
+                                @if (AllowColumnHide)
+                                {
+                                            <RButton Icon="@(isHidden ? "visibility" : "visibility_off")"
+                                                     Variant="VariantType.Secondary"
+                                                     Size="SizeType.ExtraSmall"
+                                                     Mode="ButtonMode.Ghost"
+                                                     OnClick="@(async () => await ToggleColumnVisibilityAsync(column, !isHidden))" />
+                                }
+                            </div>
+                        </header>
+
+                        @if (isHidden)
+                        {
+                            <div class="rkanboard-column-collapsed text-2xs text-muted d-flex gap-1 align-center">
+                                <i class="icon text-base">visibility_off</i>
+                                Column hidden. Use the visibility toggle to restore.
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="rkanboard-column-body d-flex flex-column gap-2"
+                                 data-drop-target="@column.Id"
+                                 @ondragover="@(e => HandleColumnDragOver(e, column))"
+                                 @ondragover:preventDefault="true"
+                                 @ondragenter="@(e => HandleColumnDragEnter(e, column))"
+                                 @ondragenter:preventDefault="true"
+                                 @ondrop="@(async e => await HandleColumnDropAsync(e, column, cards.Count))"
+                                 @ondrop:preventDefault="true">
+                                @if (!cards.Any())
+                                {
+                                    <div class="rkanboard-column-empty text-2xs text-muted d-flex align-center gap-1">
+                                        <i class="icon text-base">inbox</i>
+                                        No cards yet.
+                                    </div>
+                                }
+                                else
+                                {
+                                    @if (ShouldVirtualize(cards.Count))
+                                    {
+                                        <Virtualize Items="@cards"
+                                                    TItem="RKanboardCardModel"
+                                                    Context="card"
+                                                    ItemSize="VirtualizationItemSize"
+                                                    OverscanCount="VirtualizationOverscanCount">
+                                            @{
+                                                var index = ResolveCardIndex(column, card);
+                                                var dropBefore = IsDropTarget(column.Id, index);
+                                            }
+                                            @RenderCard(column, card, index, dropBefore)
+                                        </Virtualize>
+                                    }
+                                    else
+                                    {
+                                        @foreach (var cardContext in cards.Select((cardItem, index) => (cardItem, index)))
+                                        {
+                                            var card = cardContext.cardItem;
+                                            var index = cardContext.index;
+                                            var dropBefore = IsDropTarget(column.Id, index);
+                                            @RenderCard(column, card, index, dropBefore)
+                                        }
+                                    }
+                                }
+
+                                <div class="@GetColumnDropZoneClasses(column.Id)"
+                                     data-drop-zone="@column.Id"
+                                     @ondragover="@(e => HandleColumnDragOver(e, column))"
+                                     @ondragover:preventDefault="true"
+                                     @ondrop="@(async e => await HandleColumnDropAsync(e, column, cards.Count))"
+                                     @ondrop:preventDefault="true">
+                                    <span class="text-3xs text-muted">Drop cards here</span>
+                                </div>
+
+                                @if (AllowCardCreation && !Disabled && currentOrientation == KanboardOrientation.Vertical)
+                                {
+                                    <div class="rkanboard-column-composer">
+                                        @RenderCardComposer(column)
+                                    </div>
+                                }
+
+                                @if (ColumnFooterTemplate is not null)
+                                {
+                                    <div class="mt-2">
+                                        @ColumnFooterTemplate(new RKanboardColumnRenderContext(column, cards, false))
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </section>
+                    @if (EnableColumnReorder)
+                    {
+                        <div class="@GetColumnPlaceholderClasses(column.Id, true)"
+                             role="presentation"
+                             @ondragover="@(e => HandleColumnPlaceholderDragOver(e, column.Id, true))"
+                             @ondragover:preventDefault="true"
+                             @ondrop="@(async e => await HandleColumnPlaceholderDropAsync(e, column.Id, true))"
+                             @ondrop:preventDefault="true"></div>
+                    }
+                    @if (AllowCardCreation && !Disabled && currentOrientation == KanboardOrientation.Horizontal)
+                    {
+                        <div class="rkanboard-composer-inline">
+                            @RenderCardComposer(column)
+                        </div>
+                    }
+                }
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private static readonly RKanboardBoardState EmptyBoard = new(
+        Array.Empty<RKanboardColumnModel>(),
+        new Dictionary<string, RKanboardCardModel>());
+
+    private readonly string _boardId = $"rkanboard-{Guid.NewGuid():N}";
+    private readonly RKanboardStateManager localStateManager = new();
+    private KanboardOrientation currentOrientation;
+    private string? draggingCardId;
+    private string? dragOriginColumnId;
+    private int dragOriginIndex = -1;
+    private string? dropTargetColumnId;
+    private int dropTargetIndex = -1;
+    private readonly Dictionary<string, bool> columnVisibilityOverrides = new();
+    private readonly HashSet<string> openCardComposers = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, string> newCardDrafts = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, string> newCardDescriptionDrafts = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, string> checklistItemDrafts = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, string> checklistRenameDrafts = new(StringComparer.Ordinal);
+    private readonly HashSet<string> cardsWithChecklistComposer = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, string> newChecklistDrafts = new(StringComparer.Ordinal);
+    private bool showAddColumnForm;
+    private string newColumnTitle = string.Empty;
+    private string? newColumnDescription;
+    private string? focusedCardId;
+    private string? columnDragOriginId;
+    private string? columnPlaceholderTargetId;
+    private bool columnPlaceholderAfter;
+    private readonly Dictionary<string, Dictionary<string, int>> columnIndexLookups = new();
+    private bool requiresJsRefresh;
+    private KanboardOrientation? lastReportedOrientation;
+    private bool lastEnableSwimlanes;
+
+    [Parameter] public RKanboardBoardState Board { get; set; } = EmptyBoard;
+    [Parameter] public KanboardOrientation Orientation { get; set; } = KanboardOrientation.Vertical;
+    [Parameter] public bool AllowHorizontal { get; set; } = true;
+    [Parameter] public bool AllowOrientationToggle { get; set; } = true;
+    [Parameter] public bool AllowColumnCreation { get; set; }
+    [Parameter] public bool AllowColumnHide { get; set; } = true;
+    [Parameter] public bool AllowDropOnSameColumn { get; set; } = true;
+    [Parameter] public bool ShowAssigneePicker { get; set; } = true;
+    [Parameter] public bool AllowUnassign { get; set; } = true;
+    [Parameter] public bool EnableSwimlanes { get; set; }
+    [Parameter] public RenderFragment<RKanboardColumnRenderContext>? ColumnHeaderTemplate { get; set; }
+    [Parameter] public RenderFragment<RKanboardColumnRenderContext>? ColumnFooterTemplate { get; set; }
+    [Parameter] public RenderFragment<RKanboardCardModel>? CardTemplate { get; set; }
+    [Parameter] public RenderFragment<RKanboardCardModel>? CardFooterTemplate { get; set; }
+    [Parameter] public RenderFragment<RKanboardSwimlaneRenderContext>? SwimlaneHeaderTemplate { get; set; }
+    [Parameter] public RenderFragment? BoardToolbar { get; set; }
+    [Parameter] public RenderFragment? EmptyState { get; set; }
+    [Parameter] public EventCallback<RKanboardCardDropContext> OnCardDrop { get; set; }
+    [Parameter] public EventCallback<IEnumerable<RKanboardCardMutationContext>> OnCardBulkUpdate { get; set; }
+    [Parameter] public EventCallback<RKanboardAssigneeChangedContext> OnAssigneeChanged { get; set; }
+    [Parameter] public EventCallback<RKanboardColumnMutationContext> OnColumnCreate { get; set; }
+    [Parameter] public EventCallback<RKanboardColumnVisibilityChangeContext> OnColumnVisibilityChanged { get; set; }
+    [Parameter] public EventCallback<string> OnCardOpen { get; set; }
+    [Parameter] public EventCallback<string> OnCardEditRequested { get; set; }
+    [Parameter] public EventCallback<RKanboardCardModel> OnCardPriorityRequested { get; set; }
+    [Parameter] public EventCallback<RKanboardCardModel> OnCardCommentRequested { get; set; }
+    [Parameter] public EventCallback<KanboardOrientation> OrientationChanged { get; set; }
+    [Parameter] public IEnumerable<RKanboardAutoAssignRule>? AutoAssignRules { get; set; }
+    [Parameter] public IReadOnlyList<RKanboardAssigneeOption>? AssigneeOptions { get; set; }
+    [Parameter] public Func<string, CancellationToken, Task<IEnumerable<RKanboardAssigneeOption>>>? AssigneeSearch { get; set; }
+    [Parameter] public Func<RKanboardCardModel, RKanboardColumnModel, bool>? CanDragEvaluator { get; set; }
+    [Parameter] public IReadOnlyList<RKanboardColumnTemplate>? ColumnTemplates { get; set; }
+    [Parameter] public bool ShowColumnTemplates { get; set; } = true;
+    [Parameter] public bool ShowEditAction { get; set; } = true;
+    [Parameter] public bool ShowPriorityAction { get; set; } = true;
+    [Parameter] public bool ShowCommentAction { get; set; } = true;
+    [Parameter] public bool EnableColumnReorder { get; set; } = true;
+    [Parameter] public bool EnableKeyboardShortcuts { get; set; } = true;
+    [Parameter] public bool EnableVirtualization { get; set; } = true;
+    [Parameter] public int VirtualizationThreshold { get; set; } = 30;
+    [Parameter] public float VirtualizationItemSize { get; set; } = 96f;
+    [Parameter] public int VirtualizationOverscanCount { get; set; } = 3;
+    [Parameter] public EventCallback<RKanboardColumnLayoutChangedContext> OnColumnLayoutChanged { get; set; }
+    [Parameter] public bool EnableAutoScroll { get; set; } = true;
+    [Parameter] public int AutoScrollEdgeThreshold { get; set; } = 48;
+    [Parameter] public int AutoScrollSpeed { get; set; } = 18;
+    [Parameter] public bool AllowCardCreation { get; set; }
+    [Parameter] public bool AllowChecklistEditing { get; set; }
+    [Parameter] public bool ShowCollaboratorManager { get; set; } = true;
+    [Parameter] public EventCallback<RKanboardCardCreateContext> OnCardCreate { get; set; }
+    [Parameter] public EventCallback<RKanboardChecklistMutationContext> OnChecklistMutation { get; set; }
+    [Parameter] public EventCallback<RKanboardCollaboratorEditContext> OnCollaboratorsEditRequested { get; set; }
+    [Parameter] public EventCallback<Dictionary<string, List<string>>> OnColumnCardOrderChanged { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+
+        var orientationChanged = lastReportedOrientation.HasValue && lastReportedOrientation.Value != Orientation;
+        currentOrientation = Orientation;
+
+        if (!AllowHorizontal && currentOrientation == KanboardOrientation.Horizontal)
+        {
+            currentOrientation = KanboardOrientation.Vertical;
+            orientationChanged = true;
+
+            if (OrientationChanged.HasDelegate)
+            {
+                _ = OrientationChanged.InvokeAsync(currentOrientation);
+            }
+        }
+
+        lastReportedOrientation = currentOrientation;
+
+        if (orientationChanged)
+        {
+            requiresJsRefresh = true;
+        }
+
+        if (lastEnableSwimlanes != EnableSwimlanes)
+        {
+            requiresJsRefresh = true;
+            lastEnableSwimlanes = EnableSwimlanes;
+        }
+
+        CleanupVisibilityOverrides();
+        CleanupEphemeralState();
+        columnIndexLookups.Clear();
+        EnsureFocusedCard();
+    }
+
+    private void CleanupVisibilityOverrides()
+    {
+        if (Board is null || Board.Columns is null) return;
+
+        var columnIds = new HashSet<string>(Board.Columns.Select(column => column.Id));
+        var toRemove = columnVisibilityOverrides.Keys.Where(key => !columnIds.Contains(key)).ToList();
+
+        foreach (var key in toRemove)
+        {
+            columnVisibilityOverrides.Remove(key);
+        }
+    }
+
+    private void CleanupEphemeralState()
+    {
+        if (Board?.Columns is null)
+        {
+            openCardComposers.Clear();
+            newCardDrafts.Clear();
+            newCardDescriptionDrafts.Clear();
+            checklistItemDrafts.Clear();
+            checklistRenameDrafts.Clear();
+            cardsWithChecklistComposer.Clear();
+            newChecklistDrafts.Clear();
+            return;
+        }
+
+        var columnIds = new HashSet<string>(Board.Columns.Select(column => column.Id), StringComparer.Ordinal);
+        openCardComposers.RemoveWhere(id => !columnIds.Contains(id));
+
+        foreach (var key in newCardDrafts.Keys.ToList())
+        {
+            if (!columnIds.Contains(key))
+            {
+                newCardDrafts.Remove(key);
+                newCardDescriptionDrafts.Remove(key);
+            }
+        }
+
+        if (Board.Cards is null)
+        {
+            checklistItemDrafts.Clear();
+            checklistRenameDrafts.Clear();
+            return;
+        }
+
+        var cardIds = new HashSet<string>(Board.Cards.Keys, StringComparer.Ordinal);
+
+        foreach (var key in checklistItemDrafts.Keys.ToList())
+        {
+            var cardId = key.Split('|')[0];
+            if (!cardIds.Contains(cardId))
+            {
+                checklistItemDrafts.Remove(key);
+            }
+        }
+
+        foreach (var key in checklistRenameDrafts.Keys.ToList())
+        {
+            var cardId = key.Split('|')[0];
+            if (!cardIds.Contains(cardId))
+            {
+                checklistRenameDrafts.Remove(key);
+            }
+        }
+
+        cardsWithChecklistComposer.RemoveWhere(cardId => !cardIds.Contains(cardId));
+        foreach (var key in newChecklistDrafts.Keys.ToList())
+        {
+            if (!cardIds.Contains(key))
+            {
+                newChecklistDrafts.Remove(key);
+            }
+        }
+    }
+
+    private void EnsureFocusedCard()
+    {
+        if (!EnableKeyboardShortcuts)
+        {
+            focusedCardId = null;
+            return;
+        }
+
+        if (Board?.Columns is null || Board.Cards is null || Board.Columns.Count == 0)
+        {
+            focusedCardId = null;
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(focusedCardId) && Board.Cards.ContainsKey(focusedCardId))
+        {
+            return;
+        }
+
+        foreach (var column in Board.Columns)
+        {
+            foreach (var cardId in column.CardIds)
+            {
+                if (Board.Cards.TryGetValue(cardId, out var card))
+                {
+                    focusedCardId = card.Id;
+                    return;
+                }
+            }
+        }
+
+        focusedCardId = null;
+    }
+
+    private IEnumerable<RKanboardColumnModel> GetRenderableColumns()
+    {
+        if (Board?.Columns is null) return Array.Empty<RKanboardColumnModel>();
+        return Board.Columns;
+    }
+
+    private bool IsSameSwimlane(string originColumnId, string targetColumnId)
+    {
+        if (!EnableSwimlanes || Board?.Columns is null) return true;
+
+        var origin = Board.GetColumn(originColumnId);
+        var target = Board.GetColumn(targetColumnId);
+
+        if (origin is null || target is null) return false;
+
+        var originLane = origin.SwimlaneId ?? string.Empty;
+        var targetLane = target.SwimlaneId ?? string.Empty;
+
+        return string.Equals(originLane, targetLane, StringComparison.Ordinal);
+    }
+
+    private IEnumerable<RKanboardColumnModel> GetHiddenColumns()
+    {
+        return GetRenderableColumns().Where(IsColumnHidden);
+    }
+
+    private List<RKanboardCardModel> GetCardsForColumn(RKanboardColumnModel column)
+    {
+        if (Board?.Cards is null) return new List<RKanboardCardModel>();
+
+        var cards = new List<RKanboardCardModel>(column.CardIds.Count);
+        foreach (var cardId in column.CardIds)
+        {
+            if (Board.Cards.TryGetValue(cardId, out var card))
+            {
+                cards.Add(card);
+            }
+        }
+
+        return cards;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+
+        if (!firstRender && requiresJsRefresh)
+        {
+            requiresJsRefresh = false;
+            await SafeInvokeAsync("RR.Blazor.RKanboard.refresh", _boardId, new
+            {
+                autoScroll = EnableAutoScroll,
+                edgeThreshold = AutoScrollEdgeThreshold,
+                scrollSpeed = AutoScrollSpeed
+            });
+        }
+    }
+
+    private bool IsColumnHidden(RKanboardColumnModel column)
+    {
+        if (columnVisibilityOverrides.TryGetValue(column.Id, out var hidden))
+        {
+            return hidden;
+        }
+
+        return column.IsHidden;
+    }
+
+    private bool ShouldRenderToolbar()
+    {
+        return BoardToolbar is not null
+               || AllowColumnCreation
+               || (AllowOrientationToggle && AllowHorizontal);
+    }
+
+    private string BuildRootClasses()
+    {
+        var classes = new List<string>
+        {
+            "rkanboard",
+            currentOrientation == KanboardOrientation.Horizontal ? "rkanboard-horizontal" : "rkanboard-vertical"
+        };
+
+        if (EnableSwimlanes)
+        {
+            classes.Add("rkanboard-with-swimlanes");
+        }
+
+        classes.AddRange(GetBaseCssClasses());
+
+        return string.Join(" ", classes);
+    }
+
+    private string GetBoardBodyClasses(bool forSwimlane = false)
+    {
+        var baseClass = forSwimlane ? "rkanboard-swimlane-body" : "rkanboard-body";
+        return currentOrientation == KanboardOrientation.Horizontal
+            ? $"{baseClass} is-horizontal"
+            : $"{baseClass} is-vertical";
+    }
+
+    private IReadOnlyList<RKanboardSwimlaneRenderContext> GetSwimlanes()
+    {
+        if (Board?.Columns is null || Board.Columns.Count == 0)
+        {
+            return Array.Empty<RKanboardSwimlaneRenderContext>();
+        }
+
+        if (!EnableSwimlanes)
+        {
+            return new[]
+            {
+                new RKanboardSwimlaneRenderContext(string.Empty, null, GetRenderableColumns().ToList())
+            };
+        }
+
+        var groups = Board.Columns
+            .GroupBy(column => column.SwimlaneId ?? string.Empty, StringComparer.Ordinal)
+            .Select(group =>
+            {
+                var orderedColumns = Board.Columns
+                    .Where(column => string.Equals(column.SwimlaneId ?? string.Empty, group.Key, StringComparison.Ordinal))
+                    .ToList();
+
+                var representative = orderedColumns.FirstOrDefault();
+                var title = representative?.SwimlaneTitle;
+                var order = representative?.SwimlaneOrder ?? 0;
+
+                return new { group.Key, Title = title, Order = order, Columns = orderedColumns };
+            })
+            .OrderBy(group => group.Order)
+            .ThenBy(group => group.Title ?? string.Empty, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        return groups
+            .Select(group => new RKanboardSwimlaneRenderContext(group.Key, group.Title, group.Columns))
+            .ToList();
+    }
+
+    private string GetSwimlaneWrapperClasses(RKanboardSwimlaneRenderContext swimlane)
+    {
+        var classes = new List<string> { "rkanboard-swimlane" };
+        if (!string.IsNullOrWhiteSpace(swimlane.SwimlaneId))
+        {
+            classes.Add($"rkanboard-swimlane-{swimlane.SwimlaneId}".Replace(' ', '-'));
+        }
+
+        return string.Join(" ", classes);
+    }
+
+    private string GetColumnClasses(RKanboardColumnModel column, bool isHidden)
+    {
+        var classes = new List<string>
+        {
+            "rkanboard-column",
+            column.Config.ColorClass ?? string.Empty
+        };
+
+        if (isHidden) classes.Add("rkanboard-column-hidden");
+        if (dropTargetColumnId == column.Id) classes.Add("is-drop-target");
+
+        classes.Add(column.Config.Width switch
+        {
+            KanboardColumnWidth.Compact => "rkanboard-column-compact",
+            KanboardColumnWidth.Wide => "rkanboard-column-wide",
+            _ => "rkanboard-column-auto"
+        });
+
+        return string.Join(" ", classes.Where(value => !string.IsNullOrWhiteSpace(value)));
+    }
+
+    private string GetColumnDropZoneClasses(string columnId)
+    {
+        var classes = new List<string> { "rkanboard-drop-zone" };
+        if (dropTargetColumnId == columnId && dropTargetIndex == int.MaxValue)
+        {
+            classes.Add("is-active");
+        }
+        return string.Join(" ", classes);
+    }
+
+    private RenderFragment RenderCard(RKanboardColumnModel column, RKanboardCardModel card, int index, bool dropBefore) => builder =>
+    {
+        var seq = 0;
+        var hasLabels = card.Labels is { Count: > 0 };
+        var hasStatusBadges = !string.IsNullOrWhiteSpace(card.PriorityLabel) || card.IsBlocked;
+
+        if (dropBefore)
+        {
+            builder.OpenElement(seq++, "div");
+            builder.AddAttribute(seq++, "class", "rkanboard-drop-indicator");
+            builder.CloseElement();
+        }
+
+        builder.OpenElement(seq++, "article");
+        builder.AddAttribute(seq++, "class", GetCardClasses(card, column));
+        builder.AddAttribute(seq++, "draggable", CanDragCard(card, column));
+        builder.AddAttribute(seq++, "data-card-id", card.Id);
+        builder.AddAttribute(seq++, "tabindex", GetCardTabIndex(card));
+        builder.AddAttribute(seq++, "role", "listitem");
+        builder.AddAttribute(seq++, "aria-label", card.Title ?? string.Empty);
+        builder.AddAttribute(seq++, "ondragstart", EventCallback.Factory.Create<DragEventArgs>(this, e => HandleCardDragStart(e, column.Id, card.Id, index)));
+        builder.AddAttribute(seq++, "ondragend", EventCallback.Factory.Create<DragEventArgs>(this, HandleCardDragEnd));
+        builder.AddAttribute(seq++, "ondragenter", EventCallback.Factory.Create<DragEventArgs>(this, e => HandleCardDragEnter(e, column.Id, index)));
+        builder.AddAttribute(seq++, "ondragover", EventCallback.Factory.Create<DragEventArgs>(this, HandleCardDragOver));
+        builder.AddAttribute(seq++, "ondrop", EventCallback.Factory.Create<DragEventArgs>(this, e => HandleCardDropAsync(e, column, index)));
+        builder.AddEventPreventDefaultAttribute(seq++, "ondragenter", true);
+        builder.AddEventPreventDefaultAttribute(seq++, "ondragover", true);
+        builder.AddEventPreventDefaultAttribute(seq++, "ondrop", true);
+        builder.AddAttribute(seq++, "onfocus", EventCallback.Factory.Create<FocusEventArgs>(this, _ => HandleCardFocused(card)));
+        builder.AddAttribute(seq++, "onkeydown", EventCallback.Factory.Create<KeyboardEventArgs>(this, e => HandleCardKeyDownAsync(e, column, card, index)));
+
+        builder.OpenElement(seq++, "div");
+        builder.AddAttribute(seq++, "class", "rkanboard-card-content");
+
+        if (hasLabels || hasStatusBadges)
+        {
+            builder.OpenElement(seq++, "div");
+            builder.AddAttribute(seq++, "class", "rkanboard-card-top");
+            if (hasLabels)
+            {
+                builder.OpenElement(seq++, "div");
+                builder.AddAttribute(seq++, "class", "rkanboard-card-top-left");
+                RenderCardLabels(builder, card, ref seq);
+                builder.CloseElement();
+            }
+
+            builder.OpenElement(seq++, "div");
+            builder.AddAttribute(seq++, "class", "rkanboard-card-top-right");
+            if (hasStatusBadges)
+            {
+                builder.OpenElement(seq++, "div");
+                builder.AddAttribute(seq++, "class", "rkanboard-card-priority");
+                if (!string.IsNullOrWhiteSpace(card.PriorityLabel))
+                {
+                    builder.OpenElement(seq++, "span");
+                    builder.AddAttribute(seq++, "class", $"rkanboard-card-badge {card.PriorityColorClass}");
+                    builder.AddContent(seq++, card.PriorityLabel);
+                    builder.CloseElement();
+                }
+                if (card.IsBlocked)
+                {
+                    builder.OpenElement(seq++, "span");
+                    builder.AddAttribute(seq++, "class", "rkanboard-card-badge bg-error text-white");
+                    builder.AddContent(seq++, "Blocked");
+                    builder.CloseElement();
+                }
+                builder.CloseElement();
+            }
+            builder.CloseElement();
+            builder.CloseElement();
+        }
+
+        builder.OpenElement(seq++, "div");
+        builder.AddAttribute(seq++, "class", "rkanboard-card-heading");
+        builder.OpenElement(seq++, "div");
+        builder.AddAttribute(seq++, "class", "rkanboard-card-title-block");
+        builder.OpenElement(seq++, "span");
+        builder.AddAttribute(seq++, "class", "rkanboard-card-title text-sm font-semibold truncate");
+        builder.AddContent(seq++, card.Title);
+        builder.CloseElement();
+        if (!string.IsNullOrWhiteSpace(card.Subtitle))
+        {
+            builder.OpenElement(seq++, "span");
+            builder.AddAttribute(seq++, "class", "rkanboard-card-subtitle text-2xs text-muted truncate");
+            builder.AddContent(seq++, card.Subtitle);
+            builder.CloseElement();
+        }
+        builder.CloseElement();
+        builder.CloseElement();
+
+        if (!string.IsNullOrWhiteSpace(card.Description))
+        {
+        builder.OpenElement(seq++, "p");
+        builder.AddAttribute(seq++, "class", "rkanboard-card-description text-2xs text-muted line-clamp-3");
+            builder.AddContent(seq++, card.Description);
+            builder.CloseElement();
+        }
+
+        if (card.Badges.Any())
+        {
+            builder.OpenElement(seq++, "div");
+            builder.AddAttribute(seq++, "class", "rkanboard-card-badges");
+            foreach (var badge in card.Badges)
+            {
+                builder.OpenElement(seq++, "span");
+                builder.AddAttribute(seq++, "class", $"rkanboard-card-chip {badge.ColorClass}");
+                if (!string.IsNullOrWhiteSpace(badge.Icon))
+                {
+                    builder.OpenElement(seq++, "i");
+                    builder.AddAttribute(seq++, "class", "icon text-xs mr-1");
+                    builder.AddContent(seq++, badge.Icon);
+                    builder.CloseElement();
+                }
+                builder.AddContent(seq++, badge.Text);
+                builder.CloseElement();
+            }
+            builder.CloseElement();
+        }
+
+        var attachmentsCount = card.Attachments?.Count ?? 0;
+        var completedChecklistItems = 0;
+        var totalChecklistItems = 0;
+
+        if (card.Checklists is { Count: > 0 })
+        {
+            totalChecklistItems = card.Checklists.Sum(list => list.Items?.Count ?? 0);
+            completedChecklistItems = card.Checklists.Sum(list => list.Items?.Count(item => item.IsCompleted) ?? 0);
+        }
+
+        int? checklistPercent = null;
+        if (totalChecklistItems > 0)
+        {
+            checklistPercent = (int)Math.Round((double)completedChecklistItems / totalChecklistItems * 100);
+        }
+        else if (card.ChecklistProgress.HasValue)
+        {
+            var normalized = Math.Clamp(card.ChecklistProgress.Value, 0, 1);
+            checklistPercent = (int)Math.Round(normalized * 100);
+        }
+
+        builder.OpenElement(seq++, "div");
+        builder.AddAttribute(seq++, "class", "rkanboard-card-meta");
+        if (card.DueDate.HasValue)
+        {
+            builder.OpenElement(seq++, "span");
+            builder.AddAttribute(seq++, "class", "d-inline-flex align-center gap-1");
+            builder.OpenElement(seq++, "i");
+            builder.AddAttribute(seq++, "class", "icon text-xs");
+            builder.AddContent(seq++, "event");
+            builder.CloseElement();
+            builder.AddContent(seq++, card.DueDate.Value.ToString("MMM dd"));
+            builder.CloseElement();
+        }
+        if (checklistPercent.HasValue)
+        {
+            builder.OpenElement(seq++, "span");
+            builder.AddAttribute(seq++, "class", "d-inline-flex align-center gap-1");
+            builder.OpenElement(seq++, "i");
+            builder.AddAttribute(seq++, "class", "icon text-xs");
+            builder.AddContent(seq++, "checklist");
+            builder.CloseElement();
+            if (totalChecklistItems > 0)
+            {
+                builder.AddContent(seq++, $"{completedChecklistItems}/{totalChecklistItems}");
+            }
+            else
+            {
+                builder.AddContent(seq++, $"{checklistPercent.Value}%");
+            }
+            builder.CloseElement();
+        }
+        if (attachmentsCount > 0)
+        {
+            builder.OpenElement(seq++, "span");
+            builder.AddAttribute(seq++, "class", "d-inline-flex align-center gap-1");
+            builder.OpenElement(seq++, "i");
+            builder.AddAttribute(seq++, "class", "icon text-xs");
+            builder.AddContent(seq++, "attach_file");
+            builder.CloseElement();
+            builder.AddContent(seq++, attachmentsCount.ToString());
+            builder.CloseElement();
+        }
+        if (!string.IsNullOrWhiteSpace(card.CommentsSummary))
+        {
+            builder.OpenElement(seq++, "span");
+            builder.AddAttribute(seq++, "class", "d-inline-flex align-center gap-1");
+            builder.OpenElement(seq++, "i");
+            builder.AddAttribute(seq++, "class", "icon text-xs");
+            builder.AddContent(seq++, "chat");
+            builder.CloseElement();
+            builder.AddContent(seq++, card.CommentsSummary);
+            builder.CloseElement();
+        }
+        builder.CloseElement();
+
+        if (checklistPercent.HasValue)
+        {
+            builder.OpenElement(seq++, "div");
+            builder.AddAttribute(seq++, "class", "rkanboard-card-progress");
+
+            builder.OpenElement(seq++, "div");
+            builder.AddAttribute(seq++, "class", "rkanboard-card-progress-track");
+            builder.OpenElement(seq++, "div");
+            builder.AddAttribute(seq++, "class", "rkanboard-card-progress-fill");
+            builder.AddAttribute(seq++, "style", $"width: {Math.Clamp(checklistPercent.Value, 0, 100)}%");
+            builder.CloseElement();
+            builder.CloseElement();
+
+            if (totalChecklistItems > 0)
+            {
+                builder.OpenElement(seq++, "span");
+                builder.AddAttribute(seq++, "class", "text-3xs text-muted");
+                builder.AddContent(seq++, $"{completedChecklistItems}/{totalChecklistItems} tasks");
+                builder.CloseElement();
+            }
+
+            builder.CloseElement();
+        }
+
+        RenderCardChecklists(builder, column, card, ref seq);
+
+        if (CardTemplate is not null)
+        {
+            builder.OpenElement(seq++, "div");
+            builder.AddAttribute(seq++, "class", "mt-1");
+            builder.AddContent(seq++, CardTemplate(card));
+            builder.CloseElement();
+        }
+
+        if (CardFooterTemplate is not null)
+        {
+            builder.OpenElement(seq++, "div");
+            builder.AddAttribute(seq++, "class", "mt-1");
+            builder.AddContent(seq++, CardFooterTemplate(card));
+            builder.CloseElement();
+        }
+
+        if (ShowAssigneePicker)
+        {
+            builder.OpenElement(seq++, "section");
+            builder.AddAttribute(seq++, "class", "rkanboard-assignee");
+
+            builder.OpenElement(seq++, "header");
+            builder.AddAttribute(seq++, "class", "rkanboard-assignee-header");
+            builder.AddContent(seq++, "Assignee");
+            builder.CloseElement();
+
+            builder.OpenElement(seq++, "div");
+            builder.AddAttribute(seq++, "class", "rkanboard-assignee-body");
+
+            builder.OpenElement(seq++, "div");
+            builder.AddAttribute(seq++, "class", "rkanboard-assignee-identity");
+            if (!string.IsNullOrWhiteSpace(card.AssigneeAvatarUrl))
+            {
+                builder.OpenElement(seq++, "img");
+                builder.AddAttribute(seq++, "src", card.AssigneeAvatarUrl);
+                builder.AddAttribute(seq++, "alt", card.AssigneeDisplayName);
+                builder.AddAttribute(seq++, "class", "rkanboard-assignee-avatar");
+                builder.CloseElement();
+            }
+            else
+            {
+                builder.OpenElement(seq++, "div");
+                builder.AddAttribute(seq++, "class", "rkanboard-assignee-avatar placeholder");
+                builder.OpenElement(seq++, "span");
+                builder.AddContent(seq++, GetAssigneeInitials(card.AssigneeDisplayName));
+                builder.CloseElement();
+                builder.CloseElement();
+            }
+
+            builder.OpenElement(seq++, "div");
+            builder.AddAttribute(seq++, "class", "rkanboard-assignee-details");
+            builder.OpenElement(seq++, "span");
+            builder.AddAttribute(seq++, "class", "rkanboard-assignee-name");
+            builder.AddContent(seq++, GetAssigneeDisplayName(card));
+            builder.CloseElement();
+            if (!string.IsNullOrWhiteSpace(card.AssigneeRole))
+            {
+                builder.OpenElement(seq++, "span");
+                builder.AddAttribute(seq++, "class", "rkanboard-assignee-role");
+                builder.AddContent(seq++, card.AssigneeRole);
+                builder.CloseElement();
+            }
+            builder.CloseElement(); // details
+            builder.CloseElement(); // identity
+
+            if (AllowAssigneeChange(card, column))
+            {
+                builder.OpenElement(seq++, "div");
+                builder.AddAttribute(seq++, "class", "rkanboard-assignee-controls");
+
+                builder.OpenElement(seq++, "div");
+                builder.AddAttribute(seq++, "class", "rkanboard-assignee-picker-wrap");
+                builder.OpenComponent<RAutosuggestGeneric<RKanboardAssigneeOption>>(seq++);
+                builder.AddAttribute(seq++, "Class", "rkanboard-assignee-picker");
+                builder.AddAttribute(seq++, "Size", SizeType.Small);
+                builder.AddAttribute(seq++, "Value", GetCurrentAssigneeOption(card));
+                builder.AddAttribute(seq++, "ValueChanged", EventCallback.Factory.Create<RKanboardAssigneeOption>(this, option => HandleAssigneeSelectedAsync(card, column.Id, option)));
+                builder.AddAttribute(seq++, "Items", GetDefaultAssigneeOptions());
+                builder.AddAttribute(seq++, "SearchFunc", (Func<string, CancellationToken, Task<IEnumerable<RKanboardAssigneeOption>>>)SearchAssigneesAsync);
+                builder.AddAttribute(seq++, "ItemTextSelector", (Func<RKanboardAssigneeOption, string>)(option => option.DisplayName));
+                builder.AddAttribute(seq++, "ItemTemplate", BuildAssigneeTemplate);
+                builder.AddAttribute(seq++, "Placeholder", "Search people...");
+                builder.AddAttribute(seq++, "OpenOnFocus", true);
+                builder.AddAttribute(seq++, "ShowAllOnFocus", true);
+                builder.AddAttribute(seq++, "ClearOnSelect", false);
+                builder.AddAttribute(seq++, "MinSearchLength", 0);
+                builder.AddAttribute(seq++, "OnItemSelected", EventCallback.Factory.Create<RKanboardAssigneeOption>(this, option => HandleAssigneeSelectedAsync(card, column.Id, option)));
+                builder.AddAttribute(seq++, "Disabled", Disabled);
+                builder.CloseComponent();
+                builder.CloseElement();
+
+                if (AllowUnassign)
+                {
+                    builder.OpenElement(seq++, "div");
+                    builder.AddAttribute(seq++, "class", "rkanboard-assignee-actions");
+                    builder.OpenComponent<RButton>(seq++);
+                    builder.AddAttribute(seq++, "Class", "rkanboard-assignee-unassign");
+                    builder.AddAttribute(seq++, "Icon", "close");
+                    builder.AddAttribute(seq++, "Variant", VariantType.Secondary);
+                    builder.AddAttribute(seq++, "Size", SizeType.ExtraSmall);
+                    builder.AddAttribute(seq++, "Mode", ButtonMode.Ghost);
+                    builder.AddAttribute(seq++, "OnClick", EventCallback.Factory.Create(this, async () => await HandleAssigneeSelectedAsync(card, column.Id, null)));
+                    builder.CloseComponent();
+                    builder.CloseElement();
+                }
+
+                builder.CloseElement(); // controls
+            }
+
+            builder.CloseElement(); // body
+            builder.CloseElement(); // section
+        }
+
+        RenderCardCollaborators(builder, column, card, ref seq);
+
+        builder.OpenElement(seq++, "div");
+        builder.AddAttribute(seq++, "class", "rkanboard-card-actions d-flex justify-end gap-1 mt-2");
+        if (ShowEditAction && OnCardEditRequested.HasDelegate)
+        {
+            builder.OpenComponent<RButton>(seq++);
+            builder.AddAttribute(seq++, "Icon", "edit");
+            builder.AddAttribute(seq++, "Variant", VariantType.Secondary);
+            builder.AddAttribute(seq++, "Size", SizeType.ExtraSmall);
+            builder.AddAttribute(seq++, "Mode", ButtonMode.Ghost);
+            builder.AddAttribute(seq++, "OnClick", EventCallback.Factory.Create(this, async () => await HandleCardEditAsync(card, column.Id)));
+            builder.CloseComponent();
+        }
+
+        if (ShowPriorityAction && OnCardPriorityRequested.HasDelegate)
+        {
+            builder.OpenComponent<RButton>(seq++);
+            builder.AddAttribute(seq++, "Icon", "flag");
+            builder.AddAttribute(seq++, "Variant", VariantType.Secondary);
+            builder.AddAttribute(seq++, "Size", SizeType.ExtraSmall);
+            builder.AddAttribute(seq++, "Mode", ButtonMode.Ghost);
+            builder.AddAttribute(seq++, "OnClick", EventCallback.Factory.Create(this, async () => await HandleCardPriorityAsync(card, column.Id)));
+            builder.CloseComponent();
+        }
+
+        if (ShowCommentAction && OnCardCommentRequested.HasDelegate)
+        {
+            builder.OpenComponent<RButton>(seq++);
+            builder.AddAttribute(seq++, "Icon", "chat");
+            builder.AddAttribute(seq++, "Variant", VariantType.Secondary);
+            builder.AddAttribute(seq++, "Size", SizeType.ExtraSmall);
+            builder.AddAttribute(seq++, "Mode", ButtonMode.Ghost);
+            builder.AddAttribute(seq++, "OnClick", EventCallback.Factory.Create(this, async () => await HandleCardCommentAsync(card, column.Id)));
+            builder.CloseComponent();
+        }
+
+        builder.OpenComponent<RButton>(seq++);
+        builder.AddAttribute(seq++, "Icon", "open_in_new");
+        builder.AddAttribute(seq++, "Variant", VariantType.Secondary);
+        builder.AddAttribute(seq++, "Size", SizeType.ExtraSmall);
+        builder.AddAttribute(seq++, "Mode", ButtonMode.Ghost);
+        builder.AddAttribute(seq++, "OnClick", EventCallback.Factory.Create(this, async () => await HandleCardOpenAsync(card.Id)));
+        builder.CloseComponent();
+        builder.CloseElement();
+
+        RenderCardWatchers(builder, card, ref seq);
+
+        builder.CloseElement(); // card content
+        builder.CloseElement(); // article
+
+        if (dropBefore)
+        {
+            builder.OpenElement(seq++, "div");
+            builder.AddAttribute(seq++, "class", "rkanboard-drop-indicator");
+            builder.CloseElement();
+        }
+    };
+
+    private void RenderCardLabels(RenderTreeBuilder builder, RKanboardCardModel card, ref int seq)
+    {
+        if (card.Labels is null || card.Labels.Count == 0) return;
+
+        builder.OpenElement(seq++, "div");
+        builder.AddAttribute(seq++, "class", "rkanboard-card-labels");
+        foreach (var label in card.Labels)
+        {
+            builder.OpenElement(seq++, "span");
+            builder.AddAttribute(seq++, "class", BuildLabelClasses(label));
+            if (!string.IsNullOrWhiteSpace(label.Icon))
+            {
+                builder.OpenElement(seq++, "i");
+                builder.AddAttribute(seq++, "class", "icon text-2xs");
+                builder.AddContent(seq++, label.Icon);
+                builder.CloseElement();
+            }
+            builder.AddContent(seq++, label.Text);
+            builder.CloseElement();
+        }
+        builder.CloseElement();
+    }
+
+    private static string BuildChecklistKey(string cardId, string checklistId) => $"{cardId}|{checklistId}";
+
+    private static string BuildChecklistItemKey(string cardId, string checklistId, string? itemId) =>
+        itemId is null ? $"{cardId}|{checklistId}|__new" : $"{cardId}|{checklistId}|{itemId}";
+
+    private bool IsChecklistRenameActive(string cardId, string checklistId) =>
+        checklistRenameDrafts.ContainsKey(BuildChecklistKey(cardId, checklistId));
+
+    private string GetChecklistRenameDraft(string cardId, string checklistId)
+    {
+        var key = BuildChecklistKey(cardId, checklistId);
+        return checklistRenameDrafts.TryGetValue(key, out var value) ? value : string.Empty;
+    }
+
+    private void SetChecklistRenameDraft(string cardId, string checklistId, string value)
+    {
+        var key = BuildChecklistKey(cardId, checklistId);
+        checklistRenameDrafts[key] = value;
+    }
+
+    private void CancelChecklistRename(string cardId, string checklistId)
+    {
+        var key = BuildChecklistKey(cardId, checklistId);
+        checklistRenameDrafts.Remove(key);
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void OpenChecklistRename(string cardId, RKanboardChecklistModel checklist)
+    {
+        var key = BuildChecklistKey(cardId, checklist.Id);
+        checklistRenameDrafts[key] = checklist.Title ?? string.Empty;
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private bool IsChecklistComposerOpen(string cardId) => cardsWithChecklistComposer.Contains(cardId);
+
+    private void OpenChecklistComposer(string cardId)
+    {
+        cardsWithChecklistComposer.Add(cardId);
+        if (!newChecklistDrafts.ContainsKey(cardId))
+        {
+            newChecklistDrafts[cardId] = string.Empty;
+        }
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void CloseChecklistComposer(string cardId)
+    {
+        cardsWithChecklistComposer.Remove(cardId);
+        newChecklistDrafts.Remove(cardId);
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private string GetNewChecklistDraft(string cardId) => newChecklistDrafts.TryGetValue(cardId, out var value) ? value : string.Empty;
+
+    private bool IsChecklistItemRenameActive(string cardId, string checklistId, string itemId) =>
+        checklistItemDrafts.ContainsKey(BuildChecklistItemKey(cardId, checklistId, itemId));
+
+    private string GetChecklistItemDraft(string cardId, string checklistId, string? itemId)
+    {
+        var key = BuildChecklistItemKey(cardId, checklistId, itemId);
+        return checklistItemDrafts.TryGetValue(key, out var value) ? value : string.Empty;
+    }
+
+    private void SetChecklistItemDraft(string cardId, string checklistId, string? itemId, string value)
+    {
+        var key = BuildChecklistItemKey(cardId, checklistId, itemId);
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            checklistItemDrafts.Remove(key);
+        }
+        else
+        {
+            checklistItemDrafts[key] = value;
+        }
+    }
+
+    private void CancelChecklistItemRename(string cardId, string checklistId, string itemId)
+    {
+        var key = BuildChecklistItemKey(cardId, checklistId, itemId);
+        checklistItemDrafts.Remove(key);
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void RenderChecklistItem(RenderTreeBuilder builder, RKanboardCardModel card, RKanboardChecklistModel checklist, RKanboardChecklistItem item, bool allowEditing, ref int seq)
+    {
+        if (item is null)
+        {
+            return;
+        }
+
+        builder.OpenElement(seq++, "div");
+        builder.AddAttribute(seq++, "class", "rkanboard-checklist-item d-flex align-start gap-2");
+
+        var renameActive = IsChecklistItemRenameActive(card.Id, checklist.Id, item.Id);
+
+        if (renameActive)
+        {
+            builder.OpenComponent<RTextInput>(seq++);
+            builder.AddAttribute(seq++, "Label", "Checklist item");
+            builder.AddAttribute(seq++, "Value", GetChecklistItemDraft(card.Id, checklist.Id, item.Id));
+            builder.AddAttribute(seq++, "ValueChanged", EventCallback.Factory.Create<string>(this, value => SetChecklistItemDraft(card.Id, checklist.Id, item.Id, value)));
+            builder.AddAttribute(seq++, "FullWidth", true);
+            builder.AddAttribute(seq++, "Size", SizeType.Small);
+            builder.CloseComponent();
+
+            builder.OpenElement(seq++, "div");
+            builder.AddAttribute(seq++, "class", "d-flex gap-1");
+
+            builder.OpenComponent<RButton>(seq++);
+            builder.AddAttribute(seq++, "Text", "Save");
+            builder.AddAttribute(seq++, "Variant", VariantType.Primary);
+            builder.AddAttribute(seq++, "Size", SizeType.ExtraSmall);
+            builder.AddAttribute(seq++, "Disabled", string.IsNullOrWhiteSpace(GetChecklistItemDraft(card.Id, checklist.Id, item.Id)));
+            builder.AddAttribute(seq++, "OnClick", EventCallback.Factory.Create(this, async () => await SubmitChecklistItemRenameAsync(card, checklist, item)));
+            builder.CloseComponent();
+
+            builder.OpenComponent<RButton>(seq++);
+            builder.AddAttribute(seq++, "Text", "Cancel");
+            builder.AddAttribute(seq++, "Variant", VariantType.Secondary);
+            builder.AddAttribute(seq++, "Size", SizeType.ExtraSmall);
+            builder.AddAttribute(seq++, "OnClick", EventCallback.Factory.Create(this, () => CancelChecklistItemRename(card.Id, checklist.Id, item.Id)));
+            builder.CloseComponent();
+
+            builder.CloseElement();
+        }
+        else
+        {
+            builder.OpenComponent<RCheckbox>(seq++);
+            builder.AddAttribute(seq++, "Checked", item.IsCompleted);
+            builder.AddAttribute(seq++, "CheckedChanged", EventCallback.Factory.Create<bool>(this, value => ToggleChecklistItemAsync(card, checklist, item, value)));
+            builder.AddAttribute(seq++, "Text", item.Text);
+            builder.AddAttribute(seq++, "Disabled", Disabled);
+            builder.AddAttribute(seq++, "Size", SizeType.Small);
+            builder.CloseComponent();
+
+            if (allowEditing)
+            {
+                builder.OpenElement(seq++, "div");
+                builder.AddAttribute(seq++, "class", "d-flex gap-1");
+
+                builder.OpenComponent<RButton>(seq++);
+                builder.AddAttribute(seq++, "Icon", "edit");
+                builder.AddAttribute(seq++, "Variant", VariantType.Secondary);
+                builder.AddAttribute(seq++, "Size", SizeType.ExtraSmall);
+                builder.AddAttribute(seq++, "Mode", ButtonMode.Ghost);
+                builder.AddAttribute(seq++, "OnClick", EventCallback.Factory.Create(this, () => OpenChecklistItemRename(card, checklist, item)));
+                builder.CloseComponent();
+
+                builder.OpenComponent<RButton>(seq++);
+                builder.AddAttribute(seq++, "Icon", "delete");
+                builder.AddAttribute(seq++, "Variant", VariantType.Secondary);
+                builder.AddAttribute(seq++, "Size", SizeType.ExtraSmall);
+                builder.AddAttribute(seq++, "Mode", ButtonMode.Ghost);
+                builder.AddAttribute(seq++, "OnClick", EventCallback.Factory.Create(this, async () => await DeleteChecklistItemAsync(card, checklist, item)));
+                builder.CloseComponent();
+
+                builder.CloseElement();
+            }
+        }
+
+        builder.CloseElement();
+    }
+
+    private void RenderChecklistItemComposer(RenderTreeBuilder builder, RKanboardCardModel card, RKanboardChecklistModel checklist, ref int seq)
+    {
+        var draft = GetChecklistItemDraft(card.Id, checklist.Id, null);
+
+        builder.OpenElement(seq++, "div");
+        builder.AddAttribute(seq++, "class", "rkanboard-checklist-item-composer d-flex align-start gap-2");
+
+        builder.OpenComponent<RTextInput>(seq++);
+        builder.AddAttribute(seq++, "Label", "Add item");
+        builder.AddAttribute(seq++, "Placeholder", "Describe the next step");
+        builder.AddAttribute(seq++, "Value", draft);
+        builder.AddAttribute(seq++, "ValueChanged", EventCallback.Factory.Create<string>(this, value => SetChecklistItemDraft(card.Id, checklist.Id, null, value)));
+        builder.AddAttribute(seq++, "FullWidth", true);
+        builder.AddAttribute(seq++, "Size", SizeType.Small);
+        builder.AddAttribute(seq++, "OnKeyDown", EventCallback.Factory.Create<KeyboardEventArgs>(this, args => HandleChecklistItemComposerKeyDown(args, card, checklist)));
+        builder.CloseComponent();
+
+        builder.OpenComponent<RButton>(seq++);
+        builder.AddAttribute(seq++, "Text", "Add");
+        builder.AddAttribute(seq++, "Variant", VariantType.Primary);
+        builder.AddAttribute(seq++, "Size", SizeType.ExtraSmall);
+        builder.AddAttribute(seq++, "Disabled", string.IsNullOrWhiteSpace(draft));
+        builder.AddAttribute(seq++, "OnClick", EventCallback.Factory.Create(this, async () => await SubmitChecklistItemAsync(card, checklist)));
+        builder.CloseComponent();
+
+        builder.CloseElement();
+    }
+
+    private void RenderChecklistComposer(RenderTreeBuilder builder, RKanboardCardModel card, ref int seq)
+    {
+        var draft = GetNewChecklistDraft(card.Id);
+
+        builder.OpenElement(seq++, "div");
+        builder.AddAttribute(seq++, "class", "rkanboard-checklist-composer d-flex flex-column gap-2");
+
+        builder.OpenComponent<RTextInput>(seq++);
+        builder.AddAttribute(seq++, "Label", "Checklist name");
+        builder.AddAttribute(seq++, "Value", draft);
+        builder.AddAttribute(seq++, "ValueChanged", EventCallback.Factory.Create<string>(this, value => newChecklistDrafts[card.Id] = value));
+        builder.AddAttribute(seq++, "FullWidth", true);
+        builder.AddAttribute(seq++, "Size", SizeType.Small);
+        builder.CloseComponent();
+
+        builder.OpenElement(seq++, "div");
+        builder.AddAttribute(seq++, "class", "d-flex gap-2");
+
+        builder.OpenComponent<RButton>(seq++);
+        builder.AddAttribute(seq++, "Text", "Create");
+        builder.AddAttribute(seq++, "Variant", VariantType.Primary);
+        builder.AddAttribute(seq++, "Size", SizeType.ExtraSmall);
+        builder.AddAttribute(seq++, "Disabled", string.IsNullOrWhiteSpace(draft));
+        builder.AddAttribute(seq++, "OnClick", EventCallback.Factory.Create(this, async () => await SubmitNewChecklistAsync(card)));
+        builder.CloseComponent();
+
+        builder.OpenComponent<RButton>(seq++);
+        builder.AddAttribute(seq++, "Text", "Cancel");
+        builder.AddAttribute(seq++, "Variant", VariantType.Secondary);
+        builder.AddAttribute(seq++, "Size", SizeType.ExtraSmall);
+        builder.AddAttribute(seq++, "OnClick", EventCallback.Factory.Create(this, () => CloseChecklistComposer(card.Id)));
+        builder.CloseComponent();
+
+        builder.CloseElement();
+        builder.CloseElement();
+    }
+
+    private async Task SubmitChecklistRenameAsync(RKanboardCardModel card, RKanboardChecklistModel checklist)
+    {
+        if (!OnChecklistMutation.HasDelegate) return;
+        var title = GetChecklistRenameDraft(card.Id, checklist.Id).Trim();
+        if (string.IsNullOrWhiteSpace(title)) return;
+
+        var context = new RKanboardChecklistMutationContext(
+            KanboardChecklistMutationType.RenameChecklist,
+            card.Id,
+            checklist.Id,
+            title,
+            null,
+            null,
+            null);
+
+        await OnChecklistMutation.InvokeAsync(context);
+        CancelChecklistRename(card.Id, checklist.Id);
+    }
+
+    private async Task SubmitChecklistItemRenameAsync(RKanboardCardModel card, RKanboardChecklistModel checklist, RKanboardChecklistItem item)
+    {
+        if (!OnChecklistMutation.HasDelegate) return;
+        var draft = GetChecklistItemDraft(card.Id, checklist.Id, item.Id).Trim();
+        if (string.IsNullOrWhiteSpace(draft)) return;
+
+        var context = new RKanboardChecklistMutationContext(
+            KanboardChecklistMutationType.UpdateItem,
+            card.Id,
+            checklist.Id,
+            null,
+            item.Id,
+            draft,
+            null);
+
+        await OnChecklistMutation.InvokeAsync(context);
+        CancelChecklistItemRename(card.Id, checklist.Id, item.Id);
+    }
+
+    private async Task SubmitChecklistItemAsync(RKanboardCardModel card, RKanboardChecklistModel checklist)
+    {
+        if (!OnChecklistMutation.HasDelegate) return;
+        var draft = GetChecklistItemDraft(card.Id, checklist.Id, null).Trim();
+        if (string.IsNullOrWhiteSpace(draft)) return;
+
+        var context = new RKanboardChecklistMutationContext(
+            KanboardChecklistMutationType.AddItem,
+            card.Id,
+            checklist.Id,
+            null,
+            null,
+            draft,
+            null);
+
+        await OnChecklistMutation.InvokeAsync(context);
+        SetChecklistItemDraft(card.Id, checklist.Id, null, string.Empty);
+    }
+
+    private async Task SubmitNewChecklistAsync(RKanboardCardModel card)
+    {
+        if (!OnChecklistMutation.HasDelegate) return;
+        var draft = GetNewChecklistDraft(card.Id).Trim();
+        if (string.IsNullOrWhiteSpace(draft)) return;
+
+        var context = new RKanboardChecklistMutationContext(
+            KanboardChecklistMutationType.AddChecklist,
+            card.Id,
+            Guid.NewGuid().ToString("N"),
+            draft,
+            null,
+            null,
+            null);
+
+        await OnChecklistMutation.InvokeAsync(context);
+        newChecklistDrafts[card.Id] = string.Empty;
+        CloseChecklistComposer(card.Id);
+    }
+
+    private async Task ToggleChecklistItemAsync(RKanboardCardModel card, RKanboardChecklistModel checklist, RKanboardChecklistItem item, bool isCompleted)
+    {
+        if (!OnChecklistMutation.HasDelegate) return;
+        var context = new RKanboardChecklistMutationContext(
+            KanboardChecklistMutationType.ToggleItem,
+            card.Id,
+            checklist.Id,
+            null,
+            item.Id,
+            null,
+            isCompleted);
+
+        await OnChecklistMutation.InvokeAsync(context);
+    }
+
+    private async Task DeleteChecklistItemAsync(RKanboardCardModel card, RKanboardChecklistModel checklist, RKanboardChecklistItem item)
+    {
+        if (!OnChecklistMutation.HasDelegate) return;
+        var context = new RKanboardChecklistMutationContext(
+            KanboardChecklistMutationType.DeleteItem,
+            card.Id,
+            checklist.Id,
+            null,
+            item.Id,
+            null,
+            null);
+
+        await OnChecklistMutation.InvokeAsync(context);
+    }
+
+    private async Task DeleteChecklistAsync(RKanboardCardModel card, RKanboardChecklistModel checklist)
+    {
+        if (!OnChecklistMutation.HasDelegate) return;
+        var context = new RKanboardChecklistMutationContext(
+            KanboardChecklistMutationType.DeleteChecklist,
+            card.Id,
+            checklist.Id,
+            null,
+            null,
+            null,
+            null);
+
+        await OnChecklistMutation.InvokeAsync(context);
+    }
+
+    private void OpenChecklistItemRename(RKanboardCardModel card, RKanboardChecklistModel checklist, RKanboardChecklistItem item)
+    {
+        var key = BuildChecklistItemKey(card.Id, checklist.Id, item.Id);
+        checklistItemDrafts[key] = item.Text ?? string.Empty;
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private Task HandleChecklistItemComposerKeyDown(KeyboardEventArgs args, RKanboardCardModel card, RKanboardChecklistModel checklist)
+    {
+        if (args.Key == "Enter" && !args.ShiftKey)
+        {
+            return SubmitChecklistItemAsync(card, checklist);
+        }
+
+        if (args.Key == "Escape")
+        {
+            SetChecklistItemDraft(card.Id, checklist.Id, null, string.Empty);
+            return InvokeAsync(StateHasChanged);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private Task HandleCollaboratorsEditAsync(RKanboardColumnModel column, RKanboardCardModel card)
+    {
+        if (!OnCollaboratorsEditRequested.HasDelegate)
+        {
+            return Task.CompletedTask;
+        }
+
+        var collaborators = card.Collaborators ?? Array.Empty<RKanboardParticipantModel>();
+        var context = new RKanboardCollaboratorEditContext(card.Id, column.Id, collaborators);
+        return OnCollaboratorsEditRequested.InvokeAsync(context);
+    }
+
+    private Task EmitColumnCardOrderChangedAsync(RKanboardBoardState board)
+    {
+        if (!OnColumnCardOrderChanged.HasDelegate)
+        {
+            return Task.CompletedTask;
+        }
+
+        var order = localStateManager.GetColumnCardOrder(board);
+        return OnColumnCardOrderChanged.InvokeAsync(order);
+    }
+
+    private string BuildLabelClasses(RKanboardLabelModel label)
+    {
+        var classes = new List<string> { "rkanboard-card-label" };
+        if (!string.IsNullOrWhiteSpace(label.ColorClass))
+        {
+            classes.Add(label.ColorClass);
+        }
+
+        return string.Join(" ", classes);
+    }
+
+    private void RenderCardWatchers(RenderTreeBuilder builder, RKanboardCardModel card, ref int seq)
+    {
+        var watchers = card.Watchers?
+            .Where(watcher => watcher is not null)
+            .ToList() ?? new List<RKanboardParticipantModel>();
+
+        if (watchers.Count == 0) return;
+
+        builder.OpenElement(seq++, "div");
+        builder.AddAttribute(seq++, "class", "rkanboard-card-watchers d-flex align-center gap-1 mt-3");
+
+        const int maxVisible = 4;
+        var rendered = 0;
+
+        foreach (var watcher in watchers)
+        {
+            if (watcher is null) continue;
+            if (rendered >= maxVisible) break;
+
+            builder.OpenElement(seq++, "div");
+            builder.AddAttribute(seq++, "class", "rkanboard-card-watcher");
+            if (!string.IsNullOrWhiteSpace(watcher.AvatarUrl))
+            {
+                builder.OpenElement(seq++, "img");
+                builder.AddAttribute(seq++, "src", watcher.AvatarUrl);
+                builder.AddAttribute(seq++, "alt", watcher.DisplayName);
+                builder.AddAttribute(seq++, "class", "rkanboard-card-watcher-avatar");
+                builder.CloseElement();
+            }
+            else
+            {
+                builder.OpenElement(seq++, "span");
+                builder.AddAttribute(seq++, "class", "rkanboard-card-watcher-avatar placeholder");
+                builder.AddContent(seq++, GetAssigneeInitials(watcher.DisplayName));
+                builder.CloseElement();
+            }
+            builder.CloseElement();
+            rendered++;
+        }
+
+        var remaining = watchers.Count - rendered;
+        if (remaining > 0)
+        {
+            builder.OpenElement(seq++, "span");
+            builder.AddAttribute(seq++, "class", "rkanboard-card-watcher-more");
+            builder.AddContent(seq++, $"+{remaining}");
+            builder.CloseElement();
+        }
+
+        builder.CloseElement();
+    }
+
+    private void RenderCardCollaborators(RenderTreeBuilder builder, RKanboardColumnModel column, RKanboardCardModel card, ref int seq)
+    {
+        if (!ShowCollaboratorManager)
+        {
+            return;
+        }
+
+        var collaborators = card.Collaborators?
+            .Where(participant => participant is not null)
+            .ToList() ?? new List<RKanboardParticipantModel>();
+        var hasCollaborators = collaborators.Count > 0;
+
+        if (!hasCollaborators && (!OnCollaboratorsEditRequested.HasDelegate || Disabled))
+        {
+            return;
+        }
+
+        builder.OpenElement(seq++, "div");
+        builder.AddAttribute(seq++, "class", "rkanboard-card-collaborators d-flex flex-wrap align-start gap-2 mt-3");
+
+        if (hasCollaborators)
+        {
+            builder.OpenElement(seq++, "div");
+            builder.AddAttribute(seq++, "class", "rkanboard-collaborator-stack d-flex");
+            var maxVisible = Math.Min(collaborators.Count, 4);
+            for (var i = 0; i < maxVisible; i++)
+            {
+                var collaborator = collaborators[i];
+                if (collaborator is null) continue;
+                RenderParticipantAvatar(builder, collaborator, ref seq);
+            }
+
+            if (collaborators.Count > maxVisible)
+            {
+                builder.OpenElement(seq++, "span");
+                builder.AddAttribute(seq++, "class", "rkanboard-collaborator-more");
+                builder.AddContent(seq++, $"+{collaborators.Count - maxVisible}");
+                builder.CloseElement();
+            }
+
+            builder.CloseElement();
+        }
+
+        if (OnCollaboratorsEditRequested.HasDelegate && !Disabled)
+        {
+            builder.OpenComponent<RButton>(seq++);
+            builder.AddAttribute(seq++, "Text", hasCollaborators ? "Manage team" : "Add collaborators");
+            builder.AddAttribute(seq++, "Variant", VariantType.Secondary);
+            builder.AddAttribute(seq++, "Size", SizeType.ExtraSmall);
+            builder.AddAttribute(seq++, "Mode", ButtonMode.Ghost);
+            builder.AddAttribute(seq++, "OnClick", EventCallback.Factory.Create(this, async () => await HandleCollaboratorsEditAsync(column, card)));
+            builder.CloseComponent();
+        }
+
+        builder.CloseElement();
+    }
+
+    private void RenderParticipantAvatar(RenderTreeBuilder builder, RKanboardParticipantModel participant, ref int seq)
+    {
+        if (participant is null)
+        {
+            return;
+        }
+        builder.OpenElement(seq++, "div");
+        builder.AddAttribute(seq++, "class", "rkanboard-collaborator-avatar");
+        if (!string.IsNullOrWhiteSpace(participant.AvatarUrl))
+        {
+            builder.OpenElement(seq++, "img");
+            builder.AddAttribute(seq++, "src", participant.AvatarUrl);
+            builder.AddAttribute(seq++, "alt", participant.DisplayName);
+            builder.CloseElement();
+        }
+        else
+        {
+            builder.OpenElement(seq++, "span");
+            builder.AddContent(seq++, GetAssigneeInitials(participant.DisplayName));
+            builder.CloseElement();
+        }
+        builder.CloseElement();
+    }
+
+    private RenderFragment RenderCardComposer(RKanboardColumnModel column) => builder =>
+    {
+        if (!AllowCardCreation || Disabled)
+        {
+            return;
+        }
+
+        var seq = 0;
+        var title = GetCardDraftTitle(column.Id);
+        var description = GetCardDraftDescription(column.Id);
+        var composerOpen = IsCardComposerOpen(column.Id);
+
+        builder.OpenElement(seq++, "div");
+        builder.AddAttribute(seq++, "class", composerOpen ? "rkanboard-composer is-open" : "rkanboard-composer");
+
+        if (composerOpen)
+        {
+            builder.OpenElement(seq++, "div");
+            builder.AddAttribute(seq++, "class", "rkanboard-composer-shell");
+
+            builder.OpenElement(seq++, "div");
+            builder.AddAttribute(seq++, "class", "rkanboard-composer-fields");
+
+            builder.OpenComponent<RTextInput>(seq++);
+            builder.AddAttribute(seq++, "Label", "Card title");
+            builder.AddAttribute(seq++, "Required", true);
+            builder.AddAttribute(seq++, "Placeholder", "What needs attention?");
+            builder.AddAttribute(seq++, "Value", title);
+            builder.AddAttribute(seq++, "ValueChanged", EventCallback.Factory.Create<string>(this, value => SetCardDraftTitle(column.Id, value)));
+            builder.AddAttribute(seq++, "FullWidth", true);
+            builder.AddAttribute(seq++, "Size", SizeType.Small);
+            builder.AddAttribute(seq++, "OnKeyDown", EventCallback.Factory.Create<KeyboardEventArgs>(this, args => HandleCardComposerKeyDown(args, column)));
+            builder.CloseComponent();
+
+            builder.OpenComponent<RTextInput>(seq++);
+            builder.AddAttribute(seq++, "Label", "Description (optional)");
+            builder.AddAttribute(seq++, "IsMultiLine", true);
+            builder.AddAttribute(seq++, "Rows", 3);
+            builder.AddAttribute(seq++, "Placeholder", "Add context for teammates");
+            builder.AddAttribute(seq++, "Value", description);
+            builder.AddAttribute(seq++, "ValueChanged", EventCallback.Factory.Create<string>(this, value => SetCardDraftDescription(column.Id, value)));
+            builder.AddAttribute(seq++, "FullWidth", true);
+            builder.AddAttribute(seq++, "Size", SizeType.Small);
+            builder.CloseComponent();
+
+            builder.CloseElement(); // fields
+
+            builder.OpenElement(seq++, "div");
+            builder.AddAttribute(seq++, "class", "rkanboard-composer-actions");
+
+            builder.OpenComponent<RButton>(seq++);
+            builder.AddAttribute(seq++, "Text", "Add");
+            builder.AddAttribute(seq++, "Variant", VariantType.Primary);
+            builder.AddAttribute(seq++, "Size", SizeType.Small);
+            builder.AddAttribute(seq++, "Disabled", string.IsNullOrWhiteSpace(title));
+            builder.AddAttribute(seq++, "OnClick", EventCallback.Factory.Create(this, async () => await SubmitNewCardAsync(column)));
+            builder.CloseComponent();
+
+            builder.OpenComponent<RButton>(seq++);
+            builder.AddAttribute(seq++, "Text", "Cancel");
+            builder.AddAttribute(seq++, "Variant", VariantType.Secondary);
+            builder.AddAttribute(seq++, "Size", SizeType.Small);
+            builder.AddAttribute(seq++, "OnClick", EventCallback.Factory.Create(this, () => CloseCardComposer(column.Id)));
+            builder.CloseComponent();
+
+            builder.CloseElement(); // actions
+            builder.CloseElement(); // shell
+        }
+        else
+        {
+            builder.OpenComponent<RButton>(seq++);
+            builder.AddAttribute(seq++, "Text", "Add card");
+            builder.AddAttribute(seq++, "Icon", "add");
+            builder.AddAttribute(seq++, "Variant", VariantType.Secondary);
+            builder.AddAttribute(seq++, "Size", SizeType.Small);
+            builder.AddAttribute(seq++, "OnClick", EventCallback.Factory.Create(this, () => OpenCardComposer(column.Id)));
+            builder.CloseComponent();
+        }
+
+        builder.CloseElement();
+    };
+
+    private string GetCardClasses(RKanboardCardModel card, RKanboardColumnModel column)
+    {
+        var classes = new List<string>
+        {
+            "rkanboard-card",
+            dropTargetColumnId == column.Id && string.Equals(draggingCardId, card.Id, StringComparison.Ordinal) ? "is-origin" : string.Empty
+        };
+
+        if (string.Equals(draggingCardId, card.Id, StringComparison.Ordinal))
+        {
+            classes.Add("is-dragging");
+        }
+
+        if (EnableKeyboardShortcuts && string.Equals(focusedCardId, card.Id, StringComparison.Ordinal))
+        {
+            classes.Add("is-focused");
+        }
+
+        return string.Join(" ", classes.Where(value => !string.IsNullOrWhiteSpace(value)));
+    }
+
+    private int GetCardTabIndex(RKanboardCardModel card)
+    {
+        if (!EnableKeyboardShortcuts || Disabled) return -1;
+        return string.Equals(focusedCardId, card.Id, StringComparison.Ordinal) ? 0 : -1;
+    }
+
+    private void HandleCardFocused(RKanboardCardModel card)
+    {
+        if (!EnableKeyboardShortcuts) return;
+        focusedCardId = card.Id;
+    }
+
+    private async Task HandleCardKeyDownAsync(KeyboardEventArgs args, RKanboardColumnModel column, RKanboardCardModel card, int index)
+    {
+        if (!EnableKeyboardShortcuts) return;
+
+        switch (args.Key)
+        {
+            case "ArrowDown":
+                MoveFocusWithinColumn(column, index + 1);
+                break;
+            case "ArrowUp":
+                MoveFocusWithinColumn(column, index - 1);
+                break;
+            case "ArrowRight":
+                if (args.CtrlKey)
+                {
+                    await MoveCardViaKeyboardAsync(column, card, index, 1);
+                    return;
+                }
+                MoveFocusToAdjacentColumn(column, index, 1);
+                break;
+            case "ArrowLeft":
+                if (args.CtrlKey)
+                {
+                    await MoveCardViaKeyboardAsync(column, card, index, -1);
+                    return;
+                }
+                MoveFocusToAdjacentColumn(column, index, -1);
+                break;
+            case "Enter":
+            case " ":
+                await HandleCardOpenAsync(card.Id);
+                break;
+        }
+    }
+
+    private void MoveFocusWithinColumn(RKanboardColumnModel column, int targetIndex)
+    {
+        var cards = GetCardsForColumn(column);
+        if (targetIndex < 0 || targetIndex >= cards.Count) return;
+        focusedCardId = cards[targetIndex].Id;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void MoveFocusToAdjacentColumn(RKanboardColumnModel column, int currentIndex, int direction)
+    {
+        var targetColumn = GetAdjacentColumn(column, direction, includeHidden: false);
+        if (targetColumn is null) return;
+        var targetCards = GetCardsForColumn(targetColumn);
+        if (!targetCards.Any()) return;
+        var targetIndex = Math.Clamp(currentIndex, 0, targetCards.Count - 1);
+        focusedCardId = targetCards[targetIndex].Id;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async Task MoveCardViaKeyboardAsync(RKanboardColumnModel column, RKanboardCardModel card, int fromIndex, int direction)
+    {
+        if (Disabled) return;
+
+        var targetColumn = GetAdjacentColumn(column, direction, includeHidden: true);
+        if (targetColumn is null || !targetColumn.Config.AllowDrop) return;
+        if (!AllowDropOnSameColumn && string.Equals(targetColumn.Id, column.Id, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        var insertIndex = direction > 0 ? targetColumn.CardIds.Count : 0;
+        var boardState = Board ?? EmptyBoard;
+        var context = new RKanboardCardDropContext(
+            card.Id,
+            column.Id,
+            targetColumn.Id,
+            fromIndex,
+            insertIndex,
+            boardState);
+
+        var suggestedAssignee = await EvaluateAutoAssignRulesAsync(context);
+        if (!string.IsNullOrWhiteSpace(suggestedAssignee))
+        {
+            context = context with { SuggestedAssigneeId = suggestedAssignee };
+        }
+
+        if (OnCardDrop.HasDelegate)
+        {
+            await OnCardDrop.InvokeAsync(context);
+        }
+    }
+
+    private RKanboardColumnModel? GetAdjacentColumn(RKanboardColumnModel column, int direction, bool includeHidden)
+    {
+        if (Board?.Columns is null) return null;
+
+        var columns = Board.Columns;
+        var currentIndex = columns.ToList().FindIndex(candidate => string.Equals(candidate.Id, column.Id, StringComparison.Ordinal));
+        if (currentIndex < 0) return null;
+
+        var targetIndex = currentIndex + direction;
+        while (targetIndex >= 0 && targetIndex < columns.Count)
+        {
+            var candidate = columns[targetIndex];
+            if (includeHidden || !IsColumnHidden(candidate))
+            {
+                return candidate;
+            }
+            targetIndex += direction;
+        }
+
+        return null;
+    }
+
+    private bool ShouldVirtualize(int cardCount) =>
+        EnableVirtualization && cardCount >= VirtualizationThreshold;
+
+    private bool IsDropTarget(string columnId, int index)
+    {
+        return dropTargetColumnId == columnId && dropTargetIndex == index;
+    }
+
+    private bool CanDragCard(RKanboardCardModel card, RKanboardColumnModel column)
+    {
+        if (Disabled) return false;
+        if (!AllowDropOnSameColumn && string.Equals(dragOriginColumnId, column.Id, StringComparison.Ordinal))
+        {
+            return false;
+        }
+        if (CanDragEvaluator is not null && !CanDragEvaluator(card, column))
+        {
+            return false;
+        }
+        return column.Config.AllowDrop;
+    }
+
+    private string GetOrientationIcon() =>
+        currentOrientation == KanboardOrientation.Horizontal ? "view_column" : "view_stream";
+
+    private string GetOrientationLabel() =>
+        currentOrientation == KanboardOrientation.Horizontal ? "Vertical" : "Horizontal";
+
+    private Task HandleBoardKeyDownAsync(KeyboardEventArgs args)
+    {
+        if (args is null || Disabled || !EnableKeyboardShortcuts) return Task.CompletedTask;
+
+        var key = args.Key?.ToLowerInvariant();
+        if (key == "n" && args.CtrlKey && args.ShiftKey)
+        {
+            return ShowAddColumnFormAsync(true);
+        }
+
+        if (key == "escape" && showAddColumnForm)
+        {
+            return ShowAddColumnFormAsync(false);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private Task ToggleAddColumnForm() => ShowAddColumnFormAsync(!showAddColumnForm);
+
+    private Task CancelAddColumnForm() => ShowAddColumnFormAsync(false);
+
+    private Task ShowAddColumnFormAsync(bool visible)
+    {
+        showAddColumnForm = visible;
+        if (!visible)
+        {
+            newColumnTitle = string.Empty;
+            newColumnDescription = string.Empty;
+        }
+
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ApplyColumnTemplateAsync(RKanboardColumnTemplate template)
+    {
+        if (template is null) return;
+
+        if (OnColumnCreate.HasDelegate)
+        {
+            var config = template.Config is null ? new KanboardColumnConfig() : template.Config with { };
+            var context = new RKanboardColumnMutationContext(
+                template.Title,
+                template.Description,
+                Board?.Columns?.Count ?? 0,
+                config,
+                template.TemplateId,
+                template.SwimlaneId);
+
+            await OnColumnCreate.InvokeAsync(context);
+        }
+
+        await ShowAddColumnFormAsync(false);
+    }
+
+    private async Task CreateColumnAsync()
+    {
+        if (string.IsNullOrWhiteSpace(newColumnTitle)) return;
+
+        if (OnColumnCreate.HasDelegate)
+        {
+            var context = new RKanboardColumnMutationContext(
+                newColumnTitle.Trim(),
+                string.IsNullOrWhiteSpace(newColumnDescription) ? null : newColumnDescription.Trim(),
+                Board?.Columns?.Count ?? 0,
+                new KanboardColumnConfig());
+
+            await OnColumnCreate.InvokeAsync(context);
+        }
+
+        await ShowAddColumnFormAsync(false);
+    }
+
+    private async Task ToggleOrientationAsync()
+    {
+        if (!AllowHorizontal) return;
+
+        var nextOrientation = currentOrientation == KanboardOrientation.Horizontal
+            ? KanboardOrientation.Vertical
+            : KanboardOrientation.Horizontal;
+
+        currentOrientation = nextOrientation;
+        requiresJsRefresh = true;
+
+        if (OrientationChanged.HasDelegate)
+        {
+            await OrientationChanged.InvokeAsync(nextOrientation);
+        }
+
+        await SafeInvokeAsync("RR.Blazor.RKanboard.refresh", _boardId, new
+        {
+            autoScroll = EnableAutoScroll,
+            edgeThreshold = AutoScrollEdgeThreshold,
+            scrollSpeed = AutoScrollSpeed
+        });
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ToggleColumnVisibilityAsync(RKanboardColumnModel column, bool hidden)
+    {
+        columnVisibilityOverrides[column.Id] = hidden;
+
+        if (OnColumnVisibilityChanged.HasDelegate)
+        {
+            await OnColumnVisibilityChanged.InvokeAsync(new RKanboardColumnVisibilityChangeContext(column.Id, hidden));
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private bool GetColumnDraggable(bool isHidden) =>
+        EnableColumnReorder && !Disabled && !isHidden;
+
+    private string GetColumnPlaceholderClasses(string columnId, bool after)
+    {
+        var classes = new List<string> { "rkanboard-column-placeholder" };
+        if (EnableColumnReorder && string.Equals(columnPlaceholderTargetId, columnId, StringComparison.Ordinal) && columnPlaceholderAfter == after)
+        {
+            classes.Add("is-active");
+        }
+        return string.Join(" ", classes);
+    }
+
+    private bool IsCardComposerOpen(string columnId) => openCardComposers.Contains(columnId);
+
+    private string GetCardDraftTitle(string columnId) => newCardDrafts.TryGetValue(columnId, out var value) ? value : string.Empty;
+
+    private string GetCardDraftDescription(string columnId) => newCardDescriptionDrafts.TryGetValue(columnId, out var value) ? value : string.Empty;
+
+    private void SetCardDraftTitle(string columnId, string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            newCardDrafts[columnId] = string.Empty;
+        }
+        else
+        {
+            newCardDrafts[columnId] = value;
+        }
+    }
+
+    private void SetCardDraftDescription(string columnId, string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            newCardDescriptionDrafts[columnId] = string.Empty;
+        }
+        else
+        {
+            newCardDescriptionDrafts[columnId] = value;
+        }
+    }
+
+    private void OpenCardComposer(string columnId)
+    {
+        openCardComposers.Add(columnId);
+        if (!newCardDrafts.ContainsKey(columnId))
+        {
+            newCardDrafts[columnId] = string.Empty;
+        }
+        if (!newCardDescriptionDrafts.ContainsKey(columnId))
+        {
+            newCardDescriptionDrafts[columnId] = string.Empty;
+        }
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void CloseCardComposer(string columnId)
+    {
+        openCardComposers.Remove(columnId);
+        newCardDrafts.Remove(columnId);
+        newCardDescriptionDrafts.Remove(columnId);
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private async Task SubmitNewCardAsync(RKanboardColumnModel column)
+    {
+        if (!AllowCardCreation || Disabled)
+        {
+            return;
+        }
+
+        var title = GetCardDraftTitle(column.Id);
+        if (string.IsNullOrWhiteSpace(title))
+        {
+            return;
+        }
+
+        var description = GetCardDraftDescription(column.Id);
+        if (OnCardCreate.HasDelegate)
+        {
+            var context = new RKanboardCardCreateContext(
+                column.Id,
+                column.SwimlaneId,
+                title.Trim(),
+                string.IsNullOrWhiteSpace(description) ? null : description.Trim());
+
+            await OnCardCreate.InvokeAsync(context);
+        }
+
+        newCardDrafts[column.Id] = string.Empty;
+        newCardDescriptionDrafts[column.Id] = string.Empty;
+        openCardComposers.Remove(column.Id);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task HandleCardComposerKeyDown(KeyboardEventArgs args, RKanboardColumnModel column)
+    {
+        if (args.Key == "Enter" && !args.ShiftKey)
+        {
+            await SubmitNewCardAsync(column);
+        }
+        else if (args.Key == "Escape")
+        {
+            CloseCardComposer(column.Id);
+        }
+    }
+
+    private void RenderCardChecklists(RenderTreeBuilder builder, RKanboardColumnModel column, RKanboardCardModel card, ref int seq)
+    {
+        var checklists = card.Checklists?
+            .Where(list => list is not null)
+            .ToList() ?? new List<RKanboardChecklistModel>();
+
+        var hasChecklists = checklists.Count > 0;
+        var allowEditing = AllowChecklistEditing && OnChecklistMutation.HasDelegate && !Disabled;
+
+        if (!hasChecklists && !allowEditing)
+        {
+            return;
+        }
+
+        builder.OpenElement(seq++, "div");
+        builder.AddAttribute(seq++, "class", "rkanboard-card-checklists d-flex flex-column gap-2 mt-2");
+
+        if (hasChecklists)
+        {
+            foreach (var checklist in checklists)
+            {
+                if (checklist is null) continue;
+                RenderChecklist(builder, card, column, checklist, allowEditing, ref seq);
+            }
+        }
+
+        if (allowEditing)
+        {
+            if (IsChecklistComposerOpen(card.Id))
+            {
+                RenderChecklistComposer(builder, card, ref seq);
+            }
+            else
+            {
+                builder.OpenComponent<RButton>(seq++);
+                builder.AddAttribute(seq++, "Text", "Add checklist");
+                builder.AddAttribute(seq++, "Icon", "add_task");
+                builder.AddAttribute(seq++, "Variant", VariantType.Secondary);
+                builder.AddAttribute(seq++, "Size", SizeType.ExtraSmall);
+                builder.AddAttribute(seq++, "OnClick", EventCallback.Factory.Create(this, () => OpenChecklistComposer(card.Id)));
+                builder.CloseComponent();
+            }
+        }
+
+        builder.CloseElement();
+    }
+
+    private void RenderChecklist(RenderTreeBuilder builder, RKanboardCardModel card, RKanboardColumnModel column, RKanboardChecklistModel checklist, bool allowEditing, ref int seq)
+    {
+        if (checklist is null)
+        {
+            return;
+        }
+
+        builder.OpenElement(seq++, "div");
+        builder.AddAttribute(seq++, "class", "rkanboard-checklist d-flex flex-column gap-2");
+
+        var renameActive = IsChecklistRenameActive(card.Id, checklist.Id);
+
+        builder.OpenElement(seq++, "div");
+        builder.AddAttribute(seq++, "class", "d-flex justify-between align-center gap-2");
+
+        if (renameActive)
+        {
+            builder.OpenComponent<RTextInput>(seq++);
+            builder.AddAttribute(seq++, "Label", "Checklist name");
+            builder.AddAttribute(seq++, "Value", GetChecklistRenameDraft(card.Id, checklist.Id));
+            builder.AddAttribute(seq++, "ValueChanged", EventCallback.Factory.Create<string>(this, value => SetChecklistRenameDraft(card.Id, checklist.Id, value)));
+            builder.AddAttribute(seq++, "FullWidth", true);
+            builder.AddAttribute(seq++, "Size", SizeType.Small);
+            builder.CloseComponent();
+
+            builder.OpenElement(seq++, "div");
+            builder.AddAttribute(seq++, "class", "d-flex gap-2");
+
+            builder.OpenComponent<RButton>(seq++);
+            builder.AddAttribute(seq++, "Text", "Save");
+            builder.AddAttribute(seq++, "Variant", VariantType.Primary);
+            builder.AddAttribute(seq++, "Size", SizeType.ExtraSmall);
+            builder.AddAttribute(seq++, "Disabled", string.IsNullOrWhiteSpace(GetChecklistRenameDraft(card.Id, checklist.Id)));
+            builder.AddAttribute(seq++, "OnClick", EventCallback.Factory.Create(this, async () => await SubmitChecklistRenameAsync(card, checklist)));
+            builder.CloseComponent();
+
+            builder.OpenComponent<RButton>(seq++);
+            builder.AddAttribute(seq++, "Text", "Cancel");
+            builder.AddAttribute(seq++, "Variant", VariantType.Secondary);
+            builder.AddAttribute(seq++, "Size", SizeType.ExtraSmall);
+            builder.AddAttribute(seq++, "OnClick", EventCallback.Factory.Create(this, () => CancelChecklistRename(card.Id, checklist.Id)));
+            builder.CloseComponent();
+
+            builder.CloseElement();
+        }
+        else
+        {
+            builder.OpenElement(seq++, "span");
+            builder.AddAttribute(seq++, "class", "text-xs font-semibold");
+            builder.AddContent(seq++, checklist.Title);
+            builder.CloseElement();
+
+            if (allowEditing)
+            {
+                builder.OpenElement(seq++, "div");
+                builder.AddAttribute(seq++, "class", "d-flex gap-1");
+
+                builder.OpenComponent<RButton>(seq++);
+                builder.AddAttribute(seq++, "Icon", "edit");
+                builder.AddAttribute(seq++, "Variant", VariantType.Secondary);
+                builder.AddAttribute(seq++, "Size", SizeType.ExtraSmall);
+                builder.AddAttribute(seq++, "Mode", ButtonMode.Ghost);
+                builder.AddAttribute(seq++, "OnClick", EventCallback.Factory.Create(this, () => OpenChecklistRename(card.Id, checklist)));
+                builder.CloseComponent();
+
+                builder.OpenComponent<RButton>(seq++);
+                builder.AddAttribute(seq++, "Icon", "delete");
+                builder.AddAttribute(seq++, "Variant", VariantType.Secondary);
+                builder.AddAttribute(seq++, "Size", SizeType.ExtraSmall);
+                builder.AddAttribute(seq++, "Mode", ButtonMode.Ghost);
+                builder.AddAttribute(seq++, "OnClick", EventCallback.Factory.Create(this, async () => await DeleteChecklistAsync(card, checklist)));
+                builder.CloseComponent();
+
+                builder.CloseElement();
+            }
+        }
+
+        builder.CloseElement();
+
+        if (checklist.Items is { Count: > 0 })
+        {
+            builder.OpenElement(seq++, "div");
+            builder.AddAttribute(seq++, "class", "d-flex flex-column gap-1");
+
+            foreach (var item in checklist.Items.Where(item => item is not null))
+            {
+                RenderChecklistItem(builder, card, checklist, item, allowEditing, ref seq);
+            }
+
+            builder.CloseElement();
+        }
+
+        if (allowEditing)
+        {
+            RenderChecklistItemComposer(builder, card, checklist, ref seq);
+        }
+
+        builder.CloseElement();
+    }
+
+    private void HandleColumnDragStart(DragEventArgs args, string columnId)
+    {
+        if (!EnableColumnReorder || Disabled) return;
+        columnDragOriginId = columnId;
+        columnPlaceholderTargetId = columnId;
+        columnPlaceholderAfter = false;
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void HandleColumnDragEnd(DragEventArgs args)
+    {
+        if (!EnableColumnReorder) return;
+        ResetColumnDragState();
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void HandleColumnPlaceholderDragOver(DragEventArgs args, string columnId, bool after)
+    {
+        if (!EnableColumnReorder || string.IsNullOrWhiteSpace(columnDragOriginId)) return;
+        if (!IsSameSwimlane(columnDragOriginId, columnId)) return;
+        var changed = !string.Equals(columnPlaceholderTargetId, columnId, StringComparison.Ordinal) || columnPlaceholderAfter != after;
+        columnPlaceholderTargetId = columnId;
+        columnPlaceholderAfter = after;
+        if (changed)
+        {
+            _ = InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task HandleColumnPlaceholderDropAsync(DragEventArgs args, string columnId, bool after)
+    {
+        if (!EnableColumnReorder || string.IsNullOrWhiteSpace(columnDragOriginId)) return;
+        if (!IsSameSwimlane(columnDragOriginId, columnId)) return;
+        columnPlaceholderTargetId = columnId;
+        columnPlaceholderAfter = after;
+        await CommitColumnReorderAsync();
+    }
+
+    private async Task CommitColumnReorderAsync()
+    {
+        if (Board?.Columns is null ||
+            string.IsNullOrWhiteSpace(columnDragOriginId) ||
+            string.IsNullOrWhiteSpace(columnPlaceholderTargetId))
+        {
+            ResetColumnDragState();
+            return;
+        }
+
+        var currentOrder = Board.Columns.Select(column => column.Id).ToList();
+        var fromIndex = currentOrder.FindIndex(id => string.Equals(id, columnDragOriginId, StringComparison.Ordinal));
+        var targetIndex = currentOrder.FindIndex(id => string.Equals(id, columnPlaceholderTargetId, StringComparison.Ordinal));
+
+        if (fromIndex < 0 || targetIndex < 0)
+        {
+            ResetColumnDragState();
+            return;
+        }
+
+        if (!IsSameSwimlane(columnDragOriginId, columnPlaceholderTargetId))
+        {
+            ResetColumnDragState();
+            return;
+        }
+
+        currentOrder.RemoveAt(fromIndex);
+        if (columnPlaceholderAfter)
+        {
+            if (fromIndex < targetIndex) targetIndex--;
+            targetIndex = Math.Min(targetIndex + 1, currentOrder.Count);
+        }
+        currentOrder.Insert(targetIndex, columnDragOriginId);
+
+        if (OnColumnLayoutChanged.HasDelegate)
+        {
+            await OnColumnLayoutChanged.InvokeAsync(new RKanboardColumnLayoutChangedContext(currentOrder));
+        }
+
+        ResetColumnDragState();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void ResetColumnDragState()
+    {
+        columnDragOriginId = null;
+        columnPlaceholderTargetId = null;
+        columnPlaceholderAfter = false;
+    }
+
+    private int ResolveCardIndex(RKanboardColumnModel column, RKanboardCardModel card)
+    {
+        if (!columnIndexLookups.TryGetValue(column.Id, out var lookup) || lookup.Count != column.CardIds.Count)
+        {
+            lookup = column.CardIds
+                .Select((id, idx) => (id, idx))
+                .ToDictionary(pair => pair.id, pair => pair.idx, StringComparer.Ordinal);
+            columnIndexLookups[column.Id] = lookup;
+        }
+
+        return lookup.TryGetValue(card.Id, out var index) ? index : 0;
+    }
+
+    private void HandleCardDragStart(DragEventArgs args, string columnId, string cardId, int index)
+    {
+        if (args?.DataTransfer is not null)
+        {
+            args.DataTransfer.EffectAllowed = "move";
+            args.DataTransfer.DropEffect = "move";
+        }
+
+        draggingCardId = cardId;
+        dragOriginColumnId = columnId;
+        dragOriginIndex = index;
+        dropTargetColumnId = columnId;
+        dropTargetIndex = index;
+    }
+
+    private void HandleCardDragEnd(DragEventArgs _)
+    {
+        draggingCardId = null;
+        dragOriginColumnId = null;
+        dragOriginIndex = -1;
+        dropTargetColumnId = null;
+        dropTargetIndex = -1;
+    }
+
+    private void HandleCardDragEnter(DragEventArgs args, string columnId, int index)
+    {
+        if (!IsValidDropTarget(columnId)) return;
+        dropTargetColumnId = columnId;
+        dropTargetIndex = index;
+    }
+
+    private void HandleCardDragOver(DragEventArgs args)
+    {
+        if (!IsDragging()) return;
+
+        if (args?.DataTransfer is not null)
+        {
+            args.DataTransfer.DropEffect = "move";
+        }
+    }
+
+    private async Task HandleCardDropAsync(DragEventArgs args, RKanboardColumnModel column, int index)
+    {
+        if (!IsDragging() || !IsValidDropTarget(column.Id)) return;
+
+        dropTargetColumnId = column.Id;
+        dropTargetIndex = index;
+
+        await CommitCardDropAsync(column.Id, index);
+    }
+
+    private void HandleColumnDragEnter(DragEventArgs args, RKanboardColumnModel column)
+    {
+        if (!IsValidDropTarget(column.Id)) return;
+        dropTargetColumnId = column.Id;
+        dropTargetIndex = int.MaxValue;
+    }
+
+    private void HandleColumnDragOver(DragEventArgs args, RKanboardColumnModel column)
+    {
+        if (!IsValidDropTarget(column.Id)) return;
+        if (args?.DataTransfer is not null)
+        {
+            args.DataTransfer.DropEffect = "move";
+        }
+        dropTargetColumnId = column.Id;
+        dropTargetIndex = int.MaxValue;
+    }
+
+    private async Task HandleColumnDropAsync(DragEventArgs args, RKanboardColumnModel column, int cardCount)
+    {
+        if (!IsDragging() || !IsValidDropTarget(column.Id)) return;
+
+        dropTargetColumnId = column.Id;
+        dropTargetIndex = int.MaxValue;
+
+        await CommitCardDropAsync(column.Id, cardCount);
+    }
+
+    private async Task CommitCardDropAsync(string targetColumnId, int targetIndex)
+    {
+        if (!IsDragging() || draggingCardId is null || dragOriginColumnId is null || Board is null) return;
+
+        if (!AllowDropOnSameColumn && string.Equals(dragOriginColumnId, targetColumnId, StringComparison.Ordinal))
+        {
+            ResetDragState();
+            return;
+        }
+
+        var boardState = Board ?? EmptyBoard;
+        var context = new RKanboardCardDropContext(
+            draggingCardId,
+            dragOriginColumnId,
+            targetColumnId,
+            dragOriginIndex,
+            NormalizeTargetIndex(targetColumnId, targetIndex),
+            boardState);
+
+        var suggestedAssignee = await EvaluateAutoAssignRulesAsync(context);
+        if (!string.IsNullOrEmpty(suggestedAssignee))
+        {
+            context = context with { SuggestedAssigneeId = suggestedAssignee };
+        }
+
+        if (OnCardDrop.HasDelegate)
+        {
+            await OnCardDrop.InvokeAsync(context);
+        }
+
+        await NotifyBulkUpdateAsync(new[]
+        {
+            new RKanboardCardMutationContext(
+                context.CardId,
+                context.ToColumnId,
+                KanboardCardMutationType.Move,
+                new Dictionary<string, object>
+                {
+                    ["FromColumnId"] = context.FromColumnId,
+                    ["ToIndex"] = context.ToIndex,
+                    ["SuggestedAssigneeId"] = context.SuggestedAssigneeId ?? string.Empty
+                })
+        });
+
+        var provisionalBoard = localStateManager.MoveCard(boardState, context);
+        await EmitColumnCardOrderChangedAsync(provisionalBoard);
+
+        ResetDragState();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void ResetDragState()
+    {
+        draggingCardId = null;
+        dragOriginColumnId = null;
+        dragOriginIndex = -1;
+        dropTargetColumnId = null;
+        dropTargetIndex = -1;
+    }
+
+    private bool IsDragging() => !string.IsNullOrWhiteSpace(draggingCardId);
+
+    private bool IsValidDropTarget(string columnId)
+    {
+        if (!IsDragging()) return false;
+        if (Board?.Columns is null) return false;
+
+        var targetColumn = Board.Columns.FirstOrDefault(column => string.Equals(column.Id, columnId, StringComparison.Ordinal));
+        if (targetColumn is null) return false;
+        if (!targetColumn.Config.AllowDrop) return false;
+        if (string.Equals(dragOriginColumnId, columnId, StringComparison.Ordinal) && !AllowDropOnSameColumn)
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    private int NormalizeTargetIndex(string columnId, int targetIndex)
+    {
+        var column = Board?.GetColumn(columnId);
+        if (column is null) return targetIndex;
+
+        var count = column.CardIds.Count;
+        if (targetIndex < 0) targetIndex = 0;
+        if (targetIndex > count) targetIndex = count;
+        if (dropTargetIndex == int.MaxValue) targetIndex = count;
+
+        return targetIndex;
+    }
+
+    private async Task<string?> EvaluateAutoAssignRulesAsync(RKanboardCardDropContext context)
+    {
+        if (AutoAssignRules is null) return null;
+
+        foreach (var rule in AutoAssignRules)
+        {
+            if (rule is null) continue;
+
+            try
+            {
+                var instruction = await rule(context);
+                if (instruction is not null && !string.IsNullOrWhiteSpace(instruction.AssigneeId))
+                {
+                    return instruction.AssigneeId;
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger?.LogWarning(ex, "Auto-assign rule failed for card {CardId}", context.CardId);
+            }
+        }
+
+        return null;
+    }
+
+    private Task NotifyBulkUpdateAsync(IEnumerable<RKanboardCardMutationContext> mutations)
+    {
+        if (!OnCardBulkUpdate.HasDelegate) return Task.CompletedTask;
+
+        var payload = mutations?
+            .Where(mutation => mutation is not null)
+            .ToList();
+
+        if (payload is null || payload.Count == 0)
+        {
+            return Task.CompletedTask;
+        }
+
+        return OnCardBulkUpdate.InvokeAsync(payload);
+    }
+
+    private string GetAssigneeDisplayName(RKanboardCardModel card)
+    {
+        if (!string.IsNullOrWhiteSpace(card.AssigneeDisplayName))
+        {
+            return card.AssigneeDisplayName;
+        }
+
+        return string.IsNullOrWhiteSpace(card.AssigneeId) ? "Unassigned" : card.AssigneeId;
+    }
+
+    private string GetAssigneeInitials(string? displayName)
+    {
+        if (string.IsNullOrWhiteSpace(displayName)) return "NA";
+
+        var parts = displayName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 1)
+        {
+            return parts[0][0].ToString().ToUpperInvariant();
+        }
+
+        return (parts[0][0].ToString() + parts[^1][0]).ToUpperInvariant();
+    }
+
+    private RKanboardAssigneeOption? GetCurrentAssigneeOption(RKanboardCardModel card)
+    {
+        if (AssigneeOptions is null || string.IsNullOrWhiteSpace(card.AssigneeId))
+        {
+            return null;
+        }
+
+        return AssigneeOptions.FirstOrDefault(option => string.Equals(option.Id, card.AssigneeId, StringComparison.Ordinal));
+    }
+
+    private IEnumerable<RKanboardAssigneeOption> GetDefaultAssigneeOptions()
+    {
+        return AssigneeOptions ?? Array.Empty<RKanboardAssigneeOption>();
+    }
+
+    private async Task<IEnumerable<RKanboardAssigneeOption>> SearchAssigneesAsync(string query, CancellationToken cancellationToken)
+    {
+        if (AssigneeSearch is not null)
+        {
+            var results = await AssigneeSearch.Invoke(query, cancellationToken);
+            return results ?? Array.Empty<RKanboardAssigneeOption>();
+        }
+
+        var options = AssigneeOptions ?? Array.Empty<RKanboardAssigneeOption>();
+        if (string.IsNullOrWhiteSpace(query)) return options;
+
+        return options.Where(option =>
+            (!string.IsNullOrWhiteSpace(option.DisplayName) && option.DisplayName.Contains(query, StringComparison.OrdinalIgnoreCase)) ||
+            (!string.IsNullOrWhiteSpace(option.Email) && option.Email.Contains(query, StringComparison.OrdinalIgnoreCase)));
+    }
+
+    private RenderFragment<RKanboardAssigneeOption> BuildAssigneeTemplate => option => builder =>
+    {
+        if (option is null) return;
+
+        builder.OpenElement(0, "div");
+        builder.AddAttribute(1, "class", "rkanboard-assignee-item");
+
+        if (!string.IsNullOrWhiteSpace(option.AvatarUrl))
+        {
+            builder.OpenElement(2, "img");
+            builder.AddAttribute(3, "src", option.AvatarUrl);
+            builder.AddAttribute(4, "alt", option.DisplayName);
+            builder.AddAttribute(5, "class", "rkanboard-assignee-avatar");
+            builder.CloseElement();
+        }
+        else
+        {
+            builder.OpenElement(6, "div");
+            builder.AddAttribute(7, "class", "rkanboard-assignee-avatar placeholder");
+            builder.OpenElement(8, "span");
+            builder.AddContent(9, GetAssigneeInitials(option.DisplayName));
+            builder.CloseElement();
+            builder.CloseElement();
+        }
+
+        builder.OpenElement(10, "div");
+        builder.AddAttribute(11, "class", "d-flex flex-column");
+        builder.OpenElement(12, "span");
+        builder.AddAttribute(13, "class", "text-2xs font-medium");
+        builder.AddContent(14, option.DisplayName);
+        builder.CloseElement();
+
+        if (!string.IsNullOrWhiteSpace(option.Email))
+        {
+            builder.OpenElement(15, "span");
+            builder.AddAttribute(16, "class", "text-3xs text-muted");
+            builder.AddContent(17, option.Email);
+            builder.CloseElement();
+        }
+
+        if (!string.IsNullOrWhiteSpace(option.Role))
+        {
+            builder.OpenElement(18, "span");
+            builder.AddAttribute(19, "class", "text-3xs text-muted");
+            builder.AddContent(20, option.Role);
+            builder.CloseElement();
+        }
+
+        builder.CloseElement(); // info container
+        builder.CloseElement(); // root
+    };
+
+    private bool AllowAssigneeChange(RKanboardCardModel card, RKanboardColumnModel column)
+    {
+        if (Disabled) return false;
+        if (!column.Config.AllowDrop && string.IsNullOrWhiteSpace(card.AssigneeId)) return false;
+        return true;
+    }
+
+    private async Task HandleAssigneeSelectedAsync(RKanboardCardModel card, string columnId, RKanboardAssigneeOption? option)
+    {
+        var previous = card.AssigneeId;
+        var newAssignee = option?.Id;
+
+        var context = new RKanboardAssigneeChangedContext(
+            card.Id,
+            columnId,
+            previous,
+            newAssignee);
+
+        if (OnAssigneeChanged.HasDelegate)
+        {
+            await OnAssigneeChanged.InvokeAsync(context);
+        }
+
+        await NotifyBulkUpdateAsync(new[]
+        {
+            new RKanboardCardMutationContext(
+                card.Id,
+                columnId,
+                KanboardCardMutationType.Assignment,
+                new Dictionary<string, object>
+                {
+                    ["PreviousAssigneeId"] = previous ?? string.Empty,
+                    ["NewAssigneeId"] = newAssignee ?? string.Empty
+                })
+        });
+    }
+
+    private async Task HandleCardEditAsync(RKanboardCardModel card, string columnId)
+    {
+        if (OnCardEditRequested.HasDelegate)
+        {
+            await OnCardEditRequested.InvokeAsync(card.Id);
+        }
+
+        await NotifyBulkUpdateAsync(new[]
+        {
+            new RKanboardCardMutationContext(
+                card.Id,
+                columnId,
+                KanboardCardMutationType.Custom,
+                new Dictionary<string, object>
+                {
+                    ["Action"] = "EditRequested"
+                })
+        });
+    }
+
+    private async Task HandleCardPriorityAsync(RKanboardCardModel card, string columnId)
+    {
+        if (OnCardPriorityRequested.HasDelegate)
+        {
+            await OnCardPriorityRequested.InvokeAsync(card);
+        }
+
+        await NotifyBulkUpdateAsync(new[]
+        {
+            new RKanboardCardMutationContext(
+                card.Id,
+                columnId,
+                KanboardCardMutationType.Priority,
+                new Dictionary<string, object>
+                {
+                    ["PriorityLabel"] = card.PriorityLabel ?? string.Empty
+                })
+        });
+    }
+
+    private async Task HandleCardCommentAsync(RKanboardCardModel card, string columnId)
+    {
+        if (OnCardCommentRequested.HasDelegate)
+        {
+            await OnCardCommentRequested.InvokeAsync(card);
+        }
+
+        await NotifyBulkUpdateAsync(new[]
+        {
+            new RKanboardCardMutationContext(
+                card.Id,
+                columnId,
+                KanboardCardMutationType.Comment,
+                new Dictionary<string, object>
+                {
+                    ["CommentsSummary"] = card.CommentsSummary ?? string.Empty
+                })
+        });
+    }
+
+    private Task HandleCardOpenAsync(string cardId)
+    {
+        if (OnCardOpen.HasDelegate)
+        {
+            return OnCardOpen.InvokeAsync(cardId);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    protected override async Task InitializeJavaScriptAsync()
+    {
+        await SafeInvokeAsync("RR.Blazor.RKanboard.initialize", _boardId, new
+        {
+            autoScroll = EnableAutoScroll,
+            edgeThreshold = AutoScrollEdgeThreshold,
+            scrollSpeed = AutoScrollSpeed
+        });
+    }
+
+    protected override async ValueTask DisposeAsyncCore()
+    {
+        await SafeInvokeAsync("RR.Blazor.RKanboard.dispose", _boardId);
+        await base.DisposeAsyncCore();
+    }
+
+    protected override string GetSizeClasses()
+    {
+        return Size switch
+        {
+            SizeType.ExtraSmall => "rkanboard-size-xs",
+            SizeType.Small => "rkanboard-size-sm",
+            SizeType.Large => "rkanboard-size-lg",
+            SizeType.ExtraLarge => "rkanboard-size-xl",
+            _ => "rkanboard-size-md"
+        };
+    }
+
+    protected override SizeType GetDefaultSize() => SizeType.Medium;
+
+    protected override string GetVariantClasses()
+    {
+        return Variant switch
+        {
+            VariantType.Primary => "rkanboard-variant-primary",
+            VariantType.Secondary => "rkanboard-variant-secondary",
+            VariantType.Success => "rkanboard-variant-success",
+            VariantType.Warning => "rkanboard-variant-warning",
+            VariantType.Error => "rkanboard-variant-error",
+            VariantType.Info => "rkanboard-variant-info",
+            _ => "rkanboard-variant-default"
+        };
+    }
+
+    protected override VariantType GetDefaultVariant() => VariantType.Primary;
+}

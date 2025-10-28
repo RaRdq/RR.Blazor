@@ -111,6 +111,25 @@ public class ChoiceItem : IChoiceItem
     public RenderFragment<ChoiceItem> Template { get; set; }
 }
 
+public class ChoiceItem<T> : ChoiceItem
+{
+    public ChoiceItem()
+    {
+    }
+
+    public ChoiceItem(string label, T value)
+    {
+        Label = label;
+        Value = value!;
+    }
+
+    public new T Value
+    {
+        get => base.Value is T typed ? typed : default!;
+        set => base.Value = value!;
+    }
+}
+
 /// <summary>
 /// Interface for choice groups
 /// </summary>
@@ -554,6 +573,17 @@ public static class ChoiceFactory
     public static ChoiceItem CreateItem(string label, object value, string icon = "", bool disabled = false)
     {
         return new ChoiceItem
+        {
+            Label = label,
+            Value = value,
+            Icon = icon,
+            Disabled = disabled
+        };
+    }
+
+    public static ChoiceItem<T> CreateItem<T>(string label, T value, string icon = "", bool disabled = false)
+    {
+        return new ChoiceItem<T>
         {
             Label = label,
             Value = value,

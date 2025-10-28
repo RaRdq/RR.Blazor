@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
-using Microsoft.AspNetCore.Components.Web;
 using RR.Blazor.Enums;
 
 namespace RR.Blazor.Templates.Rating;

@@ -109,4 +109,3 @@ public enum AvatarShape
     Square,
     Rounded
 }
-

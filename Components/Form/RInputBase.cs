@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Web;
 using RR.Blazor.Attributes;
 using RR.Blazor.Enums;
 using RR.Blazor.Components.Base;
@@ -206,6 +205,14 @@ namespace RR.Blazor.Components.Form
                 
             if (OnTextChanged.HasDelegate)
                 await OnTextChanged.InvokeAsync(e.Value?.ToString() ?? "");
+        }
+
+        protected bool HasClickHandler => OnClick.HasDelegate;
+
+        protected async Task InvokeClickCallbacksAsync(MouseEventArgs e)
+        {
+            if (OnClick.HasDelegate)
+                await OnClick.InvokeAsync(e);
         }
         
         /// <summary>

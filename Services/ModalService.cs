@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Components;
-using Microsoft.JSInterop;
 using RR.Blazor.Components;
 using RR.Blazor.Components.Feedback;
 using RR.Blazor.Enums;
@@ -7,7 +6,7 @@ using RR.Blazor.Models;
 
 namespace RR.Blazor.Services;
 
-public sealed class ModalService(IJSRuntime jsRuntime) : IModalService, IDisposable
+public sealed class ModalService(IJavaScriptInteropService jsInterop) : IModalService, IDisposable
 {
     private readonly List<ModalInstance> _activeModals = [];
     private bool _isDisposed;
@@ -114,7 +113,7 @@ public sealed class ModalService(IJSRuntime jsRuntime) : IModalService, IDisposa
 
         try
         {
-            await jsRuntime.InvokeVoidAsync("RRBlazor.Modal.hide", modalId);
+            await jsInterop.TryInvokeVoidAsync("RRBlazor.Modal.hide", modalId);
         }
         catch
         {

@@ -290,4 +290,3 @@ public class RatingTemplateContext<T> : TemplateContext<T> where T : class
 
     public RatingTemplateContext(T item) : base(item) { }
 }
-

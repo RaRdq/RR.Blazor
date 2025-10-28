@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Web;
 using RR.Blazor.Attributes;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace RR.Blazor.Components.Base
 {
@@ -21,12 +21,19 @@ namespace RR.Blazor.Components.Base
         #region Interactive Properties
         
         /// <summary>
-        /// Event callback for click events
+        /// Primary click callback without event args.
         /// </summary>
-        [Parameter] 
+        [Parameter]
         [AIParameter("Click event handler")]
-        public EventCallback<MouseEventArgs> OnClick { get; set; }
-        
+        public EventCallback OnClick { get; set; }
+
+        /// <summary>
+        /// Optional click callback that receives the raw MouseEventArgs.
+        /// </summary>
+        [Parameter]
+        [AIParameter("Click event handler with MouseEventArgs")]
+        public EventCallback<MouseEventArgs> OnClickWithMouseArgs { get; set; }
+
         /// <summary>
         /// Whether the component is in a loading state
         /// </summary>
@@ -78,31 +85,34 @@ namespace RR.Blazor.Components.Base
         /// </summary>
         protected virtual async Task HandleClick(MouseEventArgs e)
         {
-            if (!Disabled && !Loading && OnClick.HasDelegate)
+            if (Disabled || Loading || !HasAnyClickHandlers())
             {
-                if (EnableDebounce)
-                {
-                    _pendingClickEvent = e;
-                    _hasPendingClick = true;
-
-                    _debounceTimer?.Dispose();
-                    _debounceTimer = new Timer(async _ =>
-                    {
-                        if (_hasPendingClick)
-                        {
-                            _hasPendingClick = false;
-                            await InvokeAsync(async () =>
-                            {
-                                await OnClick.InvokeAsync(_pendingClickEvent);
-                            });
-                        }
-                    }, null, DebounceTimeoutMs, Timeout.Infinite);
-                }
-                else
-                {
-                    await OnClick.InvokeAsync(e);
-                }
+                return;
             }
+
+            if (EnableDebounce)
+            {
+                _pendingClickEvent = e;
+                _hasPendingClick = true;
+
+                _debounceTimer?.Dispose();
+                _debounceTimer = new Timer(async _ =>
+                {
+                    if (!_hasPendingClick)
+                    {
+                        return;
+                    }
+
+                    _hasPendingClick = false;
+                    await InvokeAsync(async () =>
+                    {
+                        await InvokeClickCallbacksAsync(_pendingClickEvent);
+                    });
+                }, null, DebounceTimeoutMs, Timeout.Infinite);
+                return;
+            }
+
+            await InvokeClickCallbacksAsync(e);
         }
         
         /// <summary>
@@ -110,12 +120,30 @@ namespace RR.Blazor.Components.Base
         /// </summary>
         protected virtual async Task HandleKeyDown(KeyboardEventArgs e)
         {
-            if (!Disabled && !Loading && (e.Key == "Enter" || e.Key == " "))
+            if (!Disabled && !Loading && HasAnyClickHandlers() && (e.Key == "Enter" || e.Key == " "))
             {
                 await HandleClick(new MouseEventArgs());
             }
         }
-        
+
+        protected virtual bool HasAnyClickHandlers()
+        {
+            return OnClick.HasDelegate || OnClickWithMouseArgs.HasDelegate;
+        }
+
+        protected virtual async Task InvokeClickCallbacksAsync(MouseEventArgs e)
+        {
+            if (OnClickWithMouseArgs.HasDelegate)
+            {
+                await OnClickWithMouseArgs.InvokeAsync(e);
+            }
+
+            if (OnClick.HasDelegate)
+            {
+                await OnClick.InvokeAsync(null);
+            }
+        }
+
         #endregion
         
         #region Styling Methods

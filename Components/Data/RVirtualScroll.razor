@@ -80,23 +80,29 @@
             UpdateItemsList();
             CalculateVisibleRange();
         }
+        
+        if (!EnableMomentum)
+        {
+            _momentumEnabled = false;
+        }
     }
     
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    private bool _momentumEnabled;
+    
+    protected override async Task InitializeJavaScriptAsync()
     {
-        if (firstRender)
+        await base.InitializeJavaScriptAsync();
+        
+        if (_jsModule == null)
         {
-            // Initialize JavaScript module for smooth scrolling
-            _jsModule = await JSRuntime.InvokeAsync<IJSObjectReference>(
-                "import", "./_content/RR.Blazor/js/virtual-scroll.js");
-            
-            if (EnableMomentum)
-            {
-                await _jsModule.InvokeVoidAsync("enableMomentumScrolling", _scrollContainer);
-            }
+            _jsModule = await ImportModuleAsync("./_content/RR.Blazor/js/virtual-scroll.js");
         }
         
-        await base.OnAfterRenderAsync(firstRender);
+        if (_jsModule != null && EnableMomentum && !_momentumEnabled)
+        {
+            await _jsModule.InvokeVoidAsync("enableMomentumScrolling", _scrollContainer);
+            _momentumEnabled = true;
+        }
     }
     
     #endregion

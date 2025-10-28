@@ -6,5 +6,6 @@ public enum ChipStyle
     Chip,
     Status,
     Rounded,
-    Minimal
+    Minimal,
+    Outline
 }

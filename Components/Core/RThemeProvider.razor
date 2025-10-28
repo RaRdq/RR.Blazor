@@ -20,32 +20,16 @@
 @code {
     [Parameter] public string Theme { get; set; } = "default";
     [Parameter] public ThemeConfiguration? InitialTheme { get; set; }
-    
     private ThemeConfiguration? currentTheme;
-    private bool isInitialized = false;
+    private bool initializationCompleted;
+    private bool initializationInProgress;
     
-    protected override async Task OnInitializedAsync()
+    protected override Task OnInitializedAsync()
     {
         try
         {
-
-            await Task.Yield();
-            
-            if (!isInitialized)
-            {
-                await ThemeService.InitializeAsync();
-                isInitialized = true;
-            }
-            
-            if (InitialTheme != null)
-            {
-                await ThemeService.SetThemeAsync(InitialTheme);
-            }
-            
-            currentTheme = ThemeService.CurrentTheme;
-            
-
             ThemeService.ThemeChanged += OnThemeChanged;
+            currentTheme = InitialTheme ?? ThemeService.CurrentTheme;
         }
         catch (Exception ex)
         {
@@ -53,6 +37,8 @@
 
             currentTheme = ThemeConfiguration.Default;
         }
+        
+        return Task.CompletedTask;
     }
     
     private void OnThemeChanged(ThemeConfiguration theme)
@@ -62,6 +48,52 @@
             currentTheme = theme;
             StateHasChanged();
         });
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (initializationCompleted || initializationInProgress)
+        {
+            return;
+        }
+
+        initializationInProgress = true;
+
+        var initialized = false;
+
+        try
+        {
+            await ThemeService.InitializeAsync();
+
+            initialized = ThemeService.IsInitialized;
+
+            if (initialized && InitialTheme != null)
+            {
+                await ThemeService.SetThemeAsync(InitialTheme);
+            }
+
+            currentTheme = ThemeService.CurrentTheme;
+            initializationCompleted = initialized;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"RThemeProvider initialization error: {ex.Message}");
+            currentTheme = ThemeConfiguration.Default;
+            initializationCompleted = true;
+        }
+        finally
+        {
+            initializationInProgress = false;
+        }
+
+        if (!initializationCompleted)
+        {
+            await Task.Yield();
+            await InvokeAsync(StateHasChanged);
+            return;
+        }
+
+        await InvokeAsync(StateHasChanged);
     }
 
     protected override async ValueTask DisposeAsyncCore()

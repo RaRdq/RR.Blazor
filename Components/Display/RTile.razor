@@ -4,9 +4,9 @@
 @inherits RComponentBase
 
 <div class="@GetClasses()"
-     @onclick="@(OnClick.HasDelegate ? HandleClick : null)"
-     role="@(OnClick.HasDelegate && !Disabled ? "button" : null)"
-     tabindex="@(OnClick.HasDelegate && !Disabled ? 0 : null)"
+     @onclick="@(HasClickHandler ? HandleClick : null)"
+     role="@(HasClickHandler ? "button" : null)"
+     tabindex="@(HasClickHandler ? 0 : null)"
      aria-disabled="@(Disabled ? "true" : null)"
      @attributes="@AdditionalAttributes">
     @if (!string.IsNullOrEmpty(ImageUrl))
@@ -50,7 +50,9 @@
     [Parameter] public string Badge { get; set; }
     [Parameter] public RenderFragment Actions { get; set; }
     [Parameter] public TileVariant Variant { get; set; } = TileVariant.Default;
-    [Parameter] public EventCallback OnClick { get; set; }
+    [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
+
+    private bool HasClickHandler => !Disabled && OnClick.HasDelegate;
 
     private string GetClasses()
     {
@@ -58,7 +60,7 @@
 
         classes.Add($"rtile-{Variant.ToString().ToLower()}");
 
-        if (OnClick.HasDelegate && !Disabled)
+        if (HasClickHandler)
             classes.Add("rtile-clickable");
 
         if (Density != DensityType.Normal)
@@ -72,7 +74,10 @@
 
     private async Task HandleClick(MouseEventArgs e)
     {
-        if (!Disabled && OnClick.HasDelegate)
+        if (!HasClickHandler)
+            return;
+
+        if (OnClick.HasDelegate)
             await OnClick.InvokeAsync(e);
     }
 }

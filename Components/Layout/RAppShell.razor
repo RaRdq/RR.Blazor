@@ -10,10 +10,10 @@
 @using RR.Blazor.Components.Form
 @using RR.Blazor.Components.Layout
 @using Microsoft.AspNetCore.Components.Routing
-@using Microsoft.AspNetCore.Components.Web
 
 @inherits LayoutComponentBase
 @inject IJSRuntime JS
+@inject IJavaScriptInteropService JSInterop
 @inject IRThemeService ThemeService
 @inject IToastService ToastService
 @inject IAppSearchService SearchService
@@ -481,30 +481,28 @@
         NavigationItems ??= ShowSidebar ? GetDefaultNavigation() : null;
     }
     
+    private bool moduleInitialized;
+    private bool moduleInitializationPending;
+    
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender && !disposed)
+        if (!moduleInitialized && !disposed)
         {
-            try
+            var interactive = JSInterop != null && await JSInterop.IsInteractiveAsync();
+            
+            if (!interactive)
             {
-                appShellModule = await JS.InvokeAsync<IJSObjectReference>("RRBlazor.getModuleReference", "appShell");
-                IsMobile = await appShellModule.InvokeAsync<bool>("isMobile");
-                
-                dotNetRef = DotNetObjectReference.Create(this);
-                await appShellModule.InvokeVoidAsync("setDotNetRef", dotNetRef);
-                
-                await appShellModule.InvokeVoidAsync("initialize");
-                
-                if (IsMobile)
+                if (!moduleInitializationPending)
                 {
-                    sidebarOpen = false;
+                    moduleInitializationPending = true;
+                    await Task.Yield();
+                    moduleInitializationPending = false;
+                    await InvokeAsync(StateHasChanged);
                 }
-                
-                StateHasChanged();
             }
-            catch (Exception ex)
+            else
             {
-                Console.WriteLine($"[RAppShell] Initialization error: {ex.Message}");
+                await InitializeAppShellModuleAsync();
             }
         }
         
@@ -513,6 +511,41 @@
             await InitializeSearchClickOutside();
         }
         
+    }
+    
+    private async Task InitializeAppShellModuleAsync()
+    {
+        if (moduleInitialized || disposed) return;
+
+        try
+        {
+            appShellModule ??= await JS.InvokeAsync<IJSObjectReference>("RRBlazor.getModuleReference", "appShell");
+            
+            if (appShellModule == null) return;
+            
+            IsMobile = await appShellModule.InvokeAsync<bool>("isMobile");
+            
+            dotNetRef ??= DotNetObjectReference.Create(this);
+            await appShellModule.InvokeVoidAsync("setDotNetRef", dotNetRef);
+            
+            await appShellModule.InvokeVoidAsync("initialize");
+            
+            if (IsMobile)
+            {
+                sidebarOpen = false;
+            }
+            
+            moduleInitialized = true;
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (InvalidOperationException)
+        {
+            moduleInitialized = false;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[RAppShell] Initialization error: {ex.Message}");
+        }
     }
     
     private List<NavMenuItem> GetVisibleNavItems()

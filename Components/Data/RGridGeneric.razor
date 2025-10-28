@@ -1,6 +1,5 @@
 @using Microsoft.AspNetCore.Components
 @using Microsoft.AspNetCore.Components.Rendering
-@using Microsoft.AspNetCore.Components.Web.Virtualization
 @using RR.Blazor.Components.Core
 @using RR.Blazor.Components.Form
 @using RR.Blazor.Components.Data
@@ -927,30 +926,23 @@
 
     private async Task InitializeJavaScript()
     {
-        try
+        var options = new
         {
-            var options = new
-            {
-                gridId = GridId,
-                mode = _detectedMode.ToString().ToLower(),
-                columns = Columns,
-                columnsXs = ColumnsXs,
-                columnsSm = ColumnsSm,
-                columnsMd = ColumnsMd,
-                columnsLg = ColumnsLg,
-                columnsXl = ColumnsXl,
-                enableVirtualization = EnableVirtualization
-            };
-            
-            await JSRuntime.InvokeVoidAsync("eval", $@"
-                if (window.RGridModule) {{
-                    window.RGridModule.initialize('{GridId}', {System.Text.Json.JsonSerializer.Serialize(options)});
-                }}
-            ");
-        }
-        catch (Exception ex)
+            gridId = GridId,
+            mode = _detectedMode.ToString().ToLower(),
+            columns = Columns,
+            columnsXs = ColumnsXs,
+            columnsSm = ColumnsSm,
+            columnsMd = ColumnsMd,
+            columnsLg = ColumnsLg,
+            columnsXl = ColumnsXl,
+            enableVirtualization = EnableVirtualization
+        };
+        
+        var initialized = await SafeInvokeAsync<bool>("RRBlazor.RGrid.initialize", GridId, options);
+        if (!initialized)
         {
-            Console.WriteLine($"Failed to initialize RGrid JavaScript: {ex.Message}");
+            Console.WriteLine($"Failed to initialize RGrid JavaScript for grid '{GridId}'");
         }
     }
 
@@ -960,18 +952,7 @@
 
     public async ValueTask DisposeAsync()
     {
-        try
-        {
-            await JSRuntime.InvokeVoidAsync("eval", $@"
-                if (window.RGridModule && window.RGridModule.dispose) {{
-                    window.RGridModule.dispose('{GridId}');
-                }}
-            ");
-        }
-        catch (Exception)
-        {
-            // Ignore disposal errors
-        }
+        await SafeInvokeAsync("RRBlazor.RGrid.dispose", GridId);
     }
 
     #endregion
