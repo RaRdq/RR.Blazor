@@ -28,26 +28,26 @@ function Get-ThemeTemplate {
 
 :root[data-theme="$($Name.ToLower())"] {
   // Core Colors
-  --theme-primary: #4687f1;
-  --theme-primary-hover: #2d67e6;
-  --theme-primary-active: #1e4dcf;
-  --theme-success: #10b981;
-  --theme-warning: #f59e0b;
-  --theme-error: #ef4444;
-  --theme-info: #06b6d4;
+  --theme-primary: #3f7cf0;
+  --theme-primary-hover: #2f6de0;
+  --theme-primary-active: #2256c0;
+  --theme-success: #59c9a5;
+  --theme-warning: #f3b580;
+  --theme-error: #f28da0;
+  --theme-info: #7ec4e4;
   
   // Surface Colors
-  --theme-canvas: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-  --theme-surface: #fafbfc;
-  --theme-surface-elevated: #f4f5f7;
+  --theme-canvas: linear-gradient(135deg, #f6fbff 0%, #eef7f4 100%);
+  --theme-surface: #fbfcfe;
+  --theme-surface-elevated: #f1f6f7;
   
   // Text Colors
-  --theme-text: #0f172a;
-  --theme-text-muted: #475569;
-  --theme-text-subtle: #94a3b8;
+  --theme-text: #14293a;
+  --theme-text-muted: #4a5b6b;
+  --theme-text-subtle: #8ea0af;
   
   // Border
-  --theme-border: #e2e8f0;
+  --theme-border: #d8e5eb;
   
   // Shadows (5 elevation levels)
   --theme-shadow-sm: 0 2px 4px -1px rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.04);
@@ -57,17 +57,18 @@ function Get-ThemeTemplate {
   --theme-shadow-2xl: 0 48px 96px -16px rgb(0 0 0 / 0.35), 0 20px 40px -8px rgb(0 0 0 / 0.2);
   
   // Gradients
-  --theme-success-gradient: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  --theme-warning-gradient: linear-gradient(135deg, rgb(235, 167, 64) 0%, #ce881f 100%);
-  --theme-error-gradient: linear-gradient(135deg, #f13f3f 0%, #d41e1e 100%);
-  --theme-info-gradient: linear-gradient(135deg, #2db6ce 0%, #1089a8 100%);
+  --theme-success-gradient: linear-gradient(135deg, #c7f6e5 0%, #45b897 100%);
+  --theme-warning-gradient: linear-gradient(135deg, #ffe4c6 0%, #e28f54 100%);
+  --theme-error-gradient: linear-gradient(135deg, #ffd9e1 0%, #df7488 100%);
+  --theme-info-gradient: linear-gradient(135deg, #d0efff 0%, #52b2d9 100%);
   
   // Background Gradients
-  --theme-bg-gradient-primary: linear-gradient(135deg, #dbeafe, #bfdbfe, #93c5fd);
-  --theme-bg-gradient-success: linear-gradient(135deg, #d1fae5, #a7f3d0, #6ee7b7);
-  --theme-bg-gradient-warning: linear-gradient(135deg, #fef3c7, #fde68a, #fcd34d);
-  --theme-bg-gradient-error: linear-gradient(135deg, #fee2e2, #fecaca, #fca5a5);
-  --theme-bg-gradient-info: linear-gradient(135deg, #e0f2fe, #bae6fd, #7dd3fc);
+  --theme-primary-gradient: linear-gradient(135deg, #5b94ff 0%, #2f6de0 61.8%, #184cc6 100%);
+  --theme-bg-gradient-primary: linear-gradient(135deg, #a3c1ff, #6f90f0, #3c61db);
+  --theme-bg-gradient-success: linear-gradient(135deg, #e9fbf4, #d4f5e8, #bdf0dc);
+  --theme-bg-gradient-warning: linear-gradient(135deg, #fff1de, #fde2c0, #f9d0a2);
+  --theme-bg-gradient-error: linear-gradient(135deg, #ffe7ec, #ffd0d9, #f8b8c5);
+  --theme-bg-gradient-info: linear-gradient(135deg, #e5f6ff, #c9eafd, #adddf8);
 "@
 
     if ($FullTemplate) {

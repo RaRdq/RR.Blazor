@@ -1,13 +1,13 @@
 # RR.Blazor RKanboard Component - Statement of Work
 
 ## Executive Summary
-Deliver a reusable, extensible kanban experience (`RKanboard`) inside RR.Blazor that matches enterprise-grade workflows. The component must cover interactive drag-and-drop cards, dynamic state management, rich assignment workflows, layout customization (vertical/horizontal), and an adapter architecture that allows downstream projects to plug in arbitrary backends (PayrollAI Issues, Jira, banking APIs, etc.).
+Deliver a reusable, extensible kanban experience (`RKanboard`) inside RR.Blazor that matches enterprise-grade workflows. The component must cover interactive drag-and-drop cards, dynamic state management, rich assignment workflows, layout customization (vertical/horizontal), and an adapter architecture that allows downstream projects to plug in arbitrary backends (issue trackers, Jira, banking APIs, etc.).
 
 ## Objectives
 - Build a composable R* smart component that exposes kanban primitives while staying headless about domain data.
 - Mirror Trello-quality UX: column add/remove/hide, card drag between states, inline editing hooks, quick assignment.
 - Enable developers to wire business rules (auto-assign, SLA tracking, validation, analytics) without modifying the core component.
-- Ship a production-ready reference implementation on the PayrollAI Issues page with view-toggle parity (table ↔ kanboard).
+- Ship a production-ready reference implementation on the flagship Issues page with view-toggle parity (table ↔ kanboard).
 
 ## Core User Experience Requirements
 1. **Board Shell**
@@ -126,7 +126,7 @@ Supporting models: `RKanboardLabelModel`, `RKanboardBadgeModel`, `RKanboardCheck
 - Provide `RKanboardStateManager` service that tracks optimistic UI state, merges adapter responses, and reverts on failure.
 - Optional storage provider (local storage) for user-specific board preferences (hidden columns, orientation, density, column order, custom columns, card placements).
 
-## PayrollAI Issues Integration Scope
+## Reference Issues Integration Scope
 1. Replace existing Issues table header controls with `TabToolbar` toggle extended to `Kanboard`.
 2. When managers/HR switch to board view:
    - Columns reflect issue statuses (Open, In Progress, Escalated, Resolved, Closed, Cancelled).
@@ -148,7 +148,7 @@ Supporting models: `RKanboardLabelModel`, `RKanboardBadgeModel`, `RKanboardCheck
    - Adapter abstractions and default in-memory adapter.
    - Storybook/demo page in RR.Blazor (if existing pattern) or docs snippet.
    - Documentation updates: add to `rr-ai-components.json`, create component README, extend `SMART_COMPONENTS_ARCHITECTURE.md`.
-2. **PayrollAI Client**
+2. **Reference Client**
    - Updated `Issues.razor` with view toggle and board integration.
    - Mapper from `EmployeeIssueModel` → `RKanboardCardModel`.
    - State rules (column definitions, auto-assign logic).
@@ -183,12 +183,12 @@ Supporting models: `RKanboardLabelModel`, `RKanboardBadgeModel`, `RKanboardCheck
 - **Unit Tests (RR.Blazor.Tests)**: Validate state manager transitions, auto-assign engine, adapter execution.
 - **Component Smoke Tests**: BUnit tests with mock adapters ensuring drag callback invocations, orientation toggles, column hide states.
 - **Sync Verification**: Tests that switch between table and kanboard views to confirm shared query results stay aligned after drag mutations.
-- **PayrollAI Client Tests**: Add Issue board integration tests using BUnit/Moq for service calls, verifying table ↔ board toggling and assignment flows.
+- **Reference Client Tests**: Add Issue board integration tests using BUnit/Moq for service calls, verifying table ↔ board toggling and assignment flows.
 - **Playwright E2E**: Extend Issues scenario to drag card between columns, assert state change + assignee update.
 
 ## Documentation & Handoff
 - Update `RR.Blazor/_Documentation/RRAI.md` references and list RKanboard capabilities.
-- Produce usage guide describing adapter implementation checklist and PayrollAI-specific wiring.
+- Produce usage guide describing adapter implementation checklist and reference implementation wiring.
 - Record known extension points (swimlanes, analytics overlays) for future roadmap.
 
 ## Internal Review Notes

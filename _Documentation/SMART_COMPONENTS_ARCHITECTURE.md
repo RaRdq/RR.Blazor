@@ -28,7 +28,7 @@ RFormBase (abstract)
 
 ## Implementation Details
 
-### 1. RForm.cs (`C:\Projects\PayrollAI\RR.Blazor\Components\Form\RForm.cs`)
+### 1. RForm.cs (`..\RR.Blazor\Components\Form\RForm.cs`)
 
 **Purpose**: Contains base class and smart wrapper for automatic type detection
 
@@ -60,7 +60,7 @@ public class RForm : RFormBase
 }
 ```
 
-### 2. RFormGeneric.razor (`C:\Projects\PayrollAI\RR.Blazor\Components\Form\RFormGeneric.razor`)
+### 2. RFormGeneric.razor (`..\RR.Blazor\Components\Form\RFormGeneric.razor`)
 
 **Purpose**: Concrete implementation of form with strong typing
 

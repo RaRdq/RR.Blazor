@@ -1,0 +1,599 @@
+@using System.Collections.Generic
+@using System.Linq
+@using Microsoft.AspNetCore.Components
+@using RR.Blazor.Attributes
+@using RR.Blazor.Components.Base
+@using RR.Blazor.Components.Display
+@using RR.Blazor.Enums
+@using RR.Blazor.Models
+@inherits RComponentBase
+
+@attribute [Component("RChartWidget", Category = "Analytics", Complexity = ComponentComplexity.Complex)]
+@attribute [AIOptimized(Prompt = "Drop analytics charts into dashboards with responsive metric summaries", 
+                       CommonUse = "company KPIs, workforce analytics, financial dashboards", 
+                       AvoidUsage = "Static reports - use RChart directly")]
+
+<RWidget Id="@Id"
+         Title="@Title"
+         Subtitle="@Subtitle"
+         Icon="@Icon"
+         Variant="@Variant"
+         Intensity="@Intensity"
+         ColumnSpan="@ColumnSpan"
+         ColumnSpanXl="@ColumnSpanXl"
+         ColumnSpanLg="@ColumnSpanLg"
+         ColumnSpanMd="@ColumnSpanMd"
+         ColumnSpanSm="@ColumnSpanSm"
+         ColumnSpanXs="@ColumnSpanXs"
+         RowSpan="@RowSpan"
+         RowSpanXl="@RowSpanXl"
+         RowSpanLg="@RowSpanLg"
+         RowSpanMd="@RowSpanMd"
+         RowSpanSm="@RowSpanSm"
+         RowSpanXs="@RowSpanXs"
+         MinColumnSpan="@MinColumnSpan"
+         MaxColumnSpan="@MaxColumnSpan"
+         MinRowSpan="@MinRowSpan"
+         MaxRowSpan="@MaxRowSpan"
+         AllowResize="@AllowResize"
+         AllowReorder="@AllowReorder"
+         ToolbarContent="@ToolbarContent"
+         FooterContent="@FooterContent"
+         Class="@Class"
+         Style="@Style"
+         @attributes="forwardedAttributes">
+    <ChildContent>
+        @{
+            var widgetContext = CurrentWidgetContext;
+            var showSummary = ShouldRenderSummarySection(widgetContext);
+            var showChart = ShouldRenderChartSection(widgetContext);
+        }
+
+        @if (showSummary)
+        {
+            <section class="r-chart-widget__summary">
+                @if (SummaryTemplate != null)
+                {
+                    @SummaryTemplate(widgetContext)
+                }
+                else if (HasMetrics)
+                {
+                    <div class="r-chart-widget__metrics">
+                        @foreach (var metric in Metrics)
+                        {
+                            <div class="r-chart-widget__metric">
+                                <span class="r-chart-widget__metric-label">@metric.Label</span>
+                                <div class="r-chart-widget__metric-value">
+                                    <span>@metric.Value</span>
+                                    @if (!string.IsNullOrWhiteSpace(metric.Trend))
+                                    {
+                                        <span class="@BuildTrendClasses(metric)">
+                                            <i class="icon">
+                                                @(metric.TrendDirection switch
+                                                {
+                                                    TrendDirection.Positive => "trending_up",
+                                                    TrendDirection.Negative => "trending_down",
+                                                    _ => "trending_flat"
+                                                })
+                                            </i>
+                                            @metric.Trend
+                                        </span>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+                else if (!string.IsNullOrWhiteSpace(PrimaryMetricValue))
+                {
+                    <div class="r-chart-widget__primary-metric">
+                        <span class="r-chart-widget__primary-label">@PrimaryMetricLabel</span>
+                        <span class="r-chart-widget__primary-value">@PrimaryMetricValue</span>
+                        @if (!string.IsNullOrWhiteSpace(PrimaryMetricTrend))
+                        {
+                            <span class="@BuildPrimaryTrendClasses()">
+                                <i class="icon">
+                                    @(PrimaryMetricTrendDirection switch
+                                    {
+                                        TrendDirection.Positive => "arrow_upward",
+                                        TrendDirection.Negative => "arrow_downward",
+                                        _ => "trending_flat"
+                                    })
+                                </i>
+                                @PrimaryMetricTrend
+                            </span>
+                        }
+                    </div>
+                }
+            </section>
+        }
+
+        @if (showChart)
+        {
+            <section class="r-chart-widget__chart @(showSummary ? "r-chart-widget__chart--with-summary" : string.Empty)">
+                @if (DetailTemplate != null)
+                {
+                    @DetailTemplate(widgetContext)
+                }
+                else
+                {
+                    <RChartGeneric T="ChartDataPoint"
+                        DataPoints="@ResolvedDataPoints"
+                        Series="@Series"
+                        Title="@ChartTitle"
+                        Subtitle="@ChartSubtitle"
+                        Description="@ChartDescription"
+                        Icon="@ChartIcon"
+                        Type="@ChartType"
+                        Variant="@ChartVariant"
+                        Size="@ResolveChartSize(widgetContext)"
+                        Theme="@ChartTheme"
+                        ResponsiveMode="@ChartResponsiveMode"
+                        Configuration="@Configuration"
+                        LegendPosition="@LegendPosition"
+                        ShowLegend="@ShowLegend"
+                        ShowBarValues="@ShowBarValues"
+                        ShowGridLines="@ShowGridLines"
+                        ShowLinePoints="@ShowLinePoints"
+                        DoughnutInnerRatio="@DoughnutInnerRatio"
+                        ShowPieCenterValue="@ShowPieCenterValue"
+                        CenterLabel="@ChartCenterLabel"
+                        ValueFormat="@ValueFormat"
+                        Loading="@Loading"
+                        LoadingText="@LoadingText"
+                        HasError="@HasError"
+                        ErrorTitle="@ErrorTitle"
+                        ErrorMessage="@ErrorMessage"
+                        OnRetry="@OnRetry"
+                        Height="@ResolveChartHeight(widgetContext)"
+                        Width="@ChartWidth"
+                        LegendContent="@LegendContent">
+                    </RChartGeneric>
+                }
+            </section>
+        }
+    </ChildContent>
+</RWidget>
+
+@code {
+    private static readonly IReadOnlyDictionary<string, object> EmptyAttributes = new Dictionary<string, object>();
+    private IReadOnlyDictionary<string, object> forwardedAttributes = EmptyAttributes;
+    private RWidgetViewContext? fallbackWidgetContext;
+
+    [CascadingParameter] private RWidgetViewContext? WidgetContext { get; set; }
+
+    [Parameter, EditorRequired]
+    [AIParameter(Hint = "Unique identifier that matches persisted dashboard layout", IsRequired = true)]
+    public string Id { get; set; } = "";
+
+    [Parameter]
+    [AIParameter(Hint = "Widget title shown in the header")]
+    public string Title { get; set; } = "";
+
+    [Parameter]
+    [AIParameter(Hint = "Optional subtitle beneath the title")]
+    public string Subtitle { get; set; } = "";
+
+    [Parameter]
+    [AIParameter(Hint = "Material icon for the widget header", SuggestedValues = new[] { "insights", "stacked_bar_chart", "leaderboard" })]
+    public string Icon { get; set; } = "insights";
+
+    [Parameter]
+    [AIParameter(Hint = "Visual variant for the widget shell")]
+    public VariantType Variant { get; set; } = VariantType.Default;
+
+    [Parameter]
+    [AIParameter(Hint = "Intensity tone for the variant")]
+    public IntensityType Intensity { get; set; } = IntensityType.Normal;
+
+    [Parameter]
+    [AIParameter(Hint = "Default column span on desktop dashboards")]
+    public int ColumnSpan { get; set; } = 3;
+
+    [Parameter]
+    [AIParameter(Hint = "Column span ≥1280px (xl breakpoint)")]
+    public int ColumnSpanXl { get; set; }
+
+    [Parameter]
+    [AIParameter(Hint = "Column span ≥1024px (lg breakpoint)")]
+    public int ColumnSpanLg { get; set; }
+
+    [Parameter]
+    [AIParameter(Hint = "Column span ≥768px (md breakpoint)")]
+    public int ColumnSpanMd { get; set; }
+
+    [Parameter]
+    [AIParameter(Hint = "Column span ≥640px (sm breakpoint)")]
+    public int ColumnSpanSm { get; set; } = 2;
+
+    [Parameter]
+    [AIParameter(Hint = "Column span for mobile breakpoint")]
+    public int ColumnSpanXs { get; set; } = 1;
+
+    [Parameter]
+    [AIParameter(Hint = "Default row span (determines chart height)")]
+    public int RowSpan { get; set; } = 2;
+
+    [Parameter]
+    [AIParameter(Hint = "Row span ≥1280px (xl breakpoint)")]
+    public int RowSpanXl { get; set; }
+
+    [Parameter]
+    [AIParameter(Hint = "Row span ≥1024px (lg breakpoint)")]
+    public int RowSpanLg { get; set; }
+
+    [Parameter]
+    [AIParameter(Hint = "Row span ≥768px (md breakpoint)")]
+    public int RowSpanMd { get; set; }
+
+    [Parameter]
+    [AIParameter(Hint = "Row span ≥640px (sm breakpoint)")]
+    public int RowSpanSm { get; set; } = 2;
+
+    [Parameter]
+    [AIParameter(Hint = "Row span for mobile breakpoint")]
+    public int RowSpanXs { get; set; } = 1;
+
+    [Parameter]
+    [AIParameter(Hint = "Minimum columns when resizing")]
+    public int MinColumnSpan { get; set; } = 1;
+
+    [Parameter]
+    [AIParameter(Hint = "Maximum columns when resizing")]
+    public int MaxColumnSpan { get; set; } = 6;
+
+    [Parameter]
+    [AIParameter(Hint = "Minimum rows when resizing")]
+    public int MinRowSpan { get; set; } = 1;
+
+    [Parameter]
+    [AIParameter(Hint = "Maximum rows when resizing")]
+    public int MaxRowSpan { get; set; } = 6;
+
+    [Parameter]
+    [AIParameter(Hint = "Disable to lock widget sizing")]
+    public bool AllowResize { get; set; } = true;
+
+    [Parameter]
+    [AIParameter(Hint = "Disable to lock widget ordering")]
+    public bool AllowReorder { get; set; } = true;
+
+    [Parameter]
+    [AIParameter(Hint = "Header actions (filters, toggles)")]
+    public RenderFragment? ToolbarContent { get; set; }
+
+    [Parameter]
+    [AIParameter(Hint = "Footer actions or quick links")]
+    public RenderFragment? FooterContent { get; set; }
+
+    [Parameter]
+    [AIParameter(Hint = "Multi-series data source for the chart")]
+    public IEnumerable<ChartSeries>? Series { get; set; }
+
+    [Parameter]
+    [AIParameter(Hint = "Pre-shaped data points when not using Series")]
+    public IEnumerable<ChartDataPoint>? DataPoints { get; set; }
+
+    [Parameter]
+    [AIParameter(Hint = "Chart visualization type", SuggestedValues = new[] { "Line", "Column", "Bar", "Area", "Pie", "Doughnut" })]
+    public ChartType ChartType { get; set; } = ChartType.Column;
+
+    [Parameter]
+    [AIParameter(Hint = "Chart container styling variant")]
+    public ChartVariant ChartVariant { get; set; } = ChartVariant.Elevated;
+
+    [Parameter]
+    [AIParameter(Hint = "Light/Dark theme override for the chart")]
+    public ChartTheme ChartTheme { get; set; } = ChartTheme.Auto;
+
+    [Parameter]
+    [AIParameter(Hint = "Responsive mode for chart layout")]
+    public ChartResponsiveMode ChartResponsiveMode { get; set; } = ChartResponsiveMode.Auto;
+
+    [Parameter]
+    public ChartConfiguration Configuration { get; set; } = new();
+
+    [Parameter]
+    [AIParameter(Hint = "Toggle legend visibility")]
+    public bool ShowLegend { get; set; } = true;
+
+    [Parameter]
+    [AIParameter(Hint = "Legend placement", SuggestedValues = new[] { "Bottom", "Right", "Top" })]
+    public ChartLegendPosition LegendPosition { get; set; } = ChartLegendPosition.Bottom;
+
+    [Parameter]
+    [AIParameter(Hint = "Render values on bar/column charts")]
+    public bool ShowBarValues { get; set; }
+
+    [Parameter]
+    [AIParameter(Hint = "Display horizontal grid lines (line/area charts)")]
+    public bool ShowGridLines { get; set; } = true;
+
+    [Parameter]
+    [AIParameter(Hint = "Render point markers for line charts")]
+    public bool ShowLinePoints { get; set; } = true;
+
+    [Parameter]
+    [AIParameter(Hint = "Inner radius ratio for doughnut charts", SuggestedValues = new[] { "0.4", "0.55", "0.7" })]
+    public double DoughnutInnerRatio { get; set; } = 0.55;
+
+    [Parameter]
+    [AIParameter(Hint = "Show aggregated value in the doughnut center")]
+    public bool ShowPieCenterValue { get; set; } = true;
+
+    [Parameter]
+    [AIParameter(Hint = "Numeric format string for chart values", SuggestedValues = new[] { "N0", "C0", "P1" })]
+    public string ValueFormat { get; set; } = "N0";
+
+    [Parameter]
+    [AIParameter(Hint = "Title for the inner RChart header")]
+    public string ChartTitle { get; set; } = "";
+
+    [Parameter]
+    [AIParameter(Hint = "Subtitle displayed under the chart title")]
+    public string ChartSubtitle { get; set; } = "";
+
+    [Parameter]
+    [AIParameter(Hint = "Accessibility description for screen readers")]
+    public string ChartDescription { get; set; } = "";
+
+    [Parameter]
+    [AIParameter(Hint = "Icon in the inner chart header")]
+    public string ChartIcon { get; set; } = "";
+
+    [Parameter]
+    [AIParameter(Hint = "Center label for doughnut charts")]
+    public string ChartCenterLabel { get; set; } = "";
+
+    [Parameter]
+    [AIParameter(Hint = "Explicit chart height (px/rem/vh)")]
+    public string ChartHeight { get; set; } = "";
+
+    [Parameter]
+    [AIParameter(Hint = "Optional chart width override")]
+    public string ChartWidth { get; set; } = "";
+
+    [Parameter]
+    [AIParameter(Hint = "Toggle loading state for async data")]
+    public bool Loading { get; set; }
+
+    [Parameter]
+    [AIParameter(Hint = "Loading label displayed next to spinner")]
+    public string LoadingText { get; set; } = "Loading chart";
+
+    [Parameter]
+    [AIParameter(Hint = "Switch to error state")]
+    public bool HasError { get; set; }
+
+    [Parameter]
+    [AIParameter(Hint = "Headline for the error state")]
+    public string ErrorTitle { get; set; } = "Chart unavailable";
+
+    [Parameter]
+    [AIParameter(Hint = "Message displayed when chart fails to load")]
+    public string ErrorMessage { get; set; } = "Unable to load chart data.";
+
+    [Parameter]
+    public EventCallback OnRetry { get; set; }
+
+    [Parameter]
+    [AIParameter(Hint = "Custom legend content override")]
+    public RenderFragment? LegendContent { get; set; }
+
+    [Parameter]
+    [AIParameter(Hint = "Override summary rendering per breakpoint")]
+    public RenderFragment<RWidgetViewContext>? SummaryTemplate { get; set; }
+
+    [Parameter]
+    [AIParameter(Hint = "Override full-size chart rendering")]
+    public RenderFragment<RWidgetViewContext>? DetailTemplate { get; set; }
+
+    [Parameter]
+    [AIParameter(Hint = "Metric badges shown when widget collapses")]
+    public IEnumerable<ChartWidgetMetric> Metrics { get; set; } = Array.Empty<ChartWidgetMetric>();
+
+    [Parameter]
+    [AIParameter(Hint = "Summary label when no Metrics supplied")]
+    public string PrimaryMetricLabel { get; set; } = "";
+
+    [Parameter]
+    [AIParameter(Hint = "Primary value displayed in compact mode")]
+    public string PrimaryMetricValue { get; set; } = "";
+
+    [Parameter]
+    [AIParameter(Hint = "Trend delta text appended to primary value")]
+    public string PrimaryMetricTrend { get; set; } = "";
+
+    [Parameter]
+    [AIParameter(Hint = "Trend direction controlling badge styling")]
+    public TrendDirection PrimaryMetricTrendDirection { get; set; } = TrendDirection.Neutral;
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+        RemoveReservedAttributes();
+        forwardedAttributes = BuildForwardedAttributes();
+    }
+
+    private IEnumerable<ChartDataPoint> ResolvedDataPoints =>
+        DataPoints ?? Series?.SelectMany(s => s.Data) ?? Array.Empty<ChartDataPoint>();
+
+    private bool HasMetrics => Metrics?.Any() == true;
+
+    private RWidgetViewContext CurrentWidgetContext
+    {
+        get
+        {
+            if (WidgetContext != null)
+            {
+                fallbackWidgetContext = null;
+                return WidgetContext;
+            }
+
+            fallbackWidgetContext ??= CreateFallbackContext();
+            return fallbackWidgetContext;
+        }
+    }
+
+    private bool ShouldRenderSummarySection(RWidgetViewContext context)
+    {
+        return HasMetrics ||
+               !string.IsNullOrWhiteSpace(PrimaryMetricValue) ||
+               context.Size <= RWidgetSizeCategory.Standard;
+    }
+
+    private bool ShouldRenderChartSection(RWidgetViewContext context)
+    {
+        if (context.Size >= RWidgetSizeCategory.Standard)
+        {
+            return true;
+        }
+
+        return !HasMetrics && string.IsNullOrWhiteSpace(PrimaryMetricValue);
+    }
+
+    private static SizeType ResolveChartSize(RWidgetViewContext context)
+    {
+        return context.Size switch
+        {
+            RWidgetSizeCategory.Micro => SizeType.Small,
+            RWidgetSizeCategory.Compact => SizeType.Small,
+            RWidgetSizeCategory.Standard => SizeType.Medium,
+            RWidgetSizeCategory.Extended => SizeType.Large,
+            RWidgetSizeCategory.Showcase => SizeType.ExtraLarge,
+            _ => SizeType.Medium
+        };
+    }
+
+    private string ResolveChartHeight(RWidgetViewContext context)
+    {
+        if (!string.IsNullOrWhiteSpace(ChartHeight))
+        {
+            return ChartHeight;
+        }
+
+        return context.Size switch
+        {
+            RWidgetSizeCategory.Micro => "180px",
+            RWidgetSizeCategory.Compact => "220px",
+            RWidgetSizeCategory.Standard => "260px",
+            RWidgetSizeCategory.Extended => "320px",
+            RWidgetSizeCategory.Showcase => "360px",
+            _ => "260px"
+        };
+    }
+
+    private RWidgetViewContext CreateFallbackContext()
+    {
+        var columns = System.Math.Max(1, ColumnSpan);
+        var rows = System.Math.Max(1, RowSpan);
+        var size = ResolveSizeCategory(columns, rows);
+        return new RWidgetViewContext(Id, columns, rows, size, false);
+    }
+
+    private static RWidgetSizeCategory ResolveSizeCategory(int columns, int rows)
+    {
+        var area = System.Math.Max(1, columns) * System.Math.Max(1, rows);
+        return area switch
+        {
+            <= 1 => RWidgetSizeCategory.Micro,
+            <= 2 => RWidgetSizeCategory.Compact,
+            <= 6 => RWidgetSizeCategory.Standard,
+            <= 9 => RWidgetSizeCategory.Extended,
+            _ => RWidgetSizeCategory.Showcase
+        };
+    }
+
+    private IReadOnlyDictionary<string, object> BuildForwardedAttributes()
+    {
+        var filtered = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+
+        if (!string.IsNullOrWhiteSpace(Id))
+        {
+            filtered["data-widget-id"] = Id;
+        }
+
+        if (AdditionalAttributes != null && AdditionalAttributes.Count > 0)
+        {
+            foreach (var attribute in AdditionalAttributes)
+            {
+                if (attribute.Key.Equals("class", StringComparison.OrdinalIgnoreCase) ||
+                    attribute.Key.Equals("style", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                filtered[attribute.Key] = attribute.Value;
+            }
+        }
+
+        if (filtered.Count == 0)
+        {
+            return EmptyAttributes;
+        }
+
+        return filtered;
+    }
+
+    private string BuildTrendClasses(ChartWidgetMetric metric)
+    {
+        var classes = new List<string> { "r-chart-widget__metric-trend" };
+        classes.Add(metric.TrendDirection switch
+        {
+            TrendDirection.Positive => "r-chart-widget__metric-trend--positive",
+            TrendDirection.Negative => "r-chart-widget__metric-trend--negative",
+            _ => "r-chart-widget__metric-trend--neutral"
+        });
+        return string.Join(' ', classes);
+    }
+
+    private string BuildPrimaryTrendClasses()
+    {
+        var classes = new List<string> { "r-chart-widget__primary-trend" };
+        classes.Add(PrimaryMetricTrendDirection switch
+        {
+            TrendDirection.Positive => "r-chart-widget__primary-trend--positive",
+            TrendDirection.Negative => "r-chart-widget__primary-trend--negative",
+            _ => "r-chart-widget__primary-trend--neutral"
+        });
+        return string.Join(' ', classes);
+    }
+
+    private void RemoveReservedAttributes()
+    {
+        if (AdditionalAttributes == null || AdditionalAttributes.Count == 0)
+        {
+            return;
+        }
+
+        var toRemove = new List<string>();
+        foreach (var key in AdditionalAttributes.Keys)
+        {
+            if (key.Equals("class", StringComparison.OrdinalIgnoreCase) ||
+                key.Equals("style", StringComparison.OrdinalIgnoreCase))
+            {
+                toRemove.Add(key);
+            }
+        }
+
+        foreach (var key in toRemove)
+        {
+            AdditionalAttributes.Remove(key);
+        }
+    }
+}
+
+@code {
+    public sealed record ChartWidgetMetric(
+        string Label,
+        string Value,
+        string Trend = "",
+        TrendDirection TrendDirection = TrendDirection.Neutral);
+
+    public enum TrendDirection
+    {
+        Negative = -1,
+        Neutral = 0,
+        Positive = 1
+    }
+}

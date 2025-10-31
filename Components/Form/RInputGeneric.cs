@@ -11,7 +11,7 @@ namespace RR.Blazor.Components.Form
     [Component("RInputGeneric", Category = "Form", Complexity = ComponentComplexity.Advanced)]
     [AIOptimized(
         Prompt = "Smart input wrapper that automatically detects value type and renders appropriate component",
-        CommonUse = "Forms with mixed data types, automatic type detection, payroll data entry",
+        CommonUse = "Forms with mixed data types, automatic type detection, enterprise data entry",
         AvoidUsage = "When you need specific input behavior, use specialized components like RTextInput, RDateInput instead"
     )]
     public class RInputGeneric<T> : RInputBase

@@ -20,7 +20,7 @@
 
 #### 3. **Project-Agnostic & Generic**
 - **Zero Business Logic**: No domain-specific functionality
-- **Generic Naming**: Semantic, descriptive names (never "executive", "payroll", etc.)
+- **Generic Naming**: Semantic, descriptive names (never "executive", "finance", etc.)
 - **Universal Patterns**: Works for e-commerce, dashboards, marketing, enterprise
 - **Customizable**: Projects customize through utility composition, not modification
 
@@ -39,11 +39,11 @@ R* components are **semantic building blocks** that provide structure and access
 </RCard>
 
 @* [ERROR] WRONG: Custom component styling *@
-<PayrollCard Theme="executive-style">
-  <PayrollButton Variant="submit-payroll">
-    Submit Payroll
-  </PayrollButton>
-</PayrollCard>
+<DomainCard Theme="executive-style">
+  <DomainButton Variant="submit-domain-action">
+    Submit Request
+  </DomainButton>
+</DomainCard>
 ```
 
 ### **Project Component Architecture**
@@ -52,16 +52,16 @@ Project-specific components combine R* components with business logic:
 
 ```razor
 @*  CORRECT: Business logic + utility composition *@
-<PayrollSubmitButton PayrollId="@id" 
+<DomainSubmitButton DomainId="@id" 
                      Class="bg-success text-white pa-3 rounded-lg shadow-sm hover:shadow-lg">
-  Submit Payroll
-</PayrollSubmitButton>
+  Submit Request
+</DomainSubmitButton>
 
 @* [ERROR] WRONG: Custom styling overrides *@
-<PayrollSubmitButton PayrollId="@id" 
-                     CustomTheme="payroll-executive-green">
-  Submit Payroll  
-</PayrollSubmitButton>
+<DomainSubmitButton DomainId="@id" 
+                     CustomTheme="domain-executive-green">
+  Submit Request  
+</DomainSubmitButton>
 ```
 
 ### **Customization Through Composition**
@@ -216,20 +216,20 @@ Projects achieve custom styling through utility composition and CSS custom prope
 
 ```razor
 @* Project-specific, non-generic naming *@
-<PayrollExecutiveButton Theme="enterprise-suite" Size="executive-large">
-  Process Payroll
-</PayrollExecutiveButton>
+<DomainExecutiveButton Theme="enterprise-suite" Size="executive-large">
+  Process Request
+</DomainExecutiveButton>
 
 @* Custom styling instead of utility composition *@
-<PayrollCard CustomStyle="payroll-executive-dashboard">
-  <PayrollStatus Theme="payroll-approved-green" />
-</PayrollCard>
+<DomainCard CustomStyle="domain-executive-dashboard">
+  <DomainStatus Theme="domain-approved-green" />
+</DomainCard>
 ```
 
 ```scss
 // Project-specific, non-generic patterns
-%payroll-executive-card {
-  background: linear-gradient(45deg, #payroll-green, #enterprise-gold);
+%domain-executive-card {
+  background: linear-gradient(45deg, #domain-green, #enterprise-gold);
   padding: 24px 32px;
   border-radius: 12px;
   box-shadow: 0 8px 32px rgba(0, 128, 0, 0.3);
@@ -314,12 +314,12 @@ The framework uses a **3-layer theme system** that must be preserved:
 - `.shadow-lg` (semantic utility)
 
 #### **❌ WRONG: Project-Specific, Non-Generic Names**
-- `--color-payroll-green` (project-specific)
+- `--color-domain-green` (project-specific)
 - `--color-executive-gold` (non-generic)
 - `--shadow-enterprise` (meaningless)
-- `--space-payroll-large` (project-specific)
+- `--space-domain-large` (project-specific)
 - `.pa-executive` (non-generic)
-- `.text-payroll-header` (project-specific)
+- `.text-domain-header` (project-specific)
 
 ### **Component Variants**
 
@@ -341,7 +341,7 @@ public enum ButtonVariant
 // ❌ WRONG: Project-specific variants
 public enum ButtonVariant
 {
-    PayrollSubmit,    // Project-specific
+    DomainSubmit,    // Project-specific
     ExecutiveApprove, // Non-generic
     DashboardPrimary, // Context-specific
     HRSpecial        // Department-specific
@@ -630,4 +630,3 @@ Use semantic CSS custom properties for component customization:
 **Key Principle**: RR.Blazor provides the tools, projects create the experience.
 
 **Success Measure**: Developers can build any UI using only utility classes and minimal custom CSS.
-

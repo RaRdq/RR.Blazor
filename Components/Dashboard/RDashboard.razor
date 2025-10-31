@@ -1,0 +1,478 @@
+@using System
+@using Microsoft.JSInterop
+@using RR.Blazor.Attributes
+@using RR.Blazor.Components.Base
+@using RR.Blazor.Enums
+@inherits RComponentBase
+
+@attribute [Component("RDashboard", Category = "Layout", Complexity = ComponentComplexity.Complex)]
+@attribute [AIOptimized(Prompt = "Create adaptive analytics dashboards with draggable widgets", 
+                       CommonUse = "company homepages, analytics workspaces", 
+                       AvoidUsage = "Simple one-off cards - use RCard instead")]
+
+<div id="@dashboardId"
+     class="@BuildRootClasses()"
+     style="@BuildRootStyle()"
+     data-edit-mode="@(EditMode ? "true" : "false")"
+     @ref="dashboardElement"
+     @attributes="AdditionalAttributes">
+    <CascadingValue Value="this">
+        @ChildContent
+    </CascadingValue>
+
+    @if (!HasWidgets)
+    {
+        @if (EmptyContent != null)
+        {
+            @EmptyContent
+        }
+        else
+        {
+            <div class="r-dashboard__empty">
+                <i class="icon r-dashboard__empty-icon">dashboard_customize</i>
+                <div class="r-dashboard__empty-text">@EmptyMessage</div>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private readonly List<RDashboardWidgetState> widgets = new();
+    private readonly Dictionary<string, RDashboardWidgetState> widgetLookup = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Queue<Func<Task>> deferredLayoutNotifications = new();
+    private DotNetObjectReference<RDashboard> dotNetRef;
+    private ElementReference dashboardElement;
+    private string dashboardId = $"rdashboard-{Guid.NewGuid():N}";
+    private bool jsInitialized;
+    private bool pendingJsRefresh;
+
+    [Parameter]
+    [AIParameter(Hint = "Toggle edit mode to allow end-users to drag and resize widgets")]
+    public bool EditMode { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> EditModeChanged { get; set; }
+
+    [Parameter]
+    [AIParameter(Hint = "Base column count at desktop breakpoint", SuggestedValues = new[] { "4", "6", "8" })]
+    public int Columns { get; set; } = 6;
+
+    [Parameter]
+    [AIParameter(Hint = "Column count ≥1280px (xl)", SuggestedValues = new[] { "6", "8" })]
+    public int ColumnsXl { get; set; } = 6;
+
+    [Parameter]
+    [AIParameter(Hint = "Column count ≥1024px (lg)", SuggestedValues = new[] { "4", "5" })]
+    public int ColumnsLg { get; set; } = 5;
+
+    [Parameter]
+    [AIParameter(Hint = "Column count ≥768px (md)", SuggestedValues = new[] { "3", "4" })]
+    public int ColumnsMd { get; set; } = 4;
+
+    [Parameter]
+    [AIParameter(Hint = "Column count ≥640px (sm)", SuggestedValues = new[] { "2", "3" })]
+    public int ColumnsSm { get; set; } = 2;
+
+    [Parameter]
+    [AIParameter(Hint = "Column count for mobile breakpoint", SuggestedValues = new[] { "1", "2" })]
+    public int ColumnsXs { get; set; } = 1;
+
+    [Parameter]
+    [AIParameter(Hint = "Grid row unit height in pixels", SuggestedValues = new[] { "120", "160", "200" })]
+    public int RowHeight { get; set; } = 120;
+
+    [Parameter]
+    [AIParameter(Hint = "CSS gap token between widgets", SuggestedValues = new[] { "var(--space-3)", "var(--space-4)", "var(--space-6)" })]
+    public string Gap { get; set; } = "var(--space-4)";
+
+    [Parameter]
+    [AIParameter(Hint = "Enable CSS grid dense packing to minimize gaps")]
+    public bool DenseAutoFlow { get; set; } = true;
+
+    [Parameter]
+    [AIParameter(Hint = "Allow end users to reorder widgets when editing")]
+    public bool AllowReorder { get; set; } = true;
+
+    [Parameter]
+    [AIParameter(Hint = "Allow widgets to be resized in edit mode")]
+    public bool AllowResize { get; set; } = true;
+
+    [Parameter]
+    [AIParameter(Hint = "Invoked after reorder or resize with updated layout snapshot")]
+    public EventCallback<RDashboardLayoutChangedEventArgs> OnLayoutChanged { get; set; }
+
+    [Parameter]
+    [AIParameter(Hint = "Message displayed when no widgets are registered")]
+    public string EmptyMessage { get; set; } = "Add widgets to start building your dashboard.";
+
+    [Parameter]
+    [AIParameter(Hint = "Custom empty state fragment when no widgets are registered")]
+    public RenderFragment EmptyContent { get; set; }
+
+    internal bool HasWidgets => widgets.Count > 0;
+    internal bool IsEditing => EditMode;
+    internal bool SupportsResize => AllowResize;
+    internal bool SupportsReorder => AllowReorder;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await base.OnParametersSetAsync();
+
+        if (ChildContent == null)
+        {
+            throw new InvalidOperationException("RDashboard requires child content.");
+        }
+
+        if (Columns < 1)
+        {
+            throw new InvalidOperationException("Dashboard must define at least one column.");
+        }
+
+        pendingJsRefresh = true;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+
+        if (firstRender)
+        {
+            await InitializeJavaScriptAsync();
+            jsInitialized = true;
+            pendingJsRefresh = false;
+        }
+        else if (pendingJsRefresh && jsInitialized)
+        {
+            await RefreshJavaScriptAsync();
+            pendingJsRefresh = false;
+        }
+
+        while (deferredLayoutNotifications.TryDequeue(out var action))
+        {
+            await action();
+        }
+    }
+
+    protected override async Task InitializeJavaScriptAsync()
+    {
+        if (JSRuntime == null)
+        {
+            return;
+        }
+
+        dotNetRef ??= DotNetObjectReference.Create(this);
+
+        await SafeInvokeAsync("RRBlazor.Dashboard.initialize",
+            dashboardId,
+            dotNetRef,
+            BuildInteropOptions());
+    }
+
+    private async Task RefreshJavaScriptAsync()
+    {
+        await SafeInvokeAsync("RRBlazor.Dashboard.update",
+            dashboardId,
+            dotNetRef,
+            BuildInteropOptions());
+    }
+
+    protected override async ValueTask DisposeAsyncCore()
+    {
+        try
+        {
+            await SafeInvokeAsync("RRBlazor.Dashboard.dispose", dashboardId);
+        }
+        finally
+        {
+            if (dotNetRef != null)
+            {
+                dotNetRef.Dispose();
+                dotNetRef = null;
+            }
+        }
+
+        await base.DisposeAsyncCore();
+    }
+
+    internal RDashboardWidgetState RegisterWidget(RWidget widget, RWidgetRegistration registration)
+    {
+        if (widgetLookup.TryGetValue(registration.Id, out var existing))
+        {
+            existing.UpdateRegistration(registration);
+            widget.AttachState(existing);
+            QueueLayoutRebuild();
+            return existing;
+        }
+
+        var state = new RDashboardWidgetState(widget, registration, widgets.Count);
+        widgets.Add(state);
+        widgetLookup[registration.Id] = state;
+        widget.AttachState(state);
+        QueueLayoutRebuild();
+        pendingJsRefresh = true;
+        return state;
+    }
+
+    internal void UpdateWidgetRegistration(RWidget widget, RWidgetRegistration registration)
+    {
+        if (!widgetLookup.TryGetValue(registration.Id, out var existing))
+        {
+            RegisterWidget(widget, registration);
+            return;
+        }
+
+        existing.UpdateRegistration(registration);
+        widget.AttachState(existing);
+        QueueLayoutRebuild();
+        pendingJsRefresh = true;
+    }
+
+    internal void UnregisterWidget(RWidget widget)
+    {
+        var state = widgets.FirstOrDefault(w => ReferenceEquals(w.Widget, widget));
+        if (state == null)
+        {
+            return;
+        }
+
+        widgets.Remove(state);
+        widgetLookup.Remove(state.Registration.Id);
+
+        for (var index = 0; index < widgets.Count; index++)
+        {
+            widgets[index].Order = index;
+            widgets[index].Widget.ApplyOrderFromDashboard(index);
+        }
+
+        QueueLayoutRebuild();
+        pendingJsRefresh = true;
+    }
+
+    internal void NotifyWidgetDesiredLayout(RWidget widget, int columnSpan, int rowSpan)
+    {
+        var state = widgets.FirstOrDefault(w => ReferenceEquals(w.Widget, widget));
+        if (state == null)
+        {
+            return;
+        }
+
+        state.ColumnSpan = Math.Clamp(columnSpan, state.Registration.MinColumnSpan, state.Registration.MaxColumnSpan);
+        state.RowSpan = Math.Clamp(rowSpan, state.Registration.MinRowSpan, state.Registration.MaxRowSpan);
+        QueueLayoutRebuild();
+        pendingJsRefresh = true;
+    }
+
+    private void QueueLayoutRebuild()
+    {
+        deferredLayoutNotifications.Enqueue(async () =>
+        {
+            if (!OnLayoutChanged.HasDelegate)
+            {
+                return;
+            }
+
+            var snapshot = widgets
+                .OrderBy(w => w.Order)
+                .Select(w => w.ToSnapshot())
+                .ToList()
+                .AsReadOnly();
+
+            await OnLayoutChanged.InvokeAsync(new RDashboardLayoutChangedEventArgs(snapshot));
+        });
+    }
+
+    [JSInvokable]
+    public async Task OnWidgetResized(string widgetId, int columns, int rows)
+    {
+        if (!widgetLookup.TryGetValue(widgetId, out var state))
+        {
+            return;
+        }
+
+        state.ColumnSpan = Math.Clamp(columns, state.Registration.MinColumnSpan, state.Registration.MaxColumnSpan);
+        state.RowSpan = Math.Clamp(rows, state.Registration.MinRowSpan, state.Registration.MaxRowSpan);
+        state.Widget.ApplyLayoutFromDashboard(state.ColumnSpan, state.RowSpan);
+
+        await InvokeAsync(StateHasChanged);
+        await NotifyLayoutChangedAsync();
+    }
+
+    [JSInvokable]
+    public async Task OnWidgetReordered(string widgetId, int newIndex)
+    {
+        if (!widgetLookup.TryGetValue(widgetId, out var state))
+        {
+            return;
+        }
+
+        var currentIndex = widgets.IndexOf(state);
+        if (currentIndex < 0 || newIndex < 0 || newIndex >= widgets.Count || currentIndex == newIndex)
+        {
+            return;
+        }
+
+        widgets.RemoveAt(currentIndex);
+        widgets.Insert(newIndex, state);
+
+        for (var index = 0; index < widgets.Count; index++)
+        {
+            widgets[index].Order = index;
+            widgets[index].Widget.ApplyOrderFromDashboard(index);
+        }
+
+        await InvokeAsync(StateHasChanged);
+        await NotifyLayoutChangedAsync();
+    }
+
+    [JSInvokable]
+    public async Task OnEditModeChanged(bool isEditMode)
+    {
+        if (EditMode == isEditMode)
+        {
+            return;
+        }
+
+        EditMode = isEditMode;
+        await EditModeChanged.InvokeAsync(EditMode);
+        await InvokeAsync(StateHasChanged);
+        pendingJsRefresh = true;
+    }
+
+    private async Task NotifyLayoutChangedAsync()
+    {
+        if (!OnLayoutChanged.HasDelegate)
+        {
+            return;
+        }
+
+        var snapshot = widgets
+            .OrderBy(w => w.Order)
+            .Select(w => w.ToSnapshot())
+            .ToList()
+            .AsReadOnly();
+
+        await OnLayoutChanged.InvokeAsync(new RDashboardLayoutChangedEventArgs(snapshot));
+    }
+
+    private object BuildInteropOptions()
+    {
+        return new DashboardInteropOptions
+        {
+            EditMode = EditMode,
+            AllowResize = AllowResize,
+            AllowReorder = AllowReorder,
+            Columns = Columns,
+            ColumnsXl = ColumnsXl,
+            ColumnsLg = ColumnsLg,
+            ColumnsMd = ColumnsMd,
+            ColumnsSm = ColumnsSm,
+            ColumnsXs = ColumnsXs,
+            RowHeight = RowHeight,
+            Gap = Gap,
+            Dense = DenseAutoFlow,
+            Widgets = widgets
+                .OrderBy(w => w.Order)
+                .Select(w => new DashboardWidgetInterop
+                {
+                    Id = w.Registration.Id,
+                    Order = w.Order,
+                    ColumnSpan = w.ColumnSpan,
+                    RowSpan = w.RowSpan,
+                    MinColumnSpan = w.Registration.MinColumnSpan,
+                    MaxColumnSpan = w.Registration.MaxColumnSpan,
+                    MinRowSpan = w.Registration.MinRowSpan,
+                    MaxRowSpan = w.Registration.MaxRowSpan,
+                    AllowResize = w.Registration.AllowResize && AllowResize,
+                    AllowReorder = w.Registration.AllowReorder && AllowReorder,
+                    ResponsiveColumns = w.Registration.ResponsiveColumnSpans,
+                    ResponsiveRows = w.Registration.ResponsiveRowSpans
+                })
+                .ToList()
+        };
+    }
+
+    private string BuildRootClasses()
+    {
+        var classes = new List<string>
+        {
+            "r-dashboard",
+            DenseAutoFlow ? "r-dashboard--dense" : "r-dashboard--relaxed"
+        };
+
+        if (EditMode)
+        {
+            classes.Add("r-dashboard--editing");
+        }
+
+        if (!AllowResize)
+        {
+            classes.Add("r-dashboard--resize-disabled");
+        }
+
+        if (!AllowReorder)
+        {
+            classes.Add("r-dashboard--reorder-disabled");
+        }
+
+        if (!string.IsNullOrWhiteSpace(Class))
+        {
+            classes.Add(Class);
+        }
+
+        return string.Join(' ', classes);
+    }
+
+    private string BuildRootStyle()
+    {
+        var builder = new System.Text.StringBuilder();
+
+        builder.Append($"--r-dashboard-columns:{Columns};");
+        builder.Append($"--r-dashboard-columns-xl:{ColumnsXl};");
+        builder.Append($"--r-dashboard-columns-lg:{ColumnsLg};");
+        builder.Append($"--r-dashboard-columns-md:{ColumnsMd};");
+        builder.Append($"--r-dashboard-columns-sm:{ColumnsSm};");
+        builder.Append($"--r-dashboard-columns-xs:{ColumnsXs};");
+        builder.Append($"--r-dashboard-row-height:{RowHeight}px;");
+        builder.Append($"--r-dashboard-gap:{Gap};");
+
+        if (!string.IsNullOrWhiteSpace(Style))
+        {
+            builder.Append(Style);
+        }
+
+        return builder.ToString();
+    }
+
+    private sealed class DashboardInteropOptions
+    {
+        public bool EditMode { get; set; }
+        public bool AllowResize { get; set; }
+        public bool AllowReorder { get; set; }
+        public int Columns { get; set; }
+        public int ColumnsXl { get; set; }
+        public int ColumnsLg { get; set; }
+        public int ColumnsMd { get; set; }
+        public int ColumnsSm { get; set; }
+        public int ColumnsXs { get; set; }
+        public int RowHeight { get; set; }
+        public string Gap { get; set; } = "";
+        public bool Dense { get; set; }
+        public List<DashboardWidgetInterop> Widgets { get; set; } = new();
+    }
+
+    private sealed class DashboardWidgetInterop
+    {
+        public string Id { get; set; } = "";
+        public int Order { get; set; }
+        public int ColumnSpan { get; set; }
+        public int RowSpan { get; set; }
+        public int MinColumnSpan { get; set; }
+        public int MaxColumnSpan { get; set; }
+        public int MinRowSpan { get; set; }
+        public int MaxRowSpan { get; set; }
+        public bool AllowResize { get; set; }
+        public bool AllowReorder { get; set; }
+        public IReadOnlyDictionary<string, int> ResponsiveColumns { get; set; } = new Dictionary<string, int>();
+        public IReadOnlyDictionary<string, int> ResponsiveRows { get; set; } = new Dictionary<string, int>();
+    }
+}

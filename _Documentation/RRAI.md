@@ -230,7 +230,7 @@
 
 #### **Real-World Patterns**
 ```razor
-// Pattern 1: Bulk Action Confirmation (PayrollAI)
+// Pattern 1: Bulk Action Confirmation (Reference App)
 var confirmed = await ModalService.ShowConfirmationAsync(
     $"This will approve all {recordCount} pending payment orders. Continue?",
     "Bulk Approval", "Approve All", "Cancel", VariantType.Warning);

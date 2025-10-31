@@ -497,6 +497,7 @@
     private bool requiresJsRefresh;
     private KanboardOrientation? lastReportedOrientation;
     private bool lastEnableSwimlanes;
+    private bool suppressNextCardOpen;
 
     [Parameter] public RKanboardBoardState Board { get; set; } = EmptyBoard;
     [Parameter] public KanboardOrientation Orientation { get; set; } = KanboardOrientation.Vertical;
@@ -885,6 +886,10 @@
         var seq = 0;
         var hasLabels = card.Labels is { Count: > 0 };
         var hasStatusBadges = !string.IsNullOrWhiteSpace(card.PriorityLabel) || card.IsBlocked;
+        var hasUtilityActions =
+            (ShowEditAction && OnCardEditRequested.HasDelegate) ||
+            (ShowPriorityAction && OnCardPriorityRequested.HasDelegate) ||
+            (ShowCommentAction && OnCardCommentRequested.HasDelegate);
 
         if (dropBefore)
         {
@@ -900,6 +905,7 @@
         builder.AddAttribute(seq++, "tabindex", GetCardTabIndex(card));
         builder.AddAttribute(seq++, "role", "listitem");
         builder.AddAttribute(seq++, "aria-label", card.Title ?? string.Empty);
+        builder.AddAttribute(seq++, "onclick", EventCallback.Factory.Create(this, async () => await HandleCardOpenAsync(card.Id)));
         builder.AddAttribute(seq++, "ondragstart", EventCallback.Factory.Create<DragEventArgs>(this, e => HandleCardDragStart(e, column.Id, card.Id, index)));
         builder.AddAttribute(seq++, "ondragend", EventCallback.Factory.Create<DragEventArgs>(this, HandleCardDragEnd));
         builder.AddAttribute(seq++, "ondragenter", EventCallback.Factory.Create<DragEventArgs>(this, e => HandleCardDragEnter(e, column.Id, index)));
@@ -913,6 +919,17 @@
 
         builder.OpenElement(seq++, "div");
         builder.AddAttribute(seq++, "class", "rkanboard-card-content");
+
+        if (CanDragCard(card, column))
+        {
+            builder.OpenElement(seq++, "div");
+            builder.AddAttribute(seq++, "class", "rkanboard-card-handle");
+            builder.OpenElement(seq++, "i");
+            builder.AddAttribute(seq++, "class", "icon text-base text-muted");
+            builder.AddContent(seq++, "drag_indicator");
+            builder.CloseElement();
+            builder.CloseElement();
+        }
 
         if (hasLabels || hasStatusBadges)
         {
@@ -1121,6 +1138,9 @@
         {
             builder.OpenElement(seq++, "section");
             builder.AddAttribute(seq++, "class", "rkanboard-assignee");
+            builder.AddEventStopPropagationAttribute(seq++, "onclick", true);
+            builder.AddEventStopPropagationAttribute(seq++, "onmousedown", true);
+            builder.AddEventStopPropagationAttribute(seq++, "ontouchstart", true);
 
             builder.OpenElement(seq++, "header");
             builder.AddAttribute(seq++, "class", "rkanboard-assignee-header");
@@ -1203,6 +1223,8 @@
                     builder.AddAttribute(seq++, "Size", SizeType.ExtraSmall);
                     builder.AddAttribute(seq++, "Mode", ButtonMode.Ghost);
                     builder.AddAttribute(seq++, "OnClick", EventCallback.Factory.Create(this, async () => await HandleAssigneeSelectedAsync(card, column.Id, null)));
+                    builder.AddAttribute(seq++, "StopPropagation", true);
+                    builder.AddAttribute(seq++, "AdditionalAttributes", new Dictionary<string, object> { ["draggable"] = "false" });
                     builder.CloseComponent();
                     builder.CloseElement();
                 }
@@ -1217,38 +1239,50 @@
         RenderCardCollaborators(builder, column, card, ref seq);
 
         builder.OpenElement(seq++, "div");
-        builder.AddAttribute(seq++, "class", "rkanboard-card-actions d-flex justify-end gap-1 mt-2");
-        if (ShowEditAction && OnCardEditRequested.HasDelegate)
+        builder.AddAttribute(seq++, "class", "rkanboard-card-actions");
+        if (hasUtilityActions)
         {
-            builder.OpenComponent<RButton>(seq++);
-            builder.AddAttribute(seq++, "Icon", "edit");
-            builder.AddAttribute(seq++, "Variant", VariantType.Secondary);
-            builder.AddAttribute(seq++, "Size", SizeType.ExtraSmall);
-            builder.AddAttribute(seq++, "Mode", ButtonMode.Ghost);
-            builder.AddAttribute(seq++, "OnClick", EventCallback.Factory.Create(this, async () => await HandleCardEditAsync(card, column.Id)));
-            builder.CloseComponent();
-        }
+            builder.OpenElement(seq++, "div");
+            builder.AddAttribute(seq++, "class", "rkanboard-card-action-group");
+            if (ShowEditAction && OnCardEditRequested.HasDelegate)
+            {
+                builder.OpenComponent<RButton>(seq++);
+                builder.AddAttribute(seq++, "Icon", "edit");
+                builder.AddAttribute(seq++, "Variant", VariantType.Secondary);
+                builder.AddAttribute(seq++, "Size", SizeType.ExtraSmall);
+                builder.AddAttribute(seq++, "Mode", ButtonMode.Ghost);
+                builder.AddAttribute(seq++, "OnClick", EventCallback.Factory.Create(this, async () => await HandleCardEditAsync(card, column.Id)));
+                builder.AddAttribute(seq++, "StopPropagation", true);
+                builder.AddAttribute(seq++, "AdditionalAttributes", new Dictionary<string, object> { ["draggable"] = "false" });
+                builder.CloseComponent();
+            }
 
-        if (ShowPriorityAction && OnCardPriorityRequested.HasDelegate)
-        {
-            builder.OpenComponent<RButton>(seq++);
-            builder.AddAttribute(seq++, "Icon", "flag");
-            builder.AddAttribute(seq++, "Variant", VariantType.Secondary);
-            builder.AddAttribute(seq++, "Size", SizeType.ExtraSmall);
-            builder.AddAttribute(seq++, "Mode", ButtonMode.Ghost);
-            builder.AddAttribute(seq++, "OnClick", EventCallback.Factory.Create(this, async () => await HandleCardPriorityAsync(card, column.Id)));
-            builder.CloseComponent();
-        }
+            if (ShowPriorityAction && OnCardPriorityRequested.HasDelegate)
+            {
+                builder.OpenComponent<RButton>(seq++);
+                builder.AddAttribute(seq++, "Icon", "flag");
+                builder.AddAttribute(seq++, "Variant", VariantType.Secondary);
+                builder.AddAttribute(seq++, "Size", SizeType.ExtraSmall);
+                builder.AddAttribute(seq++, "Mode", ButtonMode.Ghost);
+                builder.AddAttribute(seq++, "OnClick", EventCallback.Factory.Create(this, async () => await HandleCardPriorityAsync(card, column.Id)));
+                builder.AddAttribute(seq++, "StopPropagation", true);
+                builder.AddAttribute(seq++, "AdditionalAttributes", new Dictionary<string, object> { ["draggable"] = "false" });
+                builder.CloseComponent();
+            }
 
-        if (ShowCommentAction && OnCardCommentRequested.HasDelegate)
-        {
-            builder.OpenComponent<RButton>(seq++);
-            builder.AddAttribute(seq++, "Icon", "chat");
-            builder.AddAttribute(seq++, "Variant", VariantType.Secondary);
-            builder.AddAttribute(seq++, "Size", SizeType.ExtraSmall);
-            builder.AddAttribute(seq++, "Mode", ButtonMode.Ghost);
-            builder.AddAttribute(seq++, "OnClick", EventCallback.Factory.Create(this, async () => await HandleCardCommentAsync(card, column.Id)));
-            builder.CloseComponent();
+            if (ShowCommentAction && OnCardCommentRequested.HasDelegate)
+            {
+                builder.OpenComponent<RButton>(seq++);
+                builder.AddAttribute(seq++, "Icon", "chat");
+                builder.AddAttribute(seq++, "Variant", VariantType.Secondary);
+                builder.AddAttribute(seq++, "Size", SizeType.ExtraSmall);
+                builder.AddAttribute(seq++, "Mode", ButtonMode.Ghost);
+                builder.AddAttribute(seq++, "OnClick", EventCallback.Factory.Create(this, async () => await HandleCardCommentAsync(card, column.Id)));
+                builder.AddAttribute(seq++, "StopPropagation", true);
+                builder.AddAttribute(seq++, "AdditionalAttributes", new Dictionary<string, object> { ["draggable"] = "false" });
+                builder.CloseComponent();
+            }
+            builder.CloseElement();
         }
 
         builder.OpenComponent<RButton>(seq++);
@@ -1256,7 +1290,9 @@
         builder.AddAttribute(seq++, "Variant", VariantType.Secondary);
         builder.AddAttribute(seq++, "Size", SizeType.ExtraSmall);
         builder.AddAttribute(seq++, "Mode", ButtonMode.Ghost);
-        builder.AddAttribute(seq++, "OnClick", EventCallback.Factory.Create(this, async () => await HandleCardOpenAsync(card.Id)));
+        builder.AddAttribute(seq++, "StopPropagation", true);
+        builder.AddAttribute(seq++, "AdditionalAttributes", new Dictionary<string, object> { ["draggable"] = "false" });
+        builder.AddAttribute(seq++, "OnClick", EventCallback.Factory.Create(this, async () => await HandleCardOpenAsync(card.Id, true)));
         builder.CloseComponent();
         builder.CloseElement();
 
@@ -1388,12 +1424,18 @@
         }
 
         builder.OpenElement(seq++, "div");
-        builder.AddAttribute(seq++, "class", "rkanboard-checklist-item d-flex align-start gap-2");
+        builder.AddAttribute(seq++, "class", "rkanboard-checklist-item");
+        builder.AddEventStopPropagationAttribute(seq++, "onclick", true);
+        builder.AddEventStopPropagationAttribute(seq++, "onmousedown", true);
+        builder.AddEventStopPropagationAttribute(seq++, "ontouchstart", true);
 
         var renameActive = IsChecklistItemRenameActive(card.Id, checklist.Id, item.Id);
 
         if (renameActive)
         {
+            builder.OpenElement(seq++, "div");
+            builder.AddAttribute(seq++, "class", "rkanboard-checklist-item-rename");
+
             builder.OpenComponent<RTextInput>(seq++);
             builder.AddAttribute(seq++, "Label", "Checklist item");
             builder.AddAttribute(seq++, "Value", GetChecklistItemDraft(card.Id, checklist.Id, item.Id));
@@ -1402,8 +1444,10 @@
             builder.AddAttribute(seq++, "Size", SizeType.Small);
             builder.CloseComponent();
 
+            builder.CloseElement();
+
             builder.OpenElement(seq++, "div");
-            builder.AddAttribute(seq++, "class", "d-flex gap-1");
+            builder.AddAttribute(seq++, "class", "rkanboard-checklist-item-actions");
 
             builder.OpenComponent<RButton>(seq++);
             builder.AddAttribute(seq++, "Text", "Save");
@@ -1411,6 +1455,8 @@
             builder.AddAttribute(seq++, "Size", SizeType.ExtraSmall);
             builder.AddAttribute(seq++, "Disabled", string.IsNullOrWhiteSpace(GetChecklistItemDraft(card.Id, checklist.Id, item.Id)));
             builder.AddAttribute(seq++, "OnClick", EventCallback.Factory.Create(this, async () => await SubmitChecklistItemRenameAsync(card, checklist, item)));
+            builder.AddAttribute(seq++, "StopPropagation", true);
+            builder.AddAttribute(seq++, "AdditionalAttributes", new Dictionary<string, object> { ["draggable"] = "false" });
             builder.CloseComponent();
 
             builder.OpenComponent<RButton>(seq++);
@@ -1418,24 +1464,30 @@
             builder.AddAttribute(seq++, "Variant", VariantType.Secondary);
             builder.AddAttribute(seq++, "Size", SizeType.ExtraSmall);
             builder.AddAttribute(seq++, "OnClick", EventCallback.Factory.Create(this, () => CancelChecklistItemRename(card.Id, checklist.Id, item.Id)));
+            builder.AddAttribute(seq++, "StopPropagation", true);
+            builder.AddAttribute(seq++, "AdditionalAttributes", new Dictionary<string, object> { ["draggable"] = "false" });
             builder.CloseComponent();
 
             builder.CloseElement();
         }
         else
         {
+            builder.OpenElement(seq++, "div");
+            builder.AddAttribute(seq++, "class", "rkanboard-checklist-item-content");
             builder.OpenComponent<RCheckbox>(seq++);
             builder.AddAttribute(seq++, "Checked", item.IsCompleted);
             builder.AddAttribute(seq++, "CheckedChanged", EventCallback.Factory.Create<bool>(this, value => ToggleChecklistItemAsync(card, checklist, item, value)));
             builder.AddAttribute(seq++, "Text", item.Text);
             builder.AddAttribute(seq++, "Disabled", Disabled);
             builder.AddAttribute(seq++, "Size", SizeType.Small);
+            builder.AddAttribute(seq++, "AdditionalAttributes", new Dictionary<string, object> { ["draggable"] = "false" });
             builder.CloseComponent();
+            builder.CloseElement();
 
             if (allowEditing)
             {
                 builder.OpenElement(seq++, "div");
-                builder.AddAttribute(seq++, "class", "d-flex gap-1");
+                builder.AddAttribute(seq++, "class", "rkanboard-checklist-item-actions");
 
                 builder.OpenComponent<RButton>(seq++);
                 builder.AddAttribute(seq++, "Icon", "edit");
@@ -1443,6 +1495,8 @@
                 builder.AddAttribute(seq++, "Size", SizeType.ExtraSmall);
                 builder.AddAttribute(seq++, "Mode", ButtonMode.Ghost);
                 builder.AddAttribute(seq++, "OnClick", EventCallback.Factory.Create(this, () => OpenChecklistItemRename(card, checklist, item)));
+                builder.AddAttribute(seq++, "StopPropagation", true);
+                builder.AddAttribute(seq++, "AdditionalAttributes", new Dictionary<string, object> { ["draggable"] = "false" });
                 builder.CloseComponent();
 
                 builder.OpenComponent<RButton>(seq++);
@@ -1451,6 +1505,8 @@
                 builder.AddAttribute(seq++, "Size", SizeType.ExtraSmall);
                 builder.AddAttribute(seq++, "Mode", ButtonMode.Ghost);
                 builder.AddAttribute(seq++, "OnClick", EventCallback.Factory.Create(this, async () => await DeleteChecklistItemAsync(card, checklist, item)));
+                builder.AddAttribute(seq++, "StopPropagation", true);
+                builder.AddAttribute(seq++, "AdditionalAttributes", new Dictionary<string, object> { ["draggable"] = "false" });
                 builder.CloseComponent();
 
                 builder.CloseElement();
@@ -1465,7 +1521,10 @@
         var draft = GetChecklistItemDraft(card.Id, checklist.Id, null);
 
         builder.OpenElement(seq++, "div");
-        builder.AddAttribute(seq++, "class", "rkanboard-checklist-item-composer d-flex align-start gap-2");
+        builder.AddAttribute(seq++, "class", "rkanboard-checklist-item-composer");
+        builder.AddEventStopPropagationAttribute(seq++, "onclick", true);
+        builder.AddEventStopPropagationAttribute(seq++, "onmousedown", true);
+        builder.AddEventStopPropagationAttribute(seq++, "ontouchstart", true);
 
         builder.OpenComponent<RTextInput>(seq++);
         builder.AddAttribute(seq++, "Label", "Add item");
@@ -1483,6 +1542,8 @@
         builder.AddAttribute(seq++, "Size", SizeType.ExtraSmall);
         builder.AddAttribute(seq++, "Disabled", string.IsNullOrWhiteSpace(draft));
         builder.AddAttribute(seq++, "OnClick", EventCallback.Factory.Create(this, async () => await SubmitChecklistItemAsync(card, checklist)));
+        builder.AddAttribute(seq++, "StopPropagation", true);
+        builder.AddAttribute(seq++, "AdditionalAttributes", new Dictionary<string, object> { ["draggable"] = "false" });
         builder.CloseComponent();
 
         builder.CloseElement();
@@ -1493,7 +1554,10 @@
         var draft = GetNewChecklistDraft(card.Id);
 
         builder.OpenElement(seq++, "div");
-        builder.AddAttribute(seq++, "class", "rkanboard-checklist-composer d-flex flex-column gap-2");
+        builder.AddAttribute(seq++, "class", "rkanboard-checklist-composer");
+        builder.AddEventStopPropagationAttribute(seq++, "onclick", true);
+        builder.AddEventStopPropagationAttribute(seq++, "onmousedown", true);
+        builder.AddEventStopPropagationAttribute(seq++, "ontouchstart", true);
 
         builder.OpenComponent<RTextInput>(seq++);
         builder.AddAttribute(seq++, "Label", "Checklist name");
@@ -1504,7 +1568,7 @@
         builder.CloseComponent();
 
         builder.OpenElement(seq++, "div");
-        builder.AddAttribute(seq++, "class", "d-flex gap-2");
+        builder.AddAttribute(seq++, "class", "rkanboard-checklist-composer-actions");
 
         builder.OpenComponent<RButton>(seq++);
         builder.AddAttribute(seq++, "Text", "Create");
@@ -1512,6 +1576,8 @@
         builder.AddAttribute(seq++, "Size", SizeType.ExtraSmall);
         builder.AddAttribute(seq++, "Disabled", string.IsNullOrWhiteSpace(draft));
         builder.AddAttribute(seq++, "OnClick", EventCallback.Factory.Create(this, async () => await SubmitNewChecklistAsync(card)));
+        builder.AddAttribute(seq++, "StopPropagation", true);
+        builder.AddAttribute(seq++, "AdditionalAttributes", new Dictionary<string, object> { ["draggable"] = "false" });
         builder.CloseComponent();
 
         builder.OpenComponent<RButton>(seq++);
@@ -1519,6 +1585,8 @@
         builder.AddAttribute(seq++, "Variant", VariantType.Secondary);
         builder.AddAttribute(seq++, "Size", SizeType.ExtraSmall);
         builder.AddAttribute(seq++, "OnClick", EventCallback.Factory.Create(this, () => CloseChecklistComposer(card.Id)));
+        builder.AddAttribute(seq++, "StopPropagation", true);
+        builder.AddAttribute(seq++, "AdditionalAttributes", new Dictionary<string, object> { ["draggable"] = "false" });
         builder.CloseComponent();
 
         builder.CloseElement();
@@ -1773,13 +1841,53 @@
             return;
         }
 
+        builder.OpenElement(seq++, "section");
+        builder.AddAttribute(seq++, "class", "rkanboard-card-collaborators");
+        builder.AddEventStopPropagationAttribute(seq++, "onclick", true);
+        builder.AddEventStopPropagationAttribute(seq++, "onmousedown", true);
+        builder.AddEventStopPropagationAttribute(seq++, "ontouchstart", true);
+
         builder.OpenElement(seq++, "div");
-        builder.AddAttribute(seq++, "class", "rkanboard-card-collaborators d-flex flex-wrap align-start gap-2 mt-3");
+        builder.AddAttribute(seq++, "class", "rkanboard-card-section-header");
+        builder.OpenElement(seq++, "span");
+        builder.AddAttribute(seq++, "class", "rkanboard-section-title");
+        builder.AddContent(seq++, "Collaborators");
+        builder.CloseElement();
+
+        if (hasCollaborators)
+        {
+            builder.OpenElement(seq++, "span");
+            builder.AddAttribute(seq++, "class", "rkanboard-section-pill");
+            builder.AddContent(seq++, $"{collaborators.Count}");
+            builder.CloseElement();
+        }
+        else
+        {
+            builder.OpenElement(seq++, "span");
+            builder.AddAttribute(seq++, "class", "rkanboard-section-pill muted");
+            builder.AddContent(seq++, "0");
+            builder.CloseElement();
+        }
+
+        if (OnCollaboratorsEditRequested.HasDelegate && !Disabled)
+        {
+            builder.OpenComponent<RButton>(seq++);
+            builder.AddAttribute(seq++, "Text", hasCollaborators ? "Manage team" : "Add collaborators");
+            builder.AddAttribute(seq++, "Variant", VariantType.Secondary);
+            builder.AddAttribute(seq++, "Size", SizeType.ExtraSmall);
+            builder.AddAttribute(seq++, "Mode", ButtonMode.Ghost);
+            builder.AddAttribute(seq++, "OnClick", EventCallback.Factory.Create(this, async () => await HandleCollaboratorsEditAsync(column, card)));
+            builder.AddAttribute(seq++, "StopPropagation", true);
+            builder.AddAttribute(seq++, "AdditionalAttributes", new Dictionary<string, object> { ["draggable"] = "false" });
+            builder.CloseComponent();
+        }
+
+        builder.CloseElement();
 
         if (hasCollaborators)
         {
             builder.OpenElement(seq++, "div");
-            builder.AddAttribute(seq++, "class", "rkanboard-collaborator-stack d-flex");
+            builder.AddAttribute(seq++, "class", "rkanboard-collaborator-stack");
             var maxVisible = Math.Min(collaborators.Count, 4);
             for (var i = 0; i < maxVisible; i++)
             {
@@ -1798,16 +1906,12 @@
 
             builder.CloseElement();
         }
-
-        if (OnCollaboratorsEditRequested.HasDelegate && !Disabled)
+        else
         {
-            builder.OpenComponent<RButton>(seq++);
-            builder.AddAttribute(seq++, "Text", hasCollaborators ? "Manage team" : "Add collaborators");
-            builder.AddAttribute(seq++, "Variant", VariantType.Secondary);
-            builder.AddAttribute(seq++, "Size", SizeType.ExtraSmall);
-            builder.AddAttribute(seq++, "Mode", ButtonMode.Ghost);
-            builder.AddAttribute(seq++, "OnClick", EventCallback.Factory.Create(this, async () => await HandleCollaboratorsEditAsync(column, card)));
-            builder.CloseComponent();
+            builder.OpenElement(seq++, "div");
+            builder.AddAttribute(seq++, "class", "rkanboard-card-empty-hint");
+            builder.AddContent(seq++, "No collaborators yet");
+            builder.CloseElement();
         }
 
         builder.CloseElement();
@@ -1982,7 +2086,7 @@
                 break;
             case "Enter":
             case " ":
-                await HandleCardOpenAsync(card.Id);
+                await HandleCardOpenAsync(card.Id, true);
                 break;
         }
     }
@@ -2322,34 +2426,65 @@
             return;
         }
 
+        builder.OpenElement(seq++, "section");
+        builder.AddAttribute(seq++, "class", "rkanboard-card-checklists");
+        builder.AddEventStopPropagationAttribute(seq++, "onclick", true);
+        builder.AddEventStopPropagationAttribute(seq++, "onmousedown", true);
+        builder.AddEventStopPropagationAttribute(seq++, "ontouchstart", true);
+
         builder.OpenElement(seq++, "div");
-        builder.AddAttribute(seq++, "class", "rkanboard-card-checklists d-flex flex-column gap-2 mt-2");
+        builder.AddAttribute(seq++, "class", "rkanboard-card-section-header");
+
+        builder.OpenElement(seq++, "span");
+        builder.AddAttribute(seq++, "class", "rkanboard-section-title");
+        builder.AddContent(seq++, "Checklists");
+        builder.CloseElement();
+
+        builder.OpenElement(seq++, "span");
+        builder.AddAttribute(seq++, "class", hasChecklists ? "rkanboard-section-pill" : "rkanboard-section-pill muted");
+        builder.AddContent(seq++, hasChecklists ? $"{checklists.Count}" : "0");
+        builder.CloseElement();
+
+        if (allowEditing && !IsChecklistComposerOpen(card.Id))
+        {
+            builder.OpenComponent<RButton>(seq++);
+            builder.AddAttribute(seq++, "Text", "Add checklist");
+            builder.AddAttribute(seq++, "Icon", "add_task");
+            builder.AddAttribute(seq++, "Variant", VariantType.Secondary);
+            builder.AddAttribute(seq++, "Size", SizeType.ExtraSmall);
+            builder.AddAttribute(seq++, "Mode", ButtonMode.Ghost);
+            builder.AddAttribute(seq++, "StopPropagation", true);
+            builder.AddAttribute(seq++, "AdditionalAttributes", new Dictionary<string, object> { ["draggable"] = "false" });
+            builder.AddAttribute(seq++, "OnClick", EventCallback.Factory.Create(this, () => OpenChecklistComposer(card.Id)));
+            builder.CloseComponent();
+        }
+
+        builder.CloseElement();
 
         if (hasChecklists)
         {
+            builder.OpenElement(seq++, "div");
+            builder.AddAttribute(seq++, "class", "rkanboard-checklist-list");
+
             foreach (var checklist in checklists)
             {
                 if (checklist is null) continue;
                 RenderChecklist(builder, card, column, checklist, allowEditing, ref seq);
             }
+
+            builder.CloseElement();
+        }
+        else
+        {
+            builder.OpenElement(seq++, "div");
+            builder.AddAttribute(seq++, "class", "rkanboard-card-empty-hint");
+            builder.AddContent(seq++, allowEditing ? "Add a checklist to capture the flow" : "No checklists");
+            builder.CloseElement();
         }
 
-        if (allowEditing)
+        if (allowEditing && IsChecklistComposerOpen(card.Id))
         {
-            if (IsChecklistComposerOpen(card.Id))
-            {
-                RenderChecklistComposer(builder, card, ref seq);
-            }
-            else
-            {
-                builder.OpenComponent<RButton>(seq++);
-                builder.AddAttribute(seq++, "Text", "Add checklist");
-                builder.AddAttribute(seq++, "Icon", "add_task");
-                builder.AddAttribute(seq++, "Variant", VariantType.Secondary);
-                builder.AddAttribute(seq++, "Size", SizeType.ExtraSmall);
-                builder.AddAttribute(seq++, "OnClick", EventCallback.Factory.Create(this, () => OpenChecklistComposer(card.Id)));
-                builder.CloseComponent();
-            }
+            RenderChecklistComposer(builder, card, ref seq);
         }
 
         builder.CloseElement();
@@ -2363,12 +2498,12 @@
         }
 
         builder.OpenElement(seq++, "div");
-        builder.AddAttribute(seq++, "class", "rkanboard-checklist d-flex flex-column gap-2");
+        builder.AddAttribute(seq++, "class", "rkanboard-checklist");
 
         var renameActive = IsChecklistRenameActive(card.Id, checklist.Id);
 
         builder.OpenElement(seq++, "div");
-        builder.AddAttribute(seq++, "class", "d-flex justify-between align-center gap-2");
+        builder.AddAttribute(seq++, "class", "rkanboard-checklist-header");
 
         if (renameActive)
         {
@@ -2381,7 +2516,7 @@
             builder.CloseComponent();
 
             builder.OpenElement(seq++, "div");
-            builder.AddAttribute(seq++, "class", "d-flex gap-2");
+            builder.AddAttribute(seq++, "class", "rkanboard-checklist-header-actions");
 
             builder.OpenComponent<RButton>(seq++);
             builder.AddAttribute(seq++, "Text", "Save");
@@ -2389,6 +2524,8 @@
             builder.AddAttribute(seq++, "Size", SizeType.ExtraSmall);
             builder.AddAttribute(seq++, "Disabled", string.IsNullOrWhiteSpace(GetChecklistRenameDraft(card.Id, checklist.Id)));
             builder.AddAttribute(seq++, "OnClick", EventCallback.Factory.Create(this, async () => await SubmitChecklistRenameAsync(card, checklist)));
+            builder.AddAttribute(seq++, "StopPropagation", true);
+            builder.AddAttribute(seq++, "AdditionalAttributes", new Dictionary<string, object> { ["draggable"] = "false" });
             builder.CloseComponent();
 
             builder.OpenComponent<RButton>(seq++);
@@ -2396,6 +2533,8 @@
             builder.AddAttribute(seq++, "Variant", VariantType.Secondary);
             builder.AddAttribute(seq++, "Size", SizeType.ExtraSmall);
             builder.AddAttribute(seq++, "OnClick", EventCallback.Factory.Create(this, () => CancelChecklistRename(card.Id, checklist.Id)));
+            builder.AddAttribute(seq++, "StopPropagation", true);
+            builder.AddAttribute(seq++, "AdditionalAttributes", new Dictionary<string, object> { ["draggable"] = "false" });
             builder.CloseComponent();
 
             builder.CloseElement();
@@ -2403,14 +2542,14 @@
         else
         {
             builder.OpenElement(seq++, "span");
-            builder.AddAttribute(seq++, "class", "text-xs font-semibold");
+            builder.AddAttribute(seq++, "class", "rkanboard-checklist-title");
             builder.AddContent(seq++, checklist.Title);
             builder.CloseElement();
 
             if (allowEditing)
             {
                 builder.OpenElement(seq++, "div");
-                builder.AddAttribute(seq++, "class", "d-flex gap-1");
+                builder.AddAttribute(seq++, "class", "rkanboard-checklist-header-actions");
 
                 builder.OpenComponent<RButton>(seq++);
                 builder.AddAttribute(seq++, "Icon", "edit");
@@ -2418,6 +2557,8 @@
                 builder.AddAttribute(seq++, "Size", SizeType.ExtraSmall);
                 builder.AddAttribute(seq++, "Mode", ButtonMode.Ghost);
                 builder.AddAttribute(seq++, "OnClick", EventCallback.Factory.Create(this, () => OpenChecklistRename(card.Id, checklist)));
+                builder.AddAttribute(seq++, "StopPropagation", true);
+                builder.AddAttribute(seq++, "AdditionalAttributes", new Dictionary<string, object> { ["draggable"] = "false" });
                 builder.CloseComponent();
 
                 builder.OpenComponent<RButton>(seq++);
@@ -2426,6 +2567,8 @@
                 builder.AddAttribute(seq++, "Size", SizeType.ExtraSmall);
                 builder.AddAttribute(seq++, "Mode", ButtonMode.Ghost);
                 builder.AddAttribute(seq++, "OnClick", EventCallback.Factory.Create(this, async () => await DeleteChecklistAsync(card, checklist)));
+                builder.AddAttribute(seq++, "StopPropagation", true);
+                builder.AddAttribute(seq++, "AdditionalAttributes", new Dictionary<string, object> { ["draggable"] = "false" });
                 builder.CloseComponent();
 
                 builder.CloseElement();
@@ -2437,7 +2580,7 @@
         if (checklist.Items is { Count: > 0 })
         {
             builder.OpenElement(seq++, "div");
-            builder.AddAttribute(seq++, "class", "d-flex flex-column gap-1");
+            builder.AddAttribute(seq++, "class", "rkanboard-checklist-items");
 
             foreach (var item in checklist.Items.Where(item => item is not null))
             {
@@ -2569,6 +2712,7 @@
         dragOriginIndex = index;
         dropTargetColumnId = columnId;
         dropTargetIndex = index;
+        suppressNextCardOpen = true;
     }
 
     private void HandleCardDragEnd(DragEventArgs _)
@@ -2970,8 +3114,21 @@
         });
     }
 
-    private Task HandleCardOpenAsync(string cardId)
+    private Task HandleCardOpenAsync(string cardId, bool forceOpen = false)
     {
+        if (string.IsNullOrWhiteSpace(cardId))
+        {
+            return Task.CompletedTask;
+        }
+
+        if (!forceOpen && suppressNextCardOpen)
+        {
+            suppressNextCardOpen = false;
+            return Task.CompletedTask;
+        }
+
+        suppressNextCardOpen = false;
+
         if (OnCardOpen.HasDelegate)
         {
             return OnCardOpen.InvokeAsync(cardId);

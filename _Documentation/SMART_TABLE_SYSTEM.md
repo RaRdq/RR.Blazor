@@ -238,7 +238,7 @@ public class Employee
 
 ### Bulk Operations
 ```razor
-<RTable Items="@payrolls" 
+<RTable Items="@records" 
         MultiSelection="true"
         BulkOperationsEnabled="true">
     <BulkOperations>
@@ -556,5 +556,4 @@ var (columnCount, accessorCount, formatterCount) = PropertyColumnGenerator.GetCa
 - **URL Validation**: Only HTTP/HTTPS URLs are allowed for auto-generated links
 - **Email Validation**: RFC-compliant email validation with length limits
 - **Input Sanitization**: Phone numbers and other inputs are sanitized before display
-
 

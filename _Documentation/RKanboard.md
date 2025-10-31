@@ -89,7 +89,7 @@
 2. Wire drag callback to your persistence layer; optionally use `RKanboardStateManager` for optimistic updates.
 3. Feed `AssigneeOptions` with directory data; implement `AssigneeSearch` for large datasets.
 4. Use column `AllowDrop` and `KanboardColumnConfig.Metadata` to enforce state restrictions, SLA indicators, or analytics overlays.
-5. Persist and hydrate custom columns through `IRKanboardPreferenceStore`; the PayrollAI client supplies a `ServerKanboardPreferenceStore` that calls the new `KanboardPreferencesController`.
+5. Persist and hydrate custom columns through `IRKanboardPreferenceStore`; the reference client supplies a `ServerKanboardPreferenceStore` that calls the new `KanboardPreferencesController`.
 6. Combine with `ModalService` or navigation to surface details when `OnCardOpen` fires.
 7. For prototypes or storybook demos, register `RKanboardInMemoryAdapter` with `RKanboardAdapterOrchestrator` to exercise drag/drop and quick actions without wiring a backend.
 

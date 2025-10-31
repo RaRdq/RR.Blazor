@@ -42,21 +42,21 @@ A theme file is a standard SCSS file that defines CSS variables within a theme-s
 ```scss
 :root[data-theme="my-theme"] {
   // Core Colors
-  --theme-primary: #4687f1;
-  --theme-success: #10b981;
-  --theme-warning: #f59e0b;
-  --theme-error: #ef4444;
-  --theme-info: #06b6d4;
+  --theme-primary: #3f7cf0;
+  --theme-success: #59c9a5;
+  --theme-warning: #f3b580;
+  --theme-error: #f28da0;
+  --theme-info: #7ec4e4;
   
   // Surface Colors
-  --theme-canvas: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-  --theme-surface: #fafbfc;
-  --theme-surface-elevated: #f4f5f7;
+  --theme-canvas: linear-gradient(135deg, #f6fbff 0%, #eef7f4 100%);
+  --theme-surface: #fbfcfe;
+  --theme-surface-elevated: #f1f6f7;
   
   // Text Colors
-  --theme-text: #0f172a;
-  --theme-text-muted: #475569;
-  --theme-text-subtle: #94a3b8;
+  --theme-text: #14293a;
+  --theme-text-muted: #4a5b6b;
+  --theme-text-subtle: #8ea0af;
   
   // Shadows (5 elevation levels)
   --theme-shadow-sm: 0 2px 4px -1px rgb(0 0 0 / 0.06);
@@ -321,24 +321,24 @@ Theme snippet for `.vscode/scss.code-snippets`:
     "body": [
       ":root[data-theme=\"${1:theme-name}\"] {",
       "  // Core Colors",
-      "  --theme-primary: ${2:#4687f1};",
-      "  --theme-success: ${3:#10b981};",
-      "  --theme-warning: ${4:#f59e0b};",
-      "  --theme-error: ${5:#ef4444};",
-      "  --theme-info: ${6:#06b6d4};",
+      "  --theme-primary: ${2:#3f7cf0};",
+      "  --theme-success: ${3:#59c9a5};",
+      "  --theme-warning: ${4:#f3b580};",
+      "  --theme-error: ${5:#f28da0};",
+      "  --theme-info: ${6:#7ec4e4};",
       "  ",
       "  // Surface Colors",
-      "  --theme-canvas: ${7:#f8fafc};",
-      "  --theme-surface: ${8:#fafbfc};",
-      "  --theme-surface-elevated: ${9:#f4f5f7};",
+      "  --theme-canvas: ${7:linear-gradient(135deg, #f6fbff 0%, #eef7f4 100%)};",
+      "  --theme-surface: ${8:#fbfcfe};",
+      "  --theme-surface-elevated: ${9:#f1f6f7};",
       "  ",
       "  // Text Colors",
-      "  --theme-text: ${10:#0f172a};",
-      "  --theme-text-muted: ${11:#475569};",
-      "  --theme-text-subtle: ${12:#94a3b8};",
+      "  --theme-text: ${10:#14293a};",
+      "  --theme-text-muted: ${11:#4a5b6b};",
+      "  --theme-text-subtle: ${12:#8ea0af};",
       "  ",
       "  // Border",
-      "  --theme-border: ${13:#e2e8f0};",
+      "  --theme-border: ${13:#d8e5eb};",
       "  ",
       "  // Shadows",
       "  --theme-shadow-sm: ${14:0 2px 4px -1px rgb(0 0 0 / 0.06)};",

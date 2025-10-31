@@ -1,0 +1,444 @@
+@using System.Collections.Generic
+@using System.Linq
+@using Microsoft.AspNetCore.Components.Web
+@using RR.Blazor.Attributes
+@using RR.Blazor.Components.Base
+@using RR.Blazor.Enums
+@using RR.Blazor.Utilities
+@inherits RComponentBase
+
+@attribute [Component("RWidget", Category = "Layout", Complexity = ComponentComplexity.Intermediate)]
+@attribute [AIOptimized(Prompt = "Wrap dashboard content inside a draggable/resizable widget", 
+                       CommonUse = "analytics dashboards, customizable home screens", 
+                       AvoidUsage = "Standalone cards outside dashboards")]
+
+<div id="@Id"
+     class="@BuildRootClasses()"
+     style="@BuildRootStyle()"
+     data-widget-id="@Id"
+     data-allow-resize="@((AllowResize && Dashboard?.SupportsResize == true).ToString().ToLowerInvariant())"
+     data-allow-reorder="@((AllowReorder && Dashboard?.SupportsReorder == true).ToString().ToLowerInvariant())"
+     data-min-columns="@EffectiveRegistration.MinColumnSpan"
+     data-max-columns="@EffectiveRegistration.MaxColumnSpan"
+     data-min-rows="@EffectiveRegistration.MinRowSpan"
+     data-max-rows="@EffectiveRegistration.MaxRowSpan"
+     @attributes="AdditionalAttributes">
+
+    <div class="r-widget__surface">
+        @if (!HideHeader && (HasHeaderContent || !string.IsNullOrWhiteSpace(Title)))
+        {
+            <div class="r-widget__header">
+                <div class="r-widget__header-main">
+                    @if (!string.IsNullOrWhiteSpace(Icon))
+                    {
+                        <i class="@BuildIconClasses()">@Icon</i>
+                    }
+
+                    <div class="r-widget__header-titles">
+                        @if (!string.IsNullOrWhiteSpace(Title))
+                        {
+                            <div class="r-widget__title">@Title</div>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(Subtitle))
+                        {
+                            <div class="r-widget__subtitle">@Subtitle</div>
+                        }
+                    </div>
+                </div>
+
+                @if (ToolbarContent != null)
+                {
+                    <div class="r-widget__toolbar">
+                        @ToolbarContent
+                    </div>
+                }
+            </div>
+        }
+
+        <div class="r-widget__body">
+            <CascadingValue Value="@viewContext" IsFixed="true">
+                @if (ShouldRenderSummary)
+                {
+                    @SummaryContent
+                }
+                else
+                {
+                    @ChildContent
+                }
+            </CascadingValue>
+        </div>
+
+        @if (FooterContent != null)
+        {
+            <div class="r-widget__footer">
+                @FooterContent
+            </div>
+        }
+    </div>
+
+    @if (IsEditInteractionVisible && EffectiveRegistration.AllowReorder && Dashboard?.SupportsReorder == true)
+    {
+        <button type="button"
+                class="r-widget__drag-handle"
+                title="Drag to reorder widget"
+                aria-label="Drag widget to reorder">
+            <i class="icon">drag_indicator</i>
+        </button>
+    }
+
+    @if (IsEditInteractionVisible && EffectiveRegistration.AllowResize && Dashboard?.SupportsResize == true)
+    {
+        <div class="r-widget__resize-handle"
+             aria-label="Resize widget"
+             role="presentation">
+            <i class="icon">open_in_full</i>
+        </div>
+    }
+</div>
+
+@code {
+    private RDashboardWidgetState state;
+    private RWidgetRegistration EffectiveRegistration =>
+        state?.Registration ?? registrationSnapshot;
+
+    private RWidgetRegistration registrationSnapshot;
+    private RWidgetViewContext viewContext;
+    private int currentColumnSpan;
+    private int currentRowSpan;
+    private int currentOrder;
+    private bool hasRenderedOnce;
+
+    [CascadingParameter] internal RDashboard Dashboard { get; set; }
+
+    [Parameter, EditorRequired]
+    [AIParameter(Hint = "Unique identifier for saving layout state", IsRequired = true)]
+    public string Id { get; set; } = "";
+
+    [Parameter]
+    [AIParameter(Hint = "Widget header text")]
+    public string Title { get; set; } = "";
+
+    [Parameter]
+    [AIParameter(Hint = "Secondary header text")]
+    public string Subtitle { get; set; } = "";
+
+    [Parameter]
+    [AIParameter(Hint = "Material icon name displayed left of title")]
+    public string Icon { get; set; } = "";
+
+    [Parameter]
+    [AIParameter(Hint = "Visual style for the widget container", SuggestedValues = new[] { "Default", "Primary", "Secondary" })]
+    public VariantType Variant { get; set; } = VariantType.Default;
+
+    [Parameter]
+    [AIParameter(Hint = "Intensity tone for the selected variant", SuggestedValues = new[] { "Normal", "Subtle", "Bold" })]
+    public IntensityType Intensity { get; set; } = IntensityType.Normal;
+
+    [Parameter]
+    [AIParameter(Hint = "Default number of dashboard columns occupied")]
+    public int ColumnSpan { get; set; } = 3;
+
+    [Parameter]
+    [AIParameter(Hint = "Column span at ≥1280px (xl breakpoint)")]
+    public int ColumnSpanXl { get; set; }
+
+    [Parameter]
+    [AIParameter(Hint = "Column span at ≥1024px (lg breakpoint)")]
+    public int ColumnSpanLg { get; set; }
+
+    [Parameter]
+    [AIParameter(Hint = "Column span at ≥768px (md breakpoint)")]
+    public int ColumnSpanMd { get; set; }
+
+    [Parameter]
+    [AIParameter(Hint = "Column span at ≥640px (sm breakpoint)")]
+    public int ColumnSpanSm { get; set; }
+
+    [Parameter]
+    [AIParameter(Hint = "Column span for mobile breakpoint")]
+    public int ColumnSpanXs { get; set; } = 1;
+
+    [Parameter]
+    [AIParameter(Hint = "Default number of rows occupied")]
+    public int RowSpan { get; set; } = 2;
+
+    [Parameter]
+    [AIParameter(Hint = "Row span at ≥1280px (xl breakpoint)")]
+    public int RowSpanXl { get; set; }
+
+    [Parameter]
+    [AIParameter(Hint = "Row span at ≥1024px (lg breakpoint)")]
+    public int RowSpanLg { get; set; }
+
+    [Parameter]
+    [AIParameter(Hint = "Row span at ≥768px (md breakpoint)")]
+    public int RowSpanMd { get; set; }
+
+    [Parameter]
+    [AIParameter(Hint = "Row span at ≥640px (sm breakpoint)")]
+    public int RowSpanSm { get; set; }
+
+    [Parameter]
+    [AIParameter(Hint = "Row span for mobile breakpoint")]
+    public int RowSpanXs { get; set; } = 1;
+
+    [Parameter]
+    [AIParameter(Hint = "Minimum allowed columns when resizing")]
+    public int MinColumnSpan { get; set; } = 1;
+
+    [Parameter]
+    [AIParameter(Hint = "Maximum allowed columns when resizing")]
+    public int MaxColumnSpan { get; set; } = 6;
+
+    [Parameter]
+    [AIParameter(Hint = "Minimum allowed rows when resizing")]
+    public int MinRowSpan { get; set; } = 1;
+
+    [Parameter]
+    [AIParameter(Hint = "Maximum allowed rows when resizing")]
+    public int MaxRowSpan { get; set; } = 6;
+
+    [Parameter]
+    [AIParameter(Hint = "Disable to lock widget size globally")]
+    public bool AllowResize { get; set; } = true;
+
+    [Parameter]
+    [AIParameter(Hint = "Disable to prevent reordering")]
+    public bool AllowReorder { get; set; } = true;
+
+    [Parameter]
+    [AIParameter(Hint = "Hide widget chrome when rendering custom shells")]
+    public bool HideHeader { get; set; }
+
+    [Parameter]
+    [AIParameter(Hint = "Action buttons or filters rendered in the header")]
+    public RenderFragment ToolbarContent { get; set; }
+
+    [Parameter]
+    [AIParameter(Hint = "Compact-mode summary content", IsRequired = false)]
+    public RenderFragment SummaryContent { get; set; }
+
+    [Parameter]
+    [AIParameter(Hint = "Footer content (links, actions, meta)")]
+    public RenderFragment FooterContent { get; set; }
+
+    private bool IsEditInteractionVisible => Dashboard?.IsEditing == true;
+    private bool HasHeaderContent => ToolbarContent != null || !string.IsNullOrWhiteSpace(Icon);
+    private bool ShouldRenderSummary =>
+        SummaryContent != null &&
+        viewContext.Size <= RWidgetSizeCategory.Compact;
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+
+        if (Dashboard == null)
+        {
+            throw new InvalidOperationException("RWidget must be used within an RDashboard.");
+        }
+
+        if (string.IsNullOrWhiteSpace(Id))
+        {
+            throw new InvalidOperationException("RWidget requires a non-empty Id parameter.");
+        }
+
+        registrationSnapshot = BuildRegistration();
+        state = Dashboard.RegisterWidget(this, registrationSnapshot);
+        currentColumnSpan = state.ColumnSpan;
+        currentRowSpan = state.RowSpan;
+        currentOrder = state.Order;
+        UpdateViewContext();
+    }
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+
+        if (!ReferenceEquals(Dashboard, null))
+        {
+            var updated = BuildRegistration();
+            registrationSnapshot = updated;
+            Dashboard.UpdateWidgetRegistration(this, updated);
+        }
+
+        if (hasRenderedOnce)
+        {
+            UpdateViewContext();
+        }
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        base.OnAfterRender(firstRender);
+        hasRenderedOnce = true;
+    }
+
+    internal void AttachState(RDashboardWidgetState dashboardState)
+    {
+        state = dashboardState;
+        currentColumnSpan = dashboardState.ColumnSpan;
+        currentRowSpan = dashboardState.RowSpan;
+        currentOrder = dashboardState.Order;
+        UpdateViewContext();
+    }
+
+    internal void ApplyLayoutFromDashboard(int columns, int rows)
+    {
+        currentColumnSpan = columns;
+        currentRowSpan = rows;
+        UpdateViewContext();
+        InvokeAsync(StateHasChanged);
+    }
+
+    internal void ApplyOrderFromDashboard(int order)
+    {
+        currentOrder = order;
+        InvokeAsync(StateHasChanged);
+    }
+
+    internal RWidgetRegistration SnapshotRegistration() => BuildRegistration();
+
+    protected override ValueTask DisposeAsyncCore()
+    {
+        Dashboard?.UnregisterWidget(this);
+        return base.DisposeAsyncCore();
+    }
+
+    private RWidgetRegistration BuildRegistration()
+    {
+        var baseColumns = Clamp(ColumnSpan, MinColumnSpan, MaxColumnSpan);
+        var baseRows = Clamp(RowSpan, MinRowSpan, MaxRowSpan);
+
+        var responsiveColumns = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        var responsiveRows = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+        AddResponsiveValue(responsiveColumns, "xl", ColumnSpanXl);
+        AddResponsiveValue(responsiveColumns, "lg", ColumnSpanLg);
+        AddResponsiveValue(responsiveColumns, "md", ColumnSpanMd);
+        AddResponsiveValue(responsiveColumns, "sm", ColumnSpanSm);
+        AddResponsiveValue(responsiveColumns, "xs", ColumnSpanXs > 0 ? ColumnSpanXs : 1);
+
+        AddResponsiveValue(responsiveRows, "xl", RowSpanXl);
+        AddResponsiveValue(responsiveRows, "lg", RowSpanLg);
+        AddResponsiveValue(responsiveRows, "md", RowSpanMd);
+        AddResponsiveValue(responsiveRows, "sm", RowSpanSm);
+        AddResponsiveValue(responsiveRows, "xs", RowSpanXs > 0 ? RowSpanXs : 1);
+
+        return new RWidgetRegistration(
+            Id,
+            baseColumns,
+            baseRows,
+            Math.Max(1, MinColumnSpan),
+            Math.Max(Math.Max(1, MinColumnSpan), MaxColumnSpan),
+            Math.Max(1, MinRowSpan),
+            Math.Max(Math.Max(1, MinRowSpan), MaxRowSpan),
+            AllowResize,
+            AllowReorder,
+            responsiveColumns,
+            responsiveRows);
+    }
+
+    private void UpdateViewContext()
+    {
+        var size = ResolveSizeCategory(currentColumnSpan, currentRowSpan);
+        viewContext = new RWidgetViewContext(Id, currentColumnSpan, currentRowSpan, size, Dashboard?.IsEditing == true);
+    }
+
+    private string BuildRootClasses()
+    {
+        var classes = new List<string>
+        {
+            "r-widget",
+            $"r-widget--variant-{Variant.ToString().ToLowerInvariant()}",
+            $"r-widget--intensity-{Intensity.ToString().ToLowerInvariant()}",
+            DensityHelper.GetDensityClass("r-widget", Density)
+        };
+
+        if (Dashboard?.IsEditing == true)
+        {
+            classes.Add("r-widget--editing");
+        }
+
+        if (!AllowResize || Dashboard?.SupportsResize == false)
+        {
+            classes.Add("r-widget--resize-locked");
+        }
+
+        if (!AllowReorder || Dashboard?.SupportsReorder == false)
+        {
+            classes.Add("r-widget--reorder-locked");
+        }
+
+        if (!string.IsNullOrWhiteSpace(Class))
+        {
+            classes.Add(Class);
+        }
+
+        return string.Join(' ', classes.Where(c => !string.IsNullOrWhiteSpace(c)));
+    }
+
+    private string BuildRootStyle()
+    {
+        var builder = new System.Text.StringBuilder();
+
+        builder.Append($"grid-column-end: span {currentColumnSpan};");
+        builder.Append($"grid-row-end: span {currentRowSpan};");
+        builder.Append($"order: {currentOrder};");
+        builder.Append($"--r-widget-span-columns:{currentColumnSpan};");
+        builder.Append($"--r-widget-span-rows:{currentRowSpan};");
+
+        foreach (var entry in EffectiveRegistration.ResponsiveColumnSpans)
+        {
+            builder.Append($"--r-widget-span-columns-{entry.Key}:{entry.Value};");
+        }
+
+        foreach (var entry in EffectiveRegistration.ResponsiveRowSpans)
+        {
+            builder.Append($"--r-widget-span-rows-{entry.Key}:{entry.Value};");
+        }
+
+        if (!string.IsNullOrWhiteSpace(Style))
+        {
+            builder.Append(Style);
+        }
+
+        return builder.ToString();
+    }
+
+    private string BuildIconClasses()
+    {
+        var classes = new List<string> { "icon", "r-widget__icon" };
+        classes.Add(DensityHelper.GetIconSize(Density));
+        return string.Join(' ', classes);
+    }
+
+    private static RWidgetSizeCategory ResolveSizeCategory(int columns, int rows)
+    {
+        var area = columns * rows;
+        return area switch
+        {
+            <= 1 => RWidgetSizeCategory.Micro,
+            <= 2 => RWidgetSizeCategory.Compact,
+            <= 6 => RWidgetSizeCategory.Standard,
+            <= 9 => RWidgetSizeCategory.Extended,
+            _ => RWidgetSizeCategory.Showcase
+        };
+    }
+
+    private static void AddResponsiveValue(IDictionary<string, int> dictionary, string key, int value)
+    {
+        if (value <= 0)
+        {
+            return;
+        }
+
+        dictionary[key] = value;
+    }
+
+    private static int Clamp(int value, int min, int max)
+    {
+        var effectiveMin = Math.Max(1, min);
+        var effectiveMax = Math.Max(effectiveMin, max);
+        return Math.Clamp(value <= 0 ? effectiveMin : value, effectiveMin, effectiveMax);
+    }
+}
