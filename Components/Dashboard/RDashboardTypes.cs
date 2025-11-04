@@ -1,3 +1,6 @@
+using System.Collections.Generic;
+using System.Linq;
+
 namespace RR.Blazor.Components.Dashboard;
 
 public enum RWidgetSizeCategory
@@ -50,12 +53,74 @@ internal sealed class RDashboardWidgetState
     public int ColumnSpan { get; set; }
     public int RowSpan { get; set; }
 
-    public void UpdateRegistration(RWidgetRegistration registration)
+    public bool UpdateRegistration(RWidgetRegistration registration)
     {
-        Registration = registration ?? throw new ArgumentNullException(nameof(registration));
+        if (registration is null)
+        {
+            throw new ArgumentNullException(nameof(registration));
+        }
+
+        if (RWidgetRegistrationComparer.AreEqual(Registration, registration))
+        {
+            return false;
+        }
+
+        Registration = registration;
         ColumnSpan = Math.Clamp(ColumnSpan, registration.MinColumnSpan, registration.MaxColumnSpan);
         RowSpan = Math.Clamp(RowSpan, registration.MinRowSpan, registration.MaxRowSpan);
+        return true;
     }
 
     public RWidgetLayoutSnapshot ToSnapshot() => new(Registration.Id, ColumnSpan, RowSpan, Order);
+}
+
+internal static class RWidgetRegistrationComparer
+{
+    public static bool AreEqual(RWidgetRegistration left, RWidgetRegistration right)
+    {
+        if (ReferenceEquals(left, right))
+        {
+            return true;
+        }
+
+        if (left is null || right is null)
+        {
+            return false;
+        }
+
+        return left.Id == right.Id
+            && left.ColumnSpan == right.ColumnSpan
+            && left.RowSpan == right.RowSpan
+            && left.MinColumnSpan == right.MinColumnSpan
+            && left.MaxColumnSpan == right.MaxColumnSpan
+            && left.MinRowSpan == right.MinRowSpan
+            && left.MaxRowSpan == right.MaxRowSpan
+            && left.AllowResize == right.AllowResize
+            && left.AllowReorder == right.AllowReorder
+            && DictionaryEquals(left.ResponsiveColumnSpans, right.ResponsiveColumnSpans)
+            && DictionaryEquals(left.ResponsiveRowSpans, right.ResponsiveRowSpans);
+    }
+
+    private static bool DictionaryEquals(IReadOnlyDictionary<string, int> left, IReadOnlyDictionary<string, int> right)
+    {
+        if (ReferenceEquals(left, right))
+        {
+            return true;
+        }
+
+        if (left is null || right is null || left.Count != right.Count)
+        {
+            return false;
+        }
+
+        foreach (var kvp in left)
+        {
+            if (!right.TryGetValue(kvp.Key, out var value) || value != kvp.Value)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
 }

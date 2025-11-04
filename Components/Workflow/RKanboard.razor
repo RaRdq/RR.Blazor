@@ -1,5 +1,6 @@
 @using System
 @using System.Collections.Generic
+@using System.Globalization
 @using System.Linq
 @using System.Threading
 @using System.Threading.Tasks
@@ -495,6 +496,7 @@
     private bool columnPlaceholderAfter;
     private readonly Dictionary<string, Dictionary<string, int>> columnIndexLookups = new();
     private bool requiresJsRefresh;
+    private string lastBoardSignature = string.Empty;
     private KanboardOrientation? lastReportedOrientation;
     private bool lastEnableSwimlanes;
     private bool suppressNextCardOpen;
@@ -584,10 +586,22 @@
             lastEnableSwimlanes = EnableSwimlanes;
         }
 
-        CleanupVisibilityOverrides();
-        CleanupEphemeralState();
-        columnIndexLookups.Clear();
-        EnsureFocusedCard();
+        var currentSignature = ComputeBoardSignature(Board);
+        var boardChanged = !string.Equals(lastBoardSignature, currentSignature, StringComparison.Ordinal);
+
+        if (boardChanged)
+        {
+            requiresJsRefresh = true;
+            CleanupVisibilityOverrides();
+            CleanupEphemeralState();
+            columnIndexLookups.Clear();
+            EnsureFocusedCard();
+            lastBoardSignature = currentSignature;
+        }
+        else
+        {
+            EnsureFocusedCard();
+        }
     }
 
     private void CleanupVisibilityOverrides()
@@ -704,6 +718,35 @@
     {
         if (Board?.Columns is null) return Array.Empty<RKanboardColumnModel>();
         return Board.Columns;
+    }
+
+    private static string ComputeBoardSignature(RKanboardBoardState? board)
+    {
+        if (board?.Columns is null)
+        {
+            return "empty";
+        }
+
+        var hash = new HashCode();
+        hash.Add(board.Columns.Count);
+
+        foreach (var column in board.Columns)
+        {
+            hash.Add(column.Id);
+            hash.Add(column.CardIds.Count);
+
+            foreach (var cardId in column.CardIds)
+            {
+                hash.Add(cardId);
+            }
+        }
+
+        if (board.Cards is not null)
+        {
+            hash.Add(board.Cards.Count);
+        }
+
+        return hash.ToHashCode().ToString("X8", CultureInfo.InvariantCulture);
     }
 
     private bool IsSameSwimlane(string originColumnId, string targetColumnId)

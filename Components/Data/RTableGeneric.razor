@@ -730,7 +730,28 @@
             searchableColumns.Any(column =>
             {
                 var value = GetPropertyValue(item, column.Key);
-                return value?.ToString()?.ToLower().Contains(lowerSearchTerm) ?? false;
+                if (value == null)
+                {
+                    return false;
+                }
+
+                if (value is string stringValue)
+                {
+                    return stringValue.ToLower().Contains(lowerSearchTerm);
+                }
+
+                if (value is System.Collections.IEnumerable enumerable && value is not string)
+                {
+                    foreach (var element in enumerable)
+                    {
+                        if (element?.ToString()?.ToLower().Contains(lowerSearchTerm) == true)
+                        {
+                            return true;
+                        }
+                    }
+                }
+
+                return value.ToString()?.ToLower().Contains(lowerSearchTerm) ?? false;
             }));
         return filteredItems.AsQueryable();
     }
@@ -969,6 +990,7 @@
         CurrentPage = 1; // Reset to first page on search
         ProcessItems();
         await CurrentPageChanged.InvokeAsync(CurrentPage);
+        await InvokeAsync(StateHasChanged);
     }
 
     private void ToggleFilterPanel()

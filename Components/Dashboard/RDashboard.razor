@@ -39,12 +39,15 @@
 @code {
     private readonly List<RDashboardWidgetState> widgets = new();
     private readonly Dictionary<string, RDashboardWidgetState> widgetLookup = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Queue<Func<Task>> deferredLayoutNotifications = new();
+    private IReadOnlyList<RWidgetLayoutSnapshot> lastLayoutSnapshot = Array.Empty<RWidgetLayoutSnapshot>();
+    private bool layoutSnapshotDirty;
     private DotNetObjectReference<RDashboard> dotNetRef;
     private ElementReference dashboardElement;
     private string dashboardId = $"rdashboard-{Guid.NewGuid():N}";
     private bool jsInitialized;
     private bool pendingJsRefresh;
+    private bool hasParameterSnapshot;
+    private DashboardParameterSnapshot parameterSnapshot;
 
     [Parameter]
     [AIParameter(Hint = "Toggle edit mode to allow end-users to drag and resize widgets")]
@@ -128,7 +131,13 @@
             throw new InvalidOperationException("Dashboard must define at least one column.");
         }
 
-        pendingJsRefresh = true;
+        var currentSnapshot = new DashboardParameterSnapshot(this);
+        if (!hasParameterSnapshot || !parameterSnapshot.Equals(currentSnapshot))
+        {
+            parameterSnapshot = currentSnapshot;
+            hasParameterSnapshot = true;
+            pendingJsRefresh = true;
+        }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -147,10 +156,7 @@
             pendingJsRefresh = false;
         }
 
-        while (deferredLayoutNotifications.TryDequeue(out var action))
-        {
-            await action();
-        }
+        await EmitLayoutSnapshotIfNeededAsync(firstRender);
     }
 
     protected override async Task InitializeJavaScriptAsync()
@@ -221,7 +227,11 @@
             return;
         }
 
-        existing.UpdateRegistration(registration);
+        if (!existing.UpdateRegistration(registration))
+        {
+            return;
+        }
+
         widget.AttachState(existing);
         QueueLayoutRebuild();
         pendingJsRefresh = true;
@@ -256,29 +266,23 @@
             return;
         }
 
-        state.ColumnSpan = Math.Clamp(columnSpan, state.Registration.MinColumnSpan, state.Registration.MaxColumnSpan);
-        state.RowSpan = Math.Clamp(rowSpan, state.Registration.MinRowSpan, state.Registration.MaxRowSpan);
+        var clampedColumns = Math.Clamp(columnSpan, state.Registration.MinColumnSpan, state.Registration.MaxColumnSpan);
+        var clampedRows = Math.Clamp(rowSpan, state.Registration.MinRowSpan, state.Registration.MaxRowSpan);
+
+        if (state.ColumnSpan == clampedColumns && state.RowSpan == clampedRows)
+        {
+            return;
+        }
+
+        state.ColumnSpan = clampedColumns;
+        state.RowSpan = clampedRows;
         QueueLayoutRebuild();
         pendingJsRefresh = true;
     }
 
     private void QueueLayoutRebuild()
     {
-        deferredLayoutNotifications.Enqueue(async () =>
-        {
-            if (!OnLayoutChanged.HasDelegate)
-            {
-                return;
-            }
-
-            var snapshot = widgets
-                .OrderBy(w => w.Order)
-                .Select(w => w.ToSnapshot())
-                .ToList()
-                .AsReadOnly();
-
-            await OnLayoutChanged.InvokeAsync(new RDashboardLayoutChangedEventArgs(snapshot));
-        });
+        layoutSnapshotDirty = true;
     }
 
     [JSInvokable]
@@ -289,12 +293,20 @@
             return;
         }
 
-        state.ColumnSpan = Math.Clamp(columns, state.Registration.MinColumnSpan, state.Registration.MaxColumnSpan);
-        state.RowSpan = Math.Clamp(rows, state.Registration.MinRowSpan, state.Registration.MaxRowSpan);
+        var clampedColumns = Math.Clamp(columns, state.Registration.MinColumnSpan, state.Registration.MaxColumnSpan);
+        var clampedRows = Math.Clamp(rows, state.Registration.MinRowSpan, state.Registration.MaxRowSpan);
+
+        if (state.ColumnSpan == clampedColumns && state.RowSpan == clampedRows)
+        {
+            return;
+        }
+
+        state.ColumnSpan = clampedColumns;
+        state.RowSpan = clampedRows;
         state.Widget.ApplyLayoutFromDashboard(state.ColumnSpan, state.RowSpan);
+        layoutSnapshotDirty = true;
 
         await InvokeAsync(StateHasChanged);
-        await NotifyLayoutChangedAsync();
     }
 
     [JSInvokable]
@@ -320,8 +332,9 @@
             widgets[index].Widget.ApplyOrderFromDashboard(index);
         }
 
+        layoutSnapshotDirty = true;
+
         await InvokeAsync(StateHasChanged);
-        await NotifyLayoutChangedAsync();
     }
 
     [JSInvokable]
@@ -336,22 +349,7 @@
         await EditModeChanged.InvokeAsync(EditMode);
         await InvokeAsync(StateHasChanged);
         pendingJsRefresh = true;
-    }
-
-    private async Task NotifyLayoutChangedAsync()
-    {
-        if (!OnLayoutChanged.HasDelegate)
-        {
-            return;
-        }
-
-        var snapshot = widgets
-            .OrderBy(w => w.Order)
-            .Select(w => w.ToSnapshot())
-            .ToList()
-            .AsReadOnly();
-
-        await OnLayoutChanged.InvokeAsync(new RDashboardLayoutChangedEventArgs(snapshot));
+        layoutSnapshotDirty = true;
     }
 
     private object BuildInteropOptions()
@@ -422,6 +420,68 @@
         return string.Join(' ', classes);
     }
 
+    private async Task EmitLayoutSnapshotIfNeededAsync(bool firstRender)
+    {
+        if (!OnLayoutChanged.HasDelegate)
+        {
+            layoutSnapshotDirty = false;
+            return;
+        }
+
+        if (firstRender)
+        {
+            lastLayoutSnapshot = CreateLayoutSnapshot();
+            layoutSnapshotDirty = false;
+            return;
+        }
+
+        if (!layoutSnapshotDirty)
+        {
+            return;
+        }
+
+        layoutSnapshotDirty = false;
+        var snapshot = CreateLayoutSnapshot();
+        if (SnapshotsEqual(lastLayoutSnapshot, snapshot))
+        {
+            return;
+        }
+
+        lastLayoutSnapshot = snapshot;
+        await OnLayoutChanged.InvokeAsync(new RDashboardLayoutChangedEventArgs(snapshot));
+    }
+
+    private IReadOnlyList<RWidgetLayoutSnapshot> CreateLayoutSnapshot() => widgets
+        .OrderBy(w => w.Order)
+        .Select(w => w.ToSnapshot())
+        .ToList()
+        .AsReadOnly();
+
+    private static bool SnapshotsEqual(IReadOnlyList<RWidgetLayoutSnapshot> left, IReadOnlyList<RWidgetLayoutSnapshot> right)
+    {
+        if (ReferenceEquals(left, right))
+        {
+            return true;
+        }
+
+        if (left is null || right is null || left.Count != right.Count)
+        {
+            return false;
+        }
+
+        for (var i = 0; i < left.Count; i++)
+        {
+            var a = left[i];
+            var b = right[i];
+            if (a.WidgetId != b.WidgetId || a.ColumnSpan != b.ColumnSpan || a.RowSpan != b.RowSpan || a.Order != b.Order)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     private string BuildRootStyle()
     {
         var builder = new System.Text.StringBuilder();
@@ -474,5 +534,53 @@
         public bool AllowReorder { get; set; }
         public IReadOnlyDictionary<string, int> ResponsiveColumns { get; set; } = new Dictionary<string, int>();
         public IReadOnlyDictionary<string, int> ResponsiveRows { get; set; } = new Dictionary<string, int>();
+    }
+
+    private readonly struct DashboardParameterSnapshot
+    {
+        public DashboardParameterSnapshot(RDashboard dashboard)
+        {
+            EditMode = dashboard.EditMode;
+            Columns = dashboard.Columns;
+            ColumnsXl = dashboard.ColumnsXl;
+            ColumnsLg = dashboard.ColumnsLg;
+            ColumnsMd = dashboard.ColumnsMd;
+            ColumnsSm = dashboard.ColumnsSm;
+            ColumnsXs = dashboard.ColumnsXs;
+            RowHeight = dashboard.RowHeight;
+            Gap = dashboard.Gap ?? string.Empty;
+            DenseAutoFlow = dashboard.DenseAutoFlow;
+            AllowReorder = dashboard.AllowReorder;
+            AllowResize = dashboard.AllowResize;
+        }
+
+        public readonly bool EditMode;
+        public readonly int Columns;
+        public readonly int ColumnsXl;
+        public readonly int ColumnsLg;
+        public readonly int ColumnsMd;
+        public readonly int ColumnsSm;
+        public readonly int ColumnsXs;
+        public readonly int RowHeight;
+        public readonly string Gap;
+        public readonly bool DenseAutoFlow;
+        public readonly bool AllowReorder;
+        public readonly bool AllowResize;
+
+        public bool Equals(DashboardParameterSnapshot other)
+        {
+            return EditMode == other.EditMode &&
+                   Columns == other.Columns &&
+                   ColumnsXl == other.ColumnsXl &&
+                   ColumnsLg == other.ColumnsLg &&
+                   ColumnsMd == other.ColumnsMd &&
+                   ColumnsSm == other.ColumnsSm &&
+                   ColumnsXs == other.ColumnsXs &&
+                   RowHeight == other.RowHeight &&
+                   AllowReorder == other.AllowReorder &&
+                   AllowResize == other.AllowResize &&
+                   DenseAutoFlow == other.DenseAutoFlow &&
+                   string.Equals(Gap, other.Gap, StringComparison.Ordinal);
+        }
     }
 }

@@ -106,7 +106,6 @@
     private int currentColumnSpan;
     private int currentRowSpan;
     private int currentOrder;
-    private bool hasRenderedOnce;
 
     [CascadingParameter] internal RDashboard Dashboard { get; set; }
 
@@ -254,24 +253,19 @@
     {
         base.OnParametersSet();
 
-        if (!ReferenceEquals(Dashboard, null))
+        if (Dashboard != null)
         {
             var updated = BuildRegistration();
-            registrationSnapshot = updated;
-            Dashboard.UpdateWidgetRegistration(this, updated);
+            if (!RWidgetRegistrationComparer.AreEqual(registrationSnapshot, updated))
+            {
+                registrationSnapshot = updated;
+                Dashboard.UpdateWidgetRegistration(this, updated);
+            }
         }
 
-        if (hasRenderedOnce)
-        {
-            UpdateViewContext();
-        }
+        UpdateViewContext();
     }
 
-    protected override void OnAfterRender(bool firstRender)
-    {
-        base.OnAfterRender(firstRender);
-        hasRenderedOnce = true;
-    }
 
     internal void AttachState(RDashboardWidgetState dashboardState)
     {
@@ -284,6 +278,11 @@
 
     internal void ApplyLayoutFromDashboard(int columns, int rows)
     {
+        if (currentColumnSpan == columns && currentRowSpan == rows)
+        {
+            return;
+        }
+
         currentColumnSpan = columns;
         currentRowSpan = rows;
         UpdateViewContext();
@@ -292,6 +291,11 @@
 
     internal void ApplyOrderFromDashboard(int order)
     {
+        if (currentOrder == order)
+        {
+            return;
+        }
+
         currentOrder = order;
         InvokeAsync(StateHasChanged);
     }
@@ -341,7 +345,19 @@
     private void UpdateViewContext()
     {
         var size = ResolveSizeCategory(currentColumnSpan, currentRowSpan);
-        viewContext = new RWidgetViewContext(Id, currentColumnSpan, currentRowSpan, size, Dashboard?.IsEditing == true);
+        var isEditing = Dashboard?.IsEditing == true;
+
+        if (viewContext != null &&
+            viewContext.WidgetId == Id &&
+            viewContext.ColumnSpan == currentColumnSpan &&
+            viewContext.RowSpan == currentRowSpan &&
+            viewContext.Size == size &&
+            viewContext.IsEditing == isEditing)
+        {
+            return;
+        }
+
+        viewContext = new RWidgetViewContext(Id, currentColumnSpan, currentRowSpan, size, isEditing);
     }
 
     private string BuildRootClasses()
